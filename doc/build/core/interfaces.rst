@@ -1,10 +1,9 @@
-.. currentmodule:: sqlalchemy.interfaces
-
 .. _interfaces_core_toplevel:
 
-
 Core Event Interfaces
-====================
+======================
+
+.. module:: sqlalchemy.interfaces
 
 This section describes the various categories of events which can be intercepted
 in SQLAlchemy core, including execution and connection pool events.

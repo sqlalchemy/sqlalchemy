@@ -42,28 +42,34 @@ Code Examples
 =============
 
 Working code examples, mostly regarding the ORM, are included in the
-SQLAlchemy distribution, and there are also usage recipes on the SQLAlchemy
-wiki. A description of all the included example applications is at
-:ref:`examples_toplevel`.
+SQLAlchemy distribution. A description of all the included example
+applications is at :ref:`examples_toplevel`.
+
+There is also a wide variety of examples involving both core SQLAlchemy
+constructs as well as the ORM on the wiki.  See
+`<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
 Installing SQLAlchemy
 ======================
 
 Installing SQLAlchemy from scratch is most easily achieved with `setuptools
-<http://pypi.python.org/pypi/setuptools/>`_. Assuming it's installed, just run
+<http://pypi.python.org/pypi/setuptools/>`_, or alternatively
+`pip <http://pypi.python.org/pypi/pip/>`_. Assuming it's installed, just run
 this from the command-line:
 
 .. sourcecode:: none
 
     # easy_install SQLAlchemy
+    
+Or with pip:
+
+.. sourcecode:: none
+
+    # pip install SQLAlchemy
 
 This command will download the latest version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your
 system.
-
-* setuptools_ 
-* `install setuptools <http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions>`_
-* `pypi <http://pypi.python.org/pypi/SQLAlchemy>`_
 
 Otherwise, you can install from the distribution using the ``setup.py`` script:
 

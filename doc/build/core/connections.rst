@@ -60,36 +60,22 @@ This argument is named ``bind``::
 .. index::
    single: thread safety; connections
 
-Connection facts:
-
-* the Connection object is **not thread-safe**. While a Connection can be
-  shared among threads using properly synchronized access, this is also not
-  recommended as many DBAPIs have issues with, if not outright disallow,
-  sharing of connection state between threads.
-* The Connection object represents a single dbapi connection checked out from
-  the connection pool. In this state, the connection pool has no affect upon
-  the connection, including its expiration or timeout state. For the
-  connection pool to properly manage connections, **connections should be
-  returned to the connection pool (i.e. ``connection.close()``) whenever the
-  connection is not in use**. If your application has a need for management of
-  multiple connections or is otherwise long running (this includes all web
-  applications, threaded or not), don't hold a single connection open at the
-  module level.
-
 Connection API
 ===============
 
 .. autoclass:: Connection
+   :show-inheritance:
    :members:
-   :undoc-members:
 
 .. autoclass:: Connectable
+   :show-inheritance:
    :members:
 
 Engine API
 ===========
 
 .. autoclass:: Engine
+   :show-inheritance:
    :members:
 
 Result Object API
@@ -101,8 +87,15 @@ Result Object API
 .. autoclass:: sqlalchemy.engine.base.RowProxy
     :members:
 
-Using Connection-level Transactions
-===================================
+Using Transactions
+==================
+
+.. note:: This section describes how to use transactions when working directly 
+  with :class:`.Engine` and :class:`.Connection` objects. When using the
+  SQLAlchemy ORM, the public API for transaction control is via the
+  :class:`.Session` object, which makes usage of the :class:`.Transaction`
+  object internally. See :ref:`unitofwork_transaction` for further
+  information.
 
 The :class:`~sqlalchemy.engine.base.Connection` object provides a ``begin()``
 method which returns a :class:`~sqlalchemy.engine.base.Transaction` object.
@@ -161,16 +154,8 @@ which "guarantee" that a transaction will be used if one was not already
 available, but will automatically participate in an enclosing transaction if
 one exists.
 
-Note that SQLAlchemy's Object Relational Mapper also provides a way to control
-transaction scope at a higher level; this is described in
-:ref:`unitofwork_transaction`.
-
 .. index::
    single: thread safety; transactions
-
-Transaction Facts:
-
-* the Transaction object, just like its parent Connection, is **not thread-safe**.
 
 .. autoclass:: Transaction
     :members:

@@ -308,9 +308,9 @@ specific need to arise. Bind is useful if:
 * Your application has multiple schemas that correspond to different engines.
   Using one :class:`~sqlalchemy.schema.MetaData` for each schema, bound to
   each engine, provides a decent place to delineate between the schemas. The
-  ORM will also integrate with this approach, where the :class:`Session` will
+  ORM will also integrate with this approach, where the :class:`.Session` will
   naturally use the engine that is bound to each table via its metadata
-  (provided the :class:`Session` itself has no ``bind`` configured.).
+  (provided the :class:`.Session` itself has no ``bind`` configured.).
 
 Alternatively, the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData`
 is *confusing* if:
@@ -324,12 +324,12 @@ is *confusing* if:
   :class:`~sqlalchemy.schema.MetaData` object is *not* appropriate for
   per-request switching like this, although a
   :class:`~sqlalchemy.schema.ThreadLocalMetaData` object is.
-* You are using the ORM :class:`Session` to handle which class/table is bound
-  to which engine, or you are using the :class:`Session` to manage switching
+* You are using the ORM :class:`.Session` to handle which class/table is bound
+  to which engine, or you are using the :class:`.Session` to manage switching
   between engines. Its a good idea to keep the "binding of tables to engines"
   in one place - either using :class:`~sqlalchemy.schema.MetaData` only (the
-  :class:`Session` can of course be present, it just has no ``bind``
-  configured), or using :class:`Session` only (the ``bind`` attribute of
+  :class:`.Session` can of course be present, it just has no ``bind``
+  configured), or using :class:`.Session` only (the ``bind`` attribute of
   :class:`~sqlalchemy.schema.MetaData` is left empty).
 
 Specifying the Schema Name
@@ -636,7 +636,8 @@ for each execution.
 SQL Expressions
 ---------------
 
-The "default" and "onupdate" keywords may also be passed SQL expressions, including select statements or direct function calls::
+The "default" and "onupdate" keywords may also be passed SQL expressions,
+including select statements or direct function calls::
 
     t = Table("mytable", meta,
         Column('id', Integer, primary_key=True),
@@ -673,23 +674,19 @@ SELECT statement of its own beforehand. This happens when all of the following
 is true:
 
 * the column is a primary key column
-
 * the database dialect does not support a usable ``cursor.lastrowid`` accessor
-(or equivalent); this currently includes PostgreSQL, Oracle, and Firebird, as
-well as some MySQL dialects.
-
+  (or equivalent); this currently includes PostgreSQL, Oracle, and Firebird, as
+  well as some MySQL dialects.
 * the dialect does not support the "RETURNING" clause or similar, or the
-``implicit_returning`` flag is set to ``False`` for the dialect. Dialects
-which support RETURNING currently include Postgresql, Oracle, Firebird, and
-MS-SQL.
-
+  ``implicit_returning`` flag is set to ``False`` for the dialect. Dialects
+  which support RETURNING currently include Postgresql, Oracle, Firebird, and
+  MS-SQL.
 * the statement is a single execution, i.e. only supplies one set of
-parameters and doesn't use "executemany" behavior
-
+  parameters and doesn't use "executemany" behavior
 * the ``inline=True`` flag is not set on the
-:class:`~sqlalchemy.sql.expression.Insert()` or
-:class:`~sqlalchemy.sql.expression.Update()` construct, and the statement has
-not defined an explicit `returning()` clause.
+  :class:`~sqlalchemy.sql.expression.Insert()` or
+  :class:`~sqlalchemy.sql.expression.Update()` construct, and the statement has
+  not defined an explicit `returning()` clause.
 
 Whether or not the default generation clause "pre-executes" is not something
 that normally needs to be considered, unless it is being addressed for
@@ -1062,9 +1059,11 @@ Other Constraint Classes
 .. autoclass:: Constraint
     :show-inheritance:
 
+.. autoclass:: ColumnCollectionConstraint
+    :show-inheritance:
+    
 .. autoclass:: PrimaryKeyConstraint
     :show-inheritance:
-
 
 Indexes
 -------
@@ -1154,7 +1153,8 @@ or by itself.
 Controlling DDL Sequences
 -------------------------
 
-The ``sqlalchemy.schema`` package contains SQL expression constructs that provide DDL expressions.   For example, to produce a ``CREATE TABLE`` statement:
+The ``sqlalchemy.schema`` package contains SQL expression constructs that
+provide DDL expressions. For example, to produce a ``CREATE TABLE`` statement:
 
 .. sourcecode:: python+sql
 
@@ -1169,9 +1169,15 @@ The ``sqlalchemy.schema`` package contains SQL expression constructs that provid
         col6 INTEGER
     ){stop}
 
-Above, the :class:`~sqlalchemy.schema.CreateTable` construct works like any other expression construct (such as ``select()``, ``table.insert()``, etc.).  A full reference of available constructs is in :ref:`schema_api_ddl`.
+Above, the :class:`~sqlalchemy.schema.CreateTable` construct works like any
+other expression construct (such as ``select()``, ``table.insert()``, etc.). A
+full reference of available constructs is in :ref:`schema_api_ddl`.
 
-The DDL constructs all extend a common base class which provides the capability to be associated with an individual :class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData` object, to be invoked upon create/drop events.   Consider the example of a table which contains a CHECK constraint:
+The DDL constructs all extend a common base class which provides the
+capability to be associated with an individual
+:class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData`
+object, to be invoked upon create/drop events. Consider the example of a table
+which contains a CHECK constraint:
 
 .. sourcecode:: python+sql
 
@@ -1189,14 +1195,24 @@ The DDL constructs all extend a common base class which provides the capability 
         CONSTRAINT cst_user_name_length  CHECK (length(user_name) >= 8)
     ){stop}
 
-The above table contains a column "user_name" which is subject to a CHECK constraint that validates that the length of the string is at least eight characters.   When a ``create()`` is issued for this table, DDL for the :class:`~sqlalchemy.schema.CheckConstraint` will also be issued inline within the table definition.
+The above table contains a column "user_name" which is subject to a CHECK
+constraint that validates that the length of the string is at least eight
+characters. When a ``create()`` is issued for this table, DDL for the
+:class:`~sqlalchemy.schema.CheckConstraint` will also be issued inline within
+the table definition.
 
-The :class:`~sqlalchemy.schema.CheckConstraint` construct can also be constructed externally and associated with the :class:`~sqlalchemy.schema.Table` afterwards::
+The :class:`~sqlalchemy.schema.CheckConstraint` construct can also be
+constructed externally and associated with the
+:class:`~sqlalchemy.schema.Table` afterwards::
 
     constraint = CheckConstraint('length(user_name) >= 8',name="cst_user_name_length")
     users.append_constraint(constraint)
 
-So far, the effect is the same.  However, if we create DDL elements corresponding to the creation and removal of this constraint, and associate them with the :class:`~sqlalchemy.schema.Table` as events, these new events will take over the job of issuing DDL for the constraint.  Additionally, the constraint will be added via ALTER:
+So far, the effect is the same. However, if we create DDL elements
+corresponding to the creation and removal of this constraint, and associate
+them with the :class:`~sqlalchemy.schema.Table` as events, these new events
+will take over the job of issuing DDL for the constraint. Additionally, the
+constraint will be added via ALTER:
 
 .. sourcecode:: python+sql
 
@@ -1216,7 +1232,13 @@ So far, the effect is the same.  However, if we create DDL elements correspondin
     ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
-The real usefulness of the above becomes clearer once we illustrate the ``on`` attribute of a DDL event.  The ``on`` parameter is part of the constructor, and may be a string name of a database dialect name, a tuple containing dialect names, or a Python callable.   This will limit the execution of the item to just those dialects, or when the return value of the callable is ``True``.  So if our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by Postgresql and not other databases, we could limit it to just that dialect::
+The real usefulness of the above becomes clearer once we illustrate the ``on``
+attribute of a DDL event. The ``on`` parameter is part of the constructor, and
+may be a string name of a database dialect name, a tuple containing dialect
+names, or a Python callable. This will limit the execution of the item to just
+those dialects, or when the return value of the callable is ``True``. So if
+our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by
+Postgresql and not other databases, we could limit it to just that dialect::
 
     AddConstraint(constraint, on='postgresql').execute_at("after-create", users)
     DropConstraint(constraint, on='postgresql').execute_at("before-drop", users)
@@ -1226,7 +1248,14 @@ Or to any set of dialects::
     AddConstraint(constraint, on=('postgresql', 'mysql')).execute_at("after-create", users)
     DropConstraint(constraint, on=('postgresql', 'mysql')).execute_at("before-drop", users)
 
-When using a callable, the callable is passed the ddl element, event name, the :class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData` object whose "create" or "drop" event is in progress, and the :class:`~sqlalchemy.engine.base.Connection` object being used for the operation, as well as additional information as keyword arguments.  The callable can perform checks, such as whether or not a given item already exists.  Below we define ``should_create()`` and ``should_drop()`` callables that check for the presence of our named constraint:
+When using a callable, the callable is passed the ddl element, event name, the
+:class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData`
+object whose "create" or "drop" event is in progress, and the
+:class:`~sqlalchemy.engine.base.Connection` object being used for the
+operation, as well as additional information as keyword arguments. The
+callable can perform checks, such as whether or not a given item already
+exists. Below we define ``should_create()`` and ``should_drop()`` callables
+that check for the presence of our named constraint:
 
 .. sourcecode:: python+sql
 
@@ -1271,6 +1300,8 @@ other DDL elements except it accepts a string which is the text to be emitted:
 A more comprehensive method of creating libraries of DDL constructs is to use
 custom compilation - see :ref:`sqlalchemy.ext.compiler_toplevel` for
  details.
+
+.. _schema_api_ddl:
 
 DDL API
 -------

@@ -4,7 +4,7 @@ SQLAlchemy Core
 ===============
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
     
     tutorial
     expression_api
@@ -15,5 +15,6 @@ SQLAlchemy Core
     types
     interfaces
     compiler
+    serializer
     
     

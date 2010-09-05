@@ -1,10 +1,10 @@
-.. currentmodule:: sqlalchemy.orm.interfaces
-
 .. _interfaces_orm_toplevel:
-
+.. _events_orm_toplevel:
 
 ORM Event Interfaces
 ====================
+
+.. module:: sqlalchemy.orm.interfaces
 
 This section describes the various categories of events which can be intercepted
 within the SQLAlchemy ORM.

@@ -35,18 +35,18 @@ NEVER_SET = util.symbol('NEVER_SET')
 
 # "passive" get settings
 # TODO: the True/False values need to be factored out
-# of the rest of ORM code
-# don't fire off any callables, and don't initialize the attribute to
-# an empty value
 PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
+"""Symbol indicating that loader callables should
+   not be fired off, and a non-initialized attribute 
+   should remain that way."""
 
-# don't fire off any callables, but if no callables present
-# then initialize to an empty value/collection
 # this is used by backrefs.
 PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
+"""Symbol indicating that loader callables should not boe fired off.
+   Non-initialized attributes should be initialized to an empty value."""
 
-# fire callables/initialize as needed
 PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
+"""Symbol indicating that loader callables should be executed."""
 
 INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'
 """Attribute, elects custom instrumentation when present on a mapped class.
@@ -1293,8 +1293,10 @@ class _ClassInstrumentationAdapter(ClassManager):
         return self._get_dict
 
 class History(tuple):
-    """A 3-tuple of added, unchanged and deleted values.
-
+    """A 3-tuple of added, unchanged and deleted values,
+    representing the changes which have occured on an instrumented
+    attribute.
+    
     Each tuple member is an iterable sequence.
 
     """
@@ -1302,9 +1304,18 @@ class History(tuple):
     __slots__ = ()
 
     added = property(itemgetter(0))
+    """Return the collection of items added to the attribute (the first tuple
+    element)."""
+    
     unchanged = property(itemgetter(1))
+    """Return the collection of items that have not changed on the attribute
+    (the second tuple element)."""
+    
+    
     deleted = property(itemgetter(2))
-
+    """Return the collection of items that have been removed from the
+    attribute (the third tuple element)."""
+    
     def __new__(cls, added, unchanged, deleted):
         return tuple.__new__(cls, (added, unchanged, deleted))
     
@@ -1312,25 +1323,38 @@ class History(tuple):
         return self != HISTORY_BLANK
     
     def empty(self):
+        """Return True if this :class:`History` has no changes
+        and no existing, unchanged state.
+        
+        """
+        
         return not bool(
                         (self.added or self.deleted)
                         or self.unchanged and self.unchanged != [None]
                     ) 
         
     def sum(self):
+        """Return a collection of added + unchanged + deleted."""
+        
         return (self.added or []) +\
                 (self.unchanged or []) +\
                 (self.deleted or [])
     
     def non_deleted(self):
+        """Return a collection of added + unchanged."""
+        
         return (self.added or []) +\
                 (self.unchanged or [])
     
     def non_added(self):
+        """Return a collection of unchanged + deleted."""
+        
         return (self.unchanged or []) +\
                 (self.deleted or [])
     
     def has_changes(self):
+        """Return True if this :class:`History` has changes."""
+        
         return bool(self.added or self.deleted)
         
     def as_state(self):
@@ -1391,11 +1415,19 @@ class History(tuple):
 HISTORY_BLANK = History(None, None, None)
 
 def get_history(obj, key, **kwargs):
-    """Return a History record for the given object and attribute key.
+    """Return a :class:`.History` record for the given object 
+    and attribute key.
     
-    obj is an instrumented object instance.  An InstanceState
-    is accepted directly for backwards compatibility but 
-    this usage is deprecated.
+    :param obj: an object whose class is instrumented by the
+      attributes package.  
+    
+    :param key: string attribute name.
+    
+    :param kwargs: Optional keyword arguments currently
+      include the ``passive`` flag, which indicates if the attribute should be
+      loaded from the database if not already present (:attr:`PASSIVE_NO_FETCH`), and
+      if the attribute should be not initialized to a blank value otherwise
+      (:attr:`PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
     
     """
     return get_state_history(instance_state(obj), key, **kwargs)

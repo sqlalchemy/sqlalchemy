@@ -801,7 +801,20 @@ class Connection(Connectable):
     as ClauseElement, Compiled and DefaultGenerator objects.  Provides
     a :meth:`begin` method to return Transaction objects.
 
-    The Connection object is **not** thread-safe.
+    The Connection object is **not** thread-safe.  While a Connection can be
+    shared among threads using properly synchronized access, it is still
+    possible that the underlying DBAPI connection may not support shared
+    access between threads.  Check the DBAPI documentation for details.
+    
+    The Connection object represents a single dbapi connection checked out
+    from the connection pool. In this state, the connection pool has no affect
+    upon the connection, including its expiration or timeout state. For the
+    connection pool to properly manage connections, connections should be
+    returned to the connection pool (i.e. ``connection.close()``) whenever the
+    connection is not in use. If your application has a need for management
+    of multiple connections or is otherwise long running (this includes all
+    web applications, threaded or not), don't hold a single connection open at
+    the module level.
 
     .. index::
       single: thread safety; Connection

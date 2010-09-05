@@ -118,7 +118,7 @@ class Table(SchemaItem, expression.TableClause):
     :param \*args: Additional positional arguments are used primarily
         to add the list of :class:`Column` objects contained within this
         table. Similar to the style of a CREATE TABLE statement, other
-        :class:`SchemaItem` constructs may be added here, including
+        :class:`.SchemaItem` constructs may be added here, including
         :class:`PrimaryKeyConstraint`, and :class:`ForeignKeyConstraint`.
         
     :param autoload: Defaults to False: the Columns for this table should 
@@ -526,7 +526,7 @@ class Column(SchemaItem, expression.ColumnClause):
           may not function in all cases.
 
         :param \*args: Additional positional arguments include various 
-          :class:`SchemaItem` derived constructs which will be applied 
+          :class:`.SchemaItem` derived constructs which will be applied 
           as options to the column.  These include instances of 
           :class:`Constraint`, :class:`ForeignKey`, :class:`ColumnDefault`, 
           and :class:`Sequence`.  In some cases an equivalent keyword 

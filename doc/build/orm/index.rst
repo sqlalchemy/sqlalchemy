@@ -4,7 +4,7 @@ SQLAlchemy ORM
 ===============
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
     
     tutorial
     mapper_config

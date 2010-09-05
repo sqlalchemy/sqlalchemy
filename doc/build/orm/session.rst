@@ -149,13 +149,6 @@ such as within a test fixture that maintains an external transaction::
             self.session.close()
             
 
-Configurational Arguments
--------------------------
-
-Configurational arguments accepted by :func:`.sessionmaker` are the same as that of the
-:class:`.Session` class itself, and are described at
-:func:`.sessionmaker`.
-
 Using the Session
 ==================
 
@@ -295,6 +288,7 @@ Frequently Asked Questions
     particularly when you do a flush operation, it definitely is not open to
     concurrent threads accessing it, because it holds onto a single database
     connection at that point. If you use a session which is non-transactional
+    (meaning, ``autocommit`` is set to ``True``, not the default setting)
     for read operations only, it's still not thread-"safe", but you also wont
     get any catastrophic failures either, since it checks out and returns
     connections to the connection pool on an as-needed basis; it's just that
@@ -348,6 +342,10 @@ default-configured :class:`~sqlalchemy.orm.session.Session` automatically
 expires all instances along transaction boundaries, so that with a normally
 isolated transaction, there shouldn't be any issue of instances representing
 data which is stale with regards to the current transaction.
+
+The :class:`.Query` object is introduced in great detail in
+:ref:`ormtutorial_toplevel`, and further documented in
+:ref:`query_api_toplevel`.
 
 Adding New or Existing Items
 ----------------------------
@@ -1211,26 +1209,51 @@ Session Utilities
 Attribute and State Management Utilities
 ========================================
 
-.. autofunction:: sqlalchemy.orm.attributes.del_attribute
+These functions are provided by the SQLAlchemy attribute
+instrumentation API to provide a detailed interface for dealing
+with instances, attribute values, and history.  Some of them
+are useful when constructing event listener functions, such as 
+those described in :ref:`events_orm_toplevel`.
 
-.. autofunction:: sqlalchemy.orm.attributes.get_attribute
+.. currentmodule:: sqlalchemy.orm.attributes
 
-.. autofunction:: sqlalchemy.orm.attributes.get_history
+.. autofunction:: del_attribute
 
-.. autofunction:: sqlalchemy.orm.attributes.init_collection
+.. autofunction:: get_attribute
 
-.. function:: sqlalchemy.orm.attributes.instance_state
+.. autofunction:: get_history
+
+.. autofunction:: init_collection
+
+.. function:: instance_state
 
     Return the :class:`InstanceState` for a given object.
 
-.. autofunction:: sqlalchemy.orm.attributes.is_instrumented
+.. autofunction:: is_instrumented
 
-.. function:: sqlalchemy.orm.attributes.manager_of_class
+.. function:: manager_of_class
 
     Return the :class:`ClassManager` for a given class.
 
-.. autofunction:: sqlalchemy.orm.attributes.set_attribute
+.. autofunction:: set_attribute
 
-.. autofunction:: sqlalchemy.orm.attributes.set_committed_value
+.. autofunction:: set_committed_value
 
+.. autoclass:: History
+    :members:
+    
+.. attribute:: sqlalchemy.orm.attributes.PASSIVE_NO_INITIALIZE
+
+   Symbol indicating that loader callables should
+   not be fired off, and a non-initialized attribute 
+   should remain that way.
+
+.. attribute:: sqlalchemy.orm.attributes.PASSIVE_NO_FETCH
+
+   Symbol indicating that loader callables should not boe fired off.
+   Non-initialized attributes should be initialized to an empty value.
+
+.. attribute:: sqlalchemy.orm.attributes.PASSIVE_OFF
+
+    Symbol indicating that loader callables should be executed.
 
