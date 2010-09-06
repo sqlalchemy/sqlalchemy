@@ -189,7 +189,7 @@ class collection(object):
     The recipe decorators all require parens, even those that take no
     arguments::
 
-        @collection.adds('entity'):
+        @collection.adds('entity')
         def insert(self, position, entity): ...
 
         @collection.removes_return()

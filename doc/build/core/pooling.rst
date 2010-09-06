@@ -5,18 +5,18 @@ Connection Pooling
 
 .. module:: sqlalchemy.pool
 
-SQLAlchemy ships with a connection pooling framework that integrates
-with the Engine system and can also be used on its own to manage plain
-DB-API connections.
-
-At the base of any database helper library is a system for efficiently
-acquiring connections to the database.  Since the establishment of a
-database connection is typically a somewhat expensive operation, an
-application needs a way to get at database connections repeatedly
-without incurring the full overhead each time.  Particularly for
+The establishment of a
+database connection is typically a somewhat expensive operation, and
+applications need a way to get at database connections repeatedly
+with minimal overhead.  Particularly for
 server-side web applications, a connection pool is the standard way to
-maintain a group or "pool" of active database connections which are
-reused from request to request in a single server process.
+maintain a "pool" of active database connections in memory which are
+reused across requests.
+
+SQLAlchemy includes several connection pool implementations 
+which integrate with the :class:`.Engine`.  They can also be used
+directly for applications that want to add pooling to an otherwise
+plain DBAPI approach.
 
 Connection Pool Configuration
 -----------------------------
@@ -36,55 +36,118 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
                          pool_size=20, max_overflow=0)
 
 In the case of SQLite, a :class:`SingletonThreadPool` is provided instead,
-to provide compatibility with SQLite's restricted threading model.
+to provide compatibility with SQLite's restricted threading model, as well
+as to provide a reasonable default behavior to SQLite "memory" databases,
+which maintain their entire dataset within the scope of a single connection.
 
+All SQLAlchemy pool implementations have in common
+that none of them "pre create" connections - all implementations wait
+until first use before creating a connection.   At that point, if
+no additional concurrent checkout requests for more connections 
+are made, no additional connections are created.   This is why it's perfectly
+fine for :func:`.create_engine` to default to using a :class:`.QueuePool`
+of size five without regard to whether or not the application really needs five connections
+queued up - the pool would only grow to that size if the application
+actually used five connections concurrently, in which case the usage of a 
+small pool is an entirely appropriate default behavior.
 
-Custom Pool Construction
-------------------------
+Switching Pool Implementations
+------------------------------
 
-:class:`Pool` instances may be created directly for your own use or to
-supply to :func:`sqlalchemy.create_engine` via the ``pool=``
-keyword argument.
+The usual way to use a different kind of pool with :func:`.create_engine`
+is to use the ``poolclass`` argument.   This argument accepts a class
+imported from the ``sqlalchemy.pool`` module, and handles the details
+of building the pool for you.   Common options include specifying
+:class:`.QueuePool` with SQLite::
 
-Constructing your own pool requires supplying a callable function the
-Pool can use to create new connections.  The function will be called
-with no arguments.
+    from sqlalchemy.pool import QueuePool
+    engine = create_engine('sqlite:///file.db', poolclass=QueuePool)
 
-Through this method, custom connection schemes can be made, such as a
-using connections from another library's pool, or making a new
-connection that automatically executes some initialization commands::
+Disabling pooling using :class:`.NullPool`::
+
+    from sqlalchemy.pool import NullPool
+    engine = create_engine(
+              'postgresql+psycopg2://scott:tiger@localhost/test', 
+              poolclass=NullPool)
+
+Using a Custom Connection Function
+----------------------------------
+
+All :class:`.Pool` classes accept an argument ``creator`` which is 
+a callable that creates a new connection.  :func:`.create_engine`
+accepts this function to pass onto the pool via an argument of
+the same name::
 
     import sqlalchemy.pool as pool
     import psycopg2
 
     def getconn():
         c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
-        # execute an initialization function on the connection before returning
-        c.cursor.execute("setup_encodings()")
+        # do things with 'c' to set up
         return c
 
-    p = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
+    engine = create_engine('postgresql+psycopg2://', creator=getconn)
 
-Or with SingletonThreadPool::
+For most "initialize on connection" routines, it's more convenient
+to use a :class:`.PoolListener`, so that the usual URL argument to
+:func:`.create_engine` is still usable.  ``creator`` is there as
+a total last resort for when a DBAPI has some form of ``connect``
+that is not at all supported by SQLAlchemy.
+
+Constructing a Pool
+------------------------
+
+To use a :class:`.Pool` by itself, the ``creator`` function is
+the only argument that's required and is passed first, followed
+by any additional options::
 
     import sqlalchemy.pool as pool
-    import sqlite
+    import psycopg2
 
-    p = pool.SingletonThreadPool(lambda: sqlite.connect(filename='myfile.db'))
+    def getconn():
+        c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
+        return c
 
+    mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
+
+DBAPI connections can then be procured from the pool using the :meth:`.Pool.connect`
+function.  The return value of this method is a DBAPI connection that's contained
+within a transparent proxy::
+
+    # get a connection
+    conn = mypool.connect()
+
+    # use it
+    cursor = conn.cursor()
+    cursor.execute("select foo")
+
+The purpose of the transparent proxy is to intercept the ``close()`` call,
+such that instead of the DBAPI connection being closed, its returned to the 
+pool::
+
+    # "close" the connection.  Returns
+    # it to the pool.
+    conn.close()
+
+The proxy also returns its contained DBAPI connection to the pool 
+when it is garbage collected,
+though it's not deterministic in Python that this occurs immediately (though
+it is typical with cPython).
+
+A particular pre-created :class:`.Pool` can be shared with one or more
+engines by passing it to the ``pool`` argument of :func:`.create_engine`::
+
+    e = create_engine('postgresql://', pool=mypool)
+
+Pool Event Listeners
+--------------------
+
+Connection pools support an event interface that allows hooks to execute
+upon first connect, upon each new connection, and upon checkout and 
+checkin of connections.   See :class:`.PoolListener` for details.
 
 Builtin Pool Implementations
 ----------------------------
-
-.. autoclass:: AssertionPool
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-.. autoclass:: NullPool
-   :show-inheritance:
-
-   .. automethod:: __init__
 
 .. autoclass:: sqlalchemy.pool.Pool
 
@@ -103,10 +166,14 @@ Builtin Pool Implementations
 
    .. automethod:: __init__
 
-.. autoclass:: StaticPool
+.. autoclass:: AssertionPool
    :show-inheritance:
 
-   .. automethod:: __init__
+.. autoclass:: NullPool
+   :show-inheritance:
+
+.. autoclass:: StaticPool
+   :show-inheritance:
 
 
 Pooling Plain DB-API Connections
