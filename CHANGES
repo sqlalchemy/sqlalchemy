@@ -21,7 +21,12 @@ CHANGES
     where a one-step Session constructor is desired. Most
     users should stick with sessionmaker() for general use,
     however.
-
+  
+  - query.with_parent() now accepts transient objects
+    and will use the non-persistent values of their pk/fk
+    attributes in order to formulate the criterion.  
+    Docs are also clarified as to the purpose of with_parent().
+    
   - The include_properties and exclude_properties arguments
     to mapper() now accept Column objects as members in 
     addition to strings.  This so that same-named Column

@@ -21,6 +21,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         u = q.filter(User.id==7).first()
+        
         eq_([User(id=7,
                   addresses=[Address(id=1, email_address='jack@bean.com')])],
             q.filter(User.id==7).all())

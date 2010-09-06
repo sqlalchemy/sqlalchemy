@@ -1396,7 +1396,9 @@ class ParentTest(QueryTest):
             q = sess.query(Item).with_parent(u1)
             assert False
         except sa_exc.InvalidRequestError, e:
-            assert str(e) == "Could not locate a property which relates instances of class 'Item' to instances of class 'User'"
+            assert str(e) \
+                == "Could not locate a property which relates "\
+                "instances of class 'Item' to instances of class 'User'"
 
     def test_m2m(self):
         sess = create_session()
@@ -1404,6 +1406,40 @@ class ParentTest(QueryTest):
         k = sess.query(Keyword).with_parent(i1).all()
         assert [Keyword(name='red'), Keyword(name='small'), Keyword(name='square')] == k
 
+    def test_with_transient(self):
+        sess = Session()
+        
+        q = sess.query(User)
+        u1 = q.filter_by(name='jack').one()
+        utrans = User(id=u1.id)
+        o = sess.query(Order).with_parent(utrans, 'orders')
+        eq_(
+            [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")],
+            o.all()
+        )
+        
+    def test_with_pending_autoflush(self):
+        sess = Session()
+
+        o1 = sess.query(Order).first()
+        opending = Order(id=20, user_id=o1.user_id)
+        sess.add(opending)
+        eq_(
+            sess.query(User).with_parent(opending, 'user').one(),
+            User(id=o1.user_id)
+        )
+
+    def test_with_pending_no_autoflush(self):
+        sess = Session(autoflush=False)
+
+        o1 = sess.query(Order).first()
+        opending = Order(user_id=o1.user_id)
+        sess.add(opending)
+        eq_(
+            sess.query(User).with_parent(opending, 'user').one(),
+            User(id=o1.user_id)
+        )
+        
 class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     

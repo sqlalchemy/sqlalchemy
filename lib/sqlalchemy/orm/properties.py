@@ -720,7 +720,10 @@ class RelationshipProperty(StrategizedProperty):
             self.prop.parent.compile()
             return self.prop
 
-    def compare(self, op, value, value_is_parent=False, alias_secondary=True):
+    def compare(self, op, value, 
+                            value_is_parent=False, 
+                            alias_secondary=True,
+                            detect_transient_pending=False):
         if op == operators.eq:
             if value is None:
                 if self.uselist:
@@ -728,21 +731,26 @@ class RelationshipProperty(StrategizedProperty):
                 else:
                     return self._optimized_compare(None, 
                                     value_is_parent=value_is_parent,
+                                    detect_transient_pending=detect_transient_pending,
                                     alias_secondary=alias_secondary)
             else:
-                    return self._optimized_compare(value, 
-                                    value_is_parent=value_is_parent,
-                                    alias_secondary=alias_secondary)
+                return self._optimized_compare(value, 
+                                value_is_parent=value_is_parent,
+                                detect_transient_pending=detect_transient_pending,
+                                alias_secondary=alias_secondary)
         else:
             return op(self.comparator, value)
 
     def _optimized_compare(self, value, value_is_parent=False, 
-                                    adapt_source=None, alias_secondary=True):
+                                    adapt_source=None, 
+                                    detect_transient_pending=False,
+                                    alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
         return self._get_strategy(strategies.LazyLoader).lazy_clause(value,
                 reverse_direction=not value_is_parent,
                 alias_secondary=alias_secondary,
+                detect_transient_pending=detect_transient_pending,
                 adapt_source=adapt_source)
 
     def __str__(self):

@@ -404,7 +404,9 @@ class LazyLoader(AbstractRelationshipLoader):
                 )
 
     def lazy_clause(self, state, reverse_direction=False, 
-                                alias_secondary=False, adapt_source=None):
+                                alias_secondary=False, 
+                                adapt_source=None,
+                                detect_transient_pending=False):
         if state is None:
             return self._lazy_none_clause(
                                         reverse_direction, 
@@ -426,17 +428,29 @@ class LazyLoader(AbstractRelationshipLoader):
         else:
             mapper = self.parent_property.parent
 
+        o = state.obj() # strong ref
+        dict_ = attributes.instance_dict(o)
+        
         def visit_bindparam(bindparam):
             if bindparam.key in bind_to_col:
-                # use the "committed" (database) version to get 
-                # query column values
-                # also its a deferred value; so that when used 
-                # by Query, the committed value is used
-                # after an autoflush occurs
-                o = state.obj() # strong ref
-                bindparam.value = \
-                                lambda: mapper._get_committed_attr_by_column(
-                                        o, bind_to_col[bindparam.key])
+                # using a flag to enable "detect transient pending" so that
+                # the slightly different usage paradigm of "dynamic" loaders
+                # continue to work as expected, i.e. that all pending objects
+                # should use the "post flush" attributes, and to limit this 
+                # newer behavior to the query.with_parent() method.  
+                # It would be nice to do away with this flag.
+                
+                if detect_transient_pending and \
+                    (not state.key or not state.session_id):
+                    bindparam.value = mapper._get_state_attr_by_column(
+                                        state, dict_, bind_to_col[bindparam.key])
+                else:
+                    # send value as a lambda so that the value is
+                    # acquired after any autoflush occurs.
+                    bindparam.value = \
+                                lambda: mapper._get_committed_state_attr_by_column(
+                                        state, dict_, bind_to_col[bindparam.key])
+                    
 
         if self.parent_property.secondary is not None and alias_secondary:
             criterion = sql_util.ClauseAdapter(

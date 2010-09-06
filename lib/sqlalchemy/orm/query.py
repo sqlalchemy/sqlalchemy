@@ -648,21 +648,35 @@ class Query(object):
         self._populate_existing = True
 
     def with_parent(self, instance, property=None):
-        """Add a join criterion corresponding to a relationship to the given
-        parent instance.
+        """Add filtering criterion that relates this query's primary entity
+        to the given related instance, using established :func:`.relationship()`
+        configuration.
+        
+        The SQL rendered is the same as that rendered when a lazy loader
+        would fire off from the given parent on that attribute, meaning
+        that the appropriate state is taken from the parent object in 
+        Python without the need to render joins to the parent table
+        in the rendered statement.
+        
+        As of 0.6.4, this method accepts parent instances in all 
+        persistence states, including transient, persistent, and detached.
+        Only the requisite primary key/foreign key attributes need to
+        be populated.  Previous versions didn't work with transient
+        instances.
+        
+        :param instance:
+          An instance which is related to the class represented by 
+          this query via some :func:`.relationship`, that also 
+          contains the appropriate attribute state that identifies
+          the child object or collection.
 
-        instance
-          a persistent or detached instance which is related to class
-          represented by this query.
-
-        property
-          string name of the property which relates this query's class to the
-          instance.  if None, the method will attempt to find a suitable
-          property.
-
-        Currently, this method only works with immediate parent relationships,
-        but in the future may be enhanced to work across a chain of parent
-        mappers.
+        :param property:
+          String property name, or class-bound attribute, which indicates
+          what relationship should be used to reconcile the parent/child
+          relationship.  If None, the method will use the first relationship
+          that links them together - note that this is not deterministic
+          in the case of multiple relationships linking parent/child,
+          so using None is not recommended.
 
         """
         from sqlalchemy.orm import properties
@@ -684,7 +698,8 @@ class Query(object):
             prop = mapper.get_property(property, resolve_synonyms=True)
         return self.filter(prop.compare(
                                 operators.eq, 
-                                instance, value_is_parent=True))
+                                instance, value_is_parent=True,
+                                detect_transient_pending=True))
 
     @_generative()
     def add_entity(self, entity, alias=None):
