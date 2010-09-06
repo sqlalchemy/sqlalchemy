@@ -112,42 +112,14 @@ on each invocation::
 
     session = Session(bind=engine)
     
-...or directly with a :class:`.Connection`.  This is useful in some situations, 
-such as within a test fixture that maintains an external transaction::
+...or directly with a :class:`.Connection`::
 
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy import create_engine
-    from unittest import TestCase
-    
-    # global application scope.  create Session class, engine
-    Session = sessionmaker()
+    conn = engine.connect()
+    session = Session(bind=conn)
 
-    engine = create_engine('postgresql://...')
-
-    class SomeTest(TestCase):
-        def setUp(self):
-            # connect to the database
-            self.connection = engine.connect()
-
-            # begin a non-ORM transaction
-            self.trans = connection.begin()
-    
-            # bind an individual Session to the connection
-            self.session = Session(bind=self.connection)
-    
-        def test_something(self):
-            # use the session in tests.   
-            
-            self.session.add(Foo())
-            self.session.commit()
-    
-        def tearDown(self):
-            # rollback - everything that happened with the
-            # Session above (including calls to commit()) 
-            # is rolled back.
-            self.trans.rollback()
-            self.session.close()
-            
+While the rationale for the above example may not be apparent, the typical
+usage is in a test fixture that maintains an external transaction - see
+:ref:`session_external_transaction` below for a full example.
 
 Using the Session
 ==================
@@ -984,59 +956,58 @@ proper context for the desired engine::
 
     connection = session.connection(MyMappedClass)
 
+.. _session_external_transaction:
+
 Joining a Session into an External Transaction
 ===============================================
 
-If a :class:`~sqlalchemy.engine.base.Connection` is being used which is
-already in a transactional state (i.e. has a
-:class:`~sqlalchemy.engine.base.Transaction`), a
-:class:`~sqlalchemy.orm.session.Session` can be made to participate within
-that transaction by just binding the :class:`~sqlalchemy.orm.session.Session`
-to that :class:`~sqlalchemy.engine.base.Connection`::
+If a :class:`.Connection` is being used which is already in a transactional
+state (i.e. has a :class:`.Transaction` established), a :class:`.Session` can
+be made to participate within that transaction by just binding the
+:class:`.Session` to that :class:`.Connection`. The usual rationale for this
+is a test suite that allows ORM code to work freely with a :class:`.Session`,
+including the ability to call :meth:`.Session.commit`, where afterwards the
+entire database interaction is rolled back::
 
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy import create_engine
+    from unittest import TestCase
+    
+    # global application scope.  create Session class, engine
     Session = sessionmaker()
 
-    # non-ORM connection + transaction
-    conn = engine.connect()
-    trans = conn.begin()
+    engine = create_engine('postgresql://...')
 
-    # create a Session, bind to the connection
-    session = Session(bind=conn)
+    class SomeTest(TestCase):
+        def setUp(self):
+            # connect to the database
+            self.connection = engine.connect()
 
-    # ... work with session
-
-    session.commit() # commit the session
-    session.close()  # close it out, prohibit further actions
-
-    trans.commit() # commit the actual transaction
-
-Note that above, we issue a ``commit()`` both on the
-:class:`~sqlalchemy.orm.session.Session` as well as the
-:class:`~sqlalchemy.engine.base.Transaction`. This is an example of where we
-take advantage of :class:`~sqlalchemy.engine.base.Connection`'s ability to
-maintain *subtransactions*, or nested begin/commit pairs. The
-:class:`~sqlalchemy.orm.session.Session` is used exactly as though it were
-managing the transaction on its own; its
-:func:`~sqlalchemy.orm.session.Session.commit` method issues its
-:func:`~sqlalchemy.orm.session.Session.flush`, and commits the subtransaction.
-The subsequent transaction the :class:`~sqlalchemy.orm.session.Session` starts
-after commit will not begin until it's next used. Above we issue a
-:func:`~sqlalchemy.orm.session.Session.close` to prevent this from occurring.
-Finally, the actual transaction is committed using ``Transaction.commit()``.
-
-When using the ``threadlocal`` engine context, the process above is
-simplified; the :class:`~sqlalchemy.orm.session.Session` uses the same
-connection/transaction as everyone else in the current thread, whether or not
-you explicitly bind it::
-
-    engine = create_engine('postgresql://mydb', strategy="threadlocal")
-    engine.begin()
-
-    session = Session()  # session takes place in the transaction like everyone else
-
-    # ... go nuts
-
-    engine.commit() # commit the transaction
+            # begin a non-ORM transaction
+            self.trans = connection.begin()
+    
+            # bind an individual Session to the connection
+            self.session = Session(bind=self.connection)
+    
+        def test_something(self):
+            # use the session in tests.   
+            
+            self.session.add(Foo())
+            self.session.commit()
+    
+        def tearDown(self):
+            # rollback - everything that happened with the
+            # Session above (including calls to commit()) 
+            # is rolled back.
+            self.trans.rollback()
+            self.session.close()
+            
+Above, we issue :meth:`.Session.commit` as well as
+:meth:`.Transaction.rollback`. This is an example of where we take advantage
+of the :class:`.Connection` object's ability to maintain *subtransactions*, or
+nested begin/commit-or-rollback pairs where only the outermost begin/commit
+pair actually commits the transaction, or if the outermost block rolls back,
+everything is rolled back.
 
 The :class:`.Session` object and :func:`.sessionmaker` function
 ================================================================
@@ -1171,6 +1142,11 @@ Contextual Session API
 
 .. autoclass:: sqlalchemy.orm.scoping.ScopedSession
    :members:
+
+.. autoclass:: sqlalchemy.util.ScopedRegistry
+    :members:
+    
+.. autoclass:: sqlalchemy.util.ThreadLocalRegistry
 
 .. _session_partitioning:
 

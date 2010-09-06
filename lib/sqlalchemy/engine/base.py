@@ -1480,6 +1480,12 @@ class Connection(Connectable):
 class Transaction(object):
     """Represent a Transaction in progress.
 
+    The object provides :meth:`.rollback` and :meth:`.commit`
+    methods in order to control transaction boundaries.  It 
+    also implements a context manager interface so that 
+    the Python ``with`` statement can be used with the 
+    :meth:`.Connection.begin` method.
+    
     The Transaction object is **not** threadsafe.
 
     .. index::
@@ -1487,12 +1493,17 @@ class Transaction(object):
     """
 
     def __init__(self, connection, parent):
+        """The constructor for :class:`.Transaction` is private
+        and is called from within the :class:`.Connection.begin` 
+        implementation.
+        
+        """
         self.connection = connection
         self._parent = parent or self
         self.is_active = True
 
     def close(self):
-        """Close this transaction.
+        """Close this :class:`.Transaction`.
 
         If this transaction is the base transaction in a begin/commit
         nesting, the transaction will rollback().  Otherwise, the
@@ -1500,6 +1511,7 @@ class Transaction(object):
 
         This is used to cancel a Transaction without affecting the scope of
         an enclosing transaction.
+        
         """
         if not self._parent.is_active:
             return
@@ -1507,6 +1519,9 @@ class Transaction(object):
             self.rollback()
 
     def rollback(self):
+        """Roll back this :class:`.Transaction`.
+        
+        """
         if not self._parent.is_active:
             return
         self._do_rollback()
@@ -1516,6 +1531,8 @@ class Transaction(object):
         self._parent.rollback()
 
     def commit(self):
+        """Commit this :class:`.Transaction`."""
+        
         if not self._parent.is_active:
             raise exc.InvalidRequestError("This transaction is inactive")
         self._do_commit()

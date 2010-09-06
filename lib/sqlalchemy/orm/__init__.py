@@ -110,17 +110,19 @@ __all__ = (
 
 
 def scoped_session(session_factory, scopefunc=None):
-    """Provides thread-local management of Sessions.
+    """Provides thread-local or scoped management of :class:`.Session` objects.
 
     This is a front-end function to
-    :class:`~sqlalchemy.orm.scoping.ScopedSession`.
+    :class:`.ScopedSession`.
 
     :param session_factory: a callable function that produces
       :class:`Session` instances, such as :func:`sessionmaker`.
 
-    :param scopefunc: optional, TODO
+    :param scopefunc: Optional "scope" function which would be
+      passed to the :class:`.ScopedRegistry`.  If None, the
+      :class:`.ThreadLocalRegistry` is used by default.
 
-    :returns: an :class:`~sqlalchemy.orm.scoping.ScopedSession` instance
+    :returns: an :class:`.ScopedSession` instance
 
     Usage::
 
