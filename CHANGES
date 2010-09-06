@@ -274,6 +274,10 @@ CHANGES
   - Fixed "default schema" query to work with
     pymssql backend.
 
+- firebird
+  - Fixed bug whereby a column default would fail to 
+    reflect if the "default" keyword were lower case.
+    
 - oracle
   - Added ROWID type to the Oracle dialect, for those
     cases where an explicit CAST might be needed.
