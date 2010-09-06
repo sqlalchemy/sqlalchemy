@@ -36,4 +36,5 @@ The public name of the :class:`.AliasedClass` class.
 
 .. autofunction:: outerjoin
 
+.. autofunction:: with_parent
 

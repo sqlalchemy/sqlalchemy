@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
-    join as orm_join,
+    join as orm_join,with_parent
     )
 
 
@@ -648,43 +648,28 @@ class Query(object):
         self._populate_existing = True
 
     def with_parent(self, instance, property=None):
-        """Add filtering criterion that relates this query's primary entity
-        to the given related instance, using established :func:`.relationship()`
+        """Add filtering criterion that relates the given instance
+        to a child object or collection, using its attribute state 
+        as well as an established :func:`.relationship()`
         configuration.
         
-        The SQL rendered is the same as that rendered when a lazy loader
-        would fire off from the given parent on that attribute, meaning
-        that the appropriate state is taken from the parent object in 
-        Python without the need to render joins to the parent table
-        in the rendered statement.
+        The method uses the :func:`.with_parent` function to generate
+        the clause, the result of which is passed to :meth:`.Query.filter`.
         
-        As of 0.6.4, this method accepts parent instances in all 
-        persistence states, including transient, persistent, and detached.
-        Only the requisite primary key/foreign key attributes need to
-        be populated.  Previous versions didn't work with transient
-        instances.
+        Parameters are the same as :func:`.with_parent`, with the exception
+        that the given property can be None, in which case a search is
+        performed against this :class:`.Query` object's target mapper.
         
-        :param instance:
-          An instance which is related to the class represented by 
-          this query via some :func:`.relationship`, that also 
-          contains the appropriate attribute state that identifies
-          the child object or collection.
-
-        :param property:
-          String property name, or class-bound attribute, which indicates
-          what relationship should be used to reconcile the parent/child
-          relationship.  If None, the method will use the first relationship
-          that links them together - note that this is not deterministic
-          in the case of multiple relationships linking parent/child,
-          so using None is not recommended.
-
         """
-        from sqlalchemy.orm import properties
-        mapper = object_mapper(instance)
+        
         if property is None:
+            from sqlalchemy.orm import properties
+            mapper = object_mapper(instance)
+
             for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.PropertyLoader) and \
                     prop.mapper is self._mapper_zero():
+                    property = prop
                     break
             else:
                 raise sa_exc.InvalidRequestError(
@@ -694,12 +679,8 @@ class Query(object):
                             self._mapper_zero().class_.__name__,
                             instance.__class__.__name__)
                         )
-        else:
-            prop = mapper.get_property(property, resolve_synonyms=True)
-        return self.filter(prop.compare(
-                                operators.eq, 
-                                instance, value_is_parent=True,
-                                detect_transient_pending=True))
+
+        return self.filter(with_parent(instance, property))
 
     @_generative()
     def add_entity(self, entity, alias=None):

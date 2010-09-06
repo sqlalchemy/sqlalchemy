@@ -1375,6 +1375,9 @@ class ParentTest(QueryTest):
         o = sess.query(Order).with_parent(u1, property='orders').all()
         assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
 
+        o = sess.query(Order).with_parent(u1, property=User.orders).all()
+        assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
+
         o = sess.query(Order).filter(with_parent(u1, User.orders)).all()
         assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
         
@@ -1417,6 +1420,12 @@ class ParentTest(QueryTest):
             [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")],
             o.all()
         )
+
+        o = sess.query(Order).filter(with_parent(utrans, 'orders'))
+        eq_(
+            [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")],
+            o.all()
+        )
         
     def test_with_pending_autoflush(self):
         sess = Session()
@@ -1426,6 +1435,10 @@ class ParentTest(QueryTest):
         sess.add(opending)
         eq_(
             sess.query(User).with_parent(opending, 'user').one(),
+            User(id=o1.user_id)
+        )
+        eq_(
+            sess.query(User).filter(with_parent(opending, 'user')).one(),
             User(id=o1.user_id)
         )
 

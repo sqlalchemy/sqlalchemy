@@ -482,18 +482,30 @@ def outerjoin(left, right, onclause=None, join_to_left=True):
     return _ORMJoin(left, right, onclause, True, join_to_left)
 
 def with_parent(instance, prop):
-    """Return criterion which selects instances with a given parent.
+    """Create filtering criterion that relates this query's primary entity
+    to the given related instance, using established :func:`.relationship()`
+    configuration.
+    
+    The SQL rendered is the same as that rendered when a lazy loader
+    would fire off from the given parent on that attribute, meaning
+    that the appropriate state is taken from the parent object in 
+    Python without the need to render joins to the parent table
+    in the rendered statement.
+    
+    As of 0.6.4, this method accepts parent instances in all 
+    persistence states, including transient, persistent, and detached.
+    Only the requisite primary key/foreign key attributes need to
+    be populated.  Previous versions didn't work with transient
+    instances.
+    
+    :param instance:
+      An instance which has some :func:`.relationship`.
 
-    :param instance: a parent instance, which should be persistent 
-      or detached.
-
-    :param property: a class-attached descriptor, MapperProperty or 
-      string property name
-      attached to the parent instance.
-
-    :param \**kwargs: all extra keyword arguments are propagated 
-      to the constructor of Query.
-
+    :param property:
+      String property name, or class-bound attribute, which indicates
+      what relationship from the instance should be used to reconcile the 
+      parent/child relationship. 
+      
     """
     if isinstance(prop, basestring):
         mapper = object_mapper(instance)
@@ -501,7 +513,10 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop.compare(operators.eq, instance, value_is_parent=True)
+    return prop.compare(operators.eq, 
+                        instance, 
+                        value_is_parent=True, 
+                        detect_transient_pending=True)
 
 
 def _entity_info(entity, compile=True):
