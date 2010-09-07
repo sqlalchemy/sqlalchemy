@@ -15,6 +15,13 @@ CHANGES
     ConcurrentModificationError in an "except:"
     clause.
 
+  - Added a mutex to the identity map which mutexes
+    remove operations against iteration methods,
+    which now pre-buffer before returning an 
+    iterable.   This because asyncrhonous gc 
+    can remove items via the gc thread at any time.
+    [ticket:1891]
+    
   - The Session class is now present in sqlalchemy.orm.*.
     We're moving away from the usage of create_session(),
     which has non-standard defaults, for those situations
