@@ -216,7 +216,7 @@ class QueryTest(TestBase):
                 {'user_name':'jack'},
             )
             assert r.closed
-        
+    
     def test_row_iteration(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},

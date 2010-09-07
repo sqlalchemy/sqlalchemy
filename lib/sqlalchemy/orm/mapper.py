@@ -932,7 +932,7 @@ class Mapper(object):
                 else:
                     return None
     
-    @util.deprecated('0.7',
+    @util.deprecated('0.6.4',
                      'Call to deprecated function mapper._get_col_to_pr'
                      'op(). Use mapper.get_property_by_column()')
     def _get_col_to_prop(self, col):

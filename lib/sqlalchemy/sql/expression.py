@@ -1270,8 +1270,10 @@ class ClauseElement(Visitable):
         else:
             return None
     
-    @util.deprecated("0.7", "Only SQL expressions which subclass :class:`.Executable` "
-                        "may provide the :func:`.execute` method.")
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.execute` method.')
     def execute(self, *multiparams, **params):
         """Compile and execute this :class:`ClauseElement`.
         
@@ -1287,11 +1289,13 @@ class ClauseElement(Visitable):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
-    @util.deprecated("0.7", "Only SQL expressions which subclass :class:`.Executable` "
-                        "may provide the :func:`.scalar` method.")
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.scalar` method.')
     def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`, returning the
-        result's scalar representation.
+        """Compile and execute this :class:`ClauseElement`, returning
+        the result's scalar representation.
         
         """
         return self.execute(*multiparams, **params).scalar()

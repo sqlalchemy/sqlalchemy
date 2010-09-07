@@ -175,6 +175,20 @@ CHANGES
     NULL.
     
 - sql
+  - Calling execute() on an alias() construct is pending
+    deprecation for 0.7, as it is not itself an
+    "executable" construct. It currently "proxies" its
+    inner element and is conditionally "executable" but
+    this is not the kind of ambiguity we like these days.
+    
+  - The execute() and scalar() methods of ClauseElement
+    are now moved appropriately to the Executable
+    subclass. ClauseElement.execute()/ scalar() are still
+    present and are pending deprecation in 0.7, but note
+    these would always raise an error anyway if you were
+    not an Executable (unless you were an alias(), see
+    previous note).
+    
   - Added basic math expression coercion for 
     Numeric->Integer,
     so that resulting type is Numeric regardless
