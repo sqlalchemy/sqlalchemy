@@ -161,9 +161,10 @@ CHANGES
     UnmappedInstanceError when presented with an
     unmapped instance.  [ticket:1881]
 
-  - Applied further memoizations to calculated Mapper properties,
-    with significant (~90%) runtime mapper.py call count reduction
-    in heavily polymorphic mapping configurations.
+  - Applied further memoizations to calculated Mapper
+    properties, with significant (~90%) runtime mapper.py
+    call count reduction in heavily polymorphic mapping
+    configurations.
 
   - mapper _get_col_to_prop private method used 
     by the versioning example is deprecated; 
@@ -312,6 +313,16 @@ CHANGES
   - Oracle now reflects the names of primary key
     constraints - also thanks to Kent Bower.
     [ticket:1868]
+
+- documentation
+  - The docs have been reorganized such that the "API
+    Reference" section is gone - all the docstrings from
+    there which were public API are moved into the
+    context of the main doc section that talks about it.
+    Main docs divided into "SQLAlchemy Core" and
+    "SQLAlchemy ORM" sections, mapper/relationship docs
+    have been broken out. Lots of sections rewritten
+    and/or reorganized.
     
 - examples
   - The beaker_caching example has been reorgnized
