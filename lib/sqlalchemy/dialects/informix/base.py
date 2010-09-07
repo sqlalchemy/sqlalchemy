@@ -105,29 +105,20 @@ class InfoSQLCompiler(compiler.SQLCompiler):
             s += ""
         return s
 
-    def visit_select(self, select):
-        # the column in order by clause must in select too
-
-        def __label(c):
-            try:
-                return c._label.lower()
-            except:
-                return ''
-
-        # TODO: dont modify the original select, generate a new one
-        a = [__label(c) for c in select._raw_columns]
-        for c in select._order_by_clause.clauses:
-            if __label(c) not in a:
-                select.append_column(c)
-
-        return compiler.SQLCompiler.visit_select(self, select)
+    def visit_select(self, select, asfrom=False, parens=True, **kw):
+        text = compiler.SQLCompiler.visit_select(self, select, asfrom, parens, **kw)
+        if asfrom and parens and self.dialect.server_version_info < (11,):
+            #assuming that 11 version doesn't need this, not tested
+            return "table(multiset" + text + ")"
+        else:
+            return text
 
     def limit_clause(self, select):
         if select._offset is not None and select._offset > 0:
             raise NotImplementedError("Informix does not support OFFSET")
         return ""
 
-    def visit_function(self, func):
+    def visit_function(self, func, **kw):
         if func.name.lower() == 'current_date':
             return "today"
         elif func.name.lower() == 'current_time':
@@ -135,7 +126,7 @@ class InfoSQLCompiler(compiler.SQLCompiler):
         elif func.name.lower() in ('current_timestamp', 'now'):
             return "CURRENT YEAR TO SECOND"
         else:
-            return compiler.SQLCompiler.visit_function(self, func)
+            return compiler.SQLCompiler.visit_function(self, func, **kw)
 
 
 class InfoDDLCompiler(compiler.DDLCompiler):

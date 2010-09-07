@@ -409,6 +409,12 @@ CHANGES
     mode and must run isinstance() on every value
     to check if its Decimal already. Reopen of
     [ticket:1840]
+
+- informix
+  - Applied patches from [ticket:1904] to get
+    basic Informix functionality up again.  We
+    rely upon end-user testing to ensure that
+    Informix is working to some degree.
     
 0.6.2
 =====
