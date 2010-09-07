@@ -321,6 +321,12 @@ CHANGES
     constraints - also thanks to Kent Bower.
     [ticket:1868]
 
+- informix
+  - Applied patches from [ticket:1904] to get
+    basic Informix functionality up again.  We
+    rely upon end-user testing to ensure that
+    Informix is working to some degree.
+
 - documentation
   - The docs have been reorganized such that the "API
     Reference" section is gone - all the docstrings from
@@ -410,12 +416,6 @@ CHANGES
     to check if its Decimal already. Reopen of
     [ticket:1840]
 
-- informix
-  - Applied patches from [ticket:1904] to get
-    basic Informix functionality up again.  We
-    rely upon end-user testing to ensure that
-    Informix is working to some degree.
-    
 0.6.2
 =====
 - orm
