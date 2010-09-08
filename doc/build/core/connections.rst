@@ -97,13 +97,6 @@ DBAPI connection resource to the pool (SQLAlchemy achieves this by the usage
 of weakref callbacks - *never* the ``__del__`` method) - however it's never a
 good idea to rely upon Python garbage collection to manage resources.
 
-We have just summarized two of three usage patterns that are possible
-with the :class:`.Engine`.   When the :class:`.Connection` object is used
-explicitly, it's referred to as **explicit execution**.   When the 
-:meth:`~.Engine.execute` method of :class:`.Engine` is used, this 
-pattern is referred to as **explicit, connectionless execution**.  The 
-third pattern is known as **implicit execution** and is described later.
-
 Our example above illustrated the execution of a textual SQL string. 
 The :meth:`~.Connection.execute` method can of course accommodate more than 
 that, including the variety of SQL expression constructs described
@@ -240,7 +233,8 @@ refers to the usage of the ``execute()`` method on an object which is not a
 :class:`.Connection`.  This was illustrated using the :meth:`~.Engine.execute` method
 of :class:`.Engine`.
 
-A third case exists, which is to use the :meth:`~.Executable.execute` method of 
+In addition to "connectionless" execution, it is also possible 
+to use the :meth:`~.Executable.execute` method of 
 any :class:`.Executable` construct, which is a marker for SQL expression objects
 that support execution.   The SQL expression object itself references an
 :class:`.Engine` or :class:`.Connection` known as the **bind**, which it uses
@@ -329,7 +323,7 @@ connection resources derived from a thread-local variable whenever
 :meth:`.Engine.execute` or :meth:`.Engine.contextual_connect` is called. This
 connection resource is maintained as long as it is referenced, which allows
 multiple points of an application to share a transaction while using
-connectionless, explicit execution::
+connectionless execution::
 
     def call_operation1():
         engine.execute("insert into users values (?, ?)", 1, "john")

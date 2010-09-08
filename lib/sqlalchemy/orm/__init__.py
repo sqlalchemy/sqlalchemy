@@ -318,25 +318,28 @@ def relationship(argument, secondary=None, **kwargs):
       which is already higher up in the chain.  This option applies
       both to joined- and subquery- eager loaders.
 
-    :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'): specifies 
-      how the related items should be loaded. Values include:
+    :param lazy='select': specifies 
+      how the related items should be loaded.  Default value is 
+      ``select``.  Values include:
 
-      * 'select' - items should be loaded lazily when the property is first
-        accessed.
+      * ``select`` - items should be loaded lazily when the property is first
+        accessed, using a separate SELECT statement.
 
-      * 'joined' - items should be loaded "eagerly" in the same query as
-        that of the parent, using a JOIN or LEFT OUTER JOIN.
+      * ``joined`` - items should be loaded "eagerly" in the same query as
+        that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
+        the join is "outer" or not is determined by the ``innerjoin``
+        parameter.
               
-      * 'subquery' - items should be loaded "eagerly" within the same
+      * ``subquery`` - items should be loaded "eagerly" within the same
         query as that of the parent, using a second SQL statement
         which issues a JOIN to a subquery of the original
         statement.
 
-      * 'noload' - no loading should occur at any time.  This is to 
+      * ``noload`` - no loading should occur at any time.  This is to 
         support "write-only" attributes, or attributes which are
         populated in some manner specific to the application.
 
-      * 'dynamic' - the attribute will return a pre-configured
+      * ``dynamic`` - the attribute will return a pre-configured
         :class:`~sqlalchemy.orm.query.Query` object for all read 
         operations, onto which further filtering operations can be
         applied before iterating the results.  The dynamic 
