@@ -9,15 +9,9 @@ The **Engine** is the starting point for any SQLAlchemy application. It's
 application through a connection pool and a **Dialect**, which describes how
 to talk to a specific kind of database/DBAPI combination.
 
-The general structure is this::
+The general structure can be illustrated as follows:
 
-                                         +-----------+                        __________
-                                     /---|   Pool    |---\                   (__________)
-                 +-------------+    /    +-----------+    \     +--------+   |          |
-    connect() <--|   Engine    |---x                       x----| DBAPI  |---| database |
-                 +-------------+    \    +-----------+    /     +--------+   |          |
-                                     \---|  Dialect  |---/                   |__________|
-                                         +-----------+                       (__________)
+.. image:: sqla_engine_arch.png
 
 Where above, a :class:`~sqlalchemy.engine.base.Engine` references both a
 :class:`~sqlalchemy.engine.base.Dialect` and :class:`~sqlalchemy.pool.Pool`,

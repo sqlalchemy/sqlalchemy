@@ -8,11 +8,22 @@ Overview
 ========
 
 
-The SQLAlchemy SQL Toolkit and Object Relational Mapper is a comprehensive set of tools for working with databases and Python.  It has several distinct areas of functionality which can be used individually or combined together.  Its major components are illustrated below.  The arrows represent the general dependencies of components:
+The SQLAlchemy SQL Toolkit and Object Relational Mapper
+is a comprehensive set of tools for working with
+databases and Python. It has several distinct areas of
+functionality which can be used individually or combined
+together. Its major components are illustrated below. The
+arrows represent the general dependencies of components:
 
-.. image:: sqla_arch_small.jpg
+.. image:: sqla_arch_small.png
 
-Above, the two most significant front-facing portions of SQLAlchemy are the **Object Relational Mapper** and the **SQL Expression Language**.  SQL Expressions can be used independently of the ORM.  When using the ORM, the SQL Expression language remains part of the public facing API as it is used within object-relational configurations and queries.
+Above, the two most significant front-facing portions of
+SQLAlchemy are the **Object Relational Mapper** and the
+**SQL Expression Language**. SQL Expressions can be used
+independently of the ORM. When using the ORM, the SQL
+Expression language remains part of the public facing API
+as it is used within object-relational configurations and
+queries.
 
 Documentation Overview
 ======================
