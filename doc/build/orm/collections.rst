@@ -327,6 +327,34 @@ collection support to other classes. It uses a keying function to delegate to
             MappedCollection.__init__(self, keyfunc=lambda node: node.name)
             OrderedDict.__init__(self, *args, **kw)
 
+When subclassing :class:`.MappedCollection`, user-defined versions 
+of ``__setitem__()`` or ``__delitem__()`` should be decorated
+with :meth:`.collection.internally_instrumented`, **if** they call down
+to those same methods on :class:`.MappedCollection`.  This because the methods
+on :class:`.MappedCollection` are already instrumented - calling them
+from within an already instrumented call can cause events to be fired off
+repeatedly, or inappropriately, leading to internal state corruption in
+rare cases::
+    
+    from sqlalchemy.orm.collections import MappedCollection,\
+                                        collection
+
+    class MyMappedCollection(MappedCollection):
+        """Use @internally_instrumented when your methods 
+        call down to already-instrumented methods.
+        
+        """
+        
+        @collection.internally_instrumented
+        def __setitem__(self, key, value, _sa_initiator=None):
+            # do something with key, value
+            super(MappedCollection, self).__setitem__(key, value, _sa_initiator)
+        
+        @collection.internally_instrumented
+        def __delitem__(self, key, _sa_initiator=None):
+            # do something with key, value
+            super(MappedCollection, self).__delitem__(key, value, _sa_initiator)
+
 The ORM understands the ``dict`` interface just like lists and sets, and will
 automatically instrument all dict-like methods if you choose to subclass
 ``dict`` or provide dict-like collection behavior in a duck-typed class. You
@@ -368,6 +396,7 @@ Collections API
 .. autofunction:: attribute_mapped_collection
 
 .. autoclass:: collection
+    :members:
 
 .. autofunction:: collection_adapter
 

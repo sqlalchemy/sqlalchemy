@@ -1018,6 +1018,14 @@ class Session(object):
         if obj is not None:
 
             instance_key = mapper._identity_key_from_state(state)
+            
+            if _none_set.issubset(instance_key[1]) and \
+                not mapper.allow_partial_pks or \
+                _none_set.issuperset(instance_key[1]):
+                raise exc.FlushError('Instance %s has a NULL identity '
+                        'key.  Check if this flush is occuring at an '
+                        'inappropriate time, such as during a load '
+                        'operation.' % mapperutil.state_str(state))
 
             if state.key is None:
                 state.key = instance_key

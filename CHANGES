@@ -3,6 +3,15 @@
 =======
 CHANGES
 =======
+0.6.5
+=====
+- orm
+  - Added an assertion during flush which ensures
+    that no NULL-holding identity keys were generated
+    on "newly persistent" objects.
+    This can occur when user defined code inadvertently
+    triggers flushes on not-fully-loaded objects.
+    
 0.6.4
 =====
 - orm

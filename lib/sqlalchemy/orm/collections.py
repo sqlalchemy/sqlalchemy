@@ -253,7 +253,7 @@ class collection(object):
 
         The remover method is called with one positional argument: the value
         to remove. The method will be automatically decorated with
-        'removes_return()' if not already decorated::
+        :meth:`removes_return` if not already decorated::
 
             @collection.remover
             def zap(self, entity): ...
@@ -293,7 +293,7 @@ class collection(object):
         """Tag the method as instrumented.
 
         This tag will prevent any decoration from being applied to the method.
-        Use this if you are orchestrating your own calls to collection_adapter
+        Use this if you are orchestrating your own calls to :func:`.collection_adapter`
         in one of the basic SQLAlchemy interface methods, or to prevent
         an automatic ABC method decoration from wrapping your implementation::
 
@@ -339,7 +339,7 @@ class collection(object):
 
         The default converter implementation will use duck-typing to do the
         conversion.  A dict-like collection will be convert into an iterable
-        of dictionary values, and other types will simply be iterated.
+        of dictionary values, and other types will simply be iterated::
 
             @collection.converter
             def convert(self, other): ...
@@ -442,7 +442,8 @@ class collection(object):
 # public instrumentation interface for 'internally instrumented'
 # implementations
 def collection_adapter(collection):
-    """Fetch the CollectionAdapter for a collection."""
+    """Fetch the :class:`.CollectionAdapter` for a collection."""
+    
     return getattr(collection, '_sa_adapter', None)
 
 def collection_iter(collection):
