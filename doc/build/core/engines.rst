@@ -13,13 +13,13 @@ The general structure can be illustrated as follows:
 
 .. image:: sqla_engine_arch.png
 
-Where above, a :class:`~sqlalchemy.engine.base.Engine` references both a
-:class:`~sqlalchemy.engine.base.Dialect` and :class:`~sqlalchemy.pool.Pool`,
+Where above, an :class:`~sqlalchemy.engine.base.Engine` references both a
+:class:`~sqlalchemy.engine.base.Dialect` and a :class:`~sqlalchemy.pool.Pool`,
 which together interpret the DBAPI's module functions as well as the behavior
 of the database.
 
 Creating an engine is just a matter of issuing a single call,
-:func:`create_engine()`::
+:func:`.create_engine()`::
 
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
 
@@ -146,7 +146,7 @@ Database Urls
 
 SQLAlchemy indicates the source of an Engine strictly via `RFC-1738
 <http://rfc.net/rfc1738.html>`_ style URLs, combined with optional keyword
-arguments to specify options for the Engine. The form of the URL is:
+arguments to specify options for the Engine. The form of the URL is::
 
     dialect+driver://username:password@host:port/database
 
@@ -277,22 +277,14 @@ namespace of SA loggers that can be turned on is as follows:
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details. 
 * ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
-* ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for configurational logging as well as unit of work dumps, ``logging.DEBUG`` for extensive logging during query and flush() operations.  Subcategories of ``sqlalchemy.orm`` include:
-    * ``sqlalchemy.orm.attributes`` - logs certain instrumented attribute operations, such as triggered callables
-    * ``sqlalchemy.orm.mapper`` - logs Mapper configuration and operations
-    * ``sqlalchemy.orm.unitofwork`` - logs flush() operations, including dependency sort graphs and other operations
-    * ``sqlalchemy.orm.strategies`` - logs relationship loader operations (i.e. lazy and eager loads)
-    * ``sqlalchemy.orm.sync`` - logs synchronization of attributes from parent to child instances during a flush()
+* ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.   
 
-For example, to log SQL queries as well as unit of work debugging:
-
-.. sourcecode:: python+sql
+For example, to log SQL queries using Python logging instead of the ``echo=True`` flag::
 
     import logging
 
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-    logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)
 
 By default, the log level is set to ``logging.ERROR`` within the entire
 ``sqlalchemy`` namespace so that no log operations occur, even within an

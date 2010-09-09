@@ -1,4 +1,4 @@
-.. _types:
+.. _types_toplevel:
 
 Column and Data Types
 =====================

@@ -132,12 +132,19 @@ def create_engine(*args, **kwargs):
         additional keyword arguments.
 
     :param convert_unicode=False: if set to True, all
-        String/character based types will convert Unicode values to raw
-        byte values going into the database, and all raw byte values to
+        String/character based types will convert Python Unicode values to raw
+        byte values sent to the DBAPI as bind parameters, and all raw byte values to
         Python Unicode coming out in result sets. This is an
-        engine-wide method to provide unicode conversion across the
-        board. For unicode conversion on a column-by-column level, use
-        the ``Unicode`` column type instead, described in `types`.
+        engine-wide method to provide Unicode conversion across the
+        board for those DBAPIs that do not accept Python Unicode objects
+        as input.  For Unicode conversion on a column-by-column level, use
+        the ``Unicode`` column type instead, described in :ref:`types_toplevel`.  Note that
+        many DBAPIs have the ability to return Python Unicode objects in
+        result sets directly - SQLAlchemy will use these modes of operation
+        if possible and will also attempt to detect "Unicode returns" 
+        behavior by the DBAPI upon first connect by the 
+        :class:`.Engine`.  When this is detected, string values in 
+        result sets are passed through without further processing.
 
     :param creator: a callable which returns a DBAPI connection.
         This creation function will be passed to the underlying
@@ -188,10 +195,13 @@ def create_engine(*args, **kwargs):
         opened above and beyond the pool_size setting, which defaults
         to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
 
-    :param module=None: used by database implementations which
-        support multiple DBAPI modules, this is a reference to a DBAPI2
-        module to be used instead of the engine's default module. For
-        PostgreSQL, the default is psycopg2. For Oracle, it's cx_Oracle.
+    :param module=None: reference to a Python module object (the module itself, not
+        its string name).  Specifies an alternate DBAPI module to be used
+        by the engine's dialect.  Each sub-dialect references a specific DBAPI which
+        will be imported before first connect.  This parameter causes the
+        import to be bypassed, and the given module to be used instead.
+        Can be used for testing of DBAPIs as well as to inject "mock"
+        DBAPI implementations into the :class:`.Engine`.
 
     :param pool=None: an already-constructed instance of
         :class:`~sqlalchemy.pool.Pool`, such as a
@@ -199,7 +209,7 @@ def create_engine(*args, **kwargs):
         pool will be used directly as the underlying connection pool
         for the engine, bypassing whatever connection parameters are
         present in the URL argument. For information on constructing
-        connection pools manually, see `pooling`.
+        connection pools manually, see :ref:`pooling_toplevel`.
 
     :param poolclass=None: a :class:`~sqlalchemy.pool.Pool`
         subclass, which will be used to create a connection pool
@@ -224,7 +234,7 @@ def create_engine(*args, **kwargs):
         connections after the given number of seconds has passed. It
         defaults to -1, or no timeout. For example, setting to 3600
         means connections will be recycled after one hour. Note that
-        MySQL in particular will ``disconnect automatically`` if no
+        MySQL in particular will disconnect automatically if no
         activity is detected on a connection for eight hours (although
         this is configurable with the MySQLDB connection itself and the
         server configuration as well).
@@ -233,8 +243,8 @@ def create_engine(*args, **kwargs):
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`.
 
-    :param strategy='plain': used to invoke alternate :class:`~sqlalchemy.engine.base.Engine.`
-        implementations. Currently available is the ``threadlocal``
+    :param strategy='plain': selects alternate engine implementations.
+        Currently available is the ``threadlocal``
         strategy, which is described in :ref:`threadlocal_strategy`.
     
     """
