@@ -14,6 +14,7 @@ SQLAlchemy Core
     schema
     types
     interfaces
+    exceptions
     compiler
     serializer
     

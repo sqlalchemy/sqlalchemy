@@ -15,6 +15,7 @@ SQLAlchemy ORM
     query
     loading
     interfaces
+    exceptions
     extensions/index
     examples
     

@@ -38,7 +38,7 @@ class FlushError(sa.exc.SQLAlchemyError):
 
 
 class UnmappedError(sa.exc.InvalidRequestError):
-    """TODO"""
+    """Base for exceptions that involve expected mappings not present."""
 
 class DetachedInstanceError(sa.exc.SQLAlchemyError):
     """An attempt to access unloaded attributes on a 
