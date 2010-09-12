@@ -373,6 +373,8 @@ def relationship(argument, secondary=None, **kwargs):
       object is ultimately flushed, only the user-specific foreign key 
       attributes will be part of the modified state.
       
+      New in 0.6.5.
+      
     :param order_by:
       indicates the ordering that should be applied when loading these
       items.
