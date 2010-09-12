@@ -348,12 +348,12 @@ rare cases::
         @collection.internally_instrumented
         def __setitem__(self, key, value, _sa_initiator=None):
             # do something with key, value
-            super(MappedCollection, self).__setitem__(key, value, _sa_initiator)
+            super(MyMappedCollection, self).__setitem__(key, value, _sa_initiator)
         
         @collection.internally_instrumented
         def __delitem__(self, key, _sa_initiator=None):
-            # do something with key, value
-            super(MappedCollection, self).__delitem__(key, value, _sa_initiator)
+            # do something with key
+            super(MyMappedCollection, self).__delitem__(key, _sa_initiator)
 
 The ORM understands the ``dict`` interface just like lists and sets, and will
 automatically instrument all dict-like methods if you choose to subclass
