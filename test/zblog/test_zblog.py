@@ -53,13 +53,14 @@ class SavePostTest(ZBlogTest):
         super(SavePostTest, cls).teardown_class()
 
     def test_attach_noautoflush(self):
+        """Test pending backref behavior."""
+        
         s = create_session(bind=testing.db, autoflush=False)
 
         s.begin()
         try:
             blog = s.query(Blog).get(blog_id)
-            user = s.query(User).get(user_id)
-            post = Post(headline="asdf asdf", summary="asdfasfd", user=user)
+            post = Post(headline="asdf asdf", summary="asdfasfd")
             s.add(post)
             post.blog_id=blog_id
             post.blog = blog
