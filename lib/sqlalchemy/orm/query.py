@@ -633,16 +633,14 @@ class Query(object):
 
     @_generative()
     def populate_existing(self):
-        """Return a Query that will refresh all instances loaded.
-
-        This includes all entities accessed from the database, including
-        secondary entities, eagerly-loaded collection items.
-
-        All changes present on entities which are already present in the
-        session will be reset and the entities will all be marked "clean".
-
-        An alternative to populate_existing() is to expire the Session
-        fully using session.expire_all().
+        """Return a :class:`Query` that will expire and refresh all instances 
+        as they are loaded, or reused from the current :class:`.Session`.
+        
+        :meth:`.populate_existing` does not improve behavior when 
+        the ORM is used normally - the :class:`.Session` object's usual 
+        behavior of maintaining a transaction and expiring all attributes
+        after rollback or commit handles object state automatically.
+        This method is not intended for general use.
 
         """
         self._populate_existing = True

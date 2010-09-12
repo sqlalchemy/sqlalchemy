@@ -127,6 +127,23 @@ class LoadOnFKsTest(AssertsExecutionResults, TestBase):
         c3.parent = p1
         
         assert c3 in p1.children
+    
+    def test_autoflush_on_pending(self):
+        c3 = Child()
+        sess.add(c3)
+        c3.parent_id = p1.id
+        
+        # pendings don't autoflush
+        assert c3.parent is None
+
+    def test_autoflush_on_pending(self):
+        Child.parent.property.load_on_pending = True
+        c3 = Child()
+        sess.add(c3)
+        c3.parent_id = p1.id
+        
+        # ...unless the flag is on
+        assert c3.parent is p1
         
     def test_load_on_pending_with_set(self):
         Child.parent.property.load_on_pending = True
