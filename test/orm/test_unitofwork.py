@@ -699,10 +699,15 @@ class PassiveDeletesTest(_base.MappedTest):
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
     
+    @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     @testing.resolve_artifact_names
     def test_backwards_pd(self):
-        # the unusual scenario where a trigger or something might be deleting
-        # a many-to-one on deletion of the parent row
+        """Test that passive_deletes=True disables a delete from an m2o.
+        
+        This is not the usual usage and it now raises a warning, but test
+        that it works nonetheless.
+
+        """
         mapper(MyOtherClass, myothertable, properties={
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
@@ -722,8 +727,17 @@ class PassiveDeletesTest(_base.MappedTest):
         session.delete(mco)
         session.flush()
         
+        # mytable wasn't deleted, is the point.
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 0
+    
+    @testing.resolve_artifact_names
+    def test_aaa_m2o_emits_warning(self):
+        mapper(MyOtherClass, myothertable, properties={
+            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
+        })
+        mapper(MyClass, mytable)
+        assert_raises(sa.exc.SAWarning, sa.orm.compile_mappers)
         
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)

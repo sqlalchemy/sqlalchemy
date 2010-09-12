@@ -1215,6 +1215,10 @@ class RelationshipProperty(StrategizedProperty):
                       'when single_parent is not set.   Set '
                       'single_parent=True on the relationship().'
                       % self)
+        if self.direction is MANYTOONE and self.passive_deletes:
+            util.warn("On %s, 'passive_deletes' is normally configured "
+                      "on one-to-many, one-to-one, many-to-many relationships only."
+                       % self)
         
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:

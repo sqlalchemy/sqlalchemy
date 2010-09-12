@@ -719,15 +719,26 @@ row at a time for the time being).
 Mutable Primary Keys / Update Cascades
 ---------------------------------------
 
-When the primary key of an entity changes, related items which reference the
-primary key must also be updated as well. For databases which enforce
-referential integrity, it's required to use the database's ON UPDATE CASCADE
-functionality in order to propagate primary key changes. For those which
-don't, the ``passive_updates`` flag can be set to ``False`` which instructs
-SQLAlchemy to issue UPDATE statements individually. The ``passive_updates``
-flag can also be ``False`` in conjunction with ON UPDATE CASCADE
-functionality, although in that case it issues UPDATE statements
-unnecessarily.
+When the primary key of an entity changes, related items
+which reference the primary key must also be updated as
+well. For databases which enforce referential integrity,
+it's required to use the database's ON UPDATE CASCADE
+functionality in order to propagate primary key changes
+to referenced foreign keys - the values cannot be out 
+of sync for any moment.
+
+For databases that don't support this, such as SQLite and
+MySQL without their referential integrity options turned 
+on, the ``passive_updates`` flag can
+be set to ``False``, most preferably on a one-to-many or
+many-to-many :func:`.relationship`, which instructs
+SQLAlchemy to issue UPDATE statements individually for
+objects referenced in the collection, loading them into
+memory if not already locally present. The
+``passive_updates`` flag can also be ``False`` in
+conjunction with ON UPDATE CASCADE functionality,
+although in that case the unit of work will be issuing
+extra SELECT and UPDATE statements unnecessarily.
 
 A typical mutable primary key setup might look like:
 
@@ -746,12 +757,28 @@ A typical mutable primary key setup might look like:
     class Address(object):
         pass
 
+    # passive_updates=False *only* needed if the database
+    # does not implement ON UPDATE CASCADE
+    
     mapper(User, users, properties={
         'addresses': relationship(Address, passive_updates=False)
     })
     mapper(Address, addresses)
 
-passive_updates is set to ``True`` by default.  Foreign key references to non-primary key columns are supported as well.
+``passive_updates`` is set to ``True`` by default,
+indicating that ON UPDATE CASCADE is expected to be in
+place in the usual case for foreign keys that expect
+to have a mutating parent key.
+
+``passive_updates=False`` may be configured on any
+direction of relationship, i.e. one-to-many, many-to-one,
+and many-to-many, although it is much more effective when
+placed just on the one-to-many or many-to-many side.
+Configuring the ``passive_updates=False`` only on the
+many-to-one side will have only a partial effect, as the
+unit of work searches only through the current identity
+map for objects that may be referencing the one with a
+mutating primary key, not throughout the database.
 
 The :func:`relationship` API
 ----------------------------

@@ -11,6 +11,16 @@ CHANGES
     on "newly persistent" objects.
     This can occur when user defined code inadvertently
     triggers flushes on not-fully-loaded objects.
+
+  - Slight improvement to the behavior of "passive_updates=False"
+    when placed only on the many-to-one side of a
+    relationship; documentation has been clarified
+    that passive_updates=False should really be on the 
+    one-to-many side.
+
+  - Placing passive_deletes=True on a many-to-one emits
+    a warning, since you probably intended to put it on
+    the one-to-many side.
     
 0.6.4
 =====
