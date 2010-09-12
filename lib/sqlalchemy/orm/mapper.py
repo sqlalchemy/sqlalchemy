@@ -1295,8 +1295,8 @@ class Mapper(object):
                 column in self.primary_key]
 
     # TODO: improve names?
-    def _get_state_attr_by_column(self, state, dict_, column):
-        return self._columntoproperty[column]._getattr(state, dict_, column)
+    def _get_state_attr_by_column(self, state, dict_, column, passive=False):
+        return self._columntoproperty[column]._getattr(state, dict_, column, passive=passive)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         return self._columntoproperty[column]._setattr(state, dict_, value, column)

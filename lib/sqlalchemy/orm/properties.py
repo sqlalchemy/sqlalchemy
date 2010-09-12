@@ -116,8 +116,8 @@ class ColumnProperty(StrategizedProperty):
                         group=self.group, 
                         *self.columns)
 
-    def _getattr(self, state, dict_, column):
-        return state.get_impl(self.key).get(state, dict_)
+    def _getattr(self, state, dict_, column, passive=False):
+        return state.get_impl(self.key).get(state, dict_, passive=passive)
 
     def _getcommitted(self, state, dict_, column, passive=False):
         return state.get_impl(self.key).\
@@ -191,8 +191,8 @@ class CompositeProperty(ColumnProperty):
         # which issues assertions that do not apply to CompositeColumnProperty
         super(ColumnProperty, self).do_init()
 
-    def _getattr(self, state, dict_, column):
-        obj = state.get_impl(self.key).get(state, dict_)
+    def _getattr(self, state, dict_, column, passive=False):
+        obj = state.get_impl(self.key).get(state, dict_, passive=passive)
         return self.get_col_value(column, obj)
 
     def _getcommitted(self, state, dict_, column, passive=False):
@@ -444,6 +444,7 @@ class RelationshipProperty(StrategizedProperty):
         comparator_factory=None,
         single_parent=False, innerjoin=False,
         doc=None,
+        load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None, query_class=None):
 
         self.uselist = uselist
@@ -468,6 +469,7 @@ class RelationshipProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
+        self.load_on_pending = load_on_pending
         self.comparator_factory = comparator_factory or \
                                     RelationshipProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
@@ -722,8 +724,7 @@ class RelationshipProperty(StrategizedProperty):
 
     def compare(self, op, value, 
                             value_is_parent=False, 
-                            alias_secondary=True,
-                            detect_transient_pending=False):
+                            alias_secondary=True):
         if op == operators.eq:
             if value is None:
                 if self.uselist:
@@ -731,26 +732,22 @@ class RelationshipProperty(StrategizedProperty):
                 else:
                     return self._optimized_compare(None, 
                                     value_is_parent=value_is_parent,
-                                    detect_transient_pending=detect_transient_pending,
                                     alias_secondary=alias_secondary)
             else:
                 return self._optimized_compare(value, 
                                 value_is_parent=value_is_parent,
-                                detect_transient_pending=detect_transient_pending,
                                 alias_secondary=alias_secondary)
         else:
             return op(self.comparator, value)
 
     def _optimized_compare(self, value, value_is_parent=False, 
                                     adapt_source=None, 
-                                    detect_transient_pending=False,
                                     alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
         return self._get_strategy(strategies.LazyLoader).lazy_clause(value,
                 reverse_direction=not value_is_parent,
                 alias_secondary=alias_secondary,
-                detect_transient_pending=detect_transient_pending,
                 adapt_source=adapt_source)
 
     def __str__(self):

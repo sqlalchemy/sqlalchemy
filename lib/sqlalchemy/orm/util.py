@@ -515,8 +515,7 @@ def with_parent(instance, prop):
 
     return prop.compare(operators.eq, 
                         instance, 
-                        value_is_parent=True, 
-                        detect_transient_pending=True)
+                        value_is_parent=True)
 
 
 def _entity_info(entity, compile=True):

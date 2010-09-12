@@ -12,6 +12,26 @@ CHANGES
     This can occur when user defined code inadvertently
     triggers flushes on not-fully-loaded objects.
 
+  - lazy loads for relationship attributes now use
+    the current state, not the "committed" state,
+    of foreign and primary key attributes
+    when issuing SQL, if a flush is not in process.
+    Previously, only the database-committed state would 
+    be used.  In particular, this would cause a many-to-one
+    get()-on-lazyload operation to fail, as autoflush
+    is not triggered on these loads when the attributes are
+    determined and the "committed" state may not be 
+    available.  [ticket:1910]
+    
+  - A new flag on relationship(), load_on_pending, allows
+    the lazy loader to fire off on pending objects without a
+    flush taking place, as well as a transient object that's
+    been manually "attached" to the session. Note that this
+    flag blocks attribute events from taking place when an
+    object is loaded, so backrefs aren't available until
+    after a flush. The flag is only intended for very
+    specific use cases.
+    
   - Slight improvement to the behavior of "passive_updates=False"
     when placed only on the many-to-one side of a
     relationship; documentation has been clarified
