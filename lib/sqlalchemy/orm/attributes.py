@@ -455,7 +455,7 @@ class ScalarAttributeImpl(AttributeImpl):
             self, state, dict_.get(self.key, NO_VALUE))
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.active_history:
@@ -534,7 +534,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         state.mutable_dict.pop(self.key)
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.extensions:
@@ -596,7 +596,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         setter operation.
 
         """
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.active_history:
@@ -622,7 +622,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 previous is not None and
                 previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
-
+        
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
 
@@ -726,7 +726,7 @@ class CollectionAttributeImpl(AttributeImpl):
             self.key, state, self.collection_factory)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         collection = self.get_collection(state, dict_, passive=passive)
@@ -739,7 +739,7 @@ class CollectionAttributeImpl(AttributeImpl):
             collection.append_with_event(value, initiator)
 
     def remove(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         collection = self.get_collection(state, state.dict, passive=passive)
@@ -759,7 +759,7 @@ class CollectionAttributeImpl(AttributeImpl):
         setter operation.
         """
 
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         self._set_iterable(

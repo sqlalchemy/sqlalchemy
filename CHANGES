@@ -6,6 +6,12 @@ CHANGES
 0.6.5
 =====
 - orm
+  - Fixed recursion bug which could occur when moving
+    an object from one reference to another, with 
+    backrefs involved, where the initiating parent
+    was a subclass (with its own mapper) of the 
+    previous parent.
+    
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated
     on "newly persistent" objects.

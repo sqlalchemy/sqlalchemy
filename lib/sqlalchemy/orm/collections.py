@@ -587,7 +587,7 @@ class CollectionAdapter(object):
     def fire_append_event(self, item, initiator=None):
         """Notify that a entity has entered the collection.
 
-        Initiator is the InstrumentedAttribute that initiated the membership
+        Initiator is a token owned by the InstrumentedAttribute that initiated the membership
         mutation, and should be left as None unless you are passing along
         an initiator value from a chained operation.
 
