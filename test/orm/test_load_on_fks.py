@@ -64,11 +64,14 @@ class LoadOnFKsTest(AssertsExecutionResults, TestBase):
         
         class Parent(Base):
             __tablename__ = 'parent'
-    
+            __table_args__ = {'mysql_engine':'InnoDB'}
+            
             id= Column(Integer, primary_key=True)
 
         class Child(Base):
             __tablename__ = 'child'
+            __table_args__ = {'mysql_engine':'InnoDB'}
+
             id= Column(Integer, primary_key=True)
             parent_id = Column(Integer, ForeignKey('parent.id'))
     
@@ -89,6 +92,7 @@ class LoadOnFKsTest(AssertsExecutionResults, TestBase):
         sess.commit()
     
     def tearDown(self):
+        sess.rollback()
         Base.metadata.drop_all(engine)
 
     def test_load_on_pending_disallows_backref_event(self):
