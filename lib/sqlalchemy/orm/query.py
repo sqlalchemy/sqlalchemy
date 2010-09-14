@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
-    join as orm_join,
+    join as orm_join,with_parent
     )
 
 
@@ -98,6 +98,7 @@ class Query(object):
     _attributes = util.frozendict()
     _with_options = ()
     _with_hints = ()
+    _enable_single_crit = True
     
     def __init__(self, entities, session=None):
         self.session = session
@@ -633,44 +634,41 @@ class Query(object):
 
     @_generative()
     def populate_existing(self):
-        """Return a Query that will refresh all instances loaded.
-
-        This includes all entities accessed from the database, including
-        secondary entities, eagerly-loaded collection items.
-
-        All changes present on entities which are already present in the
-        session will be reset and the entities will all be marked "clean".
-
-        An alternative to populate_existing() is to expire the Session
-        fully using session.expire_all().
+        """Return a :class:`Query` that will expire and refresh all instances 
+        as they are loaded, or reused from the current :class:`.Session`.
+        
+        :meth:`.populate_existing` does not improve behavior when 
+        the ORM is used normally - the :class:`.Session` object's usual 
+        behavior of maintaining a transaction and expiring all attributes
+        after rollback or commit handles object state automatically.
+        This method is not intended for general use.
 
         """
         self._populate_existing = True
 
     def with_parent(self, instance, property=None):
-        """Add a join criterion corresponding to a relationship to the given
-        parent instance.
-
-        instance
-          a persistent or detached instance which is related to class
-          represented by this query.
-
-        property
-          string name of the property which relates this query's class to the
-          instance.  if None, the method will attempt to find a suitable
-          property.
-
-        Currently, this method only works with immediate parent relationships,
-        but in the future may be enhanced to work across a chain of parent
-        mappers.
-
+        """Add filtering criterion that relates the given instance
+        to a child object or collection, using its attribute state 
+        as well as an established :func:`.relationship()`
+        configuration.
+        
+        The method uses the :func:`.with_parent` function to generate
+        the clause, the result of which is passed to :meth:`.Query.filter`.
+        
+        Parameters are the same as :func:`.with_parent`, with the exception
+        that the given property can be None, in which case a search is
+        performed against this :class:`.Query` object's target mapper.
+        
         """
-        from sqlalchemy.orm import properties
-        mapper = object_mapper(instance)
+        
         if property is None:
+            from sqlalchemy.orm import properties
+            mapper = object_mapper(instance)
+
             for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.PropertyLoader) and \
                     prop.mapper is self._mapper_zero():
+                    property = prop
                     break
             else:
                 raise sa_exc.InvalidRequestError(
@@ -680,11 +678,8 @@ class Query(object):
                             self._mapper_zero().class_.__name__,
                             instance.__class__.__name__)
                         )
-        else:
-            prop = mapper.get_property(property)
-        return self.filter(prop.compare(
-                                operators.eq, 
-                                instance, value_is_parent=True))
+
+        return self.filter(with_parent(instance, property))
 
     @_generative()
     def add_entity(self, entity, alias=None):
@@ -707,12 +702,17 @@ class Query(object):
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
+                                    _enable_single_crit(False).\
                                     statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
             q._set_entities(entities)
         return q
-    
+
+    @_generative()
+    def _enable_single_crit(self, val):
+        self._enable_single_crit = val
+        
     @_generative()
     def _from_selectable(self, fromclause):
         for attr in ('_statement', '_criterion', '_order_by', '_group_by',
@@ -779,8 +779,13 @@ class Query(object):
 
     def options(self, *args):
         """Return a new Query object, applying the given list of
-        MapperOptions.
-
+        mapper options.
+        
+        Most supplied options regard changing how column- and
+        relationship-mapped attributes are loaded. See the sections
+        :ref:`deferred` and :ref:`loading_toplevel` for reference
+        documentation.
+        
         """
         return self._options(False, *args)
 
@@ -1936,7 +1941,8 @@ class Query(object):
         else:
             from_obj = context.froms
 
-        self._adjust_for_single_inheritance(context)
+        if self._enable_single_crit:
+            self._adjust_for_single_inheritance(context)
 
         whereclause  = context.whereclause
 
@@ -2273,7 +2279,8 @@ class Query(object):
             # i.e. when each _MappedEntity has its own FROM
             froms = context.froms   
 
-        self._adjust_for_single_inheritance(context)
+        if self._enable_single_crit:
+            self._adjust_for_single_inheritance(context)
 
         if not context.primary_columns:
             if self._only_load_props:
@@ -2405,6 +2412,7 @@ class Query(object):
         selected from the total results.
 
         """
+            
         for entity, (mapper, adapter, s, i, w) in \
                             self._mapper_adapter_map.iteritems():
             single_crit = mapper._single_table_criterion

@@ -22,9 +22,13 @@ class ScopedSession(object):
 
     Usage::
 
-      Session = scoped_session(sessionmaker(autoflush=True))
+      Session = scoped_session(sessionmaker())
 
-      ... use session normally.
+    ... use Session normally.
+      
+    The internal registry is accessible as well,
+    and by default is an instance of :class:`.ThreadLocalRegistry`.
+      
 
     """
 
@@ -89,6 +93,7 @@ class ScopedSession(object):
         class when called.
 
         e.g.::
+        
             Session = scoped_session(sessionmaker())
 
             class MyClass(object):

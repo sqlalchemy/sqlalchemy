@@ -94,7 +94,8 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
 
 
 class BuggyDomainReflectionTest(TestBase, AssertsExecutionResults):
-    "Test Firebird domains, see [ticket:1663] and http://tracker.firebirdsql.org/browse/CORE-356"
+    """Test Firebird domains (and some other reflection bumps), 
+    see [ticket:1663] and http://tracker.firebirdsql.org/browse/CORE-356"""
 
     __only_on__ = 'firebird'
 
@@ -168,6 +169,12 @@ CREATE DOMAIN DOM_ID INTEGER NOT NULL
 CREATE TABLE A (
 ID DOM_ID /* INTEGER NOT NULL */ DEFAULT 0 )
 """
+    
+    # the 'default' keyword is lower case here
+    TABLE_B = """\
+CREATE TABLE B (
+ID DOM_ID /* INTEGER NOT NULL */ default 0 )
+"""
 
     @classmethod
     def setup_class(cls):
@@ -181,11 +188,13 @@ ID DOM_ID /* INTEGER NOT NULL */ DEFAULT 0 )
 
         con.execute(cls.DOM_ID)
         con.execute(cls.TABLE_A)
+        con.execute(cls.TABLE_B)
 
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
         con.execute('DROP TABLE a')
+        con.execute("DROP TABLE b")
         con.execute('DROP DOMAIN dom_id')
         con.execute('DROP TABLE def_error_nodom')
         con.execute('DROP TABLE def_error')
@@ -213,7 +222,14 @@ ID DOM_ID /* INTEGER NOT NULL */ DEFAULT 0 )
         table_a = Table('a', metadata, autoload=True)
 
         eq_(table_a.c.id.server_default.arg.text, "0")
+    
+    def test_lowercase_default_name(self):
+        metadata = MetaData(testing.db)
 
+        table_b = Table('b', metadata, autoload=True)
+
+        eq_(table_b.c.id.server_default.arg.text, "0")
+        
 
 class CompileTest(TestBase, AssertsCompiledSQL):
 

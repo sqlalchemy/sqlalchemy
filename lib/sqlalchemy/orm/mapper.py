@@ -103,7 +103,7 @@ class Mapper(object):
         """Construct a new mapper.
 
         Mappers are normally constructed via the
-         :func:`~sqlalchemy.orm.mapper` function.  See for details.
+        :func:`~sqlalchemy.orm.mapper` function.  See for details.
 
         """
 
@@ -918,6 +918,18 @@ class Mapper(object):
             raise sa_exc.InvalidRequestError(
                     "Mapper '%s' has no property '%s'" % (self, key))
             
+    @util.deprecated('0.6.4',
+                     'Call to deprecated function mapper._get_col_to_pr'
+                     'op(). Use mapper.get_property_by_column()')
+    def _get_col_to_prop(self, col):
+        return self._columntoproperty[col]
+        
+    def get_property_by_column(self, column):
+        """Given a :class:`.Column` object, return the
+        :class:`.MapperProperty` which maps this column."""
+
+        return self._columntoproperty[column]
+        
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
@@ -1272,8 +1284,8 @@ class Mapper(object):
                 column in self.primary_key]
 
     # TODO: improve names?
-    def _get_state_attr_by_column(self, state, dict_, column):
-        return self._columntoproperty[column]._getattr(state, dict_, column)
+    def _get_state_attr_by_column(self, state, dict_, column, passive=False):
+        return self._columntoproperty[column]._getattr(state, dict_, column, passive=passive)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         return self._columntoproperty[column]._setattr(state, dict_, value, column)
@@ -1363,11 +1375,11 @@ class Mapper(object):
         """Iterate each element and its mapper in an object graph,
         for all relationships that meet the given cascade rule.
 
-        ``type\_``:
+        :param type_:
           The name of the cascade rule (i.e. save-update, delete,
           etc.)
 
-        ``state``:
+        :param state:
           The lead InstanceState.  child items will be processed per
           the relationships defined for this object's mapper.
 

@@ -1269,10 +1269,15 @@ class ClauseElement(Visitable):
                 return engine
         else:
             return None
-
+    
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.execute` method.')
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`."""
-
+        """Compile and execute this :class:`ClauseElement`.
+        
+        """
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
@@ -1284,9 +1289,13 @@ class ClauseElement(Visitable):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.scalar` method.')
     def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`, returning the
-        result's scalar representation.
+        """Compile and execute this :class:`ClauseElement`, returning
+        the result's scalar representation.
         
         """
         return self.execute(*multiparams, **params).scalar()
@@ -2401,7 +2410,7 @@ class Executable(_Generative):
           COMMIT will be invoked in order to provide its "autocommit" feature.
           Typically, all INSERT/UPDATE/DELETE statements as well as
           CREATE/DROP statements have autocommit behavior enabled; SELECT
-          constructs do not. Use this option when invokving a SELECT or other
+          constructs do not. Use this option when invoking a SELECT or other
           specific SQL construct where COMMIT is desired (typically when
           calling stored procedures and such).
           
@@ -2435,6 +2444,27 @@ class Executable(_Generative):
             
         """
         self._execution_options = self._execution_options.union(kw)
+
+    def execute(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`."""
+
+        e = self.bind
+        if e is None:
+            label = getattr(self, 'description', self.__class__.__name__)
+            msg = ('This %s is not bound and does not support direct '
+                   'execution. Supply this statement to a Connection or '
+                   'Engine for execution. Or, assign a bind to the statement '
+                   'or the Metadata of its underlying tables to enable '
+                   'implicit execution via this method.' % label)
+            raise exc.UnboundExecutionError(msg)
+        return e._execute_clauseelement(self, multiparams, params)
+
+    def scalar(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`, returning the
+        result's scalar representation.
+        
+        """
+        return self.execute(*multiparams, **params).scalar()
 
 # legacy, some outside users may be calling this
 _Executable = Executable

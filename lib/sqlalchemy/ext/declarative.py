@@ -392,6 +392,8 @@ class declaration::
                         'version_id_generator': lambda v:datetime.now()
                     }
 
+.. _declarative_inheritance:
+
 Inheritance Configuration
 =========================
 

@@ -1268,16 +1268,30 @@ class UniqueAppender(object):
 
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
-    class on a per-thread scoped basis, or on a customized scope.
+    class on the basis of a "scope" function.
+    
+    The object implements ``__call__`` as the "getter", so by
+    calling ``myregistry()`` the contained object is returned
+    for the current scope.
 
-    createfunc
+    :param createfunc:
       a callable that returns a new object to be placed in the registry
 
-    scopefunc
+    :param scopefunc:
       a callable that will return a key to store/retrieve an object.
     """
 
     def __init__(self, createfunc, scopefunc):
+        """Construct a new :class:`.ScopedRegistry`.
+        
+        :param createfunc:  A creation function that will generate
+          a new value for the current scope, if none is present.
+          
+        :param scopefunc:  A function that returns a hashable
+          token representing the current scope (such as, current
+          thread identifier).
+        
+        """
         self.createfunc = createfunc
         self.scopefunc = scopefunc
         self.registry = {}
@@ -1290,18 +1304,28 @@ class ScopedRegistry(object):
             return self.registry.setdefault(key, self.createfunc())
 
     def has(self):
+        """Return True if an object is present in the current scope."""
+        
         return self.scopefunc() in self.registry
 
     def set(self, obj):
+        """Set the value forthe current scope."""
+        
         self.registry[self.scopefunc()] = obj
 
     def clear(self):
+        """Clear the current scope, if any."""
+        
         try:
             del self.registry[self.scopefunc()]
         except KeyError:
             pass
 
 class ThreadLocalRegistry(ScopedRegistry):
+    """A :class:`.ScopedRegistry` that uses a ``threading.local()`` 
+    variable for storage.
+    
+    """
     def __init__(self, createfunc):
         self.createfunc = createfunc
         self.registry = threading.local()

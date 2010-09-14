@@ -112,7 +112,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def set(self, state, dict_, value, initiator,
                         passive=attributes.PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         self._set_iterable(state, dict_, value)
