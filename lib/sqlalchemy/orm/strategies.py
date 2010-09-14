@@ -765,6 +765,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             ("orig_query", SubqueryLoader): orig_query,
             ('subquery_path', None) : subq_path
         }
+        q = q._enable_single_crit(False)
 
         # figure out what's being joined.  a.k.a. the fun part
         to_join = [

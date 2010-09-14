@@ -47,7 +47,18 @@ CHANGES
   - Placing passive_deletes=True on a many-to-one emits
     a warning, since you probably intended to put it on
     the one-to-many side.
+  
+  - Fixed bug that would prevent "subqueryload" from
+    working correctly with single table inheritance 
+    for a relationship from a subclass - the "where 
+    type in (x, y, z)" only gets placed on the inside,
+    instead of repeatedly.
     
+  - When using from_self() with single table inheritance,
+    the "where type in (x, y, z)" is placed on the outside
+    of the query only, instead of repeatedly.   May make
+    some more adjustments to this.
+        
 0.6.4
 =====
 - orm
