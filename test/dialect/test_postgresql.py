@@ -1725,7 +1725,7 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
             result.close()
             result = \
                 sess.query(Foo).execution_options(stream_results=True).\
-                    subquery().execute()
+                    statement.execute()
             assert result.cursor.name
             result.close()
         finally:

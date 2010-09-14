@@ -31,10 +31,13 @@ class InformixDialect_informixdb(InformixDialect):
 
     def _get_server_version_info(self, connection):
         # http://informixdb.sourceforge.net/manual.html#inspecting-version-numbers
-        vers = connection.dbms_version
-        
-        # TODO: not tested
-        return tuple([int(x) for x in vers.split('.')])
+        version = []
+        for n in connection.connection.dbms_version.split('.'):
+          try:
+            version.append(int(n))
+          except ValueError:
+            version.append(n)
+        return tuple(version)
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):

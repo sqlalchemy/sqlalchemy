@@ -86,8 +86,23 @@ class TestVersioning(TestBase):
             ]
         )
 
-
-
+    def test_from_null(self):
+        class SomeClass(Base, ComparableEntity):
+            __tablename__ = 'sometable'
+            
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+        
+        self.create_tables()
+        sess = Session()
+        sc = SomeClass()
+        sess.add(sc)
+        sess.commit()
+        
+        sc.name = 'sc1'
+        sess.commit()
+        
+        assert sc.version == 2
 
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""

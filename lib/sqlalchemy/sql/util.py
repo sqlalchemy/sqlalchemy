@@ -92,6 +92,31 @@ def find_columns(clause):
     visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
+def bind_values(clause):
+    """Return an ordered list of "bound" values in the given clause.
+
+    E.g.::
+    
+        >>> expr = and_(
+        ...    table.c.foo==5, table.c.foo==7
+        ... )
+        >>> bind_values(expr)
+        [5, 7]
+    """
+    
+    v = []
+    def visit_bindparam(bind):
+        value = bind.value
+        
+        # evaluate callables
+        if callable(value):
+            value = value()
+            
+        v.append(value)
+        
+    visitors.traverse(clause, {}, {'bindparam':visit_bindparam})
+    return v
+
 def _quote_ddl_expr(element):
     if isinstance(element, basestring):
         element = element.replace("'", "''")

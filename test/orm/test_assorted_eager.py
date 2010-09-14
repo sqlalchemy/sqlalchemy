@@ -324,7 +324,7 @@ class EagerTest3(_base.MappedTest):
         arb_data = sa.select(
             [stats.c.data_id, sa.func.max(stats.c.somedata).label('max')],
             stats.c.data_id <= 5,
-            group_by=[stats.c.data_id]).alias('arb')
+            group_by=[stats.c.data_id])
 
         arb_result = arb_data.execute().fetchall()
 
@@ -334,6 +334,8 @@ class EagerTest3(_base.MappedTest):
         # extract just the "data_id" from it
         arb_result = [row['data_id'] for row in arb_result]
 
+        arb_data = arb_data.alias('arb')
+        
         # now query for Data objects using that above select, adding the
         # "order by max desc" separately
         q = (session.query(Data).

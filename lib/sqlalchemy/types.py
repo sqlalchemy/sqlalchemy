@@ -75,12 +75,14 @@ class AbstractType(Visitable):
 
         This allows systems like the ORM to know if a column value can
         be considered 'not changed' by comparing the identity of
-        objects alone.
-
-        Use the :class:`MutableType` mixin or override this method to
-        return True in custom types that hold mutable values such as
-        ``dict``, ``list`` and custom objects.
-
+        objects alone.  Values such as dicts, lists which
+        are serialized into strings are examples of "mutable" 
+        column structures.
+        
+        When this method is overridden, :meth:`copy_value` should
+        also be supplied.   The :class:`.MutableType` mixin
+        is recommended as a helper.
+        
         """
         return False
 
@@ -485,6 +487,19 @@ class TypeDecorator(AbstractType):
         return self.impl.compare_values(x, y)
 
     def is_mutable(self):
+        """Return True if the target Python type is 'mutable'.
+
+        This allows systems like the ORM to know if a column value can
+        be considered 'not changed' by comparing the identity of
+        objects alone.  Values such as dicts, lists which
+        are serialized into strings are examples of "mutable" 
+        column structures.
+        
+        When this method is overridden, :meth:`copy_value` should
+        also be supplied.   The :class:`.MutableType` mixin
+        is recommended as a helper.
+        
+        """
         return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
@@ -562,7 +577,12 @@ class MutableType(object):
     """
 
     def is_mutable(self):
-        """Return True, mutable."""
+        """Return True if the target Python type is 'mutable'.
+        
+        For :class:`.MutableType`, this method is set to 
+        return ``True``.
+        
+        """
         return True
 
     def copy_value(self, value):
@@ -1600,6 +1620,13 @@ class PickleType(MutableType, TypeDecorator):
             return x == y
 
     def is_mutable(self):
+        """Return True if the target Python type is 'mutable'.
+        
+        When this method is overridden, :meth:`copy_value` should
+        also be supplied.   The :class:`.MutableType` mixin
+        is recommended as a helper.
+        
+        """
         return self.mutable
 
 

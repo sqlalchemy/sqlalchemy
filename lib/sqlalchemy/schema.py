@@ -142,7 +142,7 @@ class Table(SchemaItem, expression.TableClause):
     :param \*args: Additional positional arguments are used primarily
         to add the list of :class:`Column` objects contained within this
         table. Similar to the style of a CREATE TABLE statement, other
-        :class:`SchemaItem` constructs may be added here, including
+        :class:`.SchemaItem` constructs may be added here, including
         :class:`PrimaryKeyConstraint`, and :class:`ForeignKeyConstraint`.
         
     :param autoload: Defaults to False: the Columns for this table should 
@@ -453,8 +453,22 @@ class Table(SchemaItem, expression.TableClause):
         
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA):
-        """Return a copy of this ``Table`` associated with a different
-        ``MetaData``."""
+        """Return a copy of this :class:`Table` associated with a different
+        :class:`MetaData`.
+        
+        E.g.::
+        
+            # create two metadata
+            meta1 = MetaData('sqlite:///querytest.db')
+            meta2 = MetaData()
+
+            # load 'users' from the sqlite engine
+            users_table = Table('users', meta1, autoload=True)
+
+            # create the same Table object for the plain metadata
+            users_table_2 = users_table.tometadata(meta2)
+        
+        """
 
         try:
             if schema is RETAIN_SCHEMA:
@@ -515,7 +529,7 @@ class Column(SchemaItem, expression.ColumnClause):
           may not function in all cases.
 
         :param \*args: Additional positional arguments include various 
-          :class:`SchemaItem` derived constructs which will be applied 
+          :class:`.SchemaItem` derived constructs which will be applied 
           as options to the column.  These include instances of 
           :class:`Constraint`, :class:`ForeignKey`, :class:`ColumnDefault`, 
           and :class:`Sequence`.  In some cases an equivalent keyword 
@@ -1246,7 +1260,23 @@ class DefaultGenerator(SchemaItem):
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.
 
-    This could correspond to a constant, a callable function, or a SQL clause.
+    This could correspond to a constant, a callable function, 
+    or a SQL clause.
+    
+    :class:`.ColumnDefault` is generated automatically
+    whenever the ``default``, ``onupdate`` arguments of
+    :class:`.Column` are used.  A :class:`.ColumnDefault`
+    can be passed positionally as well.
+    
+    For example, the following::
+    
+        Column('foo', Integer, default=50)
+        
+    Is equivalent to::
+    
+        Column('foo', Integer, ColumnDefault(50))
+
+    
     """
 
     def __init__(self, arg, **kwargs):
@@ -1377,7 +1407,20 @@ class Sequence(DefaultGenerator):
 
 
 class FetchedValue(object):
-    """A default that takes effect on the database side."""
+    """A marker for a transparent database-side default.
+    
+    Use :class:`.FetchedValue` when the database is configured
+    to provide some automatic default for a column.
+    
+    E.g.::
+    
+        Column('foo', Integer, FetchedValue())
+    
+    Would indicate that some trigger or default generator
+    will create a new value for the ``foo`` column during an
+    INSERT.
+    
+    """
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -1394,7 +1437,26 @@ class FetchedValue(object):
 
 
 class DefaultClause(FetchedValue):
-    """A DDL-specified DEFAULT column value."""
+    """A DDL-specified DEFAULT column value.
+    
+    :class:`.DefaultClause` is a :class:`.FetchedValue`
+    that also generates a "DEFAULT" clause when
+    "CREATE TABLE" is emitted.
+    
+    :class:`.DefaultClause` is generated automatically
+    whenever the ``server_default``, ``server_onupdate`` arguments of
+    :class:`.Column` are used.  A :class:`.DefaultClause`
+    can be passed positionally as well.
+    
+    For example, the following::
+    
+        Column('foo', Integer, server_default="50")
+        
+    Is equivalent to::
+    
+        Column('foo', Integer, DefaultClause("50"))
+    
+    """
 
     def __init__(self, arg, for_update=False):
         util.assert_arg_type(arg, (basestring,

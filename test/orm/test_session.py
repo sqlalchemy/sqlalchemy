@@ -4,7 +4,7 @@ from sqlalchemy.test.util import gc_collect
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
-    make_transient
+    make_transient, Session
 from sqlalchemy.orm.attributes import instance_state
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
@@ -1383,6 +1383,22 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
+    @testing.resolve_artifact_names
+    def test_identity_map_mutate(self):
+        mapper(User, users)
+
+        sess = Session()
+        
+        sess.add_all([User(name='u1'), User(name='u2'), User(name='u3')])
+        sess.commit()
+        
+        u1, u2, u3 = sess.query(User).all()
+        for i, (key, value) in enumerate(sess.identity_map.iteritems()):
+            if i == 2:
+                del u3
+                gc_collect()
+        
+        
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'

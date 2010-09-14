@@ -398,6 +398,7 @@ def uses_deprecated(*messages):
     verbiage emitted by the sqlalchemy.util.deprecated decorator.
     """
 
+    
     def decorate(fn):
         def safe(*args, **kw):
             # todo: should probably be strict about this, too
@@ -435,8 +436,6 @@ def resetwarnings():
 
 #    warnings.simplefilter('error')
 
-    if sys.version_info < (2, 4):
-        warnings.filterwarnings('ignore', category=FutureWarning)
 
 def global_cleanup_assertions():
     """Check things that have to be finalized at the end of a test suite.

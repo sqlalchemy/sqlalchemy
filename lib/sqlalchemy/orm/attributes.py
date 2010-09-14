@@ -35,18 +35,25 @@ NEVER_SET = util.symbol('NEVER_SET')
 
 # "passive" get settings
 # TODO: the True/False values need to be factored out
-# of the rest of ORM code
-# don't fire off any callables, and don't initialize the attribute to
-# an empty value
 PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
+"""Symbol indicating that loader callables should
+   not be fired off, and a non-initialized attribute 
+   should remain that way."""
 
-# don't fire off any callables, but if no callables present
-# then initialize to an empty value/collection
 # this is used by backrefs.
 PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
+"""Symbol indicating that loader callables should not be fired off.
+   Non-initialized attributes should be initialized to an empty value."""
 
-# fire callables/initialize as needed
+PASSIVE_ONLY_PERSISTENT = util.symbol('PASSIVE_ONLY_PERSISTENT')
+"""Symbol indicating that loader callables should only fire off for
+persistent objects.
+
+Loads of "previous" values during change events use this flag.
+"""
+
 PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
+"""Symbol indicating that loader callables should be executed."""
 
 INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'
 """Attribute, elects custom instrumentation when present on a mapped class.
@@ -512,7 +519,7 @@ class ScalarAttributeImpl(AttributeImpl):
             self, state, dict_.get(self.key, NO_VALUE))
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.dispatch.active_history:
@@ -591,7 +598,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         state.mutable_dict.pop(self.key)
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.dispatch.on_set:
@@ -653,14 +660,14 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         setter operation.
 
         """
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         if self.dispatch.active_history:
-            old = self.get(state, dict_)
+            old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
-             
+        
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
 
@@ -783,7 +790,7 @@ class CollectionAttributeImpl(AttributeImpl):
             self.key, state, self.collection_factory)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         collection = self.get_collection(state, dict_, passive=passive)
@@ -796,7 +803,7 @@ class CollectionAttributeImpl(AttributeImpl):
             collection.append_with_event(value, initiator)
 
     def remove(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         collection = self.get_collection(state, state.dict, passive=passive)
@@ -816,7 +823,7 @@ class CollectionAttributeImpl(AttributeImpl):
         setter operation.
         """
 
-        if initiator is self:
+        if initiator and initiator.parent_token is self.parent_token:
             return
 
         self._set_iterable(
@@ -841,15 +848,16 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             new_values = list(iterable)
 
-        old = self.get(state, dict_)
-
-        # ignore re-assignment of the current collection, as happens
-        # implicitly with in-place operators (foo.collection |= other)
-        if old is iterable:
+        old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
+        if old is PASSIVE_NO_RESULT:
+            old = self.initialize(state, dict_)
+        elif old is iterable:
+            # ignore re-assignment of the current collection, as happens
+            # implicitly with in-place operators (foo.collection |= other)
             return
 
         state.modified_event(dict_, self, True, old)
-
+        
         old_collection = self.get_collection(state, dict_, old)
 
         dict_[self.key] = user_data
@@ -919,7 +927,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
     def set(self, state, child, oldchild, initiator):
         if oldchild is child:
             return child
-            
+
         if oldchild is not None and oldchild is not PASSIVE_NO_RESULT:
             # With lazy=None, there's no guarantee that the full collection is
             # present when updating via a backref.
@@ -1344,8 +1352,10 @@ class _ClassInstrumentationAdapter(ClassManager):
         return self._get_dict
 
 class History(tuple):
-    """A 3-tuple of added, unchanged and deleted values.
-
+    """A 3-tuple of added, unchanged and deleted values,
+    representing the changes which have occured on an instrumented
+    attribute.
+    
     Each tuple member is an iterable sequence.
 
     """
@@ -1353,9 +1363,18 @@ class History(tuple):
     __slots__ = ()
 
     added = property(itemgetter(0))
+    """Return the collection of items added to the attribute (the first tuple
+    element)."""
+    
     unchanged = property(itemgetter(1))
+    """Return the collection of items that have not changed on the attribute
+    (the second tuple element)."""
+    
+    
     deleted = property(itemgetter(2))
-
+    """Return the collection of items that have been removed from the
+    attribute (the third tuple element)."""
+    
     def __new__(cls, added, unchanged, deleted):
         return tuple.__new__(cls, (added, unchanged, deleted))
     
@@ -1363,25 +1382,38 @@ class History(tuple):
         return self != HISTORY_BLANK
     
     def empty(self):
+        """Return True if this :class:`History` has no changes
+        and no existing, unchanged state.
+        
+        """
+        
         return not bool(
                         (self.added or self.deleted)
                         or self.unchanged and self.unchanged != [None]
                     ) 
         
     def sum(self):
+        """Return a collection of added + unchanged + deleted."""
+        
         return (self.added or []) +\
                 (self.unchanged or []) +\
                 (self.deleted or [])
     
     def non_deleted(self):
+        """Return a collection of added + unchanged."""
+        
         return (self.added or []) +\
                 (self.unchanged or [])
     
     def non_added(self):
+        """Return a collection of unchanged + deleted."""
+        
         return (self.unchanged or []) +\
                 (self.deleted or [])
     
     def has_changes(self):
+        """Return True if this :class:`History` has changes."""
+        
         return bool(self.added or self.deleted)
         
     def as_state(self):
@@ -1442,11 +1474,19 @@ class History(tuple):
 HISTORY_BLANK = History(None, None, None)
 
 def get_history(obj, key, **kwargs):
-    """Return a History record for the given object and attribute key.
+    """Return a :class:`.History` record for the given object 
+    and attribute key.
     
-    obj is an instrumented object instance.  An InstanceState
-    is accepted directly for backwards compatibility but 
-    this usage is deprecated.
+    :param obj: an object whose class is instrumented by the
+      attributes package.  
+    
+    :param key: string attribute name.
+    
+    :param kwargs: Optional keyword arguments currently
+      include the ``passive`` flag, which indicates if the attribute should be
+      loaded from the database if not already present (:attr:`PASSIVE_NO_FETCH`), and
+      if the attribute should be not initialized to a blank value otherwise
+      (:attr:`PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
     
     """
     return get_state_history(instance_state(obj), key, **kwargs)

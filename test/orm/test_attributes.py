@@ -693,14 +693,18 @@ class UtilTest(_base.ORMTest):
 
 class BackrefTest(_base.ORMTest):
 
-    def test_manytomany(self):
+    def test_m2m(self):
         class Student(object):pass
         class Course(object):pass
 
         attributes.register_class(Student)
         attributes.register_class(Course)
-        attributes.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'), useobject=True)
-        attributes.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'), useobject=True)
+        attributes.register_attribute(Student, 'courses', uselist=True,
+                extension=attributes.GenericBackrefExtension('students'
+                ), useobject=True)
+        attributes.register_attribute(Course, 'students', uselist=True,
+                extension=attributes.GenericBackrefExtension('courses'
+                ), useobject=True)
 
         s = Student()
         c = Course()
@@ -717,14 +721,18 @@ class BackrefTest(_base.ORMTest):
         s1.courses.remove(c)
         self.assert_(c.students == [s2,s3])
 
-    def test_onetomany(self):
+    def test_o2m(self):
         class Post(object):pass
         class Blog(object):pass
 
         attributes.register_class(Post)
         attributes.register_class(Blog)
-        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+        attributes.register_attribute(Post, 'blog', uselist=False,
+                extension=attributes.GenericBackrefExtension('posts'),
+                trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True,
+                extension=attributes.GenericBackrefExtension('blog'),
+                trackparent=True, useobject=True)
         b = Blog()
         (p1, p2, p3) = (Post(), Post(), Post())
         b.posts.append(p1)
@@ -748,13 +756,17 @@ class BackrefTest(_base.ORMTest):
         p5.blog = None
         del p5.blog
 
-    def test_onetoone(self):
+    def test_o2o(self):
         class Port(object):pass
         class Jack(object):pass
         attributes.register_class(Port)
         attributes.register_class(Jack)
-        attributes.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'), useobject=True)
-        attributes.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'), useobject=True)
+        attributes.register_attribute(Port, 'jack', uselist=False,
+                extension=attributes.GenericBackrefExtension('port'),
+                useobject=True)
+        attributes.register_attribute(Jack, 'port', uselist=False,
+                extension=attributes.GenericBackrefExtension('jack'),
+                useobject=True)
         p = Port()
         j = Jack()
         p.jack = j
@@ -764,6 +776,96 @@ class BackrefTest(_base.ORMTest):
         j.port = None
         self.assert_(p.jack is None)
 
+    def test_symmetric_o2o_inheritance(self):
+        """Test that backref 'initiator' catching goes against
+        a token that is global to all InstrumentedAttribute objects
+        within a particular class, not just the indvidual IA object
+        since we use distinct objects in an inheritance scenario.
+        
+        """
+        class Parent(object):
+            pass
+        class Child(object):
+            pass
+        class SubChild(Child):
+            pass
+
+        p_token = object()
+        c_token = object()
+        
+        attributes.register_class(Parent)
+        attributes.register_class(Child)
+        attributes.register_class(SubChild)
+        attributes.register_attribute(Parent, 'child', uselist=False,
+                extension=attributes.GenericBackrefExtension('parent'),
+                parent_token = p_token,
+                useobject=True)
+        attributes.register_attribute(Child, 'parent', uselist=False,
+                extension=attributes.GenericBackrefExtension('child'),
+                parent_token = c_token,
+                useobject=True)
+        attributes.register_attribute(SubChild, 'parent',
+                uselist=False,
+                extension=attributes.GenericBackrefExtension('child'),
+                parent_token = c_token,
+                useobject=True)
+        
+        p1 = Parent()
+        c1 = Child()
+        p1.child = c1
+        
+        c2 = SubChild()
+        c2.parent = p1
+
+    def test_symmetric_o2m_inheritance(self):
+        class Parent(object):
+            pass
+        class SubParent(Parent):
+            pass
+        class Child(object):
+            pass
+
+        p_token = object()
+        c_token = object()
+        
+        attributes.register_class(Parent)
+        attributes.register_class(SubParent)
+        attributes.register_class(Child)
+        attributes.register_attribute(Parent, 'children', uselist=True,
+                extension=attributes.GenericBackrefExtension('parent'),
+                parent_token = p_token,
+                useobject=True)
+        attributes.register_attribute(SubParent, 'children', uselist=True,
+                extension=attributes.GenericBackrefExtension('parent'),
+                parent_token = p_token,
+                useobject=True)
+        attributes.register_attribute(Child, 'parent', uselist=False,
+                extension=attributes.GenericBackrefExtension('children'),
+                parent_token = c_token,
+                useobject=True)
+        
+        p1 = Parent()
+        p2 = SubParent()
+        c1 = Child()
+        
+        p1.children.append(c1)
+
+        assert c1.parent is p1
+        assert c1 in p1.children
+        
+        p2.children.append(c1)
+        assert c1.parent is p2
+        
+        # note its still in p1.children -
+        # the event model currently allows only
+        # one level deep.  without the parent_token,
+        # it keeps going until a ValueError is raised
+        # and this condition changes.
+        assert c1 in p1.children
+        
+        
+        
+        
 class PendingBackrefTest(_base.ORMTest):
     def setup(self):
         global Post, Blog, called, lazy_load

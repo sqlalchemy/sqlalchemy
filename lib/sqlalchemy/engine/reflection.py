@@ -50,27 +50,27 @@ class Inspector(object):
     consistent interface as well as caching support for previously
     fetched metadata.
     
-    The preferred method to construct an :class:`Inspector` is via the
+    The preferred method to construct an :class:`.Inspector` is via the
     :meth:`Inspector.from_engine` method.   I.e.::
     
         engine = create_engine('...')
         insp = Inspector.from_engine(engine)
     
     Where above, the :class:`~sqlalchemy.engine.base.Dialect` may opt
-    to return an :class:`Inspector` subclass that provides additional
+    to return an :class:`.Inspector` subclass that provides additional
     methods specific to the dialect's target database.
     
     """
 
     def __init__(self, bind):
-        """Initialize a new :class:`Inspector`.
+        """Initialize a new :class:`.Inspector`.
 
         :param bind: a :class:`~sqlalchemy.engine.base.Connectable`, 
           which is typically an instance of 
           :class:`~sqlalchemy.engine.base.Engine` or 
           :class:`~sqlalchemy.engine.base.Connection`.
         
-        For a dialect-specific instance of :class:`Inspector`, see
+        For a dialect-specific instance of :class:`.Inspector`, see
         :meth:`Inspector.from_engine`
 
         """
@@ -98,12 +98,12 @@ class Inspector(object):
           :class:`~sqlalchemy.engine.base.Engine` or 
           :class:`~sqlalchemy.engine.base.Connection`.
         
-        This method differs from direct a direct constructor call of :class:`Inspector`
+        This method differs from direct a direct constructor call of :class:`.Inspector`
         in that the :class:`~sqlalchemy.engine.base.Dialect` is given a chance to provide
-        a dialect-specific :class:`Inspector` instance, which may provide additional
+        a dialect-specific :class:`.Inspector` instance, which may provide additional
         methods.
         
-        See the example at :class:`Inspector`.
+        See the example at :class:`.Inspector`.
         
         """
         if hasattr(bind.dialect, 'inspector'):
