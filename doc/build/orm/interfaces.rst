@@ -89,7 +89,7 @@ value, and allows the extension to change what is ultimately persisted.
 Instrumentation Events and Re-implementation
 ---------------------------------------------
 
-:class:`.InstrumentationManager` can be subclassed in order to receieve class
+:class:`.InstrumentationManager` can be subclassed in order to receive class
 instrumentation events as well as to change how class instrumentation
 proceeds. This class exists for the purposes of integration with other object
 management frameworks which would like to entirely modify the instrumentation
