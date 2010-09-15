@@ -11,6 +11,10 @@ CHANGES
     backrefs involved, where the initiating parent
     was a subclass (with its own mapper) of the 
     previous parent.
+
+  - Fixed a regression in 0.6.5 which occurred if you 
+    passed an empty list to "include_properties" on 
+    mapper() [ticket:1918]
     
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated

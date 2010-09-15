@@ -487,7 +487,10 @@ class MapperTest(_fixtures.FixtureTest):
         class HasDef(object):
             def name(self):
                 pass
-            
+        class Empty(object):pass
+        
+        empty = mapper(Empty, t, properties={'empty_id' : t.c.id}, 
+                       include_properties=[])
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
                      include_properties=('id', 'type', 'name'))
         e_m = mapper(Employee, inherits=p_m,
@@ -546,6 +549,7 @@ class MapperTest(_fixtures.FixtureTest):
         # excluding the discriminator column is currently not allowed
         class Foo(Person):
             pass
+        assert_props(Empty, ['empty_id'])
 
         assert_raises(
             sa.exc.InvalidRequestError,

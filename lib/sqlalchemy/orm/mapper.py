@@ -193,7 +193,7 @@ class Mapper(object):
         else:
             self.polymorphic_map = _polymorphic_map
 
-        if include_properties:
+        if include_properties is not None:
             self.include_properties = util.to_set(include_properties)
         else:
             self.include_properties = None
