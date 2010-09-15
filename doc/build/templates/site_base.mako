@@ -7,7 +7,6 @@
 </%text>
 
 <div style="text-align:right">
-<b>Quick Select:</b> <a href="/docs/06/">0.6</a> | <a href="/docs/05/">0.5</a> | <a href="/docs/04/">0.4</a><br/>
 <b>PDF Download:</b> <a href="${pathto('sqlalchemy_' + release.replace('.', '_') + '.pdf', 1)}">download</a>
 </div>
 
