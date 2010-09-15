@@ -11,6 +11,7 @@ from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 from sqlalchemy.test.schema import Table, Column
+from sqlalchemy import event
 
 class MergeTest(_fixtures.FixtureTest):
     """Session.merge() functionality"""
@@ -23,8 +24,7 @@ class MergeTest(_fixtures.FixtureTest):
                 canary.called += 1
             canary.called = 0
 
-        manager = sa.orm.attributes.manager_of_class(cls)
-        manager.events.listen(canary, 'on_load', manager)
+        event.listen(canary, 'on_load', cls)
 
         return canary
 

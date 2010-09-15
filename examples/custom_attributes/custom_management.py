@@ -14,7 +14,8 @@ from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, Text,
 from sqlalchemy.orm import (mapper, relationship, create_session,
     InstrumentationManager)
 
-from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute, is_instrumented
+from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute
+from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm.collections import collection_adapter
 
 

@@ -10,7 +10,8 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, text
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
-from sqlalchemy.orm import create_session, mapper, relationship, attributes
+from sqlalchemy.orm import create_session, mapper, relationship, \
+    attributes, instrumentation
 from test.orm import _base
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 
@@ -48,11 +49,11 @@ class CollectionsTest(_base.ORMTest):
 
     @classmethod
     def setup_class(cls):
-        attributes.register_class(cls.Entity)
+        instrumentation.register_class(cls.Entity)
 
     @classmethod
     def teardown_class(cls):
-        attributes.unregister_class(cls.Entity)
+        instrumentation.unregister_class(cls.Entity)
         super(CollectionsTest, cls).teardown_class()
 
     _entity_id = 1
@@ -75,7 +76,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -116,7 +117,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -317,7 +318,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -485,7 +486,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -743,7 +744,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -853,7 +854,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -975,7 +976,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -1174,7 +1175,7 @@ class CollectionsTest(_base.ORMTest):
             pass
 
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=typecallable, useobject=True)
 
@@ -1310,7 +1311,7 @@ class CollectionsTest(_base.ORMTest):
         class Foo(object):
             pass
         canary = Canary()
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary,
                                    typecallable=Custom, useobject=True)
 
@@ -1380,7 +1381,7 @@ class CollectionsTest(_base.ORMTest):
 
         canary = Canary()
         creator = self.entity_maker
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'attr', uselist=True, extension=canary, useobject=True)
 
         obj = Foo()

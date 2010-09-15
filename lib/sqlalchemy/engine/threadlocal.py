@@ -5,7 +5,7 @@ with :func:`~sqlalchemy.engine.create_engine`.  This module is semi-private and 
 invoked automatically when the threadlocal engine strategy is used.
 """
 
-from sqlalchemy import util, event
+from sqlalchemy import util, event, events
 from sqlalchemy.engine import base
 import weakref
 
@@ -27,14 +27,14 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-class TLEvents(base.EngineEvents):
+class TLEvents(events.EngineEvents):
     @classmethod
     def listen(cls, fn, identifier, target):
         if target.TLConnection is TLConnection:
             target.TLConnection = base._listener_connection_cls(
                                         TLConnection, 
                                         target.dispatch)
-        base.EngineEvents.listen(fn, identifier, target)
+        events.EngineEvents.listen(fn, identifier, target)
 
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""

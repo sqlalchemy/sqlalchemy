@@ -21,15 +21,15 @@ from itertools import chain, groupby
 deque = __import__('collections').deque
 
 from sqlalchemy import sql, util, log, exc as sa_exc, event
-from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.orm import attributes, sync, exc as orm_exc, unitofwork
-from sqlalchemy.orm.interfaces import (
-    MapperProperty, EXT_CONTINUE, PropComparator
-    )
-from sqlalchemy.orm.util import (
-     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, 
-     _state_mapper, class_mapper, instance_str, state_str,
-     )
+from sqlalchemy.sql import expression, visitors, operators, \
+    util as sqlutil
+from sqlalchemy.orm import instrumentation, sync, exc as orm_exc, \
+    unitofwork, attributes
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
+    PropComparator
+from sqlalchemy.orm.util import ExtensionCarrier, _INSTRUMENTOR, \
+    _class_to_mapper, _state_mapper, class_mapper, instance_str, \
+    state_str
 
 __all__ = (
     'Mapper',
@@ -390,7 +390,7 @@ class Mapper(object):
         self.extension.instrument_class(self, self.class_)
 
         if manager is None:
-            manager = attributes.register_class(self.class_, 
+            manager = instrumentation.register_class(self.class_, 
                 deferred_scalar_loader = _load_scalar_attributes
             )
 
@@ -432,7 +432,7 @@ class Mapper(object):
         if not self.non_primary and \
             self.class_manager.is_mapped and \
             self.class_manager.mapper is self:
-            attributes.unregister_class(self.class_)
+            instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):
 

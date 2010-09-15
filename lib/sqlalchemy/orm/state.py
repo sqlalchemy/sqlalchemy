@@ -1,13 +1,19 @@
+"""Defines instrumentation of instances.
+
+This module is usually not directly visible to user applications, but
+defines a large part of the ORM's interactivity.
+
+"""
+
 from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
-from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
-                                        NEVER_SET, NO_VALUE, manager_of_class, \
-                                        ATTR_WAS_SET
-from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
+                                        
+from sqlalchemy.orm import exc as orm_exc, attributes, interfaces
+from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
+    PASSIVE_NO_FETCH, NEVER_SET, ATTR_WAS_SET, NO_VALUE
 
 import sys
-attributes.state = sys.modules['sqlalchemy.orm.state']
 
 class InstanceState(object):
     """tracks state information at the instance level."""
@@ -153,9 +159,10 @@ class InstanceState(object):
         return d
         
     def __setstate__(self, state):
+        from sqlalchemy.orm import instrumentation
         self.obj = weakref.ref(state['instance'], self._cleanup)
         self.class_ = state['instance'].__class__
-        self.manager = manager = manager_of_class(self.class_)
+        self.manager = manager = instrumentation.manager_of_class(self.class_)
         if manager is None:
             raise orm_exc.UnmappedInstanceError(
                         state['instance'],
@@ -270,8 +277,8 @@ class InstanceState(object):
 
         """
 
-        if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
-            return attributes.PASSIVE_NO_RESULT
+        if kw.get('passive') is PASSIVE_NO_FETCH:
+            return PASSIVE_NO_RESULT
         
         toload = self.expired_attributes.\
                         intersection(self.unmodified)

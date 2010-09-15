@@ -197,10 +197,10 @@ class DDLExecutionTest(TestBase):
 
     def test_table_standalone(self):
         users, engine = self.users, self.engine
-        DDL('mxyzptlk').execute_at('before-create', users)
-        DDL('klptzyxm').execute_at('after-create', users)
-        DDL('xyzzy').execute_at('before-drop', users)
-        DDL('fnord').execute_at('after-drop', users)
+        event.listen(DDL('mxyzptlk'), 'on_before_create', users)
+        event.listen(DDL('klptzyxm'), 'on_after_create', users)
+        event.listen(DDL('xyzzy'), 'on_before_drop', users)
+        event.listen(DDL('fnord'), 'on_after_drop', users)
 
         users.create()
         strings = [str(x) for x in engine.mock]
@@ -238,6 +238,7 @@ class DDLExecutionTest(TestBase):
         assert 'xyzzy' in strings
         assert 'fnord' in strings
 
+    @testing.uses_deprecated(r'See DDLEvents')
     def test_table_by_metadata_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         DDL('mxyzptlk').execute_at('before-create', users)
@@ -282,6 +283,7 @@ class DDLExecutionTest(TestBase):
         assert 'xyzzy' in strings
         assert 'fnord' in strings
 
+    @testing.uses_deprecated(r'See DDLEvents')
     def test_metadata_deprecated(self):
         metadata, engine = self.metadata, self.engine
 
@@ -339,6 +341,7 @@ class DDLExecutionTest(TestBase):
         strings = ' '.join(str(x) for x in pg_mock.mock)
         assert 'my_test_constraint' in strings
     
+    @testing.uses_deprecated(r'See DDLEvents')
     def test_conditional_constraint_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
@@ -460,6 +463,7 @@ class DDLTest(TestBase, AssertsCompiledSQL):
                         != 'bogus').
                _should_execute(tbl, cx))
 
+    @testing.uses_deprecated(r'See DDLEvents')
     def test_filter_deprecated(self):
         cx = self.mock_engine()
 

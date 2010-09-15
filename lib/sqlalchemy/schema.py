@@ -31,7 +31,7 @@ as components in SQL expressions.
 import re, inspect
 from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
-from sqlalchemy import event
+from sqlalchemy import event, events
 
 URL = None
 
@@ -82,28 +82,6 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class DDLEvents(event.Events):
-    """
-    Define create/drop event listers for schema objects.
-    
-    See also:
-
-        :mod:`sqlalchemy.event`
-    
-    """
-    
-    def on_before_create(self, target, connection, **kw):
-        pass
-
-    def on_after_create(self, target, connection, **kw):
-        pass
-
-    def on_before_drop(self, target, connection, **kw):
-        pass
-    
-    def on_after_drop(self, target, connection, **kw):
-        pass
-    
     
 class Table(SchemaItem, expression.TableClause):
     """Represent a table in a database.
@@ -198,7 +176,7 @@ class Table(SchemaItem, expression.TableClause):
     
     __visit_name__ = 'table'
 
-    dispatch = event.dispatcher(DDLEvents)
+    dispatch = event.dispatcher(events.DDLEvents)
 
     def __new__(cls, *args, **kw):
         if not args:
@@ -1748,11 +1726,10 @@ class ForeignKeyConstraint(Constraint):
             def supports_alter(ddl, event, schema_item, bind, **kw):
                 return table in set(kw['tables']) and \
                             bind.dialect.supports_alter
-                            
-            AddConstraint(self, on=supports_alter).\
-                            execute_at('after-create', table.metadata)
-            DropConstraint(self, on=supports_alter).\
-                            execute_at('before-drop', table.metadata)
+            
+            event.listen(AddConstraint(self, on=supports_alter), "on_after_create", table.metadata)
+            event.listen(DropConstraint(self, on=supports_alter), "on_before_drop", table.metadata)
+            
             
     def copy(self, **kw):
         return ForeignKeyConstraint(
@@ -1900,7 +1877,7 @@ class MetaData(SchemaItem):
 
     __visit_name__ = 'metadata'
 
-    dispatch = event.dispatcher(DDLEvents)
+    dispatch = event.dispatcher(events.DDLEvents)
 
     def __init__(self, bind=None, reflect=False):
         """Create a new MetaData object.

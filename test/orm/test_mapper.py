@@ -2965,8 +2965,8 @@ class MagicNamesTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_direct_stateish(self):
-        for reserved in (sa.orm.attributes.ClassManager.STATE_ATTR,
-                         sa.orm.attributes.ClassManager.MANAGER_ATTR):
+        for reserved in (sa.orm.instrumentation.ClassManager.STATE_ATTR,
+                         sa.orm.instrumentation.ClassManager.MANAGER_ATTR):
             t = Table('t', sa.MetaData(),
                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                       Column(reserved, Integer))
@@ -2981,8 +2981,8 @@ class MagicNamesTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_indirect_stateish(self):
-        for reserved in (sa.orm.attributes.ClassManager.STATE_ATTR,
-                         sa.orm.attributes.ClassManager.MANAGER_ATTR):
+        for reserved in (sa.orm.instrumentation.ClassManager.STATE_ATTR,
+                         sa.orm.instrumentation.ClassManager.MANAGER_ATTR):
             class M(object):
                 pass
 

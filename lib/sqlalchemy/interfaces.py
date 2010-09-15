@@ -4,7 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Interfaces and abstract types."""
+"""Interfaces and abstract types.
+
+This module is **deprecated** and is superceded by the
+event system.
+
+"""
 
 from sqlalchemy import event, util
 
