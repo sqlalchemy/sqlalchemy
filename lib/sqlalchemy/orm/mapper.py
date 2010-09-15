@@ -2373,6 +2373,11 @@ def validates(*names):
     can then raise validation exceptions to halt the process from continuing,
     or can modify or replace the value before proceeding.   The function
     should otherwise return the given value.
+    
+    Note that a validator for a collection **cannot** issue a load of that
+    collection within the validation routine - this usage raises
+    an assertion to avoid recursion overflows.  This is a reentrant
+    condition which is not supported.
 
     """
     def wrap(fn):
