@@ -471,7 +471,11 @@ class Table(SchemaItem, expression.TableClause):
             if schema is RETAIN_SCHEMA:
                 schema = self.schema
             key = _get_table_key(self.name, schema)
-            return metadata.tables[key]
+            result = metadata.tables[key]
+            util.warn('tometadata will raise an exception '
+                      'when a table already exists in the '
+                      'target metadata in SQLAlchemy 0.7')
+            return result
         except KeyError:
             args = []
             for c in self.columns:

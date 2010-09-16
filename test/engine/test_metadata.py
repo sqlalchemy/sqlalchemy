@@ -1,4 +1,7 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from sqlalchemy.test.testing import assert_raises
+from sqlalchemy.test.testing import assert_raises_message
+from sqlalchemy.test.testing import emits_warning
+
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
@@ -283,6 +286,26 @@ class MetaDataTest(TestBase, ComparesTables):
         table_c_indexes.sort()
             
         eq_(table_indexes,table_c_indexes)
+
+    @emits_warning('tometadata.*')
+    def test_tometadata_already_there(self):
+        
+        meta1 = MetaData()
+        table1 = Table('mytable', meta1,
+            Column('myid', Integer, primary_key=True),
+        )
+        meta2 = MetaData()
+        table2 = Table('mytable', meta2,
+            Column('yourid', Integer, primary_key=True),
+        )
+
+        meta3 = MetaData()
+        
+        table_c = table1.tometadata(meta2)
+        table_d = table2.tometadata(meta2)
+
+        # d'oh!
+        assert table_c is table_d
 
     def test_tometadata_default_schema(self):
         meta = MetaData()
