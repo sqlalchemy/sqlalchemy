@@ -98,6 +98,7 @@ class Query(object):
     _attributes = util.frozendict()
     _with_options = ()
     _with_hints = ()
+    _enable_single_crit = True
     
     def __init__(self, entities, session=None):
         self.session = session
@@ -701,12 +702,17 @@ class Query(object):
 
         """
         fromclause = self.with_labels().enable_eagerloads(False).\
+                                    _enable_single_crit(False).\
                                     statement.correlate(None)
         q = self._from_selectable(fromclause)
         if entities:
             q._set_entities(entities)
         return q
-    
+
+    @_generative()
+    def _enable_single_crit(self, val):
+        self._enable_single_crit = val
+        
     @_generative()
     def _from_selectable(self, fromclause):
         for attr in ('_statement', '_criterion', '_order_by', '_group_by',
@@ -1936,7 +1942,8 @@ class Query(object):
         else:
             from_obj = context.froms
 
-        self._adjust_for_single_inheritance(context)
+        if self._enable_single_crit:
+            self._adjust_for_single_inheritance(context)
 
         whereclause  = context.whereclause
 
@@ -2273,7 +2280,8 @@ class Query(object):
             # i.e. when each _MappedEntity has its own FROM
             froms = context.froms   
 
-        self._adjust_for_single_inheritance(context)
+        if self._enable_single_crit:
+            self._adjust_for_single_inheritance(context)
 
         if not context.primary_columns:
             if self._only_load_props:
@@ -2405,6 +2413,7 @@ class Query(object):
         selected from the total results.
 
         """
+            
         for entity, (mapper, adapter, s, i, w) in \
                             self._mapper_adapter_map.iteritems():
             single_crit = mapper._single_table_criterion

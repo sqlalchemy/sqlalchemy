@@ -1192,7 +1192,7 @@ def _deferred_relationship(cls, prop):
                     return x
             except NameError, n:
                 raise exceptions.InvalidRequestError(
-                    "When compiling mapper %s, expression %r failed to "
+                    "When initializing mapper %s, expression %r failed to "
                     "locate a name (%r). If this is a class name, consider "
                     "adding this relationship() to the %r class after "
                     "both dependent classes have been defined." % 

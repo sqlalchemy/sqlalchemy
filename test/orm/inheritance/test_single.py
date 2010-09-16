@@ -8,7 +8,7 @@ from test.orm._base import MappedTest, ComparableEntity
 from sqlalchemy.test.schema import Table, Column
 
 
-class SingleInheritanceTest(MappedTest):
+class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -26,6 +26,7 @@ class SingleInheritanceTest(MappedTest):
 
     @classmethod
     def setup_classes(cls):
+        global Employee, Manager, Engineer, JuniorEngineer
         class Employee(ComparableEntity):
             pass
         class Manager(Employee):
@@ -114,6 +115,31 @@ class SingleInheritanceTest(MappedTest):
         #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(), 
         #    []
         # )
+
+    @testing.resolve_artifact_names
+    def test_from_self(self):
+        sess = create_session()
+        self.assert_compile(sess.query(Engineer).from_self(),
+                            'SELECT anon_1.employees_employee_id AS '
+                            'anon_1_employees_employee_id, '
+                            'anon_1.employees_name AS '
+                            'anon_1_employees_name, '
+                            'anon_1.employees_manager_data AS '
+                            'anon_1_employees_manager_data, '
+                            'anon_1.employees_engineer_info AS '
+                            'anon_1_employees_engineer_info, '
+                            'anon_1.employees_type AS '
+                            'anon_1_employees_type FROM (SELECT '
+                            'employees.employee_id AS '
+                            'employees_employee_id, employees.name AS '
+                            'employees_name, employees.manager_data AS '
+                            'employees_manager_data, '
+                            'employees.engineer_info AS '
+                            'employees_engineer_info, employees.type '
+                            'AS employees_type FROM employees) AS '
+                            'anon_1 WHERE anon_1.employees_type IN '
+                            '(:type_1, :type_2)',
+                            use_default_dialect=True)
         
     @testing.resolve_artifact_names
     def test_select_from(self):
@@ -182,6 +208,56 @@ class SingleInheritanceTest(MappedTest):
         assert len(rq.join(Report.employee.of_type(Manager)).all()) == 1
         assert len(rq.join(Report.employee.of_type(Engineer)).all()) == 0
 
+class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('employee', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('name', String(50)),
+            Column('type', String(20)),
+        )
+        
+        Table('employee_stuff', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('employee_id', Integer, ForeignKey('employee.id')),
+            Column('name', String(50)),
+        )
+    
+    @classmethod
+    def setup_classes(cls):
+        class Employee(ComparableEntity):
+            pass
+        class Manager(Employee):
+            pass
+        class Stuff(ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_subquery_load(self):
+        mapper(Employee, employee, polymorphic_on=employee.c.type, polymorphic_identity='employee')
+        mapper(Manager, inherits=Employee, polymorphic_identity='manager', properties={
+            'stuff':relationship(Stuff)
+        })
+        mapper(Stuff, employee_stuff)
+        
+        sess = create_session()
+        context = sess.query(Manager).options(subqueryload('stuff'))._compile_context()
+        subq = context.attributes[('subquery', (class_mapper(Employee), 'stuff'))]
+
+        self.assert_compile(subq,
+                            'SELECT employee_stuff.id AS '
+                            'employee_stuff_id, employee_stuff.employee'
+                            '_id AS employee_stuff_employee_id, '
+                            'employee_stuff.name AS '
+                            'employee_stuff_name, anon_1.employee_id '
+                            'AS anon_1_employee_id FROM (SELECT '
+                            'employee.id AS employee_id FROM employee '
+                            'WHERE employee.type IN (:type_1)) AS anon_1 '
+                            'JOIN employee_stuff ON anon_1.employee_id '
+                            '= employee_stuff.employee_id ORDER BY '
+                            'anon_1.employee_id',
+                            use_default_dialect=True
+                            )
 
 class RelationshipToSingleTest(MappedTest):
     @classmethod

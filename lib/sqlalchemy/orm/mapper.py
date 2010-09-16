@@ -30,6 +30,7 @@ from sqlalchemy.orm.util import (
      ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, 
      _state_mapper, class_mapper, instance_str, state_str,
      )
+import sys
 
 __all__ = (
     'Mapper',
@@ -193,7 +194,7 @@ class Mapper(object):
         else:
             self.polymorphic_map = _polymorphic_map
 
-        if include_properties:
+        if include_properties is not None:
             self.include_properties = util.to_set(include_properties)
         else:
             self.include_properties = None
@@ -787,12 +788,13 @@ class Mapper(object):
                     # the order of mapper compilation
                     for mapper in list(_mapper_registry):
                         if getattr(mapper, '_compile_failed', False):
-                            raise sa_exc.InvalidRequestError(
-                                    "One or more mappers failed to compile. "
-                                    "Exception was probably "
-                                    "suppressed within a hasattr() call. "
-                                    "Message was: %s" %
-                                    mapper._compile_failed)
+                            e = sa_exc.InvalidRequestError(
+                                    "One or more mappers failed to initialize - "
+                                    "can't proceed with initialization of other "
+                                    "mappers.  Original exception was: %s"
+                                    % mapper._compile_failed)
+                            e._compile_failed = mapper._compile_failed
+                            raise e
                         if not mapper.compiled:
                             mapper._post_configure_properties()
 
@@ -801,9 +803,9 @@ class Mapper(object):
                 finally:
                     _already_compiling = False
             except:
-                import sys
                 exc = sys.exc_info()[1]
-                self._compile_failed = exc
+                if not hasattr(exc, '_compile_failed'):
+                    self._compile_failed = exc
                 raise
         finally:
             self._expire_memoizations()
@@ -2373,6 +2375,11 @@ def validates(*names):
     can then raise validation exceptions to halt the process from continuing,
     or can modify or replace the value before proceeding.   The function
     should otherwise return the given value.
+    
+    Note that a validator for a collection **cannot** issue a load of that
+    collection within the validation routine - this usage raises
+    an assertion to avoid recursion overflows.  This is a reentrant
+    condition which is not supported.
 
     """
     def wrap(fn):

@@ -11,6 +11,31 @@ CHANGES
     backrefs involved, where the initiating parent
     was a subclass (with its own mapper) of the 
     previous parent.
+
+  - Fixed a regression in 0.6.4 which occurred if you 
+    passed an empty list to "include_properties" on 
+    mapper() [ticket:1918]
+  
+  - The exception raised by Session when it is used
+    subsequent to a subtransaction rollback (which is what
+    happens when a flush fails in autocommit=False mode) has
+    now been reworded (this is the "inactive due to a
+    rollback in a subtransaction" message). In particular,
+    if the rollback was due to an exception during flush(),
+    the message states this is the case, and reiterates the
+    string form of the original exception that occurred
+    during flush. If the session is closed due to explicit
+    usage of subtransactions (not very common), the message
+    just states this is the case.
+
+  - The exception raised by Mapper when repeated requests to
+    its initialization are made after initialization already
+    failed no longer assumes the "hasattr" case, since
+    there's other scenarios in which this message gets
+    emitted, and the message also does not compound onto
+    itself multiple times - you get the same message for
+    each attempt at usage. The misnomer "compiles" is being
+    traded out for "initialize".
     
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated
@@ -38,16 +63,36 @@ CHANGES
     after a flush. The flag is only intended for very
     specific use cases.
     
-  - Slight improvement to the behavior of "passive_updates=False"
-    when placed only on the many-to-one side of a
-    relationship; documentation has been clarified
-    that passive_updates=False should really be on the 
-    one-to-many side.
+  - Slight improvement to the behavior of
+    "passive_updates=False" when placed only on the
+    many-to-one side of a relationship; documentation has
+    been clarified that passive_updates=False should really
+    be on the one-to-many side.
 
   - Placing passive_deletes=True on a many-to-one emits
     a warning, since you probably intended to put it on
     the one-to-many side.
+  
+  - Fixed bug that would prevent "subqueryload" from
+    working correctly with single table inheritance 
+    for a relationship from a subclass - the "where 
+    type in (x, y, z)" only gets placed on the inside,
+    instead of repeatedly.
     
+  - When using from_self() with single table inheritance,
+    the "where type in (x, y, z)" is placed on the outside
+    of the query only, instead of repeatedly.   May make
+    some more adjustments to this.
+
+- engine
+   
+   - Fixed a regression in 0.6.4 whereby the change that
+     allowed cursor errors to be raised consistently broke
+     the result.lastrowid accessor.   Test coverage has
+     been added for result.lastrowid.   Note that lastrowid
+     is only supported by Pysqlite and some MySQL drivers,
+     so isn't super-useful in the general case.
+     
 0.6.4
 =====
 - orm

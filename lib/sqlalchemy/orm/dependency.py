@@ -806,8 +806,10 @@ class DetectKeySwitch(DependencyProcessor):
                 if not issubclass(state.class_, self.parent.class_):
                     continue
                 dict_ = state.dict
-                related = state.get_impl(self.key).get(state, dict_, passive=self.passive_updates)
-                if related is not attributes.PASSIVE_NO_RESULT and related is not None:
+                related = state.get_impl(self.key).get(state, dict_,
+                        passive=self.passive_updates)
+                if related is not attributes.PASSIVE_NO_RESULT and \
+                    related is not None:
                     related_state = attributes.instance_state(dict_[self.key])
                     if related_state in switchers:
                         uowcommit.register_object(state, 

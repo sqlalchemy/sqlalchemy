@@ -619,6 +619,16 @@ class QueryTest(TestBase):
         eq_(r[users.c.user_name], 'jack')
         eq_(r.user_name, 'jack')
 
+    @testing.requires.dbapi_lastrowid
+    def test_native_lastrowid(self):
+        r = testing.db.execute(
+            users.insert(),
+            {'user_id':1, 'user_name':'ed'}
+        )
+        
+        eq_(r.lastrowid, 1)
+        
+        
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
