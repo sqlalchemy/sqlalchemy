@@ -478,7 +478,7 @@ class Table(SchemaItem, expression.TableClause):
                 args.append(c.copy(schema=schema))
             for c in self.constraints:
                 args.append(c.copy(schema=schema))
-            return Table(self.name, metadata, schema=schema, *args)
+            return Table(self.name, metadata, schema=schema, *args, **self.kwargs)
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""

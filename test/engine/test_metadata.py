@@ -246,6 +246,19 @@ class MetaDataTest(TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause),
             'someschema.mytable.myid = someschema.othertable.myid')
 
+    def test_tometadata_kwargs(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            mysql_engine='InnoDB',
+        )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+
+        eq_(table.kwargs,table_c.kwargs)
+
     def test_tometadata_default_schema(self):
         meta = MetaData()
 
