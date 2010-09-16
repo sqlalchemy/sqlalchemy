@@ -83,7 +83,16 @@ CHANGES
     the "where type in (x, y, z)" is placed on the outside
     of the query only, instead of repeatedly.   May make
     some more adjustments to this.
-        
+
+- engine
+   
+   - Fixed a regression in 0.6.4 whereby the change that
+     allowed cursor errors to be raised consistently broke
+     the result.lastrowid accessor.   Test coverage has
+     been added for result.lastrowid.   Note that lastrowid
+     is only supported by Pysqlite and some MySQL drivers,
+     so isn't super-useful in the general case.
+     
 0.6.4
 =====
 - orm
