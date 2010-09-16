@@ -22,6 +22,7 @@ from sqlalchemy.orm.util import (
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity
+import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
@@ -206,7 +207,9 @@ class SessionTransaction(object):
       single: thread safety; SessionTransaction
 
     """
-
+    
+    _rollback_exception = None
+    
     def __init__(self, session, parent=None, nested=False):
         self.session = session
         self._connections = {}
@@ -229,9 +232,21 @@ class SessionTransaction(object):
     def _assert_is_active(self):
         self._assert_is_open()
         if not self._active:
-            raise sa_exc.InvalidRequestError(
-                "The transaction is inactive due to a rollback in a "
-                "subtransaction.  Issue rollback() to cancel the transaction.")
+            if self._rollback_exception:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "due to a previous exception during flush."
+                    " To begin a new transaction with this Session, "
+                    "first issue Session.rollback()."
+                    " Original exception was: %s"
+                    % self._rollback_exception
+                )
+            else:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "by a nested rollback() call.  To begin a new "
+                    "transaction, issue Session.rollback() first."
+                    )
 
     def _assert_is_open(self, error_msg="The transaction is closed"):
         if self.session is None:
@@ -288,14 +303,16 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+            _expire_state(s, s.dict, None,
+                          instance_dict=self.session.identity_map)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+                _expire_state(s, s.dict, None,
+                              instance_dict=self.session.identity_map)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -379,7 +396,7 @@ class SessionTransaction(object):
         self.close()
         return self._parent
 
-    def rollback(self):
+    def rollback(self, _capture_exception=False):
         self._assert_is_open()
 
         stx = self.session.transaction
@@ -397,6 +414,8 @@ class SessionTransaction(object):
                     transaction._deactivate()
 
         self.close()
+        if self._parent and _capture_exception:
+            self._parent._rollback_exception = sys.exc_info()[1]
         return self._parent
 
     def _rollback_impl(self):
@@ -415,7 +434,8 @@ class SessionTransaction(object):
     def close(self):
         self.session.transaction = self._parent
         if self._parent is None:
-            for connection, transaction, autoclose in set(self._connections.values()):
+            for connection, transaction, autoclose in \
+                set(self._connections.values()):
                 if autoclose:
                     connection.close()
                 else:
@@ -1451,7 +1471,7 @@ class Session(object):
                 ext.after_flush(self, flush_context)
             transaction.commit()
         except:
-            transaction.rollback()
+            transaction.rollback(_capture_exception=True)
             raise
         
         flush_context.finalize_flush_changes()

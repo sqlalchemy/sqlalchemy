@@ -369,11 +369,14 @@ class DeclarativeTest(DeclarativeTestBase):
 
         hasattr(User.addresses, 'property')
 
-        # the exeption is preserved
-
-        assert_raises_message(sa.exc.InvalidRequestError,
-                              r"suppressed within a hasattr\(\)",
-                              compile_mappers)
+        # the exception is preserved.  Remains the 
+        # same through repeated calls.
+        for i in range(3):
+            assert_raises_message(sa.exc.InvalidRequestError,
+                            "^One or more mappers failed to initialize - "
+                            "can't proceed with initialization of other "
+                            "mappers.  Original exception was: When initializing.*",
+                            compile_mappers)
 
     def test_custom_base(self):
         class MyBase(object):

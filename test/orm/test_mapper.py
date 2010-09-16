@@ -88,14 +88,25 @@ class MapperTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_exceptions_sticky(self):
-        """test preservation of mapper compile errors raised during hasattr()."""
+        """test preservation of mapper compile errors raised during hasattr(),
+        as well as for redundant mapper compile calls.  Test that 
+        repeated calls don't stack up error messages.
+        
+        """
         
         mapper(Address, addresses, properties={
             'user':relationship(User)
         })
         
         hasattr(Address.user, 'property')
-        assert_raises_message(sa.exc.InvalidRequestError, r"suppressed within a hasattr\(\)", compile_mappers)
+        for i in range(3):
+            assert_raises_message(sa.exc.InvalidRequestError,
+                                  "^One or more mappers failed to "
+                                  "initialize - can't proceed with "
+                                  "initialization of other mappers.  "
+                                  "Original exception was: Class "
+                                  "'test.orm._fixtures.User' is not mapped$"
+                                  , compile_mappers)
     
     @testing.resolve_artifact_names
     def test_column_prefix(self):
@@ -157,13 +168,15 @@ class MapperTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_column_not_present(self):
-        assert_raises_message(sa.exc.ArgumentError, "not represented in the mapper's table", mapper, User, users, properties={
-            'foo':addresses.c.user_id
-        })
+        assert_raises_message(sa.exc.ArgumentError,
+                              "not represented in the mapper's table",
+                              mapper, User, users, properties={'foo'
+                              : addresses.c.user_id})
         
     @testing.resolve_artifact_names
     def test_bad_constructor(self):
         """If the construction of a mapped class fails, the instance does not get placed in the session"""
+        
         class Foo(object):
             def __init__(self, one, two, _sa_session=None):
                 pass
