@@ -478,7 +478,28 @@ class Table(SchemaItem, expression.TableClause):
                 args.append(c.copy(schema=schema))
             for c in self.constraints:
                 args.append(c.copy(schema=schema))
-            return Table(self.name, metadata, schema=schema, *args, **self.kwargs)
+            table = Table(
+                self.name, metadata, schema=schema,
+                *args, **self.kwargs
+                )
+            copied_already = set()
+            for i in table.indexes:
+                entry = [i.name,i.unique]
+                entry.extend(sorted(i.kwargs.items()))
+                entry.extend(i.columns.keys())
+                copied_already.add(tuple(entry))
+            for i in self.indexes:
+                cols = i.columns.keys()
+                entry = [i.name,i.unique]
+                entry.extend(sorted(i.kwargs.items()))
+                entry.extend(cols)
+                if tuple(entry) not in copied_already:
+                    kwargs = dict(i.kwargs)
+                    kwargs['unique']=i.unique
+                    Index(i.name,
+                          *[getattr(table.c,col) for col in cols],
+                          **kwargs)
+            return table
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""

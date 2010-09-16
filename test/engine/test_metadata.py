@@ -2,7 +2,7 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
-    ForeignKeyConstraint, ColumnDefault
+    ForeignKeyConstraint, ColumnDefault, Index
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
@@ -258,6 +258,31 @@ class MetaDataTest(TestBase, ComparesTables):
         table_c = table.tometadata(meta2)
 
         eq_(table.kwargs,table_c.kwargs)
+
+    def test_tometadata_indexes(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('data1', Integer, index=True),
+            Column('data2', Integer),
+        )
+        Index('multi',table.c.data1,table.c.data2),
+        
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+
+        def _get_key(i):
+            entry = [i.name,i.unique]
+            entry.extend(sorted(i.kwargs.items()))
+            entry.extend(i.columns.keys())
+
+        table_indexes = [_get_key(i) for i in table.indexes]
+        table_indexes.sort()
+        table_c_indexes = [_get_key(i) for i in table_c.indexes]
+        table_c_indexes.sort()
+            
+        eq_(table_indexes,table_c_indexes)
 
     def test_tometadata_default_schema(self):
         meta = MetaData()
