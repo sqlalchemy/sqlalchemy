@@ -279,6 +279,7 @@ class MetaDataTest(TestBase, ComparesTables):
             entry = [i.name,i.unique]
             entry.extend(sorted(i.kwargs.items()))
             entry.extend(i.columns.keys())
+            return entry
 
         table_indexes = [_get_key(i) for i in table.indexes]
         table_indexes.sort()
