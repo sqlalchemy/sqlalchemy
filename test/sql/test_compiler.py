@@ -1909,18 +1909,22 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             lambda: sel1.c
         )
         
+        # calling label or as_scalar doesn't compile
+        # anything.  
+        sel2 = select([func.substr(my_str, 2, 3)]).label('my_substr')
+        
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until it's 'name' is assigned.",
-            lambda: select([func.substr(my_str, 2, 3)]).label('my_substr')
+            str, sel2
         )
         
+        sel3 = select([my_str]).as_scalar()
         assert_raises_message(
-            exc.InvalidRequestError,
-            "Cannot initialize a sub-selectable with this Column",
-            lambda: select([my_str]).as_scalar()
+            exc.CompileError,
+            "Cannot compile Column object until it's 'name' is assigned.",
+            str, sel3
         )
-        
         
         my_str.name = 'foo'
         
@@ -1929,8 +1933,13 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             "SELECT foo",
         )
         self.assert_compile(
-            select([func.substr(my_str, 2, 3)]).label('my_substr'),
+            sel2,
             '(SELECT substr(foo, :substr_2, :substr_3) AS substr_1)',
+        )
+        
+        self.assert_compile(
+            sel3,
+            "(SELECT foo)"
         )
         
     def test_naming(self):

@@ -3685,8 +3685,7 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, element):
         self.element = element
-        cols = list(element.c)
-        self.type = cols[0].type
+        self.type = element._scalar_type()
 
     @property
     def columns(self):
@@ -3737,7 +3736,10 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             self.selects.append(s.self_group(self))
 
         _SelectBaseMixin.__init__(self, **kwargs)
-
+    
+    def _scalar_type(self):
+        return self.selects[0]._scalar_type()
+        
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -3909,6 +3911,11 @@ class Select(_SelectBaseMixin, FromClause):
                             "correlation manually." % self)
 
         return froms
+
+    def _scalar_type(self):
+        elem = self._raw_columns[0]
+        cols = list(elem._select_iterable)
+        return cols[0].type
 
     @property
     def froms(self):

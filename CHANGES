@@ -98,7 +98,11 @@ CHANGES
      exported to the columns collection of an enclosing
      select() construct, or if any construct involving
      that column is compiled before its name is 
-     assigned.  [ticket:1862]
+     assigned.
+
+   - as_scalar(), label() can be called on a selectable
+     which contains a Column that is not yet named.
+     [ticket:1862]
      
 - engine
    
