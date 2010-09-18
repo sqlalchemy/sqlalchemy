@@ -91,6 +91,14 @@ CHANGES
    - Table.tometadata() issues a warning if the given Table 
      is already present in the target MetaData - the existing
      Table object is returned.
+
+   - An informative error message is raised if a Column 
+     which has not yet been assigned a name, i.e. as in 
+     declarative, is used in a context where it is
+     exported to the columns collection of an enclosing
+     select() construct, or if any construct involving
+     that column is compiled before its name is 
+     assigned.  [ticket:1862]
      
 - engine
    

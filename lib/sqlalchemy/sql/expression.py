@@ -1852,17 +1852,19 @@ class ColumnElement(ClauseElement, _CompareMixin):
         descending selectable.
 
         """
-
-        if name:
-            co = ColumnClause(name, selectable, type_=getattr(self,
-                              'type', None))
+        if name is None:
+            name = self.anon_label
+            # TODO: may want to change this to anon_label,
+            # or some value that is more useful than the
+            # compiled form of the expression
+            key = str(self)
         else:
-            name = str(self)
-            co = ColumnClause(self.anon_label, selectable,
-                              type_=getattr(self, 'type', None))
-        
+            key = name
+            
+        co = ColumnClause(name, selectable, type_=getattr(self,
+                          'type', None))
         co.proxies = [self]
-        selectable.columns[name] = co
+        selectable.columns[key] = co
         return co
 
     def compare(self, other, use_proxies=False, equivalents=None, **kw):

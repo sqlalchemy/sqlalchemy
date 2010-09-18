@@ -795,7 +795,10 @@ class QueryTest(TestBase):
         )
         shadowed.create(checkfirst=True)
         try:
-            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', _parent='Hidden parent', _row='Hidden row')
+            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', 
+                                            row='Without light there is no shadow', 
+                                            _parent='Hidden parent', 
+                                            _row='Hidden row')
             r = shadowed.select(shadowed.c.shadow_id==1).execute().first()
             self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
             self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')

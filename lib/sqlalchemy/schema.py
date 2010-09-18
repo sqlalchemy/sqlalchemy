@@ -922,6 +922,10 @@ class Column(SchemaItem, expression.ColumnClause):
         
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
+        if name is None and self.name is None:
+            raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
+                    " with this Column object until it's 'name' has "
+                    "been assigned.")
         c = self._constructor(
             name or self.name, 
             self.type, 
