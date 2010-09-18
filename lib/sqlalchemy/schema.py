@@ -467,43 +467,34 @@ class Table(SchemaItem, expression.TableClause):
         
         """
 
-        try:
-            if schema is RETAIN_SCHEMA:
-                schema = self.schema
-            key = _get_table_key(self.name, schema)
-            result = metadata.tables[key]
-            util.warn('tometadata will raise an exception '
-                      'when a table already exists in the '
-                      'target metadata in SQLAlchemy 0.7')
-            return result
-        except KeyError:
-            args = []
-            for c in self.columns:
-                args.append(c.copy(schema=schema))
-            for c in self.constraints:
-                args.append(c.copy(schema=schema))
-            table = Table(
-                self.name, metadata, schema=schema,
-                *args, **self.kwargs
-                )
-            copied_already = set()
-            for i in table.indexes:
-                entry = [i.name,i.unique]
-                entry.extend(sorted(i.kwargs.items()))
-                entry.extend(i.columns.keys())
-                copied_already.add(tuple(entry))
-            for i in self.indexes:
-                cols = i.columns.keys()
-                entry = [i.name,i.unique]
-                entry.extend(sorted(i.kwargs.items()))
-                entry.extend(cols)
-                if tuple(entry) not in copied_already:
-                    kwargs = dict(i.kwargs)
-                    kwargs['unique']=i.unique
-                    Index(i.name,
-                          *[getattr(table.c,col) for col in cols],
-                          **kwargs)
-            return table
+        if schema is RETAIN_SCHEMA:
+            schema = self.schema
+        key = _get_table_key(self.name, schema)
+        if key in metadata.tables:
+            util.warn("Table '%s' already exists within the given "
+                      "MetaData - not copying." % self.description)
+            return metadata.tables[key]
+
+        args = []
+        for c in self.columns:
+            args.append(c.copy(schema=schema))
+        for c in self.constraints:
+            args.append(c.copy(schema=schema))
+        table = Table(
+            self.name, metadata, schema=schema,
+            *args, **self.kwargs
+            )
+        for index in self.indexes:
+            # skip indexes that would be generated
+            # by the 'index' flag on Column
+            if len(index.columns) == 1 and \
+                list(index.columns)[0].index:
+                continue
+            Index(index.name,
+                  unique=index.unique,
+                  *[table.c[col] for col in index.columns.keys()],
+                  **index.kwargs)
+        return table
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""

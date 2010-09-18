@@ -84,6 +84,14 @@ CHANGES
     of the query only, instead of repeatedly.   May make
     some more adjustments to this.
 
+- sql
+   - Table.tometadata() now copies Index objects associated
+     with the Table as well.
+
+   - Table.tometadata() issues a warning if the given Table 
+     is already present in the target MetaData - the existing
+     Table object is returned.
+     
 - engine
    
    - Fixed a regression in 0.6.4 whereby the change that

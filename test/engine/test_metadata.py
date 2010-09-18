@@ -276,19 +276,16 @@ class MetaDataTest(TestBase, ComparesTables):
         table_c = table.tometadata(meta2)
 
         def _get_key(i):
-            entry = [i.name,i.unique]
-            entry.extend(sorted(i.kwargs.items()))
-            entry.extend(i.columns.keys())
-            return entry
+            return [i.name,i.unique] + \
+                    sorted(i.kwargs.items()) + \
+                    i.columns.keys()
+        
+        eq_(
+            sorted([_get_key(i) for i in table.indexes]),
+            sorted([_get_key(i) for i in table_c.indexes])
+        )
 
-        table_indexes = [_get_key(i) for i in table.indexes]
-        table_indexes.sort()
-        table_c_indexes = [_get_key(i) for i in table_c.indexes]
-        table_c_indexes.sort()
-            
-        eq_(table_indexes,table_c_indexes)
-
-    @emits_warning('tometadata.*')
+    @emits_warning("Table '.+' already exists within the given MetaData")
     def test_tometadata_already_there(self):
         
         meta1 = MetaData()
