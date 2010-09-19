@@ -32,14 +32,14 @@ class CaseTest(TestBase, AssertsCompiledSQL):
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
-    def testcase(self):
+    def test_case(self):
         inner = select([case([
                 [info_table.c.pk < 3,
                         'lessthan3'],
         [and_(info_table.c.pk >= 3, info_table.c.pk < 7),
                         'gt3']]).label('x'),
         info_table.c.pk, info_table.c.info],
-                from_obj=[info_table]).alias('q_inner')
+                from_obj=[info_table])
 
         inner_result = inner.execute().fetchall()
 
@@ -59,7 +59,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
             ('gt3', 6, 'pk_6_data')
         ]
 
-        outer = select([inner])
+        outer = select([inner.alias('q_inner')])
 
         outer_result = outer.execute().fetchall()
 
@@ -79,7 +79,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
                         6]],
                 else_ = 0).label('x'),
         info_table.c.pk, info_table.c.info],
-                from_obj=[info_table]).alias('q_inner')
+                from_obj=[info_table])
 
         else_result = w_else.execute().fetchall()
 

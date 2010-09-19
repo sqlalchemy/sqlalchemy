@@ -260,7 +260,8 @@ dl.function > dt,
 dl.attribute > dt,
 dl.classmethod > dt,
 dl.method > dt,
-dl.class > dt
+dl.class > dt,
+dl.exception > dt
 {
     background-color:#F0F0F0;
     margin:0px -10px;

@@ -57,8 +57,6 @@
 
         <div class="topnav">
             <div id="pagecontrol">
-                <a href="${pathto('reference/index')}">API Reference</a>
-                |
                 <a href="${pathto('genindex')}">Index</a>
             
                 % if sourcename:

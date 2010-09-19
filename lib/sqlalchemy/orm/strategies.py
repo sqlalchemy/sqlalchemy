@@ -48,7 +48,7 @@ def _register_attribute(strategy, mapper, useobject,
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
 
     
-    for m in mapper.polymorphic_iterator():
+    for m in mapper.self_and_descendants:
         if prop is m._props.get(prop.key):
             
             attributes.register_attribute_impl(
@@ -118,17 +118,20 @@ class ColumnLoader(LoaderStrategy):
        )
         
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        key, col = self.key, self.columns[0]
-        if adapter:
-            col = adapter.columns[col]
-            
-        if col is not None and col in row:
-            def new_execute(state, dict_, row):
-                dict_[key] = row[col]
+        key = self.key
+        # look through list of columns represented here
+        # to see which, if any, is present in the row.
+        for col in self.columns:
+            if adapter:
+                col = adapter.columns[col]
+            if col is not None and col in row:
+                def new_execute(state, dict_, row):
+                    dict_[key] = row[col]
+                return new_execute, None
         else:
             def new_execute(state, dict_, row):
                 state.expire_attribute_pre_commit(dict_, key)
-        return new_execute, None
+            return new_execute, None
 
 log.class_logger(ColumnLoader)
 
@@ -253,8 +256,8 @@ class LoadDeferredColumns(object):
     def __init__(self, state, key):
         self.state, self.key = state, key
 
-    def __call__(self, **kw):
-        if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+    def __call__(self, passive=False):
+        if passive is attributes.PASSIVE_NO_FETCH:
             return attributes.PASSIVE_NO_RESULT
 
         state = self.state
@@ -401,7 +404,8 @@ class LazyLoader(AbstractRelationshipLoader):
                 )
 
     def lazy_clause(self, state, reverse_direction=False, 
-                                alias_secondary=False, adapt_source=None):
+                                alias_secondary=False, 
+                                adapt_source=None):
         if state is None:
             return self._lazy_none_clause(
                                         reverse_direction, 
@@ -423,18 +427,26 @@ class LazyLoader(AbstractRelationshipLoader):
         else:
             mapper = self.parent_property.parent
 
-        def visit_bindparam(bindparam):
-            if bindparam.key in bind_to_col:
-                # use the "committed" (database) version to get 
-                # query column values
-                # also its a deferred value; so that when used 
-                # by Query, the committed value is used
-                # after an autoflush occurs
-                o = state.obj() # strong ref
-                bindparam.value = \
-                                lambda: mapper._get_committed_attr_by_column(
-                                        o, bind_to_col[bindparam.key])
-
+        o = state.obj() # strong ref
+        dict_ = attributes.instance_dict(o)
+        
+        # use the "committed state" only if we're in a flush
+        # for this state.
+        
+        sess = sessionlib._state_session(state)
+        if sess is not None and sess._flushing:
+            def visit_bindparam(bindparam):
+                if bindparam.key in bind_to_col:
+                    bindparam.value = \
+                                lambda: mapper._get_committed_state_attr_by_column(
+                                        state, dict_, bind_to_col[bindparam.key])
+        else:
+            def visit_bindparam(bindparam):
+                if bindparam.key in bind_to_col:
+                    bindparam.value = lambda: mapper._get_state_attr_by_column(
+                                            state, dict_, bind_to_col[bindparam.key])
+        
+            
         if self.parent_property.secondary is not None and alias_secondary:
             criterion = sql_util.ClauseAdapter(
                                 self.parent_property.secondary.alias()).\
@@ -442,6 +454,7 @@ class LazyLoader(AbstractRelationshipLoader):
 
         criterion = visitors.cloned_traverse(
                                 criterion, {}, {'bindparam':visit_bindparam})
+
         if adapt_source:
             criterion = adapt_source(criterion)
         return criterion
@@ -465,7 +478,8 @@ class LazyLoader(AbstractRelationshipLoader):
         return criterion
         
     def _class_level_loader(self, state):
-        if not state.has_identity:
+        if not state.has_identity and \
+            (not self.parent_property.load_on_pending or not state.session_id):
             return None
 
         return LoadLazyAttribute(state, self.key)
@@ -555,16 +569,22 @@ class LoadLazyAttribute(object):
     def __setstate__(self, state):
         self.state, self.key = state
         
-    def __call__(self, **kw):
+    def __call__(self, passive=False):
         state = self.state
         instance_mapper = mapper._state_mapper(state)
         prop = instance_mapper.get_property(self.key)
         strategy = prop._get_strategy(LazyLoader)
-
-        if kw.get('passive') is attributes.PASSIVE_NO_FETCH and \
-                                    not strategy.use_get:
+        pending = not state.key
+        
+        if (
+                passive is attributes.PASSIVE_NO_FETCH and 
+                not strategy.use_get
+            ) or (
+                passive is attributes.PASSIVE_ONLY_PERSISTENT and 
+                pending
+            ):
             return attributes.PASSIVE_NO_RESULT
-
+            
         if strategy._should_log_debug():
             strategy.logger.debug("loading %s", 
                                     mapperutil.state_attribute_str(
@@ -580,21 +600,35 @@ class LoadLazyAttribute(object):
         
         q = session.query(prop.mapper)._adapt_all_clauses()
         
+        # don't autoflush on pending
+        # this would be something that's prominent in the 
+        # docs and such
+        if pending:
+            q = q.autoflush(False)
+            
         if state.load_path:
             q = q._with_current_path(state.load_path + (self.key,))
-            
+
         # if we have a simple primary key load, use mapper.get()
         # to possibly save a DB round trip
         if strategy.use_get:
             ident = []
             allnulls = True
+            if session._flushing:
+                get_attr = instance_mapper._get_committed_state_attr_by_column
+            else:
+                get_attr = instance_mapper._get_state_attr_by_column
+
+            # The many-to-one get is intended to be very fast.  Note
+            # that we don't want to autoflush() if the get() doesn't
+            # actually have to hit the DB.  It is now not necessary
+            # now that we use the pending attribute state.
             for primary_key in prop.mapper.primary_key: 
-                val = instance_mapper.\
-                                _get_committed_state_attr_by_column(
+                val = get_attr(
                                     state,
                                     state.dict,
                                     strategy._equated_columns[primary_key],
-                                    **kw)
+                                    passive=passive)
                 if val is attributes.PASSIVE_NO_RESULT:
                     return val
                 allnulls = allnulls and val is None
@@ -607,7 +641,7 @@ class LoadLazyAttribute(object):
                 q = q._conditional_options(*state.load_options)
 
             key = prop.mapper.identity_key_from_primary_key(ident)
-            return q._get(key, ident, **kw)
+            return q._get(key, ident, passive=passive)
             
 
         if prop.order_by:
@@ -623,8 +657,15 @@ class LoadLazyAttribute(object):
 
         if state.load_options:
             q = q._conditional_options(*state.load_options)
+        
+        lazy_clause = strategy.lazy_clause(state)
+        
+        if pending:
+            bind_values = sql_util.bind_values(lazy_clause)
+            if None in bind_values:
+                return None
             
-        q = q.filter(strategy.lazy_clause(state))
+        q = q.filter(lazy_clause)
 
         result = q.all()
         if strategy.uselist:
@@ -693,7 +734,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
-            leftmost_mapper._get_col_to_prop(c).class_attribute
+            leftmost_mapper._columntoproperty[c].class_attribute
             for c in leftmost_cols
         ]
 
@@ -724,6 +765,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             ("orig_query", SubqueryLoader): orig_query,
             ('subquery_path', None) : subq_path
         }
+        q = q._enable_single_crit(False)
 
         # figure out what's being joined.  a.k.a. the fun part
         to_join = [
@@ -740,7 +782,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                         self._local_remote_columns(self.parent_property)
 
         local_attr = [
-            getattr(parent_alias, self.parent._get_col_to_prop(c).key)
+            getattr(parent_alias, self.parent._columntoproperty[c].key)
             for c in local_cols
         ]
         q = q.order_by(*local_attr)
@@ -822,7 +864,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         remote_attr = [
-                        self.mapper._get_col_to_prop(c).key 
+                        self.mapper._columntoproperty[c].key
                         for c in remote_cols]
         
         q = context.attributes[('subquery', path)]
@@ -940,7 +982,7 @@ class EagerLoader(AbstractRelationshipLoader):
                                 ("eager_row_processor", reduced_path)
                               ] = clauses
 
-        for value in self.mapper._iterate_polymorphic_properties():
+        for value in self.mapper._polymorphic_properties:
             value.setup(
                 context, 
                 entity, 

@@ -11,7 +11,8 @@ from sqlalchemy.test import engines, testing, pickleable
 from sqlalchemy import Integer, String, ForeignKey, literal_column
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session, column_property, attributes
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    column_property, attributes, Session, reconstructor, object_session
 from sqlalchemy.test.testing import eq_, ne_
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
@@ -698,10 +699,15 @@ class PassiveDeletesTest(_base.MappedTest):
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
     
+    @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     @testing.resolve_artifact_names
     def test_backwards_pd(self):
-        # the unusual scenario where a trigger or something might be deleting
-        # a many-to-one on deletion of the parent row
+        """Test that passive_deletes=True disables a delete from an m2o.
+        
+        This is not the usual usage and it now raises a warning, but test
+        that it works nonetheless.
+
+        """
         mapper(MyOtherClass, myothertable, properties={
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
@@ -721,8 +727,17 @@ class PassiveDeletesTest(_base.MappedTest):
         session.delete(mco)
         session.flush()
         
+        # mytable wasn't deleted, is the point.
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 0
+    
+    @testing.resolve_artifact_names
+    def test_aaa_m2o_emits_warning(self):
+        mapper(MyOtherClass, myothertable, properties={
+            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
+        })
+        mapper(MyClass, mytable)
+        assert_raises(sa.exc.SAWarning, sa.orm.compile_mappers)
         
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)
@@ -2111,7 +2126,68 @@ class BooleanColTest(_base.MappedTest):
         sess.flush()
         eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
 
-
+class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
+    """Test that objects with NULL identity keys aren't permitted to complete a flush.
+    
+    User-defined callables that execute during a load may modify state
+    on instances which results in their being autoflushed, before attributes
+    are populated.  If the primary key identifiers are missing, an explicit assertion
+    is needed to check that the object doesn't go through the flush process with
+    no net changes and gets placed in the identity map with an incorrect 
+    identity key.
+    
+    """
+    @classmethod
+    def define_tables(cls, metadata):
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+        )
+    
+    @testing.resolve_artifact_names
+    def test_flush_raises(self):
+        class T1(_base.ComparableEntity):
+            @reconstructor
+            def go(self):
+                # blow away 'id', no change event.
+                # this simulates a callable occuring
+                # before 'id' was even populated, i.e. a callable
+                # within an attribute_mapped_collection
+                self.__dict__.pop('id', None)
+                
+                # generate a change event, perhaps this occurs because
+                # someone wrote a broken attribute_mapped_collection that 
+                # inappropriately fires off change events when it should not,
+                # now we're dirty
+                self.data = 'foo bar'
+                
+                # blow away that change, so an UPDATE does not occur
+                # (since it would break)
+                self.__dict__.pop('data', None)
+                
+                # flush ! any lazyloader here would trigger
+                # autoflush, for example.
+                sess.flush()
+                
+        mapper(T1, t1)
+        
+        sess = Session()
+        sess.add(T1(data='test', id=5))
+        sess.commit()
+        sess.close()
+        
+        # make sure that invalid state doesn't get into the session
+        # with the wrong key.  If the identity key is not NULL, at least
+        # the population process would continue after the erroneous flush
+        # and thing would right themselves.
+        assert_raises_message(sa.orm.exc.FlushError,
+                              'has a NULL identity key.  Check if this '
+                              'flush is occuring at an inappropriate '
+                              'time, such as during a load operation.',
+                              sess.query(T1).first)
+        
+        
+    
 class RowSwitchTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

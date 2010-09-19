@@ -62,7 +62,7 @@ def replace_file(s, newfile):
         raise ValueError("Couldn't find suitable create_engine call to replace '%s' in it" % oldfile)
     return s
 
-for filename in ('ormtutorial', 'sqlexpression'):
+for filename in ('orm/tutorial', 'core/tutorial'):
 	filename = '%s.rst' % filename
 	s = open(filename).read()
 	#s = replace_file(s, ':memory:')

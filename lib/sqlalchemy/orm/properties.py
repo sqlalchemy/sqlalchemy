@@ -60,7 +60,17 @@ class ColumnProperty(StrategizedProperty):
                                             self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
-        self.doc = kwargs.pop('doc', getattr(columns[0], 'doc', None))
+        
+        if 'doc' in kwargs:
+            self.doc = kwargs.pop('doc')
+        else:
+            for col in reversed(self.columns):
+                doc = getattr(col, 'doc', None)
+                if doc is not None:
+                    self.doc = doc
+                    break
+            else:
+                self.doc = None
         
         if kwargs:
             raise TypeError(
@@ -106,8 +116,8 @@ class ColumnProperty(StrategizedProperty):
                         group=self.group, 
                         *self.columns)
 
-    def _getattr(self, state, dict_, column):
-        return state.get_impl(self.key).get(state, dict_)
+    def _getattr(self, state, dict_, column, passive=False):
+        return state.get_impl(self.key).get(state, dict_, passive=passive)
 
     def _getcommitted(self, state, dict_, column, passive=False):
         return state.get_impl(self.key).\
@@ -181,8 +191,8 @@ class CompositeProperty(ColumnProperty):
         # which issues assertions that do not apply to CompositeColumnProperty
         super(ColumnProperty, self).do_init()
 
-    def _getattr(self, state, dict_, column):
-        obj = state.get_impl(self.key).get(state, dict_)
+    def _getattr(self, state, dict_, column, passive=False):
+        obj = state.get_impl(self.key).get(state, dict_, passive=passive)
         return self.get_col_value(column, obj)
 
     def _getcommitted(self, state, dict_, column, passive=False):
@@ -434,6 +444,7 @@ class RelationshipProperty(StrategizedProperty):
         comparator_factory=None,
         single_parent=False, innerjoin=False,
         doc=None,
+        load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None, query_class=None):
 
         self.uselist = uselist
@@ -458,6 +469,7 @@ class RelationshipProperty(StrategizedProperty):
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension
+        self.load_on_pending = load_on_pending
         self.comparator_factory = comparator_factory or \
                                     RelationshipProperty.Comparator
         self.comparator = self.comparator_factory(self, None)
@@ -710,7 +722,9 @@ class RelationshipProperty(StrategizedProperty):
             self.prop.parent.compile()
             return self.prop
 
-    def compare(self, op, value, value_is_parent=False, alias_secondary=True):
+    def compare(self, op, value, 
+                            value_is_parent=False, 
+                            alias_secondary=True):
         if op == operators.eq:
             if value is None:
                 if self.uselist:
@@ -720,14 +734,15 @@ class RelationshipProperty(StrategizedProperty):
                                     value_is_parent=value_is_parent,
                                     alias_secondary=alias_secondary)
             else:
-                    return self._optimized_compare(value, 
-                                    value_is_parent=value_is_parent,
-                                    alias_secondary=alias_secondary)
+                return self._optimized_compare(value, 
+                                value_is_parent=value_is_parent,
+                                alias_secondary=alias_secondary)
         else:
             return op(self.comparator, value)
 
     def _optimized_compare(self, value, value_is_parent=False, 
-                                    adapt_source=None, alias_secondary=True):
+                                    adapt_source=None, 
+                                    alias_secondary=True):
         if value is not None:
             value = attributes.instance_state(value)
         return self._get_strategy(strategies.LazyLoader).lazy_clause(value,
@@ -1197,6 +1212,10 @@ class RelationshipProperty(StrategizedProperty):
                       'when single_parent is not set.   Set '
                       'single_parent=True on the relationship().'
                       % self)
+        if self.direction is MANYTOONE and self.passive_deletes:
+            util.warn("On %s, 'passive_deletes' is normally configured "
+                      "on one-to-many, one-to-one, many-to-many relationships only."
+                       % self)
         
     def _determine_local_remote_pairs(self):
         if not self.local_remote_pairs:

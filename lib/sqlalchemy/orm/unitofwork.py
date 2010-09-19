@@ -219,7 +219,7 @@ class UOWTransaction(object):
         
     def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
-        for mapper in mapper.base_mapper.polymorphic_iterator():
+        for mapper in mapper.base_mapper.self_and_descendants:
             for state in self.mappers[mapper]:
                 if self.states[state] == checktup:
                     yield state
@@ -318,11 +318,11 @@ class IterateMappersMixin(object):
     def _mappers(self, uow):
         if self.fromparent:
             return iter(
-                m for m in self.dependency_processor.parent.polymorphic_iterator()
+                m for m in self.dependency_processor.parent.self_and_descendants
                 if uow._mapper_for_dep[(m, self.dependency_processor)]
             )
         else:
-            return self.dependency_processor.mapper.polymorphic_iterator()
+            return self.dependency_processor.mapper.self_and_descendants
     
 class Preprocess(IterateMappersMixin):
     def __init__(self, dependency_processor, fromparent):

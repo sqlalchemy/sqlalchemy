@@ -571,9 +571,10 @@ class FBDialect(default.DefaultDialect):
             if row['fdefault'] is not None:
                 # the value comes down as "DEFAULT 'value'": there may be
                 # more than one whitespace around the "DEFAULT" keyword
+                # and it may also be lower case 
                 # (see also http://tracker.firebirdsql.org/browse/CORE-356)
                 defexpr = row['fdefault'].lstrip()
-                assert defexpr[:8].rstrip() == \
+                assert defexpr[:8].rstrip().upper() == \
                             'DEFAULT', "Unrecognized default value: %s" % \
                             defexpr
                 defvalue = defexpr[8:].strip()

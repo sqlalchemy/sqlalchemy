@@ -132,13 +132,30 @@ class Pool(log.Identified):
                 self.add_listener(l)
 
     def unique_connection(self):
+        """Produce a DBAPI connection that is not referenced by any
+        thread-local context.
+        
+        This method is different from :meth:`.Pool.connect` only if the
+        ``use_threadlocal`` flag has been set to ``True``.
+        
+        """
+        
         return _ConnectionFairy(self).checkout()
 
     def create_connection(self):
+        """Called by subclasses to create a new ConnectionRecord."""
+        
         return _ConnectionRecord(self)
 
     def recreate(self):
-        """Return a new instance with identical creation arguments."""
+        """Return a new :class:`.Pool`, of the same class as this one
+        and configured with identical creation arguments.
+        
+        This method is used in conjunection with :meth:`dispose` 
+        to close out an entire :class:`.Pool` and create a new one in 
+        its place.
+        
+        """
 
         raise NotImplementedError()
 
@@ -149,11 +166,19 @@ class Pool(log.Identified):
         remaining open, It is advised to not reuse the pool once dispose()
         is called, and to instead use a new pool constructed by the
         recreate() method.
+        
         """
 
         raise NotImplementedError()
 
     def connect(self):
+        """Return a DBAPI connection from the pool.
+        
+        The connection is instrumented such that when its 
+        ``close()`` method is called, the connection will be returned to 
+        the pool.
+        
+        """
         if not self._use_threadlocal:
             return _ConnectionFairy(self).checkout()
 
@@ -169,17 +194,33 @@ class Pool(log.Identified):
         return agent.checkout()
 
     def return_conn(self, record):
+        """Given a _ConnectionRecord, return it to the :class:`.Pool`.
+        
+        This method is called when an instrumented DBAPI connection
+        has its ``close()`` method called.
+        
+        """
         if self._use_threadlocal and hasattr(self._threadconns, "current"):
             del self._threadconns.current
         self.do_return_conn(record)
 
     def get(self):
+        """Return a non-instrumented DBAPI connection from this :class:`.Pool`.
+        
+        This is called by ConnectionRecord in order to get its DBAPI 
+        resource.
+        
+        """
         return self.do_get()
 
     def do_get(self):
+        """Implementation for :meth:`get`, supplied by subclasses."""
+        
         raise NotImplementedError()
 
     def do_return_conn(self, conn):
+        """Implementation for :meth:`return_conn`, supplied by subclasses."""
+        
         raise NotImplementedError()
 
     def status(self):

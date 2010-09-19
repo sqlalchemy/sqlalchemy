@@ -1269,10 +1269,15 @@ class ClauseElement(Visitable):
                 return engine
         else:
             return None
-
+    
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.execute` method.')
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`."""
-
+        """Compile and execute this :class:`ClauseElement`.
+        
+        """
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
@@ -1284,9 +1289,13 @@ class ClauseElement(Visitable):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.scalar` method.')
     def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`, returning the
-        result's scalar representation.
+        """Compile and execute this :class:`ClauseElement`, returning
+        the result's scalar representation.
         
         """
         return self.execute(*multiparams, **params).scalar()
@@ -1843,17 +1852,19 @@ class ColumnElement(ClauseElement, _CompareMixin):
         descending selectable.
 
         """
-
-        if name:
-            co = ColumnClause(name, selectable, type_=getattr(self,
-                              'type', None))
+        if name is None:
+            name = self.anon_label
+            # TODO: may want to change this to anon_label,
+            # or some value that is more useful than the
+            # compiled form of the expression
+            key = str(self)
         else:
-            name = str(self)
-            co = ColumnClause(self.anon_label, selectable,
-                              type_=getattr(self, 'type', None))
-        
+            key = name
+            
+        co = ColumnClause(name, selectable, type_=getattr(self,
+                          'type', None))
         co.proxies = [self]
-        selectable.columns[name] = co
+        selectable.columns[key] = co
         return co
 
     def compare(self, other, use_proxies=False, equivalents=None, **kw):
@@ -2401,7 +2412,7 @@ class Executable(_Generative):
           COMMIT will be invoked in order to provide its "autocommit" feature.
           Typically, all INSERT/UPDATE/DELETE statements as well as
           CREATE/DROP statements have autocommit behavior enabled; SELECT
-          constructs do not. Use this option when invokving a SELECT or other
+          constructs do not. Use this option when invoking a SELECT or other
           specific SQL construct where COMMIT is desired (typically when
           calling stored procedures and such).
           
@@ -2435,6 +2446,27 @@ class Executable(_Generative):
             
         """
         self._execution_options = self._execution_options.union(kw)
+
+    def execute(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`."""
+
+        e = self.bind
+        if e is None:
+            label = getattr(self, 'description', self.__class__.__name__)
+            msg = ('This %s is not bound and does not support direct '
+                   'execution. Supply this statement to a Connection or '
+                   'Engine for execution. Or, assign a bind to the statement '
+                   'or the Metadata of its underlying tables to enable '
+                   'implicit execution via this method.' % label)
+            raise exc.UnboundExecutionError(msg)
+        return e._execute_clauseelement(self, multiparams, params)
+
+    def scalar(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`, returning the
+        result's scalar representation.
+        
+        """
+        return self.execute(*multiparams, **params).scalar()
 
 # legacy, some outside users may be calling this
 _Executable = Executable
@@ -3653,8 +3685,7 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, element):
         self.element = element
-        cols = list(element.c)
-        self.type = cols[0].type
+        self.type = element._scalar_type()
 
     @property
     def columns(self):
@@ -3705,7 +3736,10 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             self.selects.append(s.self_group(self))
 
         _SelectBaseMixin.__init__(self, **kwargs)
-
+    
+    def _scalar_type(self):
+        return self.selects[0]._scalar_type()
+        
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -3877,6 +3911,11 @@ class Select(_SelectBaseMixin, FromClause):
                             "correlation manually." % self)
 
         return froms
+
+    def _scalar_type(self):
+        elem = self._raw_columns[0]
+        cols = list(elem._select_iterable)
+        return cols[0].type
 
     @property
     def froms(self):

@@ -251,7 +251,8 @@ Similarly, :func:`comparable_using` is a front end for the
 Defining SQL Expressions
 ========================
 
-The usage of :func:`.column_property` with Declarative is
+The usage of :func:`.column_property` with Declarative to define
+load-time, mapped SQL expressions is
 pretty much the same as that described in
 :ref:`mapper_sql_expressions`. Local columns within the same
 class declaration can be referenced directly::
@@ -390,6 +391,8 @@ class declaration::
                         'version_id_col': timestamp,
                         'version_id_generator': lambda v:datetime.now()
                     }
+
+.. _declarative_inheritance:
 
 Inheritance Configuration
 =========================
@@ -1189,7 +1192,7 @@ def _deferred_relationship(cls, prop):
                     return x
             except NameError, n:
                 raise exceptions.InvalidRequestError(
-                    "When compiling mapper %s, expression %r failed to "
+                    "When initializing mapper %s, expression %r failed to "
                     "locate a name (%r). If this is a class name, consider "
                     "adding this relationship() to the %r class after "
                     "both dependent classes have been defined." % 

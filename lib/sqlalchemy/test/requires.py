@@ -247,6 +247,12 @@ def sane_rowcount(fn):
         skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     )
 
+def dbapi_lastrowid(fn):
+    return _chain_decorators_on(
+        fn,
+        fails_on_everything_except('mysql+mysqldb', 'mysql+oursql', 'sqlite+pysqlite')
+    )
+    
 def sane_multi_rowcount(fn):
     return _chain_decorators_on(
         fn,
@@ -257,7 +263,7 @@ def reflects_pk_names(fn):
     """Target driver reflects the name of primary key constraints."""
     return _chain_decorators_on(
         fn,
-        fails_on_everything_except('postgresql')
+        fails_on_everything_except('postgresql', 'oracle')
     )
     
 def python2(fn):

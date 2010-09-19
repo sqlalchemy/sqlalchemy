@@ -734,7 +734,12 @@ class DetectKeySwitch(DependencyProcessor):
 
     def per_property_preprocessors(self, uow):
         if self.prop._reverse_property:
-            return
+            if self.passive_updates:
+                return
+            else:
+                if False in (prop.passive_updates for \
+                        prop in self.prop._reverse_property):
+                    return
         
         uow.register_preprocessor(self, False)
 
@@ -797,14 +802,14 @@ class DetectKeySwitch(DependencyProcessor):
         if switchers:
             # if primary key values have actually changed somewhere, perform
             # a linear search through the UOW in search of a parent.
-            # note that this handler isn't used if the many-to-one 
-            # relationship has a backref.
             for state in uowcommit.session.identity_map.all_states():
                 if not issubclass(state.class_, self.parent.class_):
                     continue
                 dict_ = state.dict
-                related = dict_.get(self.key)
-                if related is not None:
+                related = state.get_impl(self.key).get(state, dict_,
+                        passive=self.passive_updates)
+                if related is not attributes.PASSIVE_NO_RESULT and \
+                    related is not None:
                     related_state = attributes.instance_state(dict_[self.key])
                     if related_state in switchers:
                         uowcommit.register_object(state, 

@@ -333,7 +333,7 @@ class InstanceState(object):
                         previous = dict_[attr.key]
                 else:
                     previous = attr.get(self, dict_)
-
+                
             if should_copy and previous not in (None, NO_VALUE, NEVER_SET):
                 previous = attr.copy(previous)
 

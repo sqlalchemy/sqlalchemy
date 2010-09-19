@@ -1,8 +1,11 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from sqlalchemy.test.testing import assert_raises
+from sqlalchemy.test.testing import assert_raises_message
+from sqlalchemy.test.testing import emits_warning
+
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
-    ForeignKeyConstraint, ColumnDefault
+    ForeignKeyConstraint, ColumnDefault, Index
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
@@ -245,6 +248,62 @@ class MetaDataTest(TestBase, ComparesTables):
             == table2_c.c.myid))
         eq_(str(table_c.join(table2_c).onclause),
             'someschema.mytable.myid = someschema.othertable.myid')
+
+    def test_tometadata_kwargs(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            mysql_engine='InnoDB',
+        )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+
+        eq_(table.kwargs,table_c.kwargs)
+
+    def test_tometadata_indexes(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('data1', Integer, index=True),
+            Column('data2', Integer),
+        )
+        Index('multi',table.c.data1,table.c.data2),
+        
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+
+        def _get_key(i):
+            return [i.name,i.unique] + \
+                    sorted(i.kwargs.items()) + \
+                    i.columns.keys()
+        
+        eq_(
+            sorted([_get_key(i) for i in table.indexes]),
+            sorted([_get_key(i) for i in table_c.indexes])
+        )
+
+    @emits_warning("Table '.+' already exists within the given MetaData")
+    def test_tometadata_already_there(self):
+        
+        meta1 = MetaData()
+        table1 = Table('mytable', meta1,
+            Column('myid', Integer, primary_key=True),
+        )
+        meta2 = MetaData()
+        table2 = Table('mytable', meta2,
+            Column('yourid', Integer, primary_key=True),
+        )
+
+        meta3 = MetaData()
+        
+        table_c = table1.tometadata(meta2)
+        table_d = table2.tometadata(meta2)
+
+        # d'oh!
+        assert table_c is table_d
 
     def test_tometadata_default_schema(self):
         meta = MetaData()

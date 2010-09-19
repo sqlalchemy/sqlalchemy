@@ -51,7 +51,7 @@ MANYTOMANY = util.symbol('MANYTOMANY')
 
 class MapperExtension(object):
     """Base implementation for customizing ``Mapper`` behavior.
-
+    
     New extension classes subclass ``MapperExtension`` and are specified
     using the ``extension`` mapper() argument, which is a single
     ``MapperExtension`` or a list of such.   A single mapper
@@ -74,8 +74,9 @@ class MapperExtension(object):
     when this symbol is returned.  Like EXT_CONTINUE, it also
     has additional significance in some cases that a default
     mapper activity will not be performed.
-
+    
     """
+
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
@@ -185,7 +186,7 @@ class MapperExtension(object):
         \**flags
           extra information about the row, same as criterion in
           ``create_row_processor()`` method of
-           :class:`~sqlalchemy.orm.interfaces.MapperProperty`
+          :class:`~sqlalchemy.orm.interfaces.MapperProperty`
         """
 
         return EXT_CONTINUE
@@ -324,10 +325,10 @@ class MapperExtension(object):
 
     def after_delete(self, mapper, connection, instance):
         """Receive an object instance after that instance is deleted.
-        
-        The return value is only significant within the ``MapperExtension`` 
+
+        The return value is only significant within the ``MapperExtension``
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE
@@ -552,11 +553,29 @@ class MapperProperty(object):
         return operator(self.comparator, value)
 
 class PropComparator(expression.ColumnOperators):
-    """defines comparison operations for MapperProperty objects.
+    """Defines comparison operations for MapperProperty objects.
 
-    PropComparator instances should also define an accessor 'property'
-    which returns the MapperProperty associated with this
-    PropComparator.
+    User-defined subclasses of :class:`.PropComparator` may be created. The
+    built-in Python comparison and math operator methods, such as
+    ``__eq__()``, ``__lt__()``, ``__add__()``, can be overridden to provide
+    new operator behaivor. The custom :class:`.PropComparator` is passed to
+    the mapper property via the ``comparator_factory`` argument. In each case,
+    the appropriate subclass of :class:`.PropComparator` should be used::
+    
+        from sqlalchemy.orm.properties import \\
+                                ColumnProperty,\\
+                                CompositeProperty,\\
+                                RelationshipProperty
+
+        class MyColumnComparator(ColumnProperty.Comparator):
+            pass
+        
+        class MyCompositeComparator(CompositeProperty.Comparator):
+            pass
+            
+        class MyRelationshipComparator(RelationshipProperty.Comparator):
+            pass
+    
     """
 
     def __init__(self, prop, mapper, adapter=None):

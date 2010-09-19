@@ -3,6 +3,116 @@
 =======
 CHANGES
 =======
+0.6.5
+=====
+- orm
+  - Fixed recursion bug which could occur when moving
+    an object from one reference to another, with 
+    backrefs involved, where the initiating parent
+    was a subclass (with its own mapper) of the 
+    previous parent.
+
+  - Fixed a regression in 0.6.4 which occurred if you 
+    passed an empty list to "include_properties" on 
+    mapper() [ticket:1918]
+  
+  - The exception raised by Session when it is used
+    subsequent to a subtransaction rollback (which is what
+    happens when a flush fails in autocommit=False mode) has
+    now been reworded (this is the "inactive due to a
+    rollback in a subtransaction" message). In particular,
+    if the rollback was due to an exception during flush(),
+    the message states this is the case, and reiterates the
+    string form of the original exception that occurred
+    during flush. If the session is closed due to explicit
+    usage of subtransactions (not very common), the message
+    just states this is the case.
+
+  - The exception raised by Mapper when repeated requests to
+    its initialization are made after initialization already
+    failed no longer assumes the "hasattr" case, since
+    there's other scenarios in which this message gets
+    emitted, and the message also does not compound onto
+    itself multiple times - you get the same message for
+    each attempt at usage. The misnomer "compiles" is being
+    traded out for "initialize".
+    
+  - Added an assertion during flush which ensures
+    that no NULL-holding identity keys were generated
+    on "newly persistent" objects.
+    This can occur when user defined code inadvertently
+    triggers flushes on not-fully-loaded objects.
+
+  - lazy loads for relationship attributes now use
+    the current state, not the "committed" state,
+    of foreign and primary key attributes
+    when issuing SQL, if a flush is not in process.
+    Previously, only the database-committed state would 
+    be used.  In particular, this would cause a many-to-one
+    get()-on-lazyload operation to fail, as autoflush
+    is not triggered on these loads when the attributes are
+    determined and the "committed" state may not be 
+    available.  [ticket:1910]
+    
+  - A new flag on relationship(), load_on_pending, allows
+    the lazy loader to fire off on pending objects without a
+    flush taking place, as well as a transient object that's
+    been manually "attached" to the session. Note that this
+    flag blocks attribute events from taking place when an
+    object is loaded, so backrefs aren't available until
+    after a flush. The flag is only intended for very
+    specific use cases.
+    
+  - Slight improvement to the behavior of
+    "passive_updates=False" when placed only on the
+    many-to-one side of a relationship; documentation has
+    been clarified that passive_updates=False should really
+    be on the one-to-many side.
+
+  - Placing passive_deletes=True on a many-to-one emits
+    a warning, since you probably intended to put it on
+    the one-to-many side.
+  
+  - Fixed bug that would prevent "subqueryload" from
+    working correctly with single table inheritance 
+    for a relationship from a subclass - the "where 
+    type in (x, y, z)" only gets placed on the inside,
+    instead of repeatedly.
+    
+  - When using from_self() with single table inheritance,
+    the "where type in (x, y, z)" is placed on the outside
+    of the query only, instead of repeatedly.   May make
+    some more adjustments to this.
+
+- sql
+   - Table.tometadata() now copies Index objects associated
+     with the Table as well.
+
+   - Table.tometadata() issues a warning if the given Table 
+     is already present in the target MetaData - the existing
+     Table object is returned.
+
+   - An informative error message is raised if a Column 
+     which has not yet been assigned a name, i.e. as in 
+     declarative, is used in a context where it is
+     exported to the columns collection of an enclosing
+     select() construct, or if any construct involving
+     that column is compiled before its name is 
+     assigned.
+
+   - as_scalar(), label() can be called on a selectable
+     which contains a Column that is not yet named.
+     [ticket:1862]
+     
+- engine
+   
+   - Fixed a regression in 0.6.4 whereby the change that
+     allowed cursor errors to be raised consistently broke
+     the result.lastrowid accessor.   Test coverage has
+     been added for result.lastrowid.   Note that lastrowid
+     is only supported by Pysqlite and some MySQL drivers,
+     so isn't super-useful in the general case.
+     
 0.6.4
 =====
 - orm
@@ -14,6 +124,52 @@ CHANGES
     for schemes that may be specifying 
     ConcurrentModificationError in an "except:"
     clause.
+
+  - Added a mutex to the identity map which mutexes
+    remove operations against iteration methods,
+    which now pre-buffer before returning an 
+    iterable.   This because asyncrhonous gc 
+    can remove items via the gc thread at any time.
+    [ticket:1891]
+    
+  - The Session class is now present in sqlalchemy.orm.*.
+    We're moving away from the usage of create_session(),
+    which has non-standard defaults, for those situations
+    where a one-step Session constructor is desired. Most
+    users should stick with sessionmaker() for general use,
+    however.
+  
+  - query.with_parent() now accepts transient objects
+    and will use the non-persistent values of their pk/fk
+    attributes in order to formulate the criterion.  
+    Docs are also clarified as to the purpose of with_parent().
+    
+  - The include_properties and exclude_properties arguments
+    to mapper() now accept Column objects as members in 
+    addition to strings.  This so that same-named Column
+    objects, such as those within a join(), can be
+    disambiguated.
+
+  - A warning is now emitted if a mapper is created against a
+    join or other single selectable that includes multiple
+    columns with the same name in its .c. collection,
+    and those columns aren't explictly named as part of
+    the same or separate attributes (or excluded).
+    In 0.7 this warning will be an exception.   Note that
+    this warning is not emitted when the combination occurs
+    as a result of inheritance, so that attributes
+    still allow being overridden naturally.  
+    [ticket:1896].  In 0.7 this will be improved further.
+    
+  - The primary_key argument to mapper() can now specify
+    a series of columns that are only a subset of 
+    the calculated "primary key" columns of the mapped 
+    selectable, without an error being raised.  This
+    helps for situations where a selectable's effective
+    primary key is simpler than the number of columns
+    in the selectable that are actually marked as 
+    "primary_key", such as a join against two 
+    tables on their primary key columns [ticket:1896].
     
   - An object that's been deleted now gets a flag
     'deleted', which prohibits the object from
@@ -121,8 +277,36 @@ CHANGES
   - object_session() raises the proper 
     UnmappedInstanceError when presented with an
     unmapped instance.  [ticket:1881]
+
+  - Applied further memoizations to calculated Mapper
+    properties, with significant (~90%) runtime mapper.py
+    call count reduction in heavily polymorphic mapping
+    configurations.
+
+  - mapper _get_col_to_prop private method used 
+    by the versioning example is deprecated; 
+    now use mapper.get_property_by_column() which 
+    will remain the public method for this.
+
+  - the versioning example works correctly now
+    if versioning on a col that was formerly 
+    NULL.
     
 - sql
+  - Calling execute() on an alias() construct is pending
+    deprecation for 0.7, as it is not itself an
+    "executable" construct. It currently "proxies" its
+    inner element and is conditionally "executable" but
+    this is not the kind of ambiguity we like these days.
+    
+  - The execute() and scalar() methods of ClauseElement
+    are now moved appropriately to the Executable
+    subclass. ClauseElement.execute()/ scalar() are still
+    present and are pending deprecation in 0.7, but note
+    these would always raise an error anyway if you were
+    not an Executable (unless you were an alias(), see
+    previous note).
+    
   - Added basic math expression coercion for 
     Numeric->Integer,
     so that resulting type is Numeric regardless
@@ -222,10 +406,46 @@ CHANGES
   - Fixed "default schema" query to work with
     pymssql backend.
 
+- firebird
+  - Fixed bug whereby a column default would fail to 
+    reflect if the "default" keyword were lower case.
+    
 - oracle
   - Added ROWID type to the Oracle dialect, for those
     cases where an explicit CAST might be needed.
     [ticket:1879]
+
+  - Oracle reflection of indexes has been tuned so
+    that indexes which include some or all primary
+    key columns, but not the same set of columns
+    as that of the primary key, are reflected.
+    Indexes which contain the identical columns
+    as that of the primary key are skipped within
+    reflection, as the index in that case is assumed
+    to be the auto-generated primary key index.
+    Previously, any index with PK columns present
+    would be skipped.  Thanks to Kent Bower
+    for the patch.  [ticket:1867]
+
+  - Oracle now reflects the names of primary key
+    constraints - also thanks to Kent Bower.
+    [ticket:1868]
+
+- informix
+  - Applied patches from [ticket:1904] to get
+    basic Informix functionality up again.  We
+    rely upon end-user testing to ensure that
+    Informix is working to some degree.
+
+- documentation
+  - The docs have been reorganized such that the "API
+    Reference" section is gone - all the docstrings from
+    there which were public API are moved into the
+    context of the main doc section that talks about it.
+    Main docs divided into "SQLAlchemy Core" and
+    "SQLAlchemy ORM" sections, mapper/relationship docs
+    have been broken out. Lots of sections rewritten
+    and/or reorganized.
     
 - examples
   - The beaker_caching example has been reorgnized
@@ -305,7 +525,7 @@ CHANGES
     mode and must run isinstance() on every value
     to check if its Decimal already. Reopen of
     [ticket:1840]
-    
+
 0.6.2
 =====
 - orm

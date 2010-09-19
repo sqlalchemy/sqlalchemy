@@ -216,7 +216,7 @@ class QueryTest(TestBase):
                 {'user_name':'jack'},
             )
             assert r.closed
-        
+    
     def test_row_iteration(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
@@ -619,6 +619,16 @@ class QueryTest(TestBase):
         eq_(r[users.c.user_name], 'jack')
         eq_(r.user_name, 'jack')
 
+    @testing.requires.dbapi_lastrowid
+    def test_native_lastrowid(self):
+        r = testing.db.execute(
+            users.insert(),
+            {'user_id':1, 'user_name':'ed'}
+        )
+        
+        eq_(r.lastrowid, 1)
+        
+        
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
@@ -743,6 +753,7 @@ class QueryTest(TestBase):
         r = testing.db.execute('select user_name from query_users').first()
         eq_(len(r), 1)
 
+    @testing.uses_deprecated(r'.*which subclass Executable')
     def test_cant_execute_join(self):
         try:
             users.join(addresses).execute()
@@ -784,7 +795,10 @@ class QueryTest(TestBase):
         )
         shadowed.create(checkfirst=True)
         try:
-            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', _parent='Hidden parent', _row='Hidden row')
+            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', 
+                                            row='Without light there is no shadow', 
+                                            _parent='Hidden parent', 
+                                            _row='Hidden row')
             r = shadowed.select(shadowed.c.shadow_id==1).execute().first()
             self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
             self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')

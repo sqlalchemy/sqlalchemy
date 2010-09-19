@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, Unicode
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session, backref
+from sqlalchemy.orm import mapper, relationship, create_session, backref, Session
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
@@ -499,24 +499,49 @@ class SelfReferentialTest(_base.MappedTest):
             pass
 
     @testing.resolve_artifact_names
-    def test_one_to_many(self):
+    def test_one_to_many_on_m2o(self):
         mapper(Node, nodes, properties={
             'children': relationship(Node,
                                  backref=sa.orm.backref('parentnode',
                                             remote_side=nodes.c.name,
                                             passive_updates=False),
-                                 passive_updates=False)})
+                                 )})
 
-        sess = create_session()
+        sess = Session()
+        n1 = Node(name='n1')
+        sess.add(n1)
+        n2 = Node(name='n11', parentnode=n1)
+        n3 = Node(name='n12', parentnode=n1)
+        n4 = Node(name='n13', parentnode=n1)
+        sess.add_all([n2, n3, n4])
+        sess.commit()
+        
+        n1.name = 'new n1'
+        sess.commit()
+        eq_(['new n1', 'new n1', 'new n1'],
+            [n.parent
+             for n in sess.query(Node).filter(
+                 Node.name.in_(['n11', 'n12', 'n13']))])
+
+    @testing.resolve_artifact_names
+    def test_one_to_many_on_o2m(self):
+        mapper(Node, nodes, properties={
+            'children': relationship(Node,
+                                 backref=sa.orm.backref('parentnode',
+                                            remote_side=nodes.c.name),
+                                passive_updates=False
+                                 )})
+
+        sess = Session()
         n1 = Node(name='n1')
         n1.children.append(Node(name='n11'))
         n1.children.append(Node(name='n12'))
         n1.children.append(Node(name='n13'))
         sess.add(n1)
-        sess.flush()
+        sess.commit()
 
         n1.name = 'new n1'
-        sess.flush()
+        sess.commit()
         eq_(n1.children[1].parent, 'new n1')
         eq_(['new n1', 'new n1', 'new n1'],
             [n.parent
@@ -540,18 +565,16 @@ class SelfReferentialTest(_base.MappedTest):
             }
         )
 
-        sess = create_session()
+        sess = Session()
         n1 = Node(name='n1')
         n11 = Node(name='n11', parentnode=n1)
         n12 = Node(name='n12', parentnode=n1)
         n13 = Node(name='n13', parentnode=n1)
         sess.add_all([n1, n11, n12, n13])
-        sess.flush()
+        sess.commit()
 
         n1.name = 'new n1'
-        sess.flush()
-        if passive:
-            sess.expire_all()
+        sess.commit()
         eq_(['new n1', 'new n1', 'new n1'],
              [n.parent
               for n in sess.query(Node).filter(

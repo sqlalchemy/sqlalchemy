@@ -51,7 +51,7 @@ from sqlalchemy.orm.mapper import reconstructor, validates
 from sqlalchemy.orm import strategies
 from sqlalchemy.orm.query import AliasOption, Query
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.orm.session import Session as _Session
+from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.session import object_session, sessionmaker, \
     make_transient
 from sqlalchemy.orm.scoping import ScopedSession
@@ -66,6 +66,7 @@ __all__ = (
     'Validator',
     'PropComparator',
     'Query',
+    'Session',
     'aliased',
     'backref',
     'class_mapper',
@@ -109,17 +110,19 @@ __all__ = (
 
 
 def scoped_session(session_factory, scopefunc=None):
-    """Provides thread-local management of Sessions.
+    """Provides thread-local or scoped management of :class:`.Session` objects.
 
     This is a front-end function to
-    :class:`~sqlalchemy.orm.scoping.ScopedSession`.
+    :class:`.ScopedSession`.
 
     :param session_factory: a callable function that produces
       :class:`Session` instances, such as :func:`sessionmaker`.
 
-    :param scopefunc: optional, TODO
+    :param scopefunc: Optional "scope" function which would be
+      passed to the :class:`.ScopedRegistry`.  If None, the
+      :class:`.ThreadLocalRegistry` is used by default.
 
-    :returns: an :class:`~sqlalchemy.orm.scoping.ScopedSession` instance
+    :returns: an :class:`.ScopedSession` instance
 
     Usage::
 
@@ -173,17 +176,13 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault('autoflush', False)
     kwargs.setdefault('autocommit', True)
     kwargs.setdefault('expire_on_commit', False)
-    return _Session(bind=bind, **kwargs)
+    return Session(bind=bind, **kwargs)
 
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
     
-    .. note:: This function is known as :func:`relation` in all versions
-       of SQLAlchemy prior to version 0.6beta2, including the 0.5 and 0.4
-       series. :func:`~sqlalchemy.orm.relationship()` is only available
-       starting with SQLAlchemy 0.6beta2. The :func:`relation` name will
-       remain available for the foreseeable future in order to enable
-       cross-compatibility.
+    .. note:: :func:`relationship` is historically known as
+       :func:`relation` prior to version 0.6.
     
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`RelationshipProperty`.
@@ -260,6 +259,8 @@ def relationship(argument, secondary=None, **kwargs):
     :param collection_class:
       a class or callable that returns a new list-holding object. will
       be used in place of a plain list for storing elements.
+      Behavior of this attribute is described in detail at
+      :ref:`custom_collections`.
 
     :param comparator_factory:
       a class which extends :class:`RelationshipProperty.Comparator` which
@@ -317,25 +318,28 @@ def relationship(argument, secondary=None, **kwargs):
       which is already higher up in the chain.  This option applies
       both to joined- and subquery- eager loaders.
 
-    :param lazy=('select'|'joined'|'subquery'|'noload'|'dynamic'): specifies 
-      how the related items should be loaded. Values include:
+    :param lazy='select': specifies 
+      how the related items should be loaded.  Default value is 
+      ``select``.  Values include:
 
-      * 'select' - items should be loaded lazily when the property is first
-        accessed.
+      * ``select`` - items should be loaded lazily when the property is first
+        accessed, using a separate SELECT statement.
 
-      * 'joined' - items should be loaded "eagerly" in the same query as
-        that of the parent, using a JOIN or LEFT OUTER JOIN.
+      * ``joined`` - items should be loaded "eagerly" in the same query as
+        that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
+        the join is "outer" or not is determined by the ``innerjoin``
+        parameter.
               
-      * 'subquery' - items should be loaded "eagerly" within the same
+      * ``subquery`` - items should be loaded "eagerly" within the same
         query as that of the parent, using a second SQL statement
         which issues a JOIN to a subquery of the original
         statement.
 
-      * 'noload' - no loading should occur at any time.  This is to 
+      * ``noload`` - no loading should occur at any time.  This is to 
         support "write-only" attributes, or attributes which are
         populated in some manner specific to the application.
 
-      * 'dynamic' - the attribute will return a pre-configured
+      * ``dynamic`` - the attribute will return a pre-configured
         :class:`~sqlalchemy.orm.query.Query` object for all read 
         operations, onto which further filtering operations can be
         applied before iterating the results.  The dynamic 
@@ -350,6 +354,33 @@ def relationship(argument, secondary=None, **kwargs):
        
       * None - a synonym for 'noload'
        
+      Detailed discussion of loader strategies is at :ref:`loading_toplevel`.
+    
+    :param load_on_pending=False:
+      Indicates loading behavior for transient or pending parent objects.
+      
+      When set to ``True``, causes the lazy-loader to
+      issue a query for a parent object that is not persistent, meaning it has
+      never been flushed.  This may take effect for a pending object when
+      autoflush is disabled, or for a transient object that has been
+      "attached" to a :class:`.Session` but is not part of its pending
+      collection. Attachment of transient objects to the session without
+      moving to the "pending" state is not a supported behavior at this time.
+      
+      Note that the load of related objects on a pending or transient object
+      also does not trigger any attribute change events - no user-defined
+      events will be emitted for these attributes, and if and when the 
+      object is ultimately flushed, only the user-specific foreign key 
+      attributes will be part of the modified state.
+      
+      The load_on_pending flag does not improve behavior
+      when the ORM is used normally - object references should be constructed
+      at the object level, not at the foreign key level, so that they
+      are present in an ordinary way before flush() proceeds.  This flag
+      is not not intended for general use.
+      
+      New in 0.6.5.
+      
     :param order_by:
       indicates the ordering that should be applied when loading these
       items.
@@ -628,7 +659,7 @@ def deferred(*columns, **kwargs):
     return ColumnProperty(deferred=True, *columns, **kwargs)
 
 def mapper(class_, local_table=None, *args, **params):
-    """Return a new :class:`~sqlalchemy.orm.Mapper` object.
+    """Return a new :class:`~.Mapper` object.
 
         :param class\_: The class to be mapped.
 
@@ -670,22 +701,27 @@ def mapper(class_, local_table=None, *args, **params):
         :param concrete: If True, indicates this mapper should use concrete
            table inheritance with its parent mapper.
 
-        :param exclude_properties: A list of properties not to map.  Columns
-           present in the mapped table and present in this list will not be
-           automatically converted into properties. Note that neither this
-           option nor include_properties will allow an end-run around Python
-           inheritance. If mapped class ``B`` inherits from mapped class
-           ``A``, no combination of includes or excludes will allow ``B`` to
-           have fewer properties than its superclass, ``A``.
+        :param exclude_properties: A list or set of string column names to 
+          be excluded from mapping. As of SQLAlchemy 0.6.4, this collection
+          may also include :class:`.Column` objects. Columns named or present
+          in this list will not be automatically mapped. Note that neither
+          this option nor include_properties will allow one to circumvent plan
+          Python inheritance - if mapped class ``B`` inherits from mapped
+          class ``A``, no combination of includes or excludes will allow ``B``
+          to have fewer properties than its superclass, ``A``.
 
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
            instances which will be applied to all operations by this
            :class:`~sqlalchemy.orm.mapper.Mapper`.
 
-        :param include_properties: An inclusive list of properties to map. 
-           Columns present in the mapped table but not present in this list
-           will not be automatically converted into properties.
+        :param include_properties: An inclusive list or set of string column
+          names to map. As of SQLAlchemy 0.6.4, this collection may also
+          include :class:`.Column` objects in order to disambiguate between
+          same-named columns in a selectable (such as a
+          :func:`~.expression.join()`). If this list is not ``None``, columns
+          present in the mapped table but not named or present in this list
+          will not be automatically mapped. See also "exclude_properties".
 
         :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
             this :class:`~sqlalchemy.orm.Mapper` will have an inheritance
@@ -714,7 +750,7 @@ def mapper(class_, local_table=None, *args, **params):
            when a primary key changes on a joined-table inheritance or other
            joined table mapping.
            
-            When True, it is assumed that ON UPDATE CASCADE is configured on
+           When True, it is assumed that ON UPDATE CASCADE is configured on
            the foreign key in the database, and that the database will handle
            propagation of an UPDATE from a source column to dependent rows.
            Note that with databases which enforce referential integrity (i.e.
@@ -723,20 +759,20 @@ def mapper(class_, local_table=None, *args, **params):
            value of the attribute on related items which are locally present
            in the session during a flush.
            
-            When False, it is assumed that the database does not enforce
+           When False, it is assumed that the database does not enforce
            referential integrity and will not be issuing its own CASCADE
            operation for an update. The relationship() will issue the
            appropriate UPDATE statements to the database in response to the
            change of a referenced key, and items locally present in the
            session during a flush will also be refreshed.
            
-            This flag should probably be set to False if primary key changes
+           This flag should probably be set to False if primary key changes
            are expected and the database in use doesn't support CASCADE (i.e.
            SQLite, MySQL MyISAM tables).
            
             Also see the passive_updates flag on :func:`relationship()`.
            
-            A future SQLAlchemy release will provide a "detect" feature for
+           A future SQLAlchemy release will provide a "detect" feature for
            this flag.
 
         :param polymorphic_on: Used with mappers in an inheritance
@@ -852,7 +888,8 @@ def synonym(name, map_column=False, descriptor=None,
                             doc=doc)
 
 def comparable_property(comparator_factory, descriptor=None):
-    """Provide query semantics for an unmanaged attribute.
+    """Provides a method of applying a :class:`.PropComparator` 
+    to any Python descriptor attribute.
 
     Allows a regular Python @property (descriptor) to be used in Queries and
     SQL constructs like a managed attribute.  comparable_property wraps a
@@ -1035,8 +1072,6 @@ def subqueryload(*keys):
     """Return a ``MapperOption`` that will convert the property 
     of the given name into an subquery eager load.
 
-    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
-
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
     examples::
@@ -1060,8 +1095,6 @@ def subqueryload(*keys):
 def subqueryload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into a subquery eager load.
-
-    .. note:: This function is new as of SQLAlchemy version 0.6beta3.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1146,6 +1179,9 @@ def contains_eager(*keys, **kwargs):
 
     See also :func:`eagerload` for the "automatic" version of this 
     functionality.
+
+    For additional examples of :func:`contains_eager` see
+    :ref:`contains_eager`.
 
     """
     alias = kwargs.pop('alias', None)

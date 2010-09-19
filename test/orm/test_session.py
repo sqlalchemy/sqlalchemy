@@ -4,7 +4,7 @@ from sqlalchemy.test.util import gc_collect
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
-    make_transient
+    make_transient, Session
 from sqlalchemy.orm.attributes import instance_state
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
@@ -713,11 +713,38 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.rollback()
         assert_raises_message(sa.exc.InvalidRequestError,
-                              'inactive due to a rollback in a '
-                              'subtransaction', sess.begin,
-                              subtransactions=True)
+                              "This Session's transaction has been "
+                              r"rolled back by a nested rollback\(\) "
+                              "call.  To begin a new transaction, "
+                              r"issue Session.rollback\(\) first.",
+                              sess.begin, subtransactions=True)
         sess.close()
 
+    @testing.resolve_artifact_names
+    def test_preserve_flush_error(self):
+        mapper(User, users)
+        sess = Session()
+
+        sess.add(User(id=5))
+        assert_raises(
+            sa.exc.DBAPIError,
+            sess.commit
+        )
+        
+        for i in range(5):
+            assert_raises_message(sa.exc.InvalidRequestError,
+                              "^This Session's transaction has been "
+                              r"rolled back due to a previous exception during flush. To "
+                              "begin a new transaction with this "
+                              "Session, first issue "
+                              r"Session.rollback\(\). Original exception "
+                              "was:",
+                              sess.commit)
+        sess.rollback()
+        sess.add(User(id=5, name='some name'))
+        sess.commit()
+        
+        
     @testing.resolve_artifact_names
     def test_no_autocommit_with_explicit_commit(self):
         mapper(User, users)
@@ -1383,6 +1410,22 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
+    @testing.resolve_artifact_names
+    def test_identity_map_mutate(self):
+        mapper(User, users)
+
+        sess = Session()
+        
+        sess.add_all([User(name='u1'), User(name='u2'), User(name='u3')])
+        sess.commit()
+        
+        u1, u2, u3 = sess.query(User).all()
+        for i, (key, value) in enumerate(sess.identity_map.iteritems()):
+            if i == 2:
+                del u3
+                gc_collect()
+        
+        
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
