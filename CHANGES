@@ -103,6 +103,12 @@ CHANGES
    - as_scalar(), label() can be called on a selectable
      which contains a Column that is not yet named.
      [ticket:1862]
+
+- declarative
+   - @classproperty (soon/now @mapperproperty) takes effect for 
+     __mapper_args__, __table_args__, __tablename__ on 
+     a base class that is not a mixin, as well as mixins.
+     [ticket:1922]
      
 - engine
    

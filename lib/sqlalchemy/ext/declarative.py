@@ -908,51 +908,63 @@ def _as_declarative(cls, classname, dict_):
     parent_columns = ()
     
     for base in cls.__mro__:
-        if _is_mapped_class(base):
+        class_mapped = _is_mapped_class(base)
+        if class_mapped:
             parent_columns = base.__table__.c.keys()
-        else:
-            for name,obj in vars(base).items():
-                if name == '__mapper_args__':
-                    if not mapper_args:
-                        mapper_args = cls.__mapper_args__
-                elif name == '__tablename__':
-                    if not tablename:
-                        tablename = cls.__tablename__
-                elif name == '__table_args__':
-                    if not table_args:                        
-                        table_args = cls.__table_args__
-                        if base is not cls:
-                            inherited_table_args = True
-                elif base is not cls:
-                    # we're a mixin.
-                    
-                    if isinstance(obj, Column):
-                        if obj.foreign_keys:
-                            raise exceptions.InvalidRequestError(
-                            "Columns with foreign keys to other columns "
-                            "must be declared as @classproperty callables "
-                            "on declarative mixin classes. ")
-                        if name not in dict_ and not (
-                                '__table__' in dict_ and 
-                                name in dict_['__table__'].c
-                                ):
-                            potential_columns[name] = \
-                                    column_copies[obj] = \
-                                    obj.copy()
-                            column_copies[obj]._creation_order = \
-                                    obj._creation_order
-                    elif isinstance(obj, MapperProperty):
+            
+        for name,obj in vars(base).items():
+            if name == '__mapper_args__':
+                if not mapper_args and (
+                                        not class_mapped or 
+                                        isinstance(obj, util.classproperty)
+                                    ):
+                    mapper_args = cls.__mapper_args__
+            elif name == '__tablename__':
+                if not tablename and (
+                                        not class_mapped or 
+                                        isinstance(obj, util.classproperty)
+                                    ):
+                    tablename = cls.__tablename__
+            elif name == '__table_args__':
+                if not table_args and (
+                                        not class_mapped or 
+                                        isinstance(obj, util.classproperty)
+                                    ):
+                    table_args = cls.__table_args__
+                    if base is not cls:
+                        inherited_table_args = True
+            elif class_mapped:
+                continue
+            elif base is not cls:
+                # we're a mixin.
+                
+                if isinstance(obj, Column):
+                    if obj.foreign_keys:
                         raise exceptions.InvalidRequestError(
-                            "Mapper properties (i.e. deferred,"
-                            "column_property(), relationship(), etc.) must "
-                            "be declared as @classproperty callables "
-                            "on declarative mixin classes.")
-                    elif isinstance(obj, util.classproperty):
-                        dict_[name] = ret = \
-                                column_copies[obj] = getattr(cls, name)
-                        if isinstance(ret, (Column, MapperProperty)) and \
-                            ret.doc is None:
-                            ret.doc = obj.__doc__
+                        "Columns with foreign keys to other columns "
+                        "must be declared as @classproperty callables "
+                        "on declarative mixin classes. ")
+                    if name not in dict_ and not (
+                            '__table__' in dict_ and 
+                            name in dict_['__table__'].c
+                            ):
+                        potential_columns[name] = \
+                                column_copies[obj] = \
+                                obj.copy()
+                        column_copies[obj]._creation_order = \
+                                obj._creation_order
+                elif isinstance(obj, MapperProperty):
+                    raise exceptions.InvalidRequestError(
+                        "Mapper properties (i.e. deferred,"
+                        "column_property(), relationship(), etc.) must "
+                        "be declared as @classproperty callables "
+                        "on declarative mixin classes.")
+                elif isinstance(obj, util.classproperty):
+                    dict_[name] = ret = \
+                            column_copies[obj] = getattr(cls, name)
+                    if isinstance(ret, (Column, MapperProperty)) and \
+                        ret.doc is None:
+                        ret.doc = obj.__doc__
 
     # apply inherited columns as we should
     for k, v in potential_columns.items():

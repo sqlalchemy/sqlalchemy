@@ -2458,18 +2458,62 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = 'test'
 
             @classproperty
-            def __mapper_args__(self):
+            def __mapper_args__(cls):
                 args = {}
                 args.update(MyMixin1.__mapper_args__)
                 args.update(MyMixin2.__mapper_args__)
+                if cls.__name__ != 'MyModel':
+                    args.pop('polymorphic_on')
+                    args['polymorphic_identity'] = cls.__name__
+                    
                 return args
             id = Column(Integer, primary_key=True)
-
-        col = MyModel.__mapper__.polymorphic_on
-        eq_(col.name, 'type_')
-        assert col.table is not None
+        
+        class MySubModel(MyModel):
+            pass
+        
+        eq_(
+            MyModel.__mapper__.polymorphic_on.name, 
+            'type_'
+        )
+        assert MyModel.__mapper__.polymorphic_on.table is not None
         eq_(MyModel.__mapper__.always_refresh, True)
+        eq_(MySubModel.__mapper__.always_refresh, True)
+        eq_(MySubModel.__mapper__.polymorphic_identity, 'MySubModel')
+    
+    def test_mapper_args_property(self):
+        class MyModel(Base):
+            
+            @classproperty
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            
+            @classproperty
+            def __table_args__(cls):
+                return {'mysql_engine':'InnoDB'}
+                
+            @classproperty
+            def __mapper_args__(cls):
+                args = {}
+                args['polymorphic_identity'] = cls.__name__
+                return args
+            id = Column(Integer, primary_key=True)
+        
+        class MySubModel(MyModel):
+            id = Column(Integer, ForeignKey('mymodel.id'), primary_key=True)
 
+        class MySubModel2(MyModel):
+            __tablename__ = 'sometable'
+            id = Column(Integer, ForeignKey('mymodel.id'), primary_key=True)
+        
+        eq_(MyModel.__mapper__.polymorphic_identity, 'MyModel')
+        eq_(MySubModel.__mapper__.polymorphic_identity, 'MySubModel')
+        eq_(MyModel.__table__.kwargs['mysql_engine'], 'InnoDB')
+        eq_(MySubModel.__table__.kwargs['mysql_engine'], 'InnoDB')
+        eq_(MySubModel2.__table__.kwargs['mysql_engine'], 'InnoDB')
+        eq_(MyModel.__table__.name, 'mymodel')
+        eq_(MySubModel.__table__.name, 'mysubmodel')
+        
     def test_single_table_no_propagation(self):
 
         class IdColumn:
