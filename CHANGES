@@ -19,6 +19,13 @@ CHANGES
   - Patched a case where query.join() would adapt the
     right side to the right side of the left's join
     inappropriately [ticket:1925]
+
+  - Query.select_from() has been beefed up to help
+    ensure that a subsequent call to query.join()
+    will use the select_from() entity, assuming it's
+    a mapped entity and not a plain selectable, 
+    as the default "left" side, not the first entity 
+    in the Query object's list of entities.
     
   - The exception raised by Session when it is used
     subsequent to a subtransaction rollback (which is what

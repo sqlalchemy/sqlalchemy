@@ -2543,6 +2543,30 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Could not find a FROM",
             sess.query(users.c.id).select_from(users).join, User
         )
+    
+    def test_select_from(self):
+        """Test that the left edge of the join can be set reliably with select_from()."""
+        
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Item.id).select_from(User).join(User.orders).join(Order.items),
+            "SELECT items.id AS items_id FROM users JOIN orders ON "
+            "users.id = orders.user_id JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id JOIN items ON items.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+
+        # here, the join really wants to add a second FROM clause
+        # for "Item".  but select_from disallows that
+        self.assert_compile(
+            sess.query(Item.id).select_from(User).join((Item, User.id==Item.id)),
+            "SELECT items.id AS items_id FROM users JOIN items ON users.id = items.id",
+            use_default_dialect=True
+        )
+        
+        
+        
         
     def test_from_self_resets_joinpaths(self):
         """test a join from from_self() doesn't confuse joins inside the subquery

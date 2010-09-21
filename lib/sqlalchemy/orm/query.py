@@ -90,6 +90,7 @@ class Query(object):
     _only_load_props = None
     _refresh_state = None
     _from_obj = ()
+    _select_from_entity = None
     _filter_aliases = None
     _from_obj_alias = None
     _joinpath = _joinpoint = util.frozendict()
@@ -266,7 +267,8 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
-        return self._entity_zero().entity_zero
+        return self._select_from_entity or \
+            self._entity_zero().entity_zero
 
     def _extension_zero(self):
         ent = self._entity_zero()
@@ -283,8 +285,9 @@ class Query(object):
 
     def _joinpoint_zero(self):
         return self._joinpoint.get(
-                            '_joinpoint_entity',
-                            self._entity_zero().entity_zero)
+            '_joinpoint_entity',
+            self._mapper_zero()
+        )
 
     def _mapper_zero_or_none(self):
         if not getattr(self._entities[0], 'primary_entity', False):
@@ -1169,7 +1172,7 @@ class Query(object):
                 arg1, arg2 = arg1
             else:
                 arg2 = None
-
+            
             # determine onclause/right_entity.  there
             # is a little bit of legacy behavior still at work here
             # which means they might be in either order.  may possibly
@@ -1417,20 +1420,23 @@ class Query(object):
 
     @_generative(_no_clauseelement_condition)
     def select_from(self, *from_obj):
-        """Set the `from_obj` parameter of the query and return the newly
-        resulting ``Query``.  This replaces the table which this Query selects
-        from with the given table.
+        """Set the FROM clause of this :class:`.Query` explicitly.
         
-        ``select_from()`` also accepts class arguments. Though usually not
-        necessary, can ensure that the full selectable of the given mapper is
-        applied, e.g. for joined-table mappers.
-
+        Sending a mapped class or entity here effectively replaces the
+        "left edge" of any calls to :meth:`.Query.join`, when no 
+        joinpoint is otherwise established - usually, the default "join
+        point" is the leftmost entity in the :class:`.Query` object's
+        list of entities to be selected.
+        
+        Mapped entities or plain :class:`.Table` or other selectables
+        can be sent here which will form the default FROM clause.
+        
         """
-        
         obj = []
         for fo in from_obj:
             if _is_mapped_class(fo):
                 mapper, selectable, is_aliased_class = _entity_info(fo)
+                self._select_from_entity = fo
                 obj.append(selectable)
             elif not isinstance(fo, expression.FromClause):
                 raise sa_exc.ArgumentError(
@@ -1439,7 +1445,7 @@ class Query(object):
                 obj.append(fo)  
                 
         self._set_select_from(*obj)
-
+        
     def __getitem__(self, item):
         if isinstance(item, slice):
             start, stop, step = util.decode_slice(item)
