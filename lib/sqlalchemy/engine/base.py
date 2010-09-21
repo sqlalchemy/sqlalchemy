@@ -1069,7 +1069,7 @@ class Connection(Connectable):
 
     def _begin_impl(self):
         if self._echo:
-            self.engine.logger.info("BEGIN")
+            self.engine.logger.info("BEGIN (implicit)")
         try:
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:

@@ -126,6 +126,10 @@ CHANGES
      been added for result.lastrowid.   Note that lastrowid
      is only supported by Pysqlite and some MySQL drivers,
      so isn't super-useful in the general case.
+   
+   - the logging message emitted by the engine when
+     a connection is first used is now "BEGIN (implicit)" 
+     to emphasize that DBAPI has no explicit begin().
      
 0.6.4
 =====
