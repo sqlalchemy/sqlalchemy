@@ -3620,7 +3620,8 @@ class CustomJoinTest(QueryTest):
 
 class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
-
+    __dialect__ = default.DefaultDialect()
+    
     @classmethod
     def define_tables(cls, metadata):
         nodes = Table('nodes', metadata,
@@ -3871,33 +3872,38 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         
         self.assert_compile(
             join(Node, n1, 'children').join(n2, 'children'),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id"
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
         )
 
         self.assert_compile(
             join(Node, n1, Node.children).join(n2, n1.children),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id"
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
         )
 
         # the join_to_left=False here is unfortunate.   the default on this flag should
         # be False.
         self.assert_compile(
             join(Node, n1, Node.children).join(n2, Node.children, join_to_left=False),
-            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id"
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
+            use_default_dialect=True
         )
 
         self.assert_compile(
             sess.query(Node).join((n1, Node.children)).join((n2, n1.children)),
             "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS "
             "nodes_data FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
-            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id"
+            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
         )
     
         self.assert_compile(
             sess.query(Node).join((n1, Node.children)).join((n2, Node.children)),
             "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS "
             "nodes_data FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
-            "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id"
+            "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
+            use_default_dialect=True
         )
     
         node = sess.query(Node).select_from(join(Node, n1, 'children')).filter(n1.data=='n122').first()
