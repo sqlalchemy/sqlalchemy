@@ -1250,7 +1250,7 @@ class Query(object):
                         (left, right))
             
         left_mapper, left_selectable, left_is_aliased = _entity_info(left)
-        right_mapper, right_selectable, is_aliased_class = _entity_info(right)
+        right_mapper, right_selectable, right_is_aliased = _entity_info(right)
 
         if right_mapper and prop and \
                 not right_mapper.common_parent(prop.mapper):
@@ -1279,7 +1279,7 @@ class Query(object):
             need_adapter = True
 
         aliased_entity = right_mapper and \
-                            not is_aliased_class and \
+                            not right_is_aliased and \
                             (
                                 right_mapper.with_polymorphic or
                                 isinstance(
@@ -1342,8 +1342,16 @@ class Query(object):
                         )
                     )
         
-        join_to_left = not is_aliased_class and not left_is_aliased
-
+        # this is an overly broad assumption here, but there's a 
+        # very wide variety of situations where we rely upon orm.join's
+        # adaption to glue clauses together, with joined-table inheritance's
+        # wide array of variables taking up most of the space.
+        # Setting the flag here is still a guess, so it is a bug
+        # that we don't have definitive criterion to determine when 
+        # adaption should be enabled (or perhaps that we're even doing the 
+        # whole thing the way we are here).
+        join_to_left = not right_is_aliased and not left_is_aliased
+            
         if self._from_obj and left_selectable is not None:
             replace_clause_index, clause = sql_util.find_join_source(
                                                     self._from_obj, 
@@ -1351,10 +1359,16 @@ class Query(object):
             if clause is not None:
                 # the entire query's FROM clause is an alias of itself (i.e.
                 # from_self(), similar). if the left clause is that one,
-                # ensure it aliases to the left side.
+                # ensure it adapts to the left side.
                 if self._from_obj_alias and clause is self._from_obj[0]:
                     join_to_left = True
-
+                
+                # An exception case where adaption to the left edge is not
+                # desirable.  See above note on join_to_left.
+                if join_to_left and isinstance(clause, expression.Join) and \
+                    sql_util.clause_is_present(left_selectable, clause):
+                    join_to_left = False
+                    
                 clause = orm_join(clause, 
                                     right, 
                                     onclause, isouter=outerjoin, 

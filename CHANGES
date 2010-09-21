@@ -16,6 +16,10 @@ CHANGES
     passed an empty list to "include_properties" on 
     mapper() [ticket:1918]
   
+  - Patched a case where query.join() would adapt the
+    right side to the right side of the left's join
+    inappropriately [ticket:1925]
+    
   - The exception raised by Session when it is used
     subsequent to a subtransaction rollback (which is what
     happens when a flush fails in autocommit=False mode) has
