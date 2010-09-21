@@ -84,6 +84,10 @@ CHANGES
     of the query only, instead of repeatedly.   May make
     some more adjustments to this.
 
+  - scoped_session emits a warning when configure() is 
+    called if a Session is already present (checks only the
+    current thread) [ticket:1924]
+    
 - sql
    - Table.tometadata() now copies Index objects associated
      with the Table as well.
