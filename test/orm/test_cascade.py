@@ -4,7 +4,7 @@ from sqlalchemy import Integer, String, ForeignKey, Sequence, \
     exc as sa_exc
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    sessionmaker, class_mapper, backref
+    sessionmaker, class_mapper, backref, Session
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy.test import testing
 from sqlalchemy.test.testing import eq_
@@ -938,6 +938,67 @@ class M2MCascadeTest(_base.MappedTest):
         b1.a = a2
         assert b1 not in a1.bs
         assert b1 in a2.bs
+
+class NoBackrefCascadeTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+                'addresses':relationship(Address, backref='user', 
+                            cascade_backrefs=False)
+        })
+        
+        mapper(Dingaling, dingalings, properties={
+                'address' : relationship(Address, backref='dingalings', 
+                            cascade_backrefs=False)
+        })
+
+    @testing.resolve_artifact_names
+    def test_o2m(self):
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        assert a1 not in sess
+
+        sess.commit()
+        
+        assert a1 not in sess
+        
+        sess.add(a1)
+        
+        d1 = Dingaling()
+        d1.address = a1
+        assert d1 in a1.dingalings
+        assert d1 in sess
+
+        sess.commit()
+
+    @testing.resolve_artifact_names
+    def test_m2o(self):
+        sess = Session()
+
+        a1 = Address(email_address='a1')
+        d1 = Dingaling()
+        sess.add(d1)
+        
+        a1.dingalings.append(d1)
+        assert a1 not in sess
+    
+        a2 = Address(email_address='a2')
+        sess.add(a2)
+        
+        u1 = User(name='u1')
+        u1.addresses.append(a2)
+        assert u1 in sess
+
+        sess.commit()
 
 class UnsavedOrphansTest(_base.MappedTest):
     """Pending entities that are orphans"""

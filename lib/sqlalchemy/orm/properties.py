@@ -444,8 +444,10 @@ class RelationshipProperty(StrategizedProperty):
         comparator_factory=None,
         single_parent=False, innerjoin=False,
         doc=None,
+        cascade_backrefs=True,
         load_on_pending=False,
-        strategy_class=None, _local_remote_pairs=None, query_class=None):
+        strategy_class=None, _local_remote_pairs=None, 
+        query_class=None):
 
         self.uselist = uselist
         self.argument = argument
@@ -460,6 +462,7 @@ class RelationshipProperty(StrategizedProperty):
         self._user_defined_foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
+        self.cascade_backrefs = cascade_backrefs
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks

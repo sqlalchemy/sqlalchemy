@@ -73,7 +73,16 @@ CHANGES
     object is loaded, so backrefs aren't available until
     after a flush. The flag is only intended for very
     specific use cases.
-    
+  
+  - Another new flag on relationship(), cascade_backrefs,
+    disables the "save-update" cascade when the event was
+    initiated on the "reverse" side of a bidirectional 
+    relationship.   This is a cleaner behavior so that
+    many-to-ones can be set on a transient object without
+    it getting sucked into the child object's session,
+    while still allowing the forward collection to 
+    cascade.   We *might* default this to False in 0.7.
+      
   - Slight improvement to the behavior of
     "passive_updates=False" when placed only on the
     many-to-one side of a relationship; documentation has

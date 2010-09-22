@@ -1153,6 +1153,8 @@ class Session(object):
         This operation cascades to associated instances if the association is
         mapped with ``cascade="merge"``.
 
+        See :ref:`unitofwork_merging` for a detailed discussion of merging.
+        
         """
         if 'dont_load' in kw:
             load = not kw['dont_load']
