@@ -106,13 +106,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        The full resolution is described in the ``get_bind()`` method of
        ``Session``. Usage looks like::
 
-        sess = Session(binds={
+        Session = sessionmaker(binds={
             SomeMappedClass: create_engine('postgresql://engine1'),
             somemapper: create_engine('postgresql://engine2'),
             some_table: create_engine('postgresql://engine3'),
             })
 
-      Also see the ``bind_mapper()`` and ``bind_table()`` methods.
+      Also see the :meth:`.Session.bind_mapper` and :meth:`.Session.bind_table` methods.
 
     :param \class_: Specify an alternate class other than
        ``sqlalchemy.orm.session.Session`` which should be used by the returned
@@ -143,8 +143,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        as returned by the ``query()`` method. Defaults to
        :class:`~sqlalchemy.orm.query.Query`.
 
-    :param twophase:  When ``True``, all transactions will be started using
-        :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``,
+    :param twophase:  When ``True``, all transactions will be started as
+        a "two phase" transaction, i.e. using the "two phase" semantics
+        of the database in use along with an XID.  During a ``commit()``,
         after ``flush()`` has been issued for all attached databases, the
         ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
         be called. This allows each database to roll back the entire

@@ -1,3 +1,5 @@
+.. _expression_api_toplevel:
+
 SQL Statements and Expressions
 ==============================
 

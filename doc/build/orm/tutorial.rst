@@ -1436,6 +1436,8 @@ Further Reference
 
 Query Reference: :ref:`query_api_toplevel`
 
-Further information on mapping setups are in :ref:`datamapping_toplevel`.
+Mapper Reference: :ref:`mapper_config_toplevel`
 
-Further information on working with Sessions: :ref:`session_toplevel`.
+Relationship Reference: :ref:`relationship_config_toplevel`
+
+Session Reference: :ref:`session_toplevel`.

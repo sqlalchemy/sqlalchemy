@@ -498,7 +498,12 @@ class Query(object):
         
     @property
     def whereclause(self):
-        """The WHERE criterion for this Query."""
+        """A readonly attribute which returns the current WHERE criterion for this Query.
+        
+        This returned value is a SQL expression construct, or ``None`` if no 
+        criterion has been established.
+        
+        """
         return self._criterion
 
     @_generative()
@@ -2028,8 +2033,7 @@ class Query(object):
         Also, the ``before_delete()`` and ``after_delete()``
         :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
         called from this method. For a delete hook here, use the
-        ``after_bulk_delete()``
-        :class:`~sqlalchemy.orm.interfaces.MapperExtension` method.
+        :meth:`.SessionExtension.after_bulk_delete()` event hook.
 
         """
         #TODO: lots of duplication and ifs - probably needs to be 
@@ -2154,8 +2158,7 @@ class Query(object):
         Also, the ``before_update()`` and ``after_update()``
         :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
         called from this method. For an update hook here, use the
-        ``after_bulk_update()``
-        :class:`~sqlalchemy.orm.interfaces.SessionExtension` method.
+        :meth:`.SessionExtension.after_bulk_update()` event hook.
 
         """
 

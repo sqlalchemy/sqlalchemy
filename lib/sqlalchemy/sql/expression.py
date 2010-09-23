@@ -3924,16 +3924,21 @@ class Select(_SelectBaseMixin, FromClause):
         return self._get_display_froms()
     
     @_generative
-    def with_hint(self, selectable, text, dialect_name=None):
+    def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given selectable to this
         :class:`Select`.
         
-        The text of the hint is written specific to a specific backend, and
-        typically uses Python string substitution syntax to render the name
-        of the table or alias, such as for Oracle::
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the given :class:`.Table` or :class:`.Alias` passed as the
+        *selectable* argument. The dialect implementation
+        typically uses Python string substitution syntax
+        with the token ``%(name)s`` to render the name of
+        the table or alias. E.g. when using Oracle, the
+        following::
         
-            select([mytable]).with_hint(mytable, "+ index(%(name)s
-            ix_mytable)")
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)")
             
         Would render SQL as::
         
@@ -3943,13 +3948,11 @@ class Select(_SelectBaseMixin, FromClause):
         hint to a particular backend. Such as, to add hints for both Oracle
         and Sybase simultaneously::
         
-            select([mytable]).\
-                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
         
         """
-        if not dialect_name:
-            dialect_name = '*'
         self._hints = self._hints.union({(selectable, dialect_name):text})
         
     @property
