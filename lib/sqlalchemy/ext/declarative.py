@@ -358,10 +358,10 @@ and simply pass it to declarative classes::
     Base.metadata.reflect(some_engine)
     
     class User(Base):
-        __table__ = metadata['user']
+        __table__ = metadata.tables['user']
     
     class Address(Base):
-        __table__ = metadata['address']
+        __table__ = metadata.tables['address']
 
 Some configuration schemes may find it more appropriate to use ``__table__``, 
 such as those which already take advantage of the data-driven nature of 
