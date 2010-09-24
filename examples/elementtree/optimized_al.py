@@ -5,19 +5,19 @@ which joins on only three tables.
 
 """
 
-################################# PART I - Imports/Configuration ###########################################
+##################### PART I - Imports/Configuration #########################
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
-    Unicode, and_)
-from sqlalchemy.orm import mapper, relationship, create_session, lazyload
+    Unicode, and_, create_engine)
+from sqlalchemy.orm import mapper, relationship, Session, lazyload
 
 import sys, os, StringIO, re
 
 from xml.etree import ElementTree
 
+e = create_engine('sqlite://', echo=True)
 meta = MetaData()
-meta.bind = 'sqlite://'
 
-################################# PART II - Table Metadata ###########################################
+####################### PART II - Table Metadata #############################
     
 # stores a top level record of an XML document.  
 documents = Table('documents', meta,
@@ -43,9 +43,9 @@ attributes = Table('attributes', meta,
     Column('name', Unicode(100), nullable=False, primary_key=True),
     Column('value', Unicode(255)))
 
-meta.create_all()
+meta.create_all(e)
 
-#################################### PART III - Model #############################################
+########################### PART III - Model #################################
 
 # our document class.  contains a string name,
 # and the ElementTree root element.  
@@ -59,7 +59,7 @@ class Document(object):
         self.element.write(buf)
         return buf.getvalue()
 
-#################################### PART IV - Persistence Mapping ###################################
+########################## PART IV - Persistence Mapping #####################
 
 # Node class.  a non-public class which will represent 
 # the DB-persisted Element/SubElement object.  We cannot create mappers for
@@ -145,12 +145,12 @@ class ElementTreeMarshal(object):
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
 
-########################################### PART V - Basic Persistence Example ############################
+###################### PART V - Basic Persistence Example ####################
 
 line = "\n--------------------------------------------------------"
 
 # save to DB
-session = create_session()
+session = Session(e)
 
 # get ElementTree documents
 for file in ('test.xml', 'test2.xml', 'test3.xml'):
@@ -159,25 +159,25 @@ for file in ('test.xml', 'test2.xml', 'test3.xml'):
     session.add(Document(file, doc))
 
 print "\nSaving three documents...", line
-session.flush()
+session.commit()
 print "Done."
-
-# clear session (to illustrate a full load), restore
-session.expunge_all()
 
 print "\nFull text of document 'text.xml':", line
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 print document
 
-############################################ PART VI - Searching for Paths #######################################
+######################## PART VI - Searching for Paths #######################
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 print "\nManual search for /somefile/header/field1=='hi':", line
-d = session.query(Document).join('_nodes', aliased=True).filter(and_(_Node.parent_id==None, _Node.tag==u'somefile')).\
-    join('children', aliased=True, from_joinpoint=True).filter(_Node.tag==u'header').\
-    join('children', aliased=True, from_joinpoint=True).filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
-    one()
+d = session.query(Document).join('_nodes', aliased=True).\
+                filter(and_(_Node.parent_id==None, _Node.tag==u'somefile')).\
+                join('children', aliased=True, from_joinpoint=True).\
+                filter(_Node.tag==u'header').\
+                join('children', aliased=True, from_joinpoint=True).\
+                filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
+                one()
 print d
 
 # generalize the above approach into an extremely impoverished xpath function:

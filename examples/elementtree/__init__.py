@@ -1,6 +1,11 @@
 """
-Illustrates three strategies for persisting and querying XML documents as represented by 
-ElementTree in a relational database.   The techniques do not apply any mappings to the ElementTree objects directly, so are compatible with the native cElementTree as well as lxml, and can be adapted to suit any kind of DOM representation system.   Querying along xpath-like strings is illustrated as well.
+Illustrates three strategies for persisting and querying XML
+documents as represented by ElementTree in a relational
+database. The techniques do not apply any mappings to the
+ElementTree objects directly, so are compatible with the
+native cElementTree as well as lxml, and can be adapted to
+suit any kind of DOM representation system. Querying along
+xpath-like strings is illustrated as well.
 
 In order of complexity:
 
@@ -10,10 +15,10 @@ In order of complexity:
   represented in a separate table.  The nodes are associated in a hierarchy using an adjacency list
   structure.  A query function is introduced which can search for nodes along any path with a given
   structure of attributes, basically a (very narrow) subset of xpath.
-* ``optimized_al.py`` - Uses the same strategy as ``adjacency_list.py``, but adds a
-  :class:`~sqlalchemy.orm.interfaces.MapperExtension` which optimizes how the hierarchical structure  
-  is loaded, such that the full set of DOM nodes are loaded within a single table result set, and
-  are organized hierarchically as they are received during a load.
+* ``optimized_al.py`` - Uses the same strategy as ``adjacency_list.py``, but associates each 
+  DOM row with its owning document row, so that a full document of DOM nodes can be 
+  loaded using O(1) queries - the construction of the "hierarchy" is performed after
+  the load in a non-recursive fashion and is much more efficient.
 
 E.g.::
     
