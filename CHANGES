@@ -137,6 +137,12 @@ CHANGES
      __mapper_args__, __table_args__, __tablename__ on 
      a base class that is not a mixin, as well as mixins.
      [ticket:1922]
+
+   - @classproperty 's official name/location for usage
+     with declarative is sqlalchemy.ext.declarative.mapperproperty.
+     Same thing, but moving there since it is more of a
+     "marker" that's specific to declararative, 
+     not just an attribute technique.  [ticket:1915]
      
 - engine
    

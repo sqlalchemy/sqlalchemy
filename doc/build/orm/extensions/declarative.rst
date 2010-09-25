@@ -8,6 +8,8 @@ API Reference
 
 .. autofunction:: declarative_base
 
+.. autoclass:: mapperproperty
+
 .. autofunction:: _declarative_constructor
 
 .. autofunction:: has_inherited_table

@@ -1801,8 +1801,12 @@ class classproperty(property):
     """A decorator that behaves like @property except that operates
     on classes rather than instances.
 
-    This is helpful when you need to compute __table_args__ and/or
-    __mapper_args__ when using declarative."""
+    The decorator is currently special when using the declarative
+    module, but note that the 
+    :class:`~.sqlalchemy.ext.declarative.mapperproperty`
+    decorator should be used for this purpose with declarative.
+    
+    """
     
     def __init__(self, fget, *arg, **kw):
         super(classproperty, self).__init__(fget, *arg, **kw)
