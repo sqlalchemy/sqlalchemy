@@ -639,7 +639,7 @@ class NullType(TypeEngine):
     __visit_name__ = 'null'
 
     def _adapt_expression(self, op, othertype):
-        if othertype is NULLTYPE or not operators.is_commutative(op):
+        if isinstance(othertype, NullType) or not operators.is_commutative(op):
             return op, self
         else:
             return othertype._adapt_expression(op, self)

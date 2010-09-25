@@ -128,6 +128,10 @@ CHANGES
      which contains a Column that is not yet named.
      [ticket:1862]
 
+   - Fixed recursion overflow which could occur when operating
+     with two expressions both of type "NullType", but
+     not the singleton NULLTYPE instance. [ticket:1907]
+     
 - declarative
    - @classproperty (soon/now @mapperproperty) takes effect for 
      __mapper_args__, __table_args__, __tablename__ on 

@@ -738,10 +738,10 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         meta.create_all()
 
         test_table.insert().execute({
-                                        'id':1, 
-                                        'data':'somedata', 
-                                        'atimestamp':datetime.date(2007, 10, 15), 
-                                        'avalue':25, 'bvalue':'foo'})
+                                'id':1, 
+                                'data':'somedata', 
+                                'atimestamp':datetime.date(2007, 10, 15), 
+                                'avalue':25, 'bvalue':'foo'})
 
     @classmethod
     def teardown_class(cls):
@@ -752,7 +752,8 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         eq_(
             test_table.select().execute().fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25, "BIND_INfooBIND_OUT")]
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25,
+             'BIND_INfooBIND_OUT')]
         )
 
     def test_bind_adapt(self):
@@ -762,9 +763,9 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         eq_(
             testing.db.execute(
-                            select([test_table.c.id, test_table.c.data, test_table.c.atimestamp])
-                            .where(expr), 
-                            {"thedate":datetime.date(2007, 10, 15)}).fetchall(),
+                    select([test_table.c.id, test_table.c.data, test_table.c.atimestamp])
+                    .where(expr), 
+                    {"thedate":datetime.date(2007, 10, 15)}).fetchall(),
             [(1, 'somedata', datetime.date(2007, 10, 15))]
         )
 
@@ -772,21 +773,25 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         eq_(expr.right.type._type_affinity, MyCustomType)
 
         eq_(
-            testing.db.execute(test_table.select().where(expr), {"somevalue":25}).fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
+            testing.db.execute(test_table.select().where(expr),
+             {'somevalue': 25}).fetchall(),
+            [(1, 'somedata', datetime.date(2007, 10, 15), 25,
+             'BIND_INfooBIND_OUT')]
         )
 
         expr = test_table.c.bvalue == bindparam("somevalue")
         eq_(expr.right.type._type_affinity, String)
         
         eq_(
-            testing.db.execute(test_table.select().where(expr), {"somevalue":"foo"}).fetchall(),
-            [(1, 'somedata', datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
+            testing.db.execute(test_table.select().where(expr), 
+                {"somevalue":"foo"}).fetchall(),
+            [(1, 'somedata', 
+                datetime.date(2007, 10, 15), 25, 'BIND_INfooBIND_OUT')]
         )
     
     def test_literal_adapt(self):
-        # literals get typed based on the types dictionary, unless compatible
-        # with the left side type
+        # literals get typed based on the types dictionary, unless
+        # compatible with the left side type
 
         expr = column('foo', String) == 5
         eq_(expr.right.type._type_affinity, Integer)
@@ -933,7 +938,13 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                        )
                 assert isinstance(expr.type, types.Numeric)
 
+    def test_null_comparison(self):
+        eq_(
+            str(column('a', types.NullType()) + column('b', types.NullType())), 
+            "a + b"
+        )
         
+
         
     def test_expression_typing(self):
         expr = column('bar', Integer) - 3
