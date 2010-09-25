@@ -2201,7 +2201,7 @@ class FromClause(Selectable):
     def _reset_exported(self):
         """delete memoized collections when a FromClause is cloned."""
 
-        for attr in '_columns', '_primary_key_foreign_keys', \
+        for attr in '_columns', '_primary_key', '_foreign_keys', \
             'locate_all_froms':
             self.__dict__.pop(attr, None)
 
