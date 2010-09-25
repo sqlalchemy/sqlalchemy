@@ -815,7 +815,7 @@ class Query(object):
                 opt.process_query(self)
 
     @_generative()
-    def with_hint(self, selectable, text, dialect_name=None):
+    def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given entity or selectable to 
         this :class:`Query`.
         
