@@ -1803,7 +1803,7 @@ class classproperty(property):
 
     The decorator is currently special when using the declarative
     module, but note that the 
-    :class:`~.sqlalchemy.ext.declarative.mapperproperty`
+    :class:`~.sqlalchemy.ext.declarative.declared_attr`
     decorator should be used for this purpose with declarative.
     
     """

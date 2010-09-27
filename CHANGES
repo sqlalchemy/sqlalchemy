@@ -133,13 +133,13 @@ CHANGES
      not the singleton NULLTYPE instance. [ticket:1907]
      
 - declarative
-   - @classproperty (soon/now @mapperproperty) takes effect for 
+   - @classproperty (soon/now @declared_attr) takes effect for 
      __mapper_args__, __table_args__, __tablename__ on 
      a base class that is not a mixin, as well as mixins.
      [ticket:1922]
 
    - @classproperty 's official name/location for usage
-     with declarative is sqlalchemy.ext.declarative.mapperproperty.
+     with declarative is sqlalchemy.ext.declarative.declared_attr.
      Same thing, but moving there since it is more of a
      "marker" that's specific to declararative, 
      not just an attribute technique.  [ticket:1915]

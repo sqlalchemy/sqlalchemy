@@ -14,7 +14,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
 from test.orm._base import ComparableEntity, MappedTest
-from sqlalchemy.ext.declarative import mapperproperty
+from sqlalchemy.ext.declarative import declared_attr
 
 class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
     def setup(self):
@@ -694,7 +694,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).all(), [User(name='u1', address_count=2,
             addresses=[Address(email='one'), Address(email='two')])])
 
-    def test_useless_mapperproperty(self):
+    def test_useless_declared_attr(self):
         class Address(Base, ComparableEntity):
 
             __tablename__ = 'addresses'
@@ -711,7 +711,7 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column('name', String(50))
             addresses = relationship('Address', backref='user')
             
-            @mapperproperty
+            @declared_attr
             def address_count(cls):
                 # this doesn't really gain us anything.  but if
                 # one is used, lets have it function as expected...
@@ -2198,7 +2198,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_name_inherited(self):
 
         class MyMixin:
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             id = Column(Integer, primary_key=True)
@@ -2223,7 +2223,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_name_not_inherited(self):
 
         class MyMixin:
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             id = Column(Integer, primary_key=True)
@@ -2236,12 +2236,12 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_name_inheritance_order(self):
 
         class MyMixin1:
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower() + '1'
 
         class MyMixin2:
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower() + '2'
 
@@ -2253,7 +2253,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_name_dependent_on_subclass(self):
 
         class MyHistoryMixin:
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.parent_name + '_changelog'
 
@@ -2277,7 +2277,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_table_args_inherited_descriptor(self):
 
         class MyMixin:
-            @mapperproperty
+            @declared_attr
             def __table_args__(cls):
                 return {'info': cls.__name__}
 
@@ -2316,10 +2316,10 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(MyModel.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
-    def test_mapper_args_mapperproperty(self):
+    def test_mapper_args_declared_attr(self):
 
         class ComputedMapperArgs:
-            @mapperproperty
+            @declared_attr
             def __mapper_args__(cls):
                 if cls.__name__ == 'Person':
                     return {'polymorphic_on': cls.discriminator}
@@ -2339,13 +2339,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             is Person.__table__.c.type
         eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
 
-    def test_mapper_args_mapperproperty_two(self):
+    def test_mapper_args_declared_attr_two(self):
 
-        # same as test_mapper_args_mapperproperty, but we repeat
+        # same as test_mapper_args_declared_attr, but we repeat
         # ComputedMapperArgs on both classes for no apparent reason.
 
         class ComputedMapperArgs:
-            @mapperproperty
+            @declared_attr
             def __mapper_args__(cls):
                 if cls.__name__ == 'Person':
                     return {'polymorphic_on': cls.discriminator}
@@ -2380,7 +2380,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
             __tablename__ = 'test'
 
-            @mapperproperty
+            @declared_attr
             def __table_args__(self):
                 info = {}
                 args = dict(info=info)
@@ -2408,7 +2408,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class MyMixin:
 
-            @mapperproperty
+            @declared_attr
             def __mapper_args__(cls):
 
                 # tenuous, but illustrates the problem!
@@ -2470,7 +2470,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
             __tablename__ = 'test'
 
-            @mapperproperty
+            @declared_attr
             def __mapper_args__(cls):
                 args = {}
                 args.update(MyMixin1.__mapper_args__)
@@ -2497,15 +2497,15 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_mapper_args_property(self):
         class MyModel(Base):
             
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             
-            @mapperproperty
+            @declared_attr
             def __table_args__(cls):
                 return {'mysql_engine':'InnoDB'}
                 
-            @mapperproperty
+            @declared_attr
             def __mapper_args__(cls):
                 args = {}
                 args['polymorphic_identity'] = cls.__name__
@@ -2528,18 +2528,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MySubModel.__table__.name, 'mysubmodel')
     
     def test_mapper_args_custom_base(self):
-        """test the @mapperproperty approach from a custom base."""
+        """test the @declared_attr approach from a custom base."""
         
         class Base(object):
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             
-            @mapperproperty
+            @declared_attr
             def __table_args__(cls):
                 return {'mysql_engine':'InnoDB'}
             
-            @mapperproperty
+            @declared_attr
             def id(self):
                 return Column(Integer, primary_key=True)
             
@@ -2584,7 +2584,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class CommonMixin:
 
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             __table_args__ = {'mysql_engine': 'InnoDB'}
@@ -2614,7 +2614,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class CommonMixin:
 
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
             __table_args__ = {'mysql_engine': 'InnoDB'}
@@ -2651,7 +2651,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class NoJoinedTableNameMixin:
 
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 if decl.has_inherited_table(cls):
                     return None
@@ -2679,7 +2679,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class TableNameMixin:
 
-            @mapperproperty
+            @declared_attr
             def __tablename__(cls):
                 if decl.has_inherited_table(cls) and TableNameMixin \
                     not in cls.__bases__:
@@ -2804,7 +2804,7 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
         class MyMixin(object):
 
-            @mapperproperty
+            @declared_attr
             def prop_hoho(cls):
                 return column_property(Column('prop', String(50)))
 
@@ -2843,20 +2843,20 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
     def test_doc(self):
         """test documentation transfer.
         
-        the documentation situation with @mapperproperty is problematic.
+        the documentation situation with @declared_attr is problematic.
         at least see if mapped subclasses get the doc.
         
         """
 
         class MyMixin(object):
 
-            @mapperproperty
+            @declared_attr
             def type_(cls):
                 """this is a document."""
 
                 return Column(String(50))
 
-            @mapperproperty
+            @declared_attr
             def t2(cls):
                 """this is another document."""
 
@@ -2875,7 +2875,7 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
         class MyMixin(object):
 
-            @mapperproperty
+            @declared_attr
             def type_(cls):
                 return Column(String(50))
             __mapper_args__ = {'polymorphic_on': type_}
@@ -2894,7 +2894,7 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
         class MyMixin(object):
 
-            @mapperproperty
+            @declared_attr
             def data(cls):
                 return deferred(Column('data', String(50)))
 
@@ -2918,19 +2918,19 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
         class RefTargetMixin(object):
 
-            @mapperproperty
+            @declared_attr
             def target_id(cls):
                 return Column('target_id', ForeignKey('target.id'))
             if usestring:
 
-                @mapperproperty
+                @declared_attr
                 def target(cls):
                     return relationship('Target',
                             primaryjoin='Target.id==%s.target_id'
                             % cls.__name__)
             else:
 
-                @mapperproperty
+                @declared_attr
                 def target(cls):
                     return relationship('Target')
 

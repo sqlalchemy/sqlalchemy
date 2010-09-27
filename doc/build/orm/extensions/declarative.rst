@@ -8,7 +8,7 @@ API Reference
 
 .. autofunction:: declarative_base
 
-.. autoclass:: mapperproperty
+.. autoclass:: declared_attr
 
 .. autofunction:: _declarative_constructor
 
