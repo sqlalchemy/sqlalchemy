@@ -2304,6 +2304,37 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert Specific.__table__ is General.__table__
         eq_(General.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
+    def test_columns_single_table_inheritance(self):
+        class MyMixin(object):
+            foo = Column('foo', Integer)
+            bar = Column('bar_newname', Integer)
+            
+        class General(Base, MyMixin):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            type_ = Column(String(50))
+            __mapper__args = {'polymorphic_on': type_}
+
+        class Specific(General):
+            __mapper_args__ = {'polymorphic_identity': 'specific'}
+
+    @testing.fails_if(lambda: True, "Unhandled declarative use case")
+    def test_columns_joined_table_inheritance(self):
+        class MyMixin(object):
+            foo = Column('foo', Integer)
+            bar = Column('bar_newname', Integer)
+            
+        class General(Base, MyMixin):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            type_ = Column(String(50))
+            __mapper__args = {'polymorphic_on': type_}
+
+        class Specific(General):
+            __tablename__ = 'sub'
+            id = Column(Integer, ForeignKey('test.id'), primary_key=True)
+            __mapper_args__ = {'polymorphic_identity': 'specific'}
+        
     def test_table_args_overridden(self):
 
         class MyMixin:

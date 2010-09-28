@@ -143,7 +143,13 @@ CHANGES
      Same thing, but moving there since it is more of a
      "marker" that's specific to declararative, 
      not just an attribute technique.  [ticket:1915]
-     
+
+   - Fixed bug whereby columns on a mixin wouldn't propagate
+     correctly to a single-table inheritance scheme where
+     the attribute name is different than that of the column.
+     [ticket:1930].   Note [ticket:1931] which is the same
+     issue for joined inh, not yet resolved.
+          
 - engine
    
    - Fixed a regression in 0.6.4 whereby the change that

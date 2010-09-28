@@ -938,7 +938,10 @@ def _as_declarative(cls, classname, dict_):
                         "on declarative mixin classes. ")
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
-                            name in dict_['__table__'].c
+                            # TODO: coverage here when obj.name is not 
+                            # None and obj.name != name and obj.name in 
+                            # table.c
+                            (obj.name or name) in dict_['__table__'].c
                             ):
                         potential_columns[name] = \
                                 column_copies[obj] = \
@@ -960,7 +963,7 @@ def _as_declarative(cls, classname, dict_):
 
     # apply inherited columns as we should
     for k, v in potential_columns.items():
-        if tablename or k not in parent_columns:
+        if tablename or (v.name or k) not in parent_columns:
             dict_[k] = v
             
     if inherited_table_args and not tablename:
@@ -1087,7 +1090,7 @@ def _as_declarative(cls, classname, dict_):
                     "Can't place __table_args__ on an inherited class "
                     "with no table."
                     )
-        
+            
             # add any columns declared here to the inherited table.
             for c in cols:
                 if c.primary_key:

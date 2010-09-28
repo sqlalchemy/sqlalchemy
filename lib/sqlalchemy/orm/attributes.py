@@ -399,7 +399,7 @@ class AttributeImpl(object):
 
             # Return a new, empty value
             return self.initialize(state, dict_)
-
+    
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         self.set(state, dict_, value, initiator, passive=passive)
 
