@@ -8,7 +8,7 @@
 
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
-import itertools
+
 
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
@@ -76,10 +76,8 @@ def find_cycles(tuples, allitems):
     return output
 
 def _gen_edges(edges):
-    return set(itertools.chain(
-                *[
-                    [
-                        (right, left) for right in edges[left]
-                    ] for left in edges
-                ]
-            ))
+    return set([
+                    (right, left) 
+                    for left in edges 
+                    for right in edges[left] 
+                ])
