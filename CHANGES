@@ -162,6 +162,12 @@ CHANGES
    - the logging message emitted by the engine when
      a connection is first used is now "BEGIN (implicit)" 
      to emphasize that DBAPI has no explicit begin().
+
+- misc
+   - CircularDependencyError now has .cycles and .edges
+     members, which are the set of elements involved in
+     one or more cycles, and the set of edges as 2-tuples.  
+     [ticket:1890]
      
 0.6.4
 =====
