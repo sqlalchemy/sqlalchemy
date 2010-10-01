@@ -107,6 +107,10 @@ CHANGES
   - scoped_session emits a warning when configure() is 
     called if a Session is already present (checks only the
     current thread) [ticket:1924]
+
+  - reworked the internals of mapper.cascade_iterator() to
+    cut down method calls by about 9% in some circumstances.
+    [ticket:1932]
     
 - sql
    - Table.tometadata() now copies Index objects associated

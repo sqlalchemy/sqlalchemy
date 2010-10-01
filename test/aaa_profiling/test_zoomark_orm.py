@@ -335,11 +335,11 @@ class ZooMarkTest(TestBase):
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(9225)
+    @profiling.function_call_count(8469)
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(640)
+    @profiling.function_call_count(591)
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 

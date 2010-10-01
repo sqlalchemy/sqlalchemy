@@ -868,7 +868,8 @@ class RelationshipProperty(StrategizedProperty):
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located
                     instance_mapper = instance_state.manager.mapper
-                    yield (c, instance_mapper, instance_state)
+                    yield c, instance_mapper, instance_state
+            
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _compile_mappers=False)

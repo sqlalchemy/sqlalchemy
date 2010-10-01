@@ -76,7 +76,7 @@ class MapperExtension(object):
     mapper activity will not be performed.
     
     """
-
+    
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
@@ -418,6 +418,13 @@ class MapperProperty(object):
     attribute access, loading behavior, and dependency calculations.
     """
 
+    cascade = ()
+    """The set of 'cascade' attribute names.
+    
+    This collection is checked before the 'cascade_iterator' method is called.
+    
+    """
+
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 
@@ -469,6 +476,11 @@ class MapperProperty(object):
                             halt_on=None):
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.
+        
+        Return an iterator3-tuples (instance, mapper, state).
+        
+        Note that the 'cascade' collection on this MapperProperty is
+        checked first for the given type before cascade_iterator is called.
 
         See PropertyLoader for the related instance implementation.
         """
