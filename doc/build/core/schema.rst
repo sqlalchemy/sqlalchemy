@@ -1025,7 +1025,7 @@ constraints generally should only refer to the column to which they are
 placed, while table level constraints can refer to any columns in the table.
 
 Note that some databases do not actively support check constraints such as
-MySQL and SQLite.
+MySQL.
 
 .. sourcecode:: python+sql
 
