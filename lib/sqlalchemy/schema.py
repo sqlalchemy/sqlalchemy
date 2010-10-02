@@ -2010,7 +2010,7 @@ class MetaData(SchemaItem):
         from sqlalchemy.sql.util import sort_tables
         return sort_tables(self.tables.itervalues())
         
-    def reflect(self, bind=None, schema=None, only=None):
+    def reflect(self, bind=None, schema=None, views=False, only=None):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -2026,7 +2026,10 @@ class MetaData(SchemaItem):
 
         :param schema:
           Optional, query and reflect tables from an alterate schema.
-
+        
+        :param views:
+          If True, also reflect views.
+          
         :param only:
           Optional.  Load only a sub-set of available named tables.  May be
           specified as a sequence of names or a callable.
@@ -2055,6 +2058,11 @@ class MetaData(SchemaItem):
 
         available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
+        if views:
+            available.update(
+                bind.dialect.get_view_names(conn or bind, schema)
+            )
+            
         current = set(self.tables.iterkeys())
 
         if only is None:

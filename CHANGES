@@ -171,7 +171,11 @@ CHANGES
    - the logging message emitted by the engine when
      a connection is first used is now "BEGIN (implicit)" 
      to emphasize that DBAPI has no explicit begin().
-
+   
+   - added "views=True" option to metadata.reflect(), 
+     will add the list of available views to those
+     being reflected.  [ticket:1936]
+     
 - informix
    - *Major* cleanup / modernization of the Informix 
      dialect for 0.6, courtesy Florian Apolloner. 
