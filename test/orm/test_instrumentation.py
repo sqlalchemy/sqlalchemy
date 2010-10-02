@@ -5,7 +5,7 @@ from sqlalchemy import MetaData, Integer, ForeignKey, util, event
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    attributes, class_mapper, clear_mappers, instrumentation
+    attributes, class_mapper, clear_mappers, instrumentation, events
 from sqlalchemy.test.testing import eq_, ne_
 from sqlalchemy.util import function_named
 from test.orm import _base
@@ -46,9 +46,9 @@ class InitTest(_base.ORMTest):
         instrumentation.register_class(cls)
         ne_(cls.__init__, original_init)
         manager = instrumentation.manager_of_class(cls)
-        def on_init(state, instance, args, kwargs):
-            canary.append((cls, 'on_init', type(instance)))
-        event.listen(on_init, 'on_init', manager)
+        def on_init(state, args, kwargs):
+            canary.append((cls, 'on_init', state.class_))
+        event.listen(on_init, 'on_init', manager, raw=True)
 
     def test_ai(self):
         inits = []
@@ -573,7 +573,7 @@ class ExtendedEventsTest(_base.ORMTest):
 
     @modifies_instrumentation_finders
     def test_subclassed(self):
-        class MyEvents(instrumentation.ClassEvents):
+        class MyEvents(events.InstanceEvents):
             pass
         class MyClassManager(instrumentation.ClassManager):
             dispatch = event.dispatcher(MyEvents)

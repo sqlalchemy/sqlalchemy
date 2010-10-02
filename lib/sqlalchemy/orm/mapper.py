@@ -405,14 +405,14 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
-        event.listen(_event_on_init, 'on_init', manager)
-        event.listen(_event_on_init_failure, 'on_init_failure', manager)
-        event.listen(_event_on_resurrect, 'on_resurrect', manager)
+        event.listen(_event_on_init, 'on_init', manager, raw=True)
+        event.listen(_event_on_init_failure, 'on_init_failure', manager, raw=True)
+        event.listen(_event_on_resurrect, 'on_resurrect', manager, raw=True)
         
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
-                    event.listen(method, 'on_load', manager)
+                    event.listen(method, 'on_load', manager, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
@@ -420,7 +420,7 @@ class Mapper(object):
         if 'reconstruct_instance' in self.extension:
             def reconstruct(instance):
                 self.extension.reconstruct_instance(self, instance)
-            event.listen(reconstruct, 'on_load', manager)
+            event.listen(reconstruct, 'on_load', manager, raw=False)
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -2296,7 +2296,7 @@ class Mapper(object):
                         populate_state(state, dict_, row, isnew, attrs)
 
             if loaded_instance:
-                state._run_on_load(instance)
+                state._run_on_load()
 
             if result is not None and \
                         (not append_result or 
@@ -2394,7 +2394,7 @@ def validates(*names):
         return fn
     return wrap
 
-def _event_on_init(state, instance, args, kwargs):
+def _event_on_init(state, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
@@ -2404,9 +2404,9 @@ def _event_on_init(state, instance, args, kwargs):
         instrumenting_mapper.extension.init_instance(
             instrumenting_mapper, instrumenting_mapper.class_,
             state.manager.original_init,
-            instance, args, kwargs)
+            state.obj(), args, kwargs)
 
-def _event_on_init_failure(state, instance, args, kwargs):
+def _event_on_init_failure(state, args, kwargs):
     """Run init_failed hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
@@ -2414,9 +2414,9 @@ def _event_on_init_failure(state, instance, args, kwargs):
         util.warn_exception(
             instrumenting_mapper.extension.init_failed,
             instrumenting_mapper, instrumenting_mapper.class_,
-            state.manager.original_init, instance, args, kwargs)
+            state.manager.original_init, state.obj(), args, kwargs)
 
-def _event_on_resurrect(state, instance):
+def _event_on_resurrect(state):
     # re-populate the primary key elements
     # of the dict based on the mapping.
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]

@@ -92,7 +92,7 @@ class ClassManager(dict):
         self.manage()
         self._instrument_init()
     
-    dispatch = event.dispatcher(events.ClassEvents)
+    dispatch = event.dispatcher(events.InstanceEvents)
     
     @property
     def is_mapped(self):
@@ -195,7 +195,8 @@ class ClassManager(dict):
             manager.instrument_attribute(key, inst, True)
 
     def post_configure_attribute(self, key):
-        pass
+        instrumentation_registry.dispatch.\
+                on_attribute_instrument(self.class_, key, self[key])
         
     def uninstrument_attribute(self, key, propagated=False):
         if key not in self:
@@ -360,6 +361,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             self._adapted.instrument_attribute(self.class_, key, inst)
 
     def post_configure_attribute(self, key):
+        super(_ClassInstrumentationAdpter, self).post_configure_attribute(key)
         self._adapted.post_configure_attribute(self.class_, key, self[key])
 
     def install_descriptor(self, key, inst):
@@ -470,6 +472,8 @@ class InstrumentationRegistry(object):
     _dict_finders = util.WeakIdentityMapping()
     _extended = False
 
+    dispatch = event.dispatcher(events.InstrumentationEvents)
+
     def create_manager_for_cls(self, class_, **kw):
         assert class_ is not None
         assert manager_of_class(class_) is None
@@ -506,6 +510,9 @@ class InstrumentationRegistry(object):
         self._manager_finders[class_] = manager.manager_getter()
         self._state_finders[class_] = manager.state_getter()
         self._dict_finders[class_] = manager.dict_getter()
+        
+        self.dispatch.on_class_instrument(class_)
+        
         return manager
 
     def _collect_management_factories_for(self, cls):
@@ -572,6 +579,7 @@ class InstrumentationRegistry(object):
     def unregister(self, class_):
         if class_ in self._manager_finders:
             manager = self.manager_of_class(class_)
+            self.dispatch.on_class_uninstrument(class_)
             manager.unregister()
             manager.dispose()
             del self._manager_finders[class_]

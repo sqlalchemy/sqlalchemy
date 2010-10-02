@@ -96,7 +96,7 @@ class InstanceState(object):
         self, instance, args = mixed[0], mixed[1], mixed[2:]
         manager = self.manager
 
-        manager.dispatch.on_init(self, instance, args, kwargs)
+        manager.dispatch.on_init(self, args, kwargs)
             
         # LESSTHANIDEAL:
         # adjust for the case where the InstanceState was created before
@@ -109,7 +109,7 @@ class InstanceState(object):
         try:
             return manager.original_init(*mixed[1:], **kwargs)
         except:
-            manager.dispatch.on_init_failure(self, instance, args, kwargs)
+            manager.dispatch.on_init_failure(self, args, kwargs)
             raise
 
     def get_history(self, key, **kwargs):
@@ -142,8 +142,8 @@ class InstanceState(object):
         else:
             return [x]
 
-    def _run_on_load(self, instance):
-        self.manager.dispatch.on_load(instance)
+    def _run_on_load(self):
+        self.manager.dispatch.on_load(self)
     
     def __getstate__(self):
         d = {'instance':self.obj()}
@@ -510,11 +510,6 @@ class MutableAttrInstanceState(InstanceState):
 
         # re-establishes identity attributes from the key
         self.manager.dispatch.on_resurrect(self, obj)
-        
-        # TODO: don't really think we should run this here.
-        # resurrect is only meant to preserve the minimal state needed to
-        # do an UPDATE, not to produce a fully usable object
-        self._run_on_load(obj)
         
         return obj
 

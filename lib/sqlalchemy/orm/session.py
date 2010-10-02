@@ -1243,7 +1243,7 @@ class Session(object):
             merged_state.commit_all(merged_dict, self.identity_map)  
 
         if new_instance:
-            merged_state._run_on_load(merged)
+            merged_state._run_on_load()
         return merged
 
     @classmethod

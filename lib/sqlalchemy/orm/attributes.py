@@ -16,7 +16,7 @@ import operator
 from operator import itemgetter
 
 from sqlalchemy import util, event
-from sqlalchemy.orm import interfaces, collections
+from sqlalchemy.orm import interfaces, collections, events
 import sqlalchemy.exceptions as sa_exc
 
 # lazy imports
@@ -52,75 +52,17 @@ PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
 """Symbol indicating that loader callables should be executed."""
 
 
-class AttributeEvents(event.Events):
-    """Events for ORM attributes.
-
-    e.g.::
-    
-        from sqlalchemy import event
-        event.listen(listener, 'on_append', MyClass.collection)
-        event.listen(listener, 'on_set', MyClass.some_scalar,
-                                        active_history=True)
-        
-    active_history = True indicates that the "on_set" event would like
-    to receive the 'old' value, even if it means firing lazy callables.
-    
-    """
-    
-    # TODO: what to do about subclasses !!
-    # a shared approach will be needed.   listeners can be placed
-    # before subclasses are created.   new attrs on subclasses
-    # can pull them from the superclass attr.  listeners
-    # should be auto-propagated to existing subclasses.
-    
-    @classmethod
-    def listen(cls, fn, identifier, target, active_history=False):
-        if active_history:
-            target.dispatch.active_history = True
-        event.Events.listen(fn, identifier, target)
-    
-    @classmethod
-    def unwrap(cls, identifier, event):
-        return event['value']
-        
-    def on_append(self, state, value, initiator):
-        """Receive a collection append event.
-
-        The returned value will be used as the actual value to be
-        appended.
-
-        """
-
-    def on_remove(self, state, value, initiator):
-        """Receive a remove event.
-
-        No return value is defined.
-
-        """
-
-    def on_set(self, state, value, oldvalue, initiator):
-        """Receive a set event.
-
-        The returned value will be used as the actual value to be
-        set.
-
-        """
-
 class QueryableAttribute(interfaces.PropComparator):
-
-    def __init__(self, key, impl=None, comparator=None, parententity=None):
-        """Construct an InstrumentedAttribute.
-
-          comparator
-            a sql.Comparator to which class-level compare/math events will be
-            sent
-        """
+    """Base class for class-bound attributes. """
+    
+    def __init__(self, class_, key, impl=None, comparator=None, parententity=None):
+        self.class_ = class_
         self.key = key
         self.impl = impl
         self.comparator = comparator
         self.parententity = parententity
 
-    dispatch = event.dispatcher(AttributeEvents)
+    dispatch = event.dispatcher(events.AttributeEvents)
     dispatch.dispatch_cls.active_history = False
     
     def get_history(self, instance, **kwargs):
@@ -166,7 +108,7 @@ class QueryableAttribute(interfaces.PropComparator):
 
 
 class InstrumentedAttribute(QueryableAttribute):
-    """Public-facing descriptor, placed in the mapped class dictionary."""
+    """Class bound instrumented attribute which adds descriptor methods."""
 
     def __set__(self, instance, value):
         self.impl.set(instance_state(instance), 
@@ -1121,7 +1063,7 @@ def register_attribute_impl(class_, key,
         impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 
     manager[key].impl = impl
-    
+
     manager.post_configure_attribute(key)
 
     
@@ -1133,7 +1075,7 @@ def register_descriptor(class_, key, proxy_property=None, comparator=None,
         proxy_type = proxied_attribute_factory(proxy_property)
         descriptor = proxy_type(key, proxy_property, comparator, parententity)
     else:
-        descriptor = InstrumentedAttribute(key, comparator=comparator,
+        descriptor = InstrumentedAttribute(class_, key, comparator=comparator,
                                             parententity=parententity)
     
     descriptor.__doc__ = doc

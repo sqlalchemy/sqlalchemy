@@ -341,7 +341,7 @@ class AliasedClass(object):
         existing = getattr(self.__target, prop.key)
         comparator = existing.comparator.adapted(self.__adapt_element)
 
-        queryattr = attributes.QueryableAttribute(prop.key,
+        queryattr = attributes.QueryableAttribute(self, prop.key,
             impl=existing.impl, parententity=self, comparator=comparator)
         setattr(self, prop.key, queryattr)
         return queryattr

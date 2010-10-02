@@ -29,7 +29,20 @@ def listen(fn, identifier, target, *args, **kw):
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
                                 (identifier,target))
+
+def remove(fn, identifier, target):
+    """Remove an event listener.
     
+    Note that some event removals, particularly for those event dispatchers
+    which create wrapper functions and secondary even listeners, may not yet
+    be supported.
+    
+    """
+    for evt_cls in _registrars[identifier]:
+        for tgt in evt_cls.accept_with(target):
+            tgt.dispatch.remove(fn, identifier, tgt, *args, **kw)
+
+        
 _registrars = util.defaultdict(list)
 
 class _Dispatch(object):
@@ -105,13 +118,11 @@ class Events(object):
     @classmethod
     def listen(cls, fn, identifier, target):
         getattr(target.dispatch, identifier).append(fn, target)
-
-#    def update(self, other):
-#        """Populate from the listeners in another :class:`Events` object."""
-
-#        for ls in other.events:
-#            getattr(self, ls.name).listeners.extend(ls.listeners)
     
+    @classmethod
+    def remove(cls, fn, identifier, target):
+        getattr(target.dispatch, identifier).remove(fn, target)
+        
 class _DispatchDescriptor(object):
     """Class-level attributes on _Dispatch classes."""
     
@@ -127,6 +138,10 @@ class _DispatchDescriptor(object):
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].append(obj)
     
+    def remove(self, obj, target):
+        for cls in [target] + target.__subclasses__():
+            self._clslevel[cls].remove(obj)
+        
     def __get__(self, obj, cls):
         if obj is None:
             return self
@@ -180,7 +195,11 @@ class _ListenerCollection(object):
     def append(self, obj, target):
         if obj not in self.listeners:
             self.listeners.append(obj)
-
+    
+    def remove(self, obj, target):
+        if obj in self.listeners:
+            self.listeners.remove(obj)
+        
 class dispatcher(object):
     """Descriptor used by target classes to 
     deliver the _Dispatch class at the class level
