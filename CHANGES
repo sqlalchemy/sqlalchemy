@@ -172,6 +172,11 @@ CHANGES
      a connection is first used is now "BEGIN (implicit)" 
      to emphasize that DBAPI has no explicit begin().
 
+- informix
+   - *Major* cleanup / modernization of the Informix 
+     dialect for 0.6, courtesy Florian Apolloner. 
+     [ticket:1906]
+     
 - misc
    - CircularDependencyError now has .cycles and .edges
      members, which are the set of elements involved in

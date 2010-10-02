@@ -4,3 +4,4 @@ syntax:regexp
 .pyc$
 .orig$
 .egg-info
+test.cfg

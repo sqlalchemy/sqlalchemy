@@ -52,6 +52,7 @@ def boolean_col_expressions(fn):
         no_support('mssql', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         no_support('maxdb', 'FIXME: verify not supported by database'),
+        no_support('informix', 'not supported by database'),
     )
     
 def identity(fn):
@@ -120,6 +121,7 @@ def savepoints(fn):
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        exclude('informix', '<', (11, 55, 'xC3'), 'not supported by database'),
         )
 
 def denormalized_names(fn):
@@ -148,6 +150,7 @@ def sequences(fn):
         no_support('mysql', 'no SEQUENCE support'),
         no_support('sqlite', 'no SEQUENCE support'),
         no_support('sybase', 'no SEQUENCE support'),
+        no_support('informix', 'no SEQUENCE support'),
         )
 
 def update_nowait(fn):
@@ -176,6 +179,7 @@ def intersect(fn):
         fails_on('firebird', 'no support for INTERSECT'),
         fails_on('mysql', 'no support for INTERSECT'),
         fails_on('sybase', 'no support for INTERSECT'),
+        fails_on('informix', 'no support for INTERSECT'),
     )
 
 def except_(fn):
@@ -185,6 +189,7 @@ def except_(fn):
         fails_on('firebird', 'no support for EXCEPT'),
         fails_on('mysql', 'no support for EXCEPT'),
         fails_on('sybase', 'no support for EXCEPT'),
+        fails_on('informix', 'no support for EXCEPT'),
     )
 
 def offset(fn):

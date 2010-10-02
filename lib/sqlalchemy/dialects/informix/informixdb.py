@@ -1,16 +1,38 @@
+"""
+Support for the informixdb DBAPI.
+
+informixdb is available at:
+
+    http://informixdb.sourceforge.net/
+    
+Connecting
+^^^^^^^^^^
+
+Sample informix connection::
+
+    engine = create_engine('informix+informixdb://user:password@host/dbname')
+
+"""
+
+import re
+
 from sqlalchemy.dialects.informix.base import InformixDialect
 from sqlalchemy.engine import default
+
+VERSION_RE = re.compile(r'(\d+)\.(\d+)(.+\d+)')
 
 class InformixExecutionContext_informixdb(default.DefaultExecutionContext):
     def post_exec(self):
         if self.isinsert:
-            self._lastrowid = [self.cursor.sqlerrd[1]]
+            self._lastrowid = self.cursor.sqlerrd[1]
+
+    def get_lastrowid(self):
+        return self._lastrowid
 
 
 class InformixDialect_informixdb(InformixDialect):
     driver = 'informixdb'
-    default_paramstyle = 'qmark'
-    execution_context_cls = InformixExecutionContext_informixdb
+    execution_ctx_cls = InformixExecutionContext_informixdb
 
     @classmethod
     def dbapi(cls):
@@ -31,13 +53,8 @@ class InformixDialect_informixdb(InformixDialect):
 
     def _get_server_version_info(self, connection):
         # http://informixdb.sourceforge.net/manual.html#inspecting-version-numbers
-        version = []
-        for n in connection.connection.dbms_version.split('.'):
-          try:
-            version.append(int(n))
-          except ValueError:
-            version.append(n)
-        return tuple(version)
+        v = VERSION_RE.split(connection.connection.dbms_version)
+        return (int(v[1]), int(v[2]), v[3])
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):

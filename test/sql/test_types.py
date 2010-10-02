@@ -1118,7 +1118,7 @@ class NumericTest(TestBase):
     def teardown(self):
         metadata.drop_all()
         
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")    
+    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def _do_test(self, type_, input_, output, filter_ = None):
         t = Table('t', metadata, Column('x', type_))
         t.create()

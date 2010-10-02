@@ -135,7 +135,7 @@ class TransactionTest(TestBase):
             conn2 = connection.execution_options(dummy=True)
             conn2.execute(users.insert(), user_id=2, user_name='user2')
             transaction.rollback()
-            eq_(connection.scalar("select count(1) from query_users"), 0)
+            eq_(connection.scalar("select count(*) from query_users"), 0)
         finally:
             connection.close()
         
@@ -150,7 +150,7 @@ class TransactionTest(TestBase):
         connection.execute(users.insert(), user_id=5, user_name='user5')
         trans2.commit()
         transaction.rollback()
-        self.assert_(connection.scalar('select count(1) from '
+        self.assert_(connection.scalar('select count(*) from '
                      'query_users') == 0)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 0
@@ -170,7 +170,7 @@ class TransactionTest(TestBase):
         assert connection.in_transaction()
         transaction.commit()
         assert not connection.in_transaction()
-        self.assert_(connection.scalar('select count(1) from '
+        self.assert_(connection.scalar('select count(*) from '
                      'query_users') == 5)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 5
@@ -190,7 +190,7 @@ class TransactionTest(TestBase):
         assert connection.in_transaction()
         transaction.close()
         assert not connection.in_transaction()
-        self.assert_(connection.scalar('select count(1) from '
+        self.assert_(connection.scalar('select count(*) from '
                      'query_users') == 0)
         result = connection.execute('select * from query_users')
         assert len(result.fetchall()) == 0
@@ -604,7 +604,7 @@ class TLTransactionTest(TestBase):
 
     def test_commits(self):
         connection = tlengine.connect()
-        assert connection.execute('select count(1) from query_users'
+        assert connection.execute('select count(*) from query_users'
                                   ).scalar() == 0
         connection.close()
         connection = tlengine.contextual_connect()
@@ -697,7 +697,7 @@ class TLTransactionTest(TestBase):
         tlengine.rollback()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(1) from query_users'
+                        'select count(*) from query_users'
                          ) == 0)
         finally:
             external_connection.close()
@@ -719,7 +719,7 @@ class TLTransactionTest(TestBase):
         tlengine.commit()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(1) from query_users'
+                        'select count(*) from query_users'
                          ) == 5)
         finally:
             external_connection.close()
@@ -751,7 +751,7 @@ class TLTransactionTest(TestBase):
         conn.close()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(1) from query_users'
+                        'select count(*) from query_users'
                          ) == 0)
         finally:
             external_connection.close()
@@ -778,7 +778,7 @@ class TLTransactionTest(TestBase):
         connection.close()
         try:
             self.assert_(external_connection.scalar(
-                        'select count(1) from query_users'
+                        'select count(*) from query_users'
                          ) == 0)
         finally:
             external_connection.close()

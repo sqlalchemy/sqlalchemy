@@ -147,7 +147,7 @@ class BindTest(testing.TestBase):
             table.insert().execute(foo=7)
             trans.rollback()
             metadata.bind = None
-            assert conn.execute('select count(1) from test_table'
+            assert conn.execute('select count(*) from test_table'
                                 ).scalar() == 0
         finally:
             metadata.drop_all(bind=conn)
