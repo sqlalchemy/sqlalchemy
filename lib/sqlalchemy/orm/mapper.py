@@ -639,7 +639,9 @@ class Mapper(object):
                             "or more attributes for these same-named columns "
                             "explicitly."
                              % (prop.columns[-1], column, key))
-
+                    
+                # this hypothetically changes to 
+                # prop.columns.insert(0, column) when we do [ticket:1892]
                 prop.columns.append(column)
                 self._log("appending to existing ColumnProperty %s" % (key))
                              

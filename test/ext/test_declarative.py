@@ -2305,6 +2305,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(General.__table__.kwargs, {'mysql_engine': 'InnoDB'})
 
     def test_columns_single_table_inheritance(self):
+        """Test a column on a mixin with an alternate attribute name,
+        mapped to a superclass and single-table inheritance subclass.
+        The superclass table gets the column, the subclass shares
+        the MapperProperty.
+        
+        """
+        
         class MyMixin(object):
             foo = Column('foo', Integer)
             bar = Column('bar_newname', Integer)
@@ -2318,8 +2325,18 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class Specific(General):
             __mapper_args__ = {'polymorphic_identity': 'specific'}
 
-    @testing.fails_if(lambda: True, "Unhandled declarative use case")
+        assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
+        assert len(General.bar.prop.columns) == 1
+        assert Specific.bar.prop is General.bar.prop
+        
     def test_columns_joined_table_inheritance(self):
+        """Test a column on a mixin with an alternate attribute name,
+        mapped to a superclass and joined-table inheritance subclass.
+        Both tables get the column, in the case of the subclass the two
+        columns are joined under one MapperProperty.
+        
+        """
+
         class MyMixin(object):
             foo = Column('foo', Integer)
             bar = Column('bar_newname', Integer)
@@ -2334,6 +2351,52 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = 'sub'
             id = Column(Integer, ForeignKey('test.id'), primary_key=True)
             __mapper_args__ = {'polymorphic_identity': 'specific'}
+
+        assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
+        assert len(General.bar.prop.columns) == 1
+        assert Specific.bar.prop is not General.bar.prop
+        assert len(Specific.bar.prop.columns) == 2
+        assert Specific.bar.prop.columns[0] is General.__table__.c.bar_newname
+        assert Specific.bar.prop.columns[1] is Specific.__table__.c.bar_newname
+    
+    def test_column_join_checks_superclass_type(self):
+        """Test that the logic which joins subclass props to those
+        of the superclass checks that the superclass property is a column.
+
+        """
+        class General(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            general_id = Column(Integer, ForeignKey('test.id'))
+            type_ = relationship("General")
+
+        class Specific(General):
+            __tablename__ = 'sub'
+            id = Column(Integer, ForeignKey('test.id'), primary_key=True)
+            type_ = Column('foob', String(50))
+        
+        assert isinstance(General.type_.property, sa.orm.RelationshipProperty)
+        assert Specific.type_.property.columns[0] is Specific.__table__.c.foob
+
+    def test_column_join_checks_subclass_type(self):
+        """Test that the logic which joins subclass props to those
+        of the superclass checks that the subclass property is a column.
+
+        """
+        def go():
+            class General(Base):
+                __tablename__ = 'test'
+                id = Column(Integer, primary_key=True)
+                type_ = Column('foob', Integer)
+
+            class Specific(General):
+                __tablename__ = 'sub'
+                id = Column(Integer, ForeignKey('test.id'), primary_key=True)
+                specific_id = Column(Integer, ForeignKey('sub.id'))
+                type_ = relationship("Specific")
+        assert_raises_message(
+            sa.exc.ArgumentError, "column 'foob' conflicts with property", go
+        )
         
     def test_table_args_overridden(self):
 
@@ -2777,7 +2840,6 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class ColumnMixin:
             tada = Column(Integer)
             
-            
         def go():
 
             class Model(Base, ColumnMixin):
@@ -2789,6 +2851,29 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 
         assert_raises_message(sa.exc.ArgumentError,
                               "Can't add additional column 'tada' when "
+                              "specifying __table__", go)
+
+    def test_table_in_model_and_different_named_alt_key_column_in_mixin(self):
+        
+        # here, the __table__ has a column 'tada'.  We disallow
+        # the add of the 'foobar' column, even though it's
+        # keyed to 'tada'.
+        
+        class ColumnMixin:
+            tada = Column('foobar', Integer)
+            
+        def go():
+
+            class Model(Base, ColumnMixin):
+
+                __table__ = Table('foo', Base.metadata, 
+                                Column('data',Integer), 
+                                Column('tada', Integer),
+                                Column('id', Integer,primary_key=True))
+                foo = relationship("Dest")
+                
+        assert_raises_message(sa.exc.ArgumentError,
+                              "Can't add additional column 'foobar' when "
                               "specifying __table__", go)
 
     def test_table_in_model_overrides_different_typed_column_in_mixin(self):

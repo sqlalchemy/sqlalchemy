@@ -855,7 +855,7 @@ from sqlalchemy.orm.interfaces import MapperProperty
 from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
 from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy import util, exceptions
-from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql import util as sql_util, expression
 
 
 __all__ = 'declarative_base', 'synonym_for', \
@@ -938,9 +938,6 @@ def _as_declarative(cls, classname, dict_):
                         "on declarative mixin classes. ")
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
-                            # TODO: coverage here when obj.name is not 
-                            # None and obj.name != name and obj.name in 
-                            # table.c
                             (obj.name or name) in dict_['__table__'].c
                             ):
                         potential_columns[name] = \
@@ -1119,7 +1116,25 @@ def _as_declarative(cls, classname, dict_):
                 set([c.key for c in inherited_table.c
                      if c not in inherited_mapper._columntoproperty])
             exclude_properties.difference_update([c.key for c in cols])
-    
+        
+        # look through columns in the current mapper that 
+        # are keyed to a propname different than the colname
+        # (if names were the same, we'd have popped it out above,
+        # in which case the mapper makes this combination).
+        # See if the superclass has a similar column property.   
+        # If so, join them together.   
+        for k, col in our_stuff.items():
+            if not isinstance(col, expression.ColumnElement):
+                continue
+            if k in inherited_mapper._props:
+                p = inherited_mapper._props[k]
+                if isinstance(p, ColumnProperty):
+                    # note here we place the superclass column
+                    # first.  this corresponds to the 
+                    # append() in mapper._configure_property().
+                    # change this ordering when we do [ticket:1892]
+                    our_stuff[k] = p.columns + [col]
+                
     cls.__mapper__ = mapper_cls(cls, 
                                 table, 
                                 properties=our_stuff, 

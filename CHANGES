@@ -149,10 +149,10 @@ CHANGES
      not just an attribute technique.  [ticket:1915]
 
    - Fixed bug whereby columns on a mixin wouldn't propagate
-     correctly to a single-table inheritance scheme where
-     the attribute name is different than that of the column.
-     [ticket:1930].   Note [ticket:1931] which is the same
-     issue for joined inh, not yet resolved.
+     correctly to a single-table, or joined-table,
+     inheritance scheme where the attribute name is
+     different than that of the column. [ticket:1930],
+     [ticket:1931].
           
 - engine
    
