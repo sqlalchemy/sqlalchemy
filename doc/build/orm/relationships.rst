@@ -1,5 +1,7 @@
 .. module:: sqlalchemy.orm
 
+.. _relationship_config_toplevel:
+
 Relationship Configuration
 ==========================
 

@@ -22,6 +22,7 @@ from sqlalchemy.orm.util import (
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity
+import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
@@ -105,13 +106,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        The full resolution is described in the ``get_bind()`` method of
        ``Session``. Usage looks like::
 
-        sess = Session(binds={
+        Session = sessionmaker(binds={
             SomeMappedClass: create_engine('postgresql://engine1'),
             somemapper: create_engine('postgresql://engine2'),
             some_table: create_engine('postgresql://engine3'),
             })
 
-      Also see the ``bind_mapper()`` and ``bind_table()`` methods.
+      Also see the :meth:`.Session.bind_mapper` and :meth:`.Session.bind_table` methods.
 
     :param \class_: Specify an alternate class other than
        ``sqlalchemy.orm.session.Session`` which should be used by the returned
@@ -142,8 +143,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        as returned by the ``query()`` method. Defaults to
        :class:`~sqlalchemy.orm.query.Query`.
 
-    :param twophase:  When ``True``, all transactions will be started using
-        :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``,
+    :param twophase:  When ``True``, all transactions will be started as
+        a "two phase" transaction, i.e. using the "two phase" semantics
+        of the database in use along with an XID.  During a ``commit()``,
         after ``flush()`` has been issued for all attached databases, the
         ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
         be called. This allows each database to roll back the entire
@@ -206,7 +208,9 @@ class SessionTransaction(object):
       single: thread safety; SessionTransaction
 
     """
-
+    
+    _rollback_exception = None
+    
     def __init__(self, session, parent=None, nested=False):
         self.session = session
         self._connections = {}
@@ -229,9 +233,21 @@ class SessionTransaction(object):
     def _assert_is_active(self):
         self._assert_is_open()
         if not self._active:
-            raise sa_exc.InvalidRequestError(
-                "The transaction is inactive due to a rollback in a "
-                "subtransaction.  Issue rollback() to cancel the transaction.")
+            if self._rollback_exception:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "due to a previous exception during flush."
+                    " To begin a new transaction with this Session, "
+                    "first issue Session.rollback()."
+                    " Original exception was: %s"
+                    % self._rollback_exception
+                )
+            else:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "by a nested rollback() call.  To begin a new "
+                    "transaction, issue Session.rollback() first."
+                    )
 
     def _assert_is_open(self, error_msg="The transaction is closed"):
         if self.session is None:
@@ -288,14 +304,16 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+            _expire_state(s, s.dict, None,
+                          instance_dict=self.session.identity_map)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+                _expire_state(s, s.dict, None,
+                              instance_dict=self.session.identity_map)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -379,7 +397,7 @@ class SessionTransaction(object):
         self.close()
         return self._parent
 
-    def rollback(self):
+    def rollback(self, _capture_exception=False):
         self._assert_is_open()
 
         stx = self.session.transaction
@@ -397,6 +415,8 @@ class SessionTransaction(object):
                     transaction._deactivate()
 
         self.close()
+        if self._parent and _capture_exception:
+            self._parent._rollback_exception = sys.exc_info()[1]
         return self._parent
 
     def _rollback_impl(self):
@@ -415,7 +435,8 @@ class SessionTransaction(object):
     def close(self):
         self.session.transaction = self._parent
         if self._parent is None:
-            for connection, transaction, autoclose in set(self._connections.values()):
+            for connection, transaction, autoclose in \
+                set(self._connections.values()):
                 if autoclose:
                     connection.close()
                 else:
@@ -1133,6 +1154,8 @@ class Session(object):
         This operation cascades to associated instances if the association is
         mapped with ``cascade="merge"``.
 
+        See :ref:`unitofwork_merging` for a detailed discussion of merging.
+        
         """
         if 'dont_load' in kw:
             load = not kw['dont_load']
@@ -1451,7 +1474,7 @@ class Session(object):
                 ext.after_flush(self, flush_context)
             transaction.commit()
         except:
-            transaction.rollback()
+            transaction.rollback(_capture_exception=True)
             raise
         
         flush_context.finalize_flush_changes()

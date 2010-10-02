@@ -1187,12 +1187,14 @@ Finally, a delete.  Easy enough:
 Further Reference
 ==================
 
-API docs: :mod:`sqlalchemy.sql.expression`
+Expression Language Reference: :ref:`expression_api_toplevel`
 
-Table Metadata Reference: :ref:`metadata_toplevel`
+Database Metadata Reference: :ref:`metadata_toplevel`
 
-Engine/Connection/Execution Reference: :ref:`engines_toplevel`
+Engine Reference: :ref:`engines_toplevel`
 
-SQL Types: :ref:`types`
+Connection Reference: :ref:`connections_toplevel`
+
+Types Reference: :ref:`types_toplevel`
 
 

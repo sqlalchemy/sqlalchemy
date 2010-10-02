@@ -1,6 +1,6 @@
-.. _mapper_config_toplevel:
-
 .. module:: sqlalchemy.orm
+
+.. _mapper_config_toplevel:
 
 Mapper Configuration
 ====================

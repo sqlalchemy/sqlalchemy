@@ -281,7 +281,7 @@ class ReflectionTest(TestBase, ComparesTables):
         meta.create_all()
         try:
             meta2 = MetaData(testing.db)
-            a2 = Table('addresses', meta2, 
+            a2 = Table('addresses', meta2,
                     Column('user_id',sa.Integer, sa.ForeignKey('users.id')),
                    autoload=True)
             u2 = Table('users', meta2, autoload=True)
@@ -597,7 +597,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('data', sa.String(50)),
             sa.ForeignKeyConstraint(['foo', 'bar', 'lala'],
              ['multi.multi_id', 'multi.multi_rev', 'multi.multi_hoho'
-             ]), 
+             ]),
             test_needs_fk=True,
         )
         meta.create_all()
@@ -620,6 +620,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
+    @testing.fails_on('+informixdb', 'FIXME: should be supported via the DELIMITED env var but that breaks everything else for now')
     def test_reserved(self):
 
         # check a table that uses an SQL reserved name doesn't cause an
@@ -742,7 +743,6 @@ class ReflectionTest(TestBase, ComparesTables):
             m2 = MetaData(testing.db)
             t2 = Table('party', m2, autoload=True)
 
-            print len(t2.indexes), t2.indexes
             assert len(t2.indexes) == 3
             # Make sure indexes are in the order we expect them in
             tmp = [(idx.name, idx) for idx in t2.indexes]
@@ -1056,7 +1056,7 @@ def createTables(meta, schema=None):
         Column('test3', sa.Text),
         Column('test4', sa.Numeric(10, 2), nullable = False),
         Column('test5', sa.Date),
-        Column('test5-1', sa.TIMESTAMP),
+        Column('test5_1', sa.TIMESTAMP),
         parent_user_id,
         Column('test6', sa.Date, nullable=False),
         Column('test7', sa.Text),

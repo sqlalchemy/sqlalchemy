@@ -5,7 +5,6 @@ from sqlalchemy.test import *
 
 class CompileTest(TestBase, AssertsCompiledSQL):
 
-    __only_on__ = 'informix'
     __dialect__ = informix.InformixDialect()
 
     def test_statements(self):
@@ -23,3 +22,4 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             't1.col1 = t2.col3')
         self.assert_compile(t1.update().values({t1.c.col1: t1.c.col1
                             + 1}), 'UPDATE t1 SET col1=(t1.col1 + ?)')
+

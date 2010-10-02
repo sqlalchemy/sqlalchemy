@@ -332,6 +332,10 @@ class SQLCompiler(engine.Compiled):
             
     def visit_column(self, column, result_map=None, **kwargs):
         name = column.name
+        if name is None:
+            raise exc.CompileError("Cannot compile Column object until "
+                                   "it's 'name' is assigned.")
+            
         if not column.is_literal and isinstance(name, sql._generated_label):
             name = self._truncated_identifier("colident", name)
 

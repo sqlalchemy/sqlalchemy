@@ -2543,6 +2543,30 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Could not find a FROM",
             sess.query(users.c.id).select_from(users).join, User
         )
+    
+    def test_select_from(self):
+        """Test that the left edge of the join can be set reliably with select_from()."""
+        
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Item.id).select_from(User).join(User.orders).join(Order.items),
+            "SELECT items.id AS items_id FROM users JOIN orders ON "
+            "users.id = orders.user_id JOIN order_items AS order_items_1 "
+            "ON orders.id = order_items_1.order_id JOIN items ON items.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+
+        # here, the join really wants to add a second FROM clause
+        # for "Item".  but select_from disallows that
+        self.assert_compile(
+            sess.query(Item.id).select_from(User).join((Item, User.id==Item.id)),
+            "SELECT items.id AS items_id FROM users JOIN items ON users.id = items.id",
+            use_default_dialect=True
+        )
+        
+        
+        
         
     def test_from_self_resets_joinpaths(self):
         """test a join from from_self() doesn't confuse joins inside the subquery
@@ -3618,6 +3642,89 @@ class CustomJoinTest(QueryTest):
             [User(id=7)]
         )
 
+class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = 'once'
+    __dialect__ = default.DefaultDialect()
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        nodes = Table('nodes', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id'))
+        )
+        
+        sub_table = Table('sub_table', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('node_id', Integer, ForeignKey('nodes.id')),
+        )
+        
+        assoc_table = Table('assoc_table', metadata,
+            Column('left_id', Integer, ForeignKey('nodes.id')),
+            Column('right_id', Integer, ForeignKey('nodes.id'))
+        )
+        
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class Node(Base):
+            pass
+        
+        class Sub(Base):
+            pass
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, lazy='select', join_depth=3,
+                backref=backref('parent', remote_side=[nodes.c.id])
+            ),
+            'subs' : relationship(Sub),
+            'assoc':relationship(Node, 
+                            secondary=assoc_table, 
+                            primaryjoin=nodes.c.id==assoc_table.c.left_id, 
+                            secondaryjoin=nodes.c.id==assoc_table.c.right_id)
+        })
+        mapper(Sub, sub_table)
+
+    @testing.resolve_artifact_names
+    def test_o2m_aliased_plus_o2m(self):
+        sess = create_session()
+        n1 = aliased(Node)
+
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.children)).join((Sub, n1.subs)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
+            "FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN sub_table ON nodes_1.id = sub_table.node_id"
+        )
+    
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.children)).join((Sub, Node.subs)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
+            "FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN sub_table ON nodes.id = sub_table.node_id"
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2m_aliased_plus_o2m(self):
+        sess = create_session()
+        n1 = aliased(Node)
+
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.assoc)).join((Sub, n1.subs)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
+            "FROM nodes JOIN assoc_table AS assoc_table_1 ON nodes.id = "
+            "assoc_table_1.left_id JOIN nodes AS nodes_1 ON nodes_1.id = "
+            "assoc_table_1.right_id JOIN sub_table ON nodes_1.id = sub_table.node_id",
+        )
+    
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.assoc)).join((Sub, Node.subs)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id "
+            "FROM nodes JOIN assoc_table AS assoc_table_1 ON nodes.id = "
+            "assoc_table_1.left_id JOIN nodes AS nodes_1 ON nodes_1.id = "
+            "assoc_table_1.right_id JOIN sub_table ON nodes.id = sub_table.node_id",
+        )
+        
+    
 class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     run_inserts = 'once'
@@ -3630,20 +3737,23 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
-
+        
     @classmethod
     def insert_data(cls):
-        global Node
-    
+        # TODO: somehow using setup_classes()
+        # here normally is screwing up the other tests.
+        
+        global Node, Sub
         class Node(Base):
             def append(self, node):
                 self.children.append(node)
-
+        
         mapper(Node, nodes, properties={
             'children':relationship(Node, lazy='select', join_depth=3,
                 backref=backref('parent', remote_side=[nodes.c.id])
-            )
+            ),
         })
+
         sess = create_session()
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
@@ -3656,6 +3766,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.close()
     
+    @testing.resolve_artifact_names
     def test_join(self):
         sess = create_session()
 
@@ -3673,6 +3784,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'
     
+    @testing.resolve_artifact_names
     def test_string_or_prop_aliased(self):
         """test that join('foo') behaves the same as join(Cls.foo) in a self
         referential scenario.
@@ -3721,6 +3833,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                 use_default_dialect=True
             )
         
+    @testing.resolve_artifact_names
     def test_from_self_inside_excludes_outside(self):
         """test the propagation of aliased() from inside to outside
         on a from_self()..
@@ -3774,11 +3887,48 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
         
+    @testing.resolve_artifact_names
     def test_explicit_join(self):
         sess = create_session()
     
         n1 = aliased(Node)
         n2 = aliased(Node)
+        
+        self.assert_compile(
+            join(Node, n1, 'children').join(n2, 'children'),
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            join(Node, n1, Node.children).join(n2, n1.children),
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
+        )
+
+        # the join_to_left=False here is unfortunate.   the default on this flag should
+        # be False.
+        self.assert_compile(
+            join(Node, n1, Node.children).join(n2, Node.children, join_to_left=False),
+            "nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.children)).join((n2, n1.children)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS "
+            "nodes_data FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN nodes AS nodes_2 ON nodes_1.id = nodes_2.parent_id",
+            use_default_dialect=True
+        )
+    
+        self.assert_compile(
+            sess.query(Node).join((n1, Node.children)).join((n2, Node.children)),
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS "
+            "nodes_data FROM nodes JOIN nodes AS nodes_1 ON nodes.id = nodes_1.parent_id "
+            "JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id",
+            use_default_dialect=True
+        )
     
         node = sess.query(Node).select_from(join(Node, n1, 'children')).filter(n1.data=='n122').first()
         assert node.data=='n12'
@@ -3800,7 +3950,8 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             list(sess.query(Node).select_from(join(Node, n1, 'parent').join(n2, 'parent')).\
             filter(and_(Node.data=='n122', n1.data=='n12', n2.data=='n1')).values(Node.data, n1.data, n2.data)),
             [('n122', 'n12', 'n1')])
-
+    
+    @testing.resolve_artifact_names
     def test_join_to_nonaliased(self):
         sess = create_session()
     
@@ -3819,6 +3970,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         )
     
         
+    @testing.resolve_artifact_names
     def test_multiple_explicit_entities(self):
         sess = create_session()
     
@@ -3868,6 +4020,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         )
     
     
+    @testing.resolve_artifact_names
     def test_any(self):
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n1')).all(), [])
@@ -3875,6 +4028,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id).all(), 
                 [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
 
+    @testing.resolve_artifact_names
     def test_has(self):
         sess = create_session()
     
@@ -3883,6 +4037,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n122')).all(), [])
         eq_(sess.query(Node).filter(~Node.parent.has()).all(), [Node(data='n1')])
 
+    @testing.resolve_artifact_names
     def test_contains(self):
         sess = create_session()
     
@@ -3892,6 +4047,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         n13 = sess.query(Node).filter(Node.data=='n13').one()
         eq_(sess.query(Node).filter(Node.children.contains(n13)).all(), [Node(data='n1')])
 
+    @testing.resolve_artifact_names
     def test_eq_ne(self):
         sess = create_session()
     
@@ -4202,7 +4358,8 @@ class UpdateDeleteTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(User, users)
         mapper(Document, documents, properties={
-            'user': relationship(User, lazy='joined', backref=backref('documents', lazy='select'))
+            'user': relationship(User, lazy='joined', 
+                        backref=backref('documents', lazy='select'))
         })
 
     @testing.resolve_artifact_names
@@ -4321,6 +4478,34 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [15,27,19,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([15,27,19,27]))
 
+    @testing.resolve_artifact_names
+    @testing.provide_metadata
+    def test_update_attr_names(self):
+        data = Table('data', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('counter', Integer, nullable=False, default=0)
+        )
+        class Data(_base.ComparableEntity):
+            pass
+        
+        mapper(Data, data, properties={'cnt':data.c.counter})
+        metadata.create_all()
+        d1 = Data()
+        sess = Session()
+        sess.add(d1)
+        sess.commit()
+        eq_(d1.cnt, 0)
+
+        sess.query(Data).update({Data.cnt:Data.cnt + 1})
+        sess.flush()
+        
+        eq_(d1.cnt, 1)
+
+        sess.query(Data).update({Data.cnt:Data.cnt + 1}, 'fetch')
+        sess.flush()
+        
+        eq_(d1.cnt, 2)
+        sess.close()
 
     @testing.resolve_artifact_names
     def test_update_with_bindparams(self):

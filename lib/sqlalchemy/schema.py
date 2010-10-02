@@ -448,18 +448,34 @@ class Table(SchemaItem, expression.TableClause):
         
         """
 
-        try:
-            if schema is RETAIN_SCHEMA:
-                schema = self.schema
-            key = _get_table_key(self.name, schema)
+        if schema is RETAIN_SCHEMA:
+            schema = self.schema
+        key = _get_table_key(self.name, schema)
+        if key in metadata.tables:
+            util.warn("Table '%s' already exists within the given "
+                      "MetaData - not copying." % self.description)
             return metadata.tables[key]
-        except KeyError:
-            args = []
-            for c in self.columns:
-                args.append(c.copy(schema=schema))
-            for c in self.constraints:
-                args.append(c.copy(schema=schema))
-            return Table(self.name, metadata, schema=schema, *args)
+
+        args = []
+        for c in self.columns:
+            args.append(c.copy(schema=schema))
+        for c in self.constraints:
+            args.append(c.copy(schema=schema))
+        table = Table(
+            self.name, metadata, schema=schema,
+            *args, **self.kwargs
+            )
+        for index in self.indexes:
+            # skip indexes that would be generated
+            # by the 'index' flag on Column
+            if len(index.columns) == 1 and \
+                list(index.columns)[0].index:
+                continue
+            Index(index.name,
+                  unique=index.unique,
+                  *[table.c[col] for col in index.columns.keys()],
+                  **index.kwargs)
+        return table
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""
@@ -887,6 +903,10 @@ class Column(SchemaItem, expression.ColumnClause):
         
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
+        if name is None and self.name is None:
+            raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
+                    " with this Column object until it's 'name' has "
+                    "been assigned.")
         c = self._constructor(
             name or self.name, 
             self.type, 

@@ -11,6 +11,47 @@ CHANGES
     backrefs involved, where the initiating parent
     was a subclass (with its own mapper) of the 
     previous parent.
+
+  - Fixed a regression in 0.6.4 which occurred if you 
+    passed an empty list to "include_properties" on 
+    mapper() [ticket:1918]
+  
+  - Patched a case where query.join() would adapt the
+    right side to the right side of the left's join
+    inappropriately [ticket:1925]
+
+  - Query.select_from() has been beefed up to help
+    ensure that a subsequent call to query.join()
+    will use the select_from() entity, assuming it's
+    a mapped entity and not a plain selectable, 
+    as the default "left" side, not the first entity 
+    in the Query object's list of entities.
+    
+  - The exception raised by Session when it is used
+    subsequent to a subtransaction rollback (which is what
+    happens when a flush fails in autocommit=False mode) has
+    now been reworded (this is the "inactive due to a
+    rollback in a subtransaction" message). In particular,
+    if the rollback was due to an exception during flush(),
+    the message states this is the case, and reiterates the
+    string form of the original exception that occurred
+    during flush. If the session is closed due to explicit
+    usage of subtransactions (not very common), the message
+    just states this is the case.
+
+  - The exception raised by Mapper when repeated requests to
+    its initialization are made after initialization already
+    failed no longer assumes the "hasattr" case, since
+    there's other scenarios in which this message gets
+    emitted, and the message also does not compound onto
+    itself multiple times - you get the same message for
+    each attempt at usage. The misnomer "compiles" is being
+    traded out for "initialize".
+
+  - Fixed bug in query.update() where 'evaluate' or 'fetch'
+    expiration would fail if the column expression key was
+    a class attribute with a different keyname as the 
+    actual column name.  [ticket:1935]
     
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated
@@ -37,12 +78,21 @@ CHANGES
     object is loaded, so backrefs aren't available until
     after a flush. The flag is only intended for very
     specific use cases.
-    
-  - Slight improvement to the behavior of "passive_updates=False"
-    when placed only on the many-to-one side of a
-    relationship; documentation has been clarified
-    that passive_updates=False should really be on the 
-    one-to-many side.
+  
+  - Another new flag on relationship(), cascade_backrefs,
+    disables the "save-update" cascade when the event was
+    initiated on the "reverse" side of a bidirectional 
+    relationship.   This is a cleaner behavior so that
+    many-to-ones can be set on a transient object without
+    it getting sucked into the child object's session,
+    while still allowing the forward collection to 
+    cascade.   We *might* default this to False in 0.7.
+      
+  - Slight improvement to the behavior of
+    "passive_updates=False" when placed only on the
+    many-to-one side of a relationship; documentation has
+    been clarified that passive_updates=False should really
+    be on the one-to-many side.
 
   - Placing passive_deletes=True on a many-to-one emits
     a warning, since you probably intended to put it on
@@ -58,7 +108,81 @@ CHANGES
     the "where type in (x, y, z)" is placed on the outside
     of the query only, instead of repeatedly.   May make
     some more adjustments to this.
-        
+
+  - scoped_session emits a warning when configure() is 
+    called if a Session is already present (checks only the
+    current thread) [ticket:1924]
+
+  - reworked the internals of mapper.cascade_iterator() to
+    cut down method calls by about 9% in some circumstances.
+    [ticket:1932]
+    
+- sql
+   - Table.tometadata() now copies Index objects associated
+     with the Table as well.
+
+   - Table.tometadata() issues a warning if the given Table 
+     is already present in the target MetaData - the existing
+     Table object is returned.
+
+   - An informative error message is raised if a Column 
+     which has not yet been assigned a name, i.e. as in 
+     declarative, is used in a context where it is
+     exported to the columns collection of an enclosing
+     select() construct, or if any construct involving
+     that column is compiled before its name is 
+     assigned.
+
+   - as_scalar(), label() can be called on a selectable
+     which contains a Column that is not yet named.
+     [ticket:1862]
+
+   - Fixed recursion overflow which could occur when operating
+     with two expressions both of type "NullType", but
+     not the singleton NULLTYPE instance. [ticket:1907]
+     
+- declarative
+   - @classproperty (soon/now @declared_attr) takes effect for 
+     __mapper_args__, __table_args__, __tablename__ on 
+     a base class that is not a mixin, as well as mixins.
+     [ticket:1922]
+
+   - @classproperty 's official name/location for usage
+     with declarative is sqlalchemy.ext.declarative.declared_attr.
+     Same thing, but moving there since it is more of a
+     "marker" that's specific to declararative, 
+     not just an attribute technique.  [ticket:1915]
+
+   - Fixed bug whereby columns on a mixin wouldn't propagate
+     correctly to a single-table, or joined-table,
+     inheritance scheme where the attribute name is
+     different than that of the column. [ticket:1930],
+     [ticket:1931].
+          
+- engine
+   
+   - Fixed a regression in 0.6.4 whereby the change that
+     allowed cursor errors to be raised consistently broke
+     the result.lastrowid accessor.   Test coverage has
+     been added for result.lastrowid.   Note that lastrowid
+     is only supported by Pysqlite and some MySQL drivers,
+     so isn't super-useful in the general case.
+   
+   - the logging message emitted by the engine when
+     a connection is first used is now "BEGIN (implicit)" 
+     to emphasize that DBAPI has no explicit begin().
+
+- informix
+   - *Major* cleanup / modernization of the Informix 
+     dialect for 0.6, courtesy Florian Apolloner. 
+     [ticket:1906]
+     
+- misc
+   - CircularDependencyError now has .cycles and .edges
+     members, which are the set of elements involved in
+     one or more cycles, and the set of edges as 2-tuples.  
+     [ticket:1890]
+     
 0.6.4
 =====
 - orm

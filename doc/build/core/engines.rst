@@ -63,7 +63,7 @@ ibm-db_                    thirdparty                   thirdparty   thirdparty 
 **Firebird**
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
-informixdb_                ``informix+informixdb``\*    development  development   no           unknown            unknown
+informixdb_                ``informix+informixdb``\*    yes          development   no           unknown            unknown
 **MaxDB**
 sapdb_                     ``maxdb+sapdb``\*            development  development   no           yes                unknown
 **Microsoft Access**

@@ -6,6 +6,7 @@ from sqlalchemy.test.testing import TestBase, eq_, AssertsExecutionResults, asse
 from sqlalchemy.test import testing
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.exc import FlushError
+from sqlalchemy.test.schema import Table, Column
 
 engine = testing.db
 
@@ -18,13 +19,13 @@ class FlushOnPendingTest(AssertsExecutionResults, TestBase):
         class Parent(Base):
             __tablename__ = 'parent'
     
-            id= Column(Integer, primary_key=True)
+            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
             name = Column(String(50), nullable=False)
             children = relationship("Child", load_on_pending=True)
             
         class Child(Base):
             __tablename__ = 'child'
-            id= Column(Integer, primary_key=True)
+            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
             parent_id = Column(Integer, ForeignKey('parent.id'))
     
         Base.metadata.create_all(engine)
@@ -66,13 +67,13 @@ class LoadOnFKsTest(AssertsExecutionResults, TestBase):
             __tablename__ = 'parent'
             __table_args__ = {'mysql_engine':'InnoDB'}
             
-            id= Column(Integer, primary_key=True)
+            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
 
         class Child(Base):
             __tablename__ = 'child'
             __table_args__ = {'mysql_engine':'InnoDB'}
 
-            id= Column(Integer, primary_key=True)
+            id= Column(Integer, primary_key=True, test_needs_autoincrement=True)
             parent_id = Column(Integer, ForeignKey('parent.id'))
     
             parent = relationship(Parent, backref=backref("children"))

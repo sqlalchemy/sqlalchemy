@@ -34,9 +34,10 @@ class ExecuteTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 
-                                        'sqlite', '+pyodbc', 
-                                        '+mxodbc', '+zxjdbc', 'mysql+oursql')
+    @testing.fails_on_everything_except('firebird', 'maxdb',
+                                        'sqlite', '+pyodbc',
+                                        '+mxodbc', '+zxjdbc', 'mysql+oursql',
+                                        'informix+informixdb')
     def test_raw_qmark(self):
         for conn in testing.db, testing.db.connect():
             conn.execute('insert into users (user_id, user_name) '
@@ -103,7 +104,7 @@ class ExecuteTest(TestBase):
                     'horse'), (4, 'sally')]
             conn.execute('delete from users')
 
-    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle')
+    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle', 'informix+informixdb')
     def test_raw_named(self):
         for conn in testing.db, testing.db.connect():
             conn.execute('insert into users (user_id, user_name) '
@@ -183,7 +184,7 @@ class CompiledCacheTest(TestBase):
         cached_conn.execute(ins, {'user_name':'u2'})
         cached_conn.execute(ins, {'user_name':'u3'})
         assert len(cache) == 1
-        eq_(conn.execute("select count(1) from users").scalar(), 3)
+        eq_(conn.execute("select count(*) from users").scalar(), 3)
     
 class LogTest(TestBase):
     def _test_logger(self, eng, eng_name, pool_name):

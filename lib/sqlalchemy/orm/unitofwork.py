@@ -33,10 +33,13 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def append(self, state, item, initiator):
         # process "save_update" cascade rules for when 
         # an instance is appended to the list of another instance
+
         sess = _state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
-            if prop.cascade.save_update and item not in sess:
+            if prop.cascade.save_update and \
+                (prop.cascade_backrefs or self.key == initiator.key) and \
+                item not in sess:
                 sess.add(item)
         return item
         
@@ -55,11 +58,13 @@ class UOWEventHandler(interfaces.AttributeExtension):
         # is attached to another instance
         if oldvalue is newvalue:
             return newvalue
+
         sess = _state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if newvalue is not None and \
                 prop.cascade.save_update and \
+                (prop.cascade_backrefs or self.key == initiator.key) and \
                 newvalue not in sess:
                 sess.add(newvalue)
             if prop.cascade.delete_orphan and \
