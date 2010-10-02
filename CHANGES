@@ -47,6 +47,11 @@ CHANGES
     itself multiple times - you get the same message for
     each attempt at usage. The misnomer "compiles" is being
     traded out for "initialize".
+
+  - Fixed bug in query.update() where 'evaluate' or 'fetch'
+    expiration would fail if the column expression key was
+    a class attribute with a different keyname as the 
+    actual column name.  [ticket:1935]
     
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated

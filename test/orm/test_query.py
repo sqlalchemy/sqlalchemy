@@ -4358,7 +4358,8 @@ class UpdateDeleteTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(User, users)
         mapper(Document, documents, properties={
-            'user': relationship(User, lazy='joined', backref=backref('documents', lazy='select'))
+            'user': relationship(User, lazy='joined', 
+                        backref=backref('documents', lazy='select'))
         })
 
     @testing.resolve_artifact_names
@@ -4477,6 +4478,34 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [15,27,19,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([15,27,19,27]))
 
+    @testing.resolve_artifact_names
+    @testing.provide_metadata
+    def test_update_attr_names(self):
+        data = Table('data', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('counter', Integer, nullable=False, default=0)
+        )
+        class Data(_base.ComparableEntity):
+            pass
+        
+        mapper(Data, data, properties={'cnt':data.c.counter})
+        metadata.create_all()
+        d1 = Data()
+        sess = Session()
+        sess.add(d1)
+        sess.commit()
+        eq_(d1.cnt, 0)
+
+        sess.query(Data).update({Data.cnt:Data.cnt + 1})
+        sess.flush()
+        
+        eq_(d1.cnt, 1)
+
+        sess.query(Data).update({Data.cnt:Data.cnt + 1}, 'fetch')
+        sess.flush()
+        
+        eq_(d1.cnt, 2)
+        sess.close()
 
     @testing.resolve_artifact_names
     def test_update_with_bindparams(self):

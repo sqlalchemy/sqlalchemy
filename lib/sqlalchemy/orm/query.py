@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
-    join as orm_join,with_parent
+    join as orm_join,with_parent, _attr_as_key
     )
 
 
@@ -2204,7 +2204,7 @@ class Query(object):
 
                 value_evaluators = {}
                 for key,value in values.iteritems():
-                    key = expression._column_as_key(key)
+                    key = _attr_as_key(key)
                     value_evaluators[key] = evaluator_compiler.process(
                                         expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
@@ -2259,7 +2259,7 @@ class Query(object):
                 if identity_key in session.identity_map:
                     session.expire(
                                 session.identity_map[identity_key], 
-                                [expression._column_as_key(k) for k in values]
+                                [_attr_as_key(k) for k in values]
                                 )
 
         for ext in session.extensions:
