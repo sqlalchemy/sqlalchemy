@@ -11,20 +11,13 @@ CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
 
 def listen(fn, identifier, target, *args, **kw):
-    """Listen for events, accepting an event function that's "raw".
-    Only the exact arguments are received in order.
-    
-    This is used by SQLA internals simply to reduce the overhead
-    of creating an event dictionary for each event call.
+    """Register a listener function for the given target.
     
     """
-
-    # rationale - the events on ClassManager, Session, and Mapper
-    # will need to accept mapped classes directly as targets and know 
-    # what to do
     
     for evt_cls in _registrars[identifier]:
-        for tgt in evt_cls.accept_with(target):
+        tgt = evt_cls.accept_with(target)
+        if tgt is not None:
             tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
@@ -41,10 +34,18 @@ def remove(fn, identifier, target):
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls.accept_with(target):
             tgt.dispatch.remove(fn, identifier, tgt, *args, **kw)
-
+            return
         
 _registrars = util.defaultdict(list)
 
+class _UnpickleDispatch(object):
+    """Serializable callable that re-generates an instance of :class:`_Dispatch`
+    given a particular :class:`.Events` subclass.
+    
+    """
+    def __call__(self, parent_cls):
+        return parent_cls.__dict__['dispatch'].dispatch_cls(parent_cls)
+        
 class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with 
     listener collections.
@@ -55,9 +56,8 @@ class _Dispatch(object):
         self.parent_cls = parent_cls
     
     def __reduce__(self):
-        return dispatcher, (
-                            self.parent_cls.__dict__['dispatch'].events, 
-                            )
+        
+        return _UnpickleDispatch(), (self.parent_cls, )
         
     @property
     def descriptors(self):
@@ -81,7 +81,7 @@ class _EventMeta(type):
     def __init__(cls, classname, bases, dict_):
         _create_dispatcher_class(cls, classname, bases, dict_)
         return type.__init__(cls, classname, bases, dict_)
-        
+    
 def _create_dispatcher_class(cls, classname, bases, dict_):
     # there's all kinds of ways to do this,
     # i.e. make a Dispatch class that shares the 'listen' method
@@ -96,6 +96,13 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
             setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
             _registrars[k].append(cls)
 
+def _remove_dispatcher(cls):
+    for k in dir(cls):
+        if k.startswith('on_'):
+            _registrars[k].remove(cls)
+            if not _registrars[k]:
+                del _registrars[k]
+    
 class Events(object):
     """Define event listening functions for a particular target type."""
     
@@ -111,9 +118,9 @@ class Events(object):
                     isinstance(target.dispatch, type) and \
                     issubclass(target.dispatch, cls.dispatch)
                 ):
-            return [target]
+            return target
         else:
-            return []
+            return None
 
     @classmethod
     def listen(cls, fn, identifier, target):

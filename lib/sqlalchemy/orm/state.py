@@ -509,7 +509,7 @@ class MutableAttrInstanceState(InstanceState):
         obj.__dict__.update(self.mutable_dict)
 
         # re-establishes identity attributes from the key
-        self.manager.dispatch.on_resurrect(self, obj)
+        self.manager.dispatch.on_resurrect(self)
         
         return obj
 

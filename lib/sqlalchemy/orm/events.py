@@ -20,9 +20,9 @@ class InstrumentationEvents(event.Events):
         from sqlalchemy.orm.instrumentation import instrumentation_registry
         
         if isinstance(target, type):
-            return [instrumentation_registry]
+            return instrumentation_registry
         else:
-            return []
+            return None
 
     @classmethod
     def listen(cls, fn, identifier, target):
@@ -64,12 +64,12 @@ class InstanceEvents(event.Events):
         from sqlalchemy.orm.instrumentation import ClassManager, manager_of_class
         
         if isinstance(target, ClassManager):
-            return [target]
+            return target
         elif isinstance(target, type):
             manager = manager_of_class(target)
             if manager:
-                return [manager]
-        return []
+                return manager
+        return None
     
     @classmethod
     def listen(cls, fn, identifier, target, raw=False):
@@ -185,26 +185,51 @@ class AttributeEvents(event.Events):
     def unwrap(cls, identifier, event):
         return event['value']
         
-    def on_append(self, state, value, initiator):
+    def on_append(self, target, value, initiator):
         """Receive a collection append event.
 
-        The returned value will be used as the actual value to be
-        appended.
+        :param target: the object instance receiving the event.
+          If the listener is registered with ``raw=True``, this will
+          be the :class:`.InstanceState` object.
+        :param value: the value being appended.  If this listener
+          is registered with ``retval=True``, the listener
+          function must return this value, or a new value which 
+          replaces it.
+        :param initiator: the attribute implementation object 
+          which initiated this event.
 
         """
 
-    def on_remove(self, state, value, initiator):
-        """Receive a remove event.
+    def on_remove(self, target, value, initiator):
+        """Receive a collection remove event.
 
-        No return value is defined.
+        :param target: the object instance receiving the event.
+          If the listener is registered with ``raw=True``, this will
+          be the :class:`.InstanceState` object.
+        :param value: the value being removed.
+        :param initiator: the attribute implementation object 
+          which initiated this event.
 
         """
 
-    def on_set(self, state, value, oldvalue, initiator):
-        """Receive a set event.
+    def on_set(self, target, value, oldvalue, initiator):
+        """Receive a scalar set event.
 
-        The returned value will be used as the actual value to be
-        set.
+        :param target: the object instance receiving the event.
+          If the listener is registered with ``raw=True``, this will
+          be the :class:`.InstanceState` object.
+        :param value: the value being set.  If this listener
+          is registered with ``retval=True``, the listener
+          function must return this value, or a new value which 
+          replaces it.
+        :param oldvalue: the previous value being replaced.  This
+          may also be the symbol ``NEVER_SET`` or ``NO_VALUE``.
+          If the listener is registered with ``active_history=True``,
+          the previous value of the attribute will be loaded from
+          the database if the existing value is currently unloaded 
+          or expired.
+        :param initiator: the attribute implementation object 
+          which initiated this event.
 
         """
 

@@ -361,7 +361,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             self._adapted.instrument_attribute(self.class_, key, inst)
 
     def post_configure_attribute(self, key):
-        super(_ClassInstrumentationAdpter, self).post_configure_attribute(key)
+        super(_ClassInstrumentationAdapter, self).post_configure_attribute(key)
         self._adapted.post_configure_attribute(self.class_, key, self[key])
 
     def install_descriptor(self, key, inst):
