@@ -972,7 +972,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         self._test_fk(True)
         
     # PG etc. need passive=True to allow PK->PK cascade
-    @testing.fails_on_everything_except('sqlite', 'mysql+zxjdbc',
+    @testing.fails_on_everything_except('sqlite', 'mysql+zxjdbc', 'oracle',
                                                 'postgresql+zxjdbc')
     def test_fk_nonpassive(self):
         self._test_fk(False)
@@ -1026,13 +1026,18 @@ class JoinedInheritanceTest(_base.MappedTest):
             e1, e2, m1
         ])
         sess.commit()
+
+        eq_(e1.boss_name, 'dogbert')
+        eq_(e2.boss_name, 'dogbert')
+        sess.expire_all()
         
         m1.name = 'pointy haired'
         e1.primary_language = 'scala'
         e2.primary_language = 'cobol'
         sess.commit()
         
-    
+        eq_(e1.boss_name, 'pointy haired')
+        eq_(e2.boss_name, 'pointy haired')
     
     
     
