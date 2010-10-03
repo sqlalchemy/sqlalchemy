@@ -132,18 +132,28 @@ class AbstractType(Visitable):
         # ClauseElement.compile()....this is a mistake.
         
         if not dialect:
+            dialect = self._default_dialect
+        
+        return dialect.type_compiler.process(self)
+    
+    @property
+    def _default_dialect(self):
+        if self.__class__.__module__.startswith("sqlalchemy.dialects"):
+            tokens = self.__class__.__module__.split(".")[0:3]
+            mod = ".".join(tokens)
+            return getattr(__import__(mod).dialects, tokens[-1]).dialect()
+        else:
             global DefaultDialect
             if DefaultDialect is None:
                 from sqlalchemy.engine.default import DefaultDialect
-            dialect = DefaultDialect()
+            return DefaultDialect()
         
-        return dialect.type_compiler.process(self)
-
     def __str__(self):
         # Py3K
         #return unicode(self.compile())
         # Py2K
-        return unicode(self.compile()).encode('ascii', 'backslashreplace')
+        return unicode(self.compile()).\
+                        encode('ascii', 'backslashreplace')
         # end Py2K
 
     def __init__(self, *args, **kwargs):

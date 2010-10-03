@@ -964,6 +964,23 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
     
+class CompileTest(TestBase, AssertsCompiledSQL):
+    def test_default_compile(self):
+        """test that the base dialect of the type object is used
+        for default compilation.
+        
+        """
+        for type_, expected in (
+            (String(), "VARCHAR"),
+            (Integer(), "INTEGER"),
+            (postgresql.INET(), "INET"),
+            (postgresql.FLOAT(), "FLOAT"),
+            (mysql.REAL(precision=8, scale=2), "REAL(8, 2)"),
+            (postgresql.REAL(), "REAL"),
+            (INTEGER(), "INTEGER"),
+            (mysql.INTEGER(display_width=5), "INTEGER(5)")
+        ):
+            self.assert_compile(type_, expected)
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod
