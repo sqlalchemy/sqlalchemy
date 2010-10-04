@@ -820,6 +820,81 @@ from multiple collections::
 
         id =  Column(Integer, primary_key=True)
 
+Defining Indexes in Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you need to define a multi-column index that applies to all tables
+that make use of a particular mixin, you will need to do this in a
+metaclass as shown in the following example::
+
+        from sqlalchemy.ext.declarative import DeclarativeMeta
+
+        class MyMixinMeta(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta,cls).__init__(*args,**kw)
+                # Index creation done here
+                Index('test',cls.a,cls.b)
+
+        class MyMixin(object):
+            __metaclass__=MyMixinMeta
+            a =  Column(Integer)
+            b =  Column(Integer)
+
+        class MyModel(Base,MyMixin):
+            __tablename__ = 'atable'
+            c =  Column(Integer,primary_key=True)
+
+Using multiple Mixins that require Metaclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you end up in a situation where you need to use multiple mixins and
+more than one of them uses a metaclass to, for example, create a
+multi-column index, then you will need to create a metaclass that
+correctly combines the actions of the other metaclasses. For example::
+
+        class MyMeta1(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta1,cls).__init__(*args,**kw)
+                Index('ab',cls.a,cls.b)
+
+        class MyMixin1(object):
+            __metaclass__=MyMeta1
+            a =  Column(Integer)
+            b =  Column(Integer)
+
+        class MyMeta2(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta2,cls).__init__(*args,**kw)
+                Index('cd',cls.c,cls.d)
+
+        class MyMixin2(object):
+            __metaclass__=MyMeta2
+            c =  Column(Integer)
+            d =  Column(Integer)
+
+        class CombinedMeta(MyMeta1,MyMeta2):
+            # This is needed to successfully combine
+            # two mixins which both have metaclasses
+            pass
+        
+        class MyModel(Base,MyMixin1,MyMixin2):
+            __tablename__ = 'awooooga'
+            __metaclass__ = CombinedMeta
+            z =  Column(Integer,primary_key=True)
+
+For this reason, if a mixin requires a custom metaclass, this should
+be mentioned in any documentation of that mixin to avoid confusion
+later down the line.
+            
 Class Constructor
 =================
 
