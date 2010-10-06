@@ -1046,6 +1046,13 @@ def _as_declarative(cls, classname, dict_):
     for k, v in mapper_args.iteritems():
         mapper_args[k] = column_copies.get(v,v)
     
+
+    if classname in cls._decl_class_registry:
+        util.warn("The classname %r is already in the registry of this"
+                  " declarative base, mapped to %r" % (
+                classname,
+                cls._decl_class_registry[classname]
+                ))
     cls._decl_class_registry[classname] = cls
     our_stuff = util.OrderedDict()
 
