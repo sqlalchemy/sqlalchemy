@@ -16,6 +16,10 @@ CHANGES
     passed an empty list to "include_properties" on 
     mapper() [ticket:1918]
   
+  - Fixed labeling bug in Query whereby the NamedTuple
+    would mis-apply labels if any of the column
+    expressions were un-labeled.
+    
   - Patched a case where query.join() would adapt the
     right side to the right side of the left's join
     inappropriately [ticket:1925]

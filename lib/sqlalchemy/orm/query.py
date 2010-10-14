@@ -1721,10 +1721,8 @@ class Query(object):
                         query_entity.row_processor(self, context, custom_rows)
                         for query_entity in self._entities
                     ])
-
-        if not single_entity:
-            labels = [l for l in labels if l]
-
+            
+        
         while True:
             context.progress = {}
             context.partials = {}

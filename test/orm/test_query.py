@@ -2957,21 +2957,21 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
                     
-                eq_(set(row.keys()), set(['User', 'Address']))
+                eq_(row.keys(), ['User', 'Address'])
                 eq_(row.User, row[0])
                 eq_(row.Address, row[1])
         
             for row in sess.query(User.name, User.id.label('foobar')):
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
-                eq_(set(row.keys()), set(['name', 'foobar']))
+                eq_(row.keys(), ['name', 'foobar'])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
             for row in sess.query(User).values(User.name, User.id.label('foobar')):
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
-                eq_(set(row.keys()), set(['name', 'foobar']))
+                eq_(row.keys(), ['name', 'foobar'])
                 eq_(row.name, row[0])
                 eq_(row.foobar, row[1])
 
@@ -2979,16 +2979,22 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             for row in sess.query(User, oalias).join(User.orders).all():
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
-                eq_(set(row.keys()), set(['User']))
+                eq_(row.keys(), ['User'])
                 eq_(row.User, row[0])
 
             oalias = aliased(Order, name='orders')
             for row in sess.query(User, oalias).join(User.orders).all():
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
-                eq_(set(row.keys()), set(['User', 'orders']))
+                eq_(row.keys(), ['User', 'orders'])
                 eq_(row.User, row[0])
                 eq_(row.orders, row[1])
+            
+            # test here that first col is not labeled, only
+            # one name in keys, matches correctly
+            for row in sess.query(User.name + 'hoho', User.name):
+                eq_(row.keys(), ['name'])
+                eq_(row[0], row.name + 'hoho')
             
             if pickled is not False:
                 ret = sess.query(User, Address).join(User.addresses).all()

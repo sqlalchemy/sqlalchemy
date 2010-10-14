@@ -745,7 +745,7 @@ class NamedTuple(tuple):
         return t
 
     def keys(self):
-        return self._labels
+        return [l for l in self._labels if l is not None]
 
 
 class OrderedProperties(object):
