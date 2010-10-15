@@ -255,7 +255,7 @@ class DescriptorProperty(MapperProperty):
         pass
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
+        return None, None, None
 
     def merge(self, session, source_state, source_dict, 
                 dest_state, dest_dict, load, _recursive):

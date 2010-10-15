@@ -84,6 +84,7 @@ __all__ = (
     'eagerload',
     'eagerload_all',
     'extension',
+    'immediateload',
     'join',
     'joinedload',
     'joinedload_all',
@@ -335,7 +336,12 @@ def relationship(argument, secondary=None, **kwargs):
       ``select``.  Values include:
 
       * ``select`` - items should be loaded lazily when the property is first
-        accessed, using a separate SELECT statement.
+        accessed, using a separate SELECT statement, or identity map
+        fetch for simple many-to-one references.
+        
+      * ``immediate`` - items should be loaded as the parents are loaded,
+        using a separate SELECT statement, or identity map fetch for
+        simple many-to-one references.  (new as of 0.6.5)
 
       * ``joined`` - items should be loaded "eagerly" in the same query as
         that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
@@ -1122,7 +1128,7 @@ def subqueryload_all(*keys):
         query.options(subqueryload_all(User.orders, Order.items,
         Item.keywords))
 
-    See also:  :func:`joinedload_all`, :func:`lazyload`
+    See also:  :func:`joinedload_all`, :func:`lazyload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy="subquery", chained=True)
@@ -1134,7 +1140,7 @@ def lazyload(*keys):
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    See also:  :func:`eagerload`, :func:`subqueryload`
+    See also:  :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
@@ -1145,11 +1151,24 @@ def noload(*keys):
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
+    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
 
+def immediateload(*keys):
+    """Return a ``MapperOption`` that will convert the property of the given 
+    name into an immediate load.
+    
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
+    
+    New as of verison 0.6.5.
+    
+    """
+    return strategies.EagerLazyOption(keys, lazy='immediate')
+    
 def contains_alias(alias):
     """Return a ``MapperOption`` that will indicate to the query that
     the main table has been aliased.

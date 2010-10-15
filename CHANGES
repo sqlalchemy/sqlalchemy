@@ -6,6 +6,15 @@ CHANGES
 0.6.5
 =====
 - orm
+  - Added a new "lazyload" option "immediateload".  
+    Issues the usual "lazy" load operation automatically
+    as the object is populated.   The use case
+    here is when loading objects to be placed in
+    an offline cache, or otherwise used after
+    the session isn't available, and straight 'select'
+    loading, not 'joined' or 'subquery', is desired.
+    [ticket:1914]
+    
   - Fixed recursion bug which could occur when moving
     an object from one reference to another, with 
     backrefs involved, where the initiating parent

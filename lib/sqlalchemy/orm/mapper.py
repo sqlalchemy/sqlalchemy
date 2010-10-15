@@ -2135,10 +2135,11 @@ class Mapper(object):
                     state.load_path = load_path
 
             if not new_populators:
-                new_populators[:], existing_populators[:] = \
-                                    self._populators(context, path, row,
-                                                        adapter)
-
+                self._populators(context, path, row, adapter,
+                                new_populators,
+                                existing_populators
+                )
+                
             if isnew:
                 populators = new_populators
             else:
@@ -2309,20 +2310,24 @@ class Mapper(object):
             return instance
         return _instance
 
-    def _populators(self, context, path, row, adapter):
+    def _populators(self, context, path, row, adapter,
+            new_populators, existing_populators):
         """Produce a collection of attribute level row processor callables."""
         
-        new_populators, existing_populators = [], []
+        delayed_populators = []
         for prop in self._props.itervalues():
-            newpop, existingpop = prop.create_row_processor(
+            newpop, existingpop, delayedpop = prop.create_row_processor(
                                                     context, path, 
                                                     self, row, adapter)
             if newpop:
                 new_populators.append((prop.key, newpop))
             if existingpop:
                 existing_populators.append((prop.key, existingpop))
-        return new_populators, existing_populators
-
+            if delayedpop:
+                delayed_populators.append((prop.key, delayedpop))
+        if delayed_populators:
+            new_populators.extend(delayed_populators)
+            
     def _configure_subclass_mapper(self, context, path, adapter):
         """Produce a mapper level row processor callable factory for mappers
         inheriting this one."""

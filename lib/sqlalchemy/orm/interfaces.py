@@ -436,38 +436,8 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        """Return a 2-tuple consiting of two row processing functions and 
-           an instance post-processing function.
-
-        Input arguments are the query.SelectionContext and the *first*
-        applicable row of a result set obtained within
-        query.Query.instances(), called only the first time a particular
-        mapper's populate_instance() method is invoked for the overall result.
-
-        The settings contained within the SelectionContext as well as the
-        columns present in the row (which will be the same columns present in
-        all rows) are used to determine the presence and behavior of the
-        returned callables.  The callables will then be used to process all
-        rows and instances.
-
-        Callables are of the following form::
-
-            def new_execute(state, dict_, row, isnew):
-                # process incoming instance state and given row.  
-                # the instance is
-                # "new" and was just created upon receipt of this row.
-                "isnew" indicates if the instance was newly created as a
-                result of reading this row
-
-            def existing_execute(state, dict_, row):
-                # process incoming instance state and given row.  the 
-                # instance is
-                # "existing" and was created based on a previous row.
-
-            return (new_execute, existing_execute)
-
-        Either of the three tuples can be ``None`` in which case no function
-        is called.
+        """Return a 3-tuple consisting of three row processing functions.
+        
         """
 
         raise NotImplementedError()
