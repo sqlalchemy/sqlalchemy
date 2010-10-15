@@ -179,6 +179,11 @@ CHANGES
    - added "views=True" option to metadata.reflect(), 
      will add the list of available views to those
      being reflected.  [ticket:1936]
+
+   - engine_from_config() now accepts 'debug' for 
+     'echo', 'echo_pool', 'force' for 'convert_unicode',
+     boolean values for 'use_native_unicode'.  
+     [ticket:1899]
      
 - informix
    - *Major* cleanup / modernization of the Informix 

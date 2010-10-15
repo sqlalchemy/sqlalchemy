@@ -584,6 +584,18 @@ def asbool(obj):
             raise ValueError("String is not true/false: %r" % obj)
     return bool(obj)
 
+def bool_or_str(*text):
+    """Return a callable that will evaulate a string as 
+    boolean, or one of a set of "alternate" string values.
+    
+    """
+    def bool_or_value(obj):
+        if obj in text:
+            return obj
+        else:
+            return asbool(obj)
+    return bool_or_value
+    
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
