@@ -193,6 +193,10 @@ CHANGES
      'echo', 'echo_pool', 'force' for 'convert_unicode',
      boolean values for 'use_native_unicode'.  
      [ticket:1899]
+
+- mssql
+   - Fixed reflection bug which did not properly handle
+     reflection of unknown types.  [ticket:1946]
      
 - informix
    - *Major* cleanup / modernization of the Informix 

@@ -444,8 +444,21 @@ class ReflectionTest(TestBase, ComparesTables):
             assert sequence.increment == 3
         finally:
             table.drop()
-
-
+    
+    @testing.emits_warning("Did not recognize")
+    def test_skip_types(self):
+        meta = MetaData(testing.db)
+        testing.db.execute("""
+            create table foo (id integer primary key, data xml)
+        """)
+        try:
+            t1 = Table('foo', meta, autoload=True)
+            assert isinstance(t1.c.id.type, Integer)
+            assert isinstance(t1.c.data.type, types.NullType)
+        finally:
+            testing.db.execute("drop table foo")
+        
+        
 class QueryUnicodeTest(TestBase):
 
     __only_on__ = 'mssql'

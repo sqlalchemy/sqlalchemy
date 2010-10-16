@@ -1207,13 +1207,13 @@ class MSDialect(default.DefaultDialect):
                     "Did not recognize type '%s' of column '%s'" % 
                     (type, name))
                 coltype = sqltypes.NULLTYPE
+            else:
+                if issubclass(coltype, sqltypes.Numeric) and \
+                        coltype is not MSReal:
+                    kwargs['scale'] = numericscale
+                    kwargs['precision'] = numericprec
 
-            if issubclass(coltype, sqltypes.Numeric) and \
-                    coltype is not MSReal:
-                kwargs['scale'] = numericscale
-                kwargs['precision'] = numericprec
-
-            coltype = coltype(**kwargs)
+                coltype = coltype(**kwargs)
             cdict = {
                 'name' : name,
                 'type' : coltype,
