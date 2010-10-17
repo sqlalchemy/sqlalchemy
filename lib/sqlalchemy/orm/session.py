@@ -593,9 +593,16 @@ class Session(object):
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
-
+        
         If no transaction is in progress, this method raises an
         InvalidRequestError.
+        
+        By default, the :class:`.Session` also expires all database
+        loaded state on all ORM-managed attributes after transaction commit.  
+        This so that subsequent operations load the most recent 
+        data from the database.   This behavior can be disabled using
+        the ``expire_on_commit=False`` option to :func:`.sessionmaker` or
+        the :class:`.Session` constructor.
 
         If a subtransaction is in effect (which occurs when begin() is called
         multiple times), the subtransaction will be closed, and the next call
