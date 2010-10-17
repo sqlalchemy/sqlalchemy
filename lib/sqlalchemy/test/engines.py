@@ -1,6 +1,6 @@
 import sys, types, weakref
 from collections import deque
-import config
+from sqlalchemy_nose import config
 from sqlalchemy.util import function_named, callable
 import re
 import warnings

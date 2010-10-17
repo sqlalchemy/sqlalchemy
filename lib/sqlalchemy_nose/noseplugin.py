@@ -10,9 +10,9 @@ import StringIO
 import nose.case
 from nose.plugins import Plugin
 
-from sqlalchemy import util, log as sqla_log
-from sqlalchemy.test import testing, config, requires
-from sqlalchemy.test.config import (
+from sqlalchemy_nose import config
+
+from sqlalchemy_nose.config import (
     _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
     _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
     _set_table_options, base_config, db, db_label, db_url, file_config, post_configure)
@@ -78,6 +78,10 @@ class NoseSQLAlchemy(Plugin):
         self.options = options
         
     def begin(self):
+        global testing, requires, util
+        from sqlalchemy.test import testing, requires
+        from sqlalchemy import util
+        
         testing.db = db
         testing.requires = requires
 

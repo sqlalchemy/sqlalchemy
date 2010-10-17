@@ -8,7 +8,8 @@ import types
 import warnings
 from cStringIO import StringIO
 
-from sqlalchemy.test import config, assertsql, util as testutil
+from sqlalchemy_nose import config
+from sqlalchemy.test import assertsql, util as testutil
 from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 

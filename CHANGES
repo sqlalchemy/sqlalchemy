@@ -202,7 +202,16 @@ CHANGES
    - *Major* cleanup / modernization of the Informix 
      dialect for 0.6, courtesy Florian Apolloner. 
      [ticket:1906]
-     
+
+- tests
+   - the NoseSQLAlchemyPlugin has been moved to a
+     new package "sqlalchemy_nose" which installs
+     along with "sqlalchemy".  This so that the "nosetests"
+     script works as always but also allows the 
+     --with-coverage option to turn on coverage before
+     SQLAlchemy modules are imported, allowing coverage
+     to work correctly.
+      
 - misc
    - CircularDependencyError now has .cycles and .edges
      members, which are the set of elements involved in

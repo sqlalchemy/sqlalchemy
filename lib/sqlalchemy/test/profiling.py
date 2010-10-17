@@ -6,7 +6,7 @@ in a more fine-grained way than nose's profiling plugin.
 """
 
 import os, sys
-from sqlalchemy.test import config
+from sqlalchemy_nose import config
 from sqlalchemy.test.util import function_named, gc_collect
 from nose import SkipTest
 
