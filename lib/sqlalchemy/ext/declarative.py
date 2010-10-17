@@ -589,7 +589,8 @@ keys, as a :class:`ForeignKey` itself contains references to columns
 which can't be properly recreated at this level.  For columns that 
 have foreign keys, as well as for the variety of mapper-level constructs
 that require destination-explicit context, the
-:func:`~.declared_attr` decorator is provided so that
+:func:`~.declared_attr` decorator (renamed from ``sqlalchemy.util.classproperty`` in 0.6.5) 
+is provided so that
 patterns common to many classes can be defined as callables::
 
     from sqlalchemy.ext.declarative import declared_attr
@@ -1370,7 +1371,7 @@ class declared_attr(property):
     a mapped property or special declarative member name.
 
     .. note:: @declared_attr is available as 
-      sqlalchemy.util.classproperty for SQLAlchemy versions
+      ``sqlalchemy.util.classproperty`` for SQLAlchemy versions
       0.6.2, 0.6.3, 0.6.4.
       
     @declared_attr turns the attribute into a scalar-like
