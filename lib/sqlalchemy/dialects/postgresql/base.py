@@ -1053,28 +1053,32 @@ class PGDialect(default.DefaultDialect):
             else:
                 args = ()
             
-            if attype in self.ischema_names:
-                coltype = self.ischema_names[attype]
-            elif attype in enums:
-                enum = enums[attype]
-                coltype = ENUM
-                if "." in attype:
-                    kwargs['schema'], kwargs['name'] = attype.split('.')
-                else:
-                    kwargs['name'] = attype
-                args = tuple(enum['labels'])
-            elif attype in domains:
-                domain = domains[attype]
-                if domain['attype'] in self.ischema_names:
+            while True:
+                if attype in self.ischema_names:
+                    coltype = self.ischema_names[attype]
+                    break
+                elif attype in enums:
+                    enum = enums[attype]
+                    coltype = ENUM
+                    if "." in attype:
+                        kwargs['schema'], kwargs['name'] = attype.split('.')
+                    else:
+                        kwargs['name'] = attype
+                    args = tuple(enum['labels'])
+                    break
+                elif attype in domains:
+                    domain = domains[attype]
+                    attype = domain['attype']
                     # A table can't override whether the domain is nullable.
                     nullable = domain['nullable']
                     if domain['default'] and not default:
                         # It can, however, override the default 
                         # value, but can't set it to null.
                         default = domain['default']
-                    coltype = self.ischema_names[domain['attype']]
-            else:
-                coltype = None
+                    continue
+                else:
+                    coltype = None
+                    break
                 
             if coltype:
                 coltype = coltype(*args, **kwargs)

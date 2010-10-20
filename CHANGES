@@ -197,6 +197,10 @@ CHANGES
 - postgresql
    - Added "as_tuple" flag to ARRAY type, returns results
      as tuples instead of lists to allow hashing.
+
+   - Fixed bug which prevented "domain" built from a 
+     custom type such as "enum" from being reflected.
+     [ticket:1933]
      
 - mssql
    - Fixed reflection bug which did not properly handle

@@ -909,7 +909,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con = testing.db.connect()
         for ddl in \
             'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
-            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0':
+            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
+            "CREATE TYPE testtype AS ENUM ('test')", \
+            'CREATE DOMAIN enumdomain AS testtype'\
+            :
             try:
                 con.execute(ddl)
             except exc.SQLError, e:
@@ -923,6 +926,8 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('CREATE TABLE crosschema (question integer, answer '
                     'test_schema.testdomain)')
 
+        con.execute('CREATE TABLE enum_test (id integer, data enumdomain)')
+
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
@@ -931,7 +936,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('DROP TABLE crosschema')
         con.execute('DROP DOMAIN testdomain')
         con.execute('DROP DOMAIN test_schema.testdomain')
-
+        con.execute("DROP TABLE enum_test")
+        con.execute("DROP DOMAIN enumdomain")
+        con.execute("DROP TYPE testtype")
+        
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
@@ -946,7 +954,15 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
             "Reflected default value didn't equal expected value")
         assert not table.columns.answer.nullable, \
             'Expected reflected column to not be nullable.'
-
+    
+    def test_enum_domain_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('enum_test', metadata, autoload=True)
+        eq_(
+            table.c.data.type.enums,
+            ('test', )
+        )
+        
     def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True,
@@ -989,6 +1005,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
+
 
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
