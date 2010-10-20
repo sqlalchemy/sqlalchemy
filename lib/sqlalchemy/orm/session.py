@@ -1497,22 +1497,42 @@ class Session(object):
             ext.after_flush_postexec(self, flush_context)
 
     def is_modified(self, instance, include_collections=True, passive=False):
-        """Return True if instance has modified attributes.
+        """Return ``True`` if instance has modified attributes.
 
         This method retrieves a history instance for each instrumented
         attribute on the instance and performs a comparison of the current
-        value to its previously committed value.  Note that instances present
-        in the 'dirty' collection may result in a value of ``False`` when
-        tested with this method.
+        value to its previously committed value.  
 
-        `include_collections` indicates if multivalued collections should be
+        ``include_collections`` indicates if multivalued collections should be
         included in the operation.  Setting this to False is a way to detect
         only local-column based properties (i.e. scalar columns or many-to-one
         foreign keys) that would result in an UPDATE for this instance upon
         flush.
 
-        The `passive` flag indicates if unloaded attributes and collections
+        The ``passive`` flag indicates if unloaded attributes and collections
         should not be loaded in the course of performing this test.
+        
+        A few caveats to this method apply:
+        
+        * Instances present in the 'dirty' collection may result in a value 
+          of ``False`` when tested with this method.  This because while
+          the object may have received attribute set events, there may be
+          no net changes on its state.
+        * Scalar attributes may not have recorded the "previously" set
+          value when a new value was applied, if the attribute was not loaded,
+          or was expired, at the time the new value was received - in these
+          cases, the attribute is assumed to have a change, even if there is
+          ultimately no net change against its database value. SQLAlchemy in
+          most cases does not need the "old" value when a set event occurs, so
+          it skips the expense of a SQL call if the old value isn't present,
+          based on the assumption that an UPDATE of the scalar value is
+          usually needed, and in those few cases where it isn't, is less
+          expensive on average than issuing a defensive SELECT. 
+          
+          The "old" value is fetched unconditionally only if the attribute
+          container has the "active_history" flag set to ``True``. This flag
+          is set typically for primary key attributes and scalar references
+          that are not a simple many-to-one.
 
         """
         try:
