@@ -755,20 +755,20 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return None
 
     def visit_table(self, table, mssql_aliased=False, **kwargs):
-        if mssql_aliased:
+        if mssql_aliased is table:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
         # alias schema-qualified tables
         alias = self._schema_aliased_table(table)
         if alias is not None:
-            return self.process(alias, mssql_aliased=True, **kwargs)
+            return self.process(alias, mssql_aliased=table, **kwargs)
         else:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
     def visit_alias(self, alias, **kwargs):
         # translate for schema-qualified table aliases
         self.tablealiases[alias.original] = alias
-        kwargs['mssql_aliased'] = True
+        kwargs['mssql_aliased'] = alias.original
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
     def visit_extract(self, extract, **kw):
