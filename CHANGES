@@ -197,6 +197,9 @@ CHANGES
 - mssql
    - Fixed reflection bug which did not properly handle
      reflection of unknown types.  [ticket:1946]
+    
+   - Fixed bug where aliasing of tables with "schema" would
+     fail to compile properly.  [ticket:1943]
      
 - informix
    - *Major* cleanup / modernization of the Informix 

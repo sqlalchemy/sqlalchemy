@@ -127,7 +127,6 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         s = table4.select(use_labels=True)
         c = s.compile(dialect=self.__dialect__)
-        print c.result_map
         assert table4.c.rem_id \
             in set(c.result_map['remote_owner_remotetable_rem_id'][1])
         self.assert_compile(table4.select(),
@@ -151,7 +150,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'remotetable_1.value FROM mytable JOIN '
                             'remote_owner.remotetable AS remotetable_1 '
                             'ON remotetable_1.rem_id = mytable.myid')
-
+        
+        self.assert_compile(select([table4.c.rem_id,
+                table4.c.value]).apply_labels().union(select([table1.c.myid,
+                table1.c.description]).apply_labels()).alias().select(),
+                "SELECT anon_1.remote_owner_remotetable_rem_id, "
+                "anon_1.remote_owner_remotetable_value FROM "
+                "(SELECT remotetable_1.rem_id AS remote_owner_remotetable_rem_id, "
+                "remotetable_1.value AS remote_owner_remotetable_value "
+                "FROM remote_owner.remotetable AS remotetable_1 UNION "
+                "SELECT mytable.myid AS mytable_myid, mytable.description "
+                "AS mytable_description FROM mytable) AS anon_1"
+            )
+        
+        
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
