@@ -201,6 +201,11 @@ CHANGES
    - Fixed bug which prevented "domain" built from a 
      custom type such as "enum" from being reflected.
      [ticket:1933]
+
+- mysql
+   - Fixed bug involving reflection of CURRENT_TIMESTAMP 
+     default used with ON UPDATE clause, thanks to 
+     Taavi Burns [ticket:1940]
      
 - mssql
    - Fixed reflection bug which did not properly handle
