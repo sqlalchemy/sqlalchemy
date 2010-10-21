@@ -131,6 +131,27 @@ CHANGES
     [ticket:1932]
     
 - sql
+   - Fixed bug in TypeDecorator whereby the dialect-specific
+     type was getting pulled in to generate the DDL for a 
+     given type, which didn't always return the correct result.
+     
+   - TypeDecorator can now have a fully constructed type
+     specified as its "impl", in addition to a type class.
+
+   - TypeDecorator will now place itself as the resulting
+     type for a binary expression where the type coercion
+     rules would normally return its impl type - previously,
+     a copy of the impl type would be returned which would
+     have the TypeDecorator embedded into it as the "dialect"
+     impl, this was probably an unintentional way of achieving
+     the desired effect.
+
+   - TypeDecorator.load_dialect_impl() returns "self.impl" by
+     default, i.e. not the dialect implementation type of 
+     "self.impl".   This to support compilation correctly.  
+     Behavior can be user-overridden in exactly the same way 
+     as before to the same effect.
+     
    - Table.tometadata() now copies Index objects associated
      with the Table as well.
 
