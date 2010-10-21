@@ -2170,7 +2170,28 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, 'testing')
         eq_(obj.foo(), 'bar1')
         eq_(obj.baz, 'fu')
+    
+    def test_mixin_overrides(self):
+        """test a mixin that overrides a column on a superclass."""
+        
+        class MixinA(object):
+            foo = Column(String(50))
+        
+        class MixinB(MixinA):
+            foo = Column(Integer)
 
+        class MyModelA(Base, MixinA):
+            __tablename__ = 'testa'
+            id = Column(Integer, primary_key=True)
+        
+        class MyModelB(Base, MixinB):
+            __tablename__ = 'testb'
+            id = Column(Integer, primary_key=True)
+        
+        eq_(MyModelA.__table__.c.foo.type.__class__, String)
+        eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
+        
+        
     def test_not_allowed(self):
 
         class MyMixin:

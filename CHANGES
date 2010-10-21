@@ -192,7 +192,11 @@ CHANGES
      inheritance scheme where the attribute name is
      different than that of the column. [ticket:1930],
      [ticket:1931].
-          
+
+   - A mixin can now specify a column that overrides 
+     a column of the same name associated with a superclass.
+     Thanks to Oystein Haaland.
+     
 - engine
    
    - Fixed a regression in 0.6.4 whereby the change that

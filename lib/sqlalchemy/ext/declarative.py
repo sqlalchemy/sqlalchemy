@@ -1015,7 +1015,7 @@ def _as_declarative(cls, classname, dict_):
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
                             (obj.name or name) in dict_['__table__'].c
-                            ):
+                            ) and name not in potential_columns:
                         potential_columns[name] = \
                                 column_copies[obj] = \
                                 obj.copy()
