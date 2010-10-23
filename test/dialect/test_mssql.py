@@ -439,37 +439,79 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.provide_metadata
     def test_identity(self):
-        meta = MetaData(testing.db)
         table = Table(
-            'identity_test', meta,
+            'identity_test', metadata,
             Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
         )
         table.create()
 
         meta2 = MetaData(testing.db)
-        try:
-            table2 = Table('identity_test', meta2, autoload=True)
-            sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
-                                    and table2.c['col1'].default
-            assert sequence.start == 2
-            assert sequence.increment == 3
-        finally:
-            table.drop()
+        table2 = Table('identity_test', meta2, autoload=True)
+        sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
+                                and table2.c['col1'].default
+        assert sequence.start == 2
+        assert sequence.increment == 3
     
     @testing.emits_warning("Did not recognize")
+    @testing.provide_metadata
     def test_skip_types(self):
-        meta = MetaData(testing.db)
         testing.db.execute("""
             create table foo (id integer primary key, data xml)
         """)
-        try:
-            t1 = Table('foo', meta, autoload=True)
-            assert isinstance(t1.c.id.type, Integer)
-            assert isinstance(t1.c.data.type, types.NullType)
-        finally:
-            testing.db.execute("drop table foo")
+        t1 = Table('foo', metadata, autoload=True)
+        assert isinstance(t1.c.id.type, Integer)
+        assert isinstance(t1.c.data.type, types.NullType)
+
+    @testing.provide_metadata
+    def test_indexes_cols(self):
         
+        t1 = Table('t', metadata, Column('x', Integer), Column('y', Integer))
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x'], t2.c.y])
+        )
+
+    @testing.provide_metadata
+    def test_indexes_cols_with_commas(self):
+        
+        t1 = Table('t', metadata, 
+                        Column('x, col', Integer, key='x'), 
+                        Column('y', Integer)
+                    )
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x, col'], t2.c.y])
+        )
+    
+    @testing.provide_metadata
+    def test_indexes_cols_with_spaces(self):
+        
+        t1 = Table('t', metadata, Column('x col', Integer, key='x'), 
+                                    Column('y', Integer))
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x col'], t2.c.y])
+        )
         
 class QueryUnicodeTest(TestBase):
 

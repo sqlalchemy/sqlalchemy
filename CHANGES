@@ -260,6 +260,12 @@ CHANGES
     
    - Fixed bug where aliasing of tables with "schema" would
      fail to compile properly.  [ticket:1943]
+
+   - Rewrote the reflection of indexes to use sys. 
+     catalogs, so that column names of any configuration
+     (spaces, embedded commas, etc.) can be reflected.
+     Note that reflection of indexes requires SQL 
+     Server 2005 or greater.  [ticket:1770]
      
 - informix
    - *Major* cleanup / modernization of the Informix 
