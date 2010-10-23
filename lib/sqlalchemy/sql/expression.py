@@ -45,8 +45,8 @@ __all__ = [
     'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
     'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
     'literal', 'literal_column', 'not_', 'null', 'or_', 'outparam',
-    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'union',
-    'union_all', 'update', ]
+    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'type_coerce',
+    'union', 'union_all', 'update', ]
 
 PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
 
@@ -666,6 +666,54 @@ def tuple_(*expr):
     
     """
     return _Tuple(*expr)
+
+def type_coerce(expr, type_):
+    """Coerce the given expression into the given type, on the Python side only.
+    
+    :func:`.type_coerce` is roughly similar to :func:.`cast`, except no
+    "CAST" expression is rendered - the given type is only applied towards
+    expression typing and against received result values.
+    
+    e.g.::
+    
+        from sqlalchemy.types import TypeDecorator
+        import uuid
+        
+        class AsGuid(TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    return str(value)
+                else:
+                    return None
+            
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    return uuid.UUID(value)
+                else:
+                    return None
+        
+        conn.execute(
+            select([type_coerce(mytable.c.ident, AsGuid)]).\\
+                    where(
+                        type_coerce(mytable.c.ident, AsGuid) == 
+                        uuid.uuid3(uuid.NAMESPACE_URL, 'bar')
+                    )
+        )            
+    
+    """
+    if hasattr(expr, '__clause_expr__'):
+        return type_coerce(expr.__clause_expr__())
+        
+    elif not isinstance(expr, Visitable):
+        if expr is None:
+            return null()
+        else:
+            return literal(expr, type_=type_)
+    else:
+        return _Label(None, expr, type_=type_)
+    
     
 def label(name, obj):
     """Return a :class:`_Label` object for the

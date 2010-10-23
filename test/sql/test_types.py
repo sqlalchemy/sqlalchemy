@@ -201,7 +201,63 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
                 t.dialect_impl(dialect=pg).impl.__class__, 
                 Float().dialect_impl(pg).__class__
         )
-                
+    
+    @testing.provide_metadata
+    def test_type_coerce(self):
+        """test ad-hoc usage of custom types with type_coerce()."""
+        
+        class MyType(types.TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                return value[0:-8]
+            
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+        
+        t = Table('t', metadata, Column('data', String(50)))
+        metadata.create_all()
+        
+        t.insert().values(data=type_coerce('d1BIND_OUT',MyType)).execute()
+
+        eq_(
+            select([type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            [('d1BIND_OUT', )]
+        )
+        
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+        
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(type_coerce(t.c.data, MyType) == 'd1BIND_OUT').\
+                        execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(t.c.data == type_coerce('d1BIND_OUT', MyType)).\
+                        execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(t.c.data == type_coerce(None, MyType)).\
+                        execute().fetchall(),
+            []
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(type_coerce(t.c.data, MyType) == None).\
+                        execute().fetchall(),
+            []
+        )
+        
     @classmethod
     def setup_class(cls):
         global users, metadata

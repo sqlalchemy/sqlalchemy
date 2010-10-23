@@ -160,6 +160,12 @@ CHANGES
      "self.impl".   This to support compilation correctly.  
      Behavior can be user-overridden in exactly the same way 
      as before to the same effect.
+
+   - Added type_coerce(expr, type_) expression element.  
+     Treats the given expression as the given type when evaluating
+     expressions and processing result rows, but does not 
+     affect the generation of SQL, other than an anonymous
+     label.
      
    - Table.tometadata() now copies Index objects associated
      with the Table as well.

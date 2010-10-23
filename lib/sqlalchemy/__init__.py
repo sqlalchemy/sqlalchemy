@@ -43,6 +43,7 @@ from sqlalchemy.sql import (
     subquery,
     text,
     tuple_,
+    type_coerce,
     union,
     union_all,
     update,
