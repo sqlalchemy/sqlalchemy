@@ -425,8 +425,8 @@ class Query(object):
         return stmt._annotate({'_halt_adapt': True})
 
     def subquery(self):
-        """return the full SELECT statement represented by this Query, 
-        embedded within an Alias.
+        """return the full SELECT statement represented by this :class:`.Query`, 
+        embedded within an :class:`.Alias`.
 
         Eager JOIN generation within the query is disabled.
 
@@ -436,7 +436,33 @@ class Query(object):
 
         """
         return self.enable_eagerloads(False).statement.alias()
+    
+    def label(self, name):
+        """Return the full SELECT statement represented by this :class:`.Query`, converted 
+        to a scalar subquery with a label of the given name.
+        
+        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
+        
+        New in 0.6.5.
 
+        """
+        
+        return self.enable_eagerloads(False).statement.label(name)
+
+
+    def as_scalar(self):
+        """Return the full SELECT statement represented by this :class:`.Query`, converted 
+        to a scalar subquery.
+        
+        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
+
+        New in 0.6.5.
+        
+        """
+        
+        return self.enable_eagerloads(False).statement.as_scalar()
+        
+        
     def __clause_element__(self):
         return self.enable_eagerloads(False).with_labels().statement
 
@@ -758,7 +784,36 @@ class Query(object):
             # end Py2K
         except StopIteration:
             return None
+    
+    @_generative()
+    def with_entities(self, *entities):
+        """Return a new :class:`.Query` replacing the SELECT list with the given
+        entities.
+        
+        e.g.::
 
+            # Users, filtered on some arbitrary criterion
+            # and then ordered by related email address
+            q = session.query(User).\\
+                        join(User.address).\\
+                        filter(User.name.like.('%ed%')).\\
+                        order_by(Address.email)
+
+            # given *only* User.id==5, Address.email, and 'q', what 
+            # would the *next* User in the result be ?
+            subq = q.with_entities(Address.email).\\
+                        order_by(None).\\
+                        filter(User.id==5).\\
+                        subquery()
+            q = q.join((subq, subq.c.email < Address.email)).\\
+                        limit(1)
+
+        New in 0.6.5.
+        
+        """
+        self._set_entities(entities)
+        
+        
     @_generative()
     def add_columns(self, *column):
         """Add one or more column expressions to the list 

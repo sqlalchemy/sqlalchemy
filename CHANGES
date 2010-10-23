@@ -14,6 +14,15 @@ CHANGES
     the session isn't available, and straight 'select'
     loading, not 'joined' or 'subquery', is desired.
     [ticket:1914]
+  
+  - New Query methods: query.label(name), query.as_scalar(),
+    return the query's statement as a scalar subquery
+    with /without label [ticket:1920];
+    query.with_entities(*ent), replaces the SELECT list of 
+    the query with new entities. 
+    Roughly equivalent to a generative form of query.values()
+    which accepts mapped entities as well as column 
+    expressions.
     
   - Fixed recursion bug which could occur when moving
     an object from one reference to another, with 
