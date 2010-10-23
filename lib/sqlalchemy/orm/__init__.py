@@ -963,11 +963,24 @@ def compile_mappers():
         m.compile()
 
 def clear_mappers():
-    """Remove all mappers that have been created thus far.
-
-    The mapped classes will return to their initial "unmapped" state and can
-    be re-mapped with new mappers.
-
+    """Remove all mappers from all classes.
+    
+    This function removes all instrumentation from classes and disposes
+    of their associated mappers.  Once called, the classes are unmapped 
+    and can be later re-mapped with new mappers.
+    
+    :func:`.clear_mappers` is *not* for normal use, as there is literally no
+    valid usage for it outside of very specific testing scenarios. Normally,
+    mappers are permanent structural components of user-defined classes, and
+    are never discarded independently of their class.  If a mapped class itself
+    is garbage collected, its mapper is automatically disposed of as well. As
+    such, :func:`.clear_mappers` is only for usage in test suites that re-use
+    the same classes with different mappings, which is itself an extremely rare
+    use case - the only such use case is in fact SQLAlchemy's own test suite,
+    and possibly the test suites of other ORM extension libraries which 
+    intend to test various combinations of mapper construction upon a fixed
+    set of classes.
+    
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
