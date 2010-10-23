@@ -796,7 +796,7 @@ class Query(object):
             # and then ordered by related email address
             q = session.query(User).\\
                         join(User.address).\\
-                        filter(User.name.like.('%ed%')).\\
+                        filter(User.name.like('%ed%')).\\
                         order_by(Address.email)
 
             # given *only* User.id==5, Address.email, and 'q', what 
