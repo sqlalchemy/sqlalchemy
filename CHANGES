@@ -240,6 +240,13 @@ CHANGES
    - Fixed bug involving reflection of CURRENT_TIMESTAMP 
      default used with ON UPDATE clause, thanks to 
      Taavi Burns [ticket:1940]
+
+- oracle
+   - The implicit_retunring argument to create_engine()
+     is now honored regardless of detected version of 
+     Oracle.  Previously, the flag would be forced
+     to False if server version info was < 10.
+     [ticket:1878]
      
 - mssql
    - Fixed reflection bug which did not properly handle
