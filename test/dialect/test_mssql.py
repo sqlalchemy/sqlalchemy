@@ -9,7 +9,7 @@ from sqlalchemy import types, exc, schema
 from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql import pyodbc, mxodbc
+from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
 from sqlalchemy.engine import url
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, emits_warning_on, \
@@ -866,12 +866,10 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
 
 class ParseConnectTest(TestBase, AssertsCompiledSQL):
-    __only_on__ = 'mssql'
-
     @classmethod
     def setup_class(cls):
         global dialect
-        dialect = pyodbc.MSDialect_pyodbc()
+        dialect = pyodbc.dialect()
 
     def test_pyodbc_connect_dsn_trusted(self):
         u = url.make_url('mssql://mydsn')
@@ -957,7 +955,27 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UI'
             'D=username;PWD=password'], {}], connection)
+    
+    def test_pymssql_port_setting(self):
+        dialect = pymssql.dialect()
 
+        u = \
+            url.make_url('mssql+pymssql://scott:tiger@somehost/test')
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [[], {'host': 'somehost', 'password': 'tiger', 
+                    'user': 'scott', 'database': 'test'}], connection
+        )
+
+        u = \
+            url.make_url('mssql+pymssql://scott:tiger@somehost:5000/test')
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [[], {'host': 'somehost:5000', 'password': 'tiger', 
+                    'user': 'scott', 'database': 'test'}], connection
+        )
+    
+    @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'], "FreeTDS specific test")
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
 

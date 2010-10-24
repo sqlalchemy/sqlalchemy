@@ -85,7 +85,9 @@ class MSDialect_pymssql(MSDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
-        opts.pop('port', None)
+        port = opts.pop('port', None)
+        if port and 'host' in opts:
+            opts['host'] = "%s:%s" % (opts['host'], port)
         return [[], opts]
 
     def is_disconnect(self, e):

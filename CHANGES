@@ -267,6 +267,9 @@ CHANGES
      Note that reflection of indexes requires SQL 
      Server 2005 or greater.  [ticket:1770]
      
+   - mssql+pymssql dialect now honors the "port" portion
+     of the URL instead of discarding it.  [ticket:1952]
+     
 - informix
    - *Major* cleanup / modernization of the Informix 
      dialect for 0.6, courtesy Florian Apolloner. 
