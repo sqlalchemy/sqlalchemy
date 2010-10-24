@@ -132,7 +132,7 @@ if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
         null, case)
-    from sqlalchemy.orm import mapper, relationship, create_session
+    from sqlalchemy.orm import mapper, relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     metadata = MetaData()
@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     metadata.bind = 'sqlite:///'
     metadata.create_all()
-    session = create_session()
+    session = Session()
 
     stoat = Animal(u'stoat')
     stoat[u'color'] = u'red'
@@ -199,8 +199,7 @@ if __name__ == '__main__':
     stoat[u'weasel-like'] = True
 
     session.add(stoat)
-    session.flush()
-    session.expunge_all()
+    session.commit()
 
     critter = session.query(Animal).filter(Animal.name == u'stoat').one()
     print critter[u'color']
@@ -210,7 +209,7 @@ if __name__ == '__main__':
     critter[u'cuteness'] = u'very cute'
 
     metadata.bind.echo = True
-    session.flush()
+    session.commit()
     metadata.bind.echo = False
 
     marten = Animal(u'marten')
@@ -225,7 +224,7 @@ if __name__ == '__main__':
     shrew[u'poisonous'] = True
 
     session.add(shrew)
-    session.flush()
+    session.commit()
 
     q = (session.query(Animal).
          filter(Animal.facts.any(
