@@ -3,6 +3,17 @@
 =======
 CHANGES
 =======
+0.6.6
+=====
+- orm
+  - Fixed bug whereby a non-"mutable" attribute modified event
+    which occurred on an object that was clean except for
+    preceding mutable attribute changes would fail to strongly
+    reference itself in the identity map. This would cause the
+    object to be garbage collected, losing track of any changes
+    that weren't previously saved in the "mutable changes"
+    dictionary.
+    
 0.6.5
 =====
 - orm

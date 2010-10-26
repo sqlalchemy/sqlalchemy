@@ -338,8 +338,14 @@ class InstanceState(object):
                 previous = attr.copy(previous)
 
             self.committed_state[attr.key] = previous
-
-        if not self.modified:
+        
+        
+        # the "or not self.modified" is defensive at 
+        # this point.  The assertion below is expected
+        # to be True:
+        # assert self._strong_obj is None or self.modified
+        
+        if self._strong_obj is None or not self.modified:
             instance_dict = self._instance_dict()
             if instance_dict:
                 instance_dict._modified.add(self)
