@@ -532,20 +532,13 @@ class Session(object):
         transaction or nested transaction, an error is raised, unless
         ``subtransactions=True`` or ``nested=True`` is specified.
 
-        The ``subtransactions=True`` flag indicates that this ``begin()`` can
-        create a subtransaction if a transaction is already in progress.  A
-        subtransaction is a non-transactional, delimiting construct that
-        allows matching begin()/commit() pairs to be nested together, with
-        only the outermost begin/commit pair actually affecting transactional
-        state.  When a rollback is issued, the subtransaction will directly
-        roll back the innermost real transaction, however each subtransaction
-        still must be explicitly rolled back to maintain proper stacking of
-        subtransactions.
-
-        If no transaction is in progress, then a real transaction is begun.
-
+        The ``subtransactions=True`` flag indicates that this :meth:`~.Session.begin` 
+        can create a subtransaction if a transaction is already in progress.  
+        For documentation on subtransactions, please see :ref:`session_subtransactions`.
+        
         The ``nested`` flag begins a SAVEPOINT transaction and is equivalent
-        to calling ``begin_nested()``.
+        to calling :meth:`~.Session.begin_nested`. For documentation on SAVEPOINT
+        transactions, please see :ref:`session_begin_nested`.
 
         """
         if self.transaction is not None:
@@ -567,10 +560,8 @@ class Session(object):
         The target database(s) must support SQL SAVEPOINTs or a
         SQLAlchemy-supported vendor implementation of the idea.
 
-        The nested transaction is a real transation, unlike a "subtransaction"
-        which corresponds to multiple ``begin()`` calls.  The next
-        ``rollback()`` or ``commit()`` call will operate upon this nested
-        transaction.
+        For documentation on SAVEPOINT
+        transactions, please see :ref:`session_begin_nested`.
 
         """
         return self.begin(nested=True)

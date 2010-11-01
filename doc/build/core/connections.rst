@@ -144,6 +144,11 @@ guaranteed to ``rollback()`` or ``commit()``::
         trans.rollback()
         raise
 
+.. _connections_nested_transactions:
+
+Nesting of Transaction Blocks
+------------------------------
+
 The :class:`~sqlalchemy.engine.base.Transaction` object also handles "nested"
 behavior by keeping track of the outermost begin/commit pair. In this example,
 two functions both issue a transaction on a Connection, but only the outermost
