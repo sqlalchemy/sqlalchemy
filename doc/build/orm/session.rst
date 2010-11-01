@@ -1075,20 +1075,27 @@ no further SQL operations can proceed until each level
 of the transaction has been acounted for, unless the :meth:`~.Session.close` method
 is called which cancels all transactional markers. For a full exposition on 
 the rationale for this,
-please see `But why isn't the one automatic call to ROLLBACK
+please see "`But why isn't the one automatic call to ROLLBACK
 enough ? Why must I ROLLBACK again?
-<http://www.sqlalchemy.org/trac/wiki/FAQ#ButwhyisnttheoneautomaticcalltoROLLBACKenoughWhymustIROLLBACKagain>`_.
-In short, if subtransactions are used as intended, that is, as a means to nest multiple
-begin/commit pairs, the appropriate rollback calls naturally occur in any case.
+<http://www.sqlalchemy.org/trac/wiki/FAQ#ButwhyisnttheoneautomaticcalltoROLLBACKenoughWhymustIROLLBACKagain>`_".
+The general theme is that if subtransactions are used as intended, that is, as a means to nest multiple
+begin/commit pairs, the appropriate rollback calls naturally occur in any case, and allow the session's 
+nesting of transactional pairs to function in a simple and predictable way 
+without the need to guess as to what level is active.
 
-An example of ``subtransactions=True`` is nearly identical to that of the non-ORM method.   The nesting
-of transactions, as well as the natural calling of "rollback" for all transactions, is illustrated::
+An example of ``subtransactions=True`` is nearly identical to
+that of the non-ORM technique. The nesting of transactions, as
+well as the natural presence of "rollback" for all transactions
+should an exception occur, is illustrated::
 
     # method_a starts a transaction and calls method_b
     def method_a(session):
         session.begin(subtransactions=True) # open a transaction.  If there was
                                             # no previous call to begin(), this will
-                                            # be a real transaction.
+                                            # begin a real transaction (meaning, a 
+                                            # DBAPI connection is procured, which as
+                                            # per the DBAPI specification is in a transactional
+                                            # state ready to be committed or rolled back)
         try:
             method_b(session)
             session.commit()  # transaction is committed here
