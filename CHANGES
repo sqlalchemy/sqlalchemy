@@ -13,6 +13,12 @@ CHANGES
     object to be garbage collected, losing track of any changes
     that weren't previously saved in the "mutable changes"
     dictionary.
+
+- mysql
+  - Fixed error handling for Jython + zxjdbc, such that 
+    has_table() property works again.  Regression from
+    0.6.3 (we don't have a Jython buildbot, sorry)
+    [ticket:1960]
     
 0.6.5
 =====
