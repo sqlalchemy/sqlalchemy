@@ -938,6 +938,7 @@ class EagerLoader(AbstractRelationshipLoader):
         
     def setup_query(self, context, entity, path, adapter, \
                                 column_collection=None, parentmapper=None,
+                                allow_innerjoin=True,
                                 **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
@@ -988,10 +989,18 @@ class EagerLoader(AbstractRelationshipLoader):
             if self.parent_property.direction != interfaces.MANYTOONE:
                 context.multi_row_eager_loaders = True
 
+            innerjoin = allow_innerjoin and context.attributes.get(
+                                ("eager_join_type", path), 
+                                self.parent_property.innerjoin)
+            if not innerjoin:
+                # if this is an outer join, all eager joins from
+                # here must also be outer joins
+                allow_innerjoin = False
+                
             context.create_eager_joins.append(
                 (self._create_eager_join, context, 
                 entity, path, adapter, 
-                parentmapper, clauses)
+                parentmapper, clauses, innerjoin)
             )
 
             add_to_collection = context.secondary_columns
@@ -1006,10 +1015,12 @@ class EagerLoader(AbstractRelationshipLoader):
                 path + (self.mapper,), 
                 clauses, 
                 parentmapper=self.mapper, 
-                column_collection=add_to_collection)
+                column_collection=add_to_collection,
+                allow_innerjoin=allow_innerjoin)
     
     def _create_eager_join(self, context, entity, 
-                            path, adapter, parentmapper, clauses):
+                            path, adapter, parentmapper, 
+                            clauses, innerjoin):
         
         if parentmapper is None:
             localparent = entity.mapper
@@ -1063,10 +1074,6 @@ class EagerLoader(AbstractRelationshipLoader):
                 join_to_left = True
         else:
             onclause = self.parent_property
-
-        innerjoin = context.attributes.get(
-                                ("eager_join_type", path), 
-                                self.parent_property.innerjoin)
 
         context.eager_joins[entity_key] = eagerjoin = \
                                 mapperutil.join(

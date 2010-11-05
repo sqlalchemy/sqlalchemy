@@ -731,6 +731,21 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
             " LIMIT 10) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = "
+            "orders_1.user_id LEFT OUTER JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
+            ,use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).options(joinedload("orders", innerjoin=True), 
+                                        joinedload("orders.address", innerjoin=True)).limit(10),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name, "
+            "addresses_1.id AS addresses_1_id, addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, orders_1.id AS orders_1_id, "
+            "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
+            "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users "
+            " LIMIT 10) AS anon_1 JOIN orders AS orders_1 ON anon_1.users_id = "
             "orders_1.user_id JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
             ,use_default_dialect=True
         )
@@ -919,7 +934,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     @testing.resolve_artifact_names
     def test_inner_join(self):
         mapper(User, users, properties = dict(
-            addresses = relationship(mapper(Address, addresses), lazy='joined', innerjoin=True, order_by=addresses.c.id)
+            addresses = relationship(mapper(Address, addresses), lazy='joined', 
+                                innerjoin=True, order_by=addresses.c.id)
         ))
         sess = create_session()
         eq_(
@@ -937,6 +953,100 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 "addresses_1.email_address AS addresses_1_email_address FROM users JOIN "
                 "addresses AS addresses_1 ON users.id = addresses_1.user_id ORDER BY addresses_1.id"
         , use_default_dialect=True)
+
+    @testing.resolve_artifact_names
+    def test_inner_join_chaining_options(self):
+        mapper(User, users, properties = dict(
+            orders =relationship(Order, innerjoin=True, 
+                                    lazy=False)
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relationship(Item, secondary=order_items, lazy=False, 
+                                    innerjoin=True)
+        ))
+        mapper(Item, items)
+        
+        sess = create_session()
+        self.assert_compile(
+            sess.query(User),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen FROM users JOIN orders AS orders_1 ON "
+            "users.id = orders_1.user_id JOIN order_items AS order_items_1 ON orders_1.id = "
+            "order_items_1.order_id JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+        
+        self.assert_compile(
+            sess.query(User).options(joinedload(User.orders, innerjoin=False)),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen FROM users LEFT OUTER JOIN orders AS orders_1 ON "
+            "users.id = orders_1.user_id LEFT OUTER JOIN order_items AS order_items_1 ON orders_1.id = "
+            "order_items_1.order_id LEFT OUTER JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+
+        self.assert_compile(
+            sess.query(User).options(joinedload(User.orders, Order.items, innerjoin=False)),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen FROM users JOIN orders AS orders_1 ON "
+            "users.id = orders_1.user_id LEFT OUTER JOIN order_items AS order_items_1 ON orders_1.id = "
+            "order_items_1.order_id LEFT OUTER JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+        
+    @testing.resolve_artifact_names
+    def test_inner_join_chaining_fixed(self):
+        mapper(User, users, properties = dict(
+            orders =relationship(Order, lazy=False)
+        ))
+        mapper(Order, orders, properties=dict(
+            items=relationship(Item, secondary=order_items, lazy=False, 
+                                    innerjoin=True)
+        ))
+        mapper(Item, items)
+        
+        sess = create_session()
+
+        # joining from user, its all LEFT OUTER JOINs
+        self.assert_compile(
+            sess.query(User),
+            "SELECT users.id AS users_id, users.name AS users_name, items_1.id AS "
+            "items_1_id, items_1.description AS items_1_description, orders_1.id AS "
+            "orders_1_id, orders_1.user_id AS orders_1_user_id, orders_1.address_id AS "
+            "orders_1_address_id, orders_1.description AS orders_1_description, "
+            "orders_1.isopen AS orders_1_isopen FROM users LEFT OUTER JOIN orders AS orders_1 ON "
+            "users.id = orders_1.user_id LEFT OUTER JOIN order_items AS order_items_1 ON orders_1.id = "
+            "order_items_1.order_id LEFT OUTER JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+        
+        # joining just from Order, innerjoin=True can be respected
+        self.assert_compile(
+            sess.query(Order),
+            "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, "
+            "orders.address_id AS orders_address_id, orders.description AS "
+            "orders_description, orders.isopen AS orders_isopen, items_1.id "
+            "AS items_1_id, items_1.description AS items_1_description FROM "
+            "orders JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id JOIN items AS items_1 ON items_1.id = "
+            "order_items_1.item_id",
+            use_default_dialect=True
+        )
+        
+        
 
     @testing.resolve_artifact_names
     def test_inner_join_options(self):
