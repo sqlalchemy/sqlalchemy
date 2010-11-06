@@ -227,5 +227,52 @@ class TestListenOverride(TestBase):
             ]
         )
         
+class TestPropagate(TestBase):
+    def setUp(self):
+        global Target
         
+        class TargetEvents(event.Events):
+            def on_event_one(self, arg):
+                pass
+            
+            def on_event_two(self, arg):
+                pass
+                
+        class Target(object):
+            dispatch = event.dispatcher(TargetEvents)
+            
+    
+    def test_propagate(self):
+        result = []
+        def listen_one(target, arg):
+            result.append((target, arg))
+
+        def listen_two(target, arg):
+            result.append((target, arg))
+        
+        t1 = Target()
+        
+        event.listen(listen_one, "on_event_one", t1, propagate=True)
+        event.listen(listen_two, "on_event_two", t1)
+
+        t2 = Target()
+        
+        t2.dispatch.update(t1.dispatch)
+        
+        t2.dispatch.on_event_one(t2, 1)
+        t2.dispatch.on_event_two(t2, 2)
+        eq_(result, [(t2, 1)])
+        
+        
+        
+            
+        
+        
+        
+        
+        
+        
+        
+    
+    
         

@@ -71,7 +71,7 @@ class MapperExtension(object):
                             ls_meth(self, instance)
                         return reconstruct
                     event.listen(go(ls_meth), 'on_load', 
-                                        self.class_manager, raw=False)
+                                        self.class_manager, raw=False, propagate=True)
                 elif meth == 'init_instance':
                     def go(ls_meth):
                         def init_instance(instance, args, kwargs):
@@ -80,7 +80,7 @@ class MapperExtension(object):
                                         instance, args, kwargs)
                         return init_instance
                     event.listen(go(ls_meth), 'on_init', 
-                                            self.class_manager, raw=False)
+                                            self.class_manager, raw=False, propagate=True)
                 elif meth == 'init_failed':
                     def go(ls_meth):
                         def init_failed(instance, args, kwargs):
@@ -90,10 +90,10 @@ class MapperExtension(object):
                             
                         return init_failed
                     event.listen(go(ls_meth), 'on_init_failure', 
-                                        self.class_manager, raw=False)
+                                        self.class_manager, raw=False, propagate=True)
                 else:
                     event.listen(ls_meth, "on_%s" % meth, self, 
-                                        raw=False, retval=True)
+                                        raw=False, retval=True, propagate=True)
 
 
     def instrument_class(self, mapper, class_):

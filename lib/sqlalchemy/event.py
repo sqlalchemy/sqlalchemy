@@ -18,6 +18,8 @@ def listen(fn, identifier, target, *args, **kw):
     for evt_cls in _registrars[identifier]:
         tgt = evt_cls.accept_with(target)
         if tgt is not None:
+            if kw.pop('propagate', False):
+                fn._sa_event_propagate = True
             tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
@@ -63,12 +65,12 @@ class _Dispatch(object):
     def descriptors(self):
         return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
 
-    def update(self, other):
+    def update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
 
         for ls in other.descriptors:
-            getattr(self, ls.name).update(ls)
+            getattr(self, ls.name).update(ls, only_propagate=only_propagate)
 
 class _EventMeta(type):
     """Intercept new Event subclasses and create 
@@ -195,7 +197,7 @@ class _ListenerCollection(object):
     def __nonzero__(self):
         return bool(self.listeners or self.parent_listeners)
     
-    def update(self, other):
+    def update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
 
@@ -203,7 +205,9 @@ class _ListenerCollection(object):
         existing_listener_set = set(existing_listeners)
         existing_listeners.extend([l for l 
                                 in other.listeners 
-                                if l not in existing_listener_set])
+                                if l not in existing_listener_set
+                                and not only_propagate or getattr(l, '_sa_event_propagate', False)
+                                ])
 
     def append(self, obj, target):
         if obj not in self.listeners:
