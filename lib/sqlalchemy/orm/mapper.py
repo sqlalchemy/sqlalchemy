@@ -141,8 +141,8 @@ class Mapper(object):
         self._inherits_equated_pairs = None
         self._memoized_values = {}
         self._compiled_cache_size = _compiled_cache_size
-
-        self._deprecated_extensions = extension
+        self._reconstructor = None
+        self._deprecated_extensions = util.to_list(extension or [])
         
         if allow_null_pks:
             util.warn_deprecated(
@@ -322,19 +322,32 @@ class Mapper(object):
                     % self)
     
     def _configure_legacy_instrument_class(self):
-        # TODO: tests failing
-        for ext in util.to_list(self._deprecated_extensions or []):
-            ext._adapt_instrument_class(self, ext)
 
-    def _configure_listeners(self):
-        # TODO: this has to be made smarter to look
-        # for existing extensions
-        
-        for ext in util.to_list(self._deprecated_extensions or []):
-            ext._adapt_listener(self, ext)
-        
         if self.inherits:
             self.dispatch.update(self.inherits.dispatch)
+            super_extensions = set(chain(*[m._deprecated_extensions 
+                                    for m in self.inherits.iterate_to_root()]))
+        else:
+            super_extensions = set()
+            
+        for ext in self._deprecated_extensions:
+            if ext not in super_extensions:
+                ext._adapt_instrument_class(self, ext)
+
+    def _configure_listeners(self):
+        if self.inherits:
+            super_extensions = set(chain(*[m._deprecated_extensions 
+                                    for m in self.inherits.iterate_to_root()]))
+        else:
+            super_extensions = set()
+
+        for ext in self._deprecated_extensions:
+            if ext not in super_extensions:
+                ext._adapt_listener(self, ext)
+        
+        if self.inherits:
+            self.class_manager.dispatch.update(
+                        self.inherits.class_manager.dispatch)
 
     def _configure_class_instrumentation(self):
         """If this mapper is to be a primary mapper (i.e. the
@@ -398,7 +411,8 @@ class Mapper(object):
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
-                    event.listen(method, 'on_load', manager, raw=True)
+                    self._reconstructor = method
+                    event.listen(_event_on_load, 'on_load', manager, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
@@ -2267,17 +2281,22 @@ class Mapper(object):
                         attrs = state.unloaded
                         # allow query.instances to commit the subset of attrs
                         context.partials[state] = (dict_, attrs)  
-
-                    if not populate_instance or \
-                            populate_instance(self, context, row, instance, 
+                    
+                    if populate_instance:
+                        for fn in populate_instance:
+                            ret = fn(self, context, row, state, 
                                 only_load_props=attrs, 
-                                instancekey=identitykey, isnew=isnew) is \
-                                EXT_CONTINUE:
+                                instancekey=identitykey, isnew=isnew)
+                            if ret is not EXT_CONTINUE:
+                                break
+                        else:
+                            populate_state(state, dict_, row, isnew, attrs)
+                    else:
                         populate_state(state, dict_, row, isnew, attrs)
 
             if loaded_instance:
-                state._run_on_load()
-
+                state.manager.dispatch.on_load(state)
+                
             if result is not None:
                 if append_result:
                     for fn in append_result:
@@ -2382,25 +2401,22 @@ def validates(*names):
         return fn
     return wrap
 
+def _event_on_load(state):
+    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    if instrumenting_mapper._reconstructor:
+        instrumenting_mapper._reconstructor(state.obj())
+        
 def _event_on_init(state, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     # compile() always compiles all mappers
     instrumenting_mapper.compile()
-    instrumenting_mapper.dispatch.on_init_instance(
-        instrumenting_mapper, instrumenting_mapper.class_,
-        state.manager.original_init,
-        state, args, kwargs)
 
 def _event_on_init_failure(state, args, kwargs):
     """Run init_failed hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    util.warn_exception(
-        instrumenting_mapper.dispatch.on_init_failed,
-        instrumenting_mapper, instrumenting_mapper.class_,
-        state.manager.original_init, state, args, kwargs)
 
 def _event_on_resurrect(state):
     # re-populate the primary key elements

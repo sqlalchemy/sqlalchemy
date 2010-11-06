@@ -1,4 +1,4 @@
-from sqlalchemy import event
+from sqlalchemy import event, util
 from interfaces import EXT_CONTINUE
 
 
@@ -56,20 +56,44 @@ class MapperExtension(object):
         
     @classmethod
     def _adapt_listener_methods(cls, self, listener, methods):
+        
         for meth in methods:
             me_meth = getattr(MapperExtension, meth)
             ls_meth = getattr(listener, meth)
+            
             # TODO: comparing self.methods to cls.method, 
             # this comparison is probably moot
+            
             if me_meth is not ls_meth:
                 if meth == 'reconstruct_instance':
                     def go(ls_meth):
                         def reconstruct(instance):
                             ls_meth(self, instance)
                         return reconstruct
-                    event.listen(go(ls_meth), 'on_load', self.class_manager, raw=False)
+                    event.listen(go(ls_meth), 'on_load', 
+                                        self.class_manager, raw=False)
+                elif meth == 'init_instance':
+                    def go(ls_meth):
+                        def init_instance(instance, args, kwargs):
+                            ls_meth(self, self.class_, 
+                                        self.class_manager.original_init, 
+                                        instance, args, kwargs)
+                        return init_instance
+                    event.listen(go(ls_meth), 'on_init', 
+                                            self.class_manager, raw=False)
+                elif meth == 'init_failed':
+                    def go(ls_meth):
+                        def init_failed(instance, args, kwargs):
+                            util.warn_exception(ls_meth, self, self.class_, 
+                                            self.class_manager.original_init, 
+                                            instance, args, kwargs)
+                            
+                        return init_failed
+                    event.listen(go(ls_meth), 'on_init_failure', 
+                                        self.class_manager, raw=False)
                 else:
-                    event.listen(ls_meth, "on_%s" % meth, self, raw=False, retval=True)
+                    event.listen(ls_meth, "on_%s" % meth, self, 
+                                        raw=False, retval=True)
 
 
     def instrument_class(self, mapper, class_):

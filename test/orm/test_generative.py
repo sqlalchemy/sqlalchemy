@@ -123,15 +123,6 @@ class GenerativeQueryTest(_base.MappedTest):
         assert res2.count() == 19
 
     @testing.resolve_artifact_names
-    def test_options(self):
-        query = create_session().query(Foo)
-        class ext1(sa.orm.MapperExtension):
-            def populate_instance(self, mapper, selectcontext, row, instance, **flags):
-                instance.TEST = "hello world"
-                return sa.orm.EXT_CONTINUE
-        assert query.options(sa.orm.extension(ext1()))[0].TEST == "hello world"
-
-    @testing.resolve_artifact_names
     def test_order_by(self):
         query = create_session().query(Foo)
         assert query.order_by(Foo.bar)[0].bar == 0

@@ -83,13 +83,39 @@ class InstanceEvents(event.Events):
         raise NotImplementedError("Removal of instance events not yet implemented")
         
     def on_init(self, target, args, kwargs):
-        """"""
+        """Receive an instance when it's constructor is called.
+        
+        This method is only called during a userland construction of 
+        an object.  It is not called when an object is loaded from the
+        database.
+
+        """
         
     def on_init_failure(self, target, args, kwargs):
-        """"""
+        """Receive an instance when it's constructor has been called, 
+        and raised an exception.
+        
+        This method is only called during a userland construction of 
+        an object.  It is not called when an object is loaded from the
+        database.
+
+        """
     
     def on_load(self, target):
-        """"""
+        """Receive an object instance after it has been created via
+        ``__new__``, and after initial attribute population has
+        occurred.
+
+        This typically occurs when the instance is created based on
+        incoming result rows, and is only called once for that
+        instance's lifetime.
+
+        Note that during a result-row load, this method is called upon
+        the first row received for this instance.  Note that some 
+        attributes and collections may or may not be loaded or even 
+        initialized, depending on what's present in the result rows.
+
+        """
     
     def on_resurrect(self, target):
         """"""
@@ -178,31 +204,6 @@ class MapperEvents(event.Events):
         This listener can generally only be applied to the :class:`.Mapper`
         class overall.
         
-        """
-
-    def on_init_instance(self, mapper, class_, oldinit, target, args, kwargs):
-        """Receive an instance when it's constructor is called.
-        
-        This method is only called during a userland construction of 
-        an object.  It is not called when an object is loaded from the
-        database.
-        
-        The return value is only significant within the ``MapperExtension`` 
-        chain; the parent mapper's behavior isn't modified by this method.
-
-        """
-
-    def on_init_failed(self, mapper, class_, oldinit, target, args, kwargs):
-        """Receive an instance when it's constructor has been called, 
-        and raised an exception.
-        
-        This method is only called during a userland construction of 
-        an object.  It is not called when an object is loaded from the
-        database.
-        
-        The return value is only significant within the ``MapperExtension`` 
-        chain; the parent mapper's behavior isn't modified by this method.
-
         """
 
     def on_translate_row(self, mapper, context, row):
@@ -306,25 +307,6 @@ class MapperEvents(event.Events):
 
         """
 
-    def on_reconstruct_instance(self, mapper, target):
-        """Receive an object instance after it has been created via
-        ``__new__``, and after initial attribute population has
-        occurred.
-
-        This typically occurs when the instance is created based on
-        incoming result rows, and is only called once for that
-        instance's lifetime.
-
-        Note that during a result-row load, this method is called upon
-        the first row received for this instance.  Note that some 
-        attributes and collections may or may not be loaded or even 
-        initialized, depending on what's present in the result rows.
-
-        The return value is only significant within the ``MapperExtension`` 
-        chain; the parent mapper's behavior isn't modified by this method.
-
-        """
-
     def on_before_insert(self, mapper, connection, target):
         """Receive an object instance before that instance is inserted
         into its table.
@@ -340,7 +322,6 @@ class MapperEvents(event.Events):
         ``SessionExtension``.
 
         """
-
 
     def on_after_insert(self, mapper, connection, target):
         """Receive an object instance after that instance is inserted.

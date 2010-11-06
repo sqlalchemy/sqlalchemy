@@ -194,6 +194,7 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_constructor_exc_1(self):
         """Exceptions raised in the mapped class are not masked by sa decorations"""
+        
         ex = AssertionError('oops')
         sess = create_session()
 
@@ -268,27 +269,6 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'name').impl is not None
 
-    @testing.resolve_artifact_names
-    def test_extension_collection_frozen(self):
-        class Foo(User):pass
-        m = mapper(User, users)
-        mapper(Order, orders)
-        compile_mappers()
-        mapper(Foo, addresses, inherits=User)
-        ext_list = [AttributeExtension()]
-        m.add_property('somename', column_property(users.c.name, extension=ext_list))
-        m.add_property('orders', relationship(Order, extension=ext_list, backref='user'))
-        assert len(ext_list) == 1
-
-        assert Foo.orders.impl.extensions is User.orders.impl.extensions
-        assert Foo.orders.impl.extensions is not ext_list
-        
-        compile_mappers()
-        assert len(User.somename.impl.extensions) == 1
-        assert len(Foo.somename.impl.extensions) == 1
-        assert len(Foo.orders.impl.extensions) == 3
-        assert len(User.orders.impl.extensions) == 3
-        
 
     @testing.resolve_artifact_names
     def test_compile_on_get_props_1(self):
@@ -1073,16 +1053,19 @@ class MapperTest(_fixtures.FixtureTest):
         class A(object):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, A)
                 recon.append('A')
 
         class B(A):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, B)
                 recon.append('B')
 
         class C(A):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, C)
                 recon.append('C')
 
         mapper(A, users, polymorphic_on=users.c.name,

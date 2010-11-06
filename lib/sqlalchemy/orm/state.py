@@ -142,9 +142,6 @@ class InstanceState(object):
         else:
             return [x]
 
-    def _run_on_load(self):
-        self.manager.dispatch.on_load(self)
-    
     def __getstate__(self):
         d = {'instance':self.obj()}
 

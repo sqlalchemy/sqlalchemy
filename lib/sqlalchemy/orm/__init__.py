@@ -82,7 +82,6 @@ __all__ = (
     'dynamic_loader',
     'eagerload',
     'eagerload_all',
-    'extension',
     'immediateload',
     'join',
     'joinedload',

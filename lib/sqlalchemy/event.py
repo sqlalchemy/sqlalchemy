@@ -68,11 +68,12 @@ class _Dispatch(object):
             object."""
 
         for ls in other.descriptors:
-            existing_listeners = getattr(self, ls.name).listeners
-            existing_listener_set = set(existing_listeners)
-            existing_listeners.extend([l for l 
-                                    in ls.listeners 
-                                    if l not in existing_listener_set])
+            getattr(self, ls.name).update(ls)
+            #existing_listeners = getattr(self, ls.name).listeners
+            #existing_listener_set = set(existing_listeners)
+            #existing_listeners.extend([l for l 
+            #                        in ls.listeners 
+            #                        if l not in existing_listener_set])
 
 class _EventMeta(type):
     """Intercept new Event subclasses and create 
@@ -198,7 +199,17 @@ class _ListenerCollection(object):
         
     def __nonzero__(self):
         return bool(self.listeners or self.parent_listeners)
-        
+    
+    def update(self, other):
+        """Populate from the listeners in another :class:`_Dispatch`
+            object."""
+
+        existing_listeners = self.listeners
+        existing_listener_set = set(existing_listeners)
+        existing_listeners.extend([l for l 
+                                in other.listeners 
+                                if l not in existing_listener_set])
+
     def append(self, obj, target):
         if obj not in self.listeners:
             self.listeners.append(obj)
