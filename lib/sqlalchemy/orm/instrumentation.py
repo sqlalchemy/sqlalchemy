@@ -211,8 +211,9 @@ class ClassManager(dict):
         if key in self.mutable_attributes:
             self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
-            manager = self._subclass_manager(cls)
-            manager.uninstrument_attribute(key, True)
+            manager = manager_of_class(cls) 
+            if manager:
+                manager.uninstrument_attribute(key, True)
 
     def unregister(self):
         """remove all instrumentation established by this ClassManager."""

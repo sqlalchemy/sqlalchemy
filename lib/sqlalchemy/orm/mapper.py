@@ -405,7 +405,6 @@ class Mapper(object):
             return
 
         event.listen(_event_on_init, 'on_init', manager, raw=True)
-        event.listen(_event_on_init_failure, 'on_init_failure', manager, raw=True)
         event.listen(_event_on_resurrect, 'on_resurrect', manager, raw=True)
         
         for key, method in util.iterate_attributes(self.class_):
@@ -2409,22 +2408,19 @@ def _event_on_load(state):
 def _event_on_init(state, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    # compile() always compiles all mappers
-    instrumenting_mapper.compile()
-
-def _event_on_init_failure(state, args, kwargs):
-    """Run init_failed hooks."""
-
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    if instrumenting_mapper:
+        # compile() always compiles all mappers
+        instrumenting_mapper.compile()
 
 def _event_on_resurrect(state):
     # re-populate the primary key elements
     # of the dict based on the mapping.
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
-        instrumenting_mapper._set_state_attr_by_column(
-                                        state, state.dict, col, val)
+    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    if instrumenting_mapper:
+        for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
+            instrumenting_mapper._set_state_attr_by_column(
+                                            state, state.dict, col, val)
     
     
 def _sort_states(states):

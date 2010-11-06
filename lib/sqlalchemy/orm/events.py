@@ -59,7 +59,12 @@ class InstrumentationEvents(event.Events):
         """Called when an attribute is instrumented."""
 
 class InstanceEvents(event.Events):
+    """Define events specific to object lifecycle.
     
+    Instance-level don't automatically propagate their associations
+    to subclasses.
+    
+    """
     @classmethod
     def accept_with(cls, target):
         from sqlalchemy.orm.instrumentation import ClassManager, manager_of_class
@@ -75,9 +80,12 @@ class InstanceEvents(event.Events):
     @classmethod
     def listen(cls, fn, identifier, target, raw=False):
         if not raw:
-            fn = _to_instance(fn)
+            orig_fn = fn
+            def wrap(state, *arg, **kw):
+                return orig_fn(state.obj(), *arg, **kw)
+            fn = wrap
         event.Events.listen(fn, identifier, target)
-
+        
     @classmethod
     def remove(cls, fn, identifier, target):
         raise NotImplementedError("Removal of instance events not yet implemented")
@@ -443,6 +451,9 @@ class AttributeEvents(event.Events):
         event.Events.listen(fn, identifier, target)
         
         if propagate:
+
+            raise NotImplementedError()
+
             # TODO: for removal, need to implement
             # packaging this info for operation in reverse.
 
@@ -452,9 +463,6 @@ class AttributeEvents(event.Events):
                 if impl is not target:
                     event.Events.listen(fn, identifier, impl)
             
-            def configure_listener(class_, key, inst):
-                event.Events.listen(fn, identifier, inst)
-            event.listen(configure_listener, 'on_attribute_instrument', class_)
         
     @classmethod
     def remove(cls, fn, identifier, target):
@@ -512,9 +520,3 @@ class AttributeEvents(event.Events):
 
         """
 
-@util.decorator
-def _to_instance(fn, state, *arg, **kw):
-    """Marshall the :class:`.InstanceState` argument to an instance."""
-    
-    return fn(state.obj(), *arg, **kw)
-    
