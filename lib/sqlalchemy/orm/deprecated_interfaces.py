@@ -30,6 +30,48 @@ class MapperExtension(object):
     
     """
 
+    @classmethod
+    def _adapt_instrument_class(cls, self, listener):
+        cls._adapt_listener_methods(self, listener, ('instrument_class',))
+
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        cls._adapt_listener_methods(
+            self, listener,
+            (
+            'init_instance',
+            'init_failed',
+            'translate_row',
+            'create_instance',
+            'append_result',
+            'populate_instance',
+            'reconstruct_instance',
+            'before_insert',
+            'after_insert',
+            'before_update',
+            'after_update',
+            'before_delete',
+            'after_delete'
+        ))
+        
+    @classmethod
+    def _adapt_listener_methods(cls, self, listener, methods):
+        for meth in methods:
+            me_meth = getattr(MapperExtension, meth)
+            ls_meth = getattr(listener, meth)
+            # TODO: comparing self.methods to cls.method, 
+            # this comparison is probably moot
+            if me_meth is not ls_meth:
+                if meth == 'reconstruct_instance':
+                    def go(ls_meth):
+                        def reconstruct(instance):
+                            ls_meth(self, instance)
+                        return reconstruct
+                    event.listen(go(ls_meth), 'on_load', self.class_manager, raw=False)
+                else:
+                    event.listen(ls_meth, "on_%s" % meth, self, raw=False, retval=True)
+
+
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.

@@ -507,23 +507,6 @@ class PropertyOption(MapperOption):
         return l, mappers
 
 
-class ExtensionOption(MapperOption):
-
-    """a MapperOption that applies a MapperExtension to a query
-    operation.
-    
-    This class is **deprecated**.
-    
-    """
-
-    def __init__(self, ext):
-        self.ext = ext
-
-    def process_query(self, query):
-        entity = query._generate_mapper_zero()
-        entity.extension = entity.extension.copy()
-        entity.extension.push(self.ext)
-
 
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used

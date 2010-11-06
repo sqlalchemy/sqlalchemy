@@ -22,7 +22,6 @@ from sqlalchemy.orm.mapper import (
 from sqlalchemy.orm.interfaces import (
      EXT_CONTINUE,
      EXT_STOP,
-     ExtensionOption,
      InstrumentationManager,
      MapperExtension,
      PropComparator,
@@ -729,9 +728,10 @@ def mapper(class_, local_table=None, *args, **params):
           to have fewer properties than its superclass, ``A``.
 
         :param extension: A :class:`.MapperExtension` instance or
-           list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
+           list of :class:`.MapperExtension`
            instances which will be applied to all operations by this
-           :class:`~sqlalchemy.orm.mapper.Mapper`.
+           :class:`.Mapper`.  Deprecated.
+           The event package is now used.
 
         :param include_properties: An inclusive list or set of string column
           names to map. As of SQLAlchemy 0.6.4, this collection may also
@@ -993,16 +993,6 @@ def clear_mappers():
                 pass
     finally:
         mapperlib._COMPILE_MUTEX.release()
-
-def extension(ext):
-    """Return a ``MapperOption`` that will insert the given
-    ``MapperExtension`` to the beginning of the list of extensions
-    that will be called in the context of the ``Query``.
-
-    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
-
-    """
-    return ExtensionOption(ext)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def joinedload(*keys, **kw):

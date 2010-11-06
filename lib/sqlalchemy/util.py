@@ -315,6 +315,8 @@ def decorator(target):
     """A signature-matching decorator factory."""
 
     def decorate(fn):
+        if not inspect.isfunction(fn):
+            raise Exception("not a decoratable function")
         spec = inspect.getargspec(fn)
         names = tuple(spec[0]) + spec[1:3] + (fn.func_name,)
         targ_name, fn_name = unique_symbols(names, 'target', 'fn')
