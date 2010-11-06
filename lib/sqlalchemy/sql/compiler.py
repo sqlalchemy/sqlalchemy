@@ -153,6 +153,10 @@ class _CompileLabel(visitors.Visitable):
     def __init__(self, col, name):
         self.element = col
         self.name = name
+    
+    @property
+    def type(self):
+        return self.element.type
         
     @property
     def quote(self):
@@ -317,7 +321,7 @@ class SQLCompiler(engine.Compiled):
 
             if result_map is not None:
                 result_map[labelname.lower()] = \
-                        (label.name, (label, label.element, labelname), label.element.type)
+                        (label.name, (label, label.element, labelname), label.type)
 
             return self.process(label.element, 
                                     within_columns_clause=True,
@@ -329,7 +333,7 @@ class SQLCompiler(engine.Compiled):
             return self.process(label.element, 
                                     within_columns_clause=False, 
                                     **kw)
-            
+    
     def visit_column(self, column, result_map=None, **kwargs):
         name = column.name
         if name is None:

@@ -118,7 +118,7 @@ class PickleMetadataTest(TestBase):
                 mt = loads(dumps(meta))
                 
 
-class UserDefinedTest(TestBase):
+class UserDefinedTest(TestBase, AssertsCompiledSQL):
     """tests user-defined types."""
 
     def test_processing(self):
@@ -148,6 +148,116 @@ class UserDefinedTest(TestBase):
             for col in row[3], row[4]:
                 assert isinstance(col, unicode)
 
+    def test_typedecorator_impl(self):
+        for impl_, exp, kw in [
+            (Float, "FLOAT", {}),
+            (Float, "FLOAT(2)", {'precision':2}),
+            (Float(2), "FLOAT(2)", {'precision':4}),
+            (Numeric(19, 2), "NUMERIC(19, 2)", {}),
+        ]:
+            for dialect_ in (postgresql, mssql, mysql):
+                dialect_ = dialect_.dialect()
+                
+                raw_impl = types.to_instance(impl_, **kw)
+                
+                class MyType(types.TypeDecorator):
+                    impl = impl_
+                
+                dec_type = MyType(**kw)
+                
+                eq_(dec_type.impl.__class__, raw_impl.__class__)
+                
+                raw_dialect_impl = raw_impl.dialect_impl(dialect_)
+                dec_dialect_impl = dec_type.dialect_impl(dialect_)
+                eq_(dec_dialect_impl.__class__, MyType)
+                eq_(raw_dialect_impl.__class__ , dec_dialect_impl.impl.__class__)
+                
+                self.assert_compile(
+                    MyType(**kw),
+                    exp,
+                    dialect=dialect_
+                )
+    
+    def test_user_defined_typedec_impl(self):
+        class MyType(types.TypeDecorator):
+            impl = Float
+            
+            def load_dialect_impl(self, dialect):
+                if dialect.name == 'sqlite':
+                    return String(50)
+                else:
+                    return super(MyType, self).load_dialect_impl(dialect)
+        
+        sl = sqlite.dialect()
+        pg = postgresql.dialect()
+        t = MyType()
+        self.assert_compile(t, "VARCHAR(50)", dialect=sl)
+        self.assert_compile(t, "FLOAT", dialect=pg)
+        eq_(
+            t.dialect_impl(dialect=sl).impl.__class__, 
+            String().dialect_impl(dialect=sl).__class__
+        )
+        eq_(
+                t.dialect_impl(dialect=pg).impl.__class__, 
+                Float().dialect_impl(pg).__class__
+        )
+    
+    @testing.provide_metadata
+    def test_type_coerce(self):
+        """test ad-hoc usage of custom types with type_coerce()."""
+        
+        class MyType(types.TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                return value[0:-8]
+            
+            def process_result_value(self, value, dialect):
+                return value + "BIND_OUT"
+        
+        t = Table('t', metadata, Column('data', String(50)))
+        metadata.create_all()
+        
+        t.insert().values(data=type_coerce('d1BIND_OUT',MyType)).execute()
+
+        eq_(
+            select([type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            [('d1BIND_OUT', )]
+        )
+        
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+        
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(type_coerce(t.c.data, MyType) == 'd1BIND_OUT').\
+                        execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(t.c.data == type_coerce('d1BIND_OUT', MyType)).\
+                        execute().fetchall(),
+            [('d1', 'd1BIND_OUT')]
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(t.c.data == type_coerce(None, MyType)).\
+                        execute().fetchall(),
+            []
+        )
+
+        eq_(
+            select([t.c.data, type_coerce(t.c.data, MyType)]).\
+                        where(type_coerce(t.c.data, MyType) == None).\
+                        execute().fetchall(),
+            []
+        )
+        
     @classmethod
     def setup_class(cls):
         global users, metadata
@@ -838,8 +948,9 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_typedec_operator_adapt(self):
         expr = test_table.c.bvalue + "hi"
         
-        assert expr.type.__class__ is String
-
+        assert expr.type.__class__ is MyTypeDec
+        assert expr.right.type.__class__ is MyTypeDec
+        
         eq_(
             testing.db.execute(select([expr.label('foo')])).scalar(),
             "BIND_INfooBIND_INhiBIND_OUT"
@@ -864,7 +975,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             use_default_dialect=True
         )
         
-        assert expr.type.__class__ is String
+        assert expr.type.__class__ is MyTypeDec
         eq_(
             testing.db.execute(select([expr.label('foo')])).scalar(),
             "BIND_INfooBIND_IN6BIND_OUT"
@@ -944,8 +1055,6 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             "a + b"
         )
         
-
-        
     def test_expression_typing(self):
         expr = column('bar', Integer) - 3
         
@@ -964,6 +1073,23 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
     
+class CompileTest(TestBase, AssertsCompiledSQL):
+    def test_default_compile(self):
+        """test that the base dialect of the type object is used
+        for default compilation.
+        
+        """
+        for type_, expected in (
+            (String(), "VARCHAR"),
+            (Integer(), "INTEGER"),
+            (postgresql.INET(), "INET"),
+            (postgresql.FLOAT(), "FLOAT"),
+            (mysql.REAL(precision=8, scale=2), "REAL(8, 2)"),
+            (postgresql.REAL(), "REAL"),
+            (INTEGER(), "INTEGER"),
+            (mysql.INTEGER(display_width=5), "INTEGER(5)")
+        ):
+            self.assert_compile(type_, expected)
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod

@@ -9,7 +9,7 @@ from sqlalchemy import types, exc, schema
 from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
-from sqlalchemy.dialects.mssql import pyodbc, mxodbc
+from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
 from sqlalchemy.engine import url
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, emits_warning_on, \
@@ -127,7 +127,6 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
         s = table4.select(use_labels=True)
         c = s.compile(dialect=self.__dialect__)
-        print c.result_map
         assert table4.c.rem_id \
             in set(c.result_map['remote_owner_remotetable_rem_id'][1])
         self.assert_compile(table4.select(),
@@ -151,7 +150,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'remotetable_1.value FROM mytable JOIN '
                             'remote_owner.remotetable AS remotetable_1 '
                             'ON remotetable_1.rem_id = mytable.myid')
-
+        
+        self.assert_compile(select([table4.c.rem_id,
+                table4.c.value]).apply_labels().union(select([table1.c.myid,
+                table1.c.description]).apply_labels()).alias().select(),
+                "SELECT anon_1.remote_owner_remotetable_rem_id, "
+                "anon_1.remote_owner_remotetable_value FROM "
+                "(SELECT remotetable_1.rem_id AS remote_owner_remotetable_rem_id, "
+                "remotetable_1.value AS remote_owner_remotetable_value "
+                "FROM remote_owner.remotetable AS remotetable_1 UNION "
+                "SELECT mytable.myid AS mytable_myid, mytable.description "
+                "AS mytable_description FROM mytable) AS anon_1"
+            )
+        
+        
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
@@ -427,25 +439,80 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.provide_metadata
     def test_identity(self):
-        meta = MetaData(testing.db)
         table = Table(
-            'identity_test', meta,
+            'identity_test', metadata,
             Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
         )
         table.create()
 
         meta2 = MetaData(testing.db)
-        try:
-            table2 = Table('identity_test', meta2, autoload=True)
-            sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
-                                    and table2.c['col1'].default
-            assert sequence.start == 2
-            assert sequence.increment == 3
-        finally:
-            table.drop()
+        table2 = Table('identity_test', meta2, autoload=True)
+        sequence = isinstance(table2.c['col1'].default, schema.Sequence) \
+                                and table2.c['col1'].default
+        assert sequence.start == 2
+        assert sequence.increment == 3
+    
+    @testing.emits_warning("Did not recognize")
+    @testing.provide_metadata
+    def test_skip_types(self):
+        testing.db.execute("""
+            create table foo (id integer primary key, data xml)
+        """)
+        t1 = Table('foo', metadata, autoload=True)
+        assert isinstance(t1.c.id.type, Integer)
+        assert isinstance(t1.c.data.type, types.NullType)
 
+    @testing.provide_metadata
+    def test_indexes_cols(self):
+        
+        t1 = Table('t', metadata, Column('x', Integer), Column('y', Integer))
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x'], t2.c.y])
+        )
 
+    @testing.provide_metadata
+    def test_indexes_cols_with_commas(self):
+        
+        t1 = Table('t', metadata, 
+                        Column('x, col', Integer, key='x'), 
+                        Column('y', Integer)
+                    )
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x, col'], t2.c.y])
+        )
+    
+    @testing.provide_metadata
+    def test_indexes_cols_with_spaces(self):
+        
+        t1 = Table('t', metadata, Column('x col', Integer, key='x'), 
+                                    Column('y', Integer))
+        Index('foo', t1.c.x, t1.c.y)
+        metadata.create_all()
+        
+        m2 = MetaData()
+        t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
+        
+        eq_(
+            set(list(t2.indexes)[0].columns),
+            set([t2.c['x col'], t2.c.y])
+        )
+        
 class QueryUnicodeTest(TestBase):
 
     __only_on__ = 'mssql'
@@ -799,12 +866,10 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
 
 class ParseConnectTest(TestBase, AssertsCompiledSQL):
-    __only_on__ = 'mssql'
-
     @classmethod
     def setup_class(cls):
         global dialect
-        dialect = pyodbc.MSDialect_pyodbc()
+        dialect = pyodbc.dialect()
 
     def test_pyodbc_connect_dsn_trusted(self):
         u = url.make_url('mssql://mydsn')
@@ -890,7 +955,27 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UI'
             'D=username;PWD=password'], {}], connection)
+    
+    def test_pymssql_port_setting(self):
+        dialect = pymssql.dialect()
 
+        u = \
+            url.make_url('mssql+pymssql://scott:tiger@somehost/test')
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [[], {'host': 'somehost', 'password': 'tiger', 
+                    'user': 'scott', 'database': 'test'}], connection
+        )
+
+        u = \
+            url.make_url('mssql+pymssql://scott:tiger@somehost:5000/test')
+        connection = dialect.create_connect_args(u)
+        eq_(
+            [[], {'host': 'somehost:5000', 'password': 'tiger', 
+                    'user': 'scott', 'database': 'test'}], connection
+        )
+    
+    @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'], "FreeTDS specific test")
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
 

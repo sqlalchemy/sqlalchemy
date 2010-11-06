@@ -909,7 +909,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con = testing.db.connect()
         for ddl in \
             'CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42', \
-            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0':
+            'CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0', \
+            "CREATE TYPE testtype AS ENUM ('test')", \
+            'CREATE DOMAIN enumdomain AS testtype'\
+            :
             try:
                 con.execute(ddl)
             except exc.SQLError, e:
@@ -923,6 +926,8 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('CREATE TABLE crosschema (question integer, answer '
                     'test_schema.testdomain)')
 
+        con.execute('CREATE TABLE enum_test (id integer, data enumdomain)')
+
     @classmethod
     def teardown_class(cls):
         con = testing.db.connect()
@@ -931,7 +936,10 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute('DROP TABLE crosschema')
         con.execute('DROP DOMAIN testdomain')
         con.execute('DROP DOMAIN test_schema.testdomain')
-
+        con.execute("DROP TABLE enum_test")
+        con.execute("DROP DOMAIN enumdomain")
+        con.execute("DROP TYPE testtype")
+        
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
@@ -946,7 +954,15 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
             "Reflected default value didn't equal expected value")
         assert not table.columns.answer.nullable, \
             'Expected reflected column to not be nullable.'
-
+    
+    def test_enum_domain_is_reflected(self):
+        metadata = MetaData(testing.db)
+        table = Table('enum_test', metadata, autoload=True)
+        eq_(
+            table.c.data.type.enums,
+            ('test', )
+        )
+        
     def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True,
@@ -989,6 +1005,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
                 assert t3.c.answer.type.__class__ == sa.types.NullType
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
+
 
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
@@ -1492,8 +1509,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
         arrtable = Table('arrtable', metadata, Column('id', Integer,
                          primary_key=True), Column('intarr',
-                         postgresql.PGArray(Integer)), Column('strarr',
-                         postgresql.PGArray(Unicode()), nullable=False))
+                         postgresql.ARRAY(Integer)), Column('strarr',
+                         postgresql.ARRAY(Unicode()), nullable=False))
         metadata.create_all()
 
     def teardown(self):
@@ -1506,8 +1523,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
     def test_reflect_array_column(self):
         metadata2 = MetaData(testing.db)
         tbl = Table('arrtable', metadata2, autoload=True)
-        assert isinstance(tbl.c.intarr.type, postgresql.PGArray)
-        assert isinstance(tbl.c.strarr.type, postgresql.PGArray)
+        assert isinstance(tbl.c.intarr.type, postgresql.ARRAY)
+        assert isinstance(tbl.c.strarr.type, postgresql.ARRAY)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
@@ -1575,7 +1592,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
         footable = Table('foo', metadata, Column('id', Integer,
                          primary_key=True), Column('intarr',
-                         postgresql.PGArray(Integer), nullable=True))
+                         postgresql.ARRAY(Integer), nullable=True))
         mapper(Foo, footable)
         metadata.create_all()
         sess = create_session()
@@ -1607,7 +1624,41 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         foo.id = 2
         sess.add(foo)
         sess.flush()
-
+    
+    @testing.provide_metadata
+    def test_tuple_flag(self):
+        assert_raises_message(
+            exc.ArgumentError, 
+            "mutable must be set to False if as_tuple is True.",
+            postgresql.ARRAY, Integer, as_tuple=True)
+        
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', postgresql.ARRAY(String(5), as_tuple=True, mutable=False)),
+            Column('data2', postgresql.ARRAY(Numeric(asdecimal=False), as_tuple=True, mutable=False)),
+        )
+        metadata.create_all()
+        testing.db.execute(t1.insert(), id=1, data=["1","2","3"], data2=[5.4, 5.6])
+        testing.db.execute(t1.insert(), id=2, data=["4", "5", "6"], data2=[1.0])
+        testing.db.execute(t1.insert(), id=3, data=[["4", "5"], ["6", "7"]], data2=[[5.4, 5.6], [1.0, 1.1]])
+        
+        r = testing.db.execute(t1.select().order_by(t1.c.id)).fetchall()
+        eq_(
+            r, 
+            [
+                (1, ('1', '2', '3'), (5.4, 5.6)), 
+                (2, ('4', '5', '6'), (1.0,)), 
+                (3, (('4', '5'), ('6', '7')), ((5.4, 5.6), (1.0, 1.1)))
+            ]
+        )
+        # hashable
+        eq_(
+            set(row[1] for row in r),
+            set([('1', '2', '3'), ('4', '5', '6'), (('4', '5'), ('6', '7'))])
+        )
+        
+        
+        
 class TimestampTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 

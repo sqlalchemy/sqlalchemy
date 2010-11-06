@@ -634,7 +634,7 @@ class DeclarativeTest(DeclarativeTestBase):
     def test_table_args(self):
 
         def err():
-            class Foo(Base):
+            class Foo1(Base):
 
                 __tablename__ = 'foo'
                 __table_args__ = ForeignKeyConstraint(['id'], ['foo.id'
@@ -644,13 +644,13 @@ class DeclarativeTest(DeclarativeTestBase):
         assert_raises_message(sa.exc.ArgumentError,
                               'Tuple form of __table_args__ is ', err)
 
-        class Foo(Base):
+        class Foo2(Base):
 
             __tablename__ = 'foo'
             __table_args__ = {'mysql_engine': 'InnoDB'}
             id = Column('id', Integer, primary_key=True)
 
-        assert Foo.__table__.kwargs['mysql_engine'] == 'InnoDB'
+        assert Foo2.__table__.kwargs['mysql_engine'] == 'InnoDB'
 
         class Bar(Base):
 
@@ -659,7 +659,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 {'mysql_engine': 'InnoDB'}
             id = Column('id', Integer, primary_key=True)
 
-        assert Bar.__table__.c.id.references(Foo.__table__.c.id)
+        assert Bar.__table__.c.id.references(Foo2.__table__.c.id)
         assert Bar.__table__.kwargs['mysql_engine'] == 'InnoDB'
 
     def test_expression(self):
@@ -1083,6 +1083,21 @@ class DeclarativeTest(DeclarativeTestBase):
         rt = sess.query(User).filter(User.uc_name.startswith('SOMEUSE'
                 )).one()
         eq_(rt, u1)
+
+    @testing.emits_warning(
+        "The classname 'Test' is already in the registry "
+        "of this declarative base, mapped to "
+        "<class 'test.ext.test_declarative.Test'>"
+        )
+    def test_duplicate_classes_in_base(self):
+
+        class Test(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class Test(Base):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
 
@@ -2155,7 +2170,28 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, 'testing')
         eq_(obj.foo(), 'bar1')
         eq_(obj.baz, 'fu')
+    
+    def test_mixin_overrides(self):
+        """test a mixin that overrides a column on a superclass."""
+        
+        class MixinA(object):
+            foo = Column(String(50))
+        
+        class MixinB(MixinA):
+            foo = Column(Integer)
 
+        class MyModelA(Base, MixinA):
+            __tablename__ = 'testa'
+            id = Column(Integer, primary_key=True)
+        
+        class MyModelB(Base, MixinB):
+            __tablename__ = 'testb'
+            id = Column(Integer, primary_key=True)
+        
+        eq_(MyModelA.__table__.c.foo.type.__class__, String)
+        eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
+        
+        
     def test_not_allowed(self):
 
         class MyMixin:

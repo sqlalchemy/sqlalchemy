@@ -14,7 +14,7 @@ from datetime import datetime
 
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, DateTime, Numeric, ForeignKey, and_)
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy.orm import mapper, relationship, Session
 
 # Uncomment these to watch database activity.
 #import logging
@@ -70,14 +70,14 @@ mapper(OrderItem, orderitems, properties={
     'item': relationship(Item, lazy='joined')
 })
 
-session = create_session()
+session = Session()
 
 # create our catalog
 session.add(Item('SA T-Shirt', 10.99))
 session.add(Item('SA Mug', 6.50))
 session.add(Item('SA Hat', 8.99))
 session.add(Item('MySQL Crowbar', 16.99))
-session.flush()
+session.commit()
 
 # function to return items from the DB
 def item(name):
@@ -91,9 +91,7 @@ order.order_items.append(OrderItem(item('SA Mug')))
 order.order_items.append(OrderItem(item('MySQL Crowbar'), 10.99))
 order.order_items.append(OrderItem(item('SA Hat')))
 session.add(order)
-session.flush()
-
-session.expunge_all()
+session.commit()
 
 # query the order, print items
 order = session.query(Order).filter_by(customer_name='john smith').one()

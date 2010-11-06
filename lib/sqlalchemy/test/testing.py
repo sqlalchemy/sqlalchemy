@@ -8,7 +8,8 @@ import types
 import warnings
 from cStringIO import StringIO
 
-from sqlalchemy.test import config, assertsql, util as testutil
+from sqlalchemy_nose import config
+from sqlalchemy.test import assertsql, util as testutil
 from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 
@@ -207,9 +208,9 @@ def _block_unconditionally(db, reason):
         return function_named(maybe, fn_name)
     return decorate
 
-def only_on(db, reason):
+def only_on(dbs, reason):
     carp = _should_carp_about_exclusion(reason)
-    spec = db_spec(db)
+    spec = db_spec(*util.to_list(dbs))
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):

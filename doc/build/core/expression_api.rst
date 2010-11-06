@@ -115,6 +115,8 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: tuple_
 
+.. autofunction:: type_coerce
+
 .. autofunction:: union
 
 .. autofunction:: union_all

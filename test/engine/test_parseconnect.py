@@ -3,6 +3,7 @@ import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config
+from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase
 
@@ -137,6 +138,21 @@ pool_timeout=10
             == url.make_url('postgresql://scott:tiger@somehost/test?foo'
                             'z=somevalue')
         assert e.echo is True
+
+        for param, values in [
+            ('convert_unicode', ('true', 'false', 'force')), 
+            ('echo', ('true', 'false', 'debug')),
+            ('echo_pool', ('true', 'false', 'debug')),
+            ('use_native_unicode', ('true', 'false')),
+        ]:
+            for value in values:
+                config = {
+                        'sqlalchemy.url': 'postgresql://scott:tiger@somehost/test',
+                        'sqlalchemy.%s' % param : value
+                }
+                cfg = _coerce_config(config, 'sqlalchemy.')
+                assert cfg[param] == {'true':True, 'false':False}.get(value, value)
+
 
     def test_custom(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},

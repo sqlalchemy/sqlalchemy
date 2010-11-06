@@ -760,28 +760,50 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             m1.drop_all()
 
+    @testing.provide_metadata
     def test_views(self):
-        meta = MetaData(testing.db)
-        users, addresses = createTables(meta, None)
-        meta.create_all()
-        createViews(meta.bind, None)
+        users, addresses = createTables(metadata, None)
         try:
+            metadata.create_all()
+            createViews(metadata.bind, None)
             m2 = MetaData(testing.db)
             users_v = Table("users_v", m2, autoload=True)
             addresses_v = Table("email_addresses_v", m2, autoload=True)
-            
+        
             for c1, c2 in zip(users.c, users_v.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
-                
+            
             for c1, c2 in zip(addresses.c, addresses_v.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
-            
         finally:
-            dropViews(meta.bind, None)
-            meta.drop_all()
-        
+            dropViews(metadata.bind)    
+    
+    @testing.provide_metadata
+    def test_reflect_all_with_views(self):
+        users, addresses = createTables(metadata, None)
+        try:
+            metadata.create_all()
+            createViews(metadata.bind, None)
+            m2 = MetaData(testing.db)
+            
+            m2.reflect(views=False)
+            eq_(
+                set(m2.tables), 
+                set([u'users', u'email_addresses'])
+            )
+            
+            m2 = MetaData(testing.db)
+            m2.reflect(views=True)
+            eq_(
+                set(m2.tables), 
+                set([u'email_addresses_v', u'users_v', 
+                            u'users', u'email_addresses'])
+            )
+        finally:
+            dropViews(metadata.bind)
+            
 class CreateDropTest(TestBase):
 
     @classmethod

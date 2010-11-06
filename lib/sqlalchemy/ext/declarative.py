@@ -589,7 +589,8 @@ keys, as a :class:`ForeignKey` itself contains references to columns
 which can't be properly recreated at this level.  For columns that 
 have foreign keys, as well as for the variety of mapper-level constructs
 that require destination-explicit context, the
-:func:`~.declared_attr` decorator is provided so that
+:func:`~.declared_attr` decorator (renamed from ``sqlalchemy.util.classproperty`` in 0.6.5) 
+is provided so that
 patterns common to many classes can be defined as callables::
 
     from sqlalchemy.ext.declarative import declared_attr
@@ -820,6 +821,81 @@ from multiple collections::
 
         id =  Column(Integer, primary_key=True)
 
+Defining Indexes in Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you need to define a multi-column index that applies to all tables
+that make use of a particular mixin, you will need to do this in a
+metaclass as shown in the following example::
+
+        from sqlalchemy.ext.declarative import DeclarativeMeta
+
+        class MyMixinMeta(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta,cls).__init__(*args,**kw)
+                # Index creation done here
+                Index('test',cls.a,cls.b)
+
+        class MyMixin(object):
+            __metaclass__=MyMixinMeta
+            a =  Column(Integer)
+            b =  Column(Integer)
+
+        class MyModel(Base,MyMixin):
+            __tablename__ = 'atable'
+            c =  Column(Integer,primary_key=True)
+
+Using multiple Mixins that require Metaclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you end up in a situation where you need to use multiple mixins and
+more than one of them uses a metaclass to, for example, create a
+multi-column index, then you will need to create a metaclass that
+correctly combines the actions of the other metaclasses. For example::
+
+        class MyMeta1(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta1,cls).__init__(*args,**kw)
+                Index('ab',cls.a,cls.b)
+
+        class MyMixin1(object):
+            __metaclass__=MyMeta1
+            a =  Column(Integer)
+            b =  Column(Integer)
+
+        class MyMeta2(DeclarativeMeta):
+
+            def __init__(cls,*args,**kw):
+                if getattr(cls,'_decl_class_registry',None) is None:
+                    return
+                super(MyMeta2,cls).__init__(*args,**kw)
+                Index('cd',cls.c,cls.d)
+
+        class MyMixin2(object):
+            __metaclass__=MyMeta2
+            c =  Column(Integer)
+            d =  Column(Integer)
+
+        class CombinedMeta(MyMeta1,MyMeta2):
+            # This is needed to successfully combine
+            # two mixins which both have metaclasses
+            pass
+        
+        class MyModel(Base,MyMixin1,MyMixin2):
+            __tablename__ = 'awooooga'
+            __metaclass__ = CombinedMeta
+            z =  Column(Integer,primary_key=True)
+
+For this reason, if a mixin requires a custom metaclass, this should
+be mentioned in any documentation of that mixin to avoid confusion
+later down the line.
+            
 Class Constructor
 =================
 
@@ -939,7 +1015,7 @@ def _as_declarative(cls, classname, dict_):
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
                             (obj.name or name) in dict_['__table__'].c
-                            ):
+                            ) and name not in potential_columns:
                         potential_columns[name] = \
                                 column_copies[obj] = \
                                 obj.copy()
@@ -971,6 +1047,13 @@ def _as_declarative(cls, classname, dict_):
     for k, v in mapper_args.iteritems():
         mapper_args[k] = column_copies.get(v,v)
     
+
+    if classname in cls._decl_class_registry:
+        util.warn("The classname %r is already in the registry of this"
+                  " declarative base, mapped to %r" % (
+                classname,
+                cls._decl_class_registry[classname]
+                ))
     cls._decl_class_registry[classname] = cls
     our_stuff = util.OrderedDict()
 
@@ -1288,7 +1371,7 @@ class declared_attr(property):
     a mapped property or special declarative member name.
 
     .. note:: @declared_attr is available as 
-      sqlalchemy.util.classproperty for SQLAlchemy versions
+      ``sqlalchemy.util.classproperty`` for SQLAlchemy versions
       0.6.2, 0.6.3, 0.6.4.
       
     @declared_attr turns the attribute into a scalar-like

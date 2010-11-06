@@ -56,11 +56,11 @@ elif BUILD_CEXTENSIONS:
 
 def find_packages(dir_):
     packages = []
-    for _dir, subdirectories, files in os.walk(os.path.join(dir_,
-            'sqlalchemy')):
-        if '__init__.py' in files:
-            lib, fragment = _dir.split(os.sep, 1)
-            packages.append(fragment.replace(os.sep, '.'))
+    for pkg in ['sqlalchemy', 'sqlalchemy_nose']:
+        for _dir, subdirectories, files in os.walk(os.path.join(dir_, pkg)):
+            if '__init__.py' in files:
+                lib, fragment = _dir.split(os.sep, 1)
+                packages.append(fragment.replace(os.sep, '.'))
     return packages
 
 if sys.version_info < (2, 4):
@@ -90,7 +90,7 @@ setup(name = "SQLAlchemy",
       test_suite = "nose.collector",
       entry_points = {
           'nose.plugins.0.10': [
-              'sqlalchemy = sqlalchemy.test.noseplugin:NoseSQLAlchemy',
+              'sqlalchemy = sqlalchemy_nose.noseplugin:NoseSQLAlchemy',
               ]
           },
       

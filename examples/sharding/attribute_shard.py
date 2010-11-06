@@ -248,9 +248,7 @@ quito.reports.append(Report(85))
 sess = create_session()
 for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
     sess.add(c)
-sess.flush()
-
-sess.expunge_all()
+sess.commit()
 
 t = sess.query(WeatherLocation).get(tokyo.id)
 assert t.city == tokyo.city

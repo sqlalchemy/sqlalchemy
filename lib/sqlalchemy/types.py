@@ -132,18 +132,28 @@ class AbstractType(Visitable):
         # ClauseElement.compile()....this is a mistake.
         
         if not dialect:
+            dialect = self._default_dialect
+        
+        return dialect.type_compiler.process(self)
+    
+    @property
+    def _default_dialect(self):
+        if self.__class__.__module__.startswith("sqlalchemy.dialects"):
+            tokens = self.__class__.__module__.split(".")[0:3]
+            mod = ".".join(tokens)
+            return getattr(__import__(mod).dialects, tokens[-1]).dialect()
+        else:
             global DefaultDialect
             if DefaultDialect is None:
                 from sqlalchemy.engine.default import DefaultDialect
-            dialect = DefaultDialect()
+            return DefaultDialect()
         
-        return dialect.type_compiler.process(self)
-
     def __str__(self):
         # Py3K
         #return unicode(self.compile())
         # Py2K
-        return unicode(self.compile()).encode('ascii', 'backslashreplace')
+        return unicode(self.compile()).\
+                        encode('ascii', 'backslashreplace')
         # end Py2K
 
     def __init__(self, *args, **kwargs):
@@ -346,21 +356,19 @@ class TypeDecorator(AbstractType):
                                  "require a class-level variable "
                                  "'impl' which refers to the class of "
                                  "type being decorated")
-        self.impl = self.__class__.impl(*args, **kwargs)
+        self.impl = to_instance(self.__class__.impl, *args, **kwargs)
     
     def adapt(self, cls):
         return cls()
         
     def dialect_impl(self, dialect):
         key = (dialect.__class__, dialect.server_version_info)
+
         try:
             return self._impl_dict[key]
         except KeyError:
             pass
 
-        # adapt the TypeDecorator first, in
-        # the case that the dialect maps the TD
-        # to one of its native types (i.e. PGInterval)
         adapted = dialect.type_descriptor(self)
         if adapted is not self:
             self._impl_dict[key] = adapted
@@ -369,7 +377,7 @@ class TypeDecorator(AbstractType):
         # otherwise adapt the impl type, link
         # to a copy of this TypeDecorator and return
         # that.
-        typedesc = self.load_dialect_impl(dialect)
+        typedesc = self.load_dialect_impl(dialect).dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
             raise AssertionError('Type object %s does not properly '
@@ -381,27 +389,33 @@ class TypeDecorator(AbstractType):
         return tt
 
     @util.memoized_property
+    def _impl_dict(self):
+        return {}
+
+    @util.memoized_property
     def _type_affinity(self):
         return self.impl._type_affinity
 
     def type_engine(self, dialect):
-        impl = self.dialect_impl(dialect)
-        if not isinstance(impl, TypeDecorator):
-            return impl
+        """Return a TypeEngine instance for this TypeDecorator.
+        
+        """
+        adapted = dialect.type_descriptor(self)
+        if adapted is not self:
+            return adapted
+        elif isinstance(self.impl, TypeDecorator):
+            return self.impl.type_engine(dialect)
         else:
-            return impl.impl
+            return self.load_dialect_impl(dialect)
 
     def load_dialect_impl(self, dialect):
-        """Loads the dialect-specific implementation of this type.
+        """User hook which can be overridden to provide a different 'impl'
+        type per-dialect.
 
-        by default calls dialect.type_descriptor(self.impl), but
-        can be overridden to provide different behavior.
+        by default returns self.impl.
 
         """
-        if isinstance(self.impl, TypeDecorator):
-            return self.impl.dialect_impl(dialect)
-        else:
-            return dialect.type_descriptor(self.impl)
+        return self.impl
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying
@@ -503,9 +517,11 @@ class TypeDecorator(AbstractType):
         return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
-        return self.impl._adapt_expression(op, othertype)
-
-
+        op, typ =self.impl._adapt_expression(op, othertype)
+        if typ is self.impl:
+            return op, self
+        else:
+            return op, typ
 
 class MutableType(object):
     """A mixin that marks a :class:`TypeEngine` as representing
@@ -593,12 +609,12 @@ class MutableType(object):
         """Compare *x* == *y*."""
         return x == y
 
-def to_instance(typeobj):
+def to_instance(typeobj, *arg, **kw):
     if typeobj is None:
         return NULLTYPE
 
     if util.callable(typeobj):
-        return typeobj()
+        return typeobj(*arg, **kw)
     else:
         return typeobj
 

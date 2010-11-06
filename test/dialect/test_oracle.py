@@ -376,12 +376,19 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         assert dialect.use_ansi
 
         dialect.initialize(testing.db.connect())
+        assert not dialect.implicit_returning
         assert not dialect._supports_char_length
         assert not dialect._supports_nchar
         assert not dialect.use_ansi
         self.assert_compile(String(50),"VARCHAR(50)",dialect=dialect)
         self.assert_compile(Unicode(50),"VARCHAR(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"CLOB",dialect=dialect)
+
+        dialect = oracle.dialect(implicit_returning=True)
+        dialect._get_server_version_info = server_version_info
+        dialect.initialize(testing.db.connect())
+        assert dialect.implicit_returning
+        
 
     def test_default_flags(self):
         """test with no initialization or server version info"""

@@ -89,7 +89,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
             column_collection.append(c)
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return None, None
+        return None, None, None
 
 class ColumnLoader(LoaderStrategy):
     """Strategize the loading of a plain column-based MapperProperty."""
@@ -128,11 +128,11 @@ class ColumnLoader(LoaderStrategy):
             if col is not None and col in row:
                 def new_execute(state, dict_, row):
                     dict_[key] = row[col]
-                return new_execute, None
+                return new_execute, None, None
         else:
             def new_execute(state, dict_, row):
                 state.expire_attribute_pre_commit(dict_, key)
-            return new_execute, None
+            return new_execute, None, None
 
 log.class_logger(ColumnLoader)
 
@@ -185,7 +185,7 @@ class CompositeColumnLoader(ColumnLoader):
             def new_execute(state, dict_, row):
                 dict_[key] = composite_class(*[row[c] for c in columns])
 
-        return new_execute, None
+        return new_execute, None, None
 
 log.class_logger(CompositeColumnLoader)
     
@@ -212,7 +212,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 # fire off on next access.
                 state.reset(dict_, key)
 
-        return new_execute, None
+        return new_execute, None, None
 
     def init(self):
         if hasattr(self.parent_property, 'composite_class'):
@@ -349,7 +349,7 @@ class NoLoader(AbstractRelationshipLoader):
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         def new_execute(state, dict_, row):
             state.initialize(self.key)
-        return new_execute, None
+        return new_execute, None, None
 
 log.class_logger(NoLoader)
         
@@ -510,7 +510,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 # any existing state.
                 state.reset(dict_, key)
 
-        return new_execute, None
+        return new_execute, None, None
     
     @classmethod
     def _create_lazy_clause(cls, prop, reverse_direction=False):
@@ -684,6 +684,23 @@ class LoadLazyAttribute(object):
             else:
                 return None
 
+class ImmediateLoader(AbstractRelationshipLoader):
+    def init_class_attribute(self, mapper):
+        self.parent_property.\
+                _get_strategy(LazyLoader).\
+                init_class_attribute(mapper)
+                
+    def setup_query(self, context, entity, 
+                        path, adapter, column_collection=None,
+                        parentmapper=None, **kwargs):
+        pass
+
+    def create_row_processor(self, context, path, mapper, row, adapter):
+        def execute(state, dict_, row):
+            state.get_impl(self.key).get(state, dict_)
+        
+        return None, None, execute
+        
 class SubqueryLoader(AbstractRelationshipLoader):
     def init(self):
         super(SubqueryLoader, self).init()
@@ -860,7 +877,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         path = interfaces._reduce_path(path)
         
         if ('subquery', path) not in context.attributes:
-            return None, None
+            return None, None, None
             
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
@@ -904,7 +921,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 state.get_impl(self.key).\
                         set_committed_value(state, dict_, scalar)
             
-        return execute, None
+        return execute, None, None
 
 log.class_logger(SubqueryLoader)
 
@@ -922,6 +939,7 @@ class EagerLoader(AbstractRelationshipLoader):
         
     def setup_query(self, context, entity, path, adapter, \
                                 column_collection=None, parentmapper=None,
+                                allow_innerjoin=True,
                                 **kwargs):
         """Add a left outer join to the statement thats being constructed."""
 
@@ -972,10 +990,18 @@ class EagerLoader(AbstractRelationshipLoader):
             if self.parent_property.direction != interfaces.MANYTOONE:
                 context.multi_row_eager_loaders = True
 
+            innerjoin = allow_innerjoin and context.attributes.get(
+                                ("eager_join_type", path), 
+                                self.parent_property.innerjoin)
+            if not innerjoin:
+                # if this is an outer join, all eager joins from
+                # here must also be outer joins
+                allow_innerjoin = False
+                
             context.create_eager_joins.append(
                 (self._create_eager_join, context, 
                 entity, path, adapter, 
-                parentmapper, clauses)
+                parentmapper, clauses, innerjoin)
             )
 
             add_to_collection = context.secondary_columns
@@ -990,10 +1016,12 @@ class EagerLoader(AbstractRelationshipLoader):
                 path + (self.mapper,), 
                 clauses, 
                 parentmapper=self.mapper, 
-                column_collection=add_to_collection)
+                column_collection=add_to_collection,
+                allow_innerjoin=allow_innerjoin)
     
     def _create_eager_join(self, context, entity, 
-                            path, adapter, parentmapper, clauses):
+                            path, adapter, parentmapper, 
+                            clauses, innerjoin):
         
         if parentmapper is None:
             localparent = entity.mapper
@@ -1047,10 +1075,6 @@ class EagerLoader(AbstractRelationshipLoader):
                 join_to_left = True
         else:
             onclause = self.parent_property
-
-        innerjoin = context.attributes.get(
-                                ("eager_join_type", path), 
-                                self.parent_property.innerjoin)
 
         context.eager_joins[entity_key] = eagerjoin = \
                                 mapperutil.join(
@@ -1157,7 +1181,7 @@ class EagerLoader(AbstractRelationshipLoader):
                             "Multiple rows returned with "
                             "uselist=False for eagerly-loaded attribute '%s' "
                             % self)
-                return new_execute, existing_execute
+                return new_execute, existing_execute, None
             else:
                 def new_execute(state, dict_, row):
                     collection = attributes.init_state_collection(
@@ -1182,7 +1206,7 @@ class EagerLoader(AbstractRelationshipLoader):
                                                 'append_without_event')
                         context.attributes[(state, key)] = result_list
                     _instance(row, result_list)
-            return new_execute, existing_execute
+            return new_execute, existing_execute, None
         else:
             return self.parent_property.\
                             _get_strategy(LazyLoader).\
@@ -1222,6 +1246,8 @@ def factory(identifier):
         return LazyLoader
     elif identifier == 'subquery':
         return SubqueryLoader
+    elif identifier == 'immediate':
+        return ImmediateLoader
     else:
         return LazyLoader
     

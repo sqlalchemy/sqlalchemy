@@ -114,6 +114,8 @@ Known Issues
 ------------
 
 * No support for more than one ``IDENTITY`` column per table
+* reflection of indexes does not work with versions older than
+  SQL Server 2005
 
 """
 import datetime, decimal, inspect, operator, sys, re
@@ -755,20 +757,20 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return None
 
     def visit_table(self, table, mssql_aliased=False, **kwargs):
-        if mssql_aliased:
+        if mssql_aliased is table:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
         # alias schema-qualified tables
         alias = self._schema_aliased_table(table)
         if alias is not None:
-            return self.process(alias, mssql_aliased=True, **kwargs)
+            return self.process(alias, mssql_aliased=table, **kwargs)
         else:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
     def visit_alias(self, alias, **kwargs):
         # translate for schema-qualified table aliases
         self.tablealiases[alias.original] = alias
-        kwargs['mssql_aliased'] = True
+        kwargs['mssql_aliased'] = alias.original
         return super(MSSQLCompiler, self).visit_alias(alias, **kwargs)
 
     def visit_extract(self, extract, **kw):
@@ -1124,26 +1126,55 @@ class MSDialect(default.DefaultDialect):
         view_names = [r[0] for r in connection.execute(s)]
         return view_names
 
-    # The cursor reports it is closed after executing the sp.
     @reflection.cache
     def get_indexes(self, connection, tablename, schema=None, **kw):
-        current_schema = schema or self.default_schema_name
-        col_finder = re.compile("(\w+)")
-        full_tname = "%s.%s" % (current_schema, tablename)
-        indexes = []
-        s = sql.text("exec sp_helpindex '%s'" % full_tname)
-        rp = connection.execute(s)
-        if rp.closed:
-            # did not work for this setup.
+        # using system catalogs, don't support index reflection
+        # below MS 2005
+        if self.server_version_info < MS_2005_VERSION:
             return []
+        
+        current_schema = schema or self.default_schema_name
+        full_tname = "%s.%s" % (current_schema, tablename)
+
+        rp = connection.execute(
+            sql.text("select ind.index_id, ind.is_unique, ind.name "
+                "from sys.indexes as ind join sys.tables as tab on "
+                "ind.object_id=tab.object_id "
+                "join sys.schemas as sch on sch.schema_id=tab.schema_id "
+                "where tab.name = :tabname "
+                "and sch.name=:schname "
+                "and ind.is_primary_key=0", 
+                bindparams=[
+                    sql.bindparam('tabname', tablename, sqltypes.Unicode),
+                    sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                ]
+            )
+        )
+        indexes = {}
         for row in rp:
-            if 'primary key' not in row['index_description']:
-                indexes.append({
-                    'name' : row['index_name'],
-                    'column_names' : col_finder.findall(row['index_keys']),
-                    'unique': 'unique' in row['index_description']
-                })
-        return indexes
+            indexes[row['index_id']] = {
+                'name':row['name'],
+                'unique':row['is_unique'] == 1,
+                'column_names':[]
+            }
+        rp = connection.execute(
+            sql.text("select ind_col.index_id, col.name from sys.columns as col "
+                        "join sys.index_columns as ind_col on "
+                        "ind_col.column_id=col.column_id "
+                        "join sys.tables as tab on tab.object_id=col.object_id "
+                        "join sys.schemas as sch on sch.schema_id=tab.schema_id "
+                        "where tab.name=:tabname "
+                        "and sch.name=:schname",
+                        bindparams=[
+                            sql.bindparam('tabname', tablename, sqltypes.Unicode),
+                            sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                        ]),
+            )
+        for row in rp:
+            if row['index_id'] in indexes:
+                indexes[row['index_id']]['column_names'].append(row['name'])
+        
+        return indexes.values()
 
     @reflection.cache
     def get_view_definition(self, connection, viewname, schema=None, **kw):
@@ -1207,13 +1238,13 @@ class MSDialect(default.DefaultDialect):
                     "Did not recognize type '%s' of column '%s'" % 
                     (type, name))
                 coltype = sqltypes.NULLTYPE
+            else:
+                if issubclass(coltype, sqltypes.Numeric) and \
+                        coltype is not MSReal:
+                    kwargs['scale'] = numericscale
+                    kwargs['precision'] = numericprec
 
-            if issubclass(coltype, sqltypes.Numeric) and \
-                    coltype is not MSReal:
-                kwargs['scale'] = numericscale
-                kwargs['precision'] = numericprec
-
-            coltype = coltype(**kwargs)
+                coltype = coltype(**kwargs)
             cdict = {
                 'name' : name,
                 'type' : coltype,
