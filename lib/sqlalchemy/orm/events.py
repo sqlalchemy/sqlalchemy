@@ -1,7 +1,7 @@
 """ORM event interfaces.
 
 """
-from sqlalchemy import event, util, exc
+from sqlalchemy import event, exc
 import inspect
 
 class InstrumentationEvents(event.Events):
@@ -26,13 +26,8 @@ class InstrumentationEvents(event.Events):
             return None
 
     @classmethod
-    def listen(cls, fn, identifier, target):
-        
-        @util.decorator
-        def adapt_to_target(fn, cls, *arg):
-            if issubclass(cls, target):
-                fn(cls, *arg)
-        event.Events.listen(fn, identifier, target)
+    def listen(cls, fn, identifier, target, propagate=False):
+        event.Events.listen(fn, identifier, target, propagate=propagate)
 
     @classmethod
     def remove(cls, fn, identifier, target):
@@ -68,9 +63,14 @@ class InstanceEvents(event.Events):
     @classmethod
     def accept_with(cls, target):
         from sqlalchemy.orm.instrumentation import ClassManager, manager_of_class
+        from sqlalchemy.orm import Mapper, mapper
         
         if isinstance(target, ClassManager):
             return target
+        elif isinstance(target, Mapper):
+            return target.class_manager
+        elif target is Mapper or target is mapper:
+            return ClassManager
         elif isinstance(target, type):
             manager = manager_of_class(target)
             if manager:
@@ -78,14 +78,18 @@ class InstanceEvents(event.Events):
         return None
     
     @classmethod
-    def listen(cls, fn, identifier, target, raw=False):
+    def listen(cls, fn, identifier, target, raw=False, propagate=False):
         if not raw:
             orig_fn = fn
             def wrap(state, *arg, **kw):
                 return orig_fn(state.obj(), *arg, **kw)
             fn = wrap
-        event.Events.listen(fn, identifier, target)
-        
+
+        event.Events.listen(fn, identifier, target, propagate=propagate)
+        if propagate:
+            for mgr in target.subclass_managers(True):
+                event.Events.listen(fn, identifier, mgr, True)
+            
     @classmethod
     def remove(cls, fn, identifier, target):
         raise NotImplementedError("Removal of instance events not yet implemented")
@@ -148,6 +152,8 @@ class MapperEvents(event.Events):
     
     Several modifiers are available to the listen() function.
     
+    :param propagate=False: When True, the event listener should 
+      be applied to all inheriting mappers as well.
     :param raw=False: When True, the "target" argument to the
       event, if applicable will be the :class:`.InstanceState` management
       object, rather than the mapped instance itself.
@@ -178,7 +184,7 @@ class MapperEvents(event.Events):
         
     @classmethod
     def listen(cls, fn, identifier, target, 
-                                        raw=False, retval=False):
+                            raw=False, retval=False, propagate=False):
         from sqlalchemy.orm.interfaces import EXT_CONTINUE
 
         if not raw or not retval:
@@ -201,9 +207,11 @@ class MapperEvents(event.Events):
                     return wrapped_fn(*arg, **kw)
             fn = wrap
         
-        for mapper in target.self_and_descendants:
-            event.Events.listen(fn, identifier, mapper)
-    
+        if propagate:
+            for mapper in target.self_and_descendants:
+                event.Events.listen(fn, identifier, mapper, propagate=True)
+        else:
+            event.Events.listen(fn, identifier, self)
         
     def on_instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
@@ -437,32 +445,26 @@ class AttributeEvents(event.Events):
         # of the wrapper with the original function.
         
         if not raw or not retval:
-            @util.decorator
-            def wrap(fn, target, value, *arg):
+            orig_fn = fn
+            def wrap(target, value, *arg):
                 if not raw:
                     target = target.obj()
                 if not retval:
-                    fn(target, value, *arg)
+                    orig_fn(target, value, *arg)
                     return value
                 else:
-                    return fn(target, value, *arg)
-            fn = wrap(fn)
+                    return orig_fn(target, value, *arg)
+            fn = wrap
             
-        event.Events.listen(fn, identifier, target)
+        event.Events.listen(fn, identifier, target, propagate)
         
         if propagate:
-
-            raise NotImplementedError()
-
-            # TODO: for removal, need to implement
-            # packaging this info for operation in reverse.
-
-            class_ = target.class_
-            for cls in class_.__subclasses__():
-                impl = getattr(cls, target.key)
-                if impl is not target:
-                    event.Events.listen(fn, identifier, impl)
+            from sqlalchemy.orm.instrumentation import manager_of_class
             
+            manager = manager_of_class(target.class_)
+            
+            for mgr in manager.subclass_managers(True):
+                event.Events.listen(fn, identifier, mgr[target.key], True)
         
     @classmethod
     def remove(cls, fn, identifier, target):

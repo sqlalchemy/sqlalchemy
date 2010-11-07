@@ -18,8 +18,6 @@ def listen(fn, identifier, target, *args, **kw):
     for evt_cls in _registrars[identifier]:
         tgt = evt_cls.accept_with(target)
         if tgt is not None:
-            if kw.pop('propagate', False):
-                fn._sa_event_propagate = True
             tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
@@ -37,7 +35,7 @@ def remove(fn, identifier, target):
         for tgt in evt_cls.accept_with(target):
             tgt.dispatch.remove(fn, identifier, tgt, *args, **kw)
             return
-        
+
 _registrars = util.defaultdict(list)
 
 class _UnpickleDispatch(object):
@@ -60,7 +58,7 @@ class _Dispatch(object):
     def __reduce__(self):
         
         return _UnpickleDispatch(), (self.parent_cls, )
-        
+    
     @property
     def descriptors(self):
         return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
@@ -71,7 +69,8 @@ class _Dispatch(object):
 
         for ls in other.descriptors:
             getattr(self, ls.name).update(ls, only_propagate=only_propagate)
-
+            
+            
 class _EventMeta(type):
     """Intercept new Event subclasses and create 
     associated _Dispatch classes."""
@@ -88,7 +87,8 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     cls.dispatch = dispatch_cls = type("%sDispatch" % classname, 
                                         (dispatch_base, ), {})
     dispatch_cls.listen = cls.listen
-
+    dispatch_cls.clear = cls.clear
+    
     for k in dict_:
         if k.startswith('on_'):
             setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
@@ -121,13 +121,19 @@ class Events(object):
             return None
 
     @classmethod
-    def listen(cls, fn, identifier, target):
-        getattr(target.dispatch, identifier).append(fn, target)
+    def listen(cls, fn, identifier, target, propagate=False):
+        getattr(target.dispatch, identifier).append(fn, target, propagate)
     
     @classmethod
     def remove(cls, fn, identifier, target):
         getattr(target.dispatch, identifier).remove(fn, target)
-        
+    
+    @classmethod
+    def clear(cls):
+        for attr in dir(cls.dispatch):
+            if attr.startswith("on_"):
+                getattr(cls.dispatch, attr).clear()
+                
 class _DispatchDescriptor(object):
     """Class-level attributes on _Dispatch classes."""
     
@@ -136,7 +142,7 @@ class _DispatchDescriptor(object):
         self.__doc__ = fn.__doc__
         self._clslevel = util.defaultdict(list)
     
-    def append(self, obj, target):
+    def append(self, obj, target, propagate):
         assert isinstance(target, type), \
                 "Class-level Event targets must be classes."
                 
@@ -146,7 +152,13 @@ class _DispatchDescriptor(object):
     def remove(self, obj, target):
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].remove(obj)
+    
+    def clear(self):
+        """Clear all class level listeners"""
         
+        for dispatcher in self._clslevel.values():
+            dispatcher[:] = []
+            
     def __get__(self, obj, cls):
         if obj is None:
             return self
@@ -166,7 +178,8 @@ class _ListenerCollection(object):
         self.parent_listeners = parent._clslevel[target_cls]
         self.name = parent.__name__
         self.listeners = []
-
+        self.propagate = set()
+        
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
         executed already for this collection."""
@@ -200,22 +213,30 @@ class _ListenerCollection(object):
     def update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
-
+        
         existing_listeners = self.listeners
         existing_listener_set = set(existing_listeners)
+        self.propagate.update(other.propagate)
         existing_listeners.extend([l for l 
                                 in other.listeners 
                                 if l not in existing_listener_set
-                                and not only_propagate or getattr(l, '_sa_event_propagate', False)
+                                and not only_propagate or l in self.propagate
                                 ])
 
-    def append(self, obj, target):
+    def append(self, obj, target, propagate):
         if obj not in self.listeners:
             self.listeners.append(obj)
+            if propagate:
+                self.propagate.add(obj)
     
     def remove(self, obj, target):
         if obj in self.listeners:
             self.listeners.remove(obj)
+            self.propagate.discard(obj)
+    
+    def clear(self):
+        self.listeners[:] = []
+        self.propagate.clear()
         
 class dispatcher(object):
     """Descriptor used by target classes to 

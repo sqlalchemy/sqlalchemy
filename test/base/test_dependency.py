@@ -1,6 +1,7 @@
 import sqlalchemy.topological as topological
 from sqlalchemy.test import TestBase
 from sqlalchemy.test.testing import assert_raises, eq_
+from sqlalchemy.test.util import conforms_partial_ordering
 from sqlalchemy import exc, util
 
 
@@ -12,13 +13,7 @@ class DependencySortTest(TestBase):
         else:
             allitems = self._nodes_from_tuples(tuples).union(allitems)
         result = list(topological.sort(tuples, allitems))
-        deps = util.defaultdict(set)
-        for parent, child in tuples:
-            deps[parent].add(child)
-        assert len(result)
-        for i, node in enumerate(result):
-            for n in result[i:]:
-                assert node not in deps[n]
+        assert conforms_partial_ordering(tuples, result)
 
     def _nodes_from_tuples(self, tups):
         s = set()

@@ -6,8 +6,9 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, ne_, assert_raises
 from test.orm import _base
-from sqlalchemy.test.util import gc_collect
+from sqlalchemy.test.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import cmp, jython
+from sqlalchemy import event, topological
 
 # global for pickling tests
 MyTest = None
@@ -1569,32 +1570,31 @@ class HistoryTest(_base.ORMTest):
 
 class ListenerTest(_base.ORMTest):
     def test_receive_changes(self):
-        """test that Listeners can mutate the given value.
+        """test that Listeners can mutate the given value."""
         
-        This is a rudimentary test which would be better suited by a full-blown inclusion
-        into collection.py.
-        
-        """
         class Foo(object):
             pass
         class Bar(object):
             pass
+            
+        def on_append(state, child, initiator):
+            b2 = Bar()
+            b2.data = b1.data + " appended"
+            return b2
 
-        class AlteringListener(AttributeExtension):
-            def append(self, state, child, initiator):
-                b2 = Bar()
-                b2.data = b1.data + " appended"
-                return b2
-
-            def set(self, state, value, oldvalue, initiator):
-                return value + " modified"
+        def on_set(state, value, oldvalue, initiator):
+            return value + " modified"
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'data', uselist=False, useobject=False, extension=AlteringListener())
-        attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True, extension=AlteringListener())
-        attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True, extension=AlteringListener())
+        attributes.register_attribute(Foo, 'data', uselist=False, useobject=False)
+        attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True)
+        attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True)
         attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
+        
+        event.listen(on_set, 'on_set', Foo.data, retval=True)
+        event.listen(on_append, 'on_append', Foo.barlist, retval=True)
+        event.listen(on_append, 'on_append', Foo.barset, retval=True)
         
         f1 = Foo()
         f1.data = "some data"
@@ -1608,4 +1608,84 @@ class ListenerTest(_base.ORMTest):
         f1.barset.add(b1)
         assert f1.barset.pop().data == "some bar appended"
     
-    
+    def test_propagate(self):
+        classes = [None, None, None]
+        canary = []
+        def make_a():
+            class A(object):
+                pass
+            classes[0] = A
+            
+        def make_b():
+            class B(classes[0]):
+                pass
+            classes[1] = B
+        
+        def make_c():
+            class C(classes[1]):
+                pass
+            classes[2] = C
+            
+        def instrument_a():
+            instrumentation.register_class(classes[0])
+
+        def instrument_b():
+            instrumentation.register_class(classes[1])
+        
+        def instrument_c():
+            instrumentation.register_class(classes[2])
+            
+        def attr_a():
+            attributes.register_attribute(classes[0], 'attrib', uselist=False, useobject=False)
+        
+        def attr_b():
+            attributes.register_attribute(classes[1], 'attrib', uselist=False, useobject=False)
+
+        def attr_c():
+            attributes.register_attribute(classes[2], 'attrib', uselist=False, useobject=False)
+        
+        def on_set(state, value, oldvalue, initiator):
+            canary.append(value)
+            
+        def events_a():
+            event.listen(on_set, 'on_set', classes[0].attrib, propagate=True)
+        
+        def teardown():
+            classes[:] = [None, None, None]
+            canary[:] = []
+        
+        ordering = [
+            (instrument_a, instrument_b),
+            (instrument_b, instrument_c),
+            (attr_a, attr_b),
+            (attr_b, attr_c),
+            (make_a, instrument_a),
+            (instrument_a, attr_a),
+            (attr_a, events_a),
+            (make_b, instrument_b),
+            (instrument_b, attr_b),
+            (make_c, instrument_c),
+            (instrument_c, attr_c),
+            (make_a, make_b),
+            (make_b, make_c)
+        ]
+        elements = [make_a, make_b, make_c, 
+                    instrument_a, instrument_b, instrument_c, 
+                    attr_a, attr_b, attr_c, events_a]
+        
+        for i, series in enumerate(all_partial_orderings(ordering, elements)):
+            for fn in series:
+                fn()
+                
+            b = classes[1]()
+            b.attrib = "foo"
+            eq_(b.attrib, "foo")
+            eq_(canary, ["foo"])
+            
+            c = classes[2]()
+            c.attrib = "bar"
+            eq_(c.attrib, "bar")
+            eq_(canary, ["foo", "bar"])
+            
+            teardown()
+        

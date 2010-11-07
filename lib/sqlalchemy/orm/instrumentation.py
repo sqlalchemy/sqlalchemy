@@ -83,12 +83,16 @@ class ClassManager(dict):
         self.mutable_attributes = set()
         self.local_attrs = {}
         self.originals = {}
-        for base in class_.__mro__[-2:0:-1]:  # reverse, skipping 1st and last
-            if not isinstance(base, type):
-                continue
-            cls_state = manager_of_class(base)
-            if cls_state:
-                self.update(cls_state)
+
+        self._bases = [mgr for mgr in [
+                        manager_of_class(base) 
+                        for base in self.class_.__bases__
+                        if isinstance(base, type)
+                 ] if mgr is not None]
+
+        for base in self._bases:
+            self.update(base)
+
         self.manage()
         self._instrument_init()
     
@@ -194,6 +198,15 @@ class ClassManager(dict):
             manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
 
+    def subclass_managers(self, recursive):
+        for cls in self.class_.__subclasses__():
+            mgr = manager_of_class(cls)
+            if mgr is not None and mgr is not self:
+                yield mgr
+                if recursive:
+                    for m in mgr.subclass_managers(True):
+                        yield m
+        
     def post_configure_attribute(self, key):
         instrumentation_registry.dispatch.\
                 on_attribute_instrument(self.class_, key, self[key])

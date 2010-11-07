@@ -262,17 +262,3 @@ class TestPropagate(TestBase):
         t2.dispatch.on_event_one(t2, 1)
         t2.dispatch.on_event_two(t2, 2)
         eq_(result, [(t2, 1)])
-        
-        
-        
-            
-        
-        
-        
-        
-        
-        
-        
-    
-    
-        

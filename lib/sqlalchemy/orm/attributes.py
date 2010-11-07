@@ -55,12 +55,22 @@ PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
 class QueryableAttribute(interfaces.PropComparator):
     """Base class for class-bound attributes. """
     
-    def __init__(self, class_, key, impl=None, comparator=None, parententity=None):
+    def __init__(self, class_, key, impl=None, 
+                        comparator=None, parententity=None):
         self.class_ = class_
         self.key = key
         self.impl = impl
         self.comparator = comparator
         self.parententity = parententity
+        
+        manager = manager_of_class(class_)
+        # manager is None in the case of AliasedClass
+        if manager:
+            # propagate existing event listeners from 
+            # immediate superclass
+            for base in manager._bases:
+                if key in base:
+                    self.dispatch.update(base[key].dispatch)
 
     dispatch = event.dispatcher(events.AttributeEvents)
     dispatch.dispatch_cls.active_history = False

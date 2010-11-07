@@ -6,12 +6,17 @@ from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
-from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
-from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relationship, dynamic_loader, comparable_property,AttributeExtension
+from sqlalchemy.orm import mapper, relationship, backref, \
+    create_session, class_mapper, compile_mappers, reconstructor, \
+    validates, aliased, Mapper
+from sqlalchemy.orm import defer, deferred, synonym, attributes, \
+    column_property, composite, relationship, dynamic_loader, \
+    comparable_property, AttributeExtension
+from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
-
+from sqlalchemy import event
 
 class MapperTest(_fixtures.FixtureTest):
 
@@ -2549,7 +2554,57 @@ class AttributeExtensionTest(_base.MappedTest):
         
         eq_(ext_msg, ["Ex1 'a1'", "Ex1 'b1'", "Ex2 'c1'", "Ex1 'a2'", "Ex1 'b2'", "Ex2 'c2'"])
         
+class MapperEventsTest(_fixtures.FixtureTest):
+    @testing.resolve_artifact_names
+    def test_instance_event_listen(self):
+        """test listen targets for instance events"""
+        
+        canary = []
+        class A(object):
+            pass
+        class B(A):
+            pass
+            
+        mapper(A, users)
+        mapper(B, addresses, inherits=A)
+        
+        def on_init_a(target, args, kwargs):
+            canary.append(('on_init_a', target))
+            
+        def on_init_b(target, args, kwargs):
+            canary.append(('on_init_b', target))
+
+        def on_init_c(target, args, kwargs):
+            canary.append(('on_init_c', target))
+
+        def on_init_d(target, args, kwargs):
+            canary.append(('on_init_d', target))
+
+        def on_init_e(target, args, kwargs):
+            canary.append(('on_init_e', target))
+        
+        event.listen(on_init_a, 'on_init', mapper)
+        event.listen(on_init_b, 'on_init', Mapper)
+        event.listen(on_init_c, 'on_init', class_mapper(A))
+        event.listen(on_init_d, 'on_init', A)
+        event.listen(on_init_e, 'on_init', A, propagate=True)
+        
+        a = A()
+        eq_(canary, [('on_init_a', a),('on_init_b', a),
+                        ('on_init_c', a),('on_init_d', a),('on_init_e', a)])
+        
+        # test propagate flag
+        canary[:] = []
+        b = B()
+        eq_(canary, [('on_init_a', b), ('on_init_b', b),('on_init_e', b)])
     
+    def teardown(self):
+        # TODO: need to get remove() functionality
+        # going
+        Mapper.dispatch.clear()
+        ClassManager.dispatch.clear()
+        
+        
 class MapperExtensionTest(_fixtures.FixtureTest):
     run_inserts = None
     
