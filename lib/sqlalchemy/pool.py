@@ -126,7 +126,7 @@ class Pool(log.Identified):
         self._reset_on_return = reset_on_return
         self.echo = echo
         if _dispatch:
-            self.dispatch.update(_dispatch)
+            self.dispatch.update(_dispatch, only_propagate=False)
         if listeners:
             util.warn_deprecated(
                         "The 'listeners' argument to Pool (and "
