@@ -69,12 +69,15 @@ class InstanceEvents(event.Events):
             return target
         elif isinstance(target, Mapper):
             return target.class_manager
-        elif target is Mapper or target is mapper:
+        elif target is mapper:
             return ClassManager
         elif isinstance(target, type):
-            manager = manager_of_class(target)
-            if manager:
-                return manager
+            if issubclass(target, Mapper):
+                return ClassManager
+            else:
+                manager = manager_of_class(target)
+                if manager:
+                    return manager
         return None
     
     @classmethod
@@ -178,7 +181,10 @@ class MapperEvents(event.Events):
         if target is mapper:
             return Mapper
         elif isinstance(target, type):
-            return class_mapper(target)
+            if issubclass(target, Mapper):
+                return target
+            else:
+                return class_mapper(target)
         else:
             return target
         
@@ -211,7 +217,7 @@ class MapperEvents(event.Events):
             for mapper in target.self_and_descendants:
                 event.Events.listen(fn, identifier, mapper, propagate=True)
         else:
-            event.Events.listen(fn, identifier, self)
+            event.Events.listen(fn, identifier, target)
         
     def on_instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
@@ -469,10 +475,6 @@ class AttributeEvents(event.Events):
     @classmethod
     def remove(cls, fn, identifier, target):
         raise NotImplementedError("Removal of attribute events not yet implemented")
-        
-    @classmethod
-    def unwrap(cls, identifier, event):
-        return event['value']
         
     def on_append(self, target, value, initiator):
         """Receive a collection append event.
