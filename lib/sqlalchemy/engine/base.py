@@ -2093,8 +2093,8 @@ class RowProxy(BaseRowProxy):
 try:
     # Register RowProxy with Sequence, 
     # so sequence protocol is implemented
-    import collections
-    collections.Sequence.register(RowProxy)
+    from collections import Sequence
+    Sequence.register(RowProxy)
 except ImportError:
     pass
     

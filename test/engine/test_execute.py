@@ -289,7 +289,8 @@ class ResultProxyTest(TestBase):
             assert_raises(AssertionError, t.delete().execute)
         finally:
             engine.dialect.execution_ctx_cls = execution_ctx_cls
-
+    
+    @testing.requires.python26
     def test_rowproxy_is_sequence(self):
         import collections
         from sqlalchemy.engine import RowProxy
