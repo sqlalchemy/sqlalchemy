@@ -609,7 +609,7 @@ list of columns::
 
 A second example::
 
-        from sqlalchemy.sql import join
+    from sqlalchemy.sql import join
 
     # many-to-many join on an association table
     j = join(users_table, userkeywords,
