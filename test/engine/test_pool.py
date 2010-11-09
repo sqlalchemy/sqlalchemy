@@ -186,6 +186,8 @@ class PoolTest(PoolTestBase):
         self.assert_(c.connection is not c2.connection)
         self.assert_(not c2.info)
         self.assert_('foo2' in c.info)
+
+class PoolEventsTest(PoolTestBase):
     
     @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners(self):
@@ -428,6 +430,7 @@ class PoolTest(PoolTestBase):
 
     def test_listener_after_oninit(self):
         """Test that listeners are called after OnInit is removed"""
+        
         called = []
         def listener(*args):
             called.append(True)
@@ -436,6 +439,33 @@ class PoolTest(PoolTestBase):
         engine.execute(select([1])).close()
         assert called, "Listener not called on connect"
 
+    def test_targets(self):
+        canary = []
+        def listen_one(*args):
+            canary.append("listen_one")
+        def listen_two(*args):
+            canary.append("listen_two")
+        def listen_three(*args):
+            canary.append("listen_three")
+        def listen_four(*args):
+            canary.append("listen_four")
+            
+        engine = create_engine(testing.db.url)
+        event.listen(listen_one, 'on_connect', pool.Pool)
+        event.listen(listen_two, 'on_connect', engine.pool)
+        event.listen(listen_three, 'on_connect', engine)
+        event.listen(listen_four, 'on_connect', engine.__class__)
+
+        engine.execute(select([1])).close()
+        eq_(
+            canary, ["listen_one","listen_four", "listen_two","listen_three"]
+        )
+
+    def teardown(self):
+        # TODO: need to get remove() functionality
+        # going
+        pool.Pool.dispatch.clear()
+        
 
 class QueuePoolTest(PoolTestBase):
 

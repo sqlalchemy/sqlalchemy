@@ -13,16 +13,16 @@ class DDLEvents(event.Events):
     """
     
     def on_before_create(self, target, connection, **kw):
-        pass
+        """ """
 
     def on_after_create(self, target, connection, **kw):
-        pass
+        """ """
 
     def on_before_drop(self, target, connection, **kw):
-        pass
+        """ """
     
     def on_after_drop(self, target, connection, **kw):
-        pass
+        """ """
     
 
 class PoolEvents(event.Events):
@@ -41,7 +41,28 @@ class PoolEvents(event.Events):
             
         events.listen(my_on_checkout, 'on_checkout', Pool)
 
+    In addition to the :class:`.Pool` class and :class:`.Pool` instances,
+    :class:`.PoolEvents` also accepts :class:`.Engine` objects and
+    the :class:`.Engine` class as targets, which will be resolved
+    to the ``.pool`` attribute of the given engine or the :class:`.Pool`
+    class.
+
     """
+    
+    @classmethod
+    def accept_with(cls, target):
+        from sqlalchemy.engine import Engine
+        from sqlalchemy.pool import Pool
+        
+        if isinstance(target, type):
+            if issubclass(target, Engine):
+                return Pool
+            elif issubclass(target, Pool):
+                return target
+        elif isinstance(target, Engine):
+            return target.pool
+        else:
+            return target
     
     def on_connect(self, dbapi_connection, connection_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.

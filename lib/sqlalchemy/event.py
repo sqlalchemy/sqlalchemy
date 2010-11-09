@@ -1,9 +1,4 @@
-"""
-The event system handles all events throughout the :mod:`sqlalchemy`
-and :mod:`sqlalchemy.orm` packages.
-
-
-"""
+"""Base event API."""
 
 from sqlalchemy import util, exc
 

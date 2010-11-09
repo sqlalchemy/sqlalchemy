@@ -156,22 +156,22 @@ class MapperEvents(event.Events):
     Several modifiers are available to the listen() function.
     
     :param propagate=False: When True, the event listener should 
-      be applied to all inheriting mappers as well.
+       be applied to all inheriting mappers as well.
     :param raw=False: When True, the "target" argument to the
-      event, if applicable will be the :class:`.InstanceState` management
-      object, rather than the mapped instance itself.
+       event, if applicable will be the :class:`.InstanceState` management
+       object, rather than the mapped instance itself.
     :param retval=False: when True, the user-defined event listening
-      must have a return value, the purpose of which is either to
-      control subsequent event propagation, or to otherwise alter 
-      the operation in progress by the mapper.   Possible values
-      here are::
+       must have a return value, the purpose of which is either to
+       control subsequent event propagation, or to otherwise alter 
+       the operation in progress by the mapper.   Possible values
+       here are:
       
-      * `sqlalchemy.orm.interfaces.EXT_CONTINUE` - continue event
-        processing normally.
-      * `sqlalchemy.orm.interfaces.EXT_STOP` - cancel all subsequent
-        event handlers in the chain.
-      * other values - the return value specified by specific listeners,
-        such as "translate_row" or "create_instance".
+       * ``sqlalchemy.orm.interfaces.EXT_CONTINUE`` - continue event
+         processing normally.
+       * ``sqlalchemy.orm.interfaces.EXT_STOP`` - cancel all subsequent
+         event handlers in the chain.
+       * other values - the return value specified by specific listeners,
+         such as "translate_row" or "create_instance".
      
     """
 

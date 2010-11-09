@@ -1,8 +1,7 @@
 .. _interfaces_orm_toplevel:
-.. _events_orm_toplevel:
 
-ORM Event Interfaces
-====================
+Deprecated ORM Event Interfaces
+================================
 
 .. module:: sqlalchemy.orm.interfaces
 

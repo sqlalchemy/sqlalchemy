@@ -1,17 +1,13 @@
-. _interfaces_core_toplevel:
+.. _interfaces_core_toplevel:
 
-Core Event Interfaces
-======================
+Deprecated Event Interfaces
+============================
 
 .. module:: sqlalchemy.interfaces
 
-This section describes the various categories of events which can be intercepted
-in SQLAlchemy core, including execution and connection pool events.
-
-For ORM event documentation, see :ref:`interfaces_orm_toplevel`.
-
-A new version of this API with a significantly more flexible and consistent
-interface will be available in version 0.7.
+This section describes the class-based event interface introduced in 
+SQLAlchemy 0.5.  As of SQLAlchemy 0.7, the new event system described in
+:ref:`event_toplevel` should be used.
 
 Execution, Connection and Cursor Events
 ---------------------------------------

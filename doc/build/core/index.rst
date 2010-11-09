@@ -13,6 +13,8 @@ SQLAlchemy Core
     pooling
     schema
     types
+    event
+    events
     interfaces
     exceptions
     compiler
