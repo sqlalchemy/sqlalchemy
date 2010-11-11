@@ -2196,7 +2196,34 @@ class SchemaVisitor(visitors.ClauseVisitor):
 
 
 class DDLElement(expression.Executable, expression.ClauseElement):
-    """Base class for DDL expression constructs."""
+    """Base class for DDL expression constructs.
+    
+    This class is the base for the general purpose :class:`.DDL` class,
+    as well as the various create/drop clause constructs such as
+    :class:`.CreateTable`, :class:`.DropTable`, :class:`.AddConstraint`,
+    etc.
+    
+    :class:`.DDLElement` integrates closely with SQLAlchemy events,
+    introduced in :ref:`event_toplevel`.  An instance of one is
+    itself an event receiving callable::
+    
+        event.listen(
+            AddConstraint(constraint).execute_if(dialect='postgresql'),
+            'on_after_create',
+            users
+        )
+
+    See also:
+    
+        :class:`.DDL`
+        
+        :class:`.DDLEvents`
+    
+        :ref:`event_toplevel`
+
+        :ref:`schema_ddl_sequences`
+        
+    """
     
     _execution_options = expression.Executable.\
                             _execution_options.union({'autocommit':True})
@@ -2328,7 +2355,8 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         See also:
         
             :class:`.DDLEvents`
-            :mod:`sqlalchemy.event`
+            
+            :ref:`event_toplevel`
             
         """
         self.dialect = dialect
@@ -2399,7 +2427,7 @@ class DDL(DDLElement):
 
     Specifies literal SQL DDL to be executed by the database.  DDL objects 
     function as DDL event listeners, and can be subscribed to those events
-    listed in :ref:`.DDLEvents`, using either :class:`.Table` or :class:`.MetaData`
+    listed in :class:`.DDLEvents`, using either :class:`.Table` or :class:`.MetaData`
     objects as targets.   Basic templating support allows a single DDL instance 
     to handle repetitive tasks for multiple tables.
 

@@ -6,9 +6,46 @@ class DDLEvents(event.Events):
     """
     Define create/drop event listers for schema objects.
     
+    These events currently apply to :class:`.Table`
+    and :class:`.MetaData` objects as targets.
+    
+    e.g.::
+    
+        from sqlalchemy import event
+        from sqlalchemy import Table, Column, Metadata, Integer
+        
+        m = MetaData()
+        some_table = Table('some_table', m, Column('data', Integer))
+        
+        def on_after_create(target, connection, **kw):
+            connection.execute("ALTER TABLE %s SET name=foo_%s" % 
+                                    (target.name, target.name))
+                                    
+        event.listen(on_after_create, "on_after_create", some_table)
+    
+    DDL events integrate closely with the 
+    :class:`.DDL` class and the :class:`.DDLElement` hierarchy
+    of DDL clause constructs, which are themselves appropriate 
+    as listener callables::
+    
+        from sqlalchemy import DDL
+        event.listen(
+            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s"),
+            "on_after_create",
+            some_table
+        )
+    
+    The methods here define the name of an event as well
+    as the names of members that are passed to listener
+    functions.
+    
     See also:
 
         :ref:`event_toplevel`
+        
+        :class:`.DDLElement`
+        
+        :class:`.DDL`
         
         :ref:`schema_ddl_sequences`
     
