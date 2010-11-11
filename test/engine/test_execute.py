@@ -377,12 +377,12 @@ class EngineEventsTest(TestBase):
             self._assert_stmts(cursor, cursor_stmts)
 
     def test_options(self):
-        track = []
+        canary = []
         def on_execute(conn, *args, **kw):
-            track.append('execute')
+            canary.append('execute')
             
         def on_cursor_execute(conn, *args, **kw):
-            track.append('cursor_execute')
+            canary.append('cursor_execute')
             
         engine = engines.testing_engine()
         event.listen(on_execute, 'on_before_execute', engine)
@@ -393,14 +393,45 @@ class EngineEventsTest(TestBase):
         c2.execute(select([1]))
         c3 = c2.execution_options(bar='bat')
         eq_(c3._execution_options, {'foo':'bar', 'bar':'bat'})
-        eq_(track, ['execute', 'cursor_execute'])
+        eq_(canary, ['execute', 'cursor_execute'])
 
-
-    def test_transactional(self):
-        track = []
+    def test_retval_flag(self):
+        canary = []
         def tracker(name):
             def go(conn, *args, **kw):
-                track.append(name)
+                canary.append(name)
+            return go
+
+        def on_execute(conn, clauseelement, multiparams, params):
+            canary.append('execute')
+            return clauseelement, multiparams, params
+            
+        def on_cursor_execute(conn, cursor, statement, 
+                        parameters, context, executemany):
+            canary.append('cursor_execute')
+            return statement, parameters
+            
+        engine = engines.testing_engine()
+        
+        assert_raises(
+            tsa.exc.ArgumentError,
+            event.listen, tracker("on_begin"), "on_begin", engine, retval=True
+        )
+        
+        event.listen(on_execute, "on_before_execute", engine, retval=True)
+        event.listen(on_cursor_execute, "on_before_cursor_execute", engine, retval=True)
+        engine.execute("select 1")
+        eq_(
+            canary, ['execute', 'cursor_execute']
+        )
+        
+        
+        
+    def test_transactional(self):
+        canary = []
+        def tracker(name):
+            def go(conn, *args, **kw):
+                canary.append(name)
             return go
             
         engine = engines.testing_engine()
@@ -418,7 +449,7 @@ class EngineEventsTest(TestBase):
         conn.execute(select([1]))
         trans.commit()
 
-        eq_(track, [
+        eq_(canary, [
             'begin', 'execute', 'cursor_execute', 'rollback',
             'begin', 'execute', 'cursor_execute', 'commit',
             ])
@@ -426,10 +457,10 @@ class EngineEventsTest(TestBase):
     @testing.requires.savepoints
     @testing.requires.two_phase_transactions
     def test_transactional_advanced(self):
-        track = []
+        canary = []
         def tracker(name):
             def go(conn, exec_, *args, **kw):
-                track.append(name)
+                canary.append(name)
                 return exec_(*args, **kw)
             return go
             
@@ -456,7 +487,7 @@ class EngineEventsTest(TestBase):
         trans.prepare()
         trans.commit()
 
-        eq_(track, ['begin', 'savepoint', 
+        eq_(canary, ['begin', 'savepoint', 
                     'rollback_savepoint', 'savepoint', 'release_savepoint',
                     'rollback', 'begin_twophase', 
                        'prepare_twophase', 'commit_twophase']
@@ -569,12 +600,12 @@ class ProxyConnectionTest(TestBase):
     
     @testing.uses_deprecated(r'.*Use event.listen')
     def test_options(self):
-        track = []
+        canary = []
         class TrackProxy(ConnectionProxy):
             def __getattribute__(self, key):
                 fn = object.__getattribute__(self, key)
                 def go(*arg, **kw):
-                    track.append(fn.__name__)
+                    canary.append(fn.__name__)
                     return fn(*arg, **kw)
                 return go
         engine = engines.testing_engine(options={'proxy':TrackProxy()})
@@ -584,17 +615,17 @@ class ProxyConnectionTest(TestBase):
         c2.execute(select([1]))
         c3 = c2.execution_options(bar='bat')
         eq_(c3._execution_options, {'foo':'bar', 'bar':'bat'})
-        eq_(track, ['execute', 'cursor_execute'])
+        eq_(canary, ['execute', 'cursor_execute'])
         
         
     @testing.uses_deprecated(r'.*Use event.listen')
     def test_transactional(self):
-        track = []
+        canary = []
         class TrackProxy(ConnectionProxy):
             def __getattribute__(self, key):
                 fn = object.__getattribute__(self, key)
                 def go(*arg, **kw):
-                    track.append(fn.__name__)
+                    canary.append(fn.__name__)
                     return fn(*arg, **kw)
                 return go
 
@@ -607,7 +638,7 @@ class ProxyConnectionTest(TestBase):
         conn.execute(select([1]))
         trans.commit()
         
-        eq_(track, [
+        eq_(canary, [
             'begin', 'execute', 'cursor_execute', 'rollback',
             'begin', 'execute', 'cursor_execute', 'commit',
             ])
@@ -616,12 +647,12 @@ class ProxyConnectionTest(TestBase):
     @testing.requires.savepoints
     @testing.requires.two_phase_transactions
     def test_transactional_advanced(self):
-        track = []
+        canary = []
         class TrackProxy(ConnectionProxy):
             def __getattribute__(self, key):
                 fn = object.__getattribute__(self, key)
                 def go(*arg, **kw):
-                    track.append(fn.__name__)
+                    canary.append(fn.__name__)
                     return fn(*arg, **kw)
                 return go
 
@@ -642,8 +673,8 @@ class ProxyConnectionTest(TestBase):
         trans.prepare()
         trans.commit()
 
-        track = [t for t in track if t not in ('cursor_execute', 'execute')]
-        eq_(track, ['begin', 'savepoint', 
+        canary = [t for t in canary if t not in ('cursor_execute', 'execute')]
+        eq_(canary, ['begin', 'savepoint', 
                     'rollback_savepoint', 'savepoint', 'release_savepoint',
                     'rollback', 'begin_twophase', 
                        'prepare_twophase', 'commit_twophase']

@@ -1887,49 +1887,50 @@ def _listener_connection_cls(cls, dispatch):
     """
     class EventListenerConnection(cls):
         def execute(self, clauseelement, *multiparams, **params):
-            if dispatch.on_before_execute:
-                for fn in dispatch.on_before_execute:
-                    result = fn(self, clauseelement, multiparams, params)
-                    if result:
-                        clauseelement, multiparams, params = result
+            for fn in dispatch.on_before_execute:
+                clauseelement, multiparams, params = \
+                    fn(self, clauseelement, multiparams, params)
             
-            ret = super(EventListenerConnection, self).execute(clauseelement, *multiparams, **params)
+            ret = super(EventListenerConnection, self).\
+                    execute(clauseelement, *multiparams, **params)
 
-            if dispatch.on_after_execute:
-                for fn in dispatch.on_after_execute:
-                    fn(self, clauseelement, multiparams, params, ret)
+            for fn in dispatch.on_after_execute:
+                fn(self, clauseelement, multiparams, params, ret)
             
             return ret
             
-        def _execute_clauseelement(self, clauseelement, multiparams=None, params=None):
-            return self.execute(clauseelement, *(multiparams or []), **(params or {}))
+        def _execute_clauseelement(self, clauseelement, 
+                                    multiparams=None, params=None):
+            return self.execute(clauseelement, 
+                                    *(multiparams or []), 
+                                    **(params or {}))
 
         def _cursor_execute(self, cursor, statement, 
                                     parameters, context=None):
-            if dispatch.on_before_cursor_execute:
-                for fn in dispatch.on_before_cursor_execute:
-                    result = fn(self, cursor, statement, parameters, context, False)
-                    if result:
-                        statement, parameters = result
+            for fn in dispatch.on_before_cursor_execute:
+                statement, parameters = \
+                            fn(self, cursor, statement, parameters, 
+                                            context, False)
             
             ret = super(EventListenerConnection, self).\
-                        _cursor_execute(cursor, statement, parameters, context)
+                        _cursor_execute(cursor, statement, parameters, 
+                                            context)
 
-            if dispatch.on_after_cursor_execute:
-                for fn in dispatch.on_after_cursor_execute:
-                    fn(self, cursor, statement, parameters, context, False)
+            for fn in dispatch.on_after_cursor_execute:
+                fn(self, cursor, statement, parameters, context, False)
             
             return ret
             
         def _cursor_executemany(self, cursor, statement, 
                                     parameters, context=None):
             for fn in dispatch.on_before_cursor_execute:
-                result = fn(self, cursor, statement, parameters, context, True)
-                if result:
-                    statement, parameters = result
+                statement, parameters = \
+                            fn(self, cursor, statement, parameters, 
+                                        context, True)
 
             ret = super(EventListenerConnection, self).\
-                        _cursor_executemany(cursor, statement, parameters, context)
+                        _cursor_executemany(cursor, statement, 
+                                        parameters, context)
 
             for fn in dispatch.on_after_cursor_execute:
                 fn(self, cursor, statement, parameters, context, True)

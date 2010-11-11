@@ -160,7 +160,7 @@ class MapperEvents(event.Events):
     :param raw=False: When True, the "target" argument to the
        event, if applicable will be the :class:`.InstanceState` management
        object, rather than the mapped instance itself.
-    :param retval=False: when True, the user-defined event listening
+    :param retval=False: when True, the user-defined event function
        must have a return value, the purpose of which is either to
        control subsequent event propagation, or to otherwise alter 
        the operation in progress by the mapper.   Possible values

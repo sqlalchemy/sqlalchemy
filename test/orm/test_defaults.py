@@ -1,7 +1,7 @@
 
 import sqlalchemy as sa
 from sqlalchemy.test import testing
-from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, event
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
@@ -46,9 +46,9 @@ class TriggerDefaultsTest(_base.MappedTest):
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                 ),
             ):
-            ins.execute_at('after-create', dt)
-            
-        sa.DDL("DROP TRIGGER dt_ins").execute_at('before-drop', dt)
+            event.listen(ins, 'on_after_create', dt)
+        
+        event.listen(sa.DDL("DROP TRIGGER dt_ins"), 'on_before_drop', dt)
 
         for up in (
             sa.DDL("CREATE TRIGGER dt_up AFTER UPDATE ON dt "
@@ -71,9 +71,9 @@ class TriggerDefaultsTest(_base.MappedTest):
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                     ),
             ):
-            up.execute_at('after-create', dt)
+            event.listen(up, 'on_after_create', dt)
 
-        sa.DDL("DROP TRIGGER dt_up").execute_at('before-drop', dt)
+        event.listen(sa.DDL("DROP TRIGGER dt_up"), 'on_before_drop', dt)
 
 
     @classmethod

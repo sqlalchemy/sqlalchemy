@@ -1,6 +1,6 @@
 """Core event interfaces."""
 
-from sqlalchemy import event
+from sqlalchemy import event, exc
 
 class DDLEvents(event.Events):
     """
@@ -8,7 +8,9 @@ class DDLEvents(event.Events):
     
     See also:
 
-        :mod:`sqlalchemy.event`
+        :ref:`event_toplevel`
+        
+        :ref:`schema_ddl_sequences`
     
     """
     
@@ -34,18 +36,23 @@ class PoolEvents(event.Events):
     
     e.g.::
     
-        from sqlalchemy import events
+        from sqlalchemy import event
         
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
             
         events.listen(my_on_checkout, 'on_checkout', Pool)
 
-    In addition to the :class:`.Pool` class and :class:`.Pool` instances,
+    In addition to accepting the :class:`.Pool` class and :class:`.Pool` instances,
     :class:`.PoolEvents` also accepts :class:`.Engine` objects and
     the :class:`.Engine` class as targets, which will be resolved
     to the ``.pool`` attribute of the given engine or the :class:`.Pool`
-    class.
+    class::
+        
+        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        
+        # will associate with engine.pool
+        events.listen(my_on_checkout, 'on_checkout', engine)
 
     """
     
@@ -123,16 +130,62 @@ class PoolEvents(event.Events):
         """
 
 class EngineEvents(event.Events):
-    """Available events for :class:`.Engine`."""
+    """Available events for :class:`.Engine`.
+    
+    The methods here define the name of an event as well as the names of members that are passed to listener functions.
+    
+    e.g.::
+    
+        from sqlalchemy import event, create_engine
+        
+        def on_before_execute(conn, clauseelement, multiparams, params):
+            log.info("Received statement: %s" % clauseelement)
+        
+        engine = create_engine('postgresql://scott:tiger@localhost/test')
+        event.listen(on_before_execute, "on_before_execute", engine)
+    
+    Some events allow modifiers to the listen() function.
+    
+    :param retval=False: Applies to the :meth:`.on_before_execute` and 
+      :meth:`.on_before_cursor_execute` events only.  When True, the
+      user-defined event function must have a return value, which
+      is a tuple of parameters that replace the given statement 
+      and parameters.  See those methods for a description of
+      specific return arguments.
+    
+    """
     
     @classmethod
-    def listen(cls, fn, identifier, target):
+    def listen(cls, fn, identifier, target, retval=False):
         from sqlalchemy.engine.base import Connection, \
             _listener_connection_cls
         if target.Connection is Connection:
             target.Connection = _listener_connection_cls(
                                         Connection, 
                                         target.dispatch)
+        
+        if not retval:
+            if identifier == 'on_before_execute':
+                orig_fn = fn
+                def wrap(conn, clauseelement, multiparams, params):
+                    orig_fn(conn, clauseelement, multiparams, params)
+                    return clauseelement, multiparams, params
+                fn = wrap
+            elif identifier == 'on_before_cursor_execute':
+                orig_fn = fn
+                def wrap(conn, cursor, statement, 
+                        parameters, context, executemany):
+                    orig_fn(conn, cursor, statement, 
+                        parameters, context, executemany)
+                    return statement, parameters
+                fn = wrap
+                    
+        elif retval and identifier not in ('on_before_execute', 'on_before_cursor_execute'):
+            raise exc.ArgumentError(
+                    "Only the 'on_before_execute' and "
+                    "'on_before_cursor_execute' engine "
+                    "event listeners accept the 'retval=True' "
+                    "argument.")
         event.Events.listen(fn, identifier, target)
 
     def on_before_execute(self, conn, clauseelement, multiparams, params):

@@ -2238,7 +2238,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
                         "DDL execution skipped, criteria not met.")
 
     @util.deprecated("0.7", "See :class:`.DDLEvents`, as well as "
-        ":meth:`.DDLEvent.execute_if`.")
+        ":meth:`.DDLElement.execute_if`.")
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
         
@@ -2292,6 +2292,38 @@ class DDLElement(expression.Executable, expression.ClauseElement):
                         'on_before_create', 
                         metadata
                     )
+        
+        :param dialect: May be a string, tuple or a callable
+          predicate.  If a string, it will be compared to the name of the
+          executing database dialect::
+
+            DDL('something').execute_if(dialect='postgresql')
+
+          If a tuple, specifies multiple dialect names::
+
+            DDL('something').execute_if(dialect=('postgresql', 'mysql'))
+        
+        :param callable_: A callable, which will be invoked with 
+          four positional arguments as well as optional keyword 
+          arguments:
+            
+            :ddl:
+              This DDL element.
+              
+            :target:
+              The :class:`.Table` or :class:`.MetaData` object which is the target of 
+              this event. May be None if the DDL is executed explicitly.
+
+            :bind:
+              The :class:`.Connection` being used for DDL execution
+
+            :tables:  
+              Optional keyword argument - a list of Table objects which are to
+              be created/ dropped within a MetaData.create_all() or drop_all()
+              method call.
+
+          If the callable returns a true value, the DDL statement will be
+          executed.
                     
         See also:
         
@@ -2365,19 +2397,21 @@ class DDLElement(expression.Executable, expression.ClauseElement):
 class DDL(DDLElement):
     """A literal DDL statement.
 
-    Specifies literal SQL DDL to be executed by the database.  DDL objects can
-    be attached to ``Tables`` or ``MetaData`` instances, conditionally
-    executing SQL as part of the DDL lifecycle of those schema items.  Basic
-    templating support allows a single DDL instance to handle repetitive tasks
-    for multiple tables.
+    Specifies literal SQL DDL to be executed by the database.  DDL objects 
+    function as DDL event listeners, and can be subscribed to those events
+    listed in :ref:`.DDLEvents`, using either :class:`.Table` or :class:`.MetaData`
+    objects as targets.   Basic templating support allows a single DDL instance 
+    to handle repetitive tasks for multiple tables.
 
     Examples::
+      
+      from sqlalchemy import event, DDL
+      
+      tbl = Table('users', metadata, Column('uid', Integer))
+      event.listen(DDL('DROP TRIGGER users_trigger'), 'on_before_create', tbl)
 
-      tbl = Table('users', metadata, Column('uid', Integer)) # ...
-      DDL('DROP TRIGGER users_trigger').execute_at('before-create', tbl)
-
-      spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE', on='somedb')
-      spow.execute_at('after-create', tbl)
+      spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE')
+      event.listen(spow.execute_if(dialect='somedb'), 'on_after_create', tbl)
 
       drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
       connection.execute(drop_spow)
@@ -2389,7 +2423,7 @@ class DDL(DDLElement):
       %(schema)s - the schema name, with any required quoting applied
       %(fullname)s - the Table name including schema, quoted if needed
 
-    The DDL's ``context``, if any, will be combined with the standard
+    The DDL's "context", if any, will be combined with the standard
     substutions noted above.  Keys present in the context will override
     the standard substitutions.
 

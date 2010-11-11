@@ -5,12 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, \
-                            to_list, get_cls_kwargs, deprecated,\
-                            warn
-from sqlalchemy.orm import (
-    EXT_CONTINUE, MapperExtension, class_mapper, object_session
-    )
+from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, warn
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm.session import Session
 
@@ -39,7 +35,6 @@ class ScopedSession(object):
             self.registry = ScopedRegistry(session_factory, scopefunc)
         else:
             self.registry = ThreadLocalRegistry(session_factory)
-        self.extension = _ScopedExt(self)
 
     def __call__(self, **kwargs):
         if kwargs:
@@ -63,27 +58,6 @@ class ScopedSession(object):
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
-
-    @deprecated("0.5", ":meth:`.ScopedSession.mapper` is deprecated.  "
-        "Please see http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper "
-        "for information on how to replicate its behavior.")
-    def mapper(self, *args, **kwargs):
-        """return a :func:`.mapper` function which associates this ScopedSession with the Mapper.
-
-        """
-
-        from sqlalchemy.orm import mapper
-
-        extension_args = dict((arg, kwargs.pop(arg))
-                              for arg in get_cls_kwargs(_ScopedExt)
-                              if arg in kwargs)
-
-        kwargs['extension'] = extension = to_list(kwargs.get('extension', []))
-        if extension_args:
-            extension.append(self.extension.configure(**extension_args))
-        else:
-            extension.append(self.extension)
-        return mapper(*args, **kwargs)
 
     def configure(self, **kwargs):
         """reconfigure the sessionmaker used by this ScopedSession."""
@@ -157,59 +131,3 @@ def clslevel(name):
 for prop in ('close_all', 'object_session', 'identity_key'):
     setattr(ScopedSession, prop, clslevel(prop))
 
-class _ScopedExt(MapperExtension):
-    def __init__(self, context, validate=False, save_on_init=True):
-        self.context = context
-        self.validate = validate
-        self.save_on_init = save_on_init
-        self.set_kwargs_on_init = True
-
-    def validating(self):
-        return _ScopedExt(self.context, validate=True)
-
-    def configure(self, **kwargs):
-        return _ScopedExt(self.context, **kwargs)
-
-    def instrument_class(self, mapper, class_):
-        class query(object):
-            def __getattr__(s, key):
-                return getattr(self.context.registry().query(class_), key)
-            def __call__(s):
-                return self.context.registry().query(class_)
-            def __get__(self, instance, cls):
-                return self
-
-        if not 'query' in class_.__dict__:
-            class_.query = query()
-
-        if self.set_kwargs_on_init and class_.__init__ is object.__init__:
-            class_.__init__ = self._default__init__(mapper)
-
-    def _default__init__(ext, mapper):
-        def __init__(self, **kwargs):
-            for key, value in kwargs.iteritems():
-                if ext.validate:
-                    if not mapper.get_property(key, resolve_synonyms=False,
-                                               raiseerr=False):
-                        raise sa_exc.ArgumentError(
-                            "Invalid __init__ argument: '%s'" % key)
-                setattr(self, key, value)
-        return __init__
-
-    def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
-        if self.save_on_init:
-            session = kwargs.pop('_sa_session', None)
-            if session is None:
-                session = self.context.registry()
-            session._save_without_cascade(instance)
-        return EXT_CONTINUE
-
-    def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
-        sess = object_session(instance)
-        if sess:
-            sess.expunge(instance)
-        return EXT_CONTINUE
-
-    def dispose_class(self, mapper, class_):
-        if hasattr(class_, 'query'):
-            delattr(class_, 'query')

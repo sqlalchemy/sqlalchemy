@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapper as orm_mapper
 
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, pickleable
-from sqlalchemy import Integer, String, ForeignKey, literal_column
+from sqlalchemy import Integer, String, ForeignKey, literal_column, event
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
@@ -1590,14 +1590,19 @@ class SaveTest(_fixtures.FixtureTest):
         """The 'batch=False' flag on mapper()"""
 
         names = []
-        class TestExtension(sa.orm.MapperExtension):
+        class Events(object):
             def before_insert(self, mapper, connection, instance):
                 self.current_instance = instance
                 names.append(instance.name)
             def after_insert(self, mapper, connection, instance):
                 assert instance is self.current_instance
 
-        mapper(User, users, extension=TestExtension(), batch=False)
+        mapper(User, users, batch=False)
+        
+        evt = Events()
+        event.listen(evt.before_insert, "on_before_insert", User)
+        event.listen(evt.after_insert, "on_after_insert", User)
+        
         u1 = User(name='user1')
         u2 = User(name='user2')
 
@@ -1618,7 +1623,11 @@ class SaveTest(_fixtures.FixtureTest):
         
         sa.orm.clear_mappers()
 
-        m = mapper(User, users, extension=TestExtension())
+        m = mapper(User, users)
+        evt = Events()
+        event.listen(evt.before_insert, "on_before_insert", User)
+        event.listen(evt.after_insert, "on_after_insert", User)
+
         u1 = User(name='user1')
         u2 = User(name='user2')
         session.add_all((u1, u2))

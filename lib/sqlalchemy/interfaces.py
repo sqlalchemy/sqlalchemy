@@ -17,8 +17,7 @@ class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`Pool`.
 
     .. note:: :class:`PoolListener` is deprecated.   Please
-       refer to :func:`event.listen` as well as 
-       :class:`.PoolEvents`.
+       refer to :class:`.PoolEvents`.
     
     Usage::
     
@@ -150,8 +149,7 @@ class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
 
     .. note:: :class:`ConnectionProxy` is deprecated.   Please
-       refer to :func:`event.listen` as well as 
-       :attr:`.Engine.events`.
+       refer to :class:`.EngineEvents`.
     
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and

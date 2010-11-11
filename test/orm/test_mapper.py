@@ -179,53 +179,9 @@ class MapperTest(_fixtures.FixtureTest):
                               : addresses.c.user_id})
         
     @testing.resolve_artifact_names
-    def test_bad_constructor(self):
-        """If the construction of a mapped class fails, the instance does not get placed in the session"""
-        
-        class Foo(object):
-            def __init__(self, one, two, _sa_session=None):
-                pass
-
-        mapper(Foo, users, extension=sa.orm.scoped_session(
-            create_session).extension)
-
-        sess = create_session()
-        assert_raises(TypeError, Foo, 'one', _sa_session=sess)
-        eq_(len(list(sess)), 0)
-        assert_raises(TypeError, Foo, 'one')
-        Foo('one', 'two', _sa_session=sess)
-        eq_(len(list(sess)), 1)
-
-    @testing.resolve_artifact_names
-    def test_constructor_exc_1(self):
-        """Exceptions raised in the mapped class are not masked by sa decorations"""
-        
-        ex = AssertionError('oops')
-        sess = create_session()
-
-        class Foo(object):
-            def __init__(self, **kw):
-                raise ex
-        mapper(Foo, users)
-
-        try:
-            Foo()
-            assert False
-        except Exception, e:
-            assert e is ex
-
-        sa.orm.clear_mappers()
-        mapper(Foo, users, extension=sa.orm.scoped_session(
-            create_session).extension)
-        def bad_expunge(foo):
-            raise Exception("this exception should be stated as a warning")
-
-        sess.expunge = bad_expunge
-        assert_raises(sa.exc.SAWarning, Foo, _sa_session=sess)
-
-    @testing.resolve_artifact_names
-    def test_constructor_exc_2(self):
-        """TypeError is raised for illegal constructor args, whether or not explicit __init__ is present [ticket:908]."""
+    def test_constructor_exc(self):
+        """TypeError is raised for illegal constructor args, 
+        whether or not explicit __init__ is present [ticket:908]."""
 
         class Foo(object):
             def __init__(self):
