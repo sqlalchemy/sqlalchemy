@@ -35,6 +35,12 @@ CHANGES
     has_table() property works again.  Regression from
     0.6.3 (we don't have a Jython buildbot, sorry)
     [ticket:1960]
+
+- sqlite
+  - The REFERENCES clause in a CREATE TABLE that includes
+    a remote schema name now renders the remote name without
+    the schema clause, as required by SQLite.  [ticket:1851]
+    
     
 0.6.5
 =====

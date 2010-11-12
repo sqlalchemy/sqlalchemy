@@ -271,6 +271,10 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return super(SQLiteDDLCompiler, self).\
                     visit_primary_key_constraint(constraint)
  
+    def define_constraint_remote_table(self, constraint, table, preparer):
+        """Format the remote table clause of a CREATE CONSTRAINT clause."""
+        
+        return preparer.format_table(table, use_schema=False)
 
     def visit_create_index(self, create):
         index = create.element
