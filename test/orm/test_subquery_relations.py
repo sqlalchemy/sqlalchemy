@@ -55,25 +55,24 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         })
         sess = create_session()
         
-        if False:
-            u = aliased(User)
-            q = sess.query(u).options(subqueryload(u.addresses))
-        
-            def go():
-                eq_(
-                        [User(id=7, addresses=[
-                                Address(id=1, email_address='jack@bean.com')])],
-                        q.filter(u.id==7).all()
-                )
-        
-            self.assert_sql_count(testing.db, go, 2)
-        
-            def go(): 
-                eq_(
-                    self.static.user_address_result, 
-                    q.order_by(u.id).all()
-                )
-            self.assert_sql_count(testing.db, go, 2)
+        u = aliased(User)
+        q = sess.query(u).options(subqueryload(u.addresses))
+    
+        def go():
+            eq_(
+                    [User(id=7, addresses=[
+                            Address(id=1, email_address='jack@bean.com')])],
+                    q.filter(u.id==7).all()
+            )
+    
+        self.assert_sql_count(testing.db, go, 2)
+    
+        def go(): 
+            eq_(
+                self.static.user_address_result, 
+                q.order_by(u.id).all()
+            )
+        self.assert_sql_count(testing.db, go, 2)
         
         a = aliased(Address)
     
