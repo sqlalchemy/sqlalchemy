@@ -391,17 +391,47 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                         schema='master')
         t2 = Table('t2', metadata, 
                         Column('id', Integer, primary_key=True),
-                        Column('t2_id', Integer, ForeignKey('master.t1.id')),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
                         schema='master'
                     )
+        t3 = Table('t3', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
+                        schema='alternate'
+                    )
+        t4 = Table('t4', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
+                    )
         
+        # schema->schema, generate REFERENCES with no schema name
         self.assert_compile(
             schema.CreateTable(t2),
                 "CREATE TABLE master.t2 ("
                 "id INTEGER NOT NULL, "
-                "t2_id INTEGER, "
+                "t1_id INTEGER, "
                 "PRIMARY KEY (id), "
-                "FOREIGN KEY(t2_id) REFERENCES t1 (id)"
+                "FOREIGN KEY(t1_id) REFERENCES t1 (id)"
+                ")"            
+        )
+
+        # schema->different schema, don't generate REFERENCES
+        self.assert_compile(
+            schema.CreateTable(t3),
+                "CREATE TABLE alternate.t3 ("
+                "id INTEGER NOT NULL, "
+                "t1_id INTEGER, "
+                "PRIMARY KEY (id)"
+                ")"            
+        )
+
+        # same for local schema
+        self.assert_compile(
+            schema.CreateTable(t4),
+                "CREATE TABLE t4 ("
+                "id INTEGER NOT NULL, "
+                "t1_id INTEGER, "
+                "PRIMARY KEY (id)"
                 ")"            
         )
 

@@ -38,9 +38,14 @@ CHANGES
 
 - sqlite
   - The REFERENCES clause in a CREATE TABLE that includes
-    a remote schema name now renders the remote name without
+    a remote schema to another table with the same schema 
+    name now renders the remote name without
     the schema clause, as required by SQLite.  [ticket:1851]
-    
+
+  - On the same theme, the REFERENCES clause in a CREATE TABLE
+    that includes a remote schema to a *different* schema
+    than that of the parent table doesn't render at all,
+    as cross-schema references do not appear to be supported.
     
 0.6.5
 =====
