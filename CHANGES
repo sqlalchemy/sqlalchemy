@@ -20,6 +20,10 @@ CHANGES
     a referenced child row to be correctly returned
     in results.  [ticket:1954]
 
+  - Fixed bug regarding "subqueryload" strategy whereby
+    strategy would fail if the entity was an aliased()
+    construct.  [ticket:1964]
+    
 - engine
   - Implemented sequence check capability for the C 
     version of RowProxy, as well as 2.7 style 

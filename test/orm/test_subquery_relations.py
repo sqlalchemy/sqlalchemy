@@ -43,6 +43,63 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
     @testing.resolve_artifact_names
+    def test_from_aliased(self):
+        mapper(Dingaling, dingalings)
+        mapper(Address, addresses, properties={
+            'dingalings':relationship(Dingaling, order_by=Dingaling.id)
+        })
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            Address,
+                            order_by=Address.id)
+        })
+        sess = create_session()
+        
+        if False:
+            u = aliased(User)
+            q = sess.query(u).options(subqueryload(u.addresses))
+        
+            def go():
+                eq_(
+                        [User(id=7, addresses=[
+                                Address(id=1, email_address='jack@bean.com')])],
+                        q.filter(u.id==7).all()
+                )
+        
+            self.assert_sql_count(testing.db, go, 2)
+        
+            def go(): 
+                eq_(
+                    self.static.user_address_result, 
+                    q.order_by(u.id).all()
+                )
+            self.assert_sql_count(testing.db, go, 2)
+        
+        a = aliased(Address)
+    
+# TODO: this is [ticket:1965]
+#        q = sess.query(User).join((a, User.addresses)).\
+#                        options(subqueryload_all(User.addresses, a.dingalings))
+        q = sess.query(User).join((a, User.addresses)).\
+                        options(subqueryload_all(User.addresses, Address.dingalings))
+        
+        def go():
+            eq_(
+                [
+                    User(id=8, addresses=[
+                        Address(id=2, email_address='ed@wood.com', dingalings=[Dingaling()]),
+                        Address(id=3, email_address='ed@bettyboop.com'),
+                        Address(id=4, email_address='ed@lala.com'),
+                    ]),
+                    User(id=9, addresses=[
+                        Address(id=5, dingalings=[Dingaling()])
+                    ]),
+                ],
+                q.filter(User.id.in_([8, 9])).all()
+            )
+        self.assert_sql_count(testing.db, go, 3)
+        
+    @testing.resolve_artifact_names
     def test_from_get(self):
         mapper(User, users, properties={
             'addresses':relationship(
