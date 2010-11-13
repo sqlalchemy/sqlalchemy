@@ -748,7 +748,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                                     self.parent, self.parent_property
         else:
             leftmost_mapper, leftmost_prop = \
-                                    subq_path[0], \
+                                    subq_mapper, \
                                     subq_mapper.get_property(subq_path[1])
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         

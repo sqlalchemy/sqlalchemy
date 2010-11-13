@@ -4,7 +4,7 @@ from sqlalchemy.test.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
     mapper, relationship, clear_mappers, create_session, lazyload, \
-    aliased, joinedload, deferred, undefer
+    aliased, joinedload, deferred, undefer, eagerload_all
 from sqlalchemy.test.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy.test.assertsql import CompiledSQL
@@ -56,17 +56,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
         
         u = aliased(User)
+        
         q = sess.query(u).options(subqueryload(u.addresses))
-    
+
         def go():
             eq_(
                     [User(id=7, addresses=[
                             Address(id=1, email_address='jack@bean.com')])],
                     q.filter(u.id==7).all()
             )
-    
+
         self.assert_sql_count(testing.db, go, 2)
-    
+
         def go(): 
             eq_(
                 self.static.user_address_result, 
@@ -74,13 +75,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
         self.assert_sql_count(testing.db, go, 2)
         
-        a = aliased(Address)
-    
-# TODO: this is [ticket:1965]
-#        q = sess.query(User).join((a, User.addresses)).\
-#                        options(subqueryload_all(User.addresses, a.dingalings))
-        q = sess.query(User).join((a, User.addresses)).\
-                        options(subqueryload_all(User.addresses, Address.dingalings))
+        q = sess.query(u).\
+                        options(subqueryload_all(u.addresses, Address.dingalings))
         
         def go():
             eq_(
@@ -94,10 +90,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                         Address(id=5, dingalings=[Dingaling()])
                     ]),
                 ],
-                q.filter(User.id.in_([8, 9])).all()
+                q.filter(u.id.in_([8, 9])).all()
             )
         self.assert_sql_count(testing.db, go, 3)
-        
+            
+    
     @testing.resolve_artifact_names
     def test_from_get(self):
         mapper(User, users, properties={
