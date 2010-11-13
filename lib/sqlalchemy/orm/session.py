@@ -1695,8 +1695,3 @@ def _state_session(state):
             pass
     return None
 
-# Lazy initialization to avoid circular imports
-unitofwork._state_session = _state_session
-from sqlalchemy.orm import mapper
-mapper._expire_state = _expire_state
-mapper._state_session = _state_session

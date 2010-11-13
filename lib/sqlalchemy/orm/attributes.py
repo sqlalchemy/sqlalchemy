@@ -23,10 +23,7 @@ from sqlalchemy import util
 from sqlalchemy.orm import interfaces, collections, exc
 import sqlalchemy.exceptions as sa_exc
 
-# lazy imports
-_entity_info = None
-identity_equal = None
-state = None
+mapperutil = util.importlater("sqlalchemy.orm", "util")
 
 PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT')
 ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
@@ -571,7 +568,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                                             compare_function=compare_function, 
                                             **kwargs)
         if compare_function is None:
-            self.is_equal = identity_equal
+            self.is_equal = mapperutil.identity_equal
 
     def delete(self, state, dict_):
         old = self.get(state, dict_)

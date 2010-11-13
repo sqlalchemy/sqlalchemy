@@ -1483,6 +1483,3 @@ class RelationshipProperty(StrategizedProperty):
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
 
-mapper.ColumnProperty = ColumnProperty
-mapper.RelationshipProperty = RelationshipProperty
-mapper.ConcreteInheritedProperty = ConcreteInheritedProperty

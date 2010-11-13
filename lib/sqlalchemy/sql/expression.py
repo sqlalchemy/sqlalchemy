@@ -29,13 +29,15 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc #, types as sqltypes
+from sqlalchemy import util, exc
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, sql_util, sqltypes = None, None, None
-DefaultDialect = None
+functions = util.importlater("sqlalchemy.sql", "functions")
+sqlutil = util.importlater("sqlalchemy.sql", "util")
+sqltypes = util.importlater("sqlalchemy", "types")
+default = util.importlater("sqlalchemy.engine", "default")
 
 __all__ = [
     'Alias', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
@@ -957,9 +959,6 @@ class _FunctionGenerator(object):
         o = self.opts.copy()
         o.update(kwargs)
         if len(self.__names) == 1:
-            global functions
-            if functions is None:
-                from sqlalchemy.sql import functions
             func = getattr(functions, self.__names[-1].lower(), None)
             if func is not None and \
                     isinstance(func, type) and \
@@ -1205,10 +1204,7 @@ class ClauseElement(Visitable):
         dictionary.
         
         """
-        global sql_util
-        if sql_util is None:
-            from sqlalchemy.sql import util as sql_util
-        return sql_util.Annotated(self, values)
+        return sqlutil.Annotated(self, values)
 
     def _deannotate(self):
         """return a copy of this ClauseElement with an empty annotations
@@ -1389,10 +1385,7 @@ class ClauseElement(Visitable):
                 dialect = self.bind.dialect
                 bind = self.bind
             else:
-                global DefaultDialect
-                if DefaultDialect is None:
-                    from sqlalchemy.engine.default import DefaultDialect
-                dialect = DefaultDialect()
+                dialect = default.DefaultDialect()
         compiler = self._compiler(dialect, bind=bind, **kw)
         compiler.compile()
         return compiler
@@ -2154,10 +2147,7 @@ class FromClause(Selectable):
         
         """
 
-        global sql_util
-        if sql_util is None:
-            from sqlalchemy.sql import util as sql_util
-        return sql_util.ClauseAdapter(alias).traverse(self)
+        return sqlutil.ClauseAdapter(alias).traverse(self)
 
     def correspond_on_equivalents(self, column, equivalents):
         """Return corresponding_column for the given column, or if None
@@ -3098,10 +3088,7 @@ class Join(FromClause):
         columns = [c for c in self.left.columns] + \
                         [c for c in self.right.columns]
 
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
-        self._primary_key.extend(sql_util.reduce_columns(
+        self._primary_key.extend(sqlutil.reduce_columns(
                 (c for c in columns if c.primary_key), self.onclause))
         self._columns.update((col._label, col) for col in columns)
         self._foreign_keys.update(itertools.chain(
@@ -3118,14 +3105,11 @@ class Join(FromClause):
         return self.left, self.right, self.onclause
 
     def _match_primaries(self, left, right):
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
         if isinstance(left, Join):
             left_right = left.right
         else:
             left_right = None
-        return sql_util.join_condition(left, right, a_subset=left_right)
+        return sqlutil.join_condition(left, right, a_subset=left_right)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
         """Create a :class:`Select` from this :class:`Join`.
@@ -3145,11 +3129,8 @@ class Join(FromClause):
           underlying :func:`select()` function.
 
         """
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
         if fold_equivalents:
-            collist = sql_util.folded_equivalents(self)
+            collist = sqlutil.folded_equivalents(self)
         else:
             collist = [self.left, self.right]
 

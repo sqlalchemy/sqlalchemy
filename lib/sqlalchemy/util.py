@@ -1558,7 +1558,51 @@ class group_expirable_memoized_property(object):
         self.attributes.append(fn.__name__)
         return memoized_property(fn)
 
-
+class importlater(object):
+    """Deferred import object.
+    
+    e.g.::
+    
+        somesubmod = importlater("mypackage.somemodule", "somesubmod")
+        
+    is equivalent to::
+    
+        from mypackage.somemodule import somesubmod
+        
+    except evaluted upon attribute access to "somesubmod".
+    
+    """
+    def __init__(self, path, addtl=None):
+        self._il_path = path
+        self._il_addtl = addtl
+    
+    @memoized_property
+    def _il_module(self):
+        m = __import__(self._il_path)
+        for token in self._il_path.split(".")[1:]:
+            m = getattr(m, token)
+        if self._il_addtl:
+            try:
+                return getattr(m, self._il_addtl)
+            except AttributeError:
+                raise AttributeError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, self._il_addtl)
+                    )
+        else:
+            return m
+        
+    def __getattr__(self, key):
+        try:
+            attr = getattr(self._il_module, key)
+        except AttributeError:
+            raise AttributeError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, key)
+                    )
+        self.__dict__[key] = attr
+        return attr
+        
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.
 
