@@ -22,8 +22,6 @@ else:
     def lazy_gc():
         pass
 
-
-
 def picklers():
     picklers = set()
     # Py2K

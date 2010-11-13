@@ -570,6 +570,7 @@ passed in to a mapper as the table.
 
 .. sourcecode:: python+sql
 
+    from sqlalchemy.orm import mapper
     from sqlalchemy.sql import join
     
     class AddressUser(object):
@@ -584,9 +585,29 @@ passed in to a mapper as the table.
         'user_id': [users_table.c.user_id, addresses_table.c.user_id]
     })
 
-A second example:
+Note that the list of columns is equivalent to the usage of :func:`.column_property`
+with multiple columns::
 
-.. sourcecode:: python+sql
+    from sqlalchemy.orm import mapper, column_property
+    
+    mapper(AddressUser, j, properties={
+        'user_id': column_property(users_table.c.user_id, addresses_table.c.user_id)
+    })
+
+The usage of :func:`.column_property` is required when using declarative to map 
+to multiple columns, since the declarative class parser won't recognize a plain 
+list of columns::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    
+    Base = declarative_base()
+    
+    class AddressUser(Base):
+        __table__ = j
+        
+        user_id = column_property(users_table.c.user_id, addresses_table.c.user_id)
+
+A second example::
 
     from sqlalchemy.sql import join
 
@@ -610,6 +631,7 @@ In both examples above, "composite" columns were added as properties to the
 mappers; these are aggregations of multiple columns into one mapper property,
 which instructs the mapper to keep both of those columns set at the same
 value.
+
 
 Mapping a Class against Arbitrary Selects
 ------------------------------------------

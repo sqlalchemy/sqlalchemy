@@ -34,8 +34,8 @@ from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
 from sqlalchemy import processors
 import collections
+default = util.importlater("sqlalchemy.engine", "default")
 
-DefaultDialect = None
 NoneType = type(None)
 if util.jython:
     import array
@@ -143,10 +143,7 @@ class AbstractType(Visitable):
             mod = ".".join(tokens)
             return getattr(__import__(mod).dialects, tokens[-1]).dialect()
         else:
-            global DefaultDialect
-            if DefaultDialect is None:
-                from sqlalchemy.engine.default import DefaultDialect
-            return DefaultDialect()
+            return default.DefaultDialect()
         
     def __str__(self):
         # Py3K

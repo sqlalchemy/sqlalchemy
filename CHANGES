@@ -19,12 +19,33 @@ CHANGES
     is an outer join, thus allowing primary rows without
     a referenced child row to be correctly returned
     in results.  [ticket:1954]
+
+  - Fixed bug regarding "subqueryload" strategy whereby
+    strategy would fail if the entity was an aliased()
+    construct.  [ticket:1964]
+    
+- engine
+  - Implemented sequence check capability for the C 
+    version of RowProxy, as well as 2.7 style 
+    "collections.Sequence" registration for RowProxy.
+    [ticket:1871]
     
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 
     has_table() property works again.  Regression from
     0.6.3 (we don't have a Jython buildbot, sorry)
     [ticket:1960]
+
+- sqlite
+  - The REFERENCES clause in a CREATE TABLE that includes
+    a remote schema to another table with the same schema 
+    name now renders the remote name without
+    the schema clause, as required by SQLite.  [ticket:1851]
+
+  - On the same theme, the REFERENCES clause in a CREATE TABLE
+    that includes a remote schema to a *different* schema
+    than that of the parent table doesn't render at all,
+    as cross-schema references do not appear to be supported.
     
 0.6.5
 =====

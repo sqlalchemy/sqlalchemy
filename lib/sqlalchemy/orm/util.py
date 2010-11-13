@@ -13,7 +13,7 @@ from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
                                 AttributeExtension
 from sqlalchemy.orm import attributes, exc
 
-mapperlib = None
+mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
 all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
                           "expunge", "save-update", "refresh-expire",
@@ -460,10 +460,6 @@ def _entity_info(entity, compile=True):
     if isinstance(entity, AliasedClass):
         return entity._AliasedClass__mapper, entity._AliasedClass__alias, True
 
-    global mapperlib
-    if mapperlib is None:
-        from sqlalchemy.orm import mapperlib
-    
     if isinstance(entity, mapperlib.Mapper):
         mapper = entity
         
@@ -558,24 +554,28 @@ def class_mapper(class_, compile=True):
 def _class_to_mapper(class_or_mapper, compile=True):
     if _is_aliased_class(class_or_mapper):
         return class_or_mapper._AliasedClass__mapper
+
     elif isinstance(class_or_mapper, type):
-        return class_mapper(class_or_mapper, compile=compile)
-    elif hasattr(class_or_mapper, 'compile'):
-        if compile:
-            return class_or_mapper.compile()
-        else:
-            return class_or_mapper
+        try:
+            class_manager = attributes.manager_of_class(class_or_mapper)
+            mapper = class_manager.mapper
+        except exc.NO_STATE:
+            raise exc.UnmappedClassError(class_or_mapper)
+    elif isinstance(class_or_mapper, mapperlib.Mapper):
+        mapper = class_or_mapper
     else:
         raise exc.UnmappedClassError(class_or_mapper)
+        
+    if compile:
+        return mapper.compile()
+    else:
+        return mapper
 
 def has_identity(object):
     state = attributes.instance_state(object)
     return state.has_identity
 
 def _is_mapped_class(cls):
-    global mapperlib
-    if mapperlib is None:
-        from sqlalchemy.orm import mapperlib
     if isinstance(cls, (AliasedClass, mapperlib.Mapper)):
         return True
     if isinstance(cls, expression.ClauseElement):
@@ -618,8 +618,3 @@ def identity_equal(a, b):
         return False
     return state_a.key == state_b.key
 
-
-# TODO: Avoid circular import.
-attributes.identity_equal = identity_equal
-attributes._is_aliased_class = _is_aliased_class
-attributes._entity_info = _entity_info

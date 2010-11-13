@@ -290,6 +290,38 @@ class ResultProxyTest(TestBase):
         finally:
             engine.dialect.execution_ctx_cls = execution_ctx_cls
 
+    @testing.requires.python26
+    def test_rowproxy_is_sequence(self):
+        import collections
+        from sqlalchemy.engine import RowProxy
+
+        row = RowProxy(object(), ['value'], [None], {'key'
+                         : (None, 0), 0: (None, 0)})
+        assert isinstance(row, collections.Sequence)
+    
+    @testing.requires.cextensions
+    def test_row_c_sequence_check(self):
+        import csv
+        import collections
+        from StringIO import StringIO
+        
+        metadata = MetaData()
+        metadata.bind = 'sqlite://'
+        users = Table('users', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        users.create()
+
+        users.insert().execute(name='Test')
+        row = users.select().execute().fetchone()
+
+        s = StringIO()
+        writer = csv.writer(s)
+        # csv performs PySequenceCheck call
+        writer.writerow(row)
+        assert s.getvalue().strip() == '1,Test'
+
 class EngineEventsTest(TestBase):
 
     def _assert_stmts(self, expected, received):

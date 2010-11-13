@@ -2142,6 +2142,14 @@ class RowProxy(BaseRowProxy):
     def itervalues(self):
         return iter(self)
 
+try:
+    # Register RowProxy with Sequence, 
+    # so sequence protocol is implemented
+    from collections import Sequence
+    Sequence.register(RowProxy)
+except ImportError:
+    pass
+    
 
 class ResultMetaData(object):
     """Handle cursor.description, applying additional info from an execution

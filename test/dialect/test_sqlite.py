@@ -384,6 +384,57 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                                 "INTEGER) AS anon_1 FROM t" % subst)
 
+    def test_constraints_with_schemas(self):
+        metadata = MetaData()
+        t1 = Table('t1', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        schema='master')
+        t2 = Table('t2', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
+                        schema='master'
+                    )
+        t3 = Table('t3', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
+                        schema='alternate'
+                    )
+        t4 = Table('t4', metadata, 
+                        Column('id', Integer, primary_key=True),
+                        Column('t1_id', Integer, ForeignKey('master.t1.id')),
+                    )
+        
+        # schema->schema, generate REFERENCES with no schema name
+        self.assert_compile(
+            schema.CreateTable(t2),
+                "CREATE TABLE master.t2 ("
+                "id INTEGER NOT NULL, "
+                "t1_id INTEGER, "
+                "PRIMARY KEY (id), "
+                "FOREIGN KEY(t1_id) REFERENCES t1 (id)"
+                ")"            
+        )
+
+        # schema->different schema, don't generate REFERENCES
+        self.assert_compile(
+            schema.CreateTable(t3),
+                "CREATE TABLE alternate.t3 ("
+                "id INTEGER NOT NULL, "
+                "t1_id INTEGER, "
+                "PRIMARY KEY (id)"
+                ")"            
+        )
+
+        # same for local schema
+        self.assert_compile(
+            schema.CreateTable(t4),
+                "CREATE TABLE t4 ("
+                "id INTEGER NOT NULL, "
+                "t1_id INTEGER, "
+                "PRIMARY KEY (id)"
+                ")"            
+        )
+
 
 class InsertTest(TestBase, AssertsExecutionResults):
 

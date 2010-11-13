@@ -327,6 +327,12 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 }
 
 static PyObject *
+BaseRowProxy_getitem(PyObject *self, Py_ssize_t i)
+{
+    return BaseRowProxy_subscript((BaseRowProxy*)self, PyInt_FromSsize_t(i));
+}
+
+static PyObject *
 BaseRowProxy_getattro(BaseRowProxy *self, PyObject *name)
 {
     PyObject *tmp;
@@ -506,7 +512,7 @@ static PySequenceMethods BaseRowProxy_as_sequence = {
     (lenfunc)BaseRowProxy_length,   /* sq_length */
     0,                              /* sq_concat */
     0,                              /* sq_repeat */
-    0,                              /* sq_item */
+    (ssizeargfunc)BaseRowProxy_getitem,          /* sq_item */
     0,                              /* sq_slice */
     0,                              /* sq_ass_item */
     0,                              /* sq_ass_slice */

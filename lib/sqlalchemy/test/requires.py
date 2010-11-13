@@ -252,6 +252,12 @@ def sane_rowcount(fn):
         skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     )
 
+def cextensions(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not _has_cextensions(), "C extensions not installed")
+    )
+    
 def dbapi_lastrowid(fn):
     return _chain_decorators_on(
         fn,
@@ -279,7 +285,23 @@ def python2(fn):
             "Python version 2.xx is required."
             )
     )
+
+def python26(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (2, 6),
+            "Python version 2.6 or greater is required"
+        )
+    )
     
+def _has_cextensions():
+    try:
+        from sqlalchemy import cresultproxy, cprocessors
+        return True
+    except ImportError:
+        return False
+        
 def _has_sqlite():
     from sqlalchemy import create_engine
     try:

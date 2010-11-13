@@ -741,14 +741,16 @@ class SubqueryLoader(AbstractRelationshipLoader):
                                 ("orig_query", SubqueryLoader), 
                                 context.query)
 
+        subq_mapper = mapperutil._class_to_mapper(subq_path[0])
+        
         # determine attributes of the leftmost mapper
-        if self.parent.isa(subq_path[0]) and self.key==subq_path[1]:
+        if self.parent.isa(subq_mapper) and self.key==subq_path[1]:
             leftmost_mapper, leftmost_prop = \
                                     self.parent, self.parent_property
         else:
             leftmost_mapper, leftmost_prop = \
-                                    subq_path[0], \
-                                    subq_path[0].get_property(subq_path[1])
+                                    subq_mapper, \
+                                    subq_mapper.get_property(subq_path[1])
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [

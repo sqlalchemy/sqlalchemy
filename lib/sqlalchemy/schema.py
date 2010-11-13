@@ -33,7 +33,9 @@ from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
 from sqlalchemy import event, events
 
-URL = None
+sqlutil = util.importlater("sqlalchemy.sql", "util")
+url = util.importlater("sqlalchemy.engine", "url")
+
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
@@ -1957,11 +1959,7 @@ class MetaData(SchemaItem):
     def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
 
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
+        if isinstance(bind, (basestring, url.URL)):
             from sqlalchemy import create_engine
             self._bind = create_engine(bind)
         else:
@@ -1985,8 +1983,7 @@ class MetaData(SchemaItem):
         """Returns a list of ``Table`` objects sorted in order of
         dependency.
         """
-        from sqlalchemy.sql.util import sort_tables
-        return sort_tables(self.tables.itervalues())
+        return sqlutil.sort_tables(self.tables.itervalues())
         
     def reflect(self, bind=None, schema=None, views=False, only=None):
         """Load all available table definitions from the database.
@@ -2156,11 +2153,7 @@ class ThreadLocalMetaData(MetaData):
     def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
 
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
+        if isinstance(bind, (basestring, url.URL)):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:
