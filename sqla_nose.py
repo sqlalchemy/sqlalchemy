@@ -2,9 +2,9 @@
 """
 nose runner script.
 
-Only use this script if setuptools is not available, i.e. such as
-on Python 3K.  Otherwise consult README.unittests for the
-recommended methods of running tests.
+This script is a front-end to "nosetests" which doesn't
+require that SQLA's testing plugin be installed via setuptools.
+
 
 """
 import sys
