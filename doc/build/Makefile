@@ -18,6 +18,7 @@ help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
 	@echo "  dist-html  same as html, but places files in /doc"
+	@echo "  site-mako  to make sqlalchemy.org Mako files"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
 	@echo "  pickle     to make pickle files"
