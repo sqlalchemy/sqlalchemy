@@ -23,6 +23,11 @@ CHANGES
   - Fixed bug regarding "subqueryload" strategy whereby
     strategy would fail if the entity was an aliased()
     construct.  [ticket:1964]
+
+- sql
+  - The 'info' attribute of Column is copied during 
+    Column.copy(), i.e. as occurs when using columns
+    in declarative mixins.  [ticket:1967]
     
 - engine
   - Implemented sequence check capability for the C 

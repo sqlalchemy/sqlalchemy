@@ -908,6 +908,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 server_default=self.server_default,
                 onupdate=self.onupdate,
                 server_onupdate=self.server_onupdate,
+                info=self.info,
                 *args
                 )
         if hasattr(self, '_table_events'):
