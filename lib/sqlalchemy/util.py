@@ -584,6 +584,18 @@ def asbool(obj):
             raise ValueError("String is not true/false: %r" % obj)
     return bool(obj)
 
+def bool_or_str(*text):
+    """Return a callable that will evaulate a string as 
+    boolean, or one of a set of "alternate" string values.
+    
+    """
+    def bool_or_value(obj):
+        if obj in text:
+            return obj
+        else:
+            return asbool(obj)
+    return bool_or_value
+    
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -745,7 +757,7 @@ class NamedTuple(tuple):
         return t
 
     def keys(self):
-        return self._labels
+        return [l for l in self._labels if l is not None]
 
 
 class OrderedProperties(object):
@@ -1546,7 +1558,51 @@ class group_expirable_memoized_property(object):
         self.attributes.append(fn.__name__)
         return memoized_property(fn)
 
-
+class importlater(object):
+    """Deferred import object.
+    
+    e.g.::
+    
+        somesubmod = importlater("mypackage.somemodule", "somesubmod")
+        
+    is equivalent to::
+    
+        from mypackage.somemodule import somesubmod
+        
+    except evaluted upon attribute access to "somesubmod".
+    
+    """
+    def __init__(self, path, addtl=None):
+        self._il_path = path
+        self._il_addtl = addtl
+    
+    @memoized_property
+    def _il_module(self):
+        m = __import__(self._il_path)
+        for token in self._il_path.split(".")[1:]:
+            m = getattr(m, token)
+        if self._il_addtl:
+            try:
+                return getattr(m, self._il_addtl)
+            except AttributeError:
+                raise AttributeError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, self._il_addtl)
+                    )
+        else:
+            return m
+        
+    def __getattr__(self, key):
+        try:
+            attr = getattr(self._il_module, key)
+        except AttributeError:
+            raise AttributeError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, key)
+                    )
+        self.__dict__[key] = attr
+        return attr
+        
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.
 
@@ -1801,8 +1857,12 @@ class classproperty(property):
     """A decorator that behaves like @property except that operates
     on classes rather than instances.
 
-    This is helpful when you need to compute __table_args__ and/or
-    __mapper_args__ when using declarative."""
+    The decorator is currently special when using the declarative
+    module, but note that the 
+    :class:`~.sqlalchemy.ext.declarative.declared_attr`
+    decorator should be used for this purpose with declarative.
+    
+    """
     
     def __init__(self, fget, *arg, **kw):
         super(classproperty, self).__init__(fget, *arg, **kw)

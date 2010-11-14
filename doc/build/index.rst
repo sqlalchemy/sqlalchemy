@@ -8,7 +8,7 @@ Table of Contents
     orm/index
     core/index
     dialects/index
-
+    
 Indices and tables
 ------------------
 

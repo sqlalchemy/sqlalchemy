@@ -763,6 +763,9 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
             Column('c4', TIMESTAMP, DefaultClause('2009-04-05 12:00:00'
                    )),
             Column('c5', TIMESTAMP),
+            Column('c6', TIMESTAMP,
+                   DefaultClause(sql.text("CURRENT_TIMESTAMP "
+                                          "ON UPDATE CURRENT_TIMESTAMP"))),
             )
         def_table.create()
         try:
@@ -780,6 +783,13 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
         assert str(reflected.c.c3.server_default.arg) == "'abc'"
         assert str(reflected.c.c4.server_default.arg) \
             == "'2009-04-05 12:00:00'"
+        assert reflected.c.c5.default is None
+        assert reflected.c.c5.server_default is None
+        assert reflected.c.c6.default is None
+        eq_(
+            str(reflected.c.c6.server_default.arg).upper(),
+            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        )
         reflected.create()
         try:
             reflected2 = Table('mysql_def', MetaData(testing.db),
@@ -791,6 +801,13 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
         assert str(reflected2.c.c3.server_default.arg) == "'abc'"
         assert str(reflected2.c.c4.server_default.arg) \
             == "'2009-04-05 12:00:00'"
+        assert reflected.c.c5.default is None
+        assert reflected.c.c5.server_default is None
+        assert reflected.c.c6.default is None
+        eq_(
+            str(reflected.c.c6.server_default.arg).upper(),
+            "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+        )
 
     def test_reflection_with_table_options(self):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""

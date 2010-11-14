@@ -1,3 +1,5 @@
+.. _expression_api_toplevel:
+
 SQL Statements and Expressions
 ==============================
 
@@ -112,6 +114,8 @@ The expression package uses functions to construct SQL expressions.  The return 
 .. autofunction:: text
 
 .. autofunction:: tuple_
+
+.. autofunction:: type_coerce
 
 .. autofunction:: union
 

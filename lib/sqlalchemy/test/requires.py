@@ -52,6 +52,7 @@ def boolean_col_expressions(fn):
         no_support('mssql', 'not supported by database'),
         no_support('sybase', 'not supported by database'),
         no_support('maxdb', 'FIXME: verify not supported by database'),
+        no_support('informix', 'not supported by database'),
     )
     
 def identity(fn):
@@ -120,6 +121,7 @@ def savepoints(fn):
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        exclude('informix', '<', (11, 55, 'xC3'), 'not supported by database'),
         )
 
 def denormalized_names(fn):
@@ -148,6 +150,7 @@ def sequences(fn):
         no_support('mysql', 'no SEQUENCE support'),
         no_support('sqlite', 'no SEQUENCE support'),
         no_support('sybase', 'no SEQUENCE support'),
+        no_support('informix', 'no SEQUENCE support'),
         )
 
 def update_nowait(fn):
@@ -176,6 +179,7 @@ def intersect(fn):
         fails_on('firebird', 'no support for INTERSECT'),
         fails_on('mysql', 'no support for INTERSECT'),
         fails_on('sybase', 'no support for INTERSECT'),
+        fails_on('informix', 'no support for INTERSECT'),
     )
 
 def except_(fn):
@@ -185,6 +189,7 @@ def except_(fn):
         fails_on('firebird', 'no support for EXCEPT'),
         fails_on('mysql', 'no support for EXCEPT'),
         fails_on('sybase', 'no support for EXCEPT'),
+        fails_on('informix', 'no support for EXCEPT'),
     )
 
 def offset(fn):
@@ -247,6 +252,12 @@ def sane_rowcount(fn):
         skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     )
 
+def cextensions(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not _has_cextensions(), "C extensions not installed")
+    )
+    
 def dbapi_lastrowid(fn):
     return _chain_decorators_on(
         fn,
@@ -274,7 +285,23 @@ def python2(fn):
             "Python version 2.xx is required."
             )
     )
+
+def python26(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (2, 6),
+            "Python version 2.6 or greater is required"
+        )
+    )
     
+def _has_cextensions():
+    try:
+        from sqlalchemy import cresultproxy, cprocessors
+        return True
+    except ImportError:
+        return False
+        
 def _has_sqlite():
     from sqlalchemy import create_engine
     try:

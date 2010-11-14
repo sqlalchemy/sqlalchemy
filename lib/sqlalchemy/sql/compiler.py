@@ -153,6 +153,10 @@ class _CompileLabel(visitors.Visitable):
     def __init__(self, col, name):
         self.element = col
         self.name = name
+    
+    @property
+    def type(self):
+        return self.element.type
         
     @property
     def quote(self):
@@ -317,7 +321,7 @@ class SQLCompiler(engine.Compiled):
 
             if result_map is not None:
                 result_map[labelname.lower()] = \
-                        (label.name, (label, label.element, labelname), label.element.type)
+                        (label.name, (label, label.element, labelname), label.type)
 
             return self.process(label.element, 
                                     within_columns_clause=True,
@@ -329,7 +333,7 @@ class SQLCompiler(engine.Compiled):
             return self.process(label.element, 
                                     within_columns_clause=False, 
                                     **kw)
-            
+    
     def visit_column(self, column, result_map=None, **kwargs):
         name = column.name
         if name is None:
@@ -1302,13 +1306,18 @@ class DDLCompiler(engine.Compiled):
         text += "FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             ', '.join(preparer.quote(f.parent.name, f.parent.quote)
                       for f in constraint._elements.values()),
-            preparer.format_table(remote_table),
+            self.define_constraint_remote_table(constraint, remote_table, preparer),
             ', '.join(preparer.quote(f.column.name, f.column.quote)
                       for f in constraint._elements.values())
         )
         text += self.define_constraint_cascades(constraint)
         text += self.define_constraint_deferrability(constraint)
         return text
+
+    def define_constraint_remote_table(self, constraint, table, preparer):
+        """Format the remote table clause of a CREATE CONSTRAINT clause."""
+        
+        return preparer.format_table(table)
 
     def visit_unique_constraint(self, constraint):
         text = ""

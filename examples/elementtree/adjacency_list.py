@@ -8,15 +8,15 @@ styles of persistence are identical, as is the structure of the main Document cl
 
 ################################# PART I - Imports/Coniguration ####################################
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
-    Unicode, and_)
-from sqlalchemy.orm import mapper, relationship, create_session, lazyload
+    Unicode, and_, create_engine)
+from sqlalchemy.orm import mapper, relationship, Session, lazyload
 
 import sys, os, StringIO, re
 
 from xml.etree import ElementTree
 
+e = create_engine('sqlite://')
 meta = MetaData()
-meta.bind = 'sqlite://'
 
 ################################# PART II - Table Metadata #########################################
 
@@ -44,7 +44,7 @@ attributes = Table('attributes', meta,
     Column('name', Unicode(100), nullable=False, primary_key=True),
     Column('value', Unicode(255)))
 
-meta.create_all()
+meta.create_all(e)
 
 #################################### PART III - Model #############################################
 
@@ -142,7 +142,7 @@ Document.element = ElementTreeMarshal()
 line = "\n--------------------------------------------------------"
 
 # save to DB
-session = create_session()
+session = Session(e)
 
 # get ElementTree documents
 for file in ('test.xml', 'test2.xml', 'test3.xml'):
@@ -151,11 +151,8 @@ for file in ('test.xml', 'test2.xml', 'test3.xml'):
     session.add(Document(file, doc))
 
 print "\nSaving three documents...", line
-session.flush()
+session.commit()
 print "Done."
-
-# clear session (to illustrate a full load), restore
-session.expunge_all()
 
 print "\nFull text of document 'text.xml':", line
 document = session.query(Document).filter_by(filename="test.xml").first()

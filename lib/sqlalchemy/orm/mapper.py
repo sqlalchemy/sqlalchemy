@@ -31,6 +31,8 @@ from sqlalchemy.orm.util import (
      _state_mapper, class_mapper, instance_str, state_str,
      )
 import sys
+sessionlib = util.importlater("sqlalchemy.orm", "session")
+properties = util.importlater("sqlalchemy.orm", "properties")
 
 __all__ = (
     'Mapper',
@@ -56,13 +58,6 @@ NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 
 # lock used to synchronize the "mapper compile" step
 _COMPILE_MUTEX = util.threading.RLock()
-
-# initialize these lazily
-ColumnProperty = None
-RelationshipProperty = None
-ConcreteInheritedProperty = None
-_expire_state = None
-_state_session = None
 
 class Mapper(object):
     """Define the correlation of class attributes to database table
@@ -596,7 +591,7 @@ class Mapper(object):
                     
             self._configure_property(
                             col.key, 
-                            ColumnProperty(col, _instrument=instrument),
+                            properties.ColumnProperty(col, _instrument=instrument),
                             init=False, setparent=True)
 
     def _adapt_inherited_property(self, key, prop, init):
@@ -605,7 +600,7 @@ class Mapper(object):
         elif key not in self._props:
             self._configure_property(
                             key, 
-                            ConcreteInheritedProperty(), 
+                            properties.ConcreteInheritedProperty(), 
                             init=init, setparent=True)
             
     def _configure_property(self, key, prop, init=True, setparent=True):
@@ -613,7 +608,7 @@ class Mapper(object):
 
         if not isinstance(prop, MapperProperty):
             # we were passed a Column or a list of Columns; 
-            # generate a ColumnProperty
+            # generate a properties.ColumnProperty
             columns = util.to_list(prop)
             column = columns[0]
             if not expression.is_column(column):
@@ -623,12 +618,12 @@ class Mapper(object):
 
             prop = self._props.get(key, None)
 
-            if isinstance(prop, ColumnProperty):
+            if isinstance(prop, properties.ColumnProperty):
                 # TODO: the "property already exists" case is still not 
                 # well defined here. assuming single-column, etc.
 
                 if prop.parent is not self:
-                    # existing ColumnProperty from an inheriting mapper.
+                    # existing properties.ColumnProperty from an inheriting mapper.
                     # make a copy and append our column to it
                     prop = prop.copy()
                 else:
@@ -639,11 +634,13 @@ class Mapper(object):
                             "or more attributes for these same-named columns "
                             "explicitly."
                              % (prop.columns[-1], column, key))
-
+                    
+                # this hypothetically changes to 
+                # prop.columns.insert(0, column) when we do [ticket:1892]
                 prop.columns.append(column)
-                self._log("appending to existing ColumnProperty %s" % (key))
+                self._log("appending to existing properties.ColumnProperty %s" % (key))
                              
-            elif prop is None or isinstance(prop, ConcreteInheritedProperty):
+            elif prop is None or isinstance(prop, properties.ConcreteInheritedProperty):
                 mapped_column = []
                 for c in columns:
                     mc = self.mapped_table.corresponding_column(c)
@@ -664,7 +661,7 @@ class Mapper(object):
                             "force this column to be mapped as a read-only "
                             "attribute." % (key, self, c))
                     mapped_column.append(mc)
-                prop = ColumnProperty(*mapped_column)
+                prop = properties.ColumnProperty(*mapped_column)
             else:
                 raise sa_exc.ArgumentError(
                     "WARNING: when configuring property '%s' on %s, "
@@ -678,7 +675,7 @@ class Mapper(object):
                     "columns get mapped." % 
                     (key, self, column.key, prop))
 
-        if isinstance(prop, ColumnProperty):
+        if isinstance(prop, properties.ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])
             
             # if the column is not present in the mapped table, 
@@ -717,7 +714,7 @@ class Mapper(object):
                                     col not in self._cols_by_table[col.table]:
                     self._cols_by_table[col.table].add(col)
             
-            # if this ColumnProperty represents the "polymorphic
+            # if this properties.ColumnProperty represents the "polymorphic
             # discriminator" column, mark it.  We'll need this when rendering
             # columns in SELECT statements.
             if not hasattr(prop, '_is_polymorphic_discriminator'):
@@ -1401,25 +1398,30 @@ class Mapper(object):
 
         """
         visited_instances = util.IdentitySet()
-        visitables = [(self._props.itervalues(), 'property', state)]
+        prp, mpp = object(), object()
+
+        visitables = [(deque(self._props.values()), prp, state)]
 
         while visitables:
             iterator, item_type, parent_state = visitables[-1]
-            try:
-                if item_type == 'property':
-                    prop = iterator.next()
-                    visitables.append(
-                                (prop.cascade_iterator(type_, parent_state, 
-                                visited_instances, halt_on), 'mapper', None)
-                                )
-                elif item_type == 'mapper':
-                    instance, instance_mapper, corresponding_state  = \
-                                    iterator.next()
-                    yield (instance, instance_mapper)
-                    visitables.append((instance_mapper._props.itervalues(), 
-                                            'property', corresponding_state))
-            except StopIteration:
+            if not iterator:
                 visitables.pop()
+                continue
+                
+            if item_type is prp:
+                prop = iterator.popleft()
+                if type_ not in prop.cascade:
+                    continue
+                queue = deque(prop.cascade_iterator(type_, parent_state, 
+                            visited_instances, halt_on))
+                if queue:
+                    visitables.append((queue,mpp, None))
+            elif item_type is mpp:
+                instance, instance_mapper, corresponding_state  = \
+                                iterator.popleft()
+                yield (instance, instance_mapper)
+                visitables.append((deque(instance_mapper._props.values()), 
+                                        prp, corresponding_state))
 
     @_memoized_compiled_property
     def _compiled_cache(self):
@@ -1890,7 +1892,7 @@ class Mapper(object):
             )
             
             if readonly:
-                _expire_state(state, state.dict, readonly)
+                sessionlib._expire_state(state, state.dict, readonly)
 
             # if eager_defaults option is enabled,
             # refresh whatever has been expired.
@@ -1932,7 +1934,7 @@ class Mapper(object):
                 self._set_state_attr_by_column(state, dict_, c, params[c.key])
 
         if postfetch_cols:
-            _expire_state(state, state.dict, 
+            sessionlib._expire_state(state, state.dict, 
                                 [self._columntoproperty[c].key 
                                 for c in postfetch_cols]
                             )
@@ -2128,10 +2130,11 @@ class Mapper(object):
                     state.load_path = load_path
 
             if not new_populators:
-                new_populators[:], existing_populators[:] = \
-                                    self._populators(context, path, row,
-                                                        adapter)
-
+                self._populators(context, path, row, adapter,
+                                new_populators,
+                                existing_populators
+                )
+                
             if isnew:
                 populators = new_populators
             else:
@@ -2302,20 +2305,24 @@ class Mapper(object):
             return instance
         return _instance
 
-    def _populators(self, context, path, row, adapter):
+    def _populators(self, context, path, row, adapter,
+            new_populators, existing_populators):
         """Produce a collection of attribute level row processor callables."""
         
-        new_populators, existing_populators = [], []
+        delayed_populators = []
         for prop in self._props.itervalues():
-            newpop, existingpop = prop.create_row_processor(
+            newpop, existingpop, delayedpop = prop.create_row_processor(
                                                     context, path, 
                                                     self, row, adapter)
             if newpop:
                 new_populators.append((prop.key, newpop))
             if existingpop:
                 existing_populators.append((prop.key, existingpop))
-        return new_populators, existing_populators
-
+            if delayedpop:
+                delayed_populators.append((prop.key, delayedpop))
+        if delayed_populators:
+            new_populators.extend(delayed_populators)
+            
     def _configure_subclass_mapper(self, context, path, adapter):
         """Produce a mapper level row processor callable factory for mappers
         inheriting this one."""
@@ -2425,7 +2432,7 @@ def _load_scalar_attributes(state, attribute_names):
     """initiate a column-based attribute refresh operation."""
     
     mapper = _state_mapper(state)
-    session = _state_session(state)
+    session = sessionlib._state_session(state)
     if not session:
         raise orm_exc.DetachedInstanceError(
                     "Instance %s is not bound to a Session; "

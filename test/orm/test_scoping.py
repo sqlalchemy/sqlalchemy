@@ -76,7 +76,22 @@ class ScopedSessionTest(_base.MappedTest):
         assert not isinstance(SomeOtherObject.query, CustomQuery)
         assert isinstance(SomeOtherObject.custom_query, query.Query)
 
+    def test_config_errors(self):
+        Session = scoped_session(sa.orm.sessionmaker())
+    
+        s = Session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Scoped session is already present",
+            Session, bind=testing.db
+        )
 
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "At least one scoped session is already present. ",
+            Session.configure, bind=testing.db
+        )
+        
 class ScopedMapperTest(_ScopedTest):
 
     @classmethod

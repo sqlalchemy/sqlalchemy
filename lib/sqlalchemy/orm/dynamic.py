@@ -36,7 +36,7 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
         )
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
+        return None, None, None
 
 log.class_logger(DynaLoader)
 

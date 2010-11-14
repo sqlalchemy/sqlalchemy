@@ -565,7 +565,6 @@ class DefaultExecutionContext(base.ExecutionContext):
         in all cases.
         
         """
-        
         return self.cursor.lastrowid
 
     def handle_dbapi_exception(self, e):

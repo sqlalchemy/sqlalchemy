@@ -68,6 +68,16 @@ intersesting:
 
     $ nosetests -v
 
+ALTERNATE TEST RUNNER
+---------------------
+
+The script "sqla_nose.py" is a front-end to Nose which manually associates
+the SQLAlchemy testing plugin with Nose at runtime.   This script can run the 
+tests without any reliance upon setuptools.   In 0.7 we'll be removing the 
+Nose plugin from setup, so this will be the way going forward to run tests:
+
+    $ python sqla_nose.py -v
+
 RUNNING INDIVIDUAL TESTS
 -------------------------
 Any directory of test modules can be run at once by specifying the directory

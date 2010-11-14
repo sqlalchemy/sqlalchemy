@@ -259,6 +259,7 @@ class QueryTest(TestBase):
         )
         
         concat = ("test: " + users.c.user_name).label('thedata')
+        print select([concat]).order_by("thedata")
         eq_(
             select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
@@ -397,6 +398,7 @@ class QueryTest(TestBase):
     
     @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
     @testing.fails_on("oracle", "neither % nor %% are accepted")
+    @testing.fails_on("informix", "neither % nor %% are accepted")
     @testing.fails_on("+pg8000", "can't interpret result column from '%%'")
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
@@ -661,7 +663,7 @@ class QueryTest(TestBase):
             "This result object is closed.",
             result.fetchone
         )
-        
+
     def test_result_case_sensitivity(self):
         """test name normalization for result sets."""
         
@@ -1179,6 +1181,7 @@ class CompoundTest(TestBase):
     @testing.fails_on('firebird', "has trouble extracting anonymous column from union subquery")
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', 'FIXME: unknown')
+    @testing.fails_on('informix', "FIXME: unknown (maybe the second alias isn't allows)")
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),

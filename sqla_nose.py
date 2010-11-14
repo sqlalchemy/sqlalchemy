@@ -2,28 +2,20 @@
 """
 nose runner script.
 
-Only use this script if setuptools is not available, i.e. such as
-on Python 3K.  Otherwise consult README.unittests for the 
-recommended methods of running tests.
+This script is a front-end to "nosetests" which doesn't
+require that SQLA's testing plugin be installed via setuptools.
 
 """
+import sys
+
 try:
-    import sqlalchemy
+    from sqlalchemy_nose.noseplugin import NoseSQLAlchemy
 except ImportError:
     from os import path
-    import sys
-    sys.path.append(path.join(path.dirname(__file__), 'lib'))
+    sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
+    from sqlalchemy_nose.noseplugin import NoseSQLAlchemy
 
 import nose
-from sqlalchemy.test.noseplugin import NoseSQLAlchemy
-from sqlalchemy.util import py3k
-
 
 if __name__ == '__main__':
-    if py3k:
-        # this version breaks verbose output,
-        # but is the only API that nose3 currently supports
-        nose.main(plugins=[NoseSQLAlchemy()])
-    else:
-        # this is the "correct" API
-        nose.main(addplugins=[NoseSQLAlchemy()])
+    nose.main(addplugins=[NoseSQLAlchemy()])

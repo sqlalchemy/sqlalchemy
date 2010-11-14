@@ -278,14 +278,15 @@ def _coerce_config(configuration, prefix):
                    for key in configuration
                    if key.startswith(prefix))
     for option, type_ in (
-        ('convert_unicode', bool),
+        ('convert_unicode', util.bool_or_str('force')),
         ('pool_timeout', int),
-        ('echo', bool),
-        ('echo_pool', bool),
+        ('echo', util.bool_or_str('debug')),
+        ('echo_pool', util.bool_or_str('debug')),
         ('pool_recycle', int),
         ('pool_size', int),
         ('max_overflow', int),
         ('pool_threadlocal', bool),
+        ('use_native_unicode', bool),
     ):
         util.coerce_kw_type(options, option, type_)
     return options

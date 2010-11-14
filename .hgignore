@@ -4,3 +4,7 @@ syntax:regexp
 .pyc$
 .orig$
 .egg-info
+.*,cover
+\.coverage
+\.DS_Store
+test.cfg

@@ -640,9 +640,11 @@ class OracleDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
-        self.implicit_returning = self.server_version_info > (10, ) and \
-                                        self.__dict__.get('implicit_returning', True)
-
+        self.implicit_returning = self.__dict__.get(
+                                    'implicit_returning',
+                                    self.server_version_info > (10, )
+                                    )
+        
         if self._is_oracle_8:
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
