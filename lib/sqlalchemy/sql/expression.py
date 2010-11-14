@@ -29,13 +29,15 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc #, types as sqltypes
+from sqlalchemy import util, exc
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, sql_util, sqltypes = None, None, None
-DefaultDialect = None
+functions = util.importlater("sqlalchemy.sql", "functions")
+sqlutil = util.importlater("sqlalchemy.sql", "util")
+sqltypes = util.importlater("sqlalchemy", "types")
+default = util.importlater("sqlalchemy.engine", "default")
 
 __all__ = [
     'Alias', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
@@ -45,8 +47,8 @@ __all__ = [
     'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
     'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
     'literal', 'literal_column', 'not_', 'null', 'or_', 'outparam',
-    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'union',
-    'union_all', 'update', ]
+    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'type_coerce',
+    'union', 'union_all', 'update', ]
 
 PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
 
@@ -666,6 +668,54 @@ def tuple_(*expr):
     
     """
     return _Tuple(*expr)
+
+def type_coerce(expr, type_):
+    """Coerce the given expression into the given type, on the Python side only.
+    
+    :func:`.type_coerce` is roughly similar to :func:.`cast`, except no
+    "CAST" expression is rendered - the given type is only applied towards
+    expression typing and against received result values.
+    
+    e.g.::
+    
+        from sqlalchemy.types import TypeDecorator
+        import uuid
+        
+        class AsGuid(TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    return str(value)
+                else:
+                    return None
+            
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    return uuid.UUID(value)
+                else:
+                    return None
+        
+        conn.execute(
+            select([type_coerce(mytable.c.ident, AsGuid)]).\\
+                    where(
+                        type_coerce(mytable.c.ident, AsGuid) == 
+                        uuid.uuid3(uuid.NAMESPACE_URL, 'bar')
+                    )
+        )            
+    
+    """
+    if hasattr(expr, '__clause_expr__'):
+        return type_coerce(expr.__clause_expr__())
+        
+    elif not isinstance(expr, Visitable):
+        if expr is None:
+            return null()
+        else:
+            return literal(expr, type_=type_)
+    else:
+        return _Label(None, expr, type_=type_)
+    
     
 def label(name, obj):
     """Return a :class:`_Label` object for the
@@ -909,9 +959,6 @@ class _FunctionGenerator(object):
         o = self.opts.copy()
         o.update(kwargs)
         if len(self.__names) == 1:
-            global functions
-            if functions is None:
-                from sqlalchemy.sql import functions
             func = getattr(functions, self.__names[-1].lower(), None)
             if func is not None and \
                     isinstance(func, type) and \
@@ -1157,10 +1204,7 @@ class ClauseElement(Visitable):
         dictionary.
         
         """
-        global sql_util
-        if sql_util is None:
-            from sqlalchemy.sql import util as sql_util
-        return sql_util.Annotated(self, values)
+        return sqlutil.Annotated(self, values)
 
     def _deannotate(self):
         """return a copy of this ClauseElement with an empty annotations
@@ -1341,10 +1385,7 @@ class ClauseElement(Visitable):
                 dialect = self.bind.dialect
                 bind = self.bind
             else:
-                global DefaultDialect
-                if DefaultDialect is None:
-                    from sqlalchemy.engine.default import DefaultDialect
-                dialect = DefaultDialect()
+                dialect = default.DefaultDialect()
         compiler = self._compiler(dialect, bind=bind, **kw)
         compiler.compile()
         return compiler
@@ -1852,17 +1893,19 @@ class ColumnElement(ClauseElement, _CompareMixin):
         descending selectable.
 
         """
-
-        if name:
-            co = ColumnClause(name, selectable, type_=getattr(self,
-                              'type', None))
+        if name is None:
+            name = self.anon_label
+            # TODO: may want to change this to anon_label,
+            # or some value that is more useful than the
+            # compiled form of the expression
+            key = str(self)
         else:
-            name = str(self)
-            co = ColumnClause(self.anon_label, selectable,
-                              type_=getattr(self, 'type', None))
-        
+            key = name
+            
+        co = ColumnClause(name, selectable, type_=getattr(self,
+                          'type', None))
         co.proxies = [self]
-        selectable.columns[name] = co
+        selectable.columns[key] = co
         return co
 
     def compare(self, other, use_proxies=False, equivalents=None, **kw):
@@ -2104,10 +2147,7 @@ class FromClause(Selectable):
         
         """
 
-        global sql_util
-        if sql_util is None:
-            from sqlalchemy.sql import util as sql_util
-        return sql_util.ClauseAdapter(alias).traverse(self)
+        return sqlutil.ClauseAdapter(alias).traverse(self)
 
     def correspond_on_equivalents(self, column, equivalents):
         """Return corresponding_column for the given column, or if None
@@ -2199,7 +2239,7 @@ class FromClause(Selectable):
     def _reset_exported(self):
         """delete memoized collections when a FromClause is cloned."""
 
-        for attr in '_columns', '_primary_key_foreign_keys', \
+        for attr in '_columns', '_primary_key', '_foreign_keys', \
             'locate_all_froms':
             self.__dict__.pop(attr, None)
 
@@ -3048,10 +3088,7 @@ class Join(FromClause):
         columns = [c for c in self.left.columns] + \
                         [c for c in self.right.columns]
 
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
-        self._primary_key.extend(sql_util.reduce_columns(
+        self._primary_key.extend(sqlutil.reduce_columns(
                 (c for c in columns if c.primary_key), self.onclause))
         self._columns.update((col._label, col) for col in columns)
         self._foreign_keys.update(itertools.chain(
@@ -3068,14 +3105,11 @@ class Join(FromClause):
         return self.left, self.right, self.onclause
 
     def _match_primaries(self, left, right):
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
         if isinstance(left, Join):
             left_right = left.right
         else:
             left_right = None
-        return sql_util.join_condition(left, right, a_subset=left_right)
+        return sqlutil.join_condition(left, right, a_subset=left_right)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
         """Create a :class:`Select` from this :class:`Join`.
@@ -3095,11 +3129,8 @@ class Join(FromClause):
           underlying :func:`select()` function.
 
         """
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
         if fold_equivalents:
-            collist = sql_util.folded_equivalents(self)
+            collist = sqlutil.folded_equivalents(self)
         else:
             collist = [self.left, self.right]
 
@@ -3683,8 +3714,7 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, element):
         self.element = element
-        cols = list(element.c)
-        self.type = cols[0].type
+        self.type = element._scalar_type()
 
     @property
     def columns(self):
@@ -3735,7 +3765,10 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             self.selects.append(s.self_group(self))
 
         _SelectBaseMixin.__init__(self, **kwargs)
-
+    
+    def _scalar_type(self):
+        return self.selects[0]._scalar_type()
+        
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -3908,6 +3941,11 @@ class Select(_SelectBaseMixin, FromClause):
 
         return froms
 
+    def _scalar_type(self):
+        elem = self._raw_columns[0]
+        cols = list(elem._select_iterable)
+        return cols[0].type
+
     @property
     def froms(self):
         """Return the displayed list of FromClause elements."""
@@ -3915,16 +3953,21 @@ class Select(_SelectBaseMixin, FromClause):
         return self._get_display_froms()
     
     @_generative
-    def with_hint(self, selectable, text, dialect_name=None):
+    def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given selectable to this
         :class:`Select`.
         
-        The text of the hint is written specific to a specific backend, and
-        typically uses Python string substitution syntax to render the name
-        of the table or alias, such as for Oracle::
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the given :class:`.Table` or :class:`.Alias` passed as the
+        *selectable* argument. The dialect implementation
+        typically uses Python string substitution syntax
+        with the token ``%(name)s`` to render the name of
+        the table or alias. E.g. when using Oracle, the
+        following::
         
-            select([mytable]).with_hint(mytable, "+ index(%(name)s
-            ix_mytable)")
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)")
             
         Would render SQL as::
         
@@ -3934,13 +3977,11 @@ class Select(_SelectBaseMixin, FromClause):
         hint to a particular backend. Such as, to add hints for both Oracle
         and Sybase simultaneously::
         
-            select([mytable]).\
-                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
         
         """
-        if not dialect_name:
-            dialect_name = '*'
         self._hints = self._hints.union({(selectable, dialect_name):text})
         
     @property

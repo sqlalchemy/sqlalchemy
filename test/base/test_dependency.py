@@ -84,10 +84,16 @@ class DependencySortTest(TestBase):
             (node4, node1),
             ]
         allitems = self._nodes_from_tuples(tuples)
-        assert_raises(exc.CircularDependencyError, list,
-                      topological.sort(tuples, allitems))
 
-        # TODO: test find_cycles
+        try:
+            list(topological.sort(tuples, allitems))
+            assert False
+        except exc.CircularDependencyError, err:
+            eq_(err.cycles, set(['node1', 'node3', 'node2', 'node5',
+                'node4']))
+            eq_(err.edges, set([('node3', 'node1'), ('node4', 'node1'),
+                ('node2', 'node3'), ('node1', 'node2'), 
+                ('node4','node5'), ('node5', 'node4')]))
 
     def test_raise_on_cycle_two(self):
 
@@ -101,10 +107,15 @@ class DependencySortTest(TestBase):
         tuples = [(node1, node2), (node3, node1), (node2, node4),
                   (node3, node2), (node2, node3)]
         allitems = self._nodes_from_tuples(tuples)
-        assert_raises(exc.CircularDependencyError, list,
-                      topological.sort(tuples, allitems))
 
-        # TODO: test find_cycles
+        try:
+            list(topological.sort(tuples, allitems))
+            assert False
+        except exc.CircularDependencyError, err:
+            eq_(err.cycles, set(['node1', 'node3', 'node2']))
+            eq_(err.edges, set([('node3', 'node1'), ('node2', 'node3'),
+                ('node3', 'node2'), ('node1', 'node2'), 
+                ('node2','node4')]))
 
     def test_raise_on_cycle_three(self):
         question, issue, providerservice, answer, provider = \

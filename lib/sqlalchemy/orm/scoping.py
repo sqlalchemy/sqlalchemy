@@ -6,7 +6,8 @@
 
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, \
-                            to_list, get_cls_kwargs, deprecated
+                            to_list, get_cls_kwargs, deprecated,\
+                            warn
 from sqlalchemy.orm import (
     EXT_CONTINUE, MapperExtension, class_mapper, object_session
     )
@@ -45,7 +46,8 @@ class ScopedSession(object):
             scope = kwargs.pop('scope', False)
             if scope is not None:
                 if self.registry.has():
-                    raise sa_exc.InvalidRequestError("Scoped session is already present; no new arguments may be specified.")
+                    raise sa_exc.InvalidRequestError("Scoped session is already present; "
+                                                    "no new arguments may be specified.")
                 else:
                     sess = self.session_factory(**kwargs)
                     self.registry.set(sess)
@@ -85,6 +87,11 @@ class ScopedSession(object):
 
     def configure(self, **kwargs):
         """reconfigure the sessionmaker used by this ScopedSession."""
+        
+        if self.registry.has():
+            warn('At least one scoped session is already present. '
+                      ' configure() can not affect sessions that have '
+                      'already been created.')
 
         self.session_factory.configure(**kwargs)
 

@@ -254,7 +254,7 @@ For example, below we create a new :class:`~sqlalchemy.orm.query.Query` object w
 .. sourcecode:: python+sql
 
     {sql}>>> our_user = session.query(User).filter_by(name='ed').first() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
-    BEGIN
+    BEGIN (implicit)
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
     ('ed', 'Ed Jones', 'edspassword')
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
@@ -325,7 +325,7 @@ If we look at Ed's ``id`` attribute, which earlier was ``None``, it now has a va
 .. sourcecode:: python+sql
 
     {sql}>>> ed_user.id # doctest: +NORMALIZE_WHITESPACE
-    BEGIN
+    BEGIN (implicit)
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.id = ?
@@ -373,7 +373,7 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_u
     {stop}
 
     {sql}>>> ed_user.name #doctest: +NORMALIZE_WHITESPACE
-    BEGIN
+    BEGIN (implicit)
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.id = ?
@@ -824,7 +824,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
 .. sourcecode:: python+sql
 
     {sql}>>> jack = session.query(User).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    BEGIN
+    BEGIN (implicit)
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
@@ -1196,6 +1196,7 @@ Below, we use ``mapper()`` to reconfigure an ORM mapping for ``User`` and ``Addr
 
 .. sourcecode:: python+sql
 
+    >>> users_table = User.__table__
     >>> mapper(User, users_table, properties={    # doctest: +ELLIPSIS
     ...     'addresses':relationship(Address, backref='user', cascade="all, delete, delete-orphan")
     ... })
@@ -1211,7 +1212,7 @@ Now when we load Jack (below using ``get()``, which loads by primary key), remov
 
     # load Jack by primary key
     {sql}>>> jack = session.query(User).get(5)    #doctest: +NORMALIZE_WHITESPACE
-    BEGIN
+    BEGIN (implicit)
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.id = ?
@@ -1436,6 +1437,8 @@ Further Reference
 
 Query Reference: :ref:`query_api_toplevel`
 
-Further information on mapping setups are in :ref:`datamapping_toplevel`.
+Mapper Reference: :ref:`mapper_config_toplevel`
 
-Further information on working with Sessions: :ref:`session_toplevel`.
+Relationship Reference: :ref:`relationship_config_toplevel`
+
+Session Reference: :ref:`session_toplevel`.

@@ -1069,7 +1069,7 @@ class Connection(Connectable):
 
     def _begin_impl(self):
         if self._echo:
-            self.engine.logger.info("BEGIN")
+            self.engine.logger.info("BEGIN (implicit)")
         try:
             self.engine.dialect.do_begin(self.connection)
         except Exception, e:
@@ -2090,6 +2090,14 @@ class RowProxy(BaseRowProxy):
     def itervalues(self):
         return iter(self)
 
+try:
+    # Register RowProxy with Sequence, 
+    # so sequence protocol is implemented
+    from collections import Sequence
+    Sequence.register(RowProxy)
+except ImportError:
+    pass
+    
 
 class ResultMetaData(object):
     """Handle cursor.description, applying additional info from an execution
@@ -2249,7 +2257,7 @@ class ResultProxy(object):
         self.context = context
         self.dialect = context.dialect
         self.closed = False
-        self.cursor = context.cursor
+        self.cursor = self._saved_cursor = context.cursor
         self.connection = context.root_connection
         self._echo = self.connection._echo and \
                         context.engine._should_log_debug()
@@ -2304,12 +2312,12 @@ class ResultProxy(object):
         regardless of database backend.
         
         """
-        return self.cursor.lastrowid
+        return self._saved_cursor.lastrowid
     
     def _cursor_description(self):
         """May be overridden by subclasses."""
         
-        return self.cursor.description
+        return self._saved_cursor.description
             
     def _autoclose(self):
         """called by the Connection to autoclose cursors that have no pending

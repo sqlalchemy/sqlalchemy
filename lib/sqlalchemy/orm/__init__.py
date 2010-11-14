@@ -84,6 +84,7 @@ __all__ = (
     'eagerload',
     'eagerload_all',
     'extension',
+    'immediateload',
     'join',
     'joinedload',
     'joinedload_all',
@@ -255,7 +256,19 @@ def relationship(argument, secondary=None, **kwargs):
 
       * ``all`` - shorthand for "save-update,merge, refresh-expire,
         expunge, delete"
-
+    
+    :param cascade_backrefs=True:
+      a boolean value indicating if the ``save-update`` cascade should
+      operate along a backref event.   When set to ``False`` on a
+      one-to-many relationship that has a many-to-one backref, assigning
+      a persistent object to the many-to-one attribute on a transient object
+      will not add the transient to the session.  Similarly, when
+      set to ``False`` on a many-to-one relationship that has a one-to-many
+      backref, appending a persistent object to the one-to-many collection
+      on a transient object will not add the transient to the session.
+      
+      ``cascade_backrefs`` is new in 0.6.5.
+      
     :param collection_class:
       a class or callable that returns a new list-holding object. will
       be used in place of a plain list for storing elements.
@@ -323,7 +336,12 @@ def relationship(argument, secondary=None, **kwargs):
       ``select``.  Values include:
 
       * ``select`` - items should be loaded lazily when the property is first
-        accessed, using a separate SELECT statement.
+        accessed, using a separate SELECT statement, or identity map
+        fetch for simple many-to-one references.
+        
+      * ``immediate`` - items should be loaded as the parents are loaded,
+        using a separate SELECT statement, or identity map fetch for
+        simple many-to-one references.  (new as of 0.6.5)
 
       * ``joined`` - items should be loaded "eagerly" in the same query as
         that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
@@ -945,11 +963,24 @@ def compile_mappers():
         m.compile()
 
 def clear_mappers():
-    """Remove all mappers that have been created thus far.
-
-    The mapped classes will return to their initial "unmapped" state and can
-    be re-mapped with new mappers.
-
+    """Remove all mappers from all classes.
+    
+    This function removes all instrumentation from classes and disposes
+    of their associated mappers.  Once called, the classes are unmapped 
+    and can be later re-mapped with new mappers.
+    
+    :func:`.clear_mappers` is *not* for normal use, as there is literally no
+    valid usage for it outside of very specific testing scenarios. Normally,
+    mappers are permanent structural components of user-defined classes, and
+    are never discarded independently of their class.  If a mapped class itself
+    is garbage collected, its mapper is automatically disposed of as well. As
+    such, :func:`.clear_mappers` is only for usage in test suites that re-use
+    the same classes with different mappings, which is itself an extremely rare
+    use case - the only such use case is in fact SQLAlchemy's own test suite,
+    and possibly the test suites of other ORM extension libraries which 
+    intend to test various combinations of mapper construction upon a fixed
+    set of classes.
+    
     """
     mapperlib._COMPILE_MUTEX.acquire()
     try:
@@ -1110,7 +1141,7 @@ def subqueryload_all(*keys):
         query.options(subqueryload_all(User.orders, Order.items,
         Item.keywords))
 
-    See also:  :func:`joinedload_all`, :func:`lazyload`
+    See also:  :func:`joinedload_all`, :func:`lazyload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy="subquery", chained=True)
@@ -1122,7 +1153,7 @@ def lazyload(*keys):
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    See also:  :func:`eagerload`, :func:`subqueryload`
+    See also:  :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=True)
@@ -1133,11 +1164,24 @@ def noload(*keys):
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
+    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
 
+def immediateload(*keys):
+    """Return a ``MapperOption`` that will convert the property of the given 
+    name into an immediate load.
+    
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
+    
+    New as of verison 0.6.5.
+    
+    """
+    return strategies.EagerLazyOption(keys, lazy='immediate')
+    
 def contains_alias(alias):
     """Return a ``MapperOption`` that will indicate to the query that
     the main table has been aliased.

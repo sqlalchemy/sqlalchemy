@@ -1,3 +1,5 @@
+# TODO: should be using the sys. catalog with SQL Server, not information schema
+
 from sqlalchemy import Table, MetaData, Column, ForeignKey
 from sqlalchemy.types import String, Unicode, Integer, TypeDecorator
 

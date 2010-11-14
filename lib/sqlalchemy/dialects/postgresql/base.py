@@ -171,7 +171,7 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     """
     __visit_name__ = 'ARRAY'
     
-    def __init__(self, item_type, mutable=True):
+    def __init__(self, item_type, mutable=True, as_tuple=False):
         """Construct an ARRAY.
 
         E.g.::
@@ -186,9 +186,14 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           ``ARRAY(ARRAY(Integer))`` or such. The type mapping figures out on
           the fly
 
-        :param mutable: Defaults to True: specify whether lists passed to this
+        :param mutable=True: Specify whether lists passed to this
           class should be considered mutable. If so, generic copy operations
           (typically used by the ORM) will shallow-copy values.
+        
+        :param as_tuple=False: Specify whether return results should be converted
+          to tuples from lists.  DBAPIs such as psycopg2 return lists by default.
+          When tuples are returned, the results are hashable.   This flag can only
+          be set to ``True`` when ``mutable`` is set to ``False``. (new in 0.6.5)
           
         """
         if isinstance(item_type, ARRAY):
@@ -198,7 +203,12 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
             item_type = item_type()
         self.item_type = item_type
         self.mutable = mutable
-
+        if mutable and as_tuple:
+            raise exc.ArgumentError(
+                "mutable must be set to False if as_tuple is True."
+            )
+        self.as_tuple = as_tuple
+        
     def copy_value(self, value):
         if value is None:
             return None
@@ -224,7 +234,8 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     def adapt(self, impltype):
         return impltype(
             self.item_type,
-            mutable=self.mutable
+            mutable=self.mutable,
+            as_tuple=self.as_tuple
         )
         
     def bind_processor(self, dialect):
@@ -252,19 +263,28 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         if item_proc:
             def convert_item(item):
                 if isinstance(item, list):
-                    return [convert_item(child) for child in item]
+                    r = [convert_item(child) for child in item]
+                    if self.as_tuple:
+                        r = tuple(r)
+                    return r
                 else:
                     return item_proc(item)
         else:
             def convert_item(item):
                 if isinstance(item, list):
-                    return [convert_item(child) for child in item]
+                    r = [convert_item(child) for child in item]
+                    if self.as_tuple:
+                        r = tuple(r)
+                    return r
                 else:
                     return item
         def process(value):
             if value is None:
                 return value
-            return [convert_item(item) for item in value]
+            r = [convert_item(item) for item in value]
+            if self.as_tuple:
+                r = tuple(r)
+            return r
         return process
 PGArray = ARRAY
 
@@ -1033,28 +1053,32 @@ class PGDialect(default.DefaultDialect):
             else:
                 args = ()
             
-            if attype in self.ischema_names:
-                coltype = self.ischema_names[attype]
-            elif attype in enums:
-                enum = enums[attype]
-                coltype = ENUM
-                if "." in attype:
-                    kwargs['schema'], kwargs['name'] = attype.split('.')
-                else:
-                    kwargs['name'] = attype
-                args = tuple(enum['labels'])
-            elif attype in domains:
-                domain = domains[attype]
-                if domain['attype'] in self.ischema_names:
+            while True:
+                if attype in self.ischema_names:
+                    coltype = self.ischema_names[attype]
+                    break
+                elif attype in enums:
+                    enum = enums[attype]
+                    coltype = ENUM
+                    if "." in attype:
+                        kwargs['schema'], kwargs['name'] = attype.split('.')
+                    else:
+                        kwargs['name'] = attype
+                    args = tuple(enum['labels'])
+                    break
+                elif attype in domains:
+                    domain = domains[attype]
+                    attype = domain['attype']
                     # A table can't override whether the domain is nullable.
                     nullable = domain['nullable']
                     if domain['default'] and not default:
                         # It can, however, override the default 
                         # value, but can't set it to null.
                         default = domain['default']
-                    coltype = self.ischema_names[domain['attype']]
-            else:
-                coltype = None
+                    continue
+                else:
+                    coltype = None
+                    break
                 
             if coltype:
                 coltype = coltype(*args, **kwargs)

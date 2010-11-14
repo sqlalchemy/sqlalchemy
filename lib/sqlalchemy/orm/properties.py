@@ -311,7 +311,7 @@ class DescriptorProperty(MapperProperty):
         pass
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return (None, None)
+        return None, None, None
 
     def merge(self, session, source_state, source_dict, 
                 dest_state, dest_dict, load, _recursive):
@@ -447,8 +447,10 @@ class RelationshipProperty(StrategizedProperty):
         comparator_factory=None,
         single_parent=False, innerjoin=False,
         doc=None,
+        cascade_backrefs=True,
         load_on_pending=False,
-        strategy_class=None, _local_remote_pairs=None, query_class=None):
+        strategy_class=None, _local_remote_pairs=None, 
+        query_class=None):
 
         self.uselist = uselist
         self.argument = argument
@@ -463,6 +465,7 @@ class RelationshipProperty(StrategizedProperty):
         self._user_defined_foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
+        self.cascade_backrefs = cascade_backrefs
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks
@@ -868,7 +871,8 @@ class RelationshipProperty(StrategizedProperty):
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located
                     instance_mapper = instance_state.manager.mapper
-                    yield (c, instance_mapper, instance_state)
+                    yield c, instance_mapper, instance_state
+            
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _compile_mappers=False)
@@ -1482,6 +1486,3 @@ class RelationshipProperty(StrategizedProperty):
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
 
-mapper.ColumnProperty = ColumnProperty
-mapper.RelationshipProperty = RelationshipProperty
-mapper.ConcreteInheritedProperty = ConcreteInheritedProperty

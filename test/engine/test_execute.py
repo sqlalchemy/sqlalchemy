@@ -34,9 +34,10 @@ class ExecuteTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on_everything_except('firebird', 'maxdb', 
-                                        'sqlite', '+pyodbc', 
-                                        '+mxodbc', '+zxjdbc', 'mysql+oursql')
+    @testing.fails_on_everything_except('firebird', 'maxdb',
+                                        'sqlite', '+pyodbc',
+                                        '+mxodbc', '+zxjdbc', 'mysql+oursql',
+                                        'informix+informixdb')
     def test_raw_qmark(self):
         for conn in testing.db, testing.db.connect():
             conn.execute('insert into users (user_id, user_name) '
@@ -103,7 +104,7 @@ class ExecuteTest(TestBase):
                     'horse'), (4, 'sally')]
             conn.execute('delete from users')
 
-    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle')
+    @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle', 'informix+informixdb')
     def test_raw_named(self):
         for conn in testing.db, testing.db.connect():
             conn.execute('insert into users (user_id, user_name) '
@@ -183,7 +184,7 @@ class CompiledCacheTest(TestBase):
         cached_conn.execute(ins, {'user_name':'u2'})
         cached_conn.execute(ins, {'user_name':'u3'})
         assert len(cache) == 1
-        eq_(conn.execute("select count(1) from users").scalar(), 3)
+        eq_(conn.execute("select count(*) from users").scalar(), 3)
     
 class LogTest(TestBase):
     def _test_logger(self, eng, eng_name, pool_name):
@@ -288,6 +289,38 @@ class ResultProxyTest(TestBase):
             assert_raises(AssertionError, t.delete().execute)
         finally:
             engine.dialect.execution_ctx_cls = execution_ctx_cls
+    
+    @testing.requires.python26
+    def test_rowproxy_is_sequence(self):
+        import collections
+        from sqlalchemy.engine import RowProxy
+
+        row = RowProxy(object(), ['value'], [None], {'key'
+                         : (None, 0), 0: (None, 0)})
+        assert isinstance(row, collections.Sequence)
+    
+    @testing.requires.cextensions
+    def test_row_c_sequence_check(self):
+        import csv
+        import collections
+        from StringIO import StringIO
+        
+        metadata = MetaData()
+        metadata.bind = 'sqlite://'
+        users = Table('users', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(40)),
+        )
+        users.create()
+
+        users.insert().execute(name='Test')
+        row = users.select().execute().fetchone()
+
+        s = StringIO()
+        writer = csv.writer(s)
+        # csv performs PySequenceCheck call
+        writer.writerow(row)
+        assert s.getvalue().strip() == '1,Test'
         
 class ProxyConnectionTest(TestBase):
 

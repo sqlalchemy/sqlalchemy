@@ -26,7 +26,11 @@ class ArgumentError(SQLAlchemyError):
 
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected"""
-
+    def __init__(self, message, cycles, edges):
+        message += ": cycles: %r all edges: %r" % (cycles, edges)
+        SQLAlchemyError.__init__(self, message)
+        self.cycles = cycles
+        self.edges = edges
 
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""

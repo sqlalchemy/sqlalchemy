@@ -16,9 +16,7 @@ from sqlalchemy import util, topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import _state_mapper
-
-# Load lazily
-_state_session = None
+session = util.importlater("sqlalchemy.orm", "session")
 
 class UOWEventHandler(interfaces.AttributeExtension):
     """An event handler added to all relationship attributes which handles
@@ -33,15 +31,18 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def append(self, state, item, initiator):
         # process "save_update" cascade rules for when 
         # an instance is appended to the list of another instance
-        sess = _state_session(state)
+
+        sess = session._state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
-            if prop.cascade.save_update and item not in sess:
+            if prop.cascade.save_update and \
+                (prop.cascade_backrefs or self.key == initiator.key) and \
+                item not in sess:
                 sess.add(item)
         return item
         
     def remove(self, state, item, initiator):
-        sess = _state_session(state)
+        sess = session._state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             # expunge pending orphans
@@ -55,11 +56,13 @@ class UOWEventHandler(interfaces.AttributeExtension):
         # is attached to another instance
         if oldvalue is newvalue:
             return newvalue
-        sess = _state_session(state)
+
+        sess = session._state_session(state)
         if sess:
             prop = _state_mapper(state).get_property(self.key)
             if newvalue is not None and \
                 prop.cascade.save_update and \
+                (prop.cascade_backrefs or self.key == initiator.key) and \
                 newvalue not in sess:
                 sess.add(newvalue)
             if prop.cascade.delete_orphan and \

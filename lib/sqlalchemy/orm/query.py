@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
-    join as orm_join,with_parent
+    join as orm_join,with_parent, _attr_as_key
     )
 
 
@@ -90,6 +90,7 @@ class Query(object):
     _only_load_props = None
     _refresh_state = None
     _from_obj = ()
+    _select_from_entity = None
     _filter_aliases = None
     _from_obj_alias = None
     _joinpath = _joinpoint = util.frozendict()
@@ -266,7 +267,8 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
-        return self._entity_zero().entity_zero
+        return self._select_from_entity or \
+            self._entity_zero().entity_zero
 
     def _extension_zero(self):
         ent = self._entity_zero()
@@ -283,8 +285,9 @@ class Query(object):
 
     def _joinpoint_zero(self):
         return self._joinpoint.get(
-                            '_joinpoint_entity',
-                            self._entity_zero().entity_zero)
+            '_joinpoint_entity',
+            self._mapper_zero()
+        )
 
     def _mapper_zero_or_none(self):
         if not getattr(self._entities[0], 'primary_entity', False):
@@ -422,8 +425,8 @@ class Query(object):
         return stmt._annotate({'_halt_adapt': True})
 
     def subquery(self):
-        """return the full SELECT statement represented by this Query, 
-        embedded within an Alias.
+        """return the full SELECT statement represented by this :class:`.Query`, 
+        embedded within an :class:`.Alias`.
 
         Eager JOIN generation within the query is disabled.
 
@@ -433,7 +436,33 @@ class Query(object):
 
         """
         return self.enable_eagerloads(False).statement.alias()
+    
+    def label(self, name):
+        """Return the full SELECT statement represented by this :class:`.Query`, converted 
+        to a scalar subquery with a label of the given name.
+        
+        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
+        
+        New in 0.6.5.
 
+        """
+        
+        return self.enable_eagerloads(False).statement.label(name)
+
+
+    def as_scalar(self):
+        """Return the full SELECT statement represented by this :class:`.Query`, converted 
+        to a scalar subquery.
+        
+        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
+
+        New in 0.6.5.
+        
+        """
+        
+        return self.enable_eagerloads(False).statement.as_scalar()
+        
+        
     def __clause_element__(self):
         return self.enable_eagerloads(False).with_labels().statement
 
@@ -495,7 +524,12 @@ class Query(object):
         
     @property
     def whereclause(self):
-        """The WHERE criterion for this Query."""
+        """A readonly attribute which returns the current WHERE criterion for this Query.
+        
+        This returned value is a SQL expression construct, or ``None`` if no 
+        criterion has been established.
+        
+        """
         return self._criterion
 
     @_generative()
@@ -750,7 +784,36 @@ class Query(object):
             # end Py2K
         except StopIteration:
             return None
+    
+    @_generative()
+    def with_entities(self, *entities):
+        """Return a new :class:`.Query` replacing the SELECT list with the given
+        entities.
+        
+        e.g.::
 
+            # Users, filtered on some arbitrary criterion
+            # and then ordered by related email address
+            q = session.query(User).\\
+                        join(User.address).\\
+                        filter(User.name.like('%ed%')).\\
+                        order_by(Address.email)
+
+            # given *only* User.id==5, Address.email, and 'q', what 
+            # would the *next* User in the result be ?
+            subq = q.with_entities(Address.email).\\
+                        order_by(None).\\
+                        filter(User.id==5).\\
+                        subquery()
+            q = q.join((subq, subq.c.email < Address.email)).\\
+                        limit(1)
+
+        New in 0.6.5.
+        
+        """
+        self._set_entities(entities)
+        
+        
     @_generative()
     def add_columns(self, *column):
         """Add one or more column expressions to the list 
@@ -807,7 +870,7 @@ class Query(object):
                 opt.process_query(self)
 
     @_generative()
-    def with_hint(self, selectable, text, dialect_name=None):
+    def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given entity or selectable to 
         this :class:`Query`.
         
@@ -1168,7 +1231,7 @@ class Query(object):
                 arg1, arg2 = arg1
             else:
                 arg2 = None
-
+            
             # determine onclause/right_entity.  there
             # is a little bit of legacy behavior still at work here
             # which means they might be in either order.  may possibly
@@ -1249,7 +1312,7 @@ class Query(object):
                         (left, right))
             
         left_mapper, left_selectable, left_is_aliased = _entity_info(left)
-        right_mapper, right_selectable, is_aliased_class = _entity_info(right)
+        right_mapper, right_selectable, right_is_aliased = _entity_info(right)
 
         if right_mapper and prop and \
                 not right_mapper.common_parent(prop.mapper):
@@ -1278,7 +1341,7 @@ class Query(object):
             need_adapter = True
 
         aliased_entity = right_mapper and \
-                            not is_aliased_class and \
+                            not right_is_aliased and \
                             (
                                 right_mapper.with_polymorphic or
                                 isinstance(
@@ -1341,8 +1404,16 @@ class Query(object):
                         )
                     )
         
-        join_to_left = not is_aliased_class and not left_is_aliased
-
+        # this is an overly broad assumption here, but there's a 
+        # very wide variety of situations where we rely upon orm.join's
+        # adaption to glue clauses together, with joined-table inheritance's
+        # wide array of variables taking up most of the space.
+        # Setting the flag here is still a guess, so it is a bug
+        # that we don't have definitive criterion to determine when 
+        # adaption should be enabled (or perhaps that we're even doing the 
+        # whole thing the way we are here).
+        join_to_left = not right_is_aliased and not left_is_aliased
+            
         if self._from_obj and left_selectable is not None:
             replace_clause_index, clause = sql_util.find_join_source(
                                                     self._from_obj, 
@@ -1350,10 +1421,16 @@ class Query(object):
             if clause is not None:
                 # the entire query's FROM clause is an alias of itself (i.e.
                 # from_self(), similar). if the left clause is that one,
-                # ensure it aliases to the left side.
+                # ensure it adapts to the left side.
                 if self._from_obj_alias and clause is self._from_obj[0]:
                     join_to_left = True
-
+                
+                # An exception case where adaption to the left edge is not
+                # desirable.  See above note on join_to_left.
+                if join_to_left and isinstance(clause, expression.Join) and \
+                    sql_util.clause_is_present(left_selectable, clause):
+                    join_to_left = False
+                    
                 clause = orm_join(clause, 
                                     right, 
                                     onclause, isouter=outerjoin, 
@@ -1402,20 +1479,23 @@ class Query(object):
 
     @_generative(_no_clauseelement_condition)
     def select_from(self, *from_obj):
-        """Set the `from_obj` parameter of the query and return the newly
-        resulting ``Query``.  This replaces the table which this Query selects
-        from with the given table.
+        """Set the FROM clause of this :class:`.Query` explicitly.
         
-        ``select_from()`` also accepts class arguments. Though usually not
-        necessary, can ensure that the full selectable of the given mapper is
-        applied, e.g. for joined-table mappers.
-
+        Sending a mapped class or entity here effectively replaces the
+        "left edge" of any calls to :meth:`.Query.join`, when no 
+        joinpoint is otherwise established - usually, the default "join
+        point" is the leftmost entity in the :class:`.Query` object's
+        list of entities to be selected.
+        
+        Mapped entities or plain :class:`.Table` or other selectables
+        can be sent here which will form the default FROM clause.
+        
         """
-        
         obj = []
         for fo in from_obj:
             if _is_mapped_class(fo):
                 mapper, selectable, is_aliased_class = _entity_info(fo)
+                self._select_from_entity = fo
                 obj.append(selectable)
             elif not isinstance(fo, expression.FromClause):
                 raise sa_exc.ArgumentError(
@@ -1424,7 +1504,7 @@ class Query(object):
                 obj.append(fo)  
                 
         self._set_select_from(*obj)
-
+        
     def __getitem__(self, item):
         if isinstance(item, slice):
             start, stop, step = util.decode_slice(item)
@@ -1695,10 +1775,8 @@ class Query(object):
                         query_entity.row_processor(self, context, custom_rows)
                         for query_entity in self._entities
                     ])
-
-        if not single_entity:
-            labels = [l for l in labels if l]
-
+            
+        
         while True:
             context.progress = {}
             context.partials = {}
@@ -2007,8 +2085,7 @@ class Query(object):
         Also, the ``before_delete()`` and ``after_delete()``
         :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
         called from this method. For a delete hook here, use the
-        ``after_bulk_delete()``
-        :class:`~sqlalchemy.orm.interfaces.MapperExtension` method.
+        :meth:`.SessionExtension.after_bulk_delete()` event hook.
 
         """
         #TODO: lots of duplication and ifs - probably needs to be 
@@ -2133,8 +2210,7 @@ class Query(object):
         Also, the ``before_update()`` and ``after_update()``
         :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
         called from this method. For an update hook here, use the
-        ``after_bulk_update()``
-        :class:`~sqlalchemy.orm.interfaces.SessionExtension` method.
+        :meth:`.SessionExtension.after_bulk_update()` event hook.
 
         """
 
@@ -2180,7 +2256,7 @@ class Query(object):
 
                 value_evaluators = {}
                 for key,value in values.iteritems():
-                    key = expression._column_as_key(key)
+                    key = _attr_as_key(key)
                     value_evaluators[key] = evaluator_compiler.process(
                                         expression._literal_as_binds(value))
             except evaluator.UnevaluatableError:
@@ -2235,7 +2311,7 @@ class Query(object):
                 if identity_key in session.identity_map:
                     session.expire(
                                 session.identity_map[identity_key], 
-                                [expression._column_as_key(k) for k in values]
+                                [_attr_as_key(k) for k in values]
                                 )
 
         for ext in session.extensions:

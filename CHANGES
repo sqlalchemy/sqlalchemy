@@ -3,14 +3,126 @@
 =======
 CHANGES
 =======
+0.6.6
+=====
+- orm
+  - Fixed bug whereby a non-"mutable" attribute modified event
+    which occurred on an object that was clean except for
+    preceding mutable attribute changes would fail to strongly
+    reference itself in the identity map. This would cause the
+    object to be garbage collected, losing track of any changes
+    that weren't previously saved in the "mutable changes"
+    dictionary.
+
+  - "innerjoin" flag doesn't take effect along the chain
+    of joinedload() joins if a previous join in that chain
+    is an outer join, thus allowing primary rows without
+    a referenced child row to be correctly returned
+    in results.  [ticket:1954]
+
+  - Fixed bug regarding "subqueryload" strategy whereby
+    strategy would fail if the entity was an aliased()
+    construct.  [ticket:1964]
+
+- sql
+  - The 'info' attribute of Column is copied during 
+    Column.copy(), i.e. as occurs when using columns
+    in declarative mixins.  [ticket:1967]
+    
+- engine
+  - Implemented sequence check capability for the C 
+    version of RowProxy, as well as 2.7 style 
+    "collections.Sequence" registration for RowProxy.
+    [ticket:1871]
+    
+- mysql
+  - Fixed error handling for Jython + zxjdbc, such that 
+    has_table() property works again.  Regression from
+    0.6.3 (we don't have a Jython buildbot, sorry)
+    [ticket:1960]
+
+- sqlite
+  - The REFERENCES clause in a CREATE TABLE that includes
+    a remote schema to another table with the same schema 
+    name now renders the remote name without
+    the schema clause, as required by SQLite.  [ticket:1851]
+
+  - On the same theme, the REFERENCES clause in a CREATE TABLE
+    that includes a remote schema to a *different* schema
+    than that of the parent table doesn't render at all,
+    as cross-schema references do not appear to be supported.
+    
 0.6.5
 =====
 - orm
+  - Added a new "lazyload" option "immediateload".  
+    Issues the usual "lazy" load operation automatically
+    as the object is populated.   The use case
+    here is when loading objects to be placed in
+    an offline cache, or otherwise used after
+    the session isn't available, and straight 'select'
+    loading, not 'joined' or 'subquery', is desired.
+    [ticket:1914]
+  
+  - New Query methods: query.label(name), query.as_scalar(),
+    return the query's statement as a scalar subquery
+    with /without label [ticket:1920];
+    query.with_entities(*ent), replaces the SELECT list of 
+    the query with new entities. 
+    Roughly equivalent to a generative form of query.values()
+    which accepts mapped entities as well as column 
+    expressions.
+    
   - Fixed recursion bug which could occur when moving
     an object from one reference to another, with 
     backrefs involved, where the initiating parent
     was a subclass (with its own mapper) of the 
     previous parent.
+
+  - Fixed a regression in 0.6.4 which occurred if you 
+    passed an empty list to "include_properties" on 
+    mapper() [ticket:1918]
+  
+  - Fixed labeling bug in Query whereby the NamedTuple
+    would mis-apply labels if any of the column
+    expressions were un-labeled.
+    
+  - Patched a case where query.join() would adapt the
+    right side to the right side of the left's join
+    inappropriately [ticket:1925]
+
+  - Query.select_from() has been beefed up to help
+    ensure that a subsequent call to query.join()
+    will use the select_from() entity, assuming it's
+    a mapped entity and not a plain selectable, 
+    as the default "left" side, not the first entity 
+    in the Query object's list of entities.
+    
+  - The exception raised by Session when it is used
+    subsequent to a subtransaction rollback (which is what
+    happens when a flush fails in autocommit=False mode) has
+    now been reworded (this is the "inactive due to a
+    rollback in a subtransaction" message). In particular,
+    if the rollback was due to an exception during flush(),
+    the message states this is the case, and reiterates the
+    string form of the original exception that occurred
+    during flush. If the session is closed due to explicit
+    usage of subtransactions (not very common), the message
+    just states this is the case.
+
+  - The exception raised by Mapper when repeated requests to
+    its initialization are made after initialization already
+    failed no longer assumes the "hasattr" case, since
+    there's other scenarios in which this message gets
+    emitted, and the message also does not compound onto
+    itself multiple times - you get the same message for
+    each attempt at usage. The misnomer "compiles" is being
+    traded out for "initialize".
+
+  - Fixed bug in query.update() where 'evaluate' or 'fetch'
+    expiration would fail if the column expression key was
+    a class attribute with a different keyname as the 
+    actual column name.  [ticket:1935]
     
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated
@@ -37,12 +149,21 @@ CHANGES
     object is loaded, so backrefs aren't available until
     after a flush. The flag is only intended for very
     specific use cases.
-    
-  - Slight improvement to the behavior of "passive_updates=False"
-    when placed only on the many-to-one side of a
-    relationship; documentation has been clarified
-    that passive_updates=False should really be on the 
-    one-to-many side.
+  
+  - Another new flag on relationship(), cascade_backrefs,
+    disables the "save-update" cascade when the event was
+    initiated on the "reverse" side of a bidirectional 
+    relationship.   This is a cleaner behavior so that
+    many-to-ones can be set on a transient object without
+    it getting sucked into the child object's session,
+    while still allowing the forward collection to 
+    cascade.   We *might* default this to False in 0.7.
+      
+  - Slight improvement to the behavior of
+    "passive_updates=False" when placed only on the
+    many-to-one side of a relationship; documentation has
+    been clarified that passive_updates=False should really
+    be on the one-to-many side.
 
   - Placing passive_deletes=True on a many-to-one emits
     a warning, since you probably intended to put it on
@@ -58,7 +179,166 @@ CHANGES
     the "where type in (x, y, z)" is placed on the outside
     of the query only, instead of repeatedly.   May make
     some more adjustments to this.
-        
+
+  - scoped_session emits a warning when configure() is 
+    called if a Session is already present (checks only the
+    current thread) [ticket:1924]
+
+  - reworked the internals of mapper.cascade_iterator() to
+    cut down method calls by about 9% in some circumstances.
+    [ticket:1932]
+    
+- sql
+   - Fixed bug in TypeDecorator whereby the dialect-specific
+     type was getting pulled in to generate the DDL for a 
+     given type, which didn't always return the correct result.
+     
+   - TypeDecorator can now have a fully constructed type
+     specified as its "impl", in addition to a type class.
+
+   - TypeDecorator will now place itself as the resulting
+     type for a binary expression where the type coercion
+     rules would normally return its impl type - previously,
+     a copy of the impl type would be returned which would
+     have the TypeDecorator embedded into it as the "dialect"
+     impl, this was probably an unintentional way of achieving
+     the desired effect.
+
+   - TypeDecorator.load_dialect_impl() returns "self.impl" by
+     default, i.e. not the dialect implementation type of 
+     "self.impl".   This to support compilation correctly.  
+     Behavior can be user-overridden in exactly the same way 
+     as before to the same effect.
+
+   - Added type_coerce(expr, type_) expression element.  
+     Treats the given expression as the given type when evaluating
+     expressions and processing result rows, but does not 
+     affect the generation of SQL, other than an anonymous
+     label.
+     
+   - Table.tometadata() now copies Index objects associated
+     with the Table as well.
+
+   - Table.tometadata() issues a warning if the given Table 
+     is already present in the target MetaData - the existing
+     Table object is returned.
+
+   - An informative error message is raised if a Column 
+     which has not yet been assigned a name, i.e. as in 
+     declarative, is used in a context where it is
+     exported to the columns collection of an enclosing
+     select() construct, or if any construct involving
+     that column is compiled before its name is 
+     assigned.
+
+   - as_scalar(), label() can be called on a selectable
+     which contains a Column that is not yet named.
+     [ticket:1862]
+
+   - Fixed recursion overflow which could occur when operating
+     with two expressions both of type "NullType", but
+     not the singleton NULLTYPE instance. [ticket:1907]
+     
+- declarative
+   - @classproperty (soon/now @declared_attr) takes effect for 
+     __mapper_args__, __table_args__, __tablename__ on 
+     a base class that is not a mixin, as well as mixins.
+     [ticket:1922]
+
+   - @classproperty 's official name/location for usage
+     with declarative is sqlalchemy.ext.declarative.declared_attr.
+     Same thing, but moving there since it is more of a
+     "marker" that's specific to declararative, 
+     not just an attribute technique.  [ticket:1915]
+
+   - Fixed bug whereby columns on a mixin wouldn't propagate
+     correctly to a single-table, or joined-table,
+     inheritance scheme where the attribute name is
+     different than that of the column. [ticket:1930],
+     [ticket:1931].
+
+   - A mixin can now specify a column that overrides 
+     a column of the same name associated with a superclass.
+     Thanks to Oystein Haaland.
+     
+- engine
+   
+   - Fixed a regression in 0.6.4 whereby the change that
+     allowed cursor errors to be raised consistently broke
+     the result.lastrowid accessor.   Test coverage has
+     been added for result.lastrowid.   Note that lastrowid
+     is only supported by Pysqlite and some MySQL drivers,
+     so isn't super-useful in the general case.
+   
+   - the logging message emitted by the engine when
+     a connection is first used is now "BEGIN (implicit)" 
+     to emphasize that DBAPI has no explicit begin().
+   
+   - added "views=True" option to metadata.reflect(), 
+     will add the list of available views to those
+     being reflected.  [ticket:1936]
+
+   - engine_from_config() now accepts 'debug' for 
+     'echo', 'echo_pool', 'force' for 'convert_unicode',
+     boolean values for 'use_native_unicode'.  
+     [ticket:1899]
+
+- postgresql
+   - Added "as_tuple" flag to ARRAY type, returns results
+     as tuples instead of lists to allow hashing.
+
+   - Fixed bug which prevented "domain" built from a 
+     custom type such as "enum" from being reflected.
+     [ticket:1933]
+
+- mysql
+   - Fixed bug involving reflection of CURRENT_TIMESTAMP 
+     default used with ON UPDATE clause, thanks to 
+     Taavi Burns [ticket:1940]
+
+- oracle
+   - The implicit_retunring argument to create_engine()
+     is now honored regardless of detected version of 
+     Oracle.  Previously, the flag would be forced
+     to False if server version info was < 10.
+     [ticket:1878]
+     
+- mssql
+   - Fixed reflection bug which did not properly handle
+     reflection of unknown types.  [ticket:1946]
+    
+   - Fixed bug where aliasing of tables with "schema" would
+     fail to compile properly.  [ticket:1943]
+
+   - Rewrote the reflection of indexes to use sys. 
+     catalogs, so that column names of any configuration
+     (spaces, embedded commas, etc.) can be reflected.
+     Note that reflection of indexes requires SQL 
+     Server 2005 or greater.  [ticket:1770]
+     
+   - mssql+pymssql dialect now honors the "port" portion
+     of the URL instead of discarding it.  [ticket:1952]
+     
+- informix
+   - *Major* cleanup / modernization of the Informix 
+     dialect for 0.6, courtesy Florian Apolloner. 
+     [ticket:1906]
+
+- tests
+   - the NoseSQLAlchemyPlugin has been moved to a
+     new package "sqlalchemy_nose" which installs
+     along with "sqlalchemy".  This so that the "nosetests"
+     script works as always but also allows the 
+     --with-coverage option to turn on coverage before
+     SQLAlchemy modules are imported, allowing coverage
+     to work correctly.
+      
+- misc
+   - CircularDependencyError now has .cycles and .edges
+     members, which are the set of elements involved in
+     one or more cycles, and the set of edges as 2-tuples.  
+     [ticket:1890]
+     
 0.6.4
 =====
 - orm

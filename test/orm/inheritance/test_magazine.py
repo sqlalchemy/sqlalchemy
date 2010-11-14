@@ -187,17 +187,18 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
 
         pub = Publication(name='Test')
         issue = Issue(issue=46,publication=pub)
-
         location = Location(ref='ABC',name='London',issue=issue)
 
         page_size = PageSize(name='A4',width=210,height=297)
 
         magazine = Magazine(location=location,size=page_size)
+
         page = ClassifiedPage(magazine=magazine,page_no=1)
         page2 = MagazinePage(magazine=magazine,page_no=2)
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
         session.add(pub)
 
+        
         session.flush()
         print [x for x in session]
         session.expunge_all()

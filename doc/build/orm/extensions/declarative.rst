@@ -8,6 +8,8 @@ API Reference
 
 .. autofunction:: declarative_base
 
+.. autoclass:: declared_attr
+
 .. autofunction:: _declarative_constructor
 
 .. autofunction:: has_inherited_table

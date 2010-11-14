@@ -259,6 +259,7 @@ class QueryTest(TestBase):
         )
         
         concat = ("test: " + users.c.user_name).label('thedata')
+        print select([concat]).order_by("thedata")
         eq_(
             select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
@@ -397,6 +398,7 @@ class QueryTest(TestBase):
     
     @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
     @testing.fails_on("oracle", "neither % nor %% are accepted")
+    @testing.fails_on("informix", "neither % nor %% are accepted")
     @testing.fails_on("+pg8000", "can't interpret result column from '%%'")
     @testing.emits_warning('.*now automatically escapes.*')
     def test_percents_in_text(self):
@@ -619,6 +621,16 @@ class QueryTest(TestBase):
         eq_(r[users.c.user_name], 'jack')
         eq_(r.user_name, 'jack')
 
+    @testing.requires.dbapi_lastrowid
+    def test_native_lastrowid(self):
+        r = testing.db.execute(
+            users.insert(),
+            {'user_id':1, 'user_name':'ed'}
+        )
+        
+        eq_(r.lastrowid, 1)
+        
+        
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
@@ -651,7 +663,7 @@ class QueryTest(TestBase):
             "This result object is closed.",
             result.fetchone
         )
-        
+
     def test_result_case_sensitivity(self):
         """test name normalization for result sets."""
         
@@ -785,7 +797,10 @@ class QueryTest(TestBase):
         )
         shadowed.create(checkfirst=True)
         try:
-            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', _parent='Hidden parent', _row='Hidden row')
+            shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', 
+                                            row='Without light there is no shadow', 
+                                            _parent='Hidden parent', 
+                                            _row='Hidden row')
             r = shadowed.select(shadowed.c.shadow_id==1).execute().first()
             self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
             self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')
@@ -1166,6 +1181,7 @@ class CompoundTest(TestBase):
     @testing.fails_on('firebird', "has trouble extracting anonymous column from union subquery")
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.fails_on('sqlite', 'FIXME: unknown')
+    @testing.fails_on('informix', "FIXME: unknown (maybe the second alias isn't allows)")
     def test_union_all(self):
         e = union_all(
             select([t1.c.col3]),

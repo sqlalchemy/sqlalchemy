@@ -1025,7 +1025,7 @@ constraints generally should only refer to the column to which they are
 placed, while table level constraints can refer to any columns in the table.
 
 Note that some databases do not actively support check constraints such as
-MySQL and SQLite.
+MySQL.
 
 .. sourcecode:: python+sql
 
@@ -1061,7 +1061,7 @@ Other Constraint Classes
 
 .. autoclass:: ColumnCollectionConstraint
     :show-inheritance:
-    
+
 .. autoclass:: PrimaryKeyConstraint
     :show-inheritance:
 
@@ -1299,7 +1299,7 @@ other DDL elements except it accepts a string which is the text to be emitted:
 
 A more comprehensive method of creating libraries of DDL constructs is to use
 custom compilation - see :ref:`sqlalchemy.ext.compiler_toplevel` for
- details.
+details.
 
 .. _schema_api_ddl:
 

@@ -92,6 +92,25 @@ def find_columns(clause):
     visitors.traverse(clause, {}, {'column':cols.add})
     return cols
 
+def clause_is_present(clause, search):
+    """Given a target clause and a second to search within, return True
+    if the target is plainly present in the search without any
+    subqueries or aliases involved.
+    
+    Basically descends through Joins.
+    
+    """
+
+    stack = [search]
+    while stack:
+        elem = stack.pop()
+        if clause is elem:
+            return True
+        elif isinstance(elem, expression.Join):
+            stack.extend((elem.left, elem.right))
+    return False
+    
+    
 def bind_values(clause):
     """Return an ordered list of "bound" values in the given clause.
 

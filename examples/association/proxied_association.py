@@ -4,7 +4,7 @@ the usage of the associationproxy extension."""
 from datetime import datetime
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, DateTime, Float, ForeignKey, and_)
-from sqlalchemy.orm import mapper, relationship, create_session
+from sqlalchemy.orm import mapper, relationship, Session
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
 engine = create_engine('sqlite://')
@@ -55,14 +55,14 @@ mapper(OrderItem, orderitems, properties={
     'item':relationship(Item, lazy='joined')
 })
 
-session = create_session()
+session = Session()
 
 # create our catalog
 session.add_all([Item('SA T-Shirt', 10.99),
                  Item('SA Mug', 6.50),
                  Item('SA Hat', 8.99),
                  Item('MySQL Crowbar', 16.99)])
-session.flush()
+session.commit()
 
 # function to return items
 def item(name):
@@ -81,9 +81,7 @@ order.items.append(item('SA Mug'))
 order.items.append(item('SA Hat'))
 
 session.add(order)
-session.flush()
-
-session.expunge_all()
+session.commit()
 
 # query the order, print items
 order = session.query(Order).filter_by(customer_name='john smith').one()

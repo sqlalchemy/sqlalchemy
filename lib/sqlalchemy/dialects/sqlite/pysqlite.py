@@ -68,12 +68,13 @@ pysqlite's driver does not.   Additionally, SQLAlchemy does not at
 this time automatically render the "cast" syntax required for the 
 freestanding functions "current_timestamp" and "current_date" to return
 datetime/date types natively.   Unfortunately, pysqlite 
-does not provide the standard DBAPI types in `cursor.description`,
+does not provide the standard DBAPI types in ``cursor.description``,
 leaving SQLAlchemy with no way to detect these types on the fly 
 without expensive per-row type checks.
 
-Usage of PARSE_DECLTYPES can be forced if one configures 
-"native_datetime=True" on create_engine()::
+Keeping in mind that pysqlite's parsing option is not recommended,
+nor should be necessary, for use with SQLAlchemy, usage of PARSE_DECLTYPES 
+can be forced if one configures "native_datetime=True" on create_engine()::
 
     engine = create_engine('sqlite://', 
                     connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},

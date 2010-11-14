@@ -32,7 +32,9 @@ import re, inspect
 from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
 
-URL = None
+sqlutil = util.importlater("sqlalchemy.sql", "util")
+url = util.importlater("sqlalchemy.engine", "url")
+
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
@@ -467,18 +469,34 @@ class Table(SchemaItem, expression.TableClause):
         
         """
 
-        try:
-            if schema is RETAIN_SCHEMA:
-                schema = self.schema
-            key = _get_table_key(self.name, schema)
+        if schema is RETAIN_SCHEMA:
+            schema = self.schema
+        key = _get_table_key(self.name, schema)
+        if key in metadata.tables:
+            util.warn("Table '%s' already exists within the given "
+                      "MetaData - not copying." % self.description)
             return metadata.tables[key]
-        except KeyError:
-            args = []
-            for c in self.columns:
-                args.append(c.copy(schema=schema))
-            for c in self.constraints:
-                args.append(c.copy(schema=schema))
-            return Table(self.name, metadata, schema=schema, *args)
+
+        args = []
+        for c in self.columns:
+            args.append(c.copy(schema=schema))
+        for c in self.constraints:
+            args.append(c.copy(schema=schema))
+        table = Table(
+            self.name, metadata, schema=schema,
+            *args, **self.kwargs
+            )
+        for index in self.indexes:
+            # skip indexes that would be generated
+            # by the 'index' flag on Column
+            if len(index.columns) == 1 and \
+                list(index.columns)[0].index:
+                continue
+            Index(index.name,
+                  unique=index.unique,
+                  *[table.c[col] for col in index.columns.keys()],
+                  **index.kwargs)
+        return table
 
 class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""
@@ -890,6 +908,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 server_default=self.server_default,
                 onupdate=self.onupdate,
                 server_onupdate=self.server_onupdate,
+                info=self.info,
                 *args
                 )
         if hasattr(self, '_table_events'):
@@ -906,6 +925,10 @@ class Column(SchemaItem, expression.ColumnClause):
         
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
+        if name is None and self.name is None:
+            raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
+                    " with this Column object until it's 'name' has "
+                    "been assigned.")
         c = self._constructor(
             name or self.name, 
             self.type, 
@@ -1959,11 +1982,7 @@ class MetaData(SchemaItem):
     def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
 
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
+        if isinstance(bind, (basestring, url.URL)):
             from sqlalchemy import create_engine
             self._bind = create_engine(bind)
         else:
@@ -1987,10 +2006,9 @@ class MetaData(SchemaItem):
         """Returns a list of ``Table`` objects sorted in order of
         dependency.
         """
-        from sqlalchemy.sql.util import sort_tables
-        return sort_tables(self.tables.itervalues())
+        return sqlutil.sort_tables(self.tables.itervalues())
         
-    def reflect(self, bind=None, schema=None, only=None):
+    def reflect(self, bind=None, schema=None, views=False, only=None):
         """Load all available table definitions from the database.
 
         Automatically creates ``Table`` entries in this ``MetaData`` for any
@@ -2006,7 +2024,10 @@ class MetaData(SchemaItem):
 
         :param schema:
           Optional, query and reflect tables from an alterate schema.
-
+        
+        :param views:
+          If True, also reflect views.
+          
         :param only:
           Optional.  Load only a sub-set of available named tables.  May be
           specified as a sequence of names or a callable.
@@ -2035,6 +2056,11 @@ class MetaData(SchemaItem):
 
         available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
+        if views:
+            available.update(
+                bind.dialect.get_view_names(conn or bind, schema)
+            )
+            
         current = set(self.tables.iterkeys())
 
         if only is None:
@@ -2177,11 +2203,7 @@ class ThreadLocalMetaData(MetaData):
     def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
 
-        global URL
-        if URL is None:
-            from sqlalchemy.engine.url import URL
-
-        if isinstance(bind, (basestring, URL)):
+        if isinstance(bind, (basestring, url.URL)):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:

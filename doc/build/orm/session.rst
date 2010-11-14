@@ -346,6 +346,8 @@ The :func:`~sqlalchemy.orm.session.Session.add` operation **cascades** along
 the ``save-update`` cascade. For more details see the section
 :ref:`unitofwork_cascades`.
 
+.. _unitofwork_merging:
+
 Merging
 -------
 
@@ -358,17 +360,17 @@ follows::
 
 When given an instance, it follows these steps:
 
-  * It examines the primary key of the instance. If it's present, it attempts
-    to load an instance with that primary key (or pulls from the local
-    identity map).
-  * If there's no primary key on the given instance, or the given primary key
-    does not exist in the database, a new instance is created.
-  * The state of the given instance is then copied onto the located/newly
-    created instance.
-  * The operation is cascaded to associated child items along the ``merge``
-    cascade. Note that all changes present on the given instance, including
-    changes to collections, are merged.
-  * The new instance is returned.
+* It examines the primary key of the instance. If it's present, it attempts
+  to load an instance with that primary key (or pulls from the local
+  identity map).
+* If there's no primary key on the given instance, or the given primary key
+  does not exist in the database, a new instance is created.
+* The state of the given instance is then copied onto the located/newly
+  created instance.
+* The operation is cascaded to associated child items along the ``merge``
+  cascade. Note that all changes present on the given instance, including
+  changes to collections, are merged.
+* The new instance is returned.
 
 With :func:`~sqlalchemy.orm.session.Session.merge`, the given instance is not
 placed within the session, and can be associated with a different session or
@@ -377,19 +379,22 @@ taking the state of any kind of object structure without regard for its
 origins or current session associations and placing that state within a
 session. Here's two examples:
 
-  * An application which reads an object structure from a file and wishes to
-    save it to the database might parse the file, build up the structure, and
-    then use :func:`~sqlalchemy.orm.session.Session.merge` to save it to the
-    database, ensuring that the data within the file is used to formulate the
-    primary key of each element of the structure. Later, when the file has
-    changed, the same process can be re-run, producing a slightly different
-    object structure, which can then be ``merged`` in again, and the
-    :class:`~sqlalchemy.orm.session.Session` will automatically update the
-    database to reflect those changes.
-  * A web application stores mapped entities within an HTTP session object.
-    When each request starts up, the serialized data can be merged into the
-    session, so that the original entity may be safely shared among requests
-    and threads.
+* An application which reads an object structure from a file and wishes to
+  save it to the database might parse the file, build up the
+  structure, and then use
+  :func:`~sqlalchemy.orm.session.Session.merge` to save it
+  to the database, ensuring that the data within the file is
+  used to formulate the primary key of each element of the
+  structure. Later, when the file has changed, the same
+  process can be re-run, producing a slightly different
+  object structure, which can then be ``merged`` in again,
+  and the :class:`~sqlalchemy.orm.session.Session` will
+  automatically update the database to reflect those
+  changes.
+* A web application stores mapped entities within an HTTP session object.
+  When each request starts up, the serialized data can be
+  merged into the session, so that the original entity may
+  be safely shared among requests and threads.
 
 :func:`~sqlalchemy.orm.session.Session.merge` is frequently used by
 applications which implement their own second level caches. This refers to an
@@ -406,6 +411,133 @@ all of its children may not contain any pending changes, and it's also of
 course possible that newer information in the database will not be present on
 the merged object, since no load is issued.
 
+Merge Tips
+~~~~~~~~~~
+
+:meth:`~.Session.merge` is an extremely useful method for many purposes.  However,
+it deals with the intricate border between objects that are transient/detached and
+those that are persistent, as well as the automated transferrence of state.  
+The wide variety of scenarios that can present themselves here often require a
+more careful approach to the state of objects.   Common problems with merge usually involve 
+some unexpected state regarding the object being passed to :meth:`~.Session.merge`.   
+
+Lets use the canonical example of the User and Address objects::
+
+    class User(Base):
+        __tablename__ = 'user'
+    
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50), nullable=False)
+        addresses = relationship("Address", backref="user")
+    
+    class Address(Base):
+        __tablename__ = 'address'
+
+        id = Column(Integer, primary_key=True)
+        email_address = Column(String(50), nullable=False)
+        user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+        
+Assume a ``User`` object with one ``Address``, already persistent::
+
+    >>> u1 = User(name='ed', addresses=[Address(email_address='ed@ed.com')])
+    >>> session.add(u1)
+    >>> session.commit()
+    
+We now create ``a1``, an object outside the session, which we'd like
+to merge on top of the existing ``Address``::
+
+    >>> existing_a1 = u1.addresses[0]
+    >>> a1 = Address(id=existing_a1.id)
+
+A surprise would occur if we said this::
+    
+    >>> a1.user = u1
+    >>> a1 = session.merge(a1)
+    >>> session.commit()
+    sqlalchemy.orm.exc.FlushError: New instance <Address at 0x1298f50> 
+    with identity key (<class '__main__.Address'>, (1,)) conflicts with 
+    persistent instance <Address at 0x12a25d0>
+
+Why is that ?   We weren't careful with our cascades.   The assignment
+of ``a1.user`` to a persistent object cascaded to the backref of ``User.addresses``
+and made our ``a1`` object pending, as though we had added it.   Now we have
+*two* ``Address`` objects in the session::
+
+    >>> a1 = Address()
+    >>> a1.user = u1
+    >>> a1 in session
+    True
+    >>> existing_a1 in session
+    True
+    >>> a1 is existing_a1
+    False
+
+Above, our ``a1`` is already pending in the session. The
+subsequent :meth:`~.Session.merge` operation essentially
+does nothing. Cascade can be configured via the ``cascade``
+option on :func:`.relationship`, although in this case it
+would mean removing the ``save-update`` cascade from the
+``User.addresses`` relationship - and usually, that behavior
+is extremely convenient.  The solution here would usually be to not assign
+``a1.user`` to an object already persistent in the target
+session.
+
+Note that a new :func:`.relationship` option introduced in 0.6.5, 
+``cascade_backrefs=False``, will also prevent the ``Address`` from
+being added to the session via the ``a1.user = u1`` assignment.
+
+Further detail on cascade operation is at :ref:`unitofwork_cascades`.
+
+Another example of unexpected state::
+
+    >>> a1 = Address(id=existing_a1.id, user_id=u1.id)
+    >>> assert a1.user is None
+    >>> True
+    >>> a1 = session.merge(a1)
+    >>> session.commit()
+    sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id 
+    may not be NULL
+
+Here, we accessed a1.user, which returned its default value
+of ``None``, which as a result of this access, has been placed in the ``__dict__`` of 
+our object ``a1``.  Normally, this operation creates no change event, 
+so the ``user_id`` attribute takes precedence during a
+flush.  But when we merge the ``Address`` object into the session, the operation
+is equivalent to::
+
+    >>> existing_a1.id = existing_a1.id
+    >>> existing_a1.user_id = u1.id
+    >>> existing_a1.user = None
+    
+Where above, both ``user_id`` and ``user`` are assigned to, and change events
+are emitted for both.  The ``user`` association
+takes precedence, and None is applied to ``user_id``, causing a failure.
+
+Most :meth:`~.Session.merge` issues can be examined by first checking - 
+is the object prematurely in the session ? 
+
+.. sourcecode:: python+sql
+    
+    >>> a1 = Address(id=existing_a1, user_id=user.id)
+    >>> assert a1 not in session
+    >>> a1 = session.merge(a1)
+    
+Or is there state on the object that we don't want ?   Examining ``__dict__``
+is a quick way to check::
+
+    >>> a1 = Address(id=existing_a1, user_id=user.id)
+    >>> a1.user
+    >>> a1.__dict__
+    {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x1298d10>, 
+        'user_id': 1, 
+        'id': 1, 
+        'user': None}
+    >>> # we don't want user=None merged, remove it
+    >>> del a1.user
+    >>> a1 = session.merge(a1)
+    >>> # success
+    >>> session.commit()
+    
 Deleting
 --------
 
@@ -729,7 +861,7 @@ relationship between an ``Order`` and an ``Item`` object.
 The ``customer`` relationship specifies only the "save-update" cascade value,
 indicating most operations will not be cascaded from a parent ``Order``
 instance to a child ``User`` instance except for the
-:func:`~sqlalchemy.orm.session.Session.add` operation. "save-update" cascade
+:func:`~sqlalchemy.orm.session.Session.add` operation. ``save-update`` cascade
 indicates that an :func:`~sqlalchemy.orm.session.Session.add` on the parent
 will cascade to all child items, and also that items added to a parent which
 is already present in a session will also be added to that same session.
@@ -751,6 +883,45 @@ objects to allow attachment to only one parent at a time.
 
 The default value for ``cascade`` on :func:`~sqlalchemy.orm.relationship` is
 ``save-update, merge``.
+
+``save-update`` cascade also takes place on backrefs by default.   This means
+that, given a mapping such as this::
+
+    mapper(Order, order_table, properties={
+        'items' : relationship(Item, items_table, backref='order')
+    })
+
+If an ``Order`` is already in the session, and is assigned to the ``order``
+attribute of an ``Item``, the backref appends the ``Item`` to the ``orders``
+collection of that ``Order``, resulting in the ``save-update`` cascade taking
+place::
+
+    >>> o1 = Order()
+    >>> session.add(o1)
+    >>> o1 in session
+    True
+    
+    >>> i1 = Item()
+    >>> i1.order = o1
+    >>> i1 in o1.orders
+    True
+    >>> i1 in session
+    True
+    
+This behavior can be disabled as of 0.6.5 using the ``cascade_backrefs`` flag::
+
+    mapper(Order, order_table, properties={
+        'items' : relationship(Item, items_table, backref='order', 
+                                    cascade_backrefs=False)
+    })
+
+So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``orders``
+collection of ``o1``, but will not add ``i1`` to the session.   You can of
+course :func:`~.Session.add` ``i1`` to the session at a later point.   This option
+may be helpful for situations where an object needs to be kept out of a
+session until it's construction is completed, but still needs to be given
+associations to objects which are already persistent in the target session.
+
 
 .. _unitofwork_transaction:
 
@@ -825,6 +996,8 @@ statement::
         item1.foo = 'bar'
         item2.bar = 'foo'
 
+.. _session_begin_nested:
+
 Using SAVEPOINT
 ---------------
 
@@ -856,6 +1029,102 @@ When :func:`~sqlalchemy.orm.session.Session.begin_nested` is called, a
 session is expired, thus causing all subsequent attribute/instance access to
 reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
 before :func:`~sqlalchemy.orm.session.Session.begin_nested` was called.
+
+.. _session_subtransactions:
+
+Using Subtransactions
+---------------------
+
+A subtransaction, as offered by the ``subtransactions=True`` flag of :meth:`.Session.begin`,
+is a non-transactional, delimiting construct that
+allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
+It's purpose is to allow the construction of code that can function within a transaction
+both independently of any external code that starts a transaction,
+as well as within a block that has already demarcated a transaction.  By "non-transactional", we
+mean that no actual transactional dialogue with the database is generated by this flag beyond that of
+a single call to :meth:`~.Session.begin`, regardless of how many times the method
+is called within a transaction.
+
+The subtransaction feature is in fact intrinsic to any call to :meth:`~.Session.flush`, which uses
+it internally to ensure that the series of flush steps are enclosed within a transaction,
+regardless of the setting of ``autocommit`` or the presence of an existing transactional context.
+However, explicit usage of the ``subtransactions=True`` flag is generally only useful with an 
+application that uses the
+:class:`.Session` in "autocommit=True" mode, and calls :meth:`~.Session.begin` explicitly
+in order to demarcate transactions.  For this reason the subtransaction feature is not
+commonly used in an explicit way, except for apps that integrate SQLAlchemy-level transaction control with
+the transaction control of another library or subsystem.  For true, general purpose "nested" 
+transactions, where a rollback affects only a portion of the work which has proceeded, 
+savepoints should be used, documented in :ref:`session_begin_nested`.
+
+The feature is the ORM equivalent to the pattern described at :ref:`connections_nested_transactions`, 
+where any number of functions can call :meth:`.Connection.begin` and :meth:`.Transaction.commit`
+as though they are the initiator of the transaction, but in fact may be participating
+in an already ongoing transaction.
+
+As is the case with the non-ORM :class:`.Transaction` object,
+calling :meth:`.Session.rollback` rolls back the **entire**
+transaction, which was initiated by the first call to
+:meth:`.Session.begin` (whether this call was explicit by the
+end user, or implicit in an ``autocommit=False`` scenario).
+However, the :class:`.Session` still considers itself to be in a
+"partially rolled back" state until :meth:`.Session.rollback` is
+called explicitly for each call that was made to
+:meth:`.Session.begin`, where "partially rolled back" means that
+no further SQL operations can proceed until each level
+of the transaction has been acounted for, unless the :meth:`~.Session.close` method
+is called which cancels all transactional markers. For a full exposition on 
+the rationale for this,
+please see "`But why isn't the one automatic call to ROLLBACK
+enough ? Why must I ROLLBACK again?
+<http://www.sqlalchemy.org/trac/wiki/FAQ#ButwhyisnttheoneautomaticcalltoROLLBACKenoughWhymustIROLLBACKagain>`_".
+The general theme is that if subtransactions are used as intended, that is, as a means to nest multiple
+begin/commit pairs, the appropriate rollback calls naturally occur in any case, and allow the session's 
+nesting of transactional pairs to function in a simple and predictable way 
+without the need to guess as to what level is active.
+
+An example of ``subtransactions=True`` is nearly identical to
+that of the non-ORM technique. The nesting of transactions, as
+well as the natural presence of "rollback" for all transactions
+should an exception occur, is illustrated::
+
+    # method_a starts a transaction and calls method_b
+    def method_a(session):
+        session.begin(subtransactions=True) # open a transaction.  If there was
+                                            # no previous call to begin(), this will
+                                            # begin a real transaction (meaning, a 
+                                            # DBAPI connection is procured, which as
+                                            # per the DBAPI specification is in a transactional
+                                            # state ready to be committed or rolled back)
+        try:
+            method_b(session)
+            session.commit()  # transaction is committed here
+        except:
+            session.rollback() # rolls back the transaction
+            raise
+
+    # method_b also starts a transaction
+    def method_b(connection):
+        session.begin(subtransactions=True) # open a transaction - this 
+                                            # runs in the context of method_a()'s 
+                                            # transaction
+        try:
+            session.add(SomeObject('bat', 'lala'))
+            session.commit()  # transaction is not committed yet
+        except:
+            session.rollback() # rolls back the transaction, in this case
+                               # the one that was initiated in method_a().
+            raise
+
+    # create a Session and call method_a
+    session = Session(autocommit=True)
+    method_a(session)
+    session.close()
+
+Since the :meth:`.Session.flush` method uses a subtransaction, a failed flush
+will always issue a rollback which then affects the state of the outermost transaction (unless a SAVEPOINT
+is in use).   This forces the need to issue :meth:`~.Session.rollback` for the full operation
+before subsequent SQL operations can proceed.
 
 Enabling Two-Phase Commit
 -------------------------

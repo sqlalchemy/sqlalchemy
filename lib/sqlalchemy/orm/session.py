@@ -22,6 +22,7 @@ from sqlalchemy.orm.util import (
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity
+import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
@@ -105,13 +106,13 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        The full resolution is described in the ``get_bind()`` method of
        ``Session``. Usage looks like::
 
-        sess = Session(binds={
+        Session = sessionmaker(binds={
             SomeMappedClass: create_engine('postgresql://engine1'),
             somemapper: create_engine('postgresql://engine2'),
             some_table: create_engine('postgresql://engine3'),
             })
 
-      Also see the ``bind_mapper()`` and ``bind_table()`` methods.
+      Also see the :meth:`.Session.bind_mapper` and :meth:`.Session.bind_table` methods.
 
     :param \class_: Specify an alternate class other than
        ``sqlalchemy.orm.session.Session`` which should be used by the returned
@@ -142,8 +143,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        as returned by the ``query()`` method. Defaults to
        :class:`~sqlalchemy.orm.query.Query`.
 
-    :param twophase:  When ``True``, all transactions will be started using
-        :mod:`~sqlalchemy.engine_TwoPhaseTransaction`. During a ``commit()``,
+    :param twophase:  When ``True``, all transactions will be started as
+        a "two phase" transaction, i.e. using the "two phase" semantics
+        of the database in use along with an XID.  During a ``commit()``,
         after ``flush()`` has been issued for all attached databases, the
         ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
         be called. This allows each database to roll back the entire
@@ -206,7 +208,9 @@ class SessionTransaction(object):
       single: thread safety; SessionTransaction
 
     """
-
+    
+    _rollback_exception = None
+    
     def __init__(self, session, parent=None, nested=False):
         self.session = session
         self._connections = {}
@@ -229,9 +233,21 @@ class SessionTransaction(object):
     def _assert_is_active(self):
         self._assert_is_open()
         if not self._active:
-            raise sa_exc.InvalidRequestError(
-                "The transaction is inactive due to a rollback in a "
-                "subtransaction.  Issue rollback() to cancel the transaction.")
+            if self._rollback_exception:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "due to a previous exception during flush."
+                    " To begin a new transaction with this Session, "
+                    "first issue Session.rollback()."
+                    " Original exception was: %s"
+                    % self._rollback_exception
+                )
+            else:
+                raise sa_exc.InvalidRequestError(
+                    "This Session's transaction has been rolled back "
+                    "by a nested rollback() call.  To begin a new "
+                    "transaction, issue Session.rollback() first."
+                    )
 
     def _assert_is_open(self, error_msg="The transaction is closed"):
         if self.session is None:
@@ -288,14 +304,16 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+            _expire_state(s, s.dict, None,
+                          instance_dict=self.session.identity_map)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, s.dict, None, instance_dict=self.session.identity_map)
+                _expire_state(s, s.dict, None,
+                              instance_dict=self.session.identity_map)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -379,7 +397,7 @@ class SessionTransaction(object):
         self.close()
         return self._parent
 
-    def rollback(self):
+    def rollback(self, _capture_exception=False):
         self._assert_is_open()
 
         stx = self.session.transaction
@@ -397,6 +415,8 @@ class SessionTransaction(object):
                     transaction._deactivate()
 
         self.close()
+        if self._parent and _capture_exception:
+            self._parent._rollback_exception = sys.exc_info()[1]
         return self._parent
 
     def _rollback_impl(self):
@@ -415,7 +435,8 @@ class SessionTransaction(object):
     def close(self):
         self.session.transaction = self._parent
         if self._parent is None:
-            for connection, transaction, autoclose in set(self._connections.values()):
+            for connection, transaction, autoclose in \
+                set(self._connections.values()):
                 if autoclose:
                     connection.close()
                 else:
@@ -511,20 +532,13 @@ class Session(object):
         transaction or nested transaction, an error is raised, unless
         ``subtransactions=True`` or ``nested=True`` is specified.
 
-        The ``subtransactions=True`` flag indicates that this ``begin()`` can
-        create a subtransaction if a transaction is already in progress.  A
-        subtransaction is a non-transactional, delimiting construct that
-        allows matching begin()/commit() pairs to be nested together, with
-        only the outermost begin/commit pair actually affecting transactional
-        state.  When a rollback is issued, the subtransaction will directly
-        roll back the innermost real transaction, however each subtransaction
-        still must be explicitly rolled back to maintain proper stacking of
-        subtransactions.
-
-        If no transaction is in progress, then a real transaction is begun.
-
+        The ``subtransactions=True`` flag indicates that this :meth:`~.Session.begin` 
+        can create a subtransaction if a transaction is already in progress.  
+        For documentation on subtransactions, please see :ref:`session_subtransactions`.
+        
         The ``nested`` flag begins a SAVEPOINT transaction and is equivalent
-        to calling ``begin_nested()``.
+        to calling :meth:`~.Session.begin_nested`. For documentation on SAVEPOINT
+        transactions, please see :ref:`session_begin_nested`.
 
         """
         if self.transaction is not None:
@@ -546,10 +560,8 @@ class Session(object):
         The target database(s) must support SQL SAVEPOINTs or a
         SQLAlchemy-supported vendor implementation of the idea.
 
-        The nested transaction is a real transation, unlike a "subtransaction"
-        which corresponds to multiple ``begin()`` calls.  The next
-        ``rollback()`` or ``commit()`` call will operate upon this nested
-        transaction.
+        For documentation on SAVEPOINT
+        transactions, please see :ref:`session_begin_nested`.
 
         """
         return self.begin(nested=True)
@@ -572,9 +584,16 @@ class Session(object):
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
-
+        
         If no transaction is in progress, this method raises an
         InvalidRequestError.
+        
+        By default, the :class:`.Session` also expires all database
+        loaded state on all ORM-managed attributes after transaction commit.  
+        This so that subsequent operations load the most recent 
+        data from the database.   This behavior can be disabled using
+        the ``expire_on_commit=False`` option to :func:`.sessionmaker` or
+        the :class:`.Session` constructor.
 
         If a subtransaction is in effect (which occurs when begin() is called
         multiple times), the subtransaction will be closed, and the next call
@@ -1133,6 +1152,8 @@ class Session(object):
         This operation cascades to associated instances if the association is
         mapped with ``cascade="merge"``.
 
+        See :ref:`unitofwork_merging` for a detailed discussion of merging.
+        
         """
         if 'dont_load' in kw:
             load = not kw['dont_load']
@@ -1451,7 +1472,7 @@ class Session(object):
                 ext.after_flush(self, flush_context)
             transaction.commit()
         except:
-            transaction.rollback()
+            transaction.rollback(_capture_exception=True)
             raise
         
         flush_context.finalize_flush_changes()
@@ -1467,22 +1488,42 @@ class Session(object):
             ext.after_flush_postexec(self, flush_context)
 
     def is_modified(self, instance, include_collections=True, passive=False):
-        """Return True if instance has modified attributes.
+        """Return ``True`` if instance has modified attributes.
 
         This method retrieves a history instance for each instrumented
         attribute on the instance and performs a comparison of the current
-        value to its previously committed value.  Note that instances present
-        in the 'dirty' collection may result in a value of ``False`` when
-        tested with this method.
+        value to its previously committed value.  
 
-        `include_collections` indicates if multivalued collections should be
+        ``include_collections`` indicates if multivalued collections should be
         included in the operation.  Setting this to False is a way to detect
         only local-column based properties (i.e. scalar columns or many-to-one
         foreign keys) that would result in an UPDATE for this instance upon
         flush.
 
-        The `passive` flag indicates if unloaded attributes and collections
+        The ``passive`` flag indicates if unloaded attributes and collections
         should not be loaded in the course of performing this test.
+        
+        A few caveats to this method apply:
+        
+        * Instances present in the 'dirty' collection may result in a value 
+          of ``False`` when tested with this method.  This because while
+          the object may have received attribute set events, there may be
+          no net changes on its state.
+        * Scalar attributes may not have recorded the "previously" set
+          value when a new value was applied, if the attribute was not loaded,
+          or was expired, at the time the new value was received - in these
+          cases, the attribute is assumed to have a change, even if there is
+          ultimately no net change against its database value. SQLAlchemy in
+          most cases does not need the "old" value when a set event occurs, so
+          it skips the expense of a SQL call if the old value isn't present,
+          based on the assumption that an UPDATE of the scalar value is
+          usually needed, and in those few cases where it isn't, is less
+          expensive on average than issuing a defensive SELECT. 
+          
+          The "old" value is fetched unconditionally only if the attribute
+          container has the "active_history" flag set to ``True``. This flag
+          is set typically for primary key attributes and scalar references
+          that are not a simple many-to-one.
 
         """
         try:
@@ -1654,8 +1695,3 @@ def _state_session(state):
             pass
     return None
 
-# Lazy initialization to avoid circular imports
-unitofwork._state_session = _state_session
-from sqlalchemy.orm import mapper
-mapper._expire_state = _expire_state
-mapper._state_session = _state_session

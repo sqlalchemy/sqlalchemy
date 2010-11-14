@@ -9,6 +9,7 @@
 from sqlalchemy.exc import CircularDependencyError
 from sqlalchemy import util
 
+
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 
 def sort_as_subsets(tuples, allitems):
@@ -27,8 +28,10 @@ def sort_as_subsets(tuples, allitems):
 
         if not output:
             raise CircularDependencyError(
-                    "Circular dependency detected: cycles: %r all edges: %s" % 
-                    (find_cycles(tuples, allitems), _dump_edges(edges, True)))
+                    "Circular dependency detected",
+                    find_cycles(tuples, allitems), 
+                    _gen_edges(edges)
+                )
 
         todo.difference_update(output)
         yield output
@@ -72,14 +75,9 @@ def find_cycles(tuples, allitems):
                 node = stack.pop()
     return output
 
-def _dump_edges(edges, reverse):
-    l = []
-    for left in edges:
-        for right in edges[left]:
-            if reverse:
-                l.append((right, left))
-            else:
-                l.append((left, right))
-    return repr(l)
-
-
+def _gen_edges(edges):
+    return set([
+                    (right, left) 
+                    for left in edges 
+                    for right in edges[left] 
+                ])

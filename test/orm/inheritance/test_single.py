@@ -252,10 +252,12 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
                             'employee_stuff_name, anon_1.employee_id '
                             'AS anon_1_employee_id FROM (SELECT '
                             'employee.id AS employee_id FROM employee '
-                            'WHERE employee.type IN (?)) AS anon_1 '
+                            'WHERE employee.type IN (:type_1)) AS anon_1 '
                             'JOIN employee_stuff ON anon_1.employee_id '
                             '= employee_stuff.employee_id ORDER BY '
-                            'anon_1.employee_id')
+                            'anon_1.employee_id',
+                            use_default_dialect=True
+                            )
 
 class RelationshipToSingleTest(MappedTest):
     @classmethod

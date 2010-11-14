@@ -359,6 +359,25 @@ class MutableTypesTest(_base.MappedTest):
         gc.collect()
         f1 = session.query(Foo).first()
         assert not attributes.instance_state(f1).modified
+
+    @testing.resolve_artifact_names
+    def test_modified_after_mutable_change(self):
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        f1.data.x = 10
+        f1.data.y = 15
+        f1.val=u'some new val'
+
+        assert sa.orm.attributes.instance_state(f1)._strong_obj is not None
+        
+        del f1
+        session.commit()
+        eq_(
+            session.query(Foo.val).all(),
+            [('some new val', )]
+        )
         
     @testing.resolve_artifact_names
     def test_unicode(self):

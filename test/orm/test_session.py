@@ -713,11 +713,38 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.rollback()
         assert_raises_message(sa.exc.InvalidRequestError,
-                              'inactive due to a rollback in a '
-                              'subtransaction', sess.begin,
-                              subtransactions=True)
+                              "This Session's transaction has been "
+                              r"rolled back by a nested rollback\(\) "
+                              "call.  To begin a new transaction, "
+                              r"issue Session.rollback\(\) first.",
+                              sess.begin, subtransactions=True)
         sess.close()
 
+    @testing.resolve_artifact_names
+    def test_preserve_flush_error(self):
+        mapper(User, users)
+        sess = Session()
+
+        sess.add(User(id=5))
+        assert_raises(
+            sa.exc.DBAPIError,
+            sess.commit
+        )
+        
+        for i in range(5):
+            assert_raises_message(sa.exc.InvalidRequestError,
+                              "^This Session's transaction has been "
+                              r"rolled back due to a previous exception during flush. To "
+                              "begin a new transaction with this "
+                              "Session, first issue "
+                              r"Session.rollback\(\). Original exception "
+                              "was:",
+                              sess.commit)
+        sess.rollback()
+        sess.add(User(id=5, name='some name'))
+        sess.commit()
+        
+        
     @testing.resolve_artifact_names
     def test_no_autocommit_with_explicit_commit(self):
         mapper(User, users)

@@ -21,6 +21,7 @@ of the database.
 Creating an engine is just a matter of issuing a single call,
 :func:`.create_engine()`::
 
+    from sqlalchemy import create_engine
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
 
 The above engine invokes the ``postgresql`` dialect and a connection pool
@@ -63,7 +64,7 @@ ibm-db_                    thirdparty                   thirdparty   thirdparty 
 **Firebird**
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
-informixdb_                ``informix+informixdb``\*    development  development   no           unknown            unknown
+informixdb_                ``informix+informixdb``\*    yes          development   no           unknown            unknown
 **MaxDB**
 sapdb_                     ``maxdb+sapdb``\*            development  development   no           yes                unknown
 **Microsoft Access**
@@ -76,9 +77,9 @@ pyodbc_                    ``mssql+pyodbc``\*           yes          development
 pymssql_                   ``mssql+pymssql``            yes          development   no           yes                yes
 **MySQL**
 `MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
-`MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          partial       no           yes                yes
+`MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          yes           no           yes                yes
 mysql-python_              ``mysql+mysqldb``\*          yes          development   no           yes                yes
-OurSQL_                    ``mysql+oursql``             yes          partial       no           yes                yes
+OurSQL_                    ``mysql+oursql``             yes          yes           no           yes                yes
 **Oracle**
 cx_oracle_                 ``oracle+cx_oracle``\*       yes          development   no           yes                yes
 `Oracle JDBC Driver`_      ``oracle+zxjdbc``            no           no            yes          yes                yes
@@ -93,9 +94,10 @@ sqlite3_                   ``sqlite+pysqlite``\*        yes          yes        
 **Sybase ASE**
 mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
 pyodbc_                    ``sybase+pyodbc``\*          partial      development   no           unknown            unknown
-python-sybase_             ``sybase+pysybase``          partial      development   no           yes                yes
+python-sybase_             ``sybase+pysybase``          yes [1]_     development   no           yes                yes
 =========================  ===========================  ===========  ===========   ===========  =================  ============
 
+.. [1] The Sybase dialect currently lacks the ability to reflect tables.
 .. _psycopg2: http://www.initd.org/
 .. _pg8000: http://pybrary.net/pg8000/
 .. _pypostgresql: http://python.projects.postgresql.org/
@@ -120,7 +122,7 @@ python-sybase_             ``sybase+pysybase``          partial      development
 .. _sapdb: http://www.sapdb.org/sapdbapi.html
 .. _python-sybase: http://python-sybase.sourceforge.net/
 
-Further detail on dialects is available at :ref:`sqlalchemy.dialects_toplevel`
+Further detail on dialects is available at :ref:`dialect_toplevel`
 as well as additional notes on the wiki at `Database Notes
 <http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
 
