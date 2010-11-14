@@ -30,7 +30,8 @@ Instance Events
 Session Events
 --------------
 
-TODO
+.. autoclass:: sqlalchemy.orm.events.SessionEvents
+   :members:
 
 Instrumentation Events
 -----------------------

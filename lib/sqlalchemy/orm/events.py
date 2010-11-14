@@ -627,22 +627,160 @@ class MapperEvents(event.Events):
         raise NotImplementedError("Removal of mapper events not yet implemented")
     
 class SessionEvents(event.Events):
-    """"""
+    """Define events specific to :class:`.Session` lifecycle.
+    
+    e.g.::
+    
+        from sqlalchemy import event
+        from sqlalchemy.orm import sessionmaker
+        
+        class my_before_commit(session):
+            print "before commit!"
+        
+        Session = sessionmaker()
+        
+        event.listen(my_before_commit, "on_before_commit", Session)
+    
+    The :func:`~.event.listen` function will accept
+    :class:`.Session` objects as well as the return result
+    of :func:`.sessionmaker` and :func:`.scoped_session`.
+    
+    Additionally, it accepts the :class:`.Session` class which
+    will apply listeners to all :class:`.Session` instances
+    globally.
+        
+    """
+
+    @classmethod
+    def accept_with(cls, target):
+        from sqlalchemy.orm import ScopedSession, Session
+        if isinstance(target, ScopedSession):
+            if not isinstance(target.session_factory, type) or \
+                not issubclass(target.session_factory, Session):
+                raise exc.ArgumentError(
+                            "Session event listen on a ScopedSession "
+                            "requries that its creation callable "
+                            "is a Session subclass.")
+            return target.session_factory
+        elif isinstance(target, type):
+            if issubclass(target, ScopedSession):
+                return Session
+            elif issubclass(target, Session):
+                return target
+        elif isinstance(target, Session):
+            return target
+        else:
+            return None
+        
     @classmethod
     def remove(cls, fn, identifier, target):
         raise NotImplementedError("Removal of session events not yet implemented")
 
+    def on_before_commit(self, session):
+        """Execute before commit is called.
+        
+        Note that this may not be per-flush if a longer running
+        transaction is ongoing."""
+
+    def on_after_commit(self, session):
+        """Execute after a commit has occured.
+        
+        Note that this may not be per-flush if a longer running
+        transaction is ongoing."""
+
+    def on_after_rollback(self, session):
+        """Execute after a rollback has occured.
+        
+        Note that this may not be per-flush if a longer running
+        transaction is ongoing."""
+
+    def on_before_flush( self, session, flush_context, instances):
+        """Execute before flush process has started.
+        
+        `instances` is an optional list of objects which were passed to
+        the ``flush()`` method. """
+
+    def on_after_flush(self, session, flush_context):
+        """Execute after flush has completed, but before commit has been
+        called.
+        
+        Note that the session's state is still in pre-flush, i.e. 'new',
+        'dirty', and 'deleted' lists still show pre-flush state as well
+        as the history settings on instance attributes."""
+
+    def on_after_flush_postexec(self, session, flush_context):
+        """Execute after flush has completed, and after the post-exec
+        state occurs.
+        
+        This will be when the 'new', 'dirty', and 'deleted' lists are in
+        their final state.  An actual commit() may or may not have
+        occured, depending on whether or not the flush started its own
+        transaction or participated in a larger transaction. """
+
+    def on_after_begin( self, session, transaction, connection):
+        """Execute after a transaction is begun on a connection
+        
+        `transaction` is the SessionTransaction. This method is called
+        after an engine level transaction is begun on a connection. """
+
+    def on_after_attach(self, session, instance):
+        """Execute after an instance is attached to a session.
+        
+        This is called after an add, delete or merge. """
+
+    def on_after_bulk_update( self, session, query, query_context, result):
+        """Execute after a bulk update operation to the session.
+        
+        This is called after a session.query(...).update()
+        
+        `query` is the query object that this update operation was
+        called on. `query_context` was the query context object.
+        `result` is the result object returned from the bulk operation.
+        """
+
+    def on_after_bulk_delete( self, session, query, query_context, result):
+        """Execute after a bulk delete operation to the session.
+        
+        This is called after a session.query(...).delete()
+        
+        `query` is the query object that this delete operation was
+        called on. `query_context` was the query context object.
+        `result` is the result object returned from the bulk operation.
+        """
+
+
 class AttributeEvents(event.Events):
     """Define events for object attributes.
+    
+    These are typically defined on the class-bound descriptor for the
+    target class.
 
     e.g.::
     
         from sqlalchemy import event
-        event.listen(my_append_listener, 'on_append', MyClass.collection)
-        event.listen(my_set_listener, 'on_set', 
-                                MyClass.somescalar, retval=True)
         
-    Several modifiers are available to the :func:`~event.listen` function.
+        def my_append_listener(target, value, initiator):
+            print "received append event for target: %s" % target
+        
+        event.listen(my_append_listener, 'on_append', MyClass.collection)
+    
+    Listeners have the option to return a possibly modified version
+    of the value, when the ``retval=True`` flag is passed
+    to :func:`~.event.listen`::
+    
+        def validate_phone(target, value, oldvalue, initiator):
+            "Strip non-numeric characters from a phone number"
+        
+            return re.sub(r'(?![0-9])', '', value)
+        
+        # setup listener on UserContact.phone attribute, instructing
+        # it to use the return value
+        listen(validate_phone, 'on_set', UserContact.phone, retval=True)
+    
+    A validation function like the above can also raise an exception
+    such as :class:`ValueError` to halt the operation.
+        
+    Several modifiers are available to the :func:`~.event.listen` function.
     
     :param active_history=False: When True, indicates that the
       "on_set" event would like to receive the "old" value 

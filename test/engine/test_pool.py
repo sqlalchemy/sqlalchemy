@@ -349,7 +349,7 @@ class PoolEventsTest(PoolTestBase):
         c2.close()
         eq_(canary, ['checkin', 'checkin'])
         
-    def test_listen_targets(self):
+    def test_listen_targets_scope(self):
         canary = []
         def listen_one(*args):
             canary.append("listen_one")
@@ -370,7 +370,37 @@ class PoolEventsTest(PoolTestBase):
         eq_(
             canary, ["listen_one","listen_four", "listen_two","listen_three"]
         )
+    
+    def test_listen_targets_per_subclass(self):
+        """test that listen() called on a subclass remains specific to that subclass."""
+        
+        canary = []
+        def listen_one(*args):
+            canary.append("listen_one")
+        def listen_two(*args):
+            canary.append("listen_two")
+        def listen_three(*args):
+            canary.append("listen_three")
+        
+        event.listen(listen_one, 'on_connect', pool.Pool)
+        event.listen(listen_two, 'on_connect', pool.QueuePool)
+        event.listen(listen_three, 'on_connect', pool.SingletonThreadPool)
+        
+        p1 = pool.QueuePool(creator=MockDBAPI().connect)
+        p2 = pool.SingletonThreadPool(creator=MockDBAPI().connect)
+        
+        assert listen_one in p1.dispatch.on_connect
+        assert listen_two in p1.dispatch.on_connect
+        assert listen_three not in p1.dispatch.on_connect
+        assert listen_one in p2.dispatch.on_connect
+        assert listen_two not in p2.dispatch.on_connect
+        assert listen_three in p2.dispatch.on_connect
 
+        p1.connect()
+        eq_(canary, ["listen_one", "listen_two"])
+        p2.connect()
+        eq_(canary, ["listen_one", "listen_two", "listen_one", "listen_three"])
+        
     def teardown(self):
         # TODO: need to get remove() functionality
         # going

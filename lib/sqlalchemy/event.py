@@ -186,12 +186,18 @@ class _ListenerCollection(object):
     def __call__(self, *args, **kw):
         """Execute this event."""
 
-        for fn in self:
+        for fn in self.parent_listeners + self.listeners:
             fn(*args, **kw)
     
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
     # at any point.
+    #
+    # alternatively, _DispatchDescriptor could notify
+    # all _ListenerCollection objects, but then we move
+    # to a higher memory model, i.e.weakrefs to all _ListenerCollection
+    # objects, the _DispatchDescriptor collection repeated
+    # for all instances.
     
     def __len__(self):
         return len(self.parent_listeners + self.listeners)

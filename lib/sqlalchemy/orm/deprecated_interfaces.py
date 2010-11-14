@@ -393,6 +393,19 @@ class SessionExtension(object):
 
     """
 
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        event.listen(listener.before_commit, 'on_before_commit', self)
+        event.listen(listener.after_commit, 'on_after_commit', self)
+        event.listen(listener.after_rollback, 'on_after_rollback', self)
+        event.listen(listener.before_flush, 'on_before_flush', self)
+        event.listen(listener.after_flush, 'on_after_flush', self)
+        event.listen(listener.after_flush_postexec, 'on_after_flush_postexec', self)
+        event.listen(listener.after_begin, 'on_after_begin', self)
+        event.listen(listener.after_attach, 'on_after_attach', self)
+        event.listen(listener.after_bulk_update, 'on_after_bulk_update', self)
+        event.listen(listener.after_bulk_delete, 'on_after_bulk_delete', self)
+
     def before_commit(self, session):
         """Execute right before commit is called.
         

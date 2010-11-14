@@ -2160,8 +2160,7 @@ class Query(object):
                         )
                     )
 
-        for ext in session.extensions:
-            ext.after_bulk_delete(session, self, context, result)
+        session.dispatch.on_after_bulk_delete(session, self, context, result)
 
         return result.rowcount
 
@@ -2310,9 +2309,8 @@ class Query(object):
                                 session.identity_map[identity_key], 
                                 [_attr_as_key(k) for k in values]
                                 )
-
-        for ext in session.extensions:
-            ext.after_bulk_update(session, self, context, result)
+        
+        session.dispatch.on_after_bulk_update(session, self, context, result)
 
         return result.rowcount
 
