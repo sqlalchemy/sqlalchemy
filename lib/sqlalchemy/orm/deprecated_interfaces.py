@@ -3,15 +3,31 @@ from interfaces import EXT_CONTINUE
 
 
 class MapperExtension(object):
-    """Base implementation for customizing ``Mapper`` behavior.
+    """Base implementation for :class:`.Mapper` event hooks.
+
+    .. note:: :class:`.MapperExtension` is deprecated.   Please
+       refer to :func:`.event.listen` as well as 
+       :class:`.MapperEvents`.
     
-    New extension classes subclass ``MapperExtension`` and are specified
+    New extension classes subclass :class:`.MapperExtension` and are specified
     using the ``extension`` mapper() argument, which is a single
-    ``MapperExtension`` or a list of such.   A single mapper
-    can maintain a chain of ``MapperExtension`` objects.  When a
-    particular mapping event occurs, the corresponding method 
-    on each ``MapperExtension`` is invoked serially, and each method
-    has the ability to halt the chain from proceeding further.
+    :class:`.MapperExtension` or a list of such::
+    
+        from sqlalchemy.orm.interfaces import MapperExtension
+    
+        class MyExtension(MapperExtension):
+            def before_insert(self, mapper, connection, instance):
+                print "instance %s before insert !" % instance
+    
+        m = mapper(User, users_table, extension=MyExtension())
+    
+    A single mapper can maintain a chain of ``MapperExtension``
+    objects. When a particular mapping event occurs, the
+    corresponding method on each ``MapperExtension`` is invoked
+    serially, and each method has the ability to halt the chain
+    from proceeding further::
+    
+        m = mapper(User, users_table, extension=[ext1, ext2, ext3])
     
     Each ``MapperExtension`` method returns the symbol
     EXT_CONTINUE by default.   This symbol generally means "move
@@ -354,9 +370,28 @@ class MapperExtension(object):
 
 class SessionExtension(object):
 
-    """An extension hook object for Sessions.  Subclasses may be
-    installed into a Session (or sessionmaker) using the ``extension``
-    keyword argument. """
+    """Base implementation for :class:`.Session` event hooks.
+    
+    .. note:: :class:`.SessionExtension` is deprecated.   Please
+       refer to :func:`.event.listen` as well as 
+       :class:`.SessionEvents`.
+    
+    Subclasses may be installed into a :class:`.Session` (or
+    :func:`.sessionmaker`) using the ``extension`` keyword
+    argument::
+    
+        from sqlalchemy.orm.interfaces import SessionExtension
+    
+        class MySessionExtension(SessionExtension):
+            def before_commit(self, session):
+                print "before commit!"
+
+        Session = sessionmaker(extension=MySessionExtension())
+
+    The same :class:`.SessionExtension` instance can be used
+    with any number of sessions.
+
+    """
 
     def before_commit(self, session):
         """Execute right before commit is called.
@@ -432,11 +467,43 @@ class SessionExtension(object):
 
 
 class AttributeExtension(object):
-    """An event handler for individual attribute change events.
+    """Base implementation for :class:`.AttributeImpl` event hooks, events
+    that fire upon attribute mutations in user code.
+
+    .. note:: :class:`.AttributeExtension` is deprecated.   Please
+       refer to :func:`.event.listen` as well as 
+       :class:`.AttributeEvents`.
     
-    .. note:: :class:`AttributeExtension` is deprecated.   Please
-       refer to :func:`event.listen` as well as 
-       :attr:`AttributeImpl.events`.
+    :class:`.AttributeExtension` is used to listen for set,
+    remove, and append events on individual mapped attributes.
+    It is established on an individual mapped attribute using
+    the `extension` argument, available on
+    :func:`.column_property`, :func:`.relationship`, and
+    others::
+
+        from sqlalchemy.orm.interfaces import AttributeExtension
+        from sqlalchemy.orm import mapper, relationship, column_property
+    
+        class MyAttrExt(AttributeExtension):
+            def append(self, state, value, initiator):
+                print "append event !"
+                return value
+        
+            def set(self, state, value, oldvalue, initiator):
+                print "set event !"
+                return value
+            
+        mapper(SomeClass, sometable, properties={
+            'foo':column_property(sometable.c.foo, extension=MyAttrExt()),
+            'bar':relationship(Bar, extension=MyAttrExt())
+        })
+
+    Note that the :class:`AttributeExtension` methods
+    :meth:`~.AttributeExtension.append` and
+    :meth:`~.AttributeExtension.set` need to return the
+    ``value`` parameter. The returned value is used as the
+    effective value, and allows the extension to change what is
+    ultimately persisted.
     
     AttributeExtension is assembled within the descriptors associated
     with a mapped class.

@@ -52,16 +52,64 @@ class DDLEvents(event.Events):
     """
     
     def on_before_create(self, target, connection, **kw):
-        """ """
+        """Called before CREATE statments are emitted.
+        
+        :param target: the :class:`.MetaData` or :class:`.Table`
+         object which is the target of the event.
+        :param connection: the :class:`.Connection` where the
+         CREATE statement or statements will be emitted.
+        :param \**kw: additional keyword arguments relevant
+         to the event.  Currently this includes the ``tables``
+         argument in the case of a :class:`.MetaData` object,
+         which is the list of :class:`.Table` objects for which
+         CREATE will be emitted.
+           
+        """
 
     def on_after_create(self, target, connection, **kw):
-        """ """
+        """Called after CREATE statments are emitted.
+        
+        :param target: the :class:`.MetaData` or :class:`.Table`
+         object which is the target of the event.
+        :param connection: the :class:`.Connection` where the
+         CREATE statement or statements have been emitted.
+        :param \**kw: additional keyword arguments relevant
+         to the event.  Currently this includes the ``tables``
+         argument in the case of a :class:`.MetaData` object,
+         which is the list of :class:`.Table` objects for which
+         CREATE has been emitted.
+           
+        """
 
     def on_before_drop(self, target, connection, **kw):
-        """ """
+        """Called before DROP statments are emitted.
+        
+        :param target: the :class:`.MetaData` or :class:`.Table`
+         object which is the target of the event.
+        :param connection: the :class:`.Connection` where the
+         DROP statement or statements will be emitted.
+        :param \**kw: additional keyword arguments relevant
+         to the event.  Currently this includes the ``tables``
+         argument in the case of a :class:`.MetaData` object,
+         which is the list of :class:`.Table` objects for which
+         DROP will be emitted.
+           
+        """
     
     def on_after_drop(self, target, connection, **kw):
-        """ """
+        """Called after DROP statments are emitted.
+        
+        :param target: the :class:`.MetaData` or :class:`.Table`
+         object which is the target of the event.
+        :param connection: the :class:`.Connection` where the
+         DROP statement or statements have been emitted.
+        :param \**kw: additional keyword arguments relevant
+         to the event.  Currently this includes the ``tables``
+         argument in the case of a :class:`.MetaData` object,
+         which is the list of :class:`.Table` objects for which
+         DROP has been emitted.
+           
+        """
     
 
 class PoolEvents(event.Events):

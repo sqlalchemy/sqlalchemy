@@ -8,8 +8,6 @@ the internals of both SQLAlchemy Core and ORM.   The system is all new
 as of version 0.7 and supercedes the previous system of "extension", "proxy", 
 and "listener" classes.
 
-Core events are described in :ref:`core_event_toplevel` and ORM events in :ref:`orm_event_toplevel`.
-
 Event Registration
 ------------------
 
@@ -21,7 +19,7 @@ instructions regarding secondary event targets based on the given target.
 
 The name of an event and the argument signature of a corresponding listener function is derived from 
 a class bound specification method, which exists bound to a marker class that's described in the documentation.
-For example, the documentation for :ref:`.PoolEvents.on_connect` indicates that the event name is ``"on_connect"``
+For example, the documentation for :meth:`.PoolEvents.on_connect` indicates that the event name is ``"on_connect"``
 and that a user-defined listener function should receive two positional arguments::
 
     from sqlalchemy.event import listen
@@ -82,6 +80,25 @@ which modifies the subsequent handling.   By default, no listener ever requires 
     # it to use the return value
     listen(validate_phone, 'on_set', UserContact.phone, retval=True)
 
- 
+Event Reference
+----------------
+
+Both SQLAlchemy Core and SQLAlchemy ORM feature a wide variety of event hooks:
+
+* **Core Events** - these are described in
+  :ref:`core_event_toplevel` and include event hooks specific to
+  connection pool lifecycle, SQL statement execution,
+  transaction lifecycle, and schema creation and teardown.
+  
+* **ORM Events** - these are described in
+  :ref:`orm_event_toplevel`, and include event hooks specific to
+  class and attribute instrumentation, object initialization
+  hooks, attribute on-change hooks, session state, flush, and
+  commit hooks, mapper initialization, object/result population,
+  and per-instance persistence hooks.
+
+API Reference
+-------------
+
 .. autofunction:: sqlalchemy.event.listen
 

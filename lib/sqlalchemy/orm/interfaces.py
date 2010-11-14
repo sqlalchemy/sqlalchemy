@@ -616,6 +616,18 @@ class LoaderStrategy(object):
 class InstrumentationManager(object):
     """User-defined class instrumentation extension.
     
+    :class:`.InstrumentationManager` can be subclassed in order
+    to change
+    how class instrumentation proceeds. This class exists for
+    the purposes of integration with other object management
+    frameworks which would like to entirely modify the
+    instrumentation methodology of the ORM, and is not intended
+    for regular usage.  For interception of class instrumentation
+    events, see :class:`.InstrumentationEvents`.
+    
+    For an example of :class:`.InstrumentationManager`, see the
+    example :ref:`examples_instrumentation`.
+    
     The API for this class should be considered as semi-stable,
     and may change slightly with new releases.
     
