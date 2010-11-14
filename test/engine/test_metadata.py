@@ -52,10 +52,11 @@ class MetaDataTest(TestBase, ComparesTables):
             Column(Integer(), ForeignKey('bat.blah')),
             Column('bar', Integer(), ForeignKey('bat.blah'), primary_key=True,
                                                             key='bar'),
+            Column('bar', Integer(), info={'foo':'bar'}),
         ]:
             c2 = col.copy()
             for attr in ('name', 'type', 'nullable', 
-                        'primary_key', 'key', 'unique'):
+                        'primary_key', 'key', 'unique', 'info'):
                 eq_(getattr(col, attr), getattr(c2, attr))
             eq_(len(col.foreign_keys), len(c2.foreign_keys))
             if col.default:
