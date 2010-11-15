@@ -32,6 +32,10 @@ CHANGES
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
     in declarative mixins.  [ticket:1967]
+
+  - Added a bind processor for booleans which coerces
+    to int, for DBAPIs such as pymssql that naively call 
+    str() on values.
     
 - engine
   - Implemented sequence check capability for the C 
