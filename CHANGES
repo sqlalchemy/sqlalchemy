@@ -24,6 +24,10 @@ CHANGES
     strategy would fail if the entity was an aliased()
     construct.  [ticket:1964]
 
+  - Fixed indexing of Query objects by -1. It was erroneously
+    transformed to the empty slice -1:0 that resulted in
+    IndexError. [ticket:1968]
+
 - sql
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
