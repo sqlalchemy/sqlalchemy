@@ -690,7 +690,7 @@ def mapper(class_, local_table=None, *args, **params):
            exist within the session, erasing any in-memory changes with
            whatever information was loaded from the database. Usage of this
            flag is highly discouraged; as an alternative, see the method
-           `populate_existing()` on :class:`~sqlalchemy.orm.query.Query`.
+           :meth:`.Query.populate_existing`.
 
         :param allow_null_pks: This flag is deprecated - this is stated as
            allow_partial_pks which defaults to True.
@@ -699,7 +699,7 @@ def mapper(class_, local_table=None, *args, **params):
            composite primary key with some NULL values should be considered as
            possibly existing within the database. This affects whether a
            mapper will assign an incoming row to an existing identity, as well
-           as if session.merge() will check the database first for a
+           as if :meth:`.Session.merge` will check the database first for a
            particular primary key value. A "partial primary key" can occur if
            one has mapped to an OUTER JOIN, for example.
 
@@ -708,13 +708,14 @@ def mapper(class_, local_table=None, *args, **params):
            that an instance will be fully saved before saving the next
            instance, which includes inserting/updating all table rows
            corresponding to the entity as well as calling all
-           :class:`MapperExtension` methods corresponding to the save
+           :class:`.MapperExtension` methods corresponding to the save
            operation.
 
         :param column_prefix: A string which will be prepended to the `key`
-           name of all Columns when creating column-based properties from the
-           given Table. Does not affect explicitly specified column-based
-           properties
+           name of all :class:`.Column` objects when creating 
+           column-based properties from the
+           given :class:`.Table`. Does not affect explicitly specified 
+           column-based properties
 
         :param concrete: If True, indicates this mapper should use concrete
            table inheritance with its parent mapper.
@@ -729,9 +730,9 @@ def mapper(class_, local_table=None, *args, **params):
           to have fewer properties than its superclass, ``A``.
 
         :param extension: A :class:`.MapperExtension` instance or
-           list of :class:`~sqlalchemy.orm.interfaces.MapperExtension`
+           list of :class:`.MapperExtension`
            instances which will be applied to all operations by this
-           :class:`~sqlalchemy.orm.mapper.Mapper`.
+           :class:`.Mapper`.
 
         :param include_properties: An inclusive list or set of string column
           names to map. As of SQLAlchemy 0.6.4, this collection may also
@@ -741,13 +742,13 @@ def mapper(class_, local_table=None, *args, **params):
           present in the mapped table but not named or present in this list
           will not be automatically mapped. See also "exclude_properties".
 
-        :param inherits: Another :class:`~sqlalchemy.orm.Mapper` for which 
-            this :class:`~sqlalchemy.orm.Mapper` will have an inheritance
+        :param inherits: Another :class:`.Mapper` for which 
+            this :class:`.Mapper` will have an inheritance
             relationship with.
 
         :param inherit_condition: For joined table inheritance, a SQL
            expression (constructed
-           :class:`~sqlalchemy.expression.sql.ClauseElement`) which will
+           :class:`.ClauseElement`) which will
            define how the two tables are joined; defaults to a natural join
            between the two tables.
 
@@ -759,7 +760,7 @@ def mapper(class_, local_table=None, *args, **params):
            the selection of instances, not their persistence. Any number of
            non_primary mappers may be created for a particular class.
 
-        :param order_by: A single :class:`Column` or list of :class:`Column`
+        :param order_by: A single :class:`.Column` or list of :class:`.Column`
            objects for which selection operations should use as the default
            ordering for entities. Defaults to the OID/ROWID of the table if
            any, or the first primary key column of the table.
@@ -794,7 +795,7 @@ def mapper(class_, local_table=None, *args, **params):
            this flag.
 
         :param polymorphic_on: Used with mappers in an inheritance
-           relationship, a ``Column`` which will identify the class/mapper
+           relationship, a :class:`.Column` which will identify the class/mapper
            combination to be used with a particular row. Requires the
            ``polymorphic_identity`` value to be set for all mappers in the
            inheritance hierarchy. The column specified by ``polymorphic_on``
@@ -804,23 +805,23 @@ def mapper(class_, local_table=None, *args, **params):
            argument.
 
         :param polymorphic_identity: A value which will be stored in the
-           Column denoted by polymorphic_on, corresponding to the *class
-           identity* of this mapper.
+           Column denoted by polymorphic_on, corresponding to the class
+           identity of this mapper.
 
         :param properties: A dictionary mapping the string names of object
            attributes to ``MapperProperty`` instances, which define the
            persistence behavior of that attribute. Note that the columns in
            the mapped table are automatically converted into
-           ``ColumnProperty`` instances based on the `key` property of each
-           ``Column`` (although they can be overridden using this dictionary).
+           ``ColumnProperty`` instances based on the ``key`` property of each
+           :class:`.Column` (although they can be overridden using this dictionary).
 
-        :param primary_key: A list of ``Column`` objects which define the
-           *primary key* to be used against this mapper's selectable unit.
-           This is normally simply the primary key of the `local_table`, but
+        :param primary_key: A list of :class:`.Column` objects which define the
+           primary key to be used against this mapper's selectable unit.
+           This is normally simply the primary key of the ``local_table``, but
            can be overridden here.
 
-        :param version_id_col: A ``Column`` which must have an integer type
-           that will be used to keep a running *version id* of mapped entities
+        :param version_id_col: A :class:`.Column` which must have an integer type
+           that will be used to keep a running version id of mapped entities
            in the database. this is used during save operations to ensure that
            no other thread or process has updated the instance during the
            lifetime of the entity, else a :class:`StaleDataError` exception is

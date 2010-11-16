@@ -21,7 +21,7 @@ Would translate into declarative as::
     class User(Base):
         __table__ = users_table
         __mapper_args__ = {
-            'primary_key':users_table.c.id
+            'primary_key':[users_table.c.id]
         }
 
 Or if using ``__tablename__``, :class:`.Column` objects are declared inline
@@ -33,7 +33,7 @@ with the class definition. These are usable as is within ``__mapper_args__``::
         id = Column(Integer)
         
         __mapper_args__ = {
-            'primary_key':id
+            'primary_key':[id]
         }
 
 
@@ -77,7 +77,7 @@ collections (new feature as of 0.6.4)::
 
     mapper(UserAddress, users_table.join(addresses_table),
                 exclude_properties=[addresses_table.c.id],
-                primary_key=users_table.c.id
+                primary_key=[users_table.c.id]
             )
 
 It should be noted that insert and update defaults configured on individal
