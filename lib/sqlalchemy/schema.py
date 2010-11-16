@@ -206,12 +206,13 @@ class Table(SchemaItem, expression.TableClause):
             if mustexist:
                 raise exc.InvalidRequestError(
                     "Table '%s' not defined" % (key))
-            metadata.tables[key] = table = object.__new__(cls)
+            table = object.__new__(cls)                    
+            metadata._add_table(name, schema, table)
             try:
                 table._init(name, metadata, *args, **kw)
                 return table
             except:
-                metadata.tables.pop(key)
+                metadata._remove_table(name, schema)
                 raise
                 
     def __init__(self, *args, **kw):
@@ -406,7 +407,7 @@ class Table(SchemaItem, expression.TableClause):
         self.ddl_listeners[event].append(listener)
 
     def _set_parent(self, metadata):
-        metadata.tables[_get_table_key(self.name, self.schema)] = self
+        metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
 
     def get_children(self, column_collections=True, 
@@ -1938,7 +1939,8 @@ class MetaData(SchemaItem):
           ``MetaData``.
 
         """
-        self.tables = {}
+        self.tables = util.frozendict()
+        self._schemas = set()
         self.bind = bind
         self.metadata = self
         self.ddl_listeners = util.defaultdict(list)
@@ -1957,6 +1959,20 @@ class MetaData(SchemaItem):
             table_or_key = table_or_key.key
         return table_or_key in self.tables
 
+    def _add_table(self, name, schema, table):
+        key = _get_table_key(name, schema)
+        dict.__setitem__(self.tables, key, table)
+        if schema:
+            self._schemas.add(schema)
+    
+    def _remove_table(self, name, schema):
+        key = _get_table_key(name, schema)
+        dict.pop(self.tables, key, None)
+        if self._schemas:
+            self._schemas = set([t.schema 
+                                for t in self.tables.values() 
+                                if t.schema is not None])
+        
     def __getstate__(self):
         return {'tables': self.tables}
 
@@ -1991,15 +2007,14 @@ class MetaData(SchemaItem):
 
     def clear(self):
         """Clear all Table objects from this MetaData."""
-        # TODO: why have clear()/remove() but not all
-        # other accesors/mutators for the tables dict ?
-        self.tables.clear()
 
+        dict.clear(self.tables)
+        self._schemas.clear()
+        
     def remove(self, table):
         """Remove the given Table object from this MetaData."""
         
-        # TODO: scan all other tables and remove FK _column
-        del self.tables[table.key]
+        self._remove_table(table.name, table.schema)
 
     @property
     def sorted_tables(self):

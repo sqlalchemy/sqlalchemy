@@ -77,6 +77,51 @@ class MetaDataTest(TestBase, ComparesTables):
             t = Table('foo%d' % i, m, cx)
         eq_(msgs, ['attach foo0.foo', 'attach foo1.foo', 'attach foo2.foo'])
         
+    def test_schema_collection_add(self):
+        metadata = MetaData()
+        
+        t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
+        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
+        t3 = Table('t3', metadata, Column('x', Integer))
+        
+        eq_(metadata._schemas, set(['foo', 'bar']))
+        eq_(len(metadata.tables), 3)
+    
+    def test_schema_collection_remove(self):
+        metadata = MetaData()
+        
+        t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
+        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
+        t3 = Table('t3', metadata, Column('x', Integer), schema='bar')
+        
+        metadata.remove(t3)
+        eq_(metadata._schemas, set(['foo', 'bar']))
+        eq_(len(metadata.tables), 2)
+
+        metadata.remove(t1)
+        eq_(metadata._schemas, set(['bar']))
+        eq_(len(metadata.tables), 1)
+    
+    def test_schema_collection_remove_all(self):
+        metadata = MetaData()
+        
+        t1 = Table('t1', metadata, Column('x', Integer), schema='foo')
+        t2 = Table('t2', metadata, Column('x', Integer), schema='bar')
+
+        metadata.clear()
+        eq_(metadata._schemas, set())
+        eq_(len(metadata.tables), 0)
+    
+    def test_metadata_tables_immutable(self):
+        metadata = MetaData()
+        
+        t1 = Table('t1', metadata, Column('x', Integer))
+        assert 't1' in metadata.tables
+        
+        assert_raises(
+            AttributeError,
+            lambda: metadata.tables.pop('t1')
+        )
         
     def test_dupe_tables(self):
         metadata = MetaData()

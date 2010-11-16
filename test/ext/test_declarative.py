@@ -299,6 +299,38 @@ class DeclarativeTest(DeclarativeTestBase):
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
 
+    def test_string_dependency_resolution_schemas(self):
+        Base = decl.declarative_base()
+        
+        class User(Base):
+
+            __tablename__ = 'users'
+            __table_args__ = {'schema':'fooschema'}
+            
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            props = relationship('Prop', secondary='fooschema.user_to_prop',
+                         primaryjoin='User.id==fooschema.user_to_prop.c.user_id',
+                         secondaryjoin='fooschema.user_to_prop.c.prop_id==Prop.id', 
+                         backref='users')
+
+        class Prop(Base):
+
+            __tablename__ = 'props'
+            __table_args__ = {'schema':'fooschema'}
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        user_to_prop = Table('user_to_prop', Base.metadata,
+                     Column('user_id', Integer, ForeignKey('fooschema.users.id')), 
+                     Column('prop_id',Integer, ForeignKey('fooschema.props.id')),
+                     schema='fooschema')
+        compile_mappers()
+        
+        assert class_mapper(User).get_property('props').secondary \
+            is user_to_prop
+
     def test_uncompiled_attributes_in_relationship(self):
 
         class Address(Base, ComparableEntity):
