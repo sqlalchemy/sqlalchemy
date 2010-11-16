@@ -1,13 +1,13 @@
-from sqlalchemy.test.testing import eq_, is_, is_not_
-from sqlalchemy.test import testing
-from sqlalchemy.test.schema import Table, Column
+from test.lib.testing import eq_, is_, is_not_
+from test.lib import testing
+from test.lib.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
     mapper, relationship, clear_mappers, create_session, lazyload, \
     aliased, joinedload, deferred, undefer, eagerload_all
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
-from sqlalchemy.test.assertsql import CompiledSQL
+from test.lib.assertsql import CompiledSQL
 from test.orm import _base, _fixtures
 import sqlalchemy as sa
 

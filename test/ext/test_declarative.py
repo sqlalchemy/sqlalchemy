@@ -1,17 +1,17 @@
 
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     ForeignKeyConstraint, asc, Index
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, compile_mappers, backref, clear_mappers, \
     polymorphic_union, deferred, column_property
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy.util import classproperty
 from test.orm._base import ComparableEntity, MappedTest
 from sqlalchemy.ext.declarative import declared_attr

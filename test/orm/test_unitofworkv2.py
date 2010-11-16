@@ -1,11 +1,11 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.test import testing
-from sqlalchemy.test.schema import Table, Column
+from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib import testing
+from test.lib.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, func
 from test.orm import _fixtures, _base
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes
-from sqlalchemy.test.assertsql import AllOf, CompiledSQL
+from test.lib.assertsql import AllOf, CompiledSQL
 
 from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
            Dingaling, item_keywords, dingalings, User, items,\

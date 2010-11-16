@@ -1,12 +1,12 @@
 # coding: utf-8
 
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import types as sqltypes, exc
 from sqlalchemy.sql import table, column
-from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.test.engines import testing_engine
+from test.lib import *
+from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
 from sqlalchemy.util import jython

@@ -1,6 +1,6 @@
 import sqlalchemy.topological as topological
-from sqlalchemy.test import TestBase
-from sqlalchemy.test.testing import assert_raises, eq_
+from test.lib import TestBase
+from test.lib.testing import assert_raises, eq_
 from sqlalchemy import exc, util
 
 

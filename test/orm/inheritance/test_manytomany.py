@@ -1,8 +1,8 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from sqlalchemy.test import testing
+from test.lib import testing
 from test.orm import _base
 
 

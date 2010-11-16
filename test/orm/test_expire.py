@@ -1,12 +1,12 @@
 """Attribute/instance expiration, deferral of attributes, etc."""
 
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.test.util import gc_collect
+from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.util import gc_collect
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
                         strategies, state, lazyload, backref

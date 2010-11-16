@@ -1,7 +1,7 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc, sql
-from sqlalchemy.test import *
+from test.lib import *
 from sqlalchemy import Table, Column  # don't use testlib's wrappers
 
 

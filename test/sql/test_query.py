@@ -1,11 +1,11 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
 from sqlalchemy.engine import default, base
-from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, assert_raises_message, assert_raises
-from sqlalchemy.test.schema import Table, Column
+from test.lib import *
+from test.lib.testing import eq_, assert_raises_message, assert_raises
+from test.lib.schema import Table, Column
 
 class QueryTest(TestBase):
 

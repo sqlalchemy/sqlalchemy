@@ -79,7 +79,7 @@ class NoseSQLAlchemy(Plugin):
         
     def begin(self):
         global testing, requires, util
-        from sqlalchemy.test import testing, requires
+        from test.lib import testing, requires
         from sqlalchemy import util
         
         testing.db = db

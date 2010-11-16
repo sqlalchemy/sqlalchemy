@@ -5,10 +5,10 @@ modern (i.e. not deprecated) alternative to them.  The tests snippets here can
 be migrated directly to the wiki, docs, etc.
 
 """
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey, func
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, relation, create_session, sessionmaker
 from test.orm import _base
 

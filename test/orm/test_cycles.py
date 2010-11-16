@@ -5,13 +5,13 @@ T1<->T2, with o2m or m2o between them, and a third T3 with o2m/m2o to one/both
 T1/T2.
 
 """
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, sessionmaker
-from sqlalchemy.test.testing import eq_
-from sqlalchemy.test.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
+from test.lib.testing import eq_
+from test.lib.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
 from test.orm import _base
 
 

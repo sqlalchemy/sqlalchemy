@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from sqlalchemy.test.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises
 
 # Py2K
 import sets
@@ -9,9 +9,9 @@ import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes
 from sqlalchemy.dialects.mysql import base as mysql
-from sqlalchemy.test.testing import eq_
-from sqlalchemy.test import *
-from sqlalchemy.test.engines import utf8_engine
+from test.lib.testing import eq_
+from test.lib import *
+from test.lib.engines import utf8_engine
 import datetime
 
 class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):

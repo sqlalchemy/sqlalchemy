@@ -1,10 +1,10 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 from sqlalchemy import MetaData, Integer
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import mapper, create_session
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 from test.orm import _base
 
 

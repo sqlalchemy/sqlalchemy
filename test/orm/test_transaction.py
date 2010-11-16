@@ -1,12 +1,12 @@
 
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import *
-from sqlalchemy.test.util import gc_collect
-from sqlalchemy.test import testing
+from test.lib.util import gc_collect
+from test.lib import testing
 from test.orm import _base
 from test.orm._fixtures import FixtureTest, User, Address, users, addresses
 

@@ -1,4 +1,4 @@
-from sqlalchemy.test import *
+from test.lib import *
 import os
 import re
 

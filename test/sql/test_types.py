@@ -1,18 +1,18 @@
 # coding: utf-8
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import decimal
 import datetime, os, re
 from sqlalchemy import *
 from sqlalchemy import exc, types, util, schema
 from sqlalchemy.sql import operators, column, table
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import sqlalchemy.engine.url as url
 from sqlalchemy.databases import *
-from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.test import *
-from sqlalchemy.test.util import picklers
+from test.lib.schema import Table, Column
+from test.lib import *
+from test.lib.util import picklers
 from decimal import Decimal
-from sqlalchemy.test.util import round_decimal
+from test.lib.util import round_decimal
 
 
 class AdaptTest(TestBase):

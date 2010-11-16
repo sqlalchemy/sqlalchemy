@@ -1,13 +1,13 @@
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 import sys
 import time
 import threading
 from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
     select, Integer, String, func, text, exc
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
-from sqlalchemy.test import TestBase, testing
+from test.lib.schema import Table
+from test.lib.schema import Column
+from test.lib import TestBase, testing
 
 
 users, metadata = None, None

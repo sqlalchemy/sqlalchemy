@@ -1,8 +1,8 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
-from sqlalchemy.test.testing import eq_
-from sqlalchemy.test import *
+from test.lib.testing import eq_
+from test.lib import *
 
 
 metadata = None

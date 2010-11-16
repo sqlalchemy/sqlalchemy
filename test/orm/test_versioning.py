@@ -1,9 +1,9 @@
 import sqlalchemy as sa
-from sqlalchemy.test import engines, testing
+from test.lib import engines, testing
 from sqlalchemy import Integer, String, ForeignKey, literal_column, orm, exc
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, column_property, sessionmaker
-from sqlalchemy.test.testing import eq_, ne_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, ne_, assert_raises, assert_raises_message
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
 

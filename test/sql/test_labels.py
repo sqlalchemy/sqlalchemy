@@ -1,7 +1,7 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as exceptions
-from sqlalchemy.test import *
+from test.lib import *
 from sqlalchemy.engine import default
 
 IDENT_LENGTH = 29

@@ -1,6 +1,6 @@
 import sqlalchemy as sa
-from sqlalchemy.test import testing
-from sqlalchemy.test.testing import adict
+from test.lib import testing
+from test.lib.testing import adict
 
 
 class TablesTest(testing.TestBase):

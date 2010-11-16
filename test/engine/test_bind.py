@@ -1,14 +1,14 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
 from sqlalchemy import Integer, text
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 
 
 class BindTest(testing.TestBase):

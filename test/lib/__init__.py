@@ -7,9 +7,9 @@ by noseplugin.NoseSQLAlchemy.
 """
 
 from test.bootstrap import config
-from sqlalchemy.test import testing, engines, requires, profiling, pickleable
-from sqlalchemy.test.schema import Column, Table
-from sqlalchemy.test.testing import \
+from test.lib import testing, engines, requires, profiling, pickleable
+from test.lib.schema import Column, Table
+from test.lib.testing import \
      AssertsCompiledSQL, \
      AssertsExecutionResults, \
      ComparesTables, \

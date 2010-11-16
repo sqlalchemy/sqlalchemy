@@ -1,9 +1,9 @@
 """Test various algorithmic properties of selectables."""
 
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import *
-from sqlalchemy.test import *
+from test.lib import *
 from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, null

@@ -128,7 +128,7 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
-    from sqlalchemy.test.assertsql import asserter
+    from test.lib.assertsql import asserter
 
     url = url or config.db_url
     options = options or config.db_opts

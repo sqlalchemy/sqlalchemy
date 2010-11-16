@@ -1,8 +1,8 @@
 from sqlalchemy import MetaData, Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import attributes
-from sqlalchemy.test.testing import fixture
+from test.lib.testing import fixture
 from test.orm import _base
 
 __all__ = ()

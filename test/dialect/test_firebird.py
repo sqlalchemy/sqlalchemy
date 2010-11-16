@@ -1,9 +1,9 @@
-from sqlalchemy.test.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises
 from sqlalchemy import *
 from sqlalchemy.databases import firebird
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import table, column
-from sqlalchemy.test import *
+from test.lib import *
 
 
 class DomainReflectionTest(TestBase, AssertsExecutionResults):

@@ -1,14 +1,14 @@
 import warnings
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 
-from sqlalchemy.test import testing, engines
+from test.lib import testing, engines
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 
 class O2MTest(_base.MappedTest):
     """deals with inheritance and one-to-many relationships"""

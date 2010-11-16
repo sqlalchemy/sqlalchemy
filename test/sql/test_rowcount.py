@@ -1,5 +1,5 @@
 from sqlalchemy import *
-from sqlalchemy.test import *
+from test.lib import *
 
 
 class FoundRowsTest(TestBase, AssertsExecutionResults):

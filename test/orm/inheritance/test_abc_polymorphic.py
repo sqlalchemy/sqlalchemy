@@ -4,7 +4,7 @@ from sqlalchemy.orm import *
 
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 
 class ABCTest(_base.MappedTest):
     @classmethod

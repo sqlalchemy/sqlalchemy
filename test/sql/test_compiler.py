@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import datetime, re, operator
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
@@ -6,7 +6,7 @@ from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
-from sqlalchemy.test import *
+from test.lib import *
 
 table1 = table('mytable',
     column('myid', Integer),

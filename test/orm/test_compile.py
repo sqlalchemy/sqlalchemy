@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
-from sqlalchemy.test import *
+from test.lib import *
 from test.orm import _base
 
 

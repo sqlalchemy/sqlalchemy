@@ -2,16 +2,16 @@
 inheritance setups for which we maintain compatibility.
 """
 
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
 
-from sqlalchemy.test import TestBase, AssertsExecutionResults, testing
+from test.lib import TestBase, AssertsExecutionResults, testing
 from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
-from sqlalchemy.test.testing import eq_
-from sqlalchemy.test.schema import Table, Column
+from test.lib.testing import eq_
+from test.lib.schema import Table, Column
 
 class AttrSettable(object):
     def __init__(self, **kwargs):

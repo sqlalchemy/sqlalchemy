@@ -1,11 +1,11 @@
 
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from sqlalchemy import MetaData, Integer, ForeignKey, util
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, attributes, class_mapper, clear_mappers
-from sqlalchemy.test.testing import eq_, ne_
+from test.lib.testing import eq_, ne_
 from sqlalchemy.util import function_named
 from test.orm import _base
 

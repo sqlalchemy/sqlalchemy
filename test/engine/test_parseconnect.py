@@ -1,11 +1,11 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message, eq_
+from test.lib.testing import assert_raises, assert_raises_message, eq_
 import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config
 from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase
+from test.lib import TestBase
 
 
 class ParseConnectTest(TestBase):

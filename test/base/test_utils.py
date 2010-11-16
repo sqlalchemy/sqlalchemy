@@ -1,9 +1,9 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 import copy, threading
 from sqlalchemy import util, sql, exc
-from sqlalchemy.test import TestBase
-from sqlalchemy.test.testing import eq_, is_, ne_
-from sqlalchemy.test.util import gc_collect, picklers
+from test.lib import TestBase
+from test.lib.testing import eq_, is_, ne_
+from test.lib.util import gc_collect, picklers
 from sqlalchemy.util import classproperty
 
 

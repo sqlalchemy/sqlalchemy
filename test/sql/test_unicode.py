@@ -2,8 +2,8 @@
 """verrrrry basic unicode column name testing"""
 
 from sqlalchemy import *
-from sqlalchemy.test import *
-from sqlalchemy.test.engines import utf8_engine
+from test.lib import *
+from test.lib.engines import utf8_engine
 from sqlalchemy.sql import column
 
 class UnicodeSchemaTest(TestBase):

@@ -2,7 +2,7 @@
 desired state for different backends.
 """
 
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import schema
 
 __all__ = 'Table', 'Column',

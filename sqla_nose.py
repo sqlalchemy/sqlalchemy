@@ -2,8 +2,8 @@
 """
 nose runner script.
 
-This script is a front-end to "nosetests" which doesn't
-require that SQLA's testing plugin be installed via setuptools.
+This script is a front-end to "nosetests" which
+installs SQLAlchemy's testing plugin into the local environment.
 
 """
 import sys
