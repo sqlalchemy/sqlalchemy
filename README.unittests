@@ -5,31 +5,32 @@ SQLALCHEMY UNIT TESTS
 SQLAlchemy unit tests by default run using Python's built-in sqlite3 
 module.  If running on Python 2.4, pysqlite must be installed.
 
-Unit tests are run using nose.  Note that in most cases,
-nose needs to be installed manually.  Documentation and
-downloads for nose are available at:
+Unit tests are run using nose.  Nose is available at:
 
-http://somethingaboutorange.com/mrl/projects/nose/0.11.1/index.html
-
-Or using setuptools:
-
-    $ easy_install nose
+    http://pypi.python.org/pypi/nose/
 
 SQLAlchemy implements a nose plugin that must be present when tests are run.
 This plugin is invoked when the test runner script provided with
 SQLAlchemy is used.
 
 **NOTE:** - the nose plugin is no longer installed by setuptools as of 
-version 0.7 !  Please use sqla_nose.py to run tests.
+version 0.7 !  Use "python setup.py test" or "./sqla_nose.py".
 
-RUNNING ALL TESTS
------------------
+RUNNING TESTS VIA SETUP.PY
+--------------------------
+A plain vanilla run of all tests using sqlite can be run via setup.py:
+
+    $ python setup.py test
+
+The -v flag also works here:
+
+    $ python setup.py test -v
+
+RUNNING ALL TESTS 
+------------------
 To run all tests:
 
     $ ./sqla_nose.py
-
-(NOTE: if running with Python 2.7 and nose 0.11.3, add "-w test/" to the command.
-Again this is a Nose issue, see Nose issue 342.)
 
 If you're running the tests on Microsoft Windows, then there is an additional
 argument that must be passed to ./sqla_nose.py:

@@ -16,5 +16,4 @@ from test.bootstrap.noseplugin import NoseSQLAlchemy
 
 import nose
 
-if __name__ == '__main__':
-    nose.main(addplugins=[NoseSQLAlchemy()])
+nose.main(addplugins=[NoseSQLAlchemy()])

@@ -82,12 +82,8 @@ setup(name = "SQLAlchemy",
       package_dir = {'':'lib'},
       license = "MIT License",
 
-      # TODO: this is nice, but Python 3 support ?
-      # any way to make it not install for build/install ?
-      #setup_requires=["setuptools_hg"],
-
       tests_require = ['nose >= 0.11'],
-      test_suite = "nose.collector",
+      test_suite = "sqla_nose",
       
       long_description = """\
 SQLAlchemy is:
