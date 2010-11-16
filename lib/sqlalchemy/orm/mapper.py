@@ -162,7 +162,7 @@ class Mapper(object):
         else:
             self.with_polymorphic = None
 
-        if isinstance(self.local_table, expression._SelectBaseMixin):
+        if isinstance(self.local_table, expression._SelectBase):
             raise sa_exc.InvalidRequestError(
                 "When mapping against a select() construct, map against "
                 "an alias() of the construct instead."
@@ -172,7 +172,7 @@ class Mapper(object):
 
         if self.with_polymorphic and \
                     isinstance(self.with_polymorphic[1],
-                                expression._SelectBaseMixin):
+                                expression._SelectBase):
             self.with_polymorphic = (self.with_polymorphic[0],
                                 self.with_polymorphic[1].alias())
 

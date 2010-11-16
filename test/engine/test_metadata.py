@@ -353,7 +353,6 @@ class MetaDataTest(TestBase, ComparesTables):
             [d, b, a, c, e]
         )
         
-        
     def test_tometadata_strip_schema(self):
         meta = MetaData()
 
@@ -387,7 +386,7 @@ class MetaDataTest(TestBase, ComparesTables):
                           MetaData(testing.db), autoload=True)
 
 
-class TableOptionsTest(TestBase, AssertsCompiledSQL):
+class TableTest(TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
@@ -418,3 +417,27 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
 
+    def test_c_immutable(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('x', Integer), Column('y', Integer))
+        assert_raises(
+            TypeError,
+            t1.c.extend, [Column('z', Integer)]
+        )
+
+        def assign():
+            t1.c['z'] = Column('z', Integer)
+        assert_raises(
+            TypeError,
+            assign
+        )
+
+        def assign():
+            t1.c.z = Column('z', Integer)
+        assert_raises(
+            TypeError,
+            assign
+        )
+        
+        
+    

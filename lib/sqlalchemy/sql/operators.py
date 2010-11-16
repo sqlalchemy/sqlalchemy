@@ -83,7 +83,7 @@ def desc_op(a):
 def asc_op(a):
     return a.asc()
 
-_commutative = set([eq, ne, add, mul])
+_commutative = set([eq, ne, add, mul, and_])
 def is_commutative(op):
     return op in _commutative
 

@@ -1658,7 +1658,7 @@ class _CompareMixin(ColumnOperators):
         if isinstance(seq_or_selectable, _ScalarSelect):
             return self.__compare(op, seq_or_selectable,
                                   negate=negate_op)
-        elif isinstance(seq_or_selectable, _SelectBaseMixin):
+        elif isinstance(seq_or_selectable, _SelectBase):
 
             # TODO: if we ever want to support (x, y, z) IN (select x,
             # y, z from table), we would need a multi-column version of
@@ -1830,7 +1830,7 @@ class _CompareMixin(ColumnOperators):
             return other.__clause_element__()
         elif not isinstance(other, ClauseElement):
             return self._bind_param(operator, other)
-        elif isinstance(other, (_SelectBaseMixin, Alias)):
+        elif isinstance(other, (_SelectBase, Alias)):
             return other.as_scalar()
         else:
             return other
@@ -1905,7 +1905,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         co = ColumnClause(name, selectable, type_=getattr(self,
                           'type', None))
         co.proxies = [self]
-        selectable.columns[key] = co
+        selectable._columns[key] = co
         return co
 
     def compare(self, other, use_proxies=False, equivalents=None, **kw):
@@ -2044,6 +2044,16 @@ class ColumnCollection(util.OrderedProperties):
         # always return a "True" value (i.e. a BinaryClause...)
 
         return col in util.column_set(self)
+    
+    def as_immutable(self):
+        return ImmutableColumnCollection(self._data)
+        
+class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
+    def __init__(self, data):
+        util.ImmutableProperties.__init__(self, data)
+    
+    extend = remove = util.ImmutableProperties._immutable
+
 
 class ColumnSet(util.ordered_column_set):
     def contains_column(self, col):
@@ -2239,44 +2249,50 @@ class FromClause(Selectable):
     def _reset_exported(self):
         """delete memoized collections when a FromClause is cloned."""
 
-        for attr in '_columns', '_primary_key', '_foreign_keys', \
-            'locate_all_froms':
-            self.__dict__.pop(attr, None)
+        for name in 'primary_key', '_columns', 'columns', \
+                'foreign_keys', 'locate_all_froms':
+            self.__dict__.pop(name, None)
 
     @util.memoized_property
-    def _columns(self):
+    def columns(self):
         """Return the collection of Column objects contained by this
         FromClause."""
-
-        self._export_columns()
-        return self._columns
-
+        
+        if '_columns' not in self.__dict__:
+            self._init_collections()
+            self._populate_column_collection()
+        return self._columns.as_immutable()
+    
     @util.memoized_property
-    def _primary_key(self):
+    def primary_key(self):
         """Return the collection of Column objects which comprise the
         primary key of this FromClause."""
-
-        self._export_columns()
-        return self._primary_key
-
+        
+        self._init_collections()
+        self._populate_column_collection()
+        return self.primary_key
+    
     @util.memoized_property
-    def _foreign_keys(self):
+    def foreign_keys(self):
         """Return the collection of ForeignKey objects which this
         FromClause references."""
+        
+        self._init_collections()
+        self._populate_column_collection()
+        return self.foreign_keys
 
-        self._export_columns()
-        return self._foreign_keys
-    columns = property(attrgetter('_columns'), doc=_columns.__doc__)
-    primary_key = property(attrgetter('_primary_key'),
-                           doc=_primary_key.__doc__)
-    foreign_keys = property(attrgetter('_foreign_keys'),
-                            doc=_foreign_keys.__doc__)
-
-    # synonyms for 'columns'
-
-    c = _select_iterable = property(attrgetter('columns'),
-                                    doc=_columns.__doc__)
-
+    c = property(attrgetter('columns'))
+    _select_iterable = property(attrgetter('columns'))
+    
+    def _init_collections(self):
+        assert '_columns' not in self.__dict__
+        assert 'primary_key' not in self.__dict__
+        assert 'foreign_keys' not in self.__dict__
+            
+        self._columns = ColumnCollection()
+        self.primary_key = ColumnSet()
+        self.foreign_keys = set()
+         
     def _export_columns(self):
         """Initialize column collections."""
 
@@ -3009,7 +3025,7 @@ class _Exists(_UnaryExpression):
     _from_objects = []
 
     def __init__(self, *args, **kwargs):
-        if args and isinstance(args[0], (_SelectBaseMixin, _ScalarSelect)):
+        if args and isinstance(args[0], (_SelectBase, _ScalarSelect)):
             s = args[0]
         else:
             if not args:
@@ -3088,10 +3104,10 @@ class Join(FromClause):
         columns = [c for c in self.left.columns] + \
                         [c for c in self.right.columns]
 
-        self._primary_key.extend(sqlutil.reduce_columns(
+        self.primary_key.extend(sqlutil.reduce_columns(
                 (c for c in columns if c.primary_key), self.onclause))
         self._columns.update((col._label, col) for col in columns)
-        self._foreign_keys.update(itertools.chain(
+        self.foreign_keys.update(itertools.chain(
                         *[col.foreign_keys for col in columns]))
 
     def _copy_internals(self, clone=_clone):
@@ -3281,10 +3297,24 @@ class _FromGrouping(FromClause):
 
     def __init__(self, element):
         self.element = element
-
+    
+    def _init_collections(self):
+        pass
+        
     @property
     def columns(self):
         return self.element.columns
+
+    @property
+    def primary_key(self):
+        return self.element.primary_key
+
+    @property
+    def foreign_keys(self):
+        # this could be
+        # self.element.foreign_keys
+        # see SelectableTest.test_join_condition
+        return set()
 
     @property
     def _hide_froms(self):
@@ -3476,7 +3506,7 @@ class ColumnClause(_Immutable, ColumnElement):
                 )
         c.proxies = [self]
         if attach:
-            selectable.columns[c.name] = c
+            selectable._columns[c.name] = c
         return c
 
 class TableClause(_Immutable, FromClause):
@@ -3496,11 +3526,14 @@ class TableClause(_Immutable, FromClause):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
         self._columns = ColumnCollection()
-        self._primary_key = ColumnSet()
-        self._foreign_keys = set()
+        self.primary_key = ColumnSet()
+        self.foreign_keys = set()
         for c in columns:
             self.append_column(c)
-
+    
+    def _init_collections(self):
+        pass
+        
     def _export_columns(self):
         raise NotImplementedError()
 
@@ -3556,7 +3589,7 @@ class TableClause(_Immutable, FromClause):
     def _from_objects(self):
         return [self]
 
-class _SelectBaseMixin(Executable):
+class _SelectBase(Executable, FromClause):
     """Base class for :class:`Select` and ``CompoundSelects``."""
 
     def __init__(self,
@@ -3583,7 +3616,7 @@ class _SelectBaseMixin(Executable):
 
         self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
-
+    
     def as_scalar(self):
         """return a 'scalar' representation of this selectable, which can be
         used as a column expression.
@@ -3729,7 +3762,7 @@ class _ScalarSelect(_Grouping):
     def _make_proxy(self, selectable, name):
         return list(self.inner_columns)[0]._make_proxy(selectable, name)
 
-class CompoundSelect(_SelectBaseMixin, FromClause):
+class CompoundSelect(_SelectBase):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other 
         SELECT-based set operations."""
 
@@ -3764,7 +3797,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
             self.selects.append(s.self_group(self))
 
-        _SelectBaseMixin.__init__(self, **kwargs)
+        _SelectBase.__init__(self, **kwargs)
     
     def _scalar_type(self):
         return self.selects[0]._scalar_type()
@@ -3830,7 +3863,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class Select(_SelectBaseMixin, FromClause):
+class Select(_SelectBase):
     """Represents a ``SELECT`` statement.
 
     Select statements support appendable clauses, as well as the
@@ -3859,7 +3892,7 @@ class Select(_SelectBaseMixin, FromClause):
         argument descriptions.
 
         Additional generative and mutator methods are available on the
-        :class:`_SelectBaseMixin` superclass.
+        :class:`_SelectBase` superclass.
 
         """
         self._should_correlate = correlate
@@ -3907,7 +3940,7 @@ class Select(_SelectBaseMixin, FromClause):
         if prefixes:
             self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
 
-        _SelectBaseMixin.__init__(self, **kwargs)
+        _SelectBase.__init__(self, **kwargs)
 
     def _get_display_froms(self, existing_froms=None):
         """Return the full list of 'from' clauses to be displayed.

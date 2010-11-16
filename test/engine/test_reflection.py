@@ -611,6 +611,7 @@ class ReflectionTest(TestBase, ComparesTables):
             self.assert_tables_equal(multi, table)
             self.assert_tables_equal(multi2, table2)
             j = sa.join(table, table2)
+
             self.assert_(sa.and_(table.c.multi_id == table2.c.foo,
                          table.c.multi_rev == table2.c.bar,
                          table.c.multi_hoho
