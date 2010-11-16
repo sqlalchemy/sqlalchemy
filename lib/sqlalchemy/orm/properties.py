@@ -18,11 +18,12 @@ from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
     join_condition
 from sqlalchemy.sql import operators, expression
 from sqlalchemy.orm import attributes, dependency, mapper, \
-    object_mapper, strategies
+    object_mapper, strategies, configure_mappers
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
     _orm_annotate, _orm_deannotate
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
     MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
+mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 NoneType = type(None)
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
@@ -722,7 +723,8 @@ class RelationshipProperty(StrategizedProperty):
 
         @util.memoized_property
         def property(self):
-            self.prop.parent.compile()
+            if mapperlib.module._new_mappers:
+                configure_mappers()
             return self.prop
 
     def compare(self, op, value, 

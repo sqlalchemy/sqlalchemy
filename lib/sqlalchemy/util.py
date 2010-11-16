@@ -1577,7 +1577,7 @@ class importlater(object):
         self._il_addtl = addtl
     
     @memoized_property
-    def _il_module(self):
+    def module(self):
         m = __import__(self._il_path)
         for token in self._il_path.split(".")[1:]:
             m = getattr(m, token)
@@ -1594,7 +1594,7 @@ class importlater(object):
         
     def __getattr__(self, key):
         try:
-            attr = getattr(self._il_module, key)
+            attr = getattr(self.module, key)
         except AttributeError:
             raise AttributeError(
                         "Module %s has no attribute '%s'" % 

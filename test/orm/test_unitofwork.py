@@ -579,7 +579,7 @@ class ForeignPKTest(_base.MappedTest):
         m2 = mapper(Person, people, properties={
             'sites' : relationship(PersonSite)})
 
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
         eq_(list(m2.get_property('sites').synchronize_pairs),
             [(people.c.person, peoplesites.c.person)])
 
@@ -756,7 +756,7 @@ class PassiveDeletesTest(_base.MappedTest):
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
         mapper(MyClass, mytable)
-        assert_raises(sa.exc.SAWarning, sa.orm.compile_mappers)
+        assert_raises(sa.exc.SAWarning, sa.orm.configure_mappers)
         
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)

@@ -4,7 +4,7 @@ from sqlalchemy import util
 from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
                                         NEVER_SET, NO_VALUE, manager_of_class, \
                                         ATTR_WAS_SET
-from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
+from sqlalchemy.orm import attributes, exc as orm_exc, interfaces, configure_mappers
 
 import sys
 attributes.state = sys.modules['sqlalchemy.orm.state']
@@ -164,8 +164,8 @@ class InstanceState(object):
                         "Cannot deserialize object of type %r - no mapper() has"
                         " been configured for this class within the current Python process!" %
                         self.class_)
-        elif manager.is_mapped and not manager.mapper.compiled:
-            manager.mapper.compile()
+        elif manager.is_mapped and not manager.mapper.configured:
+            configure_mappers()
             
         self.committed_state = state.get('committed_state', {})
         self.pending = state.get('pending', {})

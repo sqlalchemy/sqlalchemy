@@ -9,7 +9,7 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     ForeignKeyConstraint, asc, Index
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
-    joinedload, compile_mappers, backref, clear_mappers, \
+    joinedload, configure_mappers, backref, clear_mappers, \
     polymorphic_union, deferred, column_property
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.util import classproperty
@@ -209,7 +209,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert_raises_message(exc.InvalidRequestError,
                               "'addresses' is not an instance of "
-                              "ColumnProperty", compile_mappers)
+                              "ColumnProperty", configure_mappers)
 
     def test_string_dependency_resolution_two(self):
 
@@ -227,7 +227,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert_raises_message(exc.InvalidRequestError,
                               "does not have a mapped column named "
-                              "'__table__'", compile_mappers)
+                              "'__table__'", configure_mappers)
 
     def test_string_dependency_resolution_no_magic(self):
         """test that full tinkery expressions work as written"""
@@ -246,7 +246,7 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
             user_id = Column(Integer, ForeignKey('users.id'))
 
-        compile_mappers()
+        configure_mappers()
         eq_(str(User.addresses.prop.primaryjoin),
             'users.id = addresses.user_id')
         
@@ -268,7 +268,7 @@ class DeclarativeTest(DeclarativeTestBase):
             email = Column(String(50))
             user_id = Column(Integer, ForeignKey('users.id'))
 
-        compile_mappers()
+        configure_mappers()
         eq_(str(User.addresses.property.primaryjoin),
             str(Address.user.property.primaryjoin))
         
@@ -295,7 +295,7 @@ class DeclarativeTest(DeclarativeTestBase):
                              Column('user_id', Integer,
                              ForeignKey('users.id')), Column('prop_id',
                              Integer, ForeignKey('props.id')))
-        compile_mappers()
+        configure_mappers()
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
 
@@ -356,7 +356,7 @@ class DeclarativeTest(DeclarativeTestBase):
         # this used to raise an error when accessing User.id but that's
         # no longer the case since we got rid of _CompileOnAttr.
 
-        assert_raises(sa.exc.ArgumentError, compile_mappers)
+        assert_raises(sa.exc.ArgumentError, configure_mappers)
 
     def test_nice_dependency_error_works_with_hasattr(self):
 
@@ -377,7 +377,7 @@ class DeclarativeTest(DeclarativeTestBase):
                             "^One or more mappers failed to initialize - "
                             "can't proceed with initialization of other "
                             "mappers.  Original exception was: When initializing.*",
-                            compile_mappers)
+                            configure_mappers)
 
     def test_custom_base(self):
         class MyBase(object):
@@ -406,7 +406,7 @@ class DeclarativeTest(DeclarativeTestBase):
             master = relationship(Master)
 
         Base.metadata.create_all()
-        compile_mappers()
+        configure_mappers()
         assert class_mapper(Detail).get_property('master'
                 ).strategy.use_get
         m1 = Master()
@@ -433,7 +433,7 @@ class DeclarativeTest(DeclarativeTestBase):
         i = Index('my_index', User.name)
         
         # compile fails due to the nonexistent Addresses relationship
-        assert_raises(sa.exc.InvalidRequestError, compile_mappers)
+        assert_raises(sa.exc.InvalidRequestError, configure_mappers)
         
         # index configured
         assert i in User.__table__.indexes
@@ -929,7 +929,7 @@ class DeclarativeTest(DeclarativeTestBase):
         # the User.id inside the ForeignKey but this is no longer the
         # case
 
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
         eq_(str(Address.user_id.property.columns[0].foreign_keys[0]),
             "ForeignKey('users.id')")
         Base.metadata.create_all()
@@ -1134,7 +1134,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         # compile succeeds because inherit_condition is honored
 
-        compile_mappers()
+        configure_mappers()
 
     def test_joined(self):
 
@@ -1400,7 +1400,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             related_child1 = Column('c1', Integer)
             __mapper_args__ = dict(polymorphic_identity='child2')
 
-        sa.orm.compile_mappers()  # no exceptions here
+        sa.orm.configure_mappers()  # no exceptions here
 
     def test_single_colsonbase(self):
         """test single inheritance where all the columns are on the base
@@ -1908,7 +1908,7 @@ def _produce_test(inline, stringbased):
                                 == user_id, backref='addresses')
 
             if not inline:
-                compile_mappers()
+                configure_mappers()
                 if stringbased:
                     Address.user = relationship('User',
                             primaryjoin='User.id==Address.user_id',
@@ -2464,7 +2464,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class Engineer(Person):
             pass
 
-        compile_mappers()
+        configure_mappers()
         assert class_mapper(Person).polymorphic_on \
             is Person.__table__.c.type
         eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
@@ -2491,7 +2491,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class Engineer(Person, ComputedMapperArgs):
             pass
 
-        compile_mappers()
+        configure_mappers()
         assert class_mapper(Person).polymorphic_on \
             is Person.__table__.c.type
         eq_(class_mapper(Engineer).polymorphic_identity, 'Engineer')
@@ -3019,7 +3019,7 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
 
-        compile_mappers()
+        configure_mappers()
         eq_(MyModel.type_.__doc__, """this is a document.""")
         eq_(MyModel.t2.__doc__, """this is another document.""")
 
@@ -3037,7 +3037,7 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
 
-        compile_mappers()
+        configure_mappers()
         col = MyModel.__mapper__.polymorphic_on
         eq_(col.name, 'type_')
         assert col.table is not None

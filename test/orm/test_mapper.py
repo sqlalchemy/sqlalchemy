@@ -6,7 +6,7 @@ from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
-from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
+from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, configure_mappers, reconstructor, validates, aliased
 from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relationship, dynamic_loader, comparable_property,AttributeExtension
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
@@ -24,7 +24,7 @@ class MapperTest(_fixtures.FixtureTest):
             properties={
             'addresses':relationship(Address, backref='email_address')
         })
-        assert_raises(sa.exc.ArgumentError, sa.orm.compile_mappers)
+        assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
     @testing.resolve_artifact_names
     def test_update_attr_keys(self):
@@ -106,7 +106,7 @@ class MapperTest(_fixtures.FixtureTest):
                                   "initialization of other mappers.  "
                                   "Original exception was: Class "
                                   "'test.orm._fixtures.User' is not mapped$"
-                                  , compile_mappers)
+                                  , configure_mappers)
     
     @testing.resolve_artifact_names
     def test_column_prefix(self):
@@ -132,23 +132,24 @@ class MapperTest(_fixtures.FixtureTest):
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     @testing.resolve_artifact_names
-    def test_recompile_on_other_mapper(self):
-        """A compile trigger on an already-compiled mapper still triggers a check against all mappers."""
+    def test_reconfigure_on_other_mapper(self):
+        """A configure trigger on an already-configured mapper 
+        still triggers a check against all mappers."""
         mapper(User, users)
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
         assert sa.orm.mapperlib._new_mappers is False
 
         m = mapper(Address, addresses, properties={
                 'user': relationship(User, backref="addresses")})
 
-        assert m.compiled is False
+        assert m.configured is False
         assert sa.orm.mapperlib._new_mappers is True
         u = User()
         assert User.addresses
         assert sa.orm.mapperlib._new_mappers is False
 
     @testing.resolve_artifact_names
-    def test_compile_on_session(self):
+    def test_configure_on_session(self):
         m = mapper(User, users)
         session = create_session()
         session.connection(m)
@@ -236,25 +237,25 @@ class MapperTest(_fixtures.FixtureTest):
     def test_props(self):
         m = mapper(User, users, properties = {
             'addresses' : relationship(mapper(Address, addresses))
-        }).compile()
+        })
         assert User.addresses.property is m.get_property('addresses')
 
     @testing.resolve_artifact_names
-    def test_compile_on_prop_1(self):
+    def test_configure_on_prop_1(self):
         mapper(User, users, properties = {
             'addresses' : relationship(mapper(Address, addresses))
         })
         User.addresses.any(Address.email_address=='foo@bar.com')
 
     @testing.resolve_artifact_names
-    def test_compile_on_prop_2(self):
+    def test_configure_on_prop_2(self):
         mapper(User, users, properties = {
             'addresses' : relationship(mapper(Address, addresses))
         })
         eq_(str(User.id == 3), str(users.c.id==3))
 
     @testing.resolve_artifact_names
-    def test_compile_on_prop_3(self):
+    def test_configure_on_prop_3(self):
         class Foo(User):pass
         mapper(User, users)
         mapper(Foo, addresses, inherits=User)
@@ -264,7 +265,7 @@ class MapperTest(_fixtures.FixtureTest):
     def test_deferred_subclass_attribute_instrument(self):
         class Foo(User):pass
         mapper(User, users)
-        compile_mappers()
+        configure_mappers()
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'name').impl is not None
 
@@ -273,7 +274,7 @@ class MapperTest(_fixtures.FixtureTest):
         class Foo(User):pass
         m = mapper(User, users)
         mapper(Order, orders)
-        compile_mappers()
+        configure_mappers()
         mapper(Foo, addresses, inherits=User)
         ext_list = [AttributeExtension()]
         m.add_property('somename', column_property(users.c.name, extension=ext_list))
@@ -283,7 +284,7 @@ class MapperTest(_fixtures.FixtureTest):
         assert Foo.orders.impl.extensions is User.orders.impl.extensions
         assert Foo.orders.impl.extensions is not ext_list
         
-        compile_mappers()
+        configure_mappers()
         assert len(User.somename.impl.extensions) == 1
         assert len(Foo.somename.impl.extensions) == 1
         assert len(Foo.orders.impl.extensions) == 3
@@ -291,18 +292,29 @@ class MapperTest(_fixtures.FixtureTest):
         
 
     @testing.resolve_artifact_names
-    def test_compile_on_get_props_1(self):
+    def test_configure_on_get_props_1(self):
         m =mapper(User, users)
-        assert not m.compiled
+        assert not m.configured
         assert list(m.iterate_properties)
-        assert m.compiled
+        assert m.configured
 
     @testing.resolve_artifact_names
-    def test_compile_on_get_props_2(self):
+    def test_configure_on_get_props_2(self):
         m= mapper(User, users)
-        assert not m.compiled
+        assert not m.configured
         assert m.get_property('name')
-        assert m.compiled
+        assert m.configured
+
+    @testing.resolve_artifact_names
+    def test_configure_on_get_props_3(self):
+        m= mapper(User, users)
+        assert not m.configured
+        configure_mappers()
+        
+        m2 = mapper(Address, addresses, properties={
+                                            'user':relationship(User, backref='addresses')
+                                        })
+        assert m.get_property('addresses')
         
     @testing.resolve_artifact_names
     def test_add_property(self):
@@ -407,7 +419,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Address, addresses, properties={
             'user':synonym('_user')
         })
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
 
         # later, backref sets up the prop
         mapper(User, users, properties={
@@ -450,13 +462,14 @@ class MapperTest(_fixtures.FixtureTest):
     def test_illegal_non_primary(self):
         mapper(User, users)
         mapper(Address, addresses)
+        mapper(User, users, non_primary=True, properties={
+            'addresses':relationship(Address)
+        })
         assert_raises_message(
             sa.exc.ArgumentError,
             "Attempting to assign a new relationship 'addresses' "
             "to a non-primary mapper on class 'User'",
-            mapper(User, users, non_primary=True, properties={
-                'addresses':relationship(Address)
-            }).compile
+            configure_mappers
         )
 
     @testing.resolve_artifact_names
@@ -528,7 +541,7 @@ class MapperTest(_fixtures.FixtureTest):
                        exclude_properties=(t.c.boss_id,
                        'employee_number', t.c.vendor_id))
         
-        p_m.compile()
+        configure_mappers()
 
         def assert_props(cls, want):
             have = set([n for n in dir(cls) if not n.startswith('_')])
@@ -609,7 +622,7 @@ class MapperTest(_fixtures.FixtureTest):
                     addresses.join(email_bounces), 
                     properties={'id':[addresses.c.id, email_bounces.c.id]}
                 )
-        m.compile()
+        configure_mappers()
         assert addresses in m._pks_by_table
         assert email_bounces not in m._pks_by_table
 
@@ -1031,25 +1044,25 @@ class MapperTest(_fixtures.FixtureTest):
         class MyFakeProperty(sa.orm.properties.ColumnProperty):
             def post_instrument_class(self, mapper):
                 super(MyFakeProperty, self).post_instrument_class(mapper)
-                m2.compile()
+                configure_mappers()
             
         m1 = mapper(User, users, properties={
             'name':MyFakeProperty(users.c.name)
         })
         m2 = mapper(Address, addresses)
-        compile_mappers()
+        configure_mappers()
 
         sa.orm.clear_mappers()
         class MyFakeProperty(sa.orm.properties.ColumnProperty):
             def post_instrument_class(self, mapper):
                 super(MyFakeProperty, self).post_instrument_class(mapper)
-                m1.compile()
+                configure_mappers()
             
         m1 = mapper(User, users, properties={
             'name':MyFakeProperty(users.c.name)
         })
         m2 = mapper(Address, addresses)
-        compile_mappers()
+        configure_mappers()
         
     @testing.resolve_artifact_names
     def test_reconstructor(self):
@@ -1129,7 +1142,7 @@ class MapperTest(_fixtures.FixtureTest):
             'addresses':relationship(Address)
         })
 
-        assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.compile_mappers)
+        assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.configure_mappers)
 
     @testing.resolve_artifact_names
     def test_unmapped_subclass_error_postmap(self):
@@ -1139,7 +1152,7 @@ class MapperTest(_fixtures.FixtureTest):
             pass
         
         mapper(Base, users)
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
 
         # we can create new instances, set attributes.
         s = Sub()
@@ -1164,7 +1177,7 @@ class MapperTest(_fixtures.FixtureTest):
         class Sub(Base):
             pass
 
-        sa.orm.compile_mappers()
+        sa.orm.configure_mappers()
         
         # we can create new instances, set attributes.
         s = Sub()
@@ -1228,7 +1241,7 @@ class DocumentTest(testing.TestBase):
             'hoho':synonym(t1.c.col4, doc="syn of col4")
         })
         mapper(Bar, t2)
-        compile_mappers()
+        configure_mappers()
         eq_(Foo.col1.__doc__, "primary key column")
         eq_(Foo.col2.__doc__, "data col")
         eq_(Foo.col5.__doc__, None)

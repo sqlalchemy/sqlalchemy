@@ -46,7 +46,7 @@ _new_mappers = False
 _already_compiling = False
 _none_set = frozenset([None])
 
-_memoized_compiled_property = util.group_expirable_memoized_property()
+_memoized_configured_property = util.group_expirable_memoized_property()
 
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
@@ -198,10 +198,10 @@ class Mapper(object):
         else:
             self.exclude_properties = None
 
-        self.compiled = False
+        self.configured = False
         
         # prevent this mapper from being constructed
-        # while a compile() is occuring (and defer a compile()
+        # while a configure_mappers() is occuring (and defer a configure_mappers()
         # until construction succeeds)
         _COMPILE_MUTEX.acquire()
         try:
@@ -418,13 +418,30 @@ class Mapper(object):
             event_registry.add_listener('on_load', reconstruct)
 
         manager.info[_INSTRUMENTOR] = self
-
+    
+    @util.deprecated("0.7", message=":meth:`.Mapper.compile` "
+                            "is replaced by :func:`.configure_mappers`")
+    def compile(self):
+        """Initialize the inter-mapper relationships of all mappers that
+        have been constructed thus far.
+        
+        """
+        configure_mappers()
+        return self
+        
+    
+    @property
+    @util.deprecated("0.7", message=":attr:`.Mapper.compiled` "
+                            "is replaced by :attr:`.Mapper.configured`")
+    def compiled(self):
+        return self.configured
+        
     def dispose(self):
         # Disable any attribute-based compilation.
-        self.compiled = True
+        self.configured = True
         
-        if hasattr(self, '_compile_failed'):
-            del self._compile_failed
+        if hasattr(self, '_configure_failed'):
+            del self._configure_failed
             
         if not self.non_primary and \
             self.class_manager.is_mapped and \
@@ -754,60 +771,6 @@ class Mapper(object):
             prop.post_instrument_class(self)
 
 
-    def compile(self):
-        """Compile this mapper and all other non-compiled mappers.
-
-        This method checks the local compiled status as well as for
-        any new mappers that have been defined, and is safe to call
-        repeatedly.
-
-        """
-        global _new_mappers
-        if self.compiled and not _new_mappers:
-            return self
-
-        _COMPILE_MUTEX.acquire()
-        try:
-            try:
-                global _already_compiling
-                if _already_compiling:
-                    return
-                _already_compiling = True
-                try:
-
-                    # double-check inside mutex
-                    if self.compiled and not _new_mappers:
-                        return self
-
-                    # initialize properties on all mappers
-                    # note that _mapper_registry is unordered, which 
-                    # may randomly conceal/reveal issues related to 
-                    # the order of mapper compilation
-                    for mapper in list(_mapper_registry):
-                        if getattr(mapper, '_compile_failed', False):
-                            e = sa_exc.InvalidRequestError(
-                                    "One or more mappers failed to initialize - "
-                                    "can't proceed with initialization of other "
-                                    "mappers.  Original exception was: %s"
-                                    % mapper._compile_failed)
-                            e._compile_failed = mapper._compile_failed
-                            raise e
-                        if not mapper.compiled:
-                            mapper._post_configure_properties()
-
-                    _new_mappers = False
-                    return self
-                finally:
-                    _already_compiling = False
-            except:
-                exc = sys.exc_info()[1]
-                if not hasattr(exc, '_compile_failed'):
-                    self._compile_failed = exc
-                raise
-        finally:
-            self._expire_memoizations()
-            _COMPILE_MUTEX.release()
-
     def _post_configure_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
@@ -829,7 +792,7 @@ class Mapper(object):
                 prop.post_instrument_class(self)
             
         self._log("_post_configure_properties() complete")
-        self.compiled = True
+        self.configured = True
             
     def add_properties(self, dict_of_properties):
         """Add the given dictionary of properties to this mapper,
@@ -842,19 +805,19 @@ class Mapper(object):
     def add_property(self, key, prop):
         """Add an individual MapperProperty to this mapper.
 
-        If the mapper has not been compiled yet, just adds the
+        If the mapper has not been configured yet, just adds the
         property to the initial properties dictionary sent to the
-        constructor.  If this Mapper has already been compiled, then
-        the given MapperProperty is compiled immediately.
+        constructor.  If this Mapper has already been configured, then
+        the given MapperProperty is configured immediately.
 
         """
         self._init_properties[key] = prop
-        self._configure_property(key, prop, init=self.compiled)
+        self._configure_property(key, prop, init=self.configured)
         self._expire_memoizations()
 
     def _expire_memoizations(self):
         for mapper in self.iterate_to_root():
-            _memoized_compiled_property.expire_instance(mapper)
+            _memoized_configured_property.expire_instance(mapper)
 
     def _log(self, msg, *args):
         self.logger.info(
@@ -910,9 +873,9 @@ class Mapper(object):
         resolve_synonyms=False and raiseerr=False are deprecated.
         
         """
-
-        if _compile_mappers and not self.compiled:
-            self.compile()
+        
+        if _compile_mappers and _new_mappers:
+            configure_mappers()
         
         if not resolve_synonyms:
             prop = self._props.get(key, None)
@@ -946,8 +909,8 @@ class Mapper(object):
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
-        if not self.compiled:
-            self.compile()
+        if _new_mappers:
+            configure_mappers()
         return self._props.itervalues()
 
     def _mappers_from_spec(self, spec, selectable):
@@ -998,7 +961,7 @@ class Mapper(object):
 
         return from_obj
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _single_table_criterion(self):
         if self.single and \
             self.inherits and \
@@ -1010,13 +973,13 @@ class Mapper(object):
         else:
             return None
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _with_polymorphic_mappers(self):
         if not self.with_polymorphic:
             return [self]
         return self._mappers_from_spec(*self.with_polymorphic)
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _with_polymorphic_selectable(self):
         if not self.with_polymorphic:
             return self.mapped_table
@@ -1041,7 +1004,7 @@ class Mapper(object):
         else:
             return mappers, self._selectable_from_mappers(mappers)
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _polymorphic_properties(self):
         return tuple(self._iterate_polymorphic_properties(
             self._with_polymorphic_mappers))
@@ -1077,7 +1040,7 @@ class Mapper(object):
                     "provided by the get_property() and iterate_properties "
                     "accessors.")
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _get_clause(self):
         """create a "get clause" based on the primary key.  this is used
         by query.get() and many-to-one lazyloads to load this item
@@ -1089,7 +1052,7 @@ class Mapper(object):
         return sql.and_(*[k==v for (k, v) in params]), \
                 util.column_dict(params)
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _equivalent_columns(self):
         """Create a map of all *equivalent* columns, based on
         the determination of column pairs that are equated to
@@ -1199,7 +1162,7 @@ class Mapper(object):
             yield m
             m = m.inherits
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def self_and_descendants(self):
         """The collection including this mapper and all descendant mappers.
 
@@ -1423,11 +1386,11 @@ class Mapper(object):
                 visitables.append((deque(instance_mapper._props.values()), 
                                         prp, corresponding_state))
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _compiled_cache(self):
         return util.LRUCache(self._compiled_cache_size)
 
-    @_memoized_compiled_property
+    @_memoized_configured_property
     def _sorted_tables(self):
         table_to_mapper = {}
         for mapper in self.base_mapper.self_and_descendants:
@@ -2353,6 +2316,60 @@ class Mapper(object):
 
 log.class_logger(Mapper)
 
+def configure_mappers():
+    """Initialize the inter-mapper relationships of all mappers that
+    have been constructed thus far.
+
+    This function can be called any number of times, but in 
+    most cases is handled internally.
+    
+    """
+
+    global _new_mappers
+    if not _new_mappers:
+        return 
+
+    _COMPILE_MUTEX.acquire()
+    try:
+        global _already_compiling
+        if _already_compiling:
+            return
+        _already_compiling = True
+        try:
+
+            # double-check inside mutex
+            if not _new_mappers:
+                return
+
+            # initialize properties on all mappers
+            # note that _mapper_registry is unordered, which 
+            # may randomly conceal/reveal issues related to 
+            # the order of mapper compilation
+            for mapper in list(_mapper_registry):
+                if getattr(mapper, '_configure_failed', False):
+                    e = sa_exc.InvalidRequestError(
+                            "One or more mappers failed to initialize - "
+                            "can't proceed with initialization of other "
+                            "mappers.  Original exception was: %s"
+                            % mapper._configure_failed)
+                    e._configure_failed = mapper._configure_failed
+                    raise e
+                if not mapper.configured:
+                    try:
+                        mapper._post_configure_properties()
+                        mapper._expire_memoizations()
+                    except:
+                        exc = sys.exc_info()[1]
+                        if not hasattr(exc, '_configure_failed'):
+                            mapper._configure_failed = exc
+                        raise
+
+            _new_mappers = False
+        finally:
+            _already_compiling = False
+    finally:
+        _COMPILE_MUTEX.release()
+
 
 def reconstructor(fn):
     """Decorate a method as the 'reconstructor' hook.
@@ -2398,8 +2415,8 @@ def _event_on_init(state, instance, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    # compile() always compiles all mappers
-    instrumenting_mapper.compile()
+    if _new_mappers:
+        configure_mappers()
     if 'init_instance' in instrumenting_mapper.extension:
         instrumenting_mapper.extension.init_instance(
             instrumenting_mapper, instrumenting_mapper.class_,

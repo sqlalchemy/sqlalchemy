@@ -545,8 +545,8 @@ def _entity_info(entity, compile=True):
     else:
         return None, entity, False
         
-    if compile:
-        mapper = mapper.compile()
+    if compile and mapperlib.module._new_mappers:
+        mapperlib.configure_mappers()
     return mapper, mapper._with_polymorphic_selectable, False
 
 def _entity_descriptor(entity, key):
@@ -619,8 +619,8 @@ def class_mapper(class_, compile=True):
     except exc.NO_STATE:
         raise exc.UnmappedClassError(class_)
 
-    if compile:
-        mapper = mapper.compile()
+    if compile and mapperlib.module._new_mappers:
+        mapperlib.configure_mappers()
     return mapper
 
 def _class_to_mapper(class_or_mapper, compile=True):
@@ -638,10 +638,9 @@ def _class_to_mapper(class_or_mapper, compile=True):
     else:
         raise exc.UnmappedClassError(class_or_mapper)
         
-    if compile:
-        return mapper.compile()
-    else:
-        return mapper
+    if compile and mapperlib.module._new_mappers:
+        mapperlib.configure_mappers()
+    return mapper
 
 def has_identity(object):
     state = attributes.instance_state(object)

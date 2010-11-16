@@ -1,7 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from history_meta import VersionedMeta, VersionedListener
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import clear_mappers, compile_mappers, sessionmaker, deferred
+from sqlalchemy.orm import clear_mappers, sessionmaker, deferred
 from sqlalchemy.test.testing import TestBase, eq_
 from sqlalchemy.test.entities import ComparableEntity
 
