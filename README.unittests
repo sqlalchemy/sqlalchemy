@@ -16,48 +16,25 @@ Or using setuptools:
     $ easy_install nose
 
 SQLAlchemy implements a nose plugin that must be present when tests are run.
-This plugin is available when SQLAlchemy is installed via setuptools.
+This plugin is invoked when the test runner script provided with
+SQLAlchemy is used.
 
-INSTANT TEST RUNNER
--------------------
-
-A plain vanilla run of all tests using sqlite can be run via setup.py:
-
-    $ python setup.py test
-    
-(NOTE: this command is broken for Python 2.7 with nose 0.11.3, see 
-Nose issue 340.  You will need to use 'nosetests' directly, see below.)
-    
-Setuptools will take care of the rest !   To run nose directly and have
-its full set of options available, read on...
-
-SETUP
------
-
-All that's required is for SQLAlchemy to be installed via setuptools.
-For example, to create a local install in a source distribution directory:
-
-    $ export PYTHONPATH=.
-    $ python setup.py develop -d .
-
-The above will create a setuptools "development" distribution in the local
-path, which allows the Nose plugin to be available when nosetests is run.
-The plugin is enabled using the "with-sqlalchemy=True" configuration
-in setup.cfg.
+**NOTE:** - the nose plugin is no longer installed by setuptools as of 
+version 0.7 !  Please use sqla_nose.py to run tests.
 
 RUNNING ALL TESTS
 -----------------
 To run all tests:
 
-    $ nosetests
+    $ ./sqla_nose.py
 
 (NOTE: if running with Python 2.7 and nose 0.11.3, add "-w test/" to the command.
 Again this is a Nose issue, see Nose issue 342.)
 
 If you're running the tests on Microsoft Windows, then there is an additional
-argument that must be passed to nosetests:
+argument that must be passed to ./sqla_nose.py:
 
-    > nosetests --first-package-wins=True
+    > ./sqla_nose.py --first-package-wins=True
 
 This is required because nose’s importer will normally evict a package from
 sys.modules if it sees a package with the same name in a different location.
@@ -66,39 +43,29 @@ Setting this argument disables that behavior.
 Assuming all tests pass, this is a very unexciting output.  To make it more 
 intersesting:
 
-    $ nosetests -v
-
-ALTERNATE TEST RUNNER
----------------------
-
-The script "sqla_nose.py" is a front-end to Nose which manually associates
-the SQLAlchemy testing plugin with Nose at runtime.   This script can run the 
-tests without any reliance upon setuptools.   In 0.7 we'll be removing the 
-Nose plugin from setup, so this will be the way going forward to run tests:
-
-    $ python sqla_nose.py -v
+    $ ./sqla_nose.py -v
 
 RUNNING INDIVIDUAL TESTS
 -------------------------
 Any directory of test modules can be run at once by specifying the directory
 path:
 
-    $ nosetest test/dialect
+    $ ./sqla_nose.py test/dialect
 
 Any test module can be run directly by specifying its module name:
 
-    $ nosetests test.orm.test_mapper
+    $ ./sqla_nose.py test.orm.test_mapper
 
 To run a specific test within the module, specify it as module:ClassName.methodname:
 
-    $ nosetests test.orm.test_mapper:MapperTest.test_utils
+    $ ./sqla_nose.py test.orm.test_mapper:MapperTest.test_utils
 
 
 COMMAND LINE OPTIONS
 --------------------
 Help is available via --help:
 
-    $ nosetests --help
+    $ ./sqla_nose.py --help
 
 The --help screen is a combination of common nose options and options which 
 the SQLAlchemy nose plugin adds.  The most commonly SQLAlchemy-specific 
@@ -186,7 +153,7 @@ Additional steps specific to individual databases are as follows:
 If you'll be running the tests frequently, database aliases can save a lot of
 typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
-    $ nosetests --dbs
+    $ ./sqla_nose.py --dbs
     Available --db options (use --dburi to override)
                mysql    mysql://scott:tiger@127.0.0.1:3306/test
               oracle    oracle://scott:tiger@127.0.0.1:1521
@@ -195,7 +162,7 @@ typing.  The --dbs option lists the built-in aliases and their matching URLs:
 
 To run tests against an aliased database:
 
-    $ nosetests --db=postgresql
+    $ ./sqla_nose.py --db=postgresql
 
 To customize the URLs with your own users or hostnames, make a simple .ini
 file called `test.cfg` at the top level of the SQLAlchemy source distribution
@@ -213,7 +180,7 @@ SQLAlchemy logs its activity and debugging through Python's logging package.
 Any log target can be directed to the console with command line options, such
 as:
 
-    $ nosetests test.orm.unitofwork --log-info=sqlalchemy.orm.mapper \
+    $ ./sqla_nose.py test.orm.unitofwork --log-info=sqlalchemy.orm.mapper \
       --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
 
 This would log mapper configuration, connection pool checkouts, and SQL
@@ -225,7 +192,7 @@ BUILT-IN COVERAGE REPORTING
 Coverage is tracked using Nose's coverage plugin.   See the nose 
 documentation for details.  Basic usage is:
 
-    $ nosetests test.sql.test_query --with-coverage
+    $ ./sqla_nose.py test.sql.test_query --with-coverage
 
 BIG COVERAGE TIP !!!  There is an issue where existing .pyc files may
 store the incorrect filepaths, which will break the coverage system.  If

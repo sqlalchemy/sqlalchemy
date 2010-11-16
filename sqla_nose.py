@@ -8,12 +8,11 @@ require that SQLA's testing plugin be installed via setuptools.
 """
 import sys
 
-try:
-    from sqlalchemy_nose.noseplugin import NoseSQLAlchemy
-except ImportError:
-    from os import path
-    sys.path.append(path.join(path.dirname(path.abspath(__file__)), 'lib'))
-    from sqlalchemy_nose.noseplugin import NoseSQLAlchemy
+from os import path
+for pth in ['.', './lib']:
+    sys.path.insert(0, path.join(path.dirname(path.abspath(__file__)), pth))
+
+from test.bootstrap.noseplugin import NoseSQLAlchemy
 
 import nose
 

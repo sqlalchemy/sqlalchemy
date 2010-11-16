@@ -10,9 +10,9 @@ import StringIO
 import nose.case
 from nose.plugins import Plugin
 
-from sqlalchemy_nose import config
+from test.bootstrap import config
 
-from sqlalchemy_nose.config import (
+from test.bootstrap.config import (
     _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
     _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
     _set_table_options, base_config, db, db_label, db_url, file_config, post_configure)
