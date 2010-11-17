@@ -59,6 +59,10 @@ CHANGES
     that includes a remote schema to a *different* schema
     than that of the parent table doesn't render at all,
     as cross-schema references do not appear to be supported.
+
+- declarative
+  - An error is raised if __table_args__ is not in tuple
+    or dict format, and is not None.  [ticket:1972]
     
 0.6.5
 =====
