@@ -114,7 +114,7 @@ class Pool(log.Identified):
         else:
             self._orig_logging_name = None
             
-        self.logger = log.instance_logger(self, echoflag=echo)
+        log.instance_logger(self, echoflag=echo)
         self._threadconns = threading.local()
         self._creator = creator
         self._recycle = recycle

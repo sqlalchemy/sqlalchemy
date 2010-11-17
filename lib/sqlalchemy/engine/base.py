@@ -1622,7 +1622,7 @@ class Engine(Connectable, log.Identified):
             self.logging_name = logging_name
         self.echo = echo
         self.engine = self
-        self.logger = log.instance_logger(self, echoflag=echo)
+        log.instance_logger(self, echoflag=echo)
         if proxy:
             self.Connection = _proxy_connection_cls(Connection, proxy)
         else:

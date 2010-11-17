@@ -56,7 +56,7 @@ class MockReconnectTest(TestBase):
         db = tsa.create_engine(
                     'postgresql://foo:bar@localhost/test', 
                     module=dbapi, _initialize=False)
-
+        
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e: isinstance(e, MockDisconnect)
 
