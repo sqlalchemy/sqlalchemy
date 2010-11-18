@@ -142,6 +142,33 @@ together using a list, as below where we map to a :func:`~.expression.join`::
 
 For further examples on this particular use case, see :ref:`maptojoin`.
 
+column_property API
+~~~~~~~~~~~~~~~~~~~
+
+The establishment of a :class:`.Column` on a :func:`.mapper` can be further
+customized using the :func:`.column_property` function, as specified
+to the ``properties`` dictionary.   This function is 
+usually invoked implicitly for each mapped :class:`.Column`.  Explicit usage
+looks like::
+
+    from sqlalchemy.orm import mapper, column_property
+    
+    mapper(User, users, properties={
+        'name':column_property(users.c.name, active_history=True)
+    })
+
+or with declarative::
+    
+    class User(Base):
+        __tablename__ = 'users'
+        
+        id = Column(Integer, primary_key=True)
+        name = column_property(Column(String(50)), active_history=True)
+
+Further examples of :func:`.column_property` are at :ref:`mapper_sql_expressions`.
+        
+.. autofunction:: column_property
+
 .. _deferred:
 
 Deferred Column Loading
@@ -266,8 +293,6 @@ Correlated subqueries may be used as well::
     })
 
 The declarative form of the above is described in :ref:`declarative_sql_expressions`.
-
-.. autofunction:: column_property
 
 Note that :func:`.column_property` is used to provide the effect of a SQL
 expression that is actively rendered into the SELECT generated for a
