@@ -28,6 +28,11 @@ CHANGES
     transformed to the empty slice -1:0 that resulted in
     IndexError. [ticket:1968]
 
+  - The mapper argument "primary_key" can be passed as a 
+    single column as well as a list or tuple.  [ticket:1971]
+    The documentation examples that illustrated it as a 
+    scalar value have been changed to lists.  
+    
 - sql
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
