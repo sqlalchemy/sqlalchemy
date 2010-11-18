@@ -206,6 +206,16 @@ def relationship(argument, secondary=None, **kwargs):
       generally mutually exclusive with the use of the *secondary*
       keyword argument.
 
+    :param active_history=False:
+      When ``True``, indicates that the "previous" value for a
+      many-to-one reference should be loaded when replaced, if
+      not already loaded. Normally, history tracking logic for
+      simple many-to-ones only needs to be aware of the "new"
+      value in order to perform a flush. This flag is available
+      for applications that make use of
+      :func:`.attributes.get_history` which also need to know
+      the "previous" value of the attribute. (New in 0.6.6)
+      
     :param backref:
       indicates the string name of a property to be placed on the related
       mapper's class that will handle this relationship in the other
@@ -576,7 +586,7 @@ def column_property(*args, **kwargs):
     """Provide a column-level property for use with a Mapper.
 
     Column-based properties can normally be applied to the mapper's
-    ``properties`` dictionary using the ``schema.Column`` element directly.
+    ``properties`` dictionary using the :class:`.Column` element directly.
     Use this function when the given column is not directly present within the
     mapper's selectable; examples include SQL expressions, functions, and
     scalar SELECT queries.
@@ -586,6 +596,16 @@ def column_property(*args, **kwargs):
 
     :param \*cols:
           list of Column objects to be mapped.
+
+    :param active_history=False:
+      When ``True``, indicates that the "previous" value for a
+      scalar attribute should be loaded when replaced, if not
+      already loaded. Normally, history tracking logic for
+      simple non-primary-key scalar values only needs to be
+      aware of the "new" value in order to perform a flush. This
+      flag is available for applications that make use of
+      :func:`.attributes.get_history` which also need to know
+      the "previous" value of the attribute. (new in 0.6.6)
 
     :param comparator_factory: a class which extends
        :class:`.ColumnProperty.Comparator` which provides custom SQL clause

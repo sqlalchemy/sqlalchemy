@@ -32,6 +32,11 @@ CHANGES
     single column as well as a list or tuple.  [ticket:1971]
     The documentation examples that illustrated it as a 
     scalar value have been changed to lists.  
+
+  - Added active_history flag to relationship()
+    and column_property(), forces attribute events to
+    always load the "old" value, so that it's available to
+    attributes.get_history(). [ticket:1961]
     
 - sql
   - The 'info' attribute of Column is copied during 
