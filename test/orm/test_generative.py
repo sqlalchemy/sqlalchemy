@@ -48,6 +48,9 @@ class GenerativeQueryTest(_base.MappedTest):
         orig = query.all()
         
         assert query[1] == orig[1]
+        assert query[-4] == orig[-4]
+        assert query[-1] == orig[-1]
+        
         assert list(query[10:20]) == orig[10:20]
         assert list(query[10:]) == orig[10:]
         assert list(query[:10]) == orig[:10]
@@ -77,12 +80,12 @@ class GenerativeQueryTest(_base.MappedTest):
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         # end Py2K
-        
+    
+    @testing.fails_if(lambda:testing.against('mysql+mysqldb') and
+            testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma'),
+            "unknown incompatibility")
     @testing.resolve_artifact_names
     def test_aggregate_1(self):
-        if (testing.against('mysql+mysqldb') and
-            testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma')):
-            return
 
         query = create_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar<30).one() == (435,)

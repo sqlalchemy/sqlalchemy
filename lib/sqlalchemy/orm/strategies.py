@@ -109,7 +109,8 @@ class ColumnLoader(LoaderStrategy):
         self.is_class_level = True
         coltype = self.columns[0].type
         # TODO: check all columns ?  check for foreign key as well?
-        active_history = self.columns[0].primary_key  
+        active_history = self.parent_property.active_history or \
+                            self.columns[0].primary_key  
 
         _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,
@@ -164,8 +165,7 @@ class CompositeColumnLoader(ColumnLoader):
         _register_attribute(self, mapper, useobject=False,
             compare_function=compare,
             copy_function=copy,
-            mutable_scalars=True
-            #active_history ?
+            mutable_scalars=True,
         )
 
     def create_row_processor(self, selectcontext, path, mapper, 
@@ -399,6 +399,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 uselist = self.parent_property.uselist,
                 typecallable = self.parent_property.collection_class,
                 active_history = \
+                    self.parent_property.active_history or \
                     self.parent_property.direction is not \
                         interfaces.MANYTOONE or \
                     not self.use_get,

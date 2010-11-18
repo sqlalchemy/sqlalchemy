@@ -783,9 +783,12 @@ class AttributeEvents(event.Events):
     Several modifiers are available to the :func:`~.event.listen` function.
     
     :param active_history=False: When True, indicates that the
-      "on_set" event would like to receive the "old" value 
-      being replaced unconditionally, even if this requires
-      firing off database loads.
+      "on_set" event would like to receive the "old" value being
+      replaced unconditionally, even if this requires firing off
+      database loads. Note that ``active_history`` can also be
+      set directly via :func:`.column_property` and
+      :func:`.relationship`.
+
     :param propagate=False: When True, the listener function will
       be established not just for the class attribute given, but
       for attributes of the same name on all current subclasses 

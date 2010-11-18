@@ -1682,6 +1682,12 @@ class Boolean(TypeEngine, SchemaType):
                     )
         table.append_constraint(e)
     
+    def bind_processor(self, dialect):
+        if dialect.supports_native_boolean:
+            return None
+        else:
+            return processors.boolean_to_int
+        
     def result_processor(self, dialect, coltype):
         if dialect.supports_native_boolean:
             return None
