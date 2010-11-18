@@ -367,7 +367,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         def server_version_info(self):
             return (8, 2, 5)
             
-        dialect = oracle.dialect()
+        dialect = oracle.dialect(dbapi=testing.db.dialect.dbapi)
         dialect._get_server_version_info = server_version_info
 
         # before connect, assume modern DB
@@ -384,7 +384,8 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(Unicode(50),"VARCHAR(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"CLOB",dialect=dialect)
 
-        dialect = oracle.dialect(implicit_returning=True)
+        dialect = oracle.dialect(implicit_returning=True, 
+                                    dbapi=testing.db.dialect.dbapi)
         dialect._get_server_version_info = server_version_info
         dialect.initialize(testing.db.connect())
         assert dialect.implicit_returning
@@ -392,7 +393,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
 
     def test_default_flags(self):
         """test with no initialization or server version info"""
-        dialect = oracle.dialect()
+        dialect = oracle.dialect(dbapi=testing.db.dialect.dbapi)
         assert dialect._supports_char_length
         assert dialect._supports_nchar
         assert dialect.use_ansi
@@ -403,7 +404,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
     def test_ora10_flags(self):
         def server_version_info(self):
             return (10, 2, 5)
-        dialect = oracle.dialect()
+        dialect = oracle.dialect(dbapi=testing.db.dialect.dbapi)
         dialect._get_server_version_info = server_version_info
         dialect.initialize(testing.db.connect())
         assert dialect._supports_char_length
@@ -1043,7 +1044,40 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t.drop(engine)
             
-            
+class EuroNumericTest(TestBase):
+    """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
+    
+    __only_on__ = 'oracle+cx-oracle'
+    
+    def setup(self):
+        self.old_nls_lang = os.environ.get('NLS_LANG', False)
+        os.environ['NLS_LANG'] = "GERMAN"
+        self.engine = testing_engine()
+        
+    def teardown(self):
+        if self.old_nls_lang is not False:
+            os.environ['NLS_LANG'] = self.old_nls_lang
+        else:
+            del os.environ['NLS_LANG']
+        self.engine.dispose()
+        
+    @testing.provide_metadata
+    def test_output_type_handler(self):
+        for stmt, exp, kw in [
+            ("SELECT 0.1 FROM DUAL", Decimal("0.1"), {}),
+            ("SELECT 15 FROM DUAL", 15, {}),
+            ("SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL", Decimal("15"), {}),
+            ("SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL", Decimal("0.1"), {}),
+            ("SELECT :num FROM DUAL", Decimal("2.5"), {'num':Decimal("2.5")})
+        ]:
+            test_exp = self.engine.scalar(stmt, **kw)
+            eq_(
+                test_exp,
+                exp
+            )
+            assert type(test_exp) is type(exp)
+        
+    
 class DontReflectIOTTest(TestBase):
     """test that index overflow tables aren't included in
     table_names."""
