@@ -60,6 +60,7 @@ class ColumnProperty(StrategizedProperty):
                                             self.__class__.Comparator)
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
+        self.active_history = kwargs.pop('active_history', False)
         
         if 'doc' in kwargs:
             self.doc = kwargs.pop('doc')
@@ -114,6 +115,7 @@ class ColumnProperty(StrategizedProperty):
         return ColumnProperty(
                         deferred=self.deferred, 
                         group=self.group, 
+                        active_history=self.active_history,
                         *self.columns)
 
     def _getattr(self, state, dict_, column, passive=False):
@@ -184,6 +186,7 @@ class CompositeProperty(ColumnProperty):
                         deferred=self.deferred, 
                         group=self.group,
                         composite_class=self.composite_class, 
+                        active_history=self.active_history,
                         *self.columns)
 
     def do_init(self):
@@ -444,6 +447,7 @@ class RelationshipProperty(StrategizedProperty):
         comparator_factory=None,
         single_parent=False, innerjoin=False,
         doc=None,
+        active_history=False,
         cascade_backrefs=True,
         load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None, 
@@ -469,6 +473,7 @@ class RelationshipProperty(StrategizedProperty):
         self.query_class = query_class
         self.innerjoin = innerjoin
         self.doc = doc
+        self.active_history = active_history
         self.join_depth = join_depth
         self.local_remote_pairs = _local_remote_pairs
         self.extension = extension

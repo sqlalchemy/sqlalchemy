@@ -96,8 +96,9 @@ from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
-                                            PGIdentifierPreparer, PGExecutionContext, \
-                                            ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES
+                                PGIdentifierPreparer, PGExecutionContext, \
+                                ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
+                                _INT_TYPES
 
 
 logger = logging.getLogger('sqlalchemy.dialects.postgresql')
@@ -111,19 +112,21 @@ class _PGNumeric(sqltypes.Numeric):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(decimal.Decimal)
-            elif coltype in _DECIMAL_TYPES:
+            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
-                raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
+                raise exc.InvalidRequestError(
+                            "Unknown PG numeric type: %d" % coltype)
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
                 return None
-            elif coltype in _DECIMAL_TYPES:
+            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 return processors.to_float
             else:
-                raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
+                raise exc.InvalidRequestError(
+                            "Unknown PG numeric type: %d" % coltype)
 
 class _PGEnum(ENUM):
     def __init__(self, *arg, **kw):
