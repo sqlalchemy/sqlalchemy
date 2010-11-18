@@ -11,7 +11,7 @@ from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
 
 
-class O2MCascadeTest(_fixtures.FixtureTest):
+class O2MCascadeDeleteOrphanTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
@@ -27,23 +27,30 @@ class O2MCascadeTest(_fixtures.FixtureTest):
                : relationship(Address)})
 
     @testing.resolve_artifact_names
-    def test_list_assignment(self):
-        sess = create_session()
+    def test_list_assignment_new(self):
+        sess = Session()
         u = User(name='jack', orders=[
                  Order(description='someorder'),
                  Order(description='someotherorder')])
         sess.add(u)
-        sess.flush()
-        sess.expunge_all()
+        sess.commit()
 
         u = sess.query(User).get(u.id)
         eq_(u, User(name='jack',
                     orders=[Order(description='someorder'),
                             Order(description='someotherorder')]))
 
+    @testing.resolve_artifact_names
+    def test_list_assignment_replace(self):
+        sess = Session()
+        u = User(name='jack', orders=[
+                 Order(description='someorder'),
+                 Order(description='someotherorder')])
+        sess.add(u)
+        sess.commit()
+
         u.orders=[Order(description="order 3"), Order(description="order 4")]
-        sess.flush()
-        sess.expunge_all()
+        sess.commit()
 
         u = sess.query(User).get(u.id)
         eq_(u, User(name='jack',
@@ -53,6 +60,9 @@ class O2MCascadeTest(_fixtures.FixtureTest):
         eq_(sess.query(Order).order_by(Order.id).all(),
             [Order(description="order 3"), Order(description="order 4")])
 
+    @testing.resolve_artifact_names
+    def test_standalone_orphan(self):
+        sess = Session()
         o5 = Order(description="order 5")
         sess.add(o5)
         assert_raises_message(orm_exc.FlushError, "is an orphan", sess.flush)
@@ -228,32 +238,476 @@ class O2OCascadeTest(_fixtures.FixtureTest):
         assert u1.address is not a1
         assert a1.user is None
         
-        
-        
-class O2MBackrefTest(_fixtures.FixtureTest):
-    run_inserts = None
-
-    @classmethod
+class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
+    """Test related item not present in session, commit proceeds."""
+    
     @testing.resolve_artifact_names
-    def setup_mappers(cls):
-        mapper(User, users,
-               properties=dict(orders=relationship(mapper(Order,
-               orders), cascade='all, delete-orphan', backref='user')))
+    def _one_to_many_fixture(self, o2m_cascade=True, 
+                                    m2o_cascade=True, 
+                                    o2m=False,
+                                    m2o=False,
+                                    o2m_cascade_backrefs=True,
+                                    m2o_cascade_backrefs=True):
+        
+        if o2m:
+            if m2o:
+                addresses_rel = {'addresses':relationship(
+                                Address, 
+                                cascade_backrefs=o2m_cascade_backrefs,
+                                cascade=o2m_cascade and 'save-update' or '',
+                                backref=backref('user', 
+                                            cascade=m2o_cascade and 'save-update' or '',
+                                            cascade_backrefs=m2o_cascade_backrefs
+                                        )
+                                )}
+                                
+            else:
+                addresses_rel = {'addresses':relationship(
+                                Address, 
+                                cascade=o2m_cascade and 'save-update' or '',
+                                cascade_backrefs=o2m_cascade_backrefs,
+                                )}
+            user_rel = {}
+        elif m2o:
+            user_rel = {'user':relationship(User,
+                                cascade=m2o_cascade and 'save-update' or '',
+                                cascade_backrefs=m2o_cascade_backrefs
+                            )}
+            addresses_rel = {}
+        else:
+            addresses_rel = {}
+            user_rel = {}
+        
+        mapper(User, users, properties=addresses_rel)
+        mapper(Address, addresses, properties=user_rel)
 
     @testing.resolve_artifact_names
-    def test_lazyload_bug(self):
-        sess = create_session()
+    def _many_to_many_fixture(self, fwd_cascade=True, 
+                                    bkd_cascade=True, 
+                                    fwd=False,
+                                    bkd=False,
+                                    fwd_cascade_backrefs=True,
+                                    bkd_cascade_backrefs=True):
+        
+        if fwd:
+            if bkd:
+                keywords_rel = {'keywords':relationship(
+                                Keyword, 
+                                secondary=item_keywords,
+                                cascade_backrefs=fwd_cascade_backrefs,
+                                cascade=fwd_cascade and 'save-update' or '',
+                                backref=backref('items', 
+                                            cascade=bkd_cascade and 'save-update' or '',
+                                            cascade_backrefs=bkd_cascade_backrefs
+                                        )
+                                )}
+                                
+            else:
+                keywords_rel = {'keywords':relationship(
+                                Keyword, 
+                                secondary=item_keywords,
+                                cascade=fwd_cascade and 'save-update' or '',
+                                cascade_backrefs=fwd_cascade_backrefs,
+                                )}
+            items_rel = {}
+        elif bkd:
+            items_rel = {'items':relationship(Item,
+                                secondary=item_keywords,
+                                cascade=bkd_cascade and 'save-update' or '',
+                                cascade_backrefs=bkd_cascade_backrefs
+                            )}
+            keywords_rel = {}
+        else:
+            keywords_rel = {}
+            items_rel = {}
+        
+        mapper(Item, items, properties=keywords_rel)
+        mapper(Keyword, keywords, properties=items_rel)
 
-        u = User(name="jack")
-        sess.add(u)
-        sess.expunge(u)
+    @testing.resolve_artifact_names
+    def test_o2m_only_child_pending(self):
+        self._one_to_many_fixture(o2m=True, m2o=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 in sess
+        sess.flush()
+        
+    @testing.resolve_artifact_names
+    def test_o2m_only_child_transient(self):
+        self._one_to_many_fixture(o2m=True, m2o=False, o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
 
-        o1 = Order(description='someorder')
-        o1.user = u
-        sess.add(u)
-        assert u in sess
-        assert o1 in sess
+    @testing.resolve_artifact_names
+    def test_o2m_only_child_persistent(self):
+        self._one_to_many_fixture(o2m=True, m2o=False, o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        sess.add(a1)
+        sess.flush()
+        
+        sess.expunge_all()
+        
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+        
+    @testing.resolve_artifact_names
+    def test_o2m_backref_child_pending(self):
+        self._one_to_many_fixture(o2m=True, m2o=True)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 in sess
+        sess.flush()
 
+    @testing.resolve_artifact_names
+    def test_o2m_backref_child_transient(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, 
+                                    o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_o2m_backref_child_transient_nochange(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, 
+                                    o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        u1.addresses.append(a1)
+        sess.add(u1)
+        assert u1 in sess
+        assert a1 not in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        eq_(u1.addresses, [])
+        
+    @testing.resolve_artifact_names
+    def test_o2m_backref_child_expunged(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, 
+                                    o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        sess.add(a1)
+        sess.flush()
+        
+        sess.add(u1)
+        u1.addresses.append(a1)
+        sess.expunge(a1)
+        assert u1 in sess
+        assert a1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_o2m_backref_child_expunged_nochange(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, 
+                                    o2m_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        sess.add(a1)
+        sess.flush()
+        
+        sess.add(u1)
+        u1.addresses.append(a1)
+        sess.expunge(a1)
+        assert u1 in sess
+        assert a1 not in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        eq_(u1.addresses, [])
+
+    @testing.resolve_artifact_names
+    def test_m2o_only_child_pending(self):
+        self._one_to_many_fixture(o2m=False, m2o=True)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        assert u1 in sess
+        assert a1 in sess
+        sess.flush()
+
+    @testing.resolve_artifact_names
+    def test_m2o_only_child_transient(self):
+        self._one_to_many_fixture(o2m=False, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        assert u1 not in sess
+        assert a1 in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2o_only_child_expunged(self):
+        self._one_to_many_fixture(o2m=False, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        sess.expunge(u1)
+        assert u1 not in sess
+        assert a1 in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref_child_pending(self):
+        self._one_to_many_fixture(o2m=True, m2o=True)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        assert u1 in sess
+        assert a1 in sess
+        sess.flush()
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref_child_transient(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        assert u1 not in sess
+        assert a1 in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref_child_expunged(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        sess.expunge(u1)
+        assert u1 not in sess
+        assert a1 in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref_child_pending_nochange(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        assert u1 not in sess
+        assert a1 in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        # didn't get flushed
+        assert a1.user is None
+
+    @testing.resolve_artifact_names
+    def test_m2o_backref_child_expunged_nochange(self):
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        sess = Session()
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        sess.add(a1)
+        sess.expunge(u1)
+        assert u1 not in sess
+        assert a1 in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        # didn't get flushed
+        assert a1.user is None
+
+    @testing.resolve_artifact_names
+    def test_m2m_only_child_pending(self):
+        self._many_to_many_fixture(fwd=True, bkd=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 in sess
+        sess.flush()
+        
+    @testing.resolve_artifact_names
+    def test_m2m_only_child_transient(self):
+        self._many_to_many_fixture(fwd=True, bkd=False, fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2m_only_child_persistent(self):
+        self._many_to_many_fixture(fwd=True, bkd=False, fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        sess.add(k1)
+        sess.flush()
+        
+        sess.expunge_all()
+        
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+        
+    @testing.resolve_artifact_names
+    def test_m2m_backref_child_pending(self):
+        self._many_to_many_fixture(fwd=True, bkd=True)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 in sess
+        sess.flush()
+
+    @testing.resolve_artifact_names
+    def test_m2m_backref_child_transient(self):
+        self._many_to_many_fixture(fwd=True, bkd=True, 
+                                    fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2m_backref_child_transient_nochange(self):
+        self._many_to_many_fixture(fwd=True, bkd=True, 
+                                    fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        i1.keywords.append(k1)
+        sess.add(i1)
+        assert i1 in sess
+        assert k1 not in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        eq_(i1.keywords, [])
+        
+    @testing.resolve_artifact_names
+    def test_m2m_backref_child_expunged(self):
+        self._many_to_many_fixture(fwd=True, bkd=True, 
+                                    fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        sess.add(k1)
+        sess.flush()
+        
+        sess.add(i1)
+        i1.keywords.append(k1)
+        sess.expunge(k1)
+        assert i1 in sess
+        assert k1 not in sess
+        assert_raises_message(
+            sa_exc.SAWarning, "not in session", sess.flush
+        )
+
+    @testing.resolve_artifact_names
+    def test_m2m_backref_child_expunged_nochange(self):
+        self._many_to_many_fixture(fwd=True, bkd=True, 
+                                    fwd_cascade=False)
+        sess = Session()
+        i1 = Item(description='i1')
+        k1 = Keyword(name='k1')
+        sess.add(k1)
+        sess.flush()
+        
+        sess.add(i1)
+        i1.keywords.append(k1)
+        sess.expunge(k1)
+        assert i1 in sess
+        assert k1 not in sess
+        @testing.emits_warning(r'.*not in session')
+        def go():
+            sess.commit()
+        go()
+        eq_(i1.keywords, [])
 
 class NoSaveCascadeTest(_fixtures.FixtureTest):
     """test that backrefs don't force save-update cascades to occur
@@ -332,7 +786,7 @@ class NoSaveCascadeTest(_fixtures.FixtureTest):
         k1.items.append(i1)
         assert i1 in sess
         assert k1 not in sess
-        
+
     
 class O2MCascadeNoOrphanTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -957,7 +1411,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         })
 
     @testing.resolve_artifact_names
-    def test_o2m(self):
+    def test_o2m_basic(self):
         sess = Session()
         
         u1 = User(name='u1')
@@ -967,10 +1421,31 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         a1.user = u1
         assert a1 not in sess
 
-        sess.commit()
+
+    @testing.resolve_artifact_names
+    def test_o2m_commit_warns(self):
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        
+        a1 = Address(email_address='a1')
+        a1.user = u1
+        
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "not in session",
+            sess.commit
+        )
         
         assert a1 not in sess
         
+
+    @testing.resolve_artifact_names
+    def test_o2m_flag_on_backref(self):
+        sess = Session()
+        
+        a1 = Address(email_address='a1')
         sess.add(a1)
         
         d1 = Dingaling()
@@ -981,7 +1456,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         sess.commit()
 
     @testing.resolve_artifact_names
-    def test_m2o(self):
+    def test_m2o_basic(self):
         sess = Session()
 
         a1 = Address(email_address='a1')
@@ -990,15 +1465,34 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         
         a1.dingalings.append(d1)
         assert a1 not in sess
-    
-        a2 = Address(email_address='a2')
-        sess.add(a2)
+
+    @testing.resolve_artifact_names
+    def test_m2o_flag_on_backref(self):
+        sess = Session()
+
+        a1 = Address(email_address='a1')
+        sess.add(a1)
         
         u1 = User(name='u1')
-        u1.addresses.append(a2)
+        u1.addresses.append(a1)
         assert u1 in sess
 
-        sess.commit()
+    @testing.resolve_artifact_names
+    def test_m2o_commit_warns(self):
+        sess = Session()
+
+        a1 = Address(email_address='a1')
+        d1 = Dingaling()
+        sess.add(d1)
+        
+        a1.dingalings.append(d1)
+        assert a1 not in sess
+
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "not in session",
+            sess.commit
+        )
 
 class UnsavedOrphansTest(_base.MappedTest):
     """Pending entities that are orphans"""
@@ -1395,7 +1889,7 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
 
 class O2MConflictTest(_base.MappedTest):
     """test that O2M dependency detects a change in parent, does the
-    right thing, and even updates the collection/attribute.
+    right thing, and updates the collection/attribute.
     
     """
     
@@ -1544,9 +2038,7 @@ class O2MConflictTest(_base.MappedTest):
         
 
 class PartialFlushTest(_base.MappedTest):
-    """test cascade behavior as it relates to object lists passed to flush().
-    
-    """
+    """test cascade behavior as it relates to object lists passed to flush()."""
     @classmethod
     def define_tables(cls, metadata):
         Table("base", metadata,

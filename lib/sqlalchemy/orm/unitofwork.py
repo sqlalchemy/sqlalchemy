@@ -176,9 +176,14 @@ class UOWTransaction(object):
             self.presort_actions[key] = Preprocess(processor, fromparent)
             
     def register_object(self, state, isdelete=False, 
-                            listonly=False, cancel_delete=False):
+                            listonly=False, cancel_delete=False,
+                            operation=None, prop=None):
         if not self.session._contains_state(state):
-            return
+            if not state.deleted and operation is not None:
+                util.warn("Object %s not in session, %s operation "
+                            "along '%s' will not proceed" % 
+                            (mapperutil.state_str(state), operation, prop))
+            return False
 
         if state not in self.states:
             mapper = _state_mapper(state)
@@ -191,7 +196,8 @@ class UOWTransaction(object):
         else:
             if not listonly and (isdelete or cancel_delete):
                 self.states[state] = (isdelete, False)
-    
+        return True
+        
     def issue_post_update(self, state, post_update_cols):
         mapper = state.manager.mapper.base_mapper
         states, cols = self.post_update_states[mapper]
