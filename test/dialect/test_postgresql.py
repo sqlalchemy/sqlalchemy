@@ -456,7 +456,25 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert t2.c.value2.type.schema == 'test_schema'
         finally:
             metadata.drop_all()
+
+class NumericInterpretationTest(TestBase):
+    
+    
+    def test_numeric_codes(self):
+        from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
+        from decimal import Decimal
         
+        for dialect in (pg8000.dialect(), psycopg2.dialect()):
+            
+            typ = Numeric().dialect_impl(dialect)
+            for code in base._INT_TYPES + base._FLOAT_TYPES + \
+                        base._DECIMAL_TYPES:
+                proc = typ.result_processor(dialect, code)
+                val = 23.7
+                if proc is not None:
+                    val = proc(val)
+                assert val in (23.7, Decimal("23.7"))
+    
 class InsertTest(TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'

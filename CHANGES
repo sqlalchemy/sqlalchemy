@@ -52,6 +52,11 @@ CHANGES
     version of RowProxy, as well as 2.7 style 
     "collections.Sequence" registration for RowProxy.
     [ticket:1871]
+
+- postgresql
+  - Ensured every numeric, float, int code, scalar + array,
+    are recognized by psycopg2 and pg8000's "numeric" 
+    base type. [ticket:1955]
     
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 

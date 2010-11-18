@@ -98,9 +98,9 @@ from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
         DATE, BOOLEAN
 
-_DECIMAL_TYPES = (1700, 1231)
+_DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
-
+_INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 class REAL(sqltypes.Float):
     __visit_name__ = "REAL"
