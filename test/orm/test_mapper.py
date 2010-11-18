@@ -665,6 +665,17 @@ class MapperTest(_fixtures.FixtureTest):
             None])
 
     @testing.resolve_artifact_names
+    def test_scalar_pk_arg(self):
+        m1 = mapper(Item, items, primary_key=[items.c.id])
+        m2 = mapper(Keyword, keywords, primary_key=keywords.c.id)
+        m3 = mapper(User, users, primary_key=(users.c.id,))
+        
+        assert m1.primary_key[0] is items.c.id
+        assert m2.primary_key[0] is keywords.c.id
+        assert m3.primary_key[0] is users.c.id
+        
+        
+    @testing.resolve_artifact_names
     def test_custom_join(self):
         """select_from totally replace the FROM parameters."""
 
