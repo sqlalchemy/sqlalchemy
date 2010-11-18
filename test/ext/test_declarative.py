@@ -663,7 +663,7 @@ class DeclarativeTest(DeclarativeTestBase):
                               'Mapper Mapper|User|users could not '
                               'assemble any primary key', define)
         
-    def test_table_args(self):
+    def test_table_args_bad_format(self):
 
         def err():
             class Foo1(Base):
@@ -675,7 +675,30 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert_raises_message(sa.exc.ArgumentError,
                               'Tuple form of __table_args__ is ', err)
+        
+    def test_table_args_type(self):
+        def err():
+            class Foo1(Base):
 
+                __tablename__ = 'foo'
+                __table_args__ = ForeignKeyConstraint(['id'], ['foo.id'
+                        ])
+                id = Column('id', Integer, primary_key=True)
+        assert_raises_message(sa.exc.ArgumentError,
+                              '__table_args__ value must be a tuple, ', err)
+            
+    def test_table_args_none(self):
+            
+        class Foo2(Base):
+
+            __tablename__ = 'foo'
+            __table_args__ = None
+            id = Column('id', Integer, primary_key=True)
+
+        assert Foo2.__table__.kwargs == {}
+        
+    def test_table_args_dict_format(self):
+            
         class Foo2(Base):
 
             __tablename__ = 'foo'
@@ -683,6 +706,13 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column('id', Integer, primary_key=True)
 
         assert Foo2.__table__.kwargs['mysql_engine'] == 'InnoDB'
+
+    def test_table_args_tuple_format(self):
+        class Foo2(Base):
+
+            __tablename__ = 'foo'
+            __table_args__ = {'mysql_engine': 'InnoDB'}
+            id = Column('id', Integer, primary_key=True)
 
         class Bar(Base):
 

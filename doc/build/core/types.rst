@@ -264,6 +264,124 @@ to and from the database is required.
    :inherited-members:
    :show-inheritance:
 
+A few key :class:`.TypeDecorator` recipes follow.
+
+Rounding Numerics
+^^^^^^^^^^^^^^^^^
+
+Some database connectors like those of SQL Server choke if a Decimal is passed with too
+many decimal places.   Here's a recipe that rounds them down::
+
+    from sqlalchemy.types import TypeDecorator, Numeric
+    from decimal import Decimal
+    
+    class SafeNumeric(TypeDecorator):
+        """Adds quantization to Numeric."""
+    
+        impl = Numeric
+    
+        def __init__(self, *arg, **kw):
+            TypeDecorator.__init__(self, *arg, **kw)
+            self.quantize_int = -(self.impl.precision - self.impl.scale)
+            self.quantize = Decimal(10) ** self.quantize_int
+        
+        def process_bind_param(self, value, dialect):
+            if isinstance(value, Decimal) and \
+                value.as_tuple()[2] < self.quantize_int:
+                value = value.quantize(self.quantize)
+            return value
+
+Backend-agnostic GUID Type
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Receives and returns Python uuid() objects.  Uses the PG UUID type 
+when using Postgresql, CHAR(32) on other backends, storing them
+in stringified hex format.   Can be modified to store 
+binary in CHAR(16) if desired::
+
+    from sqlalchemy.types import TypeDecorator, CHAR
+    from sqlalchemy.dialects.postgresql import UUID
+    import uuid
+
+    class GUID(TypeDecorator):
+        """Platform-independent GUID type.
+    
+        Uses Postgresql's UUID type, otherwise uses
+        CHAR(32), storing as stringified hex values.
+    
+        """
+        impl = CHAR
+
+        def load_dialect_impl(self, dialect):
+            if dialect.name == 'postgresql':
+                return dialect.type_descriptor(UUID())
+            else:
+                return dialect.type_descriptor(CHAR(32))
+
+        def process_bind_param(self, value, dialect):
+            if value is None:
+                return value
+            elif dialect.name == 'postgresql':
+                return str(value)
+            else:
+                if not isinstance(value, uuid.UUID):
+                    return "%x" % uuid.UUID(value)
+                else:
+                    # hexstring
+                    return "%x" % value
+
+        def process_result_value(self, value, dialect):
+            if value is None:
+                return value
+            else:
+                return uuid.UUID(value)
+
+Marshal JSON Strings
+^^^^^^^^^^^^^^^^^^^^^
+
+This type uses ``simplejson`` to marshal Python data structures
+to/from JSON.   Can be modified to use Python's builtin json encoder.
+
+Note that the base type is not "mutable", meaning in-place changes to 
+the value will not be detected by the ORM - you instead would need to 
+replace the existing value with a new one to detect changes.  
+The subtype ``MutableJSONEncodedDict``
+adds "mutability" to allow this, but note that "mutable" types add
+a significant performance penalty to the ORM's flush process::
+
+    from sqlalchemy.types import TypeDecorator, MutableType, VARCHAR
+    import simplejson
+
+    class JSONEncodedDict(TypeDecorator):
+        """Represents an immutable structure as a json-encoded string.
+        
+        Usage::
+        
+            JSONEncodedDict(255)
+            
+        """
+
+        impl = VARCHAR
+
+        def process_bind_param(self, value, dialect):
+            if value is not None:
+                value = simplejson.dumps(value, use_decimal=True)
+
+            return value
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = simplejson.loads(value, use_decimal=True)
+            return value
+    
+    class MutableJSONEncodedDict(MutableType, JSONEncodedDict):
+        """Adds mutability to JSONEncodedDict."""
+        
+        def copy_value(self, value):
+            return simplejson.loads(
+                        simplejson.dumps(value, use_decimal=True), 
+                        use_decimal=True)
+
 Creating New Types
 ~~~~~~~~~~~~~~~~~~
 
