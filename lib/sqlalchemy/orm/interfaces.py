@@ -888,6 +888,10 @@ class AttributeExtension(object):
     active_history = True
     """indicates that the set() method would like to receive the 'old' value,
     even if it means firing lazy callables.
+    
+    Note that ``active_history`` can also be set directly via
+    :func:`.column_property` and :func:`.relationship`.
+    
     """
     
     def append(self, state, value, initiator):

@@ -1527,7 +1527,10 @@ class Query(object):
             else:
                 return list(res)
         else:
-            return list(self[item:item+1])[0]
+            if item == -1:
+                return list(self)[-1]
+            else:
+                return list(self[item:item+1])[0]
 
     @_generative(_no_statement_condition)
     def slice(self, start, stop):

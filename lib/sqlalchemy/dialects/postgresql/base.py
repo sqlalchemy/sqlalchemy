@@ -94,13 +94,18 @@ from sqlalchemy.sql import compiler, expression, util as sql_util
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 
+try:
+    from uuid import UUID as _python_UUID
+except ImportError:
+    _python_UUID = None
+
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
         DATE, BOOLEAN
 
-_DECIMAL_TYPES = (1700, 1231)
+_DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
-
+_INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 class REAL(sqltypes.Float):
     __visit_name__ = "REAL"
@@ -134,6 +139,12 @@ class TIME(sqltypes.TIME):
         self.precision = precision
     
 class INTERVAL(sqltypes.TypeEngine):
+    """Postgresql INTERVAL type.
+    
+    The INTERVAL type may not be supported on all DBAPIs.
+    It is known to work on psycopg2 and not pg8000 or zxjdbc.
+    
+    """
     __visit_name__ = 'INTERVAL'
     def __init__(self, precision=None):
         self.precision = precision
@@ -156,17 +167,67 @@ class BIT(sqltypes.TypeEngine):
 PGBit = BIT
 
 class UUID(sqltypes.TypeEngine):
+    """Postgresql UUID type.
+    
+    Represents the UUID column type, interpreting
+    data either as natively returned by the DBAPI
+    or as Python uuid objects.
+
+    The UUID type may not be supported on all DBAPIs.
+    It is known to work on psycopg2 and not pg8000.
+    
+    """
     __visit_name__ = 'UUID'
+    
+    def __init__(self, as_uuid=False):
+        """Construct a UUID type.
+        
+        
+        :param as_uuid=False: if True, values will be interpreted
+         as Python uuid objects, converting to/from string via the
+         DBAPI.
+         
+         """
+        if as_uuid and _python_UUID is None:
+            raise NotImplementedError(
+                    "This version of Python does not support the native UUID type."
+                )
+        self.as_uuid = as_uuid
+    
+    def bind_processor(self, dialect):
+        if self.as_uuid:
+            def process(value):
+                if value is not None:
+                    value = str(value)
+                return value
+            return process
+        else:
+            return None
+            
+    def result_processor(self, dialect, coltype):
+        if self.as_uuid:
+            def process(value):
+                if value is not None:
+                    value = _python_UUID(value)
+                return value
+            return process
+        else:
+            return None
+            
 PGUuid = UUID
 
 class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     """Postgresql ARRAY type.
     
     Represents values as Python lists.
+
+    The ARRAY type may not be supported on all DBAPIs.
+    It is known to work on psycopg2 and not pg8000.
     
     **Note:** be sure to read the notes for 
-    :class:`~sqlalchemy.types.MutableType` regarding ORM 
-    performance implications.
+    :class:`.MutableType` regarding ORM 
+    performance implications.   The :class:`.ARRAY` type's 
+    mutability can be disabled using the "mutable" flag.
     
     """
     __visit_name__ = 'ARRAY'

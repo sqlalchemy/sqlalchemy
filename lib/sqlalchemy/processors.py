@@ -26,6 +26,12 @@ def str_to_datetime_processor_factory(regexp, type_):
             return type_(*map(int, rmatch(value).groups(0)))
     return process
 
+def boolean_to_int(value):
+    if value is None:
+        return None
+    else:
+        return int(value)
+
 try:
     from sqlalchemy.cprocessors import UnicodeResultProcessor, \
                                        DecimalResultProcessor, \

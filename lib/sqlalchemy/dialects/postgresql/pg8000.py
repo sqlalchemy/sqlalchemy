@@ -9,14 +9,16 @@ URLs are of the form
 Unicode
 -------
 
-pg8000 requires that the postgresql client encoding be configured in the postgresql.conf file
-in order to use encodings other than ascii.  Set this value to the same value as 
-the "encoding" parameter on create_engine(), usually "utf-8".
+pg8000 requires that the postgresql client encoding be
+configured in the postgresql.conf file in order to use encodings
+other than ascii. Set this value to the same value as the
+"encoding" parameter on create_engine(), usually "utf-8".
 
 Interval
 --------
 
-Passing data from/to the Interval type is not supported as of yet.
+Passing data from/to the Interval type is not supported as of
+yet.
 
 """
 import decimal
@@ -27,26 +29,28 @@ from sqlalchemy import processors
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, \
                 PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
-                _DECIMAL_TYPES, _FLOAT_TYPES
+                _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES
 
 class _PGNumeric(sqltypes.Numeric):
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
                 return processors.to_decimal_processor_factory(decimal.Decimal)
-            elif coltype in _DECIMAL_TYPES:
+            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 # pg8000 returns Decimal natively for 1700
                 return None
             else:
-                raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
+                raise exc.InvalidRequestError(
+                            "Unknown PG numeric type: %d" % coltype)
         else:
             if coltype in _FLOAT_TYPES:
                 # pg8000 returns float natively for 701
                 return None
-            elif coltype in _DECIMAL_TYPES:
+            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
                 return processors.to_float
             else:
-                raise exc.InvalidRequestError("Unknown PG numeric type: %d" % coltype)
+                raise exc.InvalidRequestError(
+                            "Unknown PG numeric type: %d" % coltype)
 
 class PGExecutionContext_pg8000(PGExecutionContext):
     pass
