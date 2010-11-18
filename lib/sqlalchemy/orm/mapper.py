@@ -107,7 +107,7 @@ class Mapper(object):
 
         self.class_manager = None
 
-        self.primary_key_argument = primary_key
+        self.primary_key_argument = util.to_list(primary_key)
         self.non_primary = non_primary
 
         if order_by is not False:
