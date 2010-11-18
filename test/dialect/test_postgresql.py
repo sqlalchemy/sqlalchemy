@@ -1884,6 +1884,64 @@ class SpecialTypesTest(TestBase, ComparesTables):
         assert t.c.plain_interval.type.precision is None
         assert t.c.precision_interval.type.precision == 3
 
+class UUIDTest(TestBase):
+    """Test the bind/return values of the UUID type."""
+    
+    __only_on__ = 'postgresql'
+    
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_string(self):
+        import uuid
+        self._test_round_trip(
+            Table('utable', MetaData(), 
+                Column('data', postgresql.UUID())
+            ),
+            str(uuid.uuid4()),
+            str(uuid.uuid4())
+        )
+        
+    @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
+    def test_uuid_uuid(self):
+        import uuid
+        self._test_round_trip(
+            Table('utable', MetaData(), 
+                Column('data', postgresql.UUID(as_uuid=True))
+            ),
+            uuid.uuid4(),
+            uuid.uuid4()
+        )
+    
+    def test_no_uuid_available(self):
+        from sqlalchemy.dialects.postgresql import base
+        uuid_type = base._python_UUID
+        base._python_UUID = None
+        try:
+            assert_raises(
+                NotImplementedError,
+                postgresql.UUID, as_uuid=True
+            )
+        finally:
+            base._python_UUID = uuid_type
+        
+    def setup(self):
+        self.conn = testing.db.connect()
+        trans = self.conn.begin()
+        
+    def teardown(self):
+        self.conn.close()
+        
+    def _test_round_trip(self, utable, value1, value2):
+        utable.create(self.conn)
+        self.conn.execute(utable.insert(), {'data':value1})
+        self.conn.execute(utable.insert(), {'data':value2})
+        r = self.conn.execute(
+                select([utable.c.data]).
+                    where(utable.c.data != value1)
+                )
+        eq_(r.fetchone()[0], value2)
+        eq_(r.fetchone(), None)
+        
+        
 class MatchTest(TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'

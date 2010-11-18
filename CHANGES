@@ -57,7 +57,12 @@ CHANGES
   - Ensured every numeric, float, int code, scalar + array,
     are recognized by psycopg2 and pg8000's "numeric" 
     base type. [ticket:1955]
-    
+
+  - Added as_uuid=True flag to the UUID type, will receive
+    and return values as Python UUID() objects rather than
+    strings.  Currently, the UUID type is only known to 
+    work with psycopg2.  [ticket:1956]
+        
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 
     has_table() property works again.  Regression from
