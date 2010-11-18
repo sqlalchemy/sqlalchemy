@@ -1047,7 +1047,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 class EuroNumericTest(TestBase):
     """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
     
-    __only_on__ = 'oracle+cx-oracle'
+    __only_on__ = 'oracle+cx_oracle'
     
     def setup(self):
         self.old_nls_lang = os.environ.get('NLS_LANG', False)
