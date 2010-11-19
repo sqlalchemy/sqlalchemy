@@ -2410,7 +2410,8 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
             'composite':composite(
                                 MyComposite, 
                                 orders.c.description, 
-                                orders.c.isopen)
+                                orders.c.isopen,
+                                active_history=True)
         })
         o1 = Order(composite=MyComposite('foo', 1))
         self._test_attribute(o1, "composite", MyComposite('bar', 1))

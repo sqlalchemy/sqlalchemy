@@ -38,6 +38,12 @@ CHANGES
     always load the "old" value, so that it's available to
     attributes.get_history(). [ticket:1961]
     
+  - active_history flag also added to composite(). 
+    The flag has no effect in 0.6, but is instead 
+    a placeholder flag for forwards compatibility,
+    as it will be needed in 0.7 for composites.
+    [ticket:1976]
+    
 - sql
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
