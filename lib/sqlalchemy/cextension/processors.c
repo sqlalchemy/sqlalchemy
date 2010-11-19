@@ -289,6 +289,7 @@ DecimalResultProcessor_process(DecimalResultProcessor *self, PyObject *value)
             return NULL;
 
         str = PyString_Format(self->format, args);
+        Py_DECREF(args);
         if (str == NULL)
             return NULL;
 
@@ -298,6 +299,14 @@ DecimalResultProcessor_process(DecimalResultProcessor *self, PyObject *value)
     } else {
         return PyObject_CallFunctionObjArgs(self->type, value, NULL);
     }
+}
+
+static void
+DecimalResultProcessor_dealloc(DecimalResultProcessor *self)
+{
+    Py_XDECREF(self->type);
+    Py_XDECREF(self->format);
+    self->ob_type->tp_free((PyObject*)self);
 }
 
 static PyMethodDef DecimalResultProcessor_methods[] = {
@@ -312,7 +321,7 @@ static PyTypeObject DecimalResultProcessorType = {
     "sqlalchemy.DecimalResultProcessor",        /* tp_name */
     sizeof(DecimalResultProcessor),             /* tp_basicsize */
     0,                                          /* tp_itemsize */
-    0,                                          /* tp_dealloc */
+    (destructor)DecimalResultProcessor_dealloc, /* tp_dealloc */
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */

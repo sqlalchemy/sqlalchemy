@@ -7,10 +7,11 @@ from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-    PickleType, create_engine, Unicode
+    PickleType, create_engine, Unicode, Float
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
+from sqlalchemy.processors import to_decimal_processor_factory
 from sqlalchemy.test.util import gc_collect
 import gc
 import weakref
@@ -566,3 +567,42 @@ class MemUsageTest(EnsureZeroed):
             cast.compile(dialect=dialect)
         go()
         
+    def test_DecimalResultProcessor_processing(self):
+        metadata = MetaData(testing.db)
+
+        table1 = Table("mytable", metadata,
+            Column('col1', Integer, primary_key=True,
+                                    test_needs_autoincrement=True),
+            Column('col2', Float(asdecimal=True))
+            )
+
+        class Foo(object):
+            def __init__(self, col2):
+                self.col2 = col2
+
+        mapper(Foo, table1)
+        metadata.create_all()
+        
+        session = create_session()
+        session.begin()
+        session.add(Foo(1.1))
+        session.commit()
+        session.close()
+        del session
+
+        @profile_memory
+        def go():
+            session = create_session()
+            session.query(Foo).all()
+            session.rollback()
+            session.close()
+        try:
+            go()
+        finally:
+            metadata.drop_all()
+
+    def test_DecimalResultProcessor_dealloc(self):
+        @profile_memory
+        def go():
+            to_decimal_processor_factory({}, 10)
+        go()
