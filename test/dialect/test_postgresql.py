@@ -1889,6 +1889,7 @@ class UUIDTest(TestBase):
     
     __only_on__ = 'postgresql'
     
+    @testing.requires.python25
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_string(self):
         import uuid
@@ -1900,6 +1901,7 @@ class UUIDTest(TestBase):
             str(uuid.uuid4())
         )
         
+    @testing.requires.python25
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_uuid(self):
         import uuid

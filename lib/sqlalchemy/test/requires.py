@@ -294,6 +294,15 @@ def python26(fn):
             "Python version 2.6 or greater is required"
         )
     )
+
+def python25(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (2, 5),
+            "Python version 2.5 or greater is required"
+        )
+    )
     
 def _has_cextensions():
     try:
