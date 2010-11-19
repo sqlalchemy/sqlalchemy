@@ -2377,7 +2377,8 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_column_property_flag(self):
         mapper(User, users, properties={
-            'name':column_property(users.c.name, active_history=True)
+            'name':column_property(users.c.name, 
+                                active_history=True)
         })
         u1 = User(name='jack')
         self._test_attribute(u1, 'name', 'ed')
@@ -2395,8 +2396,6 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
     
     @testing.resolve_artifact_names
     def test_composite_property_flag(self):
-        # active_history is implicit for composites
-        # right now, no flag needed
         class MyComposite(object):
             def __init__(self, description, isopen):
                 self.description = description
