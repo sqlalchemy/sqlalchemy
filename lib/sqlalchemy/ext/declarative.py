@@ -999,6 +999,10 @@ def _as_declarative(cls, classname, dict_):
                                         isinstance(obj, declarative_props)
                                     ):
                     table_args = cls.__table_args__
+                    if not isinstance(table_args, (tuple, dict, type(None))):
+                        raise exceptions.ArgumentError(
+                                "__table_args__ value must be a tuple, "
+                                "dict, or None")
                     if base is not cls:
                         inherited_table_args = True
             elif class_mapped:
