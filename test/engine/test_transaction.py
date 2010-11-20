@@ -270,6 +270,9 @@ class TransactionTest(TestBase):
             [(1, ), (2, )])
         connection.close()
 
+    # PG emergency shutdown:
+    # select * from pg_prepared_xacts
+    # ROLLBACK PREPARED '<xid>'
     @testing.requires.two_phase_transactions
     @testing.requires.savepoints
     def test_mixed_two_phase_transaction(self):
@@ -292,7 +295,7 @@ class TransactionTest(TestBase):
             order_by(users.c.user_id)).fetchall(),
             [(1, ), (2, ), (5, )])
         connection.close()
-
+            
     @testing.requires.two_phase_transactions
     @testing.crashes('mysql+oursql',
                      'Times out in full test runs only, causing '
@@ -347,7 +350,7 @@ class TransactionTest(TestBase):
                 order_by(users.c.user_id))
         eq_(result.fetchall(), [('user1', ), ('user4', )])
         conn.close()
-
+            
 class AutoRollbackTest(TestBase):
 
     @classmethod

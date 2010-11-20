@@ -94,6 +94,7 @@ class DefaultEngineStrategy(EngineStrategy):
                          'echo': 'echo_pool',
                          'timeout': 'pool_timeout',
                          'recycle': 'pool_recycle',
+                         'events':'pool_events',
                          'use_threadlocal':'pool_threadlocal'}
             for k in util.get_cls_kwargs(poolclass):
                 tk = translate.get(k, k)

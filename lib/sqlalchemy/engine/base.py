@@ -1962,7 +1962,7 @@ def _listener_connection_cls(cls, dispatch):
                         _savepoint_impl(name=name)
                 
         def _rollback_to_savepoint_impl(self, name, context):
-            for fn in dispatch.on_rollback_to_savepoint:
+            for fn in dispatch.on_rollback_savepoint:
                 fn(self, name, context)
             return super(EventListenerConnection, self).\
                         _rollback_to_savepoint_impl(name, context)
@@ -1989,13 +1989,13 @@ def _listener_connection_cls(cls, dispatch):
             for fn in dispatch.on_rollback_twophase:
                 fn(self, xid)
             return super(EventListenerConnection, self).\
-                        _rollback_twophase_impl(xid)
+                        _rollback_twophase_impl(xid, is_prepared)
 
         def _commit_twophase_impl(self, xid, is_prepared):
             for fn in dispatch.on_commit_twophase:
-                fn(self, xid)
+                fn(self, xid, is_prepared)
             return super(EventListenerConnection, self).\
-                        _commit_twophase_impl(xid)
+                        _commit_twophase_impl(xid, is_prepared)
 
     return EventListenerConnection
 

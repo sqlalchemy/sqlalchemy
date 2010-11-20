@@ -67,6 +67,7 @@ class Pool(log.Identified):
                     logging_name=None,
                     reset_on_return=True, 
                     listeners=None,
+                    events=None,
                     _dispatch=None):
         """
         Construct a Pool.
@@ -104,7 +105,13 @@ class Pool(log.Identified):
           connections returned to the pool.  This is typically a
           ROLLBACK to release locks and transaction resources.
           Disable at your own peril.  Defaults to True.
-
+        
+        :param events: a list of 2-tuples, each of the form
+         ``(callable, target)`` which will be passed to event.listen()
+         upon construction.   Provided here so that event listeners
+         can be assigned via ``create_engine`` before dialect-level
+         listeners are applied.
+         
         :param listeners: Deprecated.  A list of
           :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API
@@ -127,6 +134,9 @@ class Pool(log.Identified):
         self.echo = echo
         if _dispatch:
             self.dispatch.update(_dispatch, only_propagate=False)
+        if events:
+            for fn, target in events:
+                event.listen(fn, target, self)
         if listeners:
             util.warn_deprecated(
                         "The 'listeners' argument to Pool (and "

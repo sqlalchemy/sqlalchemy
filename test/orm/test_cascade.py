@@ -337,6 +337,8 @@ class O2OSingleParentTest(_fixtures.FixtureTest):
         
 class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
     """Test related item not present in session, commit proceeds."""
+
+    run_inserts = None
     
     @testing.resolve_artifact_names
     def _one_to_many_fixture(self, o2m_cascade=True, 

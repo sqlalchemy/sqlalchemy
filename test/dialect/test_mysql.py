@@ -7,7 +7,7 @@ import sets
 # end Py2K
 
 from sqlalchemy import *
-from sqlalchemy import sql, exc, schema, types as sqltypes
+from sqlalchemy import sql, exc, schema, types as sqltypes, event
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test import *
@@ -1277,13 +1277,17 @@ class SQLModeDetectionTest(TestBase):
     __only_on__ = 'mysql'
     
     def _options(self, modes):
-        class SetOptions(object):
-            def first_connect(self, con, record):
-                self.connect(con, record)
-            def connect(self, con, record):
-                cursor = con.cursor()
-                cursor.execute("set sql_mode='%s'" % (",".join(modes)))
-        return engines.testing_engine(options={"listeners":[SetOptions()]})
+        def connect(con, record):
+            cursor = con.cursor()
+            print "DOING THiS:", "set sql_mode='%s'" % (",".join(modes))
+            cursor.execute("set sql_mode='%s'" % (",".join(modes)))
+        e = engines.testing_engine(options={
+            'pool_events':[
+                (connect, 'on_first_connect'),
+                (connect, 'on_connect')
+            ]
+        })
+        return e
         
     def test_backslash_escapes(self):
         engine = self._options(['NO_BACKSLASH_ESCAPES'])

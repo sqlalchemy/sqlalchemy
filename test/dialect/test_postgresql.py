@@ -487,7 +487,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
 
     def teardown(self):
         metadata.drop_all()
-        metadata.tables.clear()
+        metadata.clear()
         if self.engine is not testing.db:
             self.engine.dispose()
 

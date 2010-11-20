@@ -602,9 +602,8 @@ class EngineEventsTest(TestBase):
     def test_transactional_advanced(self):
         canary = []
         def tracker(name):
-            def go(conn, exec_, *args, **kw):
+            def go(*args, **kw):
                 canary.append(name)
-                return exec_(*args, **kw)
             return go
             
         engine = engines.testing_engine()
