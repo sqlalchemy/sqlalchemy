@@ -568,50 +568,36 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).all(), [User(name='u1',
             addresses=[Address(email='one'), Address(email='two')])])
 
-    @testing.uses_deprecated()
-    def test_custom_mapper(self):
-
-        class MyExt(sa.orm.MapperExtension):
-
-            def create_instance(self):
-                return 'CHECK'
+    def test_custom_mapper_attribute(self):
 
         def mymapper(cls, tbl, **kwargs):
-            kwargs['extension'] = MyExt()
-            return sa.orm.mapper(cls, tbl, **kwargs)
+            m = sa.orm.mapper(cls, tbl, **kwargs)
+            m.CHECK = True
+            return m
 
-        from sqlalchemy.orm.mapper import Mapper
+        base = decl.declarative_base()
 
-        class MyMapper(Mapper):
+        class Foo(base):
+            __tablename__ = 'foo'
+            __mapper_cls__ = mymapper
+            id = Column(Integer, primary_key=True)
+        
+        eq_(Foo.__mapper__.CHECK, True)
 
-            def __init__(self, *args, **kwargs):
-                kwargs['extension'] = MyExt()
-                Mapper.__init__(self, *args, **kwargs)
+    def test_custom_mapper_argument(self):
 
-        from sqlalchemy.orm import scoping
-        ss = scoping.ScopedSession(create_session)
-        ss.extension = MyExt()
-        ss_mapper = ss.mapper
-        for mapperfunc in mymapper, MyMapper, ss_mapper:
-            base = decl.declarative_base()
+        def mymapper(cls, tbl, **kwargs):
+            m = sa.orm.mapper(cls, tbl, **kwargs)
+            m.CHECK = True
+            return m
 
-            class Foo(base):
+        base = decl.declarative_base(mapper=mymapper)
 
-                __tablename__ = 'foo'
-                __mapper_cls__ = mapperfunc
-                id = Column(Integer, primary_key=True)
+        class Foo(base):
+            __tablename__ = 'foo'
+            id = Column(Integer, primary_key=True)
 
-            eq_(Foo.__mapper__.compile().extension.create_instance(),
-                'CHECK')
-            base = decl.declarative_base(mapper=mapperfunc)
-
-            class Foo(base):
-
-                __tablename__ = 'foo'
-                id = Column(Integer, primary_key=True)
-
-            eq_(Foo.__mapper__.compile().extension.create_instance(),
-                'CHECK')
+        eq_(Foo.__mapper__.CHECK, True)
 
     @testing.emits_warning('Ignoring declarative-like tuple value of '
                            'attribute id')

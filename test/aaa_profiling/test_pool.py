@@ -40,7 +40,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     def test_second_samethread_connect(self):
         conn = pool.connect()
 
-        @profiling.function_call_count(5, {'2.4': 3, '3.0':6, '3.1':6})
+        @profiling.function_call_count(6, {'2.4': 4, '3.0':7, '3.1':7})
         def go():
             return pool.connect()
         c2 = go()
