@@ -1555,7 +1555,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT foo, bar FROM bat UNION SELECT foo, bar "
             "FROM bat UNION SELECT foo, bar FROM bat UNION SELECT foo, bar FROM bat"
         )
-
+        
         self.assert_compile(
             union(s, union(s, union(s, s))),
             "SELECT foo, bar FROM bat UNION (SELECT foo, bar FROM bat "

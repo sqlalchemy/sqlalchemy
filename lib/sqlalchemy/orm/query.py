@@ -162,7 +162,7 @@ class Query(object):
 
         fa = []
         for from_obj in obj:
-            if isinstance(from_obj, expression._SelectBaseMixin):
+            if isinstance(from_obj, expression._SelectBase):
                 from_obj = from_obj.alias()
             fa.append(from_obj)
 
@@ -1592,7 +1592,7 @@ class Query(object):
 
         if not isinstance(statement, 
                             (expression._TextClause,
-                            expression._SelectBaseMixin)):
+                            expression._SelectBase)):
             raise sa_exc.ArgumentError(
                             "from_statement accepts text(), select(), "
                             "and union() objects only.")
@@ -2461,7 +2461,7 @@ class Query(object):
 
             for hint in self._with_hints:
                 statement = statement.with_hint(*hint)
-                        
+                    
             if self._execution_options:
                 statement = statement.execution_options(
                                             **self._execution_options)
@@ -2797,7 +2797,7 @@ class QueryContext(object):
     def __init__(self, query):
 
         if query._statement is not None:
-            if isinstance(query._statement, expression._SelectBaseMixin) and \
+            if isinstance(query._statement, expression._SelectBase) and \
                                 not query._statement.use_labels:
                 self.statement = query._statement.apply_labels()
             else:

@@ -229,7 +229,7 @@ class Table(SchemaItem, expression.TableClause):
         self.constraints = set()
         self._columns = expression.ColumnCollection()
         self._set_primary_key(PrimaryKeyConstraint())
-        self._foreign_keys = util.OrderedSet()
+        self.foreign_keys = util.OrderedSet()
         self._extra_dependencies = set()
         self.kwargs = {}
         if self.schema is not None:
@@ -284,7 +284,7 @@ class Table(SchemaItem, expression.TableClause):
         if include_columns:
             for c in self.c:
                 if c.name not in include_columns:
-                    self.c.remove(c)
+                    self._columns.remove(c)
 
         for key in ('quote', 'quote_schema'):
             if key in kwargs:
@@ -308,10 +308,13 @@ class Table(SchemaItem, expression.TableClause):
                 "Invalid argument(s) for Table: %r" % kwargs.keys())
         self.kwargs.update(kwargs)
 
+    def _init_collections(self):
+        pass
+        
     def _set_primary_key(self, pk):
-        if getattr(self, '_primary_key', None) in self.constraints:
-            self.constraints.remove(self._primary_key)
-        self._primary_key = pk
+        if self.primary_key in self.constraints:
+            self.constraints.remove(self.primary_key)
+        self.primary_key = pk
         self.constraints.add(pk)
 
         for c in pk.columns:
@@ -330,10 +333,6 @@ class Table(SchemaItem, expression.TableClause):
     @property
     def key(self):
         return _get_table_key(self.name, self.schema)
-
-    @property
-    def primary_key(self):
-        return self._primary_key
 
     def __repr__(self):
         return "Table(%s)" % ', '.join(
@@ -919,7 +918,7 @@ class Column(SchemaItem, expression.ColumnClause):
             nullable = self.nullable, 
             quote=self.quote, _proxies=[self], *fk)
         c.table = selectable
-        selectable.columns.add(c)
+        selectable._columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)
         for fn in c._table_events:

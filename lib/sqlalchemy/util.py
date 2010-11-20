@@ -146,36 +146,6 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
-class frozendict(dict):
-    @property
-    def _blocked_attribute(obj):
-        raise AttributeError, "A frozendict cannot be modified."
-
-    __delitem__ = __setitem__ = clear = _blocked_attribute
-    pop = popitem = setdefault = update = _blocked_attribute
-
-    def __new__(cls, *args):
-        new = dict.__new__(cls)
-        dict.__init__(new, *args)
-        return new
-
-    def __init__(self, *args):
-        pass
-
-    def __reduce__(self):
-        return frozendict, (dict(self), )
-
-    def union(self, d):
-        if not self:
-            return frozendict(d)
-        else:
-            d2 = self.copy()
-            d2.update(d)
-            return frozendict(d2)
-            
-    def __repr__(self):
-        return "frozendict(%s)" % dict.__repr__(self)
-
 
 # find or create a dict implementation that supports __missing__
 class _probe(dict):
@@ -761,20 +731,44 @@ class NamedTuple(tuple):
     def keys(self):
         return [l for l in self._labels if l is not None]
 
+class ImmutableContainer(object):
+    def _immutable(self, *arg, **kw):
+        raise TypeError("%s object is immutable" % self.__class__.__name__)
 
-class OrderedProperties(object):
-    """An object that maintains the order in which attributes are set upon it.
+    __delitem__ = __setitem__ = __setattr__ = _immutable
 
-    Also provides an iterator and a very basic getitem/setitem
-    interface to those attributes.
+class frozendict(ImmutableContainer, dict):
+    
+    clear = pop = popitem = setdefault = \
+        update = ImmutableContainer._immutable
 
-    (Not really a dict, since it iterates over values, not keys.  Not really
-    a list, either, since each value must have a key associated; hence there is
-    no append or extend.)
-    """
+    def __new__(cls, *args):
+        new = dict.__new__(cls)
+        dict.__init__(new, *args)
+        return new
 
-    def __init__(self):
-        self.__dict__['_data'] = OrderedDict()
+    def __init__(self, *args):
+        pass
+
+    def __reduce__(self):
+        return frozendict, (dict(self), )
+
+    def union(self, d):
+        if not self:
+            return frozendict(d)
+        else:
+            d2 = self.copy()
+            d2.update(d)
+            return frozendict(d2)
+            
+    def __repr__(self):
+        return "frozendict(%s)" % dict.__repr__(self)
+
+class Properties(object):
+    """Provide a __getattr__/__setattr__ interface over a dict."""
+
+    def __init__(self, data):
+        self.__dict__['_data'] = data
 
     def __len__(self):
         return len(self._data)
@@ -811,7 +805,12 @@ class OrderedProperties(object):
 
     def __contains__(self, key):
         return key in self._data
-
+    
+    def as_immutable(self):
+        """Return an immutable proxy for this :class:`.Properties`."""
+        
+        return ImmutableProperties(self._data)
+        
     def update(self, value):
         self._data.update(value)
 
@@ -830,6 +829,17 @@ class OrderedProperties(object):
     def clear(self):
         self._data.clear()
 
+class OrderedProperties(Properties):
+    """Provide a __getattr__/__setattr__ interface with an OrderedDict
+    as backing store."""
+    def __init__(self):
+        Properties.__init__(self, OrderedDict())
+    
+
+class ImmutableProperties(ImmutableContainer, Properties):
+    """Provide immutable dict/object attribute to an underlying dictionary."""
+        
+    
 class OrderedDict(dict):
     """A dict that returns keys/values/items in the order they were added."""
 

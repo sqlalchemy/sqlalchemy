@@ -119,33 +119,30 @@ class MetaDataTest(TestBase, ComparesTables):
         assert 't1' in metadata.tables
         
         assert_raises(
-            AttributeError,
+            TypeError,
             lambda: metadata.tables.pop('t1')
         )
-        
+    
+    @testing.provide_metadata
     def test_dupe_tables(self):
-        metadata = MetaData()
         t1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
 
-        metadata.bind = testing.db
         metadata.create_all()
-        try:
-            try:
-                t1 = Table('table1', metadata, autoload=True)
-                t2 = Table('table1', metadata, 
-                    Column('col1', Integer, primary_key=True),
-                    Column('col2', String(20)))
-                assert False
-            except tsa.exc.InvalidRequestError, e:
-                assert str(e) \
-                    == "Table 'table1' is already defined for this "\
-                    "MetaData instance.  Specify 'useexisting=True' "\
-                    "to redefine options and columns on an existing "\
-                    "Table object."
-        finally:
-            metadata.drop_all()
+        t1 = Table('table1', metadata, autoload=True)
+        def go():
+            t2 = Table('table1', metadata, 
+                Column('col1', Integer, primary_key=True),
+                Column('col2', String(20)))
+        assert_raises_message(
+            tsa.exc.InvalidRequestError,
+            "Table 'table1' is already defined for this "\
+            "MetaData instance.  Specify 'useexisting=True' "\
+            "to redefine options and columns on an existing "\
+            "Table object.",
+            go
+        )
     
     def test_fk_copy(self):
         c1 = Column('foo', Integer)
@@ -398,7 +395,6 @@ class MetaDataTest(TestBase, ComparesTables):
             [d, b, a, c, e]
         )
         
-        
     def test_tometadata_strip_schema(self):
         meta = MetaData()
 
@@ -432,7 +428,7 @@ class MetaDataTest(TestBase, ComparesTables):
                           MetaData(testing.db), autoload=True)
 
 
-class TableOptionsTest(TestBase, AssertsCompiledSQL):
+class TableTest(TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
@@ -463,3 +459,27 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
             t.info['bar'] = 'zip'
             assert t.info['bar'] == 'zip'
 
+    def test_c_immutable(self):
+        m = MetaData()
+        t1 = Table('t', m, Column('x', Integer), Column('y', Integer))
+        assert_raises(
+            TypeError,
+            t1.c.extend, [Column('z', Integer)]
+        )
+
+        def assign():
+            t1.c['z'] = Column('z', Integer)
+        assert_raises(
+            TypeError,
+            assign
+        )
+
+        def assign():
+            t1.c.z = Column('z', Integer)
+        assert_raises(
+            TypeError,
+            assign
+        )
+        
+        
+    
