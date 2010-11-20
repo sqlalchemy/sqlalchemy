@@ -613,26 +613,20 @@ class Mapper(object):
             prop = self._props.get(key, None)
 
             if isinstance(prop, properties.ColumnProperty):
-                # TODO: the "property already exists" case is still not 
-                # well defined here. assuming single-column, etc.
-
-                if prop.parent is not self:
-                    # existing properties.ColumnProperty from an inheriting mapper.
-                    # make a copy and append our column to it
-                    prop = prop.copy()
-                else:
-                    util.warn(
+                if prop.parent is self:
+                    raise sa_exc.InvalidRequestError(
                             "Implicitly combining column %s with column "
-                            "%s under attribute '%s'.  This usage will be "
-                            "prohibited in 0.7.  Please configure one "
+                            "%s under attribute '%s'.  Please configure one "
                             "or more attributes for these same-named columns "
                             "explicitly."
                              % (prop.columns[-1], column, key))
-                    
-                # this hypothetically changes to 
-                # prop.columns.insert(0, column) when we do [ticket:1892]
-                prop.columns.append(column)
-                self._log("appending to existing properties.ColumnProperty %s" % (key))
+
+                # existing properties.ColumnProperty from an inheriting 
+                # mapper. make a copy and append our column to it
+                prop = prop.copy()
+                prop.columns.insert(0, column)
+                self._log("inserting column to existing list "
+                            "in properties.ColumnProperty %s" % (key))
                              
             elif prop is None or isinstance(prop, properties.ConcreteInheritedProperty):
                 mapped_column = []

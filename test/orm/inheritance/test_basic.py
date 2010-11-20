@@ -128,7 +128,6 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
         )
         
         
-
 class FalseDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -781,8 +780,8 @@ class DistinctPKTest(_base.MappedTest):
                     primary_key=[person_table.c.id, employee_table.c.id])
         assert_raises_message(sa_exc.SAWarning, 
                                     r"On mapper Mapper\|Employee\|employees, "
-                                    "primary key column 'employees.id' is being "
-                                    "combined with distinct primary key column 'persons.id' "
+                                    "primary key column 'persons.id' is being "
+                                    "combined with distinct primary key column 'employees.id' "
                                     "in attribute 'id'.  Use explicit properties to give "
                                     "each column its own mapped attribute name.",
             self._do_test, True
@@ -910,7 +909,7 @@ class OverrideColKeyTest(_base.MappedTest):
         # column of both tables.
         eq_(
             class_mapper(Sub).get_property('base_id').columns,
-            [base.c.base_id, subtable.c.base_id]
+            [subtable.c.base_id, base.c.base_id]
         )
 
     def test_override_explicit(self):
@@ -982,11 +981,9 @@ class OverrideColKeyTest(_base.MappedTest):
         # PK col
         assert s2.id == s2.base_id != 15
     
-    @testing.emits_warning(r'Implicit')
     def test_override_implicit(self):
-        # this is how the pattern looks intuitively when 
-        # using declarative.
-        # fixed as part of [ticket:1111]
+        # this is originally [ticket:1111].
+        # the pattern here is now disallowed by [ticket:1892]
         
         class Base(object):
             pass
@@ -996,26 +993,16 @@ class OverrideColKeyTest(_base.MappedTest):
         mapper(Base, base, properties={
             'id':base.c.base_id
         })
-        mapper(Sub, subtable, inherits=Base, properties={
-            'id':subtable.c.base_id
-        })
         
+        def go():
+            mapper(Sub, subtable, inherits=Base, properties={
+                'id':subtable.c.base_id
+            })
         # Sub mapper compilation needs to detect that "base.c.base_id"
         # is renamed in the inherited mapper as "id", even though
-        # it has its own "id" property.  Sub's "id" property 
-        # gets joined normally with the extra column.
-        
-        eq_(
-            set(class_mapper(Sub).get_property('id').columns),
-            set([base.c.base_id, subtable.c.base_id])
-        )
-        
-        s1 = Sub()
-        s1.id = 10
-        sess = create_session()
-        sess.add(s1)
-        sess.flush()
-        assert sess.query(Sub).get(10) is s1
+        # it has its own "id" property.  It then generates
+        # an exception in 0.7 due to the implicit conflict.
+        assert_raises(sa_exc.InvalidRequestError, go)
 
     def test_plain_descriptor(self):
         """test that descriptors prevent inheritance from propigating properties to subclasses."""

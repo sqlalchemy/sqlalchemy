@@ -348,7 +348,7 @@ def _produce_test(select_type):
                 sess.query(Company).filter(Company.employees.of_type(Engineer).any(and_(Engineer.primary_language=='cobol'))).one(),
                 c2
                 )
-                
+        
         def test_join_from_columns_or_subclass(self):
             sess = create_session()
 
@@ -367,11 +367,41 @@ def _produce_test(select_type):
                 [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
             )
             
+            # Load Person.name, joining from Person -> paperwork, get all
+            # the people.
             eq_(
-                sess.query(Person.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
+                sess.query(Person.name).join((paperwork, Person.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
                 [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
             )
             
+            # same, on manager.  get only managers.
+            eq_(
+                sess.query(Manager.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
+                [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
+            )
+            
+            if select_type == '':
+                # this now raises, due to [ticket:1892].  Manager.person_id is now the "person_id" column on Manager.
+                # the SQL is incorrect.
+                assert_raises(
+                    sa_exc.DBAPIError,
+                    sess.query(Person.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all,
+                )
+            elif select_type == 'Unions':
+                # with the union, not something anyone would really be using here, it joins to 
+                # the full result set.  This is 0.6's behavior and is more or less wrong.
+                eq_(
+                    sess.query(Person.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
+                    [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
+                )
+            else:
+                # when a join is present and managers.person_id is available, you get the managers.
+                eq_(
+                    sess.query(Person.name).join((paperwork, Manager.person_id==paperwork.c.person_id)).order_by(Person.name).all(),
+                    [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
+                )
+                    
+                
             eq_(
                 sess.query(Manager).join((Paperwork, Manager.paperwork)).order_by(Manager.name).all(),
                 [m1, b1]
@@ -1167,7 +1197,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         # test the same again
         self.assert_compile(
             session.query(Child2).join(Child2.right_children).filter(Child1.left_child2==c22).with_labels().statement,
-            "SELECT parent.id AS parent_id, child2.id AS child2_id, parent.cls AS parent_cls FROM "
+            "SELECT child2.id AS child2_id, parent.id AS parent_id, parent.cls AS parent_cls FROM "
             "secondary AS secondary_1, parent JOIN child2 ON parent.id = child2.id JOIN secondary AS secondary_2 "
             "ON parent.id = secondary_2.left_id JOIN (SELECT parent.id AS parent_id, parent.cls AS parent_cls, "
             "child1.id AS child1_id FROM parent JOIN child1 ON parent.id = child1.id) AS anon_1 ON "
@@ -1187,10 +1217,10 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
 
         # test that the splicing of the join works here, doesnt break in the middle of "parent join child1"
         self.assert_compile(q.limit(1).with_labels().statement, 
-        "SELECT anon_1.parent_id AS anon_1_parent_id, anon_1.child1_id AS anon_1_child1_id, "\
-        "anon_1.parent_cls AS anon_1_parent_cls, anon_2.parent_id AS anon_2_parent_id, "\
-        "anon_2.child2_id AS anon_2_child2_id, anon_2.parent_cls AS anon_2_parent_cls FROM "\
-        "(SELECT parent.id AS parent_id, child1.id AS child1_id, parent.cls AS parent_cls FROM parent "\
+        "SELECT anon_1.child1_id AS anon_1_child1_id, anon_1.parent_id AS anon_1_parent_id, "\
+        "anon_1.parent_cls AS anon_1_parent_cls, anon_2.child2_id AS anon_2_child2_id, "\
+        "anon_2.parent_id AS anon_2_parent_id, anon_2.parent_cls AS anon_2_parent_cls FROM "\
+        "(SELECT child1.id AS child1_id, parent.id AS parent_id, parent.cls AS parent_cls FROM parent "\
         "JOIN child1 ON parent.id = child1.id LIMIT :param_1) AS anon_1 LEFT OUTER JOIN secondary AS secondary_1 "\
         "ON anon_1.parent_id = secondary_1.right_id LEFT OUTER JOIN (SELECT parent.id AS parent_id, "\
         "parent.cls AS parent_cls, child2.id AS child2_id FROM parent JOIN child2 ON parent.id = child2.id) "\
