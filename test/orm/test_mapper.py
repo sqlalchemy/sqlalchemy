@@ -573,24 +573,15 @@ class MapperTest(_fixtures.FixtureTest):
     
     @testing.resolve_artifact_names
     def test_mapping_to_join_raises(self):
-        """Test implicit merging of two cols warns."""
+        """Test implicit merging of two cols raises."""
         
         usersaddresses = sa.join(users, addresses,
                                  users.c.id == addresses.c.user_id)
         assert_raises_message(
-            sa.exc.SAWarning,
+            sa.exc.InvalidRequestError,
             "Implicitly",
             mapper, User, usersaddresses, primary_key=[users.c.id]
         )
-        sa.orm.clear_mappers()
-        
-        @testing.emits_warning(r'Implicitly')
-        def go():
-            # but it works despite the warning
-            mapper(User, usersaddresses, primary_key=[users.c.id])
-            l = create_session().query(User).order_by(users.c.id).all()
-            eq_(l, self.static.user_result[:3])
-        go()
 
     @testing.resolve_artifact_names
     def test_mapping_to_join(self):
@@ -599,7 +590,9 @@ class MapperTest(_fixtures.FixtureTest):
         usersaddresses = sa.join(users, addresses, users.c.id
                                  == addresses.c.user_id)
         mapper(User, usersaddresses, primary_key=[users.c.id],
-               exclude_properties=[addresses.c.id])
+               #exclude_properties=[addresses.c.id]
+               properties={'add_id':addresses.c.id}
+               )
         l = create_session().query(User).order_by(users.c.id).all()
         eq_(l, self.static.user_result[:3])
 
@@ -2029,7 +2022,7 @@ class SecondaryOptionsTest(_base.MappedTest):
             testing.db, 
             lambda: c1.child2, 
             CompiledSQL(
-                "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type "
+                "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type "
                 "FROM base JOIN child2 ON base.id = child2.id "
                 "WHERE base.id = :param_1",
                 {'param_1':4}
@@ -2055,7 +2048,7 @@ class SecondaryOptionsTest(_base.MappedTest):
             testing.db, 
             lambda: c1.child2, 
             CompiledSQL(
-            "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type "
+            "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type "
             "FROM base JOIN child2 ON base.id = child2.id WHERE base.id = :param_1",
 
 #   joinedload- this shouldn't happen
@@ -2086,7 +2079,7 @@ class SecondaryOptionsTest(_base.MappedTest):
             testing.db, 
             lambda: c1.child2, 
             CompiledSQL(
-                "SELECT base.id AS base_id, child2.id AS child2_id, base.type AS base_type, "
+                "SELECT child2.id AS child2_id, base.id AS base_id, base.type AS base_type, "
                 "related_1.id AS related_1_id FROM base JOIN child2 ON base.id = child2.id "
                 "LEFT OUTER JOIN related AS related_1 ON base.id = related_1.id WHERE base.id = :param_1",
                 {'param_1':4}

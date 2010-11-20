@@ -855,7 +855,30 @@ class DeclarativeTest(DeclarativeTestBase):
             eq_(u1.name, 'u1')
 
         self.assert_sql_count(testing.db, go, 1)
-
+    
+    def test_mapping_to_join(self):
+        users = Table('users', Base.metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        addresses = Table('addresses', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('user_id', Integer, ForeignKey('users.id'))
+        )
+        usersaddresses = sa.join(users, addresses, users.c.id
+                                 == addresses.c.user_id)
+        class User(Base):
+            __table__ = usersaddresses
+            __table_args__ = {'primary_key':[users.c.id]}
+            
+            # need to use column_property for now
+            user_id = column_property(users.c.id, addresses.c.user_id)
+            address_id = addresses.c.id
+        
+        assert User.__mapper__.get_property('user_id').columns[0] \
+                                is users.c.id
+        assert User.__mapper__.get_property('user_id').columns[1] \
+                                is addresses.c.user_id
+        
     def test_synonym_inline(self):
 
         class User(Base, ComparableEntity):
@@ -1221,24 +1244,22 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             any(Engineer.primary_language
             == 'cobol')).first(), c2)
 
-        # ensure that the Manager mapper was compiled with the Person id
-        # column as higher priority. this ensures that "id" will get
-        # loaded from the Person row and not the possibly non-present
-        # Manager row
+        # ensure that the Manager mapper was compiled with the Manager id
+        # column as higher priority. this ensures that "Manager.id" 
+        # is appropriately treated as the "id" column in the "manager"
+        # table (reversed from 0.6's behavior.)
 
-        assert Manager.id.property.columns == [Person.__table__.c.id,
-                Manager.__table__.c.id]
+        assert Manager.id.property.columns == [Manager.__table__.c.id, Person.__table__.c.id]
 
         # assert that the "id" column is available without a second
-        # load. this would be the symptom of the previous step not being
-        # correct.
+        # load. as of 0.7, the ColumnProperty tests all columns
+        # in it's list to see which is present in the row.
 
         sess.expunge_all()
 
         def go():
             assert sess.query(Manager).filter(Manager.name == 'dogbert'
                     ).one().id
-
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
@@ -1371,7 +1392,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         """Test that foreign keys that reference a literal 'id' subclass 
         'id' attribute behave intuitively.  
         
-        See ticket 1892.
+        See [ticket:1892].
         
         """
         class Booking(Base):
@@ -1431,6 +1452,41 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = dict(polymorphic_identity='child2')
 
         sa.orm.compile_mappers()  # no exceptions here
+
+    def test_foreign_keys_with_col(self):
+        """Test that foreign keys that reference a literal 'id' subclass 
+        'id' attribute behave intuitively.  
+        
+        See [ticket:1892].
+        
+        """
+        class Booking(Base):
+            __tablename__ = 'booking'
+            id = Column(Integer, primary_key=True)
+
+        class PlanBooking(Booking):
+            __tablename__ = 'plan_booking'
+            id = Column(Integer, ForeignKey(Booking.id),
+                            primary_key=True)
+
+        # referencing PlanBooking.id gives us the column
+        # on plan_booking, not booking
+        class FeatureBooking(Booking):
+            __tablename__ = 'feature_booking'
+            id = Column(Integer, ForeignKey(Booking.id),
+                                        primary_key=True)
+            plan_booking_id = Column(Integer,
+                                ForeignKey(PlanBooking.id))
+            
+            plan_booking = relationship(PlanBooking,
+                        backref='feature_bookings')
+        
+        assert FeatureBooking.__table__.c.plan_booking_id.\
+                    references(PlanBooking.__table__.c.id)
+
+        assert FeatureBooking.__table__.c.id.\
+                    references(Booking.__table__.c.id)
+      
 
     def test_single_colsonbase(self):
         """test single inheritance where all the columns are on the base
