@@ -7,7 +7,7 @@ from sqlalchemy.util import jython
 import operator
 from sqlalchemy.test import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-    PickleType, create_engine, Unicode, Float
+    PickleType, create_engine, Unicode
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
