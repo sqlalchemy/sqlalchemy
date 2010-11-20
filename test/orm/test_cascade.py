@@ -118,8 +118,22 @@ class O2MCascadeDeleteOrphanTest(_base.MappedTest):
         assert o2 in sess
         assert o3 in sess
         sess.commit()
-
     
+    @testing.resolve_artifact_names
+    def test_remove_pending_from_collection(self):
+        sess = Session()
+        
+        u = User(name='jack')
+        sess.add(u)
+        sess.commit()
+        
+        o1 = Order()
+        u.orders.append(o1)
+        assert o1 in sess
+        u.orders.remove(o1)
+        assert o1 not in sess
+        
+        
     @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session()
