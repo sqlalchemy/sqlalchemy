@@ -748,7 +748,7 @@ class SliceTest(QueryTest):
 
         assert create_session().query(User).filter(User.id==27).first() is None
 
-    @testing.fails_on_everything_except('sqlite')
+    @testing.only_on('sqlite', 'testing execution but db-specific syntax')
     def test_limit_offset_applies(self):
         """Test that the expected LIMIT/OFFSET is applied for slices.
         
@@ -761,15 +761,15 @@ class SliceTest(QueryTest):
         q = sess.query(User)
         
         self.assert_sql(testing.db, lambda: q[10:20], [
-            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 10 OFFSET 10", {})
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users LIMIT :param_1 OFFSET :param_2", {'param_1':10, 'param_2':10})
         ])
 
         self.assert_sql(testing.db, lambda: q[:20], [
-            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 20 OFFSET 0", {})
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users LIMIT :param_1 OFFSET :param_2", {'param_1':20, 'param_2':0})
         ])
 
         self.assert_sql(testing.db, lambda: q[5:], [
-            ("SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT -1 OFFSET 5", {})
+            ("SELECT users.id AS users_id, users.name AS users_name FROM users LIMIT :param_1 OFFSET :param_2", {'param_1':-1, 'param_2':5})
         ])
 
         self.assert_sql(testing.db, lambda: q[2:2], [])
@@ -4074,7 +4074,8 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             "nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
             "ON nodes_2.id = nodes_1.parent_id "
             "WHERE nodes.data = :data_1 AND nodes_1.data = :data_2 AND "
-            "nodes_2.data = :data_3) AS anon_1  LIMIT 1",
+            "nodes_2.data = :data_3) AS anon_1 LIMIT :param_1",
+            {'param_1':1},
             use_default_dialect=True
         )
         

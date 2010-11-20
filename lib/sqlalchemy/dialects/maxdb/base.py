@@ -603,6 +603,7 @@ class MaxDBCompiler(compiler.SQLCompiler):
     def limit_clause(self, select):
         # The docs say offsets are supported with LIMIT.  But they're not.
         # TODO: maybe emulate by adding a ROWNO/ROWNUM predicate?
+        # TODO: does MaxDB support bind params for LIMIT / TOP ?
         if self.is_subquery():
             # sub queries need TOP
             return ''

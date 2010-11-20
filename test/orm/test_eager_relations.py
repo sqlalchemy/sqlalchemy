@@ -671,8 +671,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "orders_1_address_id, orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
-            " LIMIT 10) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = orders_1.user_id"
-            ,use_default_dialect=True
+            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = orders_1.user_id",
+            {'param_1':10},
+            use_default_dialect=True
         )
 
         self.assert_compile(
@@ -680,8 +681,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, orders.address_id AS "
             "orders_address_id, orders.description AS orders_description, orders.isopen AS orders_isopen, "
             "users_1.id AS users_1_id, users_1.name AS users_1_name FROM orders LEFT OUTER JOIN users AS "
-            "users_1 ON users_1.id = orders.user_id  LIMIT 10"
-            ,use_default_dialect=True
+            "users_1 ON users_1.id = orders.user_id LIMIT :param_1",
+            {'param_1':10},
+            use_default_dialect=True
         )
 
         self.assert_compile(
@@ -689,8 +691,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "SELECT orders.id AS orders_id, orders.user_id AS orders_user_id, orders.address_id AS "
             "orders_address_id, orders.description AS orders_description, orders.isopen AS orders_isopen, "
             "users_1.id AS users_1_id, users_1.name AS users_1_name FROM orders JOIN users AS "
-            "users_1 ON users_1.id = orders.user_id  LIMIT 10"
-            ,use_default_dialect=True
+            "users_1 ON users_1.id = orders.user_id LIMIT :param_1",
+            {'param_1':10},
+            use_default_dialect=True
         )
 
         self.assert_compile(
@@ -700,10 +703,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "addresses_1.email_address AS addresses_1_email_address, orders_1.id AS orders_1_id, "
             "orders_1.user_id AS orders_1_user_id, orders_1.address_id AS orders_1_address_id, "
             "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen FROM "
-            "(SELECT users.id AS users_id, users.name AS users_name FROM users  LIMIT 10) AS anon_1 "
+            "(SELECT users.id AS users_id, users.name AS users_name FROM users LIMIT :param_1) AS anon_1 "
             "LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = orders_1.user_id LEFT OUTER JOIN "
-            "addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
-            ,use_default_dialect=True
+            "addresses AS addresses_1 ON addresses_1.id = orders_1.address_id",
+            {'param_1':10},
+            use_default_dialect=True
         )
 
         self.assert_compile(
@@ -730,11 +734,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
-            " LIMIT 10) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = "
-            "orders_1.user_id LEFT OUTER JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
-            ,use_default_dialect=True
+            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN orders AS orders_1 ON anon_1.users_id = "
+            "orders_1.user_id LEFT OUTER JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id",
+            {'param_1':10},
+            use_default_dialect=True
         )
-
+        
         self.assert_compile(
             sess.query(User).options(joinedload("orders", innerjoin=True), 
                                         joinedload("orders.address", innerjoin=True)).limit(10),
@@ -745,9 +750,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "orders_1.description AS orders_1_description, orders_1.isopen AS orders_1_isopen "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
             "FROM users "
-            " LIMIT 10) AS anon_1 JOIN orders AS orders_1 ON anon_1.users_id = "
-            "orders_1.user_id JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id"
-            ,use_default_dialect=True
+            "LIMIT :param_1) AS anon_1 JOIN orders AS orders_1 ON anon_1.users_id = "
+            "orders_1.user_id JOIN addresses AS addresses_1 ON addresses_1.id = orders_1.address_id",
+            {'param_1':10},
+            use_default_dialect=True
         )
         
     @testing.resolve_artifact_names
@@ -1441,7 +1447,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
         self.assert_sql_execution(testing.db, go, 
             CompiledSQL(
                 "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes "
-                "WHERE nodes.data = :data_1 ORDER BY nodes.id  LIMIT 1 OFFSET 0",
+                "WHERE nodes.data = :data_1 ORDER BY nodes.id LIMIT :param_1 OFFSET :param_2",
                 {'data_1': 'n1'}
             )
         )

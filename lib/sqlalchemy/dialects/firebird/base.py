@@ -263,9 +263,9 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         result = ""
         if select._limit:
-            result += "FIRST %d "  % select._limit
+            result += "FIRST %s "  % self.process(sql.literal(select._limit))
         if select._offset:
-            result +="SKIP %d "  %  select._offset
+            result +="SKIP %s "  %  self.process(sql.literal(select._offset))
         if select._distinct:
             result += "DISTINCT "
         return result

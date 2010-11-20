@@ -621,22 +621,27 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
         s2 = select([s1]).limit(5).offset(10).alias()
 
         self.assert_compile(sql_util.ClauseAdapter(s2).traverse(s1),
-            "SELECT foo.col1, foo.col2, foo.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10")
+            "SELECT foo.col1, foo.col2, foo.col3 FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo LIMIT :param_1 OFFSET :param_2",
+            {'param_1':5, 'param_2':10}
+            )
 
         j = s1.outerjoin(t2, s1.c.col1==t2.c.col1)
         self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(),
             "SELECT anon_1.col1, anon_1.col2, anon_1.col3, table2.col1, table2.col2, table2.col3 FROM "\
             "(SELECT foo.col1 AS col1, foo.col2 AS col2, foo.col3 AS col3 FROM "\
-            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
-            "LEFT OUTER JOIN table2 ON anon_1.col1 = table2.col1")
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo LIMIT :param_1 OFFSET :param_2) AS anon_1 "\
+            "LEFT OUTER JOIN table2 ON anon_1.col1 = table2.col1",
+            {'param_1':5, 'param_2':10}
+            )
 
         talias = t1.alias('bar')
         j = s1.outerjoin(talias, s1.c.col1==talias.c.col1)
         self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(),
             "SELECT anon_1.col1, anon_1.col2, anon_1.col3, bar.col1, bar.col2, bar.col3 FROM "\
             "(SELECT foo.col1 AS col1, foo.col2 AS col2, foo.col3 AS col3 FROM "\
-            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo  LIMIT 5 OFFSET 10) AS anon_1 "\
-            "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1")
+            "(SELECT table1.col1 AS col1, table1.col2 AS col2, table1.col3 AS col3 FROM table1) AS foo LIMIT :param_1 OFFSET :param_2) AS anon_1 "\
+            "LEFT OUTER JOIN table1 AS bar ON anon_1.col1 = bar.col1",
+            {'param_1':5, 'param_2':10})
     
     def test_functions(self):
         self.assert_compile(sql_util.ClauseAdapter(t1.alias()).traverse(func.count(t1.c.col1)), "count(table1_1.col1)")

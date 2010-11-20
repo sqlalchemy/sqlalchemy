@@ -1477,7 +1477,6 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         assert u1.corresponding_column(table2.c.otherid) is u1.c.myid
         
-        # TODO - why is there an extra space before the LIMIT ?
         self.assert_compile(
             union(
                 select([table1.c.myid, table1.c.name]),
@@ -1488,7 +1487,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             ),
             "SELECT mytable.myid, mytable.name "
             "FROM mytable UNION SELECT myothertable.otherid, myothertable.othername "
-            "FROM myothertable ORDER BY myid  LIMIT 5 OFFSET 10"
+            "FROM myothertable ORDER BY myid LIMIT :param_1 OFFSET :param_2",
+            {'param_1':5, 'param_2':10}
         )
 
         self.assert_compile(
@@ -1536,7 +1536,9 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         # self_group() is honored
         self.assert_compile(
             union(s.order_by("foo").self_group(), s.order_by("bar").limit(10).self_group()), 
-            "(SELECT foo, bar ORDER BY foo) UNION (SELECT foo, bar ORDER BY bar  LIMIT 10)"
+            "(SELECT foo, bar ORDER BY foo) UNION (SELECT foo, bar ORDER BY bar LIMIT :param_1)",
+            {'param_1':10}
+            
         )
         
     def test_compound_grouping(self):
@@ -1913,7 +1915,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             ),
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable "\
             "JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid "\
-            "FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
+            "FROM myothertable ORDER BY myothertable.othername LIMIT :param_1) ORDER BY mytable.myid",
+            {'param_1':10}
         )
 
     def test_tuple(self):
