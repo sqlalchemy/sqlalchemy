@@ -177,6 +177,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
             return self._connection.connection.cursor()
 
     def get_result_proxy(self):
+        # TODO: ouch
         if logger.isEnabledFor(logging.INFO):
             self._log_notices(self.cursor)
         

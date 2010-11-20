@@ -1624,7 +1624,7 @@ class Engine(Connectable, log.Identified):
             self.logging_name = logging_name
         self.echo = echo
         self.engine = self
-        self.logger = log.instance_logger(self, echoflag=echo)
+        log.instance_logger(self, echoflag=echo)
         if proxy:
 #            util.warn_deprecated("The 'proxy' argument to create_engine() is deprecated.  Use event.listen().")
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
