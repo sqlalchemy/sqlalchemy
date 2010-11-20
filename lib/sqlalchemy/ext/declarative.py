@@ -924,7 +924,7 @@ Mapped instances then make usage of
 
 """
 
-from sqlalchemy.schema import Table, Column, MetaData
+from sqlalchemy.schema import Table, Column, MetaData, _get_table_key
 from sqlalchemy.orm import synonym as _orm_synonym, mapper,\
                                 comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
@@ -1261,8 +1261,8 @@ class DeclarativeMeta(type):
 class _GetColumns(object):
     def __init__(self, cls):
         self.cls = cls
-    def __getattr__(self, key):
         
+    def __getattr__(self, key):
         mapper = class_mapper(self.cls, compile=False)
         if mapper:
             if not mapper.has_property(key):
@@ -1278,7 +1278,16 @@ class _GetColumns(object):
                             " directly to a Column)." % key)
         return getattr(self.cls, key)
 
-
+class _GetTable(object):
+    def __init__(self, key, metadata):
+        self.key = key
+        self.metadata = metadata
+    
+    def __getattr__(self, key):
+        return self.metadata.tables[
+                _get_table_key(key, self.key)
+            ]
+        
 def _deferred_relationship(cls, prop):
     def resolve_arg(arg):
         import sqlalchemy
@@ -1288,6 +1297,8 @@ def _deferred_relationship(cls, prop):
                 return _GetColumns(cls._decl_class_registry[key])
             elif key in cls.metadata.tables:
                 return cls.metadata.tables[key]
+            elif key in cls.metadata._schemas:
+                return _GetTable(key, cls.metadata)
             else:
                 return sqlalchemy.__dict__[key]
 
