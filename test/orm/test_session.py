@@ -15,7 +15,7 @@ from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
-
+from sqlalchemy import event
 
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1164,181 +1164,6 @@ class SessionTest(_fixtures.FixtureTest):
         assert s.query(Address).one().id == a.id
         assert s.query(User).first() is None
 
-    @testing.resolve_artifact_names
-    def test_extension(self):
-        mapper(User, users)
-        log = []
-        class MyExt(sa.orm.session.SessionExtension):
-            def before_commit(self, session):
-                log.append('before_commit')
-            def after_commit(self, session):
-                log.append('after_commit')
-            def after_rollback(self, session):
-                log.append('after_rollback')
-            def before_flush(self, session, flush_context, objects):
-                log.append('before_flush')
-            def after_flush(self, session, flush_context):
-                log.append('after_flush')
-            def after_flush_postexec(self, session, flush_context):
-                log.append('after_flush_postexec')
-            def after_begin(self, session, transaction, connection):
-                log.append('after_begin')
-            def after_attach(self, session, instance):
-                log.append('after_attach')
-            def after_bulk_update(
-                self,
-                session,
-                query,
-                query_context,
-                result,
-                ):
-                log.append('after_bulk_update')
-
-            def after_bulk_delete(
-                self,
-                session,
-                query,
-                query_context,
-                result,
-                ):
-                log.append('after_bulk_delete')
-
-        sess = create_session(extension = MyExt())
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        assert log == [
-            'after_attach',
-            'before_flush',
-            'after_begin',
-            'after_flush',
-            'before_commit',
-            'after_commit',
-            'after_flush_postexec',
-            ]
-        log = []
-        sess = create_session(autocommit=False, extension=MyExt())
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        assert log == ['after_attach', 'before_flush', 'after_begin',
-                       'after_flush', 'after_flush_postexec']
-        log = []
-        u.name = 'ed'
-        sess.commit()
-        assert log == ['before_commit', 'before_flush', 'after_flush',
-                       'after_flush_postexec', 'after_commit']
-        log = []
-        sess.commit()
-        assert log == ['before_commit', 'after_commit']
-        log = []
-        sess.query(User).delete()
-        assert log == ['after_begin', 'after_bulk_delete']
-        log = []
-        sess.query(User).update({'name': 'foo'})
-        assert log == ['after_bulk_update']
-        log = []
-        sess = create_session(autocommit=False, extension=MyExt(),
-                              bind=testing.db)
-        conn = sess.connection()
-        assert log == ['after_begin']
-
-    @testing.resolve_artifact_names
-    def test_before_flush(self):
-        """test that the flush plan can be affected during before_flush()"""
-        
-        mapper(User, users)
-        
-        class MyExt(sa.orm.session.SessionExtension):
-            def before_flush(self, session, flush_context, objects):
-                for obj in list(session.new) + list(session.dirty):
-                    if isinstance(obj, User):
-                        session.add(User(name='another %s' % obj.name))
-                for obj in list(session.deleted):
-                    if isinstance(obj, User):
-                        x = session.query(User).filter(User.name
-                                == 'another %s' % obj.name).one()
-                        session.delete(x)
-                    
-        sess = create_session(extension = MyExt(), autoflush=True)
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='another u1'),
-                User(name='u1')
-            ]
-        )
-        
-        sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='another u1'),
-                User(name='u1')
-            ]
-        )
-
-        u.name='u2'
-        sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='another u1'),
-                User(name='another u2'),
-                User(name='u2')
-            ]
-        )
-
-        sess.delete(u)
-        sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='another u1'),
-            ]
-        )
-
-    @testing.resolve_artifact_names
-    def test_before_flush_affects_dirty(self):
-        mapper(User, users)
-        
-        class MyExt(sa.orm.session.SessionExtension):
-            def before_flush(self, session, flush_context, objects):
-                for obj in list(session.identity_map.values()):
-                    obj.name += " modified"
-                    
-        sess = create_session(extension = MyExt(), autoflush=True)
-        u = User(name='u1')
-        sess.add(u)
-        sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='u1')
-            ]
-        )
-        
-        sess.add(User(name='u2'))
-        sess.flush()
-        sess.expunge_all()
-        eq_(sess.query(User).order_by(User.name).all(), 
-            [
-                User(name='u1 modified'),
-                User(name='u2')
-            ]
-        )
-
-    @testing.resolve_artifact_names
-    def test_reentrant_flush(self):
-
-        mapper(User, users)
-
-        class MyExt(sa.orm.session.SessionExtension):
-            def before_flush(s, session, flush_context, objects):
-                session.flush()
-        
-        sess = create_session(extension=MyExt())
-        sess.add(User(name='foo'))
-        assert_raises_message(sa.exc.InvalidRequestError,
-                              'already flushing', sess.flush)
 
     @testing.resolve_artifact_names
     def test_pickled_update(self):
@@ -1424,7 +1249,365 @@ class SessionTest(_fixtures.FixtureTest):
             if i == 2:
                 del u3
                 gc_collect()
+
+class SessionEventsTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def test_class_listen(self):
+        def my_listener(*arg, **kw):
+            pass
         
+        event.listen(my_listener, 'on_before_flush', Session)
+        
+        s = Session()
+        assert my_listener in s.dispatch.on_before_flush
+    
+    def test_sessionmaker_listen(self):
+        """test that listen can be applied to individual scoped_session() classes."""
+        
+        def my_listener_one(*arg, **kw):
+            pass
+        def my_listener_two(*arg, **kw):
+            pass
+        
+        S1 = sessionmaker()
+        S2 = sessionmaker()
+        
+        event.listen(my_listener_one, 'on_before_flush', Session)
+        event.listen(my_listener_two, 'on_before_flush', S1)
+        
+        s1 = S1()
+        assert my_listener_one in s1.dispatch.on_before_flush
+        assert my_listener_two in s1.dispatch.on_before_flush
+        
+        s2 = S2()
+        assert my_listener_one in s2.dispatch.on_before_flush
+        assert my_listener_two not in s2.dispatch.on_before_flush
+    
+    def test_scoped_session_invalid_callable(self):
+        from sqlalchemy.orm import scoped_session
+        
+        def my_listener_one(*arg, **kw):
+            pass
+        
+        scope = scoped_session(lambda:Session())
+        
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Session event listen on a ScopedSession "
+            "requries that its creation callable is a Session subclass.",
+            event.listen, my_listener_one, "on_before_flush", scope
+        )
+
+    def test_scoped_session_invalid_class(self):
+        from sqlalchemy.orm import scoped_session
+        
+        def my_listener_one(*arg, **kw):
+            pass
+        
+        class NotASession(object):
+            def __call__(self):
+                return Session()
+                
+        scope = scoped_session(NotASession)
+        
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Session event listen on a ScopedSession "
+            "requries that its creation callable is a Session subclass.",
+            event.listen, my_listener_one, "on_before_flush", scope
+        )
+    
+    def test_scoped_session_listen(self):
+        from sqlalchemy.orm import scoped_session
+        
+        def my_listener_one(*arg, **kw):
+            pass
+        
+        scope = scoped_session(sessionmaker())
+        event.listen(my_listener_one, "on_before_flush", scope)
+        
+        assert my_listener_one in scope().dispatch.on_before_flush
+    
+    def _listener_fixture(self, **kw):
+        canary = []
+        def listener(name):
+            def go(*arg, **kw):
+                canary.append(name)
+            return go
+        
+        sess = Session(**kw)
+
+        for evt in [
+            'on_before_commit',
+            'on_after_commit',
+            'on_after_rollback',
+            'on_before_flush',
+            'on_after_flush',
+            'on_after_flush_postexec',
+            'on_after_begin',
+            'on_after_attach',
+            'on_after_bulk_update',
+            'on_after_bulk_delete'
+        ]:
+            event.listen(listener(evt), evt, sess)
+        
+        return sess, canary
+        
+    @testing.resolve_artifact_names
+    def test_flush_autocommit_hook(self):
+        
+        mapper(User, users)
+
+        sess, canary = self._listener_fixture(autoflush=False, autocommit=True)
+        
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        eq_(
+            canary, 
+            [ 'on_after_attach', 'on_before_flush', 'on_after_begin',
+            'on_after_flush', 'on_before_commit', 'on_after_commit',
+            'on_after_flush_postexec', ]
+        )
+
+    @testing.resolve_artifact_names
+    def test_flush_noautocommit_hook(self):
+        sess, canary = self._listener_fixture()
+
+        mapper(User, users)
+
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        eq_(canary, ['on_after_attach', 'on_before_flush', 'on_after_begin',
+                       'on_after_flush', 'on_after_flush_postexec'])
+    
+    @testing.resolve_artifact_names
+    def test_flush_in_commit_hook(self):
+        sess, canary = self._listener_fixture()
+
+        mapper(User, users)
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        canary[:] = []
+        
+        u.name = 'ed'
+        sess.commit()
+        eq_(canary, ['on_before_commit', 'on_before_flush', 'on_after_flush',
+                       'on_after_flush_postexec', 'on_after_commit'])
+    
+    def test_standalone_on_commit_hook(self):
+        sess, canary = self._listener_fixture()
+        sess.commit()
+        eq_(canary, ['on_before_commit', 'on_after_commit'])
+        
+    @testing.resolve_artifact_names
+    def test_on_bulk_update_hook(self):
+        sess, canary = self._listener_fixture()
+        mapper(User, users)
+        sess.query(User).update({'name': 'foo'})
+        eq_(canary, ['on_after_begin', 'on_after_bulk_update'])
+
+    @testing.resolve_artifact_names
+    def test_on_bulk_delete_hook(self):
+        sess, canary = self._listener_fixture()
+        mapper(User, users)
+        sess.query(User).delete()
+        eq_(canary, ['on_after_begin', 'on_after_bulk_delete'])
+    
+    def test_connection_emits_after_begin(self):
+        sess, canary = self._listener_fixture(bind=testing.db)
+        conn = sess.connection()
+        eq_(canary, ['on_after_begin'])
+
+    @testing.resolve_artifact_names
+    def test_reentrant_flush(self):
+
+        mapper(User, users)
+
+        def before_flush(session, flush_context, objects):
+            session.flush()
+        
+        sess = Session()
+        event.listen(before_flush, 'on_before_flush', sess)
+        sess.add(User(name='foo'))
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'already flushing', sess.flush)
+
+    @testing.resolve_artifact_names
+    def test_before_flush_affects_flush_plan(self):
+        
+        mapper(User, users)
+        
+        def before_flush(session, flush_context, objects):
+            for obj in list(session.new) + list(session.dirty):
+                if isinstance(obj, User):
+                    session.add(User(name='another %s' % obj.name))
+            for obj in list(session.deleted):
+                if isinstance(obj, User):
+                    x = session.query(User).filter(User.name
+                            == 'another %s' % obj.name).one()
+                    session.delete(x)
+                    
+        sess = Session()
+        event.listen(before_flush, 'on_before_flush', sess)
+
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='another u1'),
+                User(name='u1')
+            ]
+        )
+        
+        sess.flush()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='another u1'),
+                User(name='u1')
+            ]
+        )
+
+        u.name='u2'
+        sess.flush()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='another u1'),
+                User(name='another u2'),
+                User(name='u2')
+            ]
+        )
+
+        sess.delete(u)
+        sess.flush()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='another u1'),
+            ]
+        )
+
+    @testing.resolve_artifact_names
+    def test_before_flush_affects_dirty(self):
+        mapper(User, users)
+        
+        def before_flush(session, flush_context, objects):
+            for obj in list(session.identity_map.values()):
+                obj.name += " modified"
+                    
+        sess = Session(autoflush=True)
+        event.listen(before_flush, 'on_before_flush', sess)
+        
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [User(name='u1')]
+        )
+        
+        sess.add(User(name='u2'))
+        sess.flush()
+        sess.expunge_all()
+        eq_(sess.query(User).order_by(User.name).all(), 
+            [
+                User(name='u1 modified'),
+                User(name='u2')
+            ]
+        )
+        
+    def teardown(self):
+        # TODO: need to get remove() functionality
+        # going
+        Session.dispatch.clear()
+        super(SessionEventsTest, self).teardown()
+        
+
+class SessionExtensionTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @testing.resolve_artifact_names
+    def test_extension(self):
+        mapper(User, users)
+        log = []
+        class MyExt(sa.orm.session.SessionExtension):
+            def before_commit(self, session):
+                log.append('before_commit')
+            def after_commit(self, session):
+                log.append('after_commit')
+            def after_rollback(self, session):
+                log.append('after_rollback')
+            def before_flush(self, session, flush_context, objects):
+                log.append('before_flush')
+            def after_flush(self, session, flush_context):
+                log.append('after_flush')
+            def after_flush_postexec(self, session, flush_context):
+                log.append('after_flush_postexec')
+            def after_begin(self, session, transaction, connection):
+                log.append('after_begin')
+            def after_attach(self, session, instance):
+                log.append('after_attach')
+            def after_bulk_update(
+                self,
+                session,
+                query,
+                query_context,
+                result,
+                ):
+                log.append('after_bulk_update')
+
+            def after_bulk_delete(
+                self,
+                session,
+                query,
+                query_context,
+                result,
+                ):
+                log.append('after_bulk_delete')
+
+        sess = create_session(extension = MyExt())
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        assert log == [
+            'after_attach',
+            'before_flush',
+            'after_begin',
+            'after_flush',
+            'before_commit',
+            'after_commit',
+            'after_flush_postexec',
+            ]
+        log = []
+        sess = create_session(autocommit=False, extension=MyExt())
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        assert log == ['after_attach', 'before_flush', 'after_begin',
+                       'after_flush', 'after_flush_postexec']
+        log = []
+        u.name = 'ed'
+        sess.commit()
+        assert log == ['before_commit', 'before_flush', 'after_flush',
+                       'after_flush_postexec', 'after_commit']
+        log = []
+        sess.commit()
+        assert log == ['before_commit', 'after_commit']
+        log = []
+        sess.query(User).delete()
+        assert log == ['after_begin', 'after_bulk_delete']
+        log = []
+        sess.query(User).update({'name': 'foo'})
+        assert log == ['after_bulk_update']
+        log = []
+        sess = create_session(autocommit=False, extension=MyExt(),
+                              bind=testing.db)
+        conn = sess.connection()
+        assert log == ['after_begin']
+
+
         
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'

@@ -170,7 +170,7 @@ Builtin Pool Implementations
    :show-inheritance:
 
 .. autoclass:: NullPool
-   :show-inheritance:
+  :show-inheritance:
 
 .. autoclass:: StaticPool
    :show-inheritance:

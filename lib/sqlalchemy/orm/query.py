@@ -270,10 +270,6 @@ class Query(object):
         return self._select_from_entity or \
             self._entity_zero().entity_zero
 
-    def _extension_zero(self):
-        ent = self._entity_zero()
-        return getattr(ent, 'extension', ent.mapper.extension)
-
     @property
     def _mapper_entities(self):
         # TODO: this is wrong, its hardcoded to "priamry entity" when
@@ -1772,7 +1768,7 @@ class Query(object):
             filter = None
 
         custom_rows = single_entity and \
-                        'append_result' in self._entities[0].extension
+                        self._entities[0].mapper.dispatch.on_append_result
 
         (process, labels) = \
                     zip(*[
@@ -2167,8 +2163,7 @@ class Query(object):
                         )
                     )
 
-        for ext in session.extensions:
-            ext.after_bulk_delete(session, self, context, result)
+        session.dispatch.on_after_bulk_delete(session, self, context, result)
 
         return result.rowcount
 
@@ -2317,9 +2312,8 @@ class Query(object):
                                 session.identity_map[identity_key], 
                                 [_attr_as_key(k) for k in values]
                                 )
-
-        for ext in session.extensions:
-            ext.after_bulk_update(session, self, context, result)
+        
+        session.dispatch.on_after_bulk_update(session, self, context, result)
 
         return result.rowcount
 
@@ -2538,7 +2532,6 @@ class _MapperEntity(_QueryEntity):
     def setup_entity(self, entity, mapper, adapter, 
                         from_obj, is_aliased_class, with_polymorphic):
         self.mapper = mapper
-        self.extension = self.mapper.extension
         self.adapter = adapter
         self.selectable  = from_obj
         self._with_polymorphic = with_polymorphic
@@ -2622,7 +2615,6 @@ class _MapperEntity(_QueryEntity):
                                 context, 
                                 (self.path_entity,), 
                                 adapter,
-                                extension=self.extension,
                                 only_load_props=query._only_load_props,
                                 refresh_state=context.refresh_state,
                                 polymorphic_discriminator=

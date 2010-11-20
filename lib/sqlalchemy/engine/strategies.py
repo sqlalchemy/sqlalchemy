@@ -11,7 +11,7 @@ New strategies can be added via new ``EngineStrategy`` classes.
 from operator import attrgetter
 
 from sqlalchemy.engine import base, threadlocal, url
-from sqlalchemy import util, exc
+from sqlalchemy import util, exc, event
 from sqlalchemy import pool as poollib
 
 strategies = {}
@@ -132,18 +132,19 @@ class DefaultEngineStrategy(EngineStrategy):
         if _initialize:
             do_on_connect = dialect.on_connect()
             if do_on_connect:
-                def on_connect(conn, rec):
-                    conn = getattr(conn, '_sqla_unwrap', conn)
+                def on_connect(dbapi_connection, connection_record):
+                    conn = getattr(dbapi_connection, '_sqla_unwrap', dbapi_connection)
                     if conn is None:
                         return
                     do_on_connect(conn)
+                
+                event.listen(on_connect, 'on_first_connect', pool)
+                event.listen(on_connect, 'on_connect', pool)
                     
-                pool.add_listener({'first_connect': on_connect, 'connect':on_connect})
-                    
-            def first_connect(conn, rec):
-                c = base.Connection(engine, connection=conn)
+            def first_connect(dbapi_connection, connection_record):
+                c = base.Connection(engine, connection=dbapi_connection)
                 dialect.initialize(c)
-            pool.add_listener({'first_connect':first_connect})
+            event.listen(first_connect, 'on_first_connect', pool)
 
         return engine
 

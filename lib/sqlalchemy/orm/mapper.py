@@ -20,16 +20,16 @@ import operator
 from itertools import chain, groupby
 deque = __import__('collections').deque
 
-from sqlalchemy import sql, util, log, exc as sa_exc
+from sqlalchemy import sql, util, log, exc as sa_exc, event
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.orm import attributes, sync, exc as orm_exc, unitofwork
-from sqlalchemy.orm.interfaces import (
-    MapperProperty, EXT_CONTINUE, PropComparator
-    )
-from sqlalchemy.orm.util import (
-     ExtensionCarrier, _INSTRUMENTOR, _class_to_mapper, 
-     _state_mapper, class_mapper, instance_str, state_str,
-     )
+from sqlalchemy.orm import instrumentation, attributes, sync, \
+                        exc as orm_exc, unitofwork, events
+from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
+                                PropComparator
+    
+from sqlalchemy.orm.util import _INSTRUMENTOR, _class_to_mapper, \
+     _state_mapper, class_mapper, instance_str, state_str
+
 import sys
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 properties = util.importlater("sqlalchemy.orm", "properties")
@@ -47,9 +47,6 @@ _already_compiling = False
 _none_set = frozenset([None])
 
 _memoized_compiled_property = util.group_expirable_memoized_property()
-
-# a list of MapperExtensions that will be installed in all mappers by default
-global_extensions = []
 
 # a constant returned by _get_attr_by_column to indicate
 # this mapper is not handling an attribute for a particular
@@ -125,7 +122,6 @@ class Mapper(object):
         self.local_table = local_table
         self.inherit_condition = inherit_condition
         self.inherit_foreign_keys = inherit_foreign_keys
-        self.extension = extension
         self._init_properties = properties or {}
         self.delete_orphans = []
         self.batch = batch
@@ -140,6 +136,8 @@ class Mapper(object):
         self._inherits_equated_pairs = None
         self._memoized_values = {}
         self._compiled_cache_size = _compiled_cache_size
+        self._reconstructor = None
+        self._deprecated_extensions = util.to_list(extension or [])
         
         if allow_null_pks:
             util.warn_deprecated(
@@ -206,8 +204,9 @@ class Mapper(object):
         _COMPILE_MUTEX.acquire()
         try:
             self._configure_inheritance()
-            self._configure_extensions()
+            self._configure_legacy_instrument_class()
             self._configure_class_instrumentation()
+            self._configure_listeners()
             self._configure_properties()
             self._configure_pks()
             global _new_mappers
@@ -216,6 +215,8 @@ class Mapper(object):
             self._expire_memoizations()
         finally:
             _COMPILE_MUTEX.release()
+
+    dispatch = event.dispatcher(events.MapperEvents)
             
     def _configure_inheritance(self):
         """Configure settings related to inherting and/or inherited mappers
@@ -314,35 +315,34 @@ class Mapper(object):
             raise sa_exc.ArgumentError(
                     "Mapper '%s' does not have a mapped_table specified." 
                     % self)
-
-    def _configure_extensions(self):
-        """Go through the global_extensions list as well as the list
-        of ``MapperExtensions`` specified for this ``Mapper`` and
-        creates a linked list of those extensions.
-        
-        """
-        extlist = util.OrderedSet()
-
-        extension = self.extension
-        if extension:
-            for ext_obj in util.to_list(extension):
-                # local MapperExtensions have already instrumented the class
-                extlist.add(ext_obj)
+    
+    def _configure_legacy_instrument_class(self):
 
         if self.inherits:
-            for ext in self.inherits.extension:
-                if ext not in extlist:
-                    extlist.add(ext)
+            self.dispatch.update(self.inherits.dispatch)
+            super_extensions = set(chain(*[m._deprecated_extensions 
+                                    for m in self.inherits.iterate_to_root()]))
         else:
-            for ext in global_extensions:
-                if isinstance(ext, type):
-                    ext = ext()
-                if ext not in extlist:
-                    extlist.add(ext)
+            super_extensions = set()
+            
+        for ext in self._deprecated_extensions:
+            if ext not in super_extensions:
+                ext._adapt_instrument_class(self, ext)
 
-        self.extension = ExtensionCarrier()
-        for ext in extlist:
-            self.extension.append(ext)
+    def _configure_listeners(self):
+        if self.inherits:
+            super_extensions = set(chain(*[m._deprecated_extensions 
+                                    for m in self.inherits.iterate_to_root()]))
+        else:
+            super_extensions = set()
+
+        for ext in self._deprecated_extensions:
+            if ext not in super_extensions:
+                ext._adapt_listener(self, ext)
+        
+        if self.inherits:
+            self.class_manager.dispatch.update(
+                        self.inherits.class_manager.dispatch)
 
     def _configure_class_instrumentation(self):
         """If this mapper is to be a primary mapper (i.e. the
@@ -383,10 +383,10 @@ class Mapper(object):
                 
         _mapper_registry[self] = True
 
-        self.extension.instrument_class(self, self.class_)
+        self.dispatch.on_instrument_class(self, self.class_)
 
         if manager is None:
-            manager = attributes.register_class(self.class_, 
+            manager = instrumentation.register_class(self.class_, 
                 deferred_scalar_loader = _load_scalar_attributes
             )
 
@@ -399,23 +399,17 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
-        event_registry = manager.events
-        event_registry.add_listener('on_init', _event_on_init)
-        event_registry.add_listener('on_init_failure', _event_on_init_failure)
-        event_registry.add_listener('on_resurrect', _event_on_resurrect)
+        event.listen(_event_on_init, 'on_init', manager, raw=True)
+        event.listen(_event_on_resurrect, 'on_resurrect', manager, raw=True)
         
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
-                    event_registry.add_listener('on_load', method)
+                    self._reconstructor = method
+                    event.listen(_event_on_load, 'on_load', manager, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
-
-        if 'reconstruct_instance' in self.extension:
-            def reconstruct(instance):
-                self.extension.reconstruct_instance(self, instance)
-            event_registry.add_listener('on_load', reconstruct)
 
         manager.info[_INSTRUMENTOR] = self
 
@@ -429,7 +423,7 @@ class Mapper(object):
         if not self.non_primary and \
             self.class_manager.is_mapped and \
             self.class_manager.mapper is self:
-            attributes.unregister_class(self.class_)
+            instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):
 
@@ -1613,13 +1607,9 @@ class Mapper(object):
             row_switch = None
             # call before_XXX extensions
             if not has_identity:
-                if 'before_insert' in mapper.extension:
-                    mapper.extension.before_insert(
-                                        mapper, conn, state.obj())
+                mapper.dispatch.on_before_insert(mapper, conn, state)
             else:
-                if 'before_update' in mapper.extension:
-                    mapper.extension.before_update(
-                                        mapper, conn, state.obj())
+                mapper.dispatch.on_before_update(mapper, conn, state)
 
             # detect if we have a "pending" instance (i.e. has 
             # no instance_key attached to it), and another instance 
@@ -1904,13 +1894,9 @@ class Mapper(object):
 
             # call after_XXX extensions
             if not has_identity:
-                if 'after_insert' in mapper.extension:
-                    mapper.extension.after_insert(
-                                        mapper, connection, state.obj())
+                mapper.dispatch.on_after_insert(mapper, connection, state)
             else:
-                if 'after_update' in mapper.extension:
-                    mapper.extension.after_update(
-                                        mapper, connection, state.obj())
+                mapper.dispatch.on_after_update(mapper, connection, state)
 
     def _postfetch(self, uowtransaction, table, 
                         state, dict_, resultproxy, 
@@ -1993,8 +1979,7 @@ class Mapper(object):
             else:
                 conn = connection
         
-            if 'before_delete' in mapper.extension:
-                mapper.extension.before_delete(mapper, conn, state.obj())
+            mapper.dispatch.on_before_delete(mapper, conn, state)
             
             tups.append((state, 
                     state.dict,
@@ -2080,11 +2065,10 @@ class Mapper(object):
                     )
 
         for state, state_dict, mapper, has_identity, connection in tups:
-            if 'after_delete' in mapper.extension:
-                mapper.extension.after_delete(mapper, connection, state.obj())
+            mapper.dispatch.on_after_delete(mapper, connection, state)
 
     def _instance_processor(self, context, path, adapter, 
-                                polymorphic_from=None, extension=None, 
+                                polymorphic_from=None, 
                                 only_load_props=None, refresh_state=None,
                                 polymorphic_discriminator=None):
                                 
@@ -2149,13 +2133,12 @@ class Mapper(object):
 
         session_identity_map = context.session.identity_map
 
-        if not extension:
-            extension = self.extension
-
-        translate_row = extension.get('translate_row', None)
-        create_instance = extension.get('create_instance', None)
-        populate_instance = extension.get('populate_instance', None)
-        append_result = extension.get('append_result', None)
+        listeners = self.dispatch
+        
+        translate_row = listeners.on_translate_row or None
+        create_instance = listeners.on_create_instance or None
+        populate_instance = listeners.on_populate_instance or None
+        append_result = listeners.on_append_result or None
         populate_existing = context.populate_existing or self.always_refresh
         if self.allow_partial_pks:
             is_not_primary_key = _none_set.issuperset
@@ -2164,10 +2147,12 @@ class Mapper(object):
         
         def _instance(row, result):
             if translate_row:
-                ret = translate_row(self, context, row)
-                if ret is not EXT_CONTINUE:
-                    row = ret
-
+                for fn in translate_row:
+                    ret = fn(self, context, row)
+                    if ret is not EXT_CONTINUE:
+                        row = ret
+                        break
+                        
             if polymorphic_on is not None:
                 discriminator = row[polymorphic_on]
                 if discriminator is not None:
@@ -2234,17 +2219,19 @@ class Mapper(object):
                 loaded_instance = True
 
                 if create_instance:
-                    instance = create_instance(self, 
+                    for fn in create_instance:
+                        instance = fn(self, 
                                                 context, 
                                                 row, self.class_)
-                    if instance is EXT_CONTINUE:
-                        instance = self.class_manager.new_instance()
+                        if instance is not EXT_CONTINUE:
+                            manager = attributes.manager_of_class(
+                                                    instance.__class__)
+                            # TODO: if manager is None, raise a friendly error
+                            # about returning instances of unmapped types
+                            manager.setup_instance(instance)
+                            break
                     else:
-                        manager = attributes.manager_of_class(
-                                                instance.__class__)
-                        # TODO: if manager is None, raise a friendly error
-                        # about returning instances of unmapped types
-                        manager.setup_instance(instance)
+                        instance = self.class_manager.new_instance()
                 else:
                     instance = self.class_manager.new_instance()
 
@@ -2262,13 +2249,18 @@ class Mapper(object):
                     state.runid = context.runid
                     context.progress[state] = dict_
 
-                if not populate_instance or \
-                        populate_instance(self, context, row, instance, 
+                if populate_instance:
+                    for fn in populate_instance:
+                        ret = fn(self, context, row, state, 
                             only_load_props=only_load_props, 
-                            instancekey=identitykey, isnew=isnew) is \
-                            EXT_CONTINUE:
+                            instancekey=identitykey, isnew=isnew)
+                        if ret is not EXT_CONTINUE:
+                            break
+                    else:
+                        populate_state(state, dict_, row, isnew, only_load_props)
+                else:
                     populate_state(state, dict_, row, isnew, only_load_props)
-
+                    
             else:
                 # populate attributes on non-loading instances which have 
                 # been expired
@@ -2283,24 +2275,33 @@ class Mapper(object):
                         attrs = state.unloaded
                         # allow query.instances to commit the subset of attrs
                         context.partials[state] = (dict_, attrs)  
-
-                    if not populate_instance or \
-                            populate_instance(self, context, row, instance, 
+                    
+                    if populate_instance:
+                        for fn in populate_instance:
+                            ret = fn(self, context, row, state, 
                                 only_load_props=attrs, 
-                                instancekey=identitykey, isnew=isnew) is \
-                                EXT_CONTINUE:
+                                instancekey=identitykey, isnew=isnew)
+                            if ret is not EXT_CONTINUE:
+                                break
+                        else:
+                            populate_state(state, dict_, row, isnew, attrs)
+                    else:
                         populate_state(state, dict_, row, isnew, attrs)
 
             if loaded_instance:
-                state._run_on_load(instance)
-
-            if result is not None and \
-                        (not append_result or 
-                            append_result(self, context, row, instance, 
+                state.manager.dispatch.on_load(state)
+                
+            if result is not None:
+                if append_result:
+                    for fn in append_result:
+                        if fn(self, context, row, state, 
                                     result, instancekey=identitykey,
-                                    isnew=isnew) 
-                                    is EXT_CONTINUE):
-                result.append(instance)
+                                    isnew=isnew) is not EXT_CONTINUE:
+                            break
+                    else:
+                        result.append(instance)
+                else:
+                    result.append(instance)
 
             return instance
         return _instance
@@ -2394,35 +2395,27 @@ def validates(*names):
         return fn
     return wrap
 
-def _event_on_init(state, instance, args, kwargs):
+def _event_on_load(state):
+    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    if instrumenting_mapper._reconstructor:
+        instrumenting_mapper._reconstructor(state.obj())
+        
+def _event_on_init(state, args, kwargs):
     """Trigger mapper compilation and run init_instance hooks."""
 
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    # compile() always compiles all mappers
-    instrumenting_mapper.compile()
-    if 'init_instance' in instrumenting_mapper.extension:
-        instrumenting_mapper.extension.init_instance(
-            instrumenting_mapper, instrumenting_mapper.class_,
-            state.manager.events.original_init,
-            instance, args, kwargs)
+    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    if instrumenting_mapper:
+        # compile() always compiles all mappers
+        instrumenting_mapper.compile()
 
-def _event_on_init_failure(state, instance, args, kwargs):
-    """Run init_failed hooks."""
-
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    if 'init_failed' in instrumenting_mapper.extension:
-        util.warn_exception(
-            instrumenting_mapper.extension.init_failed,
-            instrumenting_mapper, instrumenting_mapper.class_,
-            state.manager.events.original_init, instance, args, kwargs)
-
-def _event_on_resurrect(state, instance):
+def _event_on_resurrect(state):
     # re-populate the primary key elements
     # of the dict based on the mapping.
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
-    for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
-        instrumenting_mapper._set_state_attr_by_column(
-                                        state, state.dict, col, val)
+    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    if instrumenting_mapper:
+        for col, val in zip(instrumenting_mapper.primary_key, state.key[1]):
+            instrumenting_mapper._set_state_attr_by_column(
+                                            state, state.dict, col, val)
     
     
 def _sort_states(states):

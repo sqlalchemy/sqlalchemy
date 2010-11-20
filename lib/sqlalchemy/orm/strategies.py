@@ -34,6 +34,7 @@ def _register_attribute(strategy, mapper, useobject,
 ):
 
     prop = strategy.parent_property
+
     attribute_ext = list(util.to_list(prop.extension, default=[]))
         
     if useobject and prop.single_parent:

@@ -1,9 +1,10 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import pickle
 from sqlalchemy import util
-import sqlalchemy.orm.attributes as attributes
+from sqlalchemy.orm import attributes, instrumentation
 from sqlalchemy.orm.collections import collection
-from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute, is_instrumented
+from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute
+from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import InstrumentationManager
 from sqlalchemy.test import *
@@ -103,13 +104,13 @@ class UserDefinedExtensionTest(_base.ORMTest):
     @classmethod
     def teardown_class(cls):
         clear_mappers()
-        attributes._install_lookup_strategy(util.symbol('native'))
+        instrumentation._install_lookup_strategy(util.symbol('native'))
 
     def test_instance_dict(self):
         class User(MyClass):
             pass
             
-        attributes.register_class(User)
+        instrumentation.register_class(User)
         attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
         attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
@@ -125,7 +126,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             class User(base):
                 pass
 
-            attributes.register_class(User)
+            instrumentation.register_class(User)
             attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
             attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
             attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
@@ -153,13 +154,12 @@ class UserDefinedExtensionTest(_base.ORMTest):
                     state.dict[k] = data[k]
                 return attributes.ATTR_WAS_SET
 
-            attributes.register_class(Foo)
-            manager = attributes.manager_of_class(Foo)
+            manager = instrumentation.register_class(Foo)
             manager.deferred_scalar_loader = loader
             attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
             attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
             
-            assert Foo in attributes.instrumentation_registry._state_finders
+            assert Foo in instrumentation.instrumentation_registry._state_finders
             f = Foo()
             attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
@@ -194,8 +194,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
             class Foo(base):pass
             class Bar(Foo):pass
 
-            attributes.register_class(Foo)
-            attributes.register_class(Bar)
+            instrumentation.register_class(Foo)
+            instrumentation.register_class(Bar)
 
             def func1(**kw):
                 print "func1"
@@ -222,8 +222,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
             class Post(base):pass
             class Blog(base):pass
 
-            attributes.register_class(Post)
-            attributes.register_class(Blog)
+            instrumentation.register_class(Post)
+            instrumentation.register_class(Blog)
             attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
             attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
             b = Blog()
@@ -256,8 +256,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
             class Bar(base):
                 pass
 
-            attributes.register_class(Foo)
-            attributes.register_class(Bar)
+            instrumentation.register_class(Foo)
+            instrumentation.register_class(Bar)
             attributes.register_attribute(Foo, "name", uselist=False, useobject=False)
             attributes.register_attribute(Foo, "bars", uselist=True, trackparent=True, useobject=True)
             attributes.register_attribute(Bar, "name", uselist=False, useobject=False)
@@ -291,7 +291,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
     def test_null_instrumentation(self):
         class Foo(MyBaseClass):
             pass
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, "name", uselist=False, useobject=False)
         attributes.register_attribute(Foo, "bars", uselist=True, trackparent=True, useobject=True)
 
@@ -304,12 +304,12 @@ class UserDefinedExtensionTest(_base.ORMTest):
         class Unknown(object): pass
         class Known(MyBaseClass): pass
 
-        attributes.register_class(Known)
+        instrumentation.register_class(Known)
         k, u = Known(), Unknown()
 
-        assert attributes.manager_of_class(Unknown) is None
-        assert attributes.manager_of_class(Known) is not None
-        assert attributes.manager_of_class(None) is None
+        assert instrumentation.manager_of_class(Unknown) is None
+        assert instrumentation.manager_of_class(Known) is not None
+        assert instrumentation.manager_of_class(None) is None
 
         assert attributes.instance_state(k) is not None
         assert_raises((AttributeError, KeyError),

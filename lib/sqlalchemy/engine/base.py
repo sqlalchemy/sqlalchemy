@@ -22,7 +22,8 @@ __all__ = [
 
 import inspect, StringIO, sys, operator
 from itertools import izip
-from sqlalchemy import exc, schema, util, types, log
+from sqlalchemy import exc, schema, util, types, log, interfaces, \
+    event, events
 from sqlalchemy.sql import expression
 
 class Dialect(object):
@@ -1597,7 +1598,7 @@ class TwoPhaseTransaction(Transaction):
     def _do_commit(self):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
-
+        
 class Engine(Connectable, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and 
@@ -1610,7 +1611,8 @@ class Engine(Connectable, log.Identified):
     """
 
     _execution_options = util.frozendict()
-
+    Connection = Connection
+    
     def __init__(self, pool, dialect, url, 
                         logging_name=None, echo=None, proxy=None,
                         execution_options=None
@@ -1624,11 +1626,13 @@ class Engine(Connectable, log.Identified):
         self.engine = self
         self.logger = log.instance_logger(self, echoflag=echo)
         if proxy:
-            self.Connection = _proxy_connection_cls(Connection, proxy)
-        else:
-            self.Connection = Connection
+#            util.warn_deprecated("The 'proxy' argument to create_engine() is deprecated.  Use event.listen().")
+            interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
+
+            
+    dispatch = event.dispatcher(events.EngineEvents)
     
     def update_execution_options(self, **opt):
         """update the execution_options dictionary of this :class:`Engine`.
@@ -1873,79 +1877,127 @@ class Engine(Connectable, log.Identified):
 
         return self.pool.unique_connection()
 
+def _listener_connection_cls(cls, dispatch):
+    """Produce a wrapper for :class:`.Connection` which will apply event 
+    dispatch to each method.
+    
+    :class:`.Connection` does not provide event dispatch built in so that
+    method call overhead is avoided in the absense of any listeners.
+    
+    """
+    class EventListenerConnection(cls):
+        def execute(self, clauseelement, *multiparams, **params):
+            for fn in dispatch.on_before_execute:
+                clauseelement, multiparams, params = \
+                    fn(self, clauseelement, multiparams, params)
+            
+            ret = super(EventListenerConnection, self).\
+                    execute(clauseelement, *multiparams, **params)
 
-def _proxy_connection_cls(cls, proxy):
-    class ProxyConnection(cls):
-        def execute(self, object, *multiparams, **params):
-            return proxy.execute(self, super(ProxyConnection, self).execute, 
-                                            object, *multiparams, **params)
-
-        def _execute_clauseelement(self, elem, multiparams=None, params=None):
-            return proxy.execute(self, super(ProxyConnection, self).execute, 
-                                            elem, 
-                                            *(multiparams or []),
-                                            **(params or {}))
+            for fn in dispatch.on_after_execute:
+                fn(self, clauseelement, multiparams, params, ret)
+            
+            return ret
+            
+        def _execute_clauseelement(self, clauseelement, 
+                                    multiparams=None, params=None):
+            return self.execute(clauseelement, 
+                                    *(multiparams or []), 
+                                    **(params or {}))
 
         def _cursor_execute(self, cursor, statement, 
                                     parameters, context=None):
-            return proxy.cursor_execute(
-                            super(ProxyConnection, self)._cursor_execute, 
-                            cursor, statement, parameters, context, False)
+            for fn in dispatch.on_before_cursor_execute:
+                statement, parameters = \
+                            fn(self, cursor, statement, parameters, 
+                                            context, False)
+            
+            ret = super(EventListenerConnection, self).\
+                        _cursor_execute(cursor, statement, parameters, 
+                                            context)
 
+            for fn in dispatch.on_after_cursor_execute:
+                fn(self, cursor, statement, parameters, context, False)
+            
+            return ret
+            
         def _cursor_executemany(self, cursor, statement, 
                                     parameters, context=None):
-            return proxy.cursor_execute(
-                            super(ProxyConnection, self)._cursor_executemany, 
-                            cursor, statement, parameters, context, True)
+            for fn in dispatch.on_before_cursor_execute:
+                statement, parameters = \
+                            fn(self, cursor, statement, parameters, 
+                                        context, True)
 
+            ret = super(EventListenerConnection, self).\
+                        _cursor_executemany(cursor, statement, 
+                                        parameters, context)
+
+            for fn in dispatch.on_after_cursor_execute:
+                fn(self, cursor, statement, parameters, context, True)
+            
+            return ret
+            
         def _begin_impl(self):
-            return proxy.begin(self, super(ProxyConnection, self)._begin_impl)
+            for fn in dispatch.on_begin:
+                fn(self)
+            return super(EventListenerConnection, self).\
+                        _begin_impl()
             
         def _rollback_impl(self):
-            return proxy.rollback(self, 
-                                super(ProxyConnection, self)._rollback_impl)
+            for fn in dispatch.on_rollback:
+                fn(self)
+            return super(EventListenerConnection, self).\
+                        _rollback_impl()
 
         def _commit_impl(self):
-            return proxy.commit(self, 
-                                super(ProxyConnection, self)._commit_impl)
+            for fn in dispatch.on_commit:
+                fn(self)
+            return super(EventListenerConnection, self).\
+                        _commit_impl()
 
         def _savepoint_impl(self, name=None):
-            return proxy.savepoint(self, 
-                                super(ProxyConnection, self)._savepoint_impl,
-                                name=name)
-
+            for fn in dispatch.on_savepoint:
+                fn(self, name)
+            return super(EventListenerConnection, self).\
+                        _savepoint_impl(name=name)
+                
         def _rollback_to_savepoint_impl(self, name, context):
-            return proxy.rollback_savepoint(self, 
-                        super(ProxyConnection,
-                                self)._rollback_to_savepoint_impl, 
-                                name, context)
+            for fn in dispatch.on_rollback_to_savepoint:
+                fn(self, name, context)
+            return super(EventListenerConnection, self).\
+                        _rollback_to_savepoint_impl(name, context)
             
         def _release_savepoint_impl(self, name, context):
-            return proxy.release_savepoint(self, 
-                        super(ProxyConnection, self)._release_savepoint_impl, 
-                        name, context)
-
+            for fn in dispatch.on_release_savepoint:
+                fn(self, name, context)
+            return super(EventListenerConnection, self).\
+                        _release_savepoint_impl(name, context)
+            
         def _begin_twophase_impl(self, xid):
-            return proxy.begin_twophase(self, 
-                        super(ProxyConnection, self)._begin_twophase_impl,
-                        xid)
+            for fn in dispatch.on_begin_twophase:
+                fn(self, xid)
+            return super(EventListenerConnection, self).\
+                        _begin_twophase_impl(xid)
 
         def _prepare_twophase_impl(self, xid):
-            return proxy.prepare_twophase(self, 
-                        super(ProxyConnection, self)._prepare_twophase_impl, 
-                        xid)
+            for fn in dispatch.on_prepare_twophase:
+                fn(self, xid)
+            return super(EventListenerConnection, self).\
+                        _prepare_twophase_impl(xid)
 
         def _rollback_twophase_impl(self, xid, is_prepared):
-            return proxy.rollback_twophase(self, 
-                        super(ProxyConnection, self)._rollback_twophase_impl, 
-                        xid, is_prepared)
+            for fn in dispatch.on_rollback_twophase:
+                fn(self, xid)
+            return super(EventListenerConnection, self).\
+                        _rollback_twophase_impl(xid)
 
         def _commit_twophase_impl(self, xid, is_prepared):
-            return proxy.commit_twophase(self, 
-                        super(ProxyConnection, self)._commit_twophase_impl, 
-                        xid, is_prepared)
+            for fn in dispatch.on_commit_twophase:
+                fn(self, xid)
+            return super(EventListenerConnection, self).\
+                        _commit_twophase_impl(xid)
 
-    return ProxyConnection
+    return EventListenerConnection
 
 # This reconstructor is necessary so that pickles with the C extension or
 # without use the same Binary format.

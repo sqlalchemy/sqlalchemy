@@ -1,13 +1,14 @@
 import pickle
-import sqlalchemy.orm.attributes as attributes
+from sqlalchemy.orm import attributes, instrumentation
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, ne_, assert_raises
 from test.orm import _base
-from sqlalchemy.test.util import gc_collect
+from sqlalchemy.test.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import cmp, jython
+from sqlalchemy import event, topological
 
 # global for pickling tests
 MyTest = None
@@ -27,7 +28,7 @@ class AttributesTest(_base.ORMTest):
     def test_basic(self):
         class User(object):pass
 
-        attributes.register_class(User)
+        instrumentation.register_class(User)
         attributes.register_attribute(User, 'user_id', uselist=False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist=False, useobject=False)
         attributes.register_attribute(User, 'email_address', uselist=False, useobject=False)
@@ -46,8 +47,8 @@ class AttributesTest(_base.ORMTest):
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.email_address == 'foo@bar.com')
 
     def test_pickleness(self):
-        attributes.register_class(MyTest)
-        attributes.register_class(MyTest2)
+        instrumentation.register_class(MyTest)
+        instrumentation.register_class(MyTest2)
         attributes.register_attribute(MyTest, 'user_id', uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'user_name', uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'email_address', uselist=False, useobject=False)
@@ -116,7 +117,7 @@ class AttributesTest(_base.ORMTest):
         class Foo(object):
             pass
         
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         f = Foo()
         state = attributes.instance_state(f)
         f.bar = "foo"
@@ -135,7 +136,7 @@ class AttributesTest(_base.ORMTest):
                 state.dict[k] = data[k]
             return attributes.ATTR_WAS_SET
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         manager = attributes.manager_of_class(Foo)
         manager.deferred_scalar_loader = loader
         attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
@@ -175,7 +176,7 @@ class AttributesTest(_base.ORMTest):
                 state.dict[k] = data[k]
             return attributes.ATTR_WAS_SET
 
-        attributes.register_class(MyTest)
+        instrumentation.register_class(MyTest)
         manager = attributes.manager_of_class(MyTest)
         manager.deferred_scalar_loader=loader
         attributes.register_attribute(MyTest, 'a', uselist=False, useobject=False)
@@ -193,8 +194,8 @@ class AttributesTest(_base.ORMTest):
         class User(object):pass
         class Address(object):pass
 
-        attributes.register_class(User)
-        attributes.register_class(Address)
+        instrumentation.register_class(User)
+        instrumentation.register_class(Address)
         attributes.register_attribute(User, 'user_id', uselist=False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist=False, useobject=False)
         attributes.register_attribute(User, 'addresses', uselist = True, useobject=True)
@@ -253,8 +254,8 @@ class AttributesTest(_base.ORMTest):
                     state.commit_all(state.dict)
                 return child
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         b1, b2, b3, b4 = Bar(id='b1'), Bar(id='b2'), Bar(id='b3'), Bar(id='b4')
         
@@ -336,8 +337,8 @@ class AttributesTest(_base.ORMTest):
             def set(self, state, child, oldchild, initiator):
                 return child
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         bar1, bar2, bar3 = [Bar(id=1), Bar(id=2), Bar(id=3)]
         def func1(**kw):
@@ -377,7 +378,7 @@ class AttributesTest(_base.ORMTest):
                 results.append(("set", state.obj(), child, oldchild))
                 return child
         
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'x', uselist=False, mutable_scalars=False, useobject=False, extension=ReceiveEvents())
         attributes.register_attribute(Foo, 'y', uselist=False, mutable_scalars=True, useobject=False, copy_function=lambda x:x, extension=ReceiveEvents())
         
@@ -407,8 +408,8 @@ class AttributesTest(_base.ORMTest):
 
         class Post(object):pass
         class Blog(object):pass
-        attributes.register_class(Post)
-        attributes.register_class(Blog)
+        instrumentation.register_class(Post)
+        instrumentation.register_class(Blog)
 
         # set up instrumented attributes with backrefs
         attributes.register_attribute(Post, 'blog', uselist=False,
@@ -448,8 +449,8 @@ class AttributesTest(_base.ORMTest):
         class Bar(Foo):pass
 
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         def func1(**kw):
             return "this is the foo attr"
@@ -482,8 +483,8 @@ class AttributesTest(_base.ORMTest):
                 Foo.__init__(self)
 
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         b = Bar()
         eq_(len(states), 1)
@@ -499,8 +500,8 @@ class AttributesTest(_base.ORMTest):
         class Element(object):
             _state = True
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=True)
         el = Element()
         x = Bar()
@@ -520,8 +521,8 @@ class AttributesTest(_base.ORMTest):
         class Bar(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
         def func1(**kw):
@@ -542,8 +543,8 @@ class AttributesTest(_base.ORMTest):
         class Foo(object):pass
         class Bar(object):pass
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
 
         attributes.register_attribute(Foo, 'element', uselist=False, trackparent=True, useobject=True)
         attributes.register_attribute(Bar, 'element', uselist=False, trackparent=True, useobject=True)
@@ -576,7 +577,7 @@ class AttributesTest(_base.ORMTest):
         """test detection of changes on mutable scalar items"""
         class Foo(object):pass
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']
@@ -584,9 +585,9 @@ class AttributesTest(_base.ORMTest):
         x.element[1] = 'five'
         assert attributes.instance_state(x).modified
 
-        attributes.unregister_class(Foo)
+        instrumentation.unregister_class(Foo)
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'element', uselist=False, useobject=False)
         x = Foo()
         x.element = ['one', 'two', 'three']
@@ -607,13 +608,13 @@ class AttributesTest(_base.ORMTest):
         class Foo(object):
             A = des()
 
-        attributes.register_class(Foo)
-        attributes.unregister_class(Foo)
+        instrumentation.register_class(Foo)
+        instrumentation.unregister_class(Foo)
 
     def test_collectionclasses(self):
 
         class Foo(object):pass
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
 
         attributes.register_attribute(Foo, "collection", uselist=True, typecallable=set, useobject=True)
         assert attributes.manager_of_class(Foo).is_instrumented("collection")
@@ -672,8 +673,8 @@ class UtilTest(_base.ORMTest):
         class Bar(object):
             pass
         
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, "coll", uselist=True, useobject=True)
     
         f1 = Foo()
@@ -697,8 +698,8 @@ class BackrefTest(_base.ORMTest):
         class Student(object):pass
         class Course(object):pass
 
-        attributes.register_class(Student)
-        attributes.register_class(Course)
+        instrumentation.register_class(Student)
+        instrumentation.register_class(Course)
         attributes.register_attribute(Student, 'courses', uselist=True,
                 extension=attributes.GenericBackrefExtension('students'
                 ), useobject=True)
@@ -725,8 +726,8 @@ class BackrefTest(_base.ORMTest):
         class Post(object):pass
         class Blog(object):pass
 
-        attributes.register_class(Post)
-        attributes.register_class(Blog)
+        instrumentation.register_class(Post)
+        instrumentation.register_class(Blog)
         attributes.register_attribute(Post, 'blog', uselist=False,
                 extension=attributes.GenericBackrefExtension('posts'),
                 trackparent=True, useobject=True)
@@ -759,8 +760,8 @@ class BackrefTest(_base.ORMTest):
     def test_o2o(self):
         class Port(object):pass
         class Jack(object):pass
-        attributes.register_class(Port)
-        attributes.register_class(Jack)
+        instrumentation.register_class(Port)
+        instrumentation.register_class(Jack)
         attributes.register_attribute(Port, 'jack', uselist=False,
                 extension=attributes.GenericBackrefExtension('port'),
                 useobject=True)
@@ -793,9 +794,9 @@ class BackrefTest(_base.ORMTest):
         p_token = object()
         c_token = object()
         
-        attributes.register_class(Parent)
-        attributes.register_class(Child)
-        attributes.register_class(SubChild)
+        instrumentation.register_class(Parent)
+        instrumentation.register_class(Child)
+        instrumentation.register_class(SubChild)
         attributes.register_attribute(Parent, 'child', uselist=False,
                 extension=attributes.GenericBackrefExtension('parent'),
                 parent_token = p_token,
@@ -828,9 +829,9 @@ class BackrefTest(_base.ORMTest):
         p_token = object()
         c_token = object()
         
-        attributes.register_class(Parent)
-        attributes.register_class(SubParent)
-        attributes.register_class(Child)
+        instrumentation.register_class(Parent)
+        instrumentation.register_class(SubParent)
+        instrumentation.register_class(Child)
         attributes.register_attribute(Parent, 'children', uselist=True,
                 extension=attributes.GenericBackrefExtension('parent'),
                 parent_token = p_token,
@@ -896,8 +897,8 @@ class PendingBackrefTest(_base.ORMTest):
                     return attributes.PASSIVE_NO_RESULT
             return load
 
-        attributes.register_class(Post)
-        attributes.register_class(Blog)
+        instrumentation.register_class(Post)
+        instrumentation.register_class(Blog)
         attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
         attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), callable_=lazy_posts, trackparent=True, useobject=True)
 
@@ -993,7 +994,7 @@ class HistoryTest(_base.ORMTest):
         class Foo(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
 
         f = Foo()
@@ -1013,7 +1014,7 @@ class HistoryTest(_base.ORMTest):
         class Foo(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
 
         # case 1.  new object
@@ -1073,7 +1074,7 @@ class HistoryTest(_base.ORMTest):
         class Foo(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False, mutable_scalars=True, copy_function=dict)
 
         # case 1.  new object
@@ -1121,7 +1122,7 @@ class HistoryTest(_base.ORMTest):
         new = Bar(name='new')
         old = Bar(name='old')
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=True)
 
         # case 1.  new object
@@ -1184,7 +1185,7 @@ class HistoryTest(_base.ORMTest):
             def __nonzero__(self):
                 assert False
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True)
 
         hi = Bar(name='hi')
@@ -1236,7 +1237,7 @@ class HistoryTest(_base.ORMTest):
 
         from sqlalchemy.orm.collections import attribute_mapped_collection
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True, typecallable=attribute_mapped_collection('name'))
 
         hi = Bar(name='hi')
@@ -1262,7 +1263,7 @@ class HistoryTest(_base.ORMTest):
         class Bar(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True)
         attributes.register_attribute(Foo, 'id', uselist=False, useobject=False)
 
@@ -1352,8 +1353,8 @@ class HistoryTest(_base.ORMTest):
         class Bar(_base.BasicEntity):
             pass
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, useobject=True)
         attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
 
@@ -1385,8 +1386,8 @@ class HistoryTest(_base.ORMTest):
                 return lazy_load
             return load
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, callable_=lazyload, useobject=True)
         attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
 
@@ -1420,8 +1421,8 @@ class HistoryTest(_base.ORMTest):
                 return lazy_load
             return load
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lazyload, trackparent=True, useobject=True)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
@@ -1460,7 +1461,7 @@ class HistoryTest(_base.ORMTest):
                 return lazy_load
             return load
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False)
         lazy_load = "hi"
 
@@ -1498,7 +1499,7 @@ class HistoryTest(_base.ORMTest):
                 return lazy_load
             return load
 
-        attributes.register_class(Foo)
+        instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False, active_history=True)
         lazy_load = "hi"
 
@@ -1538,8 +1539,8 @@ class HistoryTest(_base.ORMTest):
                 return lazy_load
             return load
 
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, trackparent=True, useobject=True)
         bar1, bar2 = [Bar(id=1), Bar(id=2)]
         lazy_load = bar1
@@ -1569,32 +1570,31 @@ class HistoryTest(_base.ORMTest):
 
 class ListenerTest(_base.ORMTest):
     def test_receive_changes(self):
-        """test that Listeners can mutate the given value.
+        """test that Listeners can mutate the given value."""
         
-        This is a rudimentary test which would be better suited by a full-blown inclusion
-        into collection.py.
-        
-        """
         class Foo(object):
             pass
         class Bar(object):
             pass
+            
+        def on_append(state, child, initiator):
+            b2 = Bar()
+            b2.data = b1.data + " appended"
+            return b2
 
-        class AlteringListener(AttributeExtension):
-            def append(self, state, child, initiator):
-                b2 = Bar()
-                b2.data = b1.data + " appended"
-                return b2
+        def on_set(state, value, oldvalue, initiator):
+            return value + " modified"
 
-            def set(self, state, value, oldvalue, initiator):
-                return value + " modified"
-
-        attributes.register_class(Foo)
-        attributes.register_class(Bar)
-        attributes.register_attribute(Foo, 'data', uselist=False, useobject=False, extension=AlteringListener())
-        attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True, extension=AlteringListener())
-        attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True, extension=AlteringListener())
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(Foo, 'data', uselist=False, useobject=False)
+        attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True)
+        attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True)
         attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
+        
+        event.listen(on_set, 'on_set', Foo.data, retval=True)
+        event.listen(on_append, 'on_append', Foo.barlist, retval=True)
+        event.listen(on_append, 'on_append', Foo.barset, retval=True)
         
         f1 = Foo()
         f1.data = "some data"
@@ -1608,4 +1608,84 @@ class ListenerTest(_base.ORMTest):
         f1.barset.add(b1)
         assert f1.barset.pop().data == "some bar appended"
     
-    
+    def test_propagate(self):
+        classes = [None, None, None]
+        canary = []
+        def make_a():
+            class A(object):
+                pass
+            classes[0] = A
+            
+        def make_b():
+            class B(classes[0]):
+                pass
+            classes[1] = B
+        
+        def make_c():
+            class C(classes[1]):
+                pass
+            classes[2] = C
+            
+        def instrument_a():
+            instrumentation.register_class(classes[0])
+
+        def instrument_b():
+            instrumentation.register_class(classes[1])
+        
+        def instrument_c():
+            instrumentation.register_class(classes[2])
+            
+        def attr_a():
+            attributes.register_attribute(classes[0], 'attrib', uselist=False, useobject=False)
+        
+        def attr_b():
+            attributes.register_attribute(classes[1], 'attrib', uselist=False, useobject=False)
+
+        def attr_c():
+            attributes.register_attribute(classes[2], 'attrib', uselist=False, useobject=False)
+        
+        def on_set(state, value, oldvalue, initiator):
+            canary.append(value)
+            
+        def events_a():
+            event.listen(on_set, 'on_set', classes[0].attrib, propagate=True)
+        
+        def teardown():
+            classes[:] = [None, None, None]
+            canary[:] = []
+        
+        ordering = [
+            (instrument_a, instrument_b),
+            (instrument_b, instrument_c),
+            (attr_a, attr_b),
+            (attr_b, attr_c),
+            (make_a, instrument_a),
+            (instrument_a, attr_a),
+            (attr_a, events_a),
+            (make_b, instrument_b),
+            (instrument_b, attr_b),
+            (make_c, instrument_c),
+            (instrument_c, attr_c),
+            (make_a, make_b),
+            (make_b, make_c)
+        ]
+        elements = [make_a, make_b, make_c, 
+                    instrument_a, instrument_b, instrument_c, 
+                    attr_a, attr_b, attr_c, events_a]
+        
+        for i, series in enumerate(all_partial_orderings(ordering, elements)):
+            for fn in series:
+                fn()
+                
+            b = classes[1]()
+            b.attrib = "foo"
+            eq_(b.attrib, "foo")
+            eq_(canary, ["foo"])
+            
+            c = classes[2]()
+            c.attrib = "bar"
+            eq_(c.attrib, "bar")
+            eq_(canary, ["foo", "bar"])
+            
+            teardown()
+        

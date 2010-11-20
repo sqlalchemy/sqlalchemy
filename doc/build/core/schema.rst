@@ -1150,6 +1150,8 @@ required, SQLAlchemy offers two techniques which can be used to add any DDL
 based on any condition, either accompanying the standard generation of tables
 or by itself.
 
+.. _schema_ddl_sequences:
+
 Controlling DDL Sequences
 -------------------------
 
@@ -1210,14 +1212,24 @@ constructed externally and associated with the
 
 So far, the effect is the same. However, if we create DDL elements
 corresponding to the creation and removal of this constraint, and associate
-them with the :class:`~sqlalchemy.schema.Table` as events, these new events
+them with the :class:`.Table` as events, these new events
 will take over the job of issuing DDL for the constraint. Additionally, the
 constraint will be added via ALTER:
 
 .. sourcecode:: python+sql
-
-    AddConstraint(constraint).execute_at("after-create", users)
-    DropConstraint(constraint).execute_at("before-drop", users)
+    
+    from sqlalchemy import event
+    
+    event.listen(
+        AddConstraint(constraint),
+        "on_after_create", 
+        users
+    )
+    event.listen(
+        DropConstraint(constraint),
+        "on_before_drop",
+        users
+    )
 
     {sql}users.create(engine)
     CREATE TABLE users (
@@ -1232,26 +1244,46 @@ constraint will be added via ALTER:
     ALTER TABLE users DROP CONSTRAINT cst_user_name_length
     DROP TABLE users{stop}
 
-The real usefulness of the above becomes clearer once we illustrate the ``on``
-attribute of a DDL event. The ``on`` parameter is part of the constructor, and
-may be a string name of a database dialect name, a tuple containing dialect
-names, or a Python callable. This will limit the execution of the item to just
-those dialects, or when the return value of the callable is ``True``. So if
-our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by
-Postgresql and not other databases, we could limit it to just that dialect::
+The real usefulness of the above becomes clearer once we illustrate the :meth:`.DDLEvent.execute_if`
+method.  This method returns a modified form of the DDL callable which will 
+filter on criteria before responding to a received event.   It accepts a
+parameter ``dialect``, which is the string name of a dialect or a tuple of such,
+which will limit the execution of the item to just those dialects.  It also
+accepts a ``callable_`` parameter which may reference a Python callable which will 
+be invoked upon event reception, returning ``True`` or ``False`` indicating if
+the event should proceed.   
 
-    AddConstraint(constraint, on='postgresql').execute_at("after-create", users)
-    DropConstraint(constraint, on='postgresql').execute_at("before-drop", users)
+If our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by
+Postgresql and not other databases, we could limit its usage to just that dialect::
+
+    event.listen(
+        AddConstraint(constraint).execute_if(dialect='postgresql'),
+        'on_after_create',
+        users
+    )
+    event.listen(
+        DropConstraint(constraint).execute_if(dialect='postgresql'),
+        'on_before_drop',
+        users
+    )
 
 Or to any set of dialects::
+    
+    event.listen(
+        AddConstraint(constraint).execute_if(dialect=('postgresql', 'mysql')),
+        "on_after_create",
+        users
+    )
+    event.listen(
+        DropConstraint(constraint).execute_if(dialect=('postgresql', 'mysql')),
+        "on_before_drop",
+        users
+    )
 
-    AddConstraint(constraint, on=('postgresql', 'mysql')).execute_at("after-create", users)
-    DropConstraint(constraint, on=('postgresql', 'mysql')).execute_at("before-drop", users)
-
-When using a callable, the callable is passed the ddl element, event name, the
-:class:`~sqlalchemy.schema.Table` or :class:`~sqlalchemy.schema.MetaData`
+When using a callable, the callable is passed the ddl element, the
+:class:`.Table` or :class:`.MetaData`
 object whose "create" or "drop" event is in progress, and the
-:class:`~sqlalchemy.engine.base.Connection` object being used for the
+:class:`.Connection` object being used for the
 operation, as well as additional information as keyword arguments. The
 callable can perform checks, such as whether or not a given item already
 exists. Below we define ``should_create()`` and ``should_drop()`` callables
@@ -1259,15 +1291,23 @@ that check for the presence of our named constraint:
 
 .. sourcecode:: python+sql
 
-    def should_create(ddl, event, target, connection, **kw):
+    def should_create(ddl, target, connection, **kw):
         row = connection.execute("select conname from pg_constraint where conname='%s'" % ddl.element.name).scalar()
         return not bool(row)
 
-    def should_drop(ddl, event, target, connection, **kw):
-        return not should_create(ddl, event, target, connection, **kw)
+    def should_drop(ddl, target, connection, **kw):
+        return not should_create(ddl, target, connection, **kw)
 
-    AddConstraint(constraint, on=should_create).execute_at("after-create", users)
-    DropConstraint(constraint, on=should_drop).execute_at("before-drop", users)
+    event.listen(
+        AddConstraint(constraint).execute_if(callable_=should_create),
+        "on_after_create",
+        users
+    )
+    event.listen(
+        DropConstraint(constraint).execute_if(callable_=should_drop),
+        "on_before_drop",
+        users
+    )
 
     {sql}users.create(engine)
     CREATE TABLE users (
@@ -1292,10 +1332,14 @@ Custom DDL phrases are most easily achieved using the
 other DDL elements except it accepts a string which is the text to be emitted:
 
 .. sourcecode:: python+sql
-
-    DDL("ALTER TABLE users ADD CONSTRAINT "
-        "cst_user_name_length "
-        " CHECK (length(user_name) >= 8)").execute_at("after-create", metadata)
+    
+    event.listen(
+        DDL("ALTER TABLE users ADD CONSTRAINT "
+            "cst_user_name_length "
+            " CHECK (length(user_name) >= 8)"),
+        "on_after_create",
+        metadata
+    )
 
 A more comprehensive method of creating libraries of DDL constructs is to use
 custom compilation - see :ref:`sqlalchemy.ext.compiler_toplevel` for

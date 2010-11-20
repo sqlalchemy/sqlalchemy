@@ -175,6 +175,10 @@ class CompiledSQL(SQLMatchRule):
 
         self._result = equivalent
         if not self._result:
+            print "Testing for compiled statement %r partial params %r, " \
+                    "received %r with params %r" % \
+                    (self.statement, all_params, _received_statement, all_received)
+                    
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
                     "received %r with params %r" % \
                     (self.statement, all_params, _received_statement, all_received)
@@ -255,7 +259,7 @@ def _process_assertion_statement(query, context):
 
     return query
 
-class SQLAssert(ConnectionProxy):
+class SQLAssert(object):
     rules = None
     
     def add_rules(self, rules):
@@ -269,9 +273,7 @@ class SQLAssert(ConnectionProxy):
     def clear_rules(self):
         del self.rules
         
-    def execute(self, conn, execute, clauseelement, *multiparams, **params):
-        result = execute(clauseelement, *multiparams, **params)
-
+    def execute(self, conn, clauseelement, multiparams, params, result):
         if self.rules is not None:
             if not self.rules:
                 assert False, "All rules have been exhausted, but further statements remain"
@@ -280,16 +282,11 @@ class SQLAssert(ConnectionProxy):
             if rule.is_consumed():
                 self.rules.pop(0)
             
-        return result
         
-    def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
-        result = execute(cursor, statement, parameters, context)
-        
+    def cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
         if self.rules:
             rule = self.rules[0]
             rule.process_cursor_execute(statement, parameters, context, executemany)
-
-        return result
 
 asserter = SQLAssert()
     

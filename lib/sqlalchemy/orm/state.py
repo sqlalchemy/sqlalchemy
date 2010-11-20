@@ -1,13 +1,19 @@
+"""Defines instrumentation of instances.
+
+This module is usually not directly visible to user applications, but
+defines a large part of the ORM's interactivity.
+
+"""
+
 from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
-from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
-                                        NEVER_SET, NO_VALUE, manager_of_class, \
-                                        ATTR_WAS_SET
-from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
+                                        
+from sqlalchemy.orm import exc as orm_exc, attributes, interfaces
+from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
+    PASSIVE_NO_FETCH, NEVER_SET, ATTR_WAS_SET, NO_VALUE
 
 import sys
-attributes.state = sys.modules['sqlalchemy.orm.state']
 
 class InstanceState(object):
     """tracks state information at the instance level."""
@@ -90,8 +96,7 @@ class InstanceState(object):
         self, instance, args = mixed[0], mixed[1], mixed[2:]
         manager = self.manager
 
-        for fn in manager.events.on_init:
-            fn(self, instance, args, kwargs)
+        manager.dispatch.on_init(self, args, kwargs)
             
         # LESSTHANIDEAL:
         # adjust for the case where the InstanceState was created before
@@ -102,10 +107,9 @@ class InstanceState(object):
             self.mutable_dict = {}
             
         try:
-            return manager.events.original_init(*mixed[1:], **kwargs)
+            return manager.original_init(*mixed[1:], **kwargs)
         except:
-            for fn in manager.events.on_init_failure:
-                fn(self, instance, args, kwargs)
+            manager.dispatch.on_init_failure(self, args, kwargs)
             raise
 
     def get_history(self, key, **kwargs):
@@ -138,9 +142,6 @@ class InstanceState(object):
         else:
             return [x]
 
-    def _run_on_load(self, instance):
-        self.manager.events.run('on_load', instance)
-    
     def __getstate__(self):
         d = {'instance':self.obj()}
 
@@ -155,9 +156,10 @@ class InstanceState(object):
         return d
         
     def __setstate__(self, state):
+        from sqlalchemy.orm import instrumentation
         self.obj = weakref.ref(state['instance'], self._cleanup)
         self.class_ = state['instance'].__class__
-        self.manager = manager = manager_of_class(self.class_)
+        self.manager = manager = instrumentation.manager_of_class(self.class_)
         if manager is None:
             raise orm_exc.UnmappedInstanceError(
                         state['instance'],
@@ -272,8 +274,8 @@ class InstanceState(object):
 
         """
 
-        if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
-            return attributes.PASSIVE_NO_RESULT
+        if kw.get('passive') is PASSIVE_NO_FETCH:
+            return PASSIVE_NO_RESULT
         
         toload = self.expired_attributes.\
                         intersection(self.unmodified)
@@ -510,12 +512,7 @@ class MutableAttrInstanceState(InstanceState):
         obj.__dict__.update(self.mutable_dict)
 
         # re-establishes identity attributes from the key
-        self.manager.events.run('on_resurrect', self, obj)
-        
-        # TODO: don't really think we should run this here.
-        # resurrect is only meant to preserve the minimal state needed to
-        # do an UPDATE, not to produce a fully usable object
-        self._run_on_load(obj)
+        self.manager.dispatch.on_resurrect(self)
         
         return obj
 

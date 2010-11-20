@@ -35,21 +35,20 @@ class SchemaGenerator(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
         
-        for listener in metadata.ddl_listeners['before-create']:
-            listener('before-create', metadata, self.connection, tables=collection)
-            
+        metadata.dispatch.on_before_create(metadata, self.connection,
+                                    tables=collection)
+        
         for table in collection:
             self.traverse_single(table, create_ok=True)
-
-        for listener in metadata.ddl_listeners['after-create']:
-            listener('after-create', metadata, self.connection, tables=collection)
+            
+        metadata.dispatch.on_after_create(metadata, self.connection,
+                                    tables=collection)
 
     def visit_table(self, table, create_ok=False):
         if not create_ok and not self._can_create(table):
             return
-            
-        for listener in table.ddl_listeners['before-create']:
-            listener('before-create', table, self.connection)
+        
+        table.dispatch.on_before_create(table, self.connection)
 
         for column in table.columns:
             if column.default is not None:
@@ -61,8 +60,7 @@ class SchemaGenerator(DDLBase):
             for index in table.indexes:
                 self.traverse_single(index)
 
-        for listener in table.ddl_listeners['after-create']:
-            listener('after-create', table, self.connection)
+        table.dispatch.on_after_create(table, self.connection)
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:
@@ -91,14 +89,14 @@ class SchemaDropper(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
         
-        for listener in metadata.ddl_listeners['before-drop']:
-            listener('before-drop', metadata, self.connection, tables=collection)
+        metadata.dispatch.on_before_drop(metadata, self.connection,
+                                            tables=collection)
         
         for table in collection:
             self.traverse_single(table, drop_ok=True)
 
-        for listener in metadata.ddl_listeners['after-drop']:
-            listener('after-drop', metadata, self.connection, tables=collection)
+        metadata.dispatch.on_after_drop(metadata, self.connection,
+                                            tables=collection)
 
     def _can_drop(self, table):
         self.dialect.validate_identifier(table.name)
@@ -112,18 +110,16 @@ class SchemaDropper(DDLBase):
     def visit_table(self, table, drop_ok=False):
         if not drop_ok and not self._can_drop(table):
             return
-            
-        for listener in table.ddl_listeners['before-drop']:
-            listener('before-drop', table, self.connection)
+
+        table.dispatch.on_before_drop(table, self.connection)
 
         for column in table.columns:
             if column.default is not None:
                 self.traverse_single(column.default)
 
         self.connection.execute(schema.DropTable(table))
-
-        for listener in table.ddl_listeners['after-drop']:
-            listener('after-drop', table, self.connection)
+        
+        table.dispatch.on_after_drop(table, self.connection)
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:

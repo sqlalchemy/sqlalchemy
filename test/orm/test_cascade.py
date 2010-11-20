@@ -446,7 +446,7 @@ class M2OCascadeTest(_base.MappedTest):
 
         # the error condition relies upon
         # these things being true
-        assert User.foo.impl.active_history is False
+        assert User.foo.dispatch.active_history is False
         eq_(
             attributes.get_history(u1, 'foo'),
             ([None], (), [attributes.PASSIVE_NO_RESULT])

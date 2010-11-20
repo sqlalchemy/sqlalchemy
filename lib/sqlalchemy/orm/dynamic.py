@@ -46,9 +46,10 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     supports_population = False
     
     def __init__(self, class_, key, typecallable,
-                     target_mapper, order_by, query_class=None, **kwargs):
+                     dispatch,
+                     target_mapper, order_by, query_class=None, **kw):
         super(DynamicAttributeImpl, self).\
-                    __init__(class_, key, typecallable, **kwargs)
+                    __init__(class_, key, typecallable, dispatch, **kw)
         self.target_mapper = target_mapper
         self.order_by = order_by
         if not query_class:
@@ -78,8 +79,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         collection_history = self._modified_event(state, dict_)
         collection_history.added_items.append(value)
 
-        for ext in self.extensions:
-            ext.append(state, value, initiator or self)
+        for fn in self.dispatch.on_append:
+            value = fn(state, value, initiator or self)
 
         if self.trackparent and value is not None:
             self.sethasparent(attributes.instance_state(value), True)
@@ -91,8 +92,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(attributes.instance_state(value), False)
 
-        for ext in self.extensions:
-            ext.remove(state, value, initiator or self)
+        for fn in self.dispatch.on_remove:
+            fn(state, value, initiator or self)
 
     def _modified_event(self, state, dict_):
 

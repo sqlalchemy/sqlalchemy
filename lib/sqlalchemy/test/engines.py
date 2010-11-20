@@ -2,6 +2,7 @@ import sys, types, weakref
 from collections import deque
 from sqlalchemy_nose import config
 from sqlalchemy.util import function_named, callable
+from sqlalchemy import event
 import re
 import warnings
 
@@ -133,12 +134,10 @@ def testing_engine(url=None, options=None):
     url = url or config.db_url
     options = options or config.db_opts
 
-    options.setdefault('proxy', asserter)
-    
-    listeners = options.setdefault('listeners', [])
-    listeners.append(testing_reaper)
-
     engine = create_engine(url, **options)
+    event.listen(asserter.execute, 'on_after_execute', engine)
+    event.listen(asserter.cursor_execute, 'on_after_cursor_execute', engine)
+    event.listen(testing_reaper.checkout, 'on_checkout', engine.pool)
     
     # may want to call this, results
     # in first-connect initializers

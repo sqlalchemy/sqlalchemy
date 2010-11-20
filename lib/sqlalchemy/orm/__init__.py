@@ -22,7 +22,6 @@ from sqlalchemy.orm.mapper import (
 from sqlalchemy.orm.interfaces import (
      EXT_CONTINUE,
      EXT_STOP,
-     ExtensionOption,
      InstrumentationManager,
      MapperExtension,
      PropComparator,
@@ -83,7 +82,6 @@ __all__ = (
     'dynamic_loader',
     'eagerload',
     'eagerload_all',
-    'extension',
     'immediateload',
     'join',
     'joinedload',
@@ -293,12 +291,10 @@ def relationship(argument, secondary=None, **kwargs):
       docstring which will be applied to the resulting descriptor.
       
     :param extension:
-      an :class:`AttributeExtension` instance, or list of extensions,
+      an :class:`.AttributeExtension` instance, or list of extensions,
       which will be prepended to the list of attribute listeners for
-      the resulting descriptor placed on the class.  These listeners
-      will receive append and set events before the operation
-      proceeds, and may be used to halt (via exception throw) or
-      change the value used in the operation.
+      the resulting descriptor placed on the class.  
+      **Deprecated.**  Please see :class:`.AttributeEvents`.
 
     :param foreign_keys:
       a list of columns which are to be used as "foreign key" columns.
@@ -625,12 +621,13 @@ def column_property(*args, **kwargs):
           class-bound descriptor.
           
     :param extension:
-        an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
-        or list of extensions, which will be prepended to the list of
-        attribute listeners for the resulting descriptor placed on the class.
-        These listeners will receive append and set events before the
-        operation proceeds, and may be used to halt (via exception throw)
-        or change the value used in the operation.
+        an
+        :class:`.AttributeExtension`
+        instance, or list of extensions, which will be prepended
+        to the list of attribute listeners for the resulting
+        descriptor placed on the class. 
+        **Deprecated.** Please see :class:`.AttributeEvents`.
+
 
     """
 
@@ -674,12 +671,9 @@ def composite(class_, *cols, **kwargs):
       class-bound descriptor.
 
     :param extension:
-      an :class:`~sqlalchemy.orm.interfaces.AttributeExtension` instance,
+      an :class:`.AttributeExtension` instance,
       or list of extensions, which will be prepended to the list of
       attribute listeners for the resulting descriptor placed on the class.
-      These listeners will receive append and set events before the
-      operation proceeds, and may be used to halt (via exception throw)
-      or change the value used in the operation.
 
     """
     return CompositeProperty(class_, *cols, **kwargs)
@@ -761,7 +755,7 @@ def mapper(class_, local_table=None, *args, **params):
         :param extension: A :class:`.MapperExtension` instance or
            list of :class:`.MapperExtension`
            instances which will be applied to all operations by this
-           :class:`.Mapper`.
+           :class:`.Mapper`.  **Deprecated.**  Please see :class:`.MapperEvents`.
 
         :param include_properties: An inclusive list or set of string column
           names to map. As of SQLAlchemy 0.6.4, this collection may also
@@ -1023,16 +1017,6 @@ def clear_mappers():
                 pass
     finally:
         mapperlib._COMPILE_MUTEX.release()
-
-def extension(ext):
-    """Return a ``MapperOption`` that will insert the given
-    ``MapperExtension`` to the beginning of the list of extensions
-    that will be called in the context of the ``Query``.
-
-    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
-
-    """
-    return ExtensionOption(ext)
 
 @sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def joinedload(*keys, **kw):

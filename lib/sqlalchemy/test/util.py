@@ -1,4 +1,4 @@
-from sqlalchemy.util import jython, function_named
+from sqlalchemy.util import jython, function_named, defaultdict
 
 import gc
 import time
@@ -74,3 +74,34 @@ class RandomSet(set):
     def copy(self):
         return RandomSet(self)
         
+def conforms_partial_ordering(tuples, sorted_elements):
+    """True if the given sorting conforms to the given partial ordering."""
+    
+    deps = defaultdict(set)
+    for parent, child in tuples:
+        deps[parent].add(child)
+    for i, node in enumerate(sorted_elements):
+        for n in sorted_elements[i:]:
+            if node in deps[n]:
+                return False
+    else:
+        return True
+
+def all_partial_orderings(tuples, elements):
+    edges = defaultdict(set)
+    for parent, child in tuples:
+        edges[child].add(parent)
+
+    def _all_orderings(elements):
+
+        if len(elements) == 1:
+            yield list(elements)
+        else:
+            for elem in elements:
+                subset = set(elements).difference([elem])
+                if not subset.intersection(edges[elem]):
+                    for sub_ordering in _all_orderings(subset):
+                        yield [elem] + sub_ordering
+    
+    return iter(_all_orderings(elements))
+

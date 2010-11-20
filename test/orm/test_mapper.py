@@ -6,12 +6,17 @@ from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
-from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
-from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relationship, dynamic_loader, comparable_property,AttributeExtension
+from sqlalchemy.orm import mapper, relationship, backref, \
+    create_session, class_mapper, compile_mappers, reconstructor, \
+    validates, aliased, Mapper
+from sqlalchemy.orm import defer, deferred, synonym, attributes, \
+    column_property, composite, relationship, dynamic_loader, \
+    comparable_property, AttributeExtension
+from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
-
+from sqlalchemy import event
 
 class MapperTest(_fixtures.FixtureTest):
 
@@ -174,52 +179,9 @@ class MapperTest(_fixtures.FixtureTest):
                               : addresses.c.user_id})
         
     @testing.resolve_artifact_names
-    def test_bad_constructor(self):
-        """If the construction of a mapped class fails, the instance does not get placed in the session"""
-        
-        class Foo(object):
-            def __init__(self, one, two, _sa_session=None):
-                pass
-
-        mapper(Foo, users, extension=sa.orm.scoped_session(
-            create_session).extension)
-
-        sess = create_session()
-        assert_raises(TypeError, Foo, 'one', _sa_session=sess)
-        eq_(len(list(sess)), 0)
-        assert_raises(TypeError, Foo, 'one')
-        Foo('one', 'two', _sa_session=sess)
-        eq_(len(list(sess)), 1)
-
-    @testing.resolve_artifact_names
-    def test_constructor_exc_1(self):
-        """Exceptions raised in the mapped class are not masked by sa decorations"""
-        ex = AssertionError('oops')
-        sess = create_session()
-
-        class Foo(object):
-            def __init__(self, **kw):
-                raise ex
-        mapper(Foo, users)
-
-        try:
-            Foo()
-            assert False
-        except Exception, e:
-            assert e is ex
-
-        sa.orm.clear_mappers()
-        mapper(Foo, users, extension=sa.orm.scoped_session(
-            create_session).extension)
-        def bad_expunge(foo):
-            raise Exception("this exception should be stated as a warning")
-
-        sess.expunge = bad_expunge
-        assert_raises(sa.exc.SAWarning, Foo, _sa_session=sess)
-
-    @testing.resolve_artifact_names
-    def test_constructor_exc_2(self):
-        """TypeError is raised for illegal constructor args, whether or not explicit __init__ is present [ticket:908]."""
+    def test_constructor_exc(self):
+        """TypeError is raised for illegal constructor args, 
+        whether or not explicit __init__ is present [ticket:908]."""
 
         class Foo(object):
             def __init__(self):
@@ -268,27 +230,6 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'name').impl is not None
 
-    @testing.resolve_artifact_names
-    def test_extension_collection_frozen(self):
-        class Foo(User):pass
-        m = mapper(User, users)
-        mapper(Order, orders)
-        compile_mappers()
-        mapper(Foo, addresses, inherits=User)
-        ext_list = [AttributeExtension()]
-        m.add_property('somename', column_property(users.c.name, extension=ext_list))
-        m.add_property('orders', relationship(Order, extension=ext_list, backref='user'))
-        assert len(ext_list) == 1
-
-        assert Foo.orders.impl.extensions is User.orders.impl.extensions
-        assert Foo.orders.impl.extensions is not ext_list
-        
-        compile_mappers()
-        assert len(User.somename.impl.extensions) == 1
-        assert len(Foo.somename.impl.extensions) == 1
-        assert len(Foo.orders.impl.extensions) == 3
-        assert len(User.orders.impl.extensions) == 3
-        
 
     @testing.resolve_artifact_names
     def test_compile_on_get_props_1(self):
@@ -1084,16 +1025,19 @@ class MapperTest(_fixtures.FixtureTest):
         class A(object):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, A)
                 recon.append('A')
 
         class B(A):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, B)
                 recon.append('B')
 
         class C(A):
             @reconstructor
             def reconstruct(self):
+                assert isinstance(self, C)
                 recon.append('C')
 
         mapper(A, users, polymorphic_on=users.c.name,
@@ -2577,8 +2521,218 @@ class AttributeExtensionTest(_base.MappedTest):
         
         eq_(ext_msg, ["Ex1 'a1'", "Ex1 'b1'", "Ex2 'c1'", "Ex1 'a2'", "Ex1 'b2'", "Ex2 'c2'"])
         
+class MapperEventsTest(_fixtures.FixtureTest):
+    run_inserts = None
     
+    @testing.resolve_artifact_names
+    def test_instance_event_listen(self):
+        """test listen targets for instance events"""
+        
+        canary = []
+        class A(object):
+            pass
+        class B(A):
+            pass
+            
+        mapper(A, users)
+        mapper(B, addresses, inherits=A)
+        
+        def on_init_a(target, args, kwargs):
+            canary.append(('on_init_a', target))
+            
+        def on_init_b(target, args, kwargs):
+            canary.append(('on_init_b', target))
+
+        def on_init_c(target, args, kwargs):
+            canary.append(('on_init_c', target))
+
+        def on_init_d(target, args, kwargs):
+            canary.append(('on_init_d', target))
+
+        def on_init_e(target, args, kwargs):
+            canary.append(('on_init_e', target))
+        
+        event.listen(on_init_a, 'on_init', mapper)
+        event.listen(on_init_b, 'on_init', Mapper)
+        event.listen(on_init_c, 'on_init', class_mapper(A))
+        event.listen(on_init_d, 'on_init', A)
+        event.listen(on_init_e, 'on_init', A, propagate=True)
+        
+        a = A()
+        eq_(canary, [('on_init_a', a),('on_init_b', a),
+                        ('on_init_c', a),('on_init_d', a),('on_init_e', a)])
+        
+        # test propagate flag
+        canary[:] = []
+        b = B()
+        eq_(canary, [('on_init_a', b), ('on_init_b', b),('on_init_e', b)])
+    
+    def teardown(self):
+        # TODO: need to get remove() functionality
+        # going
+        Mapper.dispatch.clear()
+        ClassManager.dispatch.clear()
+        super(MapperEventsTest, self).teardown()
+        
+    def listen_all(self, mapper, **kw):
+        canary = []
+        def evt(meth):
+            def go(*args, **kwargs):
+                canary.append(meth)
+            return go
+            
+        for meth in [
+            'on_init',
+            'on_init_failure',
+            'on_translate_row',
+            'on_create_instance',
+            'on_append_result',
+            'on_populate_instance',
+            'on_load',
+            'on_before_insert',
+            'on_after_insert',
+            'on_before_update',
+            'on_after_update',
+            'on_before_delete',
+            'on_after_delete'
+        ]:
+            event.listen(evt(meth), meth, mapper, **kw)
+        return canary
+
+    @testing.resolve_artifact_names
+    def test_basic(self):
+
+        mapper(User, users)
+        canary = self.listen_all(User)
+        
+        sess = create_session()
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        u = sess.query(User).populate_existing().get(u.id)
+        sess.expunge_all()
+        u = sess.query(User).get(u.id)
+        u.name = 'u1 changed'
+        sess.flush()
+        sess.delete(u)
+        sess.flush()
+        eq_(canary,
+            ['on_init', 'on_before_insert',
+             'on_after_insert', 'on_translate_row', 'on_populate_instance',
+             'on_append_result', 'on_translate_row', 'on_create_instance',
+             'on_populate_instance', 'on_load', 'on_append_result',
+             'on_before_update', 'on_after_update', 'on_before_delete', 'on_after_delete'])
+
+    @testing.resolve_artifact_names
+    def test_inheritance(self):
+        class AdminUser(User):
+            pass
+
+        mapper(User, users)
+        mapper(AdminUser, addresses, inherits=User)
+
+        canary1 = self.listen_all(User, propagate=True)
+        canary2 = self.listen_all(User)
+        canary3 = self.listen_all(AdminUser)
+
+        sess = create_session()
+        am = AdminUser(name='au1', email_address='au1@e1')
+        sess.add(am)
+        sess.flush()
+        am = sess.query(AdminUser).populate_existing().get(am.id)
+        sess.expunge_all()
+        am = sess.query(AdminUser).get(am.id)
+        am.name = 'au1 changed'
+        sess.flush()
+        sess.delete(am)
+        sess.flush()
+        eq_(canary1, ['on_init', 'on_before_insert', 'on_after_insert',
+            'on_translate_row', 'on_populate_instance',
+            'on_append_result', 'on_translate_row', 'on_create_instance'
+            , 'on_populate_instance', 'on_load', 'on_append_result',
+            'on_before_update', 'on_after_update', 'on_before_delete',
+            'on_after_delete'])
+        eq_(canary2, [])
+        eq_(canary3, ['on_init', 'on_before_insert', 'on_after_insert',
+            'on_translate_row', 'on_populate_instance',
+            'on_append_result', 'on_translate_row', 'on_create_instance'
+            , 'on_populate_instance', 'on_load', 'on_append_result',
+            'on_before_update', 'on_after_update', 'on_before_delete',
+            'on_after_delete'])
+
+    @testing.resolve_artifact_names
+    def test_before_after_only_collection(self):
+        """on_before_update is called on parent for collection modifications,
+        on_after_update is called even if no columns were updated.
+        
+        """
+
+        mapper(Item, items, properties={
+            'keywords': relationship(Keyword, secondary=item_keywords)})
+        mapper(Keyword, keywords)
+        
+        canary1 = self.listen_all(Item)
+        canary2 = self.listen_all(Keyword)
+        
+        sess = create_session()
+        i1 = Item(description="i1")
+        k1 = Keyword(name="k1")
+        sess.add(i1)
+        sess.add(k1)
+        sess.flush()
+        eq_(canary1,
+            ['on_init', 
+            'on_before_insert', 'on_after_insert'])
+        eq_(canary2,
+            ['on_init', 
+            'on_before_insert', 'on_after_insert'])
+
+        canary1[:]= []
+        canary2[:]= []
+
+        i1.keywords.append(k1)
+        sess.flush()
+        eq_(canary1, ['on_before_update', 'on_after_update'])
+        eq_(canary2, [])
+
+        
+    @testing.resolve_artifact_names
+    def test_retval(self):
+        def create_instance(mapper, context, row, class_):
+            u = User.__new__(User)
+            u.foo = True
+            return u
+            
+        mapper(User, users)
+        event.listen(create_instance, 'on_create_instance', 
+                        User, retval=True)
+        sess = create_session()
+        u1 = User()
+        u1.name = 'ed'
+        sess.add(u1)
+        sess.flush()
+        sess.expunge_all()
+        u = sess.query(User).first()
+        assert u.foo
+    
+    @testing.resolve_artifact_names
+    def test_instrument_event(self):
+        canary = []
+        def on_instrument_class(mapper, cls):
+            canary.append(cls)
+            
+        event.listen(on_instrument_class, 'on_instrument_class', Mapper)
+        
+        mapper(User, users)
+        eq_(canary, [User])
+        mapper(Address, addresses)
+        eq_(canary, [User, Address])
+    
+        
 class MapperExtensionTest(_fixtures.FixtureTest):
+    """Superceded by MapperEventsTest - test backwards 
+    compatiblity of MapperExtension."""
+    
     run_inserts = None
     
     def extension(self):
@@ -2993,8 +3147,8 @@ class MagicNamesTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_direct_stateish(self):
-        for reserved in (sa.orm.attributes.ClassManager.STATE_ATTR,
-                         sa.orm.attributes.ClassManager.MANAGER_ATTR):
+        for reserved in (sa.orm.instrumentation.ClassManager.STATE_ATTR,
+                         sa.orm.instrumentation.ClassManager.MANAGER_ATTR):
             t = Table('t', sa.MetaData(),
                       Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                       Column(reserved, Integer))
@@ -3009,8 +3163,8 @@ class MagicNamesTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_indirect_stateish(self):
-        for reserved in (sa.orm.attributes.ClassManager.STATE_ATTR,
-                         sa.orm.attributes.ClassManager.MANAGER_ATTR):
+        for reserved in (sa.orm.instrumentation.ClassManager.STATE_ATTR,
+                         sa.orm.instrumentation.ClassManager.MANAGER_ATTR):
             class M(object):
                 pass
 

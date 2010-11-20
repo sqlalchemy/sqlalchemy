@@ -4,12 +4,21 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Interfaces and abstract types."""
+"""Interfaces and abstract types.
 
+This module is **deprecated** and is superceded by the
+event system.
+
+"""
+
+from sqlalchemy import event, util
 
 class PoolListener(object):
-    """Hooks into the lifecycle of connections in a ``Pool``.
+    """Hooks into the lifecycle of connections in a :class:`Pool`.
 
+    .. note:: :class:`PoolListener` is deprecated.   Please
+       refer to :class:`.PoolEvents`.
+    
     Usage::
     
         class MyListener(PoolListener):
@@ -58,7 +67,26 @@ class PoolListener(object):
     providing implementations for the hooks you'll be using.
     
     """
+    
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+        """Adapt a :class:`PoolListener` to individual
+        :class:`event.Dispatch` events.
+        
+        """
 
+        listener = util.as_interface(listener, methods=('connect',
+                                'first_connect', 'checkout', 'checkin'))
+        if hasattr(listener, 'connect'):
+            event.listen(listener.connect, 'on_connect', self)
+        if hasattr(listener, 'first_connect'):
+            event.listen(listener.first_connect, 'on_first_connect', self)
+        if hasattr(listener, 'checkout'):
+            event.listen(listener.checkout, 'on_checkout', self)
+        if hasattr(listener, 'checkin'):
+            event.listen(listener.checkin, 'on_checkin', self)
+            
+        
     def connect(self, dbapi_con, con_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
@@ -119,6 +147,9 @@ class PoolListener(object):
 
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
+
+    .. note:: :class:`ConnectionProxy` is deprecated.   Please
+       refer to :class:`.EngineEvents`.
     
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and
@@ -143,8 +174,77 @@ class ConnectionProxy(object):
         e = create_engine('someurl://', proxy=MyProxy())
     
     """
+    
+    @classmethod
+    def _adapt_listener(cls, self, listener):
+
+        def adapt_execute(conn, clauseelement, multiparams, params):
+
+            def execute_wrapper(clauseelement, *multiparams, **params):
+                return clauseelement, multiparams, params
+
+            return listener.execute(conn, execute_wrapper,
+                                    clauseelement, *multiparams,
+                                    **params)
+
+        event.listen(adapt_execute, 'on_before_execute', self)
+
+        def adapt_cursor_execute(conn, cursor, statement, 
+                                parameters,context, executemany, ):
+
+            def execute_wrapper(
+                cursor,
+                statement,
+                parameters,
+                context,
+                ):
+                return statement, parameters
+
+            return listener.cursor_execute(
+                execute_wrapper,
+                cursor,
+                statement,
+                parameters,
+                context,
+                executemany,
+                )
+
+        event.listen(adapt_cursor_execute, 'on_before_cursor_execute',
+                     self)
+
+        def do_nothing_callback(*arg, **kw):
+            pass
+
+        def adapt_listener(fn):
+
+            def go(conn, *arg, **kw):
+                fn(conn, do_nothing_callback, *arg, **kw)
+
+            return util.update_wrapper(go, fn)
+
+        event.listen(adapt_listener(listener.begin), 'on_begin', self)
+        event.listen(adapt_listener(listener.rollback), 'on_rollback',
+                     self)
+        event.listen(adapt_listener(listener.commit), 'on_commit', self)
+        event.listen(adapt_listener(listener.savepoint), 'on_savepoint'
+                     , self)
+        event.listen(adapt_listener(listener.rollback_savepoint),
+                     'on_rollback_savepoint', self)
+        event.listen(adapt_listener(listener.release_savepoint),
+                     'on_release_savepoint', self)
+        event.listen(adapt_listener(listener.begin_twophase),
+                     'on_begin_twophase', self)
+        event.listen(adapt_listener(listener.prepare_twophase),
+                     'on_prepare_twophase', self)
+        event.listen(adapt_listener(listener.rollback_twophase),
+                     'on_rollback_twophase', self)
+        event.listen(adapt_listener(listener.commit_twophase),
+                     'on_commit_twophase', self)
+        
+        
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
+        
         
         return execute(clauseelement, *multiparams, **params)
 

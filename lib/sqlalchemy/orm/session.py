@@ -22,6 +22,9 @@ from sqlalchemy.orm.util import (
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
 from sqlalchemy.orm import identity
+from sqlalchemy import event
+from sqlalchemy.orm.events import SessionEvents
+
 import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
@@ -133,11 +136,10 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
        from the most recent database state.
 
     :param extension: An optional 
-       :class:`~sqlalchemy.orm.session.SessionExtension` instance, or a list
+       :class:`~.SessionExtension` instance, or a list
        of such instances, which will receive pre- and post- commit and flush
-       events, as well as a post-rollback event. User- defined code may be
-       placed within these hooks using a user-defined subclass of
-       ``SessionExtension``.
+       events, as well as a post-rollback event. **Deprecated.**  
+       Please see :class:`.SessionEvents`.
 
     :param query_cls:  Class which should be used to create new Query objects,
        as returned by the ``query()`` method. Defaults to
@@ -177,6 +179,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
                 local_kwargs.setdefault(k, kwargs[k])
             super(Sess, self).__init__(**local_kwargs)
 
+        @classmethod
         def configure(self, **new_kwargs):
             """(Re)configure the arguments for this sessionmaker.
 
@@ -187,9 +190,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
                 Session.configure(bind=create_engine('sqlite://'))
             """
             kwargs.update(new_kwargs)
-        configure = classmethod(configure)
-    s = type.__new__(type, "Session", (Sess, class_), {})
-    return s
+        
+        
+    return type("Session", (Sess, class_), {})
 
 
 class SessionTransaction(object):
@@ -344,8 +347,7 @@ class SessionTransaction(object):
 
         self._connections[conn] = self._connections[conn.engine] = \
           (conn, transaction, conn is not bind)
-        for ext in self.session.extensions:
-            ext.after_begin(self.session, self, conn)
+        self.session.dispatch.on_after_begin(self.session, self, conn)
         return conn
 
     def prepare(self):
@@ -357,8 +359,7 @@ class SessionTransaction(object):
     def _prepare_impl(self):
         self._assert_is_active()
         if self._parent is None or self.nested:
-            for ext in self.session.extensions:
-                ext.before_commit(self.session)
+            self.session.dispatch.on_before_commit(self.session)
 
         stx = self.session.transaction
         if stx is not self:
@@ -388,8 +389,7 @@ class SessionTransaction(object):
             for t in set(self._connections.values()):
                 t[1].commit()
 
-            for ext in self.session.extensions:
-                ext.after_commit(self.session)
+            self.session.dispatch.on_after_commit(self.session)
 
             if self.session._enable_transaction_accounting:
                 self._remove_snapshot()
@@ -426,8 +426,7 @@ class SessionTransaction(object):
         if self.session._enable_transaction_accounting:
             self._restore_snapshot()
 
-        for ext in self.session.extensions:
-            ext.after_rollback(self.session)
+        self.session.dispatch.on_after_rollback(self.session)
 
     def _deactivate(self):
         self._active = False
@@ -511,9 +510,13 @@ class Session(object):
         self.expire_on_commit = expire_on_commit
         self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
-        self.extensions = util.to_list(extension) or []
         self._query_cls = query_cls
         self._mapper_flush_opts = {}
+        
+        if extension:
+            for ext in util.to_list(extension):
+                SessionExtension._adapt_listener(self, extension)
+        
         if binds is not None:
             for mapperortable, bind in binds.iteritems():
                 if isinstance(mapperortable, (type, Mapper)):
@@ -524,6 +527,8 @@ class Session(object):
         if not self.autocommit:
             self.begin()
         _sessions[self.hash_key] = self
+
+    dispatch = event.dispatcher(SessionEvents)
 
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this Session.
@@ -1241,7 +1246,7 @@ class Session(object):
             merged_state.commit_all(merged_dict, self.identity_map)  
 
         if new_instance:
-            merged_state._run_on_load(merged)
+            merged_state.manager.dispatch.on_load(merged_state)
         return merged
 
     @classmethod
@@ -1325,8 +1330,8 @@ class Session(object):
                                     
         if state.session_id != self.hash_key:
             state.session_id = self.hash_key
-            for ext in self.extensions:
-                ext.after_attach(self, state.obj())
+            if self.dispatch.on_after_attach:
+                self.dispatch.on_after_attach(self, state.obj())
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.
@@ -1400,10 +1405,11 @@ class Session(object):
             return
 
         flush_context = UOWTransaction(self)
-
-        if self.extensions:
-            for ext in self.extensions:
-                ext.before_flush(self, flush_context, objects)
+        
+        if self.dispatch.on_before_flush:
+            self.dispatch.on_before_flush(self, flush_context, objects)
+            # re-establish "dirty states" in case the listeners
+            # added
             dirty = self._dirty_states
             
         deleted = set(self._deleted)
@@ -1468,8 +1474,7 @@ class Session(object):
         try:
             flush_context.execute()
 
-            for ext in self.extensions:
-                ext.after_flush(self, flush_context)
+            self.dispatch.on_after_flush(self, flush_context)
             transaction.commit()
         except:
             transaction.rollback(_capture_exception=True)
@@ -1484,8 +1489,7 @@ class Session(object):
         #    assert self.identity_map._modified == self.identity_map._modified.difference(objects)
         #self.identity_map._modified.clear()
         
-        for ext in self.extensions:
-            ext.after_flush_postexec(self, flush_context)
+        self.dispatch.on_after_flush_postexec(self, flush_context)
 
     def is_modified(self, instance, include_collections=True, passive=False):
         """Return ``True`` if instance has modified attributes.

@@ -1,42 +1,25 @@
 """
-Illustrates how to use AttributeExtension to listen for change events 
-across the board.
+Illustrates how to attach events to all instrumented attributes
+and listen for change events.
 
 """
 
-from sqlalchemy.orm.interfaces import AttributeExtension, \
-    InstrumentationManager
+from sqlalchemy import event, orm
 
-class InstallListeners(InstrumentationManager):
-    def post_configure_attribute(self, class_, key, inst):
-        """Add an event listener to an InstrumentedAttribute."""
-        
-        inst.impl.extensions.insert(0, AttributeListener(key))
-        
-class AttributeListener(AttributeExtension):
-    """Generic event listener.  
-    
-    Propagates attribute change events to a 
-    "receive_change_event()" method on the target
-    instance.
-    
-    """
-    def __init__(self, key):
-        self.key = key
-    
-    def append(self, state, value, initiator):
-        self._report(state, value, None, "appended")
-        return value
+def configure_listener(class_, key, inst):
+    def append(instance, value, initiator):
+        instance.receive_change_event("append", key, value, None)
 
-    def remove(self, state, value, initiator):
-        self._report(state, value, None, "removed")
+    def remove(instance, value, initiator):
+        instance.receive_change_event("remove", key, value, None)
 
-    def set(self, state, value, oldvalue, initiator):
-        self._report(state, value, oldvalue, "set")
-        return value
-    
-    def _report(self, state, value, oldvalue, verb):
-        state.obj().receive_change_event(verb, self.key, value, oldvalue)
+    def set_(instance, value, oldvalue, initiator):
+        instance.receive_change_event("set", key, value, oldvalue)
+
+    event.listen(append, 'on_append', inst)
+    event.listen(remove, 'on_remove', inst)
+    event.listen(set_, 'on_set', inst)
+
 
 if __name__ == '__main__':
 
@@ -45,7 +28,6 @@ if __name__ == '__main__':
     from sqlalchemy.ext.declarative import declarative_base
 
     class Base(object):
-        __sa_instrumentation_manager__ = InstallListeners
         
         def receive_change_event(self, verb, key, value, oldvalue):
             s = "Value '%s' %s on attribute '%s', " % (value, verb, key)
@@ -55,6 +37,8 @@ if __name__ == '__main__':
             print s
             
     Base = declarative_base(cls=Base)
+
+    event.listen(configure_listener, 'on_attribute_instrument', Base)
 
     class MyMappedClass(Base):
         __tablename__ = "mytable"
