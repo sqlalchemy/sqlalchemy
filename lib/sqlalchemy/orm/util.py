@@ -275,13 +275,6 @@ class AliasedClass(object):
         return queryattr
 
     def __getattr__(self, key):
-        if self.__mapper.has_property(key):
-            return self.__adapt_prop(
-                        self.__mapper.get_property(
-                            key, _compile_mappers=False
-                        )
-                    )
-
         for base in self.__target.__mro__:
             try:
                 attr = object.__getattribute__(base, key)
@@ -291,15 +284,20 @@ class AliasedClass(object):
                 break
         else:
             raise AttributeError(key)
-
-        if hasattr(attr, 'func_code'):
+        
+        if isinstance(attr, attributes.QueryableAttribute):
+            return self.__adapt_prop(attr.property)
+        elif hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
             if is_method and is_method.im_self is not None:
                 return util.types.MethodType(attr.im_func, self, self)
             else:
                 return None
         elif hasattr(attr, '__get__'):
-            return attr.__get__(None, self)
+            ret = attr.__get__(None, self)
+            if isinstance(ret, PropComparator):
+                return ret.adapted(self.__adapt_element)
+            return ret
         else:
             return attr
 
@@ -437,7 +435,7 @@ def with_parent(instance, prop):
     """
     if isinstance(prop, basestring):
         mapper = object_mapper(instance)
-        prop = mapper.get_property(prop, resolve_synonyms=True)
+        prop = mapper.get_property(prop)
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
@@ -486,7 +484,7 @@ def _entity_descriptor(entity, key):
     """
     if not isinstance(entity, (AliasedClass, type)):
         entity = entity.class_
-    
+
     try:
         return getattr(entity, key)
     except AttributeError:

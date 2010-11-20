@@ -907,7 +907,6 @@ class MapperTest(_fixtures.FixtureTest):
                 args = (UCComparator, User.uc_name)
             else:
                 args = (UCComparator,)
-
             mapper(User, users, properties=dict(
                     uc_name = sa.orm.comparable_property(*args)))
             return User
@@ -1180,7 +1179,7 @@ class DocumentTest(testing.TestBase):
                                     backref=backref('foo',doc='foo relationship')
                                 ),
             'foober':column_property(t1.c.col3, doc='alternate data col'),
-            'hoho':synonym(t1.c.col4, doc="syn of col4")
+            'hoho':synonym("col4", doc="syn of col4")
         })
         mapper(Bar, t2)
         compile_mappers()
@@ -1554,10 +1553,22 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class MyFactory(ColumnProperty.Comparator):
             __hash__ = None
             def __eq__(self, other):
-                return func.foobar(self.__clause_element__()) == func.foobar(other)
-        mapper(User, users, properties={'name':synonym('_name', map_column=True, comparator_factory=MyFactory)})
-        self.assert_compile(User.name == 'ed', "foobar(users.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
-        self.assert_compile(aliased(User).name == 'ed', "foobar(users_1.name) = foobar(:foobar_1)", dialect=default.DefaultDialect())
+                return func.foobar(self.__clause_element__()) ==\
+                            func.foobar(other)
+
+        mapper(User, users, properties={
+                    'name':synonym('_name', map_column=True,
+                                    comparator_factory=MyFactory)
+                    })
+        self.assert_compile(
+                    User.name == 'ed', 
+                    "foobar(users.name) = foobar(:foobar_1)",
+                    dialect=default.DefaultDialect())
+        
+        self.assert_compile(
+                    aliased(User).name == 'ed', 
+                    "foobar(users_1.name) = foobar(:foobar_1)",
+                    dialect=default.DefaultDialect())
 
     @testing.resolve_artifact_names
     def test_relationship(self):

@@ -951,7 +951,6 @@ class Query(object):
 
         clauses = [_entity_descriptor(self._joinpoint_zero(), key) == value
             for key, value in kwargs.iteritems()]
-
         return self.filter(sql.and_(*clauses))
 
     @_generative(_no_statement_condition, _no_limit_offset)
@@ -2683,7 +2682,10 @@ class _ColumnEntity(_QueryEntity):
         if isinstance(column, basestring):
             column = sql.literal_column(column)
             self._label_name = column.name
-        elif isinstance(column, attributes.QueryableAttribute):
+        elif isinstance(column, (
+                                    attributes.QueryableAttribute,
+                                    interfaces.PropComparator
+                                )):
             self._label_name = column.key
             column = column.__clause_element__()
         else:

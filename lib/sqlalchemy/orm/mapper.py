@@ -895,36 +895,22 @@ class Mapper(object):
     def has_property(self, key):
         return key in self._props
 
-    def get_property(self, key, 
-                            resolve_synonyms=False, 
-                            raiseerr=True, _compile_mappers=True):
-                            
-        """return a :class:`.MapperProperty` associated with the given key.
+    def get_property(self, key, _compile_mappers=True):
+        """return a MapperProperty associated with the given key.
         
-        resolve_synonyms=False and raiseerr=False are deprecated.
+        Calls getattr() against the mapped class itself, so that class-level 
+        proxies will be resolved to the underlying property, if any.
         
         """
 
         if _compile_mappers and not self.compiled:
             self.compile()
-        
-        if not resolve_synonyms:
-            prop = self._props.get(key, None)
-            if prop is None and raiseerr:
-                raise sa_exc.InvalidRequestError(
-                        "Mapper '%s' has no property '%s'" % 
-                        (self, key))
-            return prop
-        else:
-            try:
-                return getattr(self.class_, key).property
-            except AttributeError:
-                if raiseerr:
-                    raise sa_exc.InvalidRequestError(
-                        "Mapper '%s' has no property '%s'" % (self, key))
-                else:
-                    return None
-    
+        try:
+            return getattr(self.class_, key).property
+        except AttributeError:
+            raise sa_exc.InvalidRequestError(
+                    "Mapper '%s' has no property '%s'" % (self, key))
+            
     @util.deprecated('0.6.4',
                      'Call to deprecated function mapper._get_col_to_pr'
                      'op(). Use mapper.get_property_by_column()')
@@ -1125,8 +1111,11 @@ class Mapper(object):
 
     def _is_userland_descriptor(self, obj):
         return not isinstance(obj, 
-                    (MapperProperty, attributes.InstrumentedAttribute)) and \
-                    hasattr(obj, '__get__')
+                    (MapperProperty, attributes.QueryableAttribute)) and \
+                    hasattr(obj, '__get__') and not \
+                     isinstance(obj.__get__(None, obj),
+                                    attributes.QueryableAttribute)
+        
 
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
