@@ -568,12 +568,14 @@ class MemUsageTest(EnsureZeroed):
             cast.compile(dialect=dialect)
         go()
 
+    @testing.requires.cextensions
     def test_DecimalResultProcessor_init(self):
         @profile_memory
         def go():
             to_decimal_processor_factory({}, 10)
         go()
 
+    @testing.requires.cextensions
     def test_DecimalResultProcessor_process(self):
         @profile_memory
         def go():
