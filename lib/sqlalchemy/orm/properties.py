@@ -686,11 +686,11 @@ class RelationshipProperty(StrategizedProperty):
             if self.property.direction == MANYTOONE:
                 state = attributes.instance_state(other)
                 
-                def state_bindparam(state, col):
+                def state_bindparam(x, state, col):
                     o = state.obj() # strong ref
-                    return lambda : \
+                    return sql.bindparam(x, unique=True, callable_=lambda : \
                         self.property.mapper._get_committed_attr_by_column(o,
-                            col)
+                            col))
                 
                 def adapt(col):
                     if self.adapter:
@@ -701,7 +701,7 @@ class RelationshipProperty(StrategizedProperty):
                 if self.property._use_get:
                     return sql.and_(*[
                         sql.or_(
-                        adapt(x) != state_bindparam(state, y),
+                        adapt(x) != state_bindparam(adapt(x), state, y),
                         adapt(x) == None)
                         for (x, y) in self.property.local_remote_pairs])
                     

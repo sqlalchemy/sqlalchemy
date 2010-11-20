@@ -791,31 +791,51 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type_=None, unique=False, required=False):
+def bindparam(key, value=None, type_=None, unique=False, required=False, callable_=None):
     """Create a bind parameter clause with the given key.
 
-    value
-      a default value for this bind parameter.  a bindparam with a
-      value is called a ``value-based bindparam``.
+        :param key:
+          the key for this bind param.  Will be used in the generated
+          SQL statement for dialects that use named parameters.  This
+          value may be modified when part of a compilation operation,
+          if other :class:`_BindParamClause` objects exist with the same
+          key, or if its length is too long and truncation is
+          required.
 
-    type\_
-      a sqlalchemy.types.TypeEngine object indicating the type of this
-      bind param, will invoke type-specific bind parameter processing
+        :param value:
+          Initial value for this bind param.  This value may be
+          overridden by the dictionary of parameters sent to statement
+          compilation/execution.
+        
+        :param callable\_:
+          A callable function that takes the place of "value".  The function
+          will be called at statement execution time to determine the
+          ultimate value.   Used for scenarios where the actual bind
+          value cannot be determined at the point at which the clause
+          construct is created, but embeded bind values are still desirable.
+          
+        :param type\_:
+          A ``TypeEngine`` object that will be used to pre-process the
+          value corresponding to this :class:`_BindParamClause` at
+          execution time.
 
-    unique
-      if True, bind params sharing the same name will have their
-      underlying ``key`` modified to a uniquely generated name.
-      mostly useful with value-based bind params.
-
-    required
-      A value is required at execution time.
-      
+        :param unique:
+          if True, the key name of this BindParamClause will be
+          modified if another :class:`_BindParamClause` of the same name
+          already has been located within the containing
+          :class:`ClauseElement`.
+        
+        :param required:
+          a value is required at execution time.
+          
     """
     if isinstance(key, ColumnClause):
         return _BindParamClause(key.name, value, type_=key.type, 
+                                callable_=callable_,
                                 unique=unique, required=required)
     else:
         return _BindParamClause(key, value, type_=type_, 
+                                callable_=callable_,
                                 unique=unique, required=required)
 
 def outparam(key, type_=None):
@@ -2315,6 +2335,7 @@ class _BindParamClause(ColumnElement):
     quote = None
 
     def __init__(self, key, value, type_=None, unique=False, 
+                            callable_=None,
                             isoutparam=False, required=False, 
                             _compared_to_operator=None,
                             _compared_to_type=None):
@@ -2332,7 +2353,14 @@ class _BindParamClause(ColumnElement):
           Initial value for this bind param.  This value may be
           overridden by the dictionary of parameters sent to statement
           compilation/execution.
-
+        
+        :param callable\_:
+          A callable function that takes the place of "value".  The function
+          will be called at statement execution time to determine the
+          ultimate value.   Used for scenarios where the actual bind
+          value cannot be determined at the point at which the clause
+          construct is created, but embeded bind values are still desirable.
+          
         :param type\_:
           A ``TypeEngine`` object that will be used to pre-process the
           value corresponding to this :class:`_BindParamClause` at
@@ -2361,6 +2389,7 @@ class _BindParamClause(ColumnElement):
         self._orig_key = key or 'param'
         self.unique = unique
         self.value = value
+        self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
         if type_ is None:
@@ -2405,8 +2434,9 @@ class _BindParamClause(ColumnElement):
 
         d = self.__dict__.copy()
         v = self.value
-        if util.callable(v):
-            v = v()
+        if self.callable:
+            v = self.callable()
+            d['callable'] = None
         d['value'] = v
         return d
 

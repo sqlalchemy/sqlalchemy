@@ -439,13 +439,13 @@ class LazyLoader(AbstractRelationshipLoader):
         if sess is not None and sess._flushing:
             def visit_bindparam(bindparam):
                 if bindparam.key in bind_to_col:
-                    bindparam.value = \
+                    bindparam.callable = \
                                 lambda: mapper._get_committed_state_attr_by_column(
                                         state, dict_, bind_to_col[bindparam.key])
         else:
             def visit_bindparam(bindparam):
                 if bindparam.key in bind_to_col:
-                    bindparam.value = lambda: mapper._get_state_attr_by_column(
+                    bindparam.callable = lambda: mapper._get_state_attr_by_column(
                                             state, dict_, bind_to_col[bindparam.key])
         
             

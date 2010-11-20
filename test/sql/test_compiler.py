@@ -1808,7 +1808,15 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
-    
+    def test_bind_callable(self):
+        expr = column('x') == bindparam("key", callable_=lambda: 12)
+        self.assert_compile(
+            expr,
+            "x = :key",
+            {'x':12}
+        )
+        
+        
     @testing.emits_warning('.*empty sequence.*')
     def test_in(self):
         self.assert_compile(table1.c.myid.in_(['a']),
