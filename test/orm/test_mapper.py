@@ -525,14 +525,25 @@ class MapperTest(_fixtures.FixtureTest):
         )
 
     @testing.resolve_artifact_names
-    def test_mapping_to_join(self):
+    def test_mapping_to_join_explicit_prop(self):
         """Mapping to a join"""
 
         usersaddresses = sa.join(users, addresses, users.c.id
                                  == addresses.c.user_id)
         mapper(User, usersaddresses, primary_key=[users.c.id],
-               #exclude_properties=[addresses.c.id]
                properties={'add_id':addresses.c.id}
+               )
+        l = create_session().query(User).order_by(users.c.id).all()
+        eq_(l, self.static.user_result[:3])
+
+    @testing.resolve_artifact_names
+    def test_mapping_to_join_exclude_prop(self):
+        """Mapping to a join"""
+
+        usersaddresses = sa.join(users, addresses, users.c.id
+                                 == addresses.c.user_id)
+        mapper(User, usersaddresses, primary_key=[users.c.id],
+               exclude_properties=[addresses.c.id]
                )
         l = create_session().query(User).order_by(users.c.id).all()
         eq_(l, self.static.user_result[:3])
