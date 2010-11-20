@@ -13,6 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.sql import column
 from sqlalchemy.processors import to_decimal_processor_factory
 from sqlalchemy.test.util import gc_collect
+from decimal import Decimal as _python_Decimal
 import gc
 import weakref
 from test.orm import _base
@@ -566,43 +567,15 @@ class MemUsageTest(EnsureZeroed):
             dialect = SQLiteDialect()
             cast.compile(dialect=dialect)
         go()
-        
-    def test_DecimalResultProcessor_processing(self):
-        metadata = MetaData(testing.db)
 
-        table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                    test_needs_autoincrement=True),
-            Column('col2', Float(asdecimal=True))
-            )
-
-        class Foo(object):
-            def __init__(self, col2):
-                self.col2 = col2
-
-        mapper(Foo, table1)
-        metadata.create_all()
-        
-        session = create_session()
-        session.begin()
-        session.add(Foo(1.1))
-        session.commit()
-        session.close()
-        del session
-
-        @profile_memory
-        def go():
-            session = create_session()
-            session.query(Foo).all()
-            session.rollback()
-            session.close()
-        try:
-            go()
-        finally:
-            metadata.drop_all()
-
-    def test_DecimalResultProcessor_dealloc(self):
+    def test_DecimalResultProcessor_init(self):
         @profile_memory
         def go():
             to_decimal_processor_factory({}, 10)
+        go()
+
+    def test_DecimalResultProcessor_process(self):
+        @profile_memory
+        def go():
+            to_decimal_processor_factory(_python_Decimal, 10)(1.2)
         go()
