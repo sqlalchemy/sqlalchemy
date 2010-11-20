@@ -1125,45 +1125,6 @@ class SessionTest(_fixtures.FixtureTest):
         self.assert_(s.prune() == 0)
         self.assert_(len(s.identity_map) == 0)
 
-    @testing.resolve_artifact_names
-    def test_no_save_cascade_1(self):
-        mapper(Address, addresses)
-        mapper(User, users, properties=dict(
-            addresses=relationship(Address, cascade="none", backref="user")))
-        s = create_session()
-
-        u = User(name='u1')
-        s.add(u)
-        a = Address(email_address='u1@e')
-        u.addresses.append(a)
-        assert u in s
-        assert a not in s
-        s.flush()
-        print "\n".join([repr(x.__dict__) for x in s])
-        s.expunge_all()
-        assert s.query(User).one().id == u.id
-        assert s.query(Address).first() is None
-
-    @testing.resolve_artifact_names
-    def test_no_save_cascade_2(self):
-        mapper(Address, addresses)
-        mapper(User, users, properties=dict(
-            addresses=relationship(Address,
-                               cascade="all",
-                               backref=backref("user", cascade="none"))))
-
-        s = create_session()
-        u = User(name='u1')
-        a = Address(email_address='u1@e')
-        a.user = u
-        s.add(a)
-        assert u not in s
-        assert a in s
-        s.flush()
-        s.expunge_all()
-        assert s.query(Address).one().id == a.id
-        assert s.query(User).first() is None
-
 
     @testing.resolve_artifact_names
     def test_pickled_update(self):
