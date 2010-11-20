@@ -4,6 +4,7 @@ from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import Column, testing
 from sqlalchemy.util import function_named
 from test.orm import _fixtures, _base
@@ -30,7 +31,7 @@ class PolymorphTest(_base.MappedTest):
 
         people = Table('people', metadata,
            Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
-           Column('company_id', Integer, ForeignKey('companies.company_id')),
+           Column('company_id', Integer, ForeignKey('companies.company_id'), nullable=False),
            Column('name', String(50)),
            Column('type', String(30)))
 
@@ -65,7 +66,10 @@ class InsertOrderTest(PolymorphTest):
                 'person':people.select(people.c.type=='person'),
             }, None, 'pjoin')
 
-        person_mapper = mapper(Person, people, with_polymorphic=('*', person_join), polymorphic_on=person_join.c.type, polymorphic_identity='person')
+        person_mapper = mapper(Person, people, 
+                                with_polymorphic=('*', person_join), 
+                                polymorphic_on=person_join.c.type, 
+                                polymorphic_identity='person')
 
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -77,48 +81,21 @@ class InsertOrderTest(PolymorphTest):
 
         session = create_session()
         c = Company(name='company1')
-        c.employees.append(Manager(status='AAB', manager_name='manager1', name='pointy haired boss'))
-        c.employees.append(Engineer(status='BBA', engineer_name='engineer1', primary_language='java', name='dilbert'))
+        c.employees.append(Manager(status='AAB', manager_name='manager1'
+                           , name='pointy haired boss'))
+        c.employees.append(Engineer(status='BBA',
+                           engineer_name='engineer1',
+                           primary_language='java', name='dilbert'))
         c.employees.append(Person(status='HHH', name='joesmith'))
-        c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', name='wally'))
-        c.employees.append(Manager(status='ABA', manager_name='manager2', name='jsmith'))
+        c.employees.append(Engineer(status='CGG',
+                           engineer_name='engineer2',
+                           primary_language='python', name='wally'))
+        c.employees.append(Manager(status='ABA', manager_name='manager2'
+                           , name='jsmith'))
         session.add(c)
         session.flush()
         session.expunge_all()
         eq_(session.query(Company).get(c.company_id), c)
-
-class RelationshipToSubclassTest(PolymorphTest):
-    def test_basic(self):
-        """test a relationship to an inheriting mapper where the relationship is to a subclass
-        but the join condition is expressed by the parent table.
-
-        also test that backrefs work in this case.
-
-        this test touches upon a lot of the join/foreign key determination code in properties.py
-        and creates the need for properties.py to search for conditions individually within
-        the mapper's local table as well as the mapper's 'mapped' table, so that relationships
-        requiring lots of specificity (like self-referential joins) as well as relationships requiring
-        more generalization (like the example here) both come up with proper results."""
-
-        mapper(Person, people)
-
-        mapper(Engineer, engineers, inherits=Person)
-        mapper(Manager, managers, inherits=Person)
-
-        mapper(Company, companies, properties={
-            'managers': relationship(Manager, backref="company")
-        })
-
-        sess = create_session()
-
-        c = Company(name='company1')
-        c.managers.append(Manager(status='AAB', manager_name='manager1', name='pointy haired boss'))
-        sess.add(c)
-        sess.flush()
-        sess.expunge_all()
-
-        eq_(sess.query(Company).filter_by(company_id=c.company_id).one(), c)
-        assert c.managers[0].company is c
 
 class RoundTripTest(PolymorphTest):
     pass
@@ -163,9 +140,16 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             manager_with_polymorphic = None
 
         if redefine_colprop:
-            person_mapper = mapper(Person, people, with_polymorphic=person_with_polymorphic, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
+            person_mapper = mapper(Person, people, 
+                                    with_polymorphic=person_with_polymorphic, 
+                                    polymorphic_on=people.c.type, 
+                                    polymorphic_identity='person', 
+                                    properties= {'person_name':people.c.name})
         else:
-            person_mapper = mapper(Person, people, with_polymorphic=person_with_polymorphic, polymorphic_on=people.c.type, polymorphic_identity='person')
+            person_mapper = mapper(Person, people, 
+                                    with_polymorphic=person_with_polymorphic, 
+                                    polymorphic_on=people.c.type, 
+                                    polymorphic_identity='person')
 
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         mapper(Manager, managers, inherits=person_mapper, with_polymorphic=manager_with_polymorphic, polymorphic_identity='manager')
@@ -270,7 +254,8 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
         # test standalone orphans
         daboss = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
         session.add(daboss)
-        assert_raises(orm_exc.FlushError, session.flush)
+        assert_raises(sa_exc.DBAPIError, session.flush)
+        
         c = session.query(Company).first()
         daboss.company = c
         manager_list = [e for e in c.employees if isinstance(e, Manager)]

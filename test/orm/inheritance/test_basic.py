@@ -1276,6 +1276,15 @@ class PKDiscriminatorTest(_base.MappedTest):
         
         
 class DeleteOrphanTest(_base.MappedTest):
+    """Test the fairly obvious, that an error is raised
+    when attempting to insert an orphan.
+    
+    Previous SQLA versions would check this constraint 
+    in memory which is the original rationale for this test.
+        
+    """
+    
+    
     @classmethod
     def define_tables(cls, metadata):
         global single, parent
@@ -1310,8 +1319,6 @@ class DeleteOrphanTest(_base.MappedTest):
         sess = create_session()
         s1 = SubClass(data='s1')
         sess.add(s1)
-        assert_raises_message(orm_exc.FlushError, 
-            r"is not attached to any parent 'Parent' instance via "
-            "that classes' 'related' attribute", sess.flush)
+        assert_raises(sa_exc.DBAPIError, sess.flush)
         
     

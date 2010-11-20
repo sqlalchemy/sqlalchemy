@@ -1441,20 +1441,7 @@ class Session(object):
             proc = new.union(dirty).difference(deleted)
             
         for state in proc:
-            is_orphan = _state_mapper(state)._is_orphan(state)
-            if is_orphan and not state.has_identity:
-                path = ", nor ".join(
-                    ["any parent '%s' instance "
-                     "via that classes' '%s' attribute" %
-                     (cls.__name__, key)
-                     for (key, cls) in chain(*(
-                         m.delete_orphans for m in _state_mapper(state).iterate_to_root()
-                        ))
-                    ])
-                raise exc.FlushError(
-                    "Instance %s is an unsaved, pending instance and is an "
-                    "orphan (is not attached to %s)" % (
-                    mapperutil.state_str(state), path))
+            is_orphan = _state_mapper(state)._is_orphan(state) and state.has_identity
             flush_context.register_object(state, isdelete=is_orphan)
             processed.add(state)
 
