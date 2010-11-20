@@ -201,6 +201,75 @@ class PolymorphicSynonymTest(_base.MappedTest):
         eq_(sess.query(T2).filter(T2.info=='at2').one(), at2)
         eq_(at2.info, "THE INFO IS:at2")
         
+class PolymorphicAttributeManagementTest(_base.MappedTest):
+    """Test polymorphic_on can be assigned, can be mirrored, etc."""
+
+    run_setup_mappers = 'once'
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('table_a', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('class_name', String(50))
+        )
+        Table('table_b', metadata,
+           Column('id', Integer, ForeignKey('table_a.id'), primary_key=True),
+           Column('class_name', String(50))
+        )
+        Table('table_c', metadata,
+           Column('id', Integer, ForeignKey('table_b.id'),primary_key=True)
+        )
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_classes(cls):
+        class A(_base.ComparableEntity):
+            pass
+        class B(A):
+            pass
+        class C(B):
+            pass
+        
+        mapper(A, table_a, 
+                        polymorphic_on=table_a.c.class_name, 
+                        polymorphic_identity='a')
+        mapper(B, table_b, inherits=A, 
+                        polymorphic_on=table_b.c.class_name, 
+                        polymorphic_identity='b')
+        mapper(C, table_c, inherits=B, 
+                        polymorphic_identity='c')
+    
+    @testing.resolve_artifact_names
+    def test_poly_configured_immediate(self):
+        a = A()
+        b = B()
+        c = C()
+        eq_(a.class_name, 'a')
+        eq_(b.class_name, 'b')
+        eq_(c.class_name, 'c')
+        
+    @testing.resolve_artifact_names
+    def test_base_class(self):
+        sess = Session()
+        c1 = C()
+        sess.add(c1)
+        sess.commit()
+
+        assert isinstance(sess.query(B).first(), C)
+
+        sess.close()
+
+        assert isinstance(sess.query(A).first(), C)
+
+    @testing.resolve_artifact_names
+    def test_assignment(self):
+        sess = Session()
+        b1 = B()
+        b1.class_name = 'c'
+        sess.add(b1)
+        sess.commit()
+        sess.close()
+        assert isinstance(sess.query(B).first(), C)
     
 class CascadeTest(_base.MappedTest):
     """that cascades on polymorphic relationships continue
