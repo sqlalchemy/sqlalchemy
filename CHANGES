@@ -98,6 +98,18 @@ CHANGES
 - declarative
   - An error is raised if __table_args__ is not in tuple
     or dict format, and is not None.  [ticket:1972]
+
+- sqlsoup
+  - Added "map_to()" method to SqlSoup, which is a "master"
+    method which accepts explicit arguments for each aspect of
+    the selectable and mapping, including a base class per
+    mapping. [ticket:1975]
+
+  - Mapped selectables used with the map(), with_labels(),
+    join() methods no longer put the given argument into the
+    internal "cache" dictionary.  Particularly since the
+    join() and select() objects are created in the method
+    itself this was pretty much a pure memory leaking behavior.
     
 0.6.5
 =====

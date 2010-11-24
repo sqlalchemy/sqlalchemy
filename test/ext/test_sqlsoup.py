@@ -1,7 +1,8 @@
 from sqlalchemy.ext import sqlsoup
-from sqlalchemy.test.testing import TestBase, eq_, assert_raises
+from sqlalchemy.test.testing import TestBase, eq_, assert_raises, \
+    assert_raises_message
 from sqlalchemy import create_engine, or_, desc, select, func, exc, \
-    Table, util
+    Table, util, Column, Integer
 from sqlalchemy.orm import scoped_session, sessionmaker
 import datetime
 
@@ -29,6 +30,76 @@ class SQLSoupTest(TestBase):
         sqlsoup.Session.remove()
         for sql in _teardown:
             engine.execute(sql)
+
+    def test_map_to_attr_present(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        users = db.users
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "Attribute 'users' is already mapped",
+            db.map_to, 'users', tablename='users'
+        )
+
+    def test_map_to_table_not_string(self):
+        db = sqlsoup.SqlSoup(engine)
+        
+        table = Table('users', db._metadata, Column('id', Integer, primary_key=True))
+        assert_raises_message(
+            exc.ArgumentError,
+            "'tablename' argument must be a string.",
+            db.map_to, 'users', tablename=table
+        )
+
+    def test_map_to_table_or_selectable(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        table = Table('users', db._metadata, Column('id', Integer, primary_key=True))
+        assert_raises_message(
+            exc.ArgumentError,
+            "'tablename' and 'selectable' arguments are mutually exclusive",
+            db.map_to, 'users', tablename='users', selectable=table
+        )
+
+    def test_map_to_no_pk_selectable(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        table = Table('users', db._metadata, Column('id', Integer))
+        assert_raises_message(
+            sqlsoup.PKNotFoundError,
+            "table 'users' does not have a primary ",
+            db.map_to, 'users', selectable=table
+        )
+    def test_map_to_invalid_schema(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        table = Table('users', db._metadata, Column('id', Integer))
+        assert_raises_message(
+            exc.ArgumentError,
+            "'tablename' argument is required when "
+                                "using 'schema'.",
+            db.map_to, 'users', selectable=table, schema='hoho'
+        )
+    def test_map_to_nothing(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "'tablename' or 'selectable' argument is "
+                                    "required.",
+            db.map_to, 'users', 
+        )
+
+    def test_map_to_string_not_selectable(self):
+        db = sqlsoup.SqlSoup(engine)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "'selectable' argument must be a "
+                                    "table, select, join, or other "
+                                    "selectable construct.",
+            db.map_to, 'users', selectable='users'
+        )
 
     def test_bad_names(self):
         db = sqlsoup.SqlSoup(engine)
@@ -278,7 +349,7 @@ class SQLSoupTest(TestBase):
             email=u'student@example.edu', password=u'student',
             classname=None, admin=0)])
 
-    def test_no_pk(self):
+    def test_no_pk_reflected(self):
         db = sqlsoup.SqlSoup(engine)
         assert_raises(sqlsoup.PKNotFoundError, getattr, db, 'nopk')
 
