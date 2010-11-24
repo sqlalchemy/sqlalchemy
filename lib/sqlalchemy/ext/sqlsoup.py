@@ -619,6 +619,8 @@ class SqlSoup(object):
         This is the "master" method that can be used to create any 
         configuration.
         
+        (new in 0.6.6)
+        
         :param attrname: String attribute name which will be
           established as an attribute on this :class:.`.SqlSoup`
           instance.
