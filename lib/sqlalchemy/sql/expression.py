@@ -1289,6 +1289,29 @@ class ClauseElement(Visitable):
         return []
 
     def self_group(self, against=None):
+        """Apply a 'grouping' to this :class:`.ClauseElement`.
+        
+        This method is overridden by subclasses to return a 
+        "grouping" construct, i.e. parenthesis.   In particular
+        it's used by "binary" expressions to provide a grouping
+        around themselves when placed into a larger expression, 
+        as well as by :func:`.select` constructs when placed into
+        the FROM clause of another :func:`.select`.  (Note that 
+        subqueries should be normally created using the 
+        :func:`.Select.alias` method, as many platforms require
+        nested SELECT statements to be named).
+        
+        As expressions are composed together, the application of
+        :meth:`self_group` is automatic - end-user code should never 
+        need to use this method directly.  Note that SQLAlchemy's
+        clause constructs take operator precedence into account - 
+        so parenthesis might not be needed, for example, in 
+        an expression like ``x OR (y AND z)`` - AND takes precedence
+        over OR.
+        
+        The base :meth:`self_group` method of :class:`.ClauseElement`
+        just returns self.
+        """
         return self
 
     # TODO: remove .bind as a method from the root ClauseElement.
@@ -2657,8 +2680,7 @@ class ClauseList(ClauseElement):
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
-        if self.group and self.operator is not against and \
-                operators.is_precedent(self.operator, against):
+        if self.group and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
@@ -2984,10 +3006,7 @@ class _BinaryExpression(ColumnElement):
         )
 
     def self_group(self, against=None):
-        # use small/large defaults for comparison so that unknown
-        # operators are always parenthesized
-        if self.operator is not against and \
-                operators.is_precedent(self.operator, against):
+        if operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
@@ -3343,7 +3362,16 @@ class _Label(ColumnElement):
     @util.memoized_property
     def element(self):
         return self._element.self_group(against=operators.as_)
-
+    
+    def self_group(self, against=None):
+        sub_element = self._element.self_group(against=against)
+        if sub_element is not self._element:
+            return _Label(self.name, 
+                        sub_element, 
+                        type_=self._type)
+        else:
+            return self._element
+        
     @property
     def primary_key(self):
         return self.element.primary_key

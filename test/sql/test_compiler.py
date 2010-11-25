@@ -678,7 +678,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select([func.count(distinct(table1.c.myid))]), 
             "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable"
         )
-
+    
     def test_operators(self):
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
                                 (operator.sub, '-'), 
@@ -1293,7 +1293,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
          self.assert_compile(
              select([value_tbl.c.id], value_tbl.c.val1 / (value_tbl.c.val2 - value_tbl.c.val1) /value_tbl.c.val1 > 2.0),
-             "SELECT values.id FROM values WHERE values.val1 / (values.val2 - values.val1) / values.val1 > :param_1"
+             "SELECT values.id FROM values WHERE (values.val1 / (values.val2 - values.val1)) / values.val1 > :param_1"
          )
 
     def test_collate(self):
@@ -1925,7 +1925,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             tuple_(table1.c.myid, table1.c.name).in_(
                         [tuple_(table2.c.otherid, table2.c.othername)]
                     ),
-            "(mytable.myid, mytable.name) IN (myothertable.otherid, myothertable.othername)"
+            "(mytable.myid, mytable.name) IN ((myothertable.otherid, myothertable.othername))"
         )
         
         self.assert_compile(
@@ -2043,6 +2043,42 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
         self.assert_compile(table.select(between((table.c.field == table.c.field), False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
+    
+    def test_associativity(self):
+        f = column('f')
+        self.assert_compile( f - f, "f - f" )
+        self.assert_compile( f - f - f, "(f - f) - f" )
+        
+        self.assert_compile( (f - f) - f, "(f - f) - f" )
+        self.assert_compile( (f - f).label('foo') - f, "(f - f) - f" )
+        
+        self.assert_compile( f - (f - f), "f - (f - f)" )
+        self.assert_compile( f - (f - f).label('foo'), "f - (f - f)" )
+
+        # because - less precedent than /
+        self.assert_compile( f / (f - f), "f / (f - f)" )
+        self.assert_compile( f / (f - f).label('foo'), "f / (f - f)" )
+
+        self.assert_compile( f / f - f, "f / f - f" )
+        self.assert_compile( (f / f) - f, "f / f - f" )
+        self.assert_compile( (f / f).label('foo') - f, "f / f - f" )
+        
+        # because / more precedent than -
+        self.assert_compile( f - (f / f), "f - f / f" )
+        self.assert_compile( f - (f / f).label('foo'), "f - f / f" )
+        self.assert_compile( f - f / f, "f - f / f" )
+        self.assert_compile( (f - f) / f, "(f - f) / f" )
+        
+        self.assert_compile( ((f - f) / f) - f, "(f - f) / f - f")
+        self.assert_compile( (f - f) / (f - f), "(f - f) / (f - f)")
+        
+        # higher precedence
+        self.assert_compile( (f / f) - (f / f), "f / f - f / f")
+
+        self.assert_compile( (f / f) - (f - f), "f / f - (f - f)")
+        self.assert_compile( (f / f) / (f - f), "(f / f) / (f - f)")
+        self.assert_compile( f / (f / (f - f)), "f / (f / (f - f))")
+        
     
     def test_delayed_col_naming(self):
         my_str = Column(String)

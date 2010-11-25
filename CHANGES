@@ -45,6 +45,13 @@ CHANGES
     [ticket:1976]
     
 - sql
+  - Fixed operator precedence rules for multiple
+    chains of a single non-associative operator.
+    I.e. "x - (y - z)" will compile as "x - (y - z)"
+    and not "x - y - z".  Also works with labels,
+    i.e. "x - (y - z).label('foo')"
+    [ticket:1984]
+    
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
     in declarative mixins.  [ticket:1967]
@@ -60,6 +67,9 @@ CHANGES
     [ticket:1871]
 
 - postgresql
+  - Single element tuple expressions inside an IN clause
+    parenthesize correctly, also from [ticket:1984]
+    
   - Ensured every numeric, float, int code, scalar + array,
     are recognized by psycopg2 and pg8000's "numeric" 
     base type. [ticket:1955]

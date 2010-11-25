@@ -2046,3 +2046,34 @@ class MatchTest(TestBase, AssertsCompiledSQL):
                 matchtable.c.title.match('nutshells'
                 )))).order_by(matchtable.c.id).execute().fetchall()
         eq_([1, 3, 5], [r.id for r in results])
+
+
+class TupleTest(TestBase):
+    __only_on__ = 'postgresql'
+    
+    def test_tuple_containment(self):
+        
+        for test, exp in [
+            ([('a', 'b')], True),
+            ([('a', 'c')], False),
+            ([('f', 'q'), ('a', 'b')], True),
+            ([('f', 'q'), ('a', 'c')], False)
+        ]:
+            eq_(
+                testing.db.execute(
+                    select([
+                            tuple_(
+                                literal_column("'a'"), 
+                                literal_column("'b'")
+                            ).\
+                                in_([
+                                    tuple_(*[
+                                            literal_column("'%s'" % letter) 
+                                            for letter in elem
+                                        ]) for elem in test
+                                ])
+                            ])
+                ).scalar(),
+                exp
+            )
+

@@ -1579,12 +1579,8 @@ class importlater(object):
     @memoized_property
     def _il_module(self):
         if self._il_addtl:
-            m = __import__(self._il_path + "." + self._il_addtl)
-        else:
-            m = __import__(self._il_path)
-        for token in self._il_path.split(".")[1:]:
-            m = getattr(m, token)
-        if self._il_addtl:
+            m = __import__(self._il_path, globals(), locals(), 
+                                [self._il_addtl])
             try:
                 return getattr(m, self._il_addtl)
             except AttributeError:
@@ -1593,6 +1589,9 @@ class importlater(object):
                         (self._il_path, self._il_addtl)
                     )
         else:
+            m = __import__(self._il_path)
+            for token in self._il_path.split(".")[1:]:
+                m = getattr(m, token)
             return m
         
     def __getattr__(self, key):
