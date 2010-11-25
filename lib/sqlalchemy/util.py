@@ -1578,14 +1578,17 @@ class importlater(object):
     
     @memoized_property
     def _il_module(self):
-        m = __import__(self._il_path)
+        if self._il_addtl:
+            m = __import__(self._il_path + "." + self._il_addtl)
+        else:
+            m = __import__(self._il_path)
         for token in self._il_path.split(".")[1:]:
             m = getattr(m, token)
         if self._il_addtl:
             try:
                 return getattr(m, self._il_addtl)
             except AttributeError:
-                raise AttributeError(
+                raise ImportError(
                         "Module %s has no attribute '%s'" % 
                         (self._il_path, self._il_addtl)
                     )
