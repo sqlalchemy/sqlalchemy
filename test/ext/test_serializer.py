@@ -124,8 +124,8 @@ class SerializeTest(MappedTest):
     def test_aliases(self):
         u7, u8, u9, u10 = Session.query(User).order_by(User.id).all()
         ualias = aliased(User)
-        q = Session.query(User, ualias).join((ualias, User.id
-                < ualias.id)).filter(User.id < 9).order_by(User.id,
+        q = Session.query(User, ualias).join(ualias, User.id
+                < ualias.id).filter(User.id < 9).order_by(User.id,
                 ualias.id)
         eq_(list(q.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9),
             (u8, u10)])

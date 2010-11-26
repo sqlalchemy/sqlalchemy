@@ -1176,8 +1176,8 @@ class AddEntityTest(_fixtures.FixtureTest):
         sess = create_session()
         oalias = sa.orm.aliased(Order)
         def go():
-            ret = sess.query(User, oalias).join(('orders', oalias)).order_by(User.id,
-                                                                             oalias.id).all()
+            ret = sess.query(User, oalias).join(oalias, 'orders').\
+                                order_by(User.id,oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1197,16 +1197,19 @@ class AddEntityTest(_fixtures.FixtureTest):
 
         oalias = sa.orm.aliased(Order)
         def go():
-            ret = sess.query(User, oalias).options(joinedload('addresses')).join(
-                ('orders', oalias)).order_by(User.id, oalias.id).all()
+            ret = sess.query(User, oalias).options(joinedload('addresses')).\
+                    join(oalias, 'orders').\
+                    order_by(User.id, oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 6)
 
         sess.expunge_all()
         def go():
-            ret = sess.query(User, oalias).options(joinedload('addresses'),
-                                                   joinedload(oalias.items)).join(
-                ('orders', oalias)).order_by(User.id, oalias.id).all()
+            ret = sess.query(User, oalias).\
+                                options(joinedload('addresses'),
+                                           joinedload(oalias.items)).\
+                                join(oalias, 'orders').\
+                                order_by(User.id, oalias.id).all()
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
@@ -1684,8 +1687,8 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     ), 
                 ],
                 sess.query(User, Order, u1, o1).\
-                        join((Order, User.orders)).options(joinedload(User.addresses), joinedload(Order.items)).filter(User.id==9).\
-                        join((o1, u1.orders)).options(joinedload(u1.addresses), joinedload(o1.items)).filter(u1.id==7).\
+                        join(Order, User.orders).options(joinedload(User.addresses), joinedload(Order.items)).filter(User.id==9).\
+                        join(o1, u1.orders).options(joinedload(u1.addresses), joinedload(o1.items)).filter(u1.id==7).\
                         filter(Order.id<o1.id).\
                         order_by(User.id, Order.id, u1.id, o1.id).all(),
             )
@@ -1719,8 +1722,11 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     (User(id=9, addresses=[Address(id=5)]), Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)])),
                     (User(id=9, addresses=[Address(id=5)]), Order(id=4, items=[Item(id=1), Item(id=5)])),
                 ],
-                sess.query(User, oalias).join((User.orders, oalias)).options(joinedload(User.addresses), joinedload(oalias.items)).filter(User.id==9).\
-                    order_by(User.id, oalias.id).all(),
+                sess.query(User, oalias).join(oalias, User.orders).
+                                    options(joinedload(User.addresses), 
+                                            joinedload(oalias.items)).
+                                            filter(User.id==9).
+                                            order_by(User.id, oalias.id).all(),
             )
         self.assert_sql_count(testing.db, go, 1)
 

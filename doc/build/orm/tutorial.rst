@@ -902,9 +902,9 @@ Or we can make a real JOIN construct; the most common way is to use :meth:`~sqla
 
 :meth:`~sqlalchemy.orm.query.Query.join` knows how to join between ``User`` and ``Address`` because there's only one foreign key between them.  If there were no foreign keys, or several, :meth:`~sqlalchemy.orm.query.Query.join` works better when one of the following forms are used::
 
-    query.join((Address, User.id==Address.user_id))  # explicit condition (note the tuple)
+    query.join(Address, User.id==Address.user_id)    # explicit condition
     query.join(User.addresses)                       # specify relationship from left to right
-    query.join((Address, User.addresses))            # same, with explicit target
+    query.join(Address, User.addresses)              # same, with explicit target
     query.join('addresses')                          # same, using a string
 
 Note that when :meth:`~sqlalchemy.orm.query.Query.join` is called with an explicit target as well as an ON clause, we use a tuple as the argument.  This is so that multiple joins can be chained together, as in::
@@ -974,7 +974,8 @@ When querying across multiple tables, if the same table needs to be referenced m
     >>> adalias2 = aliased(Address)
     {sql}>>> for username, email1, email2 in \
     ...     session.query(User.name, adalias1.email_address, adalias2.email_address).\
-    ...     join((adalias1, User.addresses), (adalias2, User.addresses)).\
+    ...     join(adalias1, User.addresses).\
+    ...     join(adalias2, User.addresses).\
     ...     filter(adalias1.email_address=='jack@google.com').\
     ...     filter(adalias2.email_address=='j25@yahoo.com'):
     ...     print username, email1, email2      # doctest: +NORMALIZE_WHITESPACE
@@ -1007,7 +1008,7 @@ Once we have our statement, it behaves like a :class:`~sqlalchemy.schema.Table` 
 .. sourcecode:: python+sql
 
     {sql}>>> for u, count in session.query(User, stmt.c.address_count).\
-    ...     outerjoin((stmt, User.id==stmt.c.user_id)).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
+    ...     outerjoin(stmt, User.id==stmt.c.user_id).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print u, count
     SELECT users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password,
@@ -1031,7 +1032,7 @@ Above, we just selected a result that included a column from a subquery.  What i
 
     {sql}>>> stmt = session.query(Address).filter(Address.email_address != 'j25@yahoo.com').subquery()
     >>> adalias = aliased(Address, stmt)
-    >>> for user, address in session.query(User, adalias).join((adalias, User.addresses)): # doctest: +NORMALIZE_WHITESPACE
+    >>> for user, address in session.query(User, adalias).join(adalias, User.addresses): # doctest: +NORMALIZE_WHITESPACE
     ...     print user, address
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
     users.password AS users_password, anon_1.id AS anon_1_id,

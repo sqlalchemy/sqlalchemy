@@ -1385,7 +1385,7 @@ class OptionsTest(_fixtures.FixtureTest):
         oalias = aliased(Order)
         opt1 = sa.orm.joinedload(User.orders, Order.items)
         opt2a, opt2b = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
-        u1 = sess.query(User).join((oalias, User.orders)).options(opt1, opt2a, opt2b).first()
+        u1 = sess.query(User).join(oalias, User.orders).options(opt1, opt2a, opt2b).first()
         ustate = attributes.instance_state(u1)
         assert opt1 in ustate.load_options
         assert opt2a not in ustate.load_options

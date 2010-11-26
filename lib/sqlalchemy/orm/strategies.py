@@ -828,7 +828,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                 attr = key
                 
             if second_to_last:
-                q = q.join((parent_alias, attr), from_joinpoint=True)
+                q = q.join(parent_alias, attr, from_joinpoint=True)
             else:
                 q = q.join(attr, aliased=middle, from_joinpoint=True)
 

@@ -1112,7 +1112,6 @@ class Query(object):
                     expression.except_all(*([self]+ list(q)))
                 )
 
-    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def join(self, *props, **kwargs):
         """Create a join against this ``Query`` object's criterion
         and apply generatively, returning the newly resulting ``Query``.
@@ -1126,9 +1125,12 @@ class Query(object):
           * a class-mapped attribute, i.e. Houses.rooms.  This will create a
             join from "Houses" table to that of the "rooms" relationship.
 
-          * a 2-tuple containing a target class or selectable, and an "ON"
-            clause.  The ON clause can be the property name/ attribute like
-            above, or a SQL expression.
+        A two-element form of \*props may also be passed.   In this form,
+        the first element is a target class or selectable, the second
+        is a string property name, class-mapped attribute, or clause
+        construct representing an "ON" clause.   This supercedes the
+        previous "tuple" calling form - multiple join() calls should
+        be used for multiple (target, onclause) pairs.
 
         e.g.::
 
@@ -1139,7 +1141,7 @@ class Query(object):
             # join the Person entity to an alias of itself,
             # along the "friends" relationship
             PAlias = aliased(Person)
-            session.query(Person).join((Palias, Person.friends))
+            session.query(Person).join(Palias, Person.friends)
 
             # join from Houses to the "rooms" attribute on the
             # "Colonials" subclass of Houses, then join to the
@@ -1150,8 +1152,8 @@ class Query(object):
             # using "people JOIN engineers" as the target.  Then join
             # to the "computers" collection on the Engineer entity.
             session.query(Company).\
-                        join((people.join(engineers), 'employees'),
-                        Engineer.computers)
+                        join(people.join(engineers), 'employees').\\
+                        join(Engineer.computers)
 
             # join from Articles to Keywords, using the "keywords" attribute.
             # assume this is a many-to-many relationship.
@@ -1159,11 +1161,10 @@ class Query(object):
 
             # same thing, but spelled out entirely explicitly
             # including the association table.
-            session.query(Article).join(
-                (article_keywords,
-                Articles.id==article_keywords.c.article_id),
-                (Keyword, Keyword.id==article_keywords.c.keyword_id)
-                )
+            session.query(Article).join(article_keywords,
+                        Articles.id==article_keywords.c.article_id).\\
+                    join(Keyword, 
+                        Keyword.id==article_keywords.c.keyword_id)
 
         \**kwargs include:
 
@@ -1172,10 +1173,19 @@ class Query(object):
             same table. Consider usage of the aliased(SomeClass) construct as
             a more explicit approach to this.
 
-            from_joinpoint - when joins are specified using string property
-            names, locate the property from the mapper found in the most
-            recent previous join() call, instead of from the root entity.
-
+            from_joinpoint - the given join conditions will attempt 
+            to join from the right endpoint of the most recent join(),
+            instead of from the query's root entity.  I.e. any chain 
+            of joins, such as::
+                
+                query.join(a, b, c) 
+                
+            is equivalent to::
+                
+                query.join(a).\\
+                        join(b, from_joinpoint=True).\\
+                        join(c, from_joinpoint=True)
+            
         """
         aliased, from_joinpoint = kwargs.pop('aliased', False),\
                                     kwargs.pop('from_joinpoint', False)
@@ -1186,7 +1196,6 @@ class Query(object):
                             outerjoin=False, create_aliases=aliased, 
                             from_joinpoint=from_joinpoint)
 
-    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def outerjoin(self, *props, **kwargs):
         """Create a left outer join against this ``Query`` object's criterion
         and apply generatively, retunring the newly resulting ``Query``.
@@ -1214,16 +1223,21 @@ class Query(object):
         if not from_joinpoint:
             self._reset_joinpoint()
         
-        if len(keys) >= 2 and \
-                isinstance(keys[1], expression.ClauseElement) and \
-                not isinstance(keys[1], expression.FromClause):
-            raise sa_exc.ArgumentError(
-                "You appear to be passing a clause expression as the second "
-                "argument to query.join().   Did you mean to use the form "
-                "query.join((target, onclause))?  Note the tuple.")
-            
+        if len(keys) == 2 and \
+            isinstance(keys[0], (expression.FromClause, 
+                                    type, AliasedClass)) and \
+            isinstance(keys[1], (basestring, expression.ClauseElement, 
+                                        interfaces.PropComparator)):
+            # detect 2-arg form of join and
+            # convert to a tuple.
+            keys = (keys,)
+
         for arg1 in util.to_list(keys):
             if isinstance(arg1, tuple):
+                # "tuple" form of join, multiple
+                # tuples are accepted as well.   The simpler
+                # "2-arg" form is preferred.  May deprecate 
+                # the "tuple" usage.
                 arg1, arg2 = arg1
             else:
                 arg2 = None
