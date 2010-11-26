@@ -79,7 +79,7 @@ class PolymorphicCircularTest(_base.MappedTest):
                                     'data':relationship(mapper(Data, data))
                                     },
                             order_by=table1.c.id)
-            table1_mapper.compile()
+            configure_mappers()
             assert False
         except:
             assert True
@@ -112,7 +112,7 @@ class PolymorphicCircularTest(_base.MappedTest):
 
         table3_mapper = mapper(Table3, table3, inherits=table1_mapper, polymorphic_identity='table3')
 
-        table1_mapper.compile()
+        configure_mappers()
         assert table1_mapper.primary_key == [table1.c.id], table1_mapper.primary_key
 
     @testing.fails_on('maxdb', 'FIXME: unknown')

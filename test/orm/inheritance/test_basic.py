@@ -109,7 +109,7 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
                                 polymorphic_on=t1t2_join.c.x,
                                 with_polymorphic=('*', t1t2_join),
                                 polymorphic_identity=0)
-        compile_mappers()
+        configure_mappers()
 
         clear_mappers()
 

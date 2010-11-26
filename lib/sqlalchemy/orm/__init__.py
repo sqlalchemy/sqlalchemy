@@ -18,6 +18,7 @@ from sqlalchemy.orm.mapper import (
      Mapper,
      _mapper_registry,
      class_mapper,
+     configure_mappers
      )
 from sqlalchemy.orm.interfaces import (
      EXT_CONTINUE,
@@ -73,6 +74,7 @@ __all__ = (
     'column_property',
     'comparable_property',
     'compile_mappers',
+    'configure_mappers',
     'composite',
     'contains_alias',
     'contains_eager',
@@ -976,15 +978,13 @@ def comparable_property(comparator_factory, descriptor=None):
 
     """
     return ComparableProperty(comparator_factory, descriptor)
-
+    
+@sa_util.deprecated("0.7", message=":func:`.compile_mappers` "
+                            "is renamed to :func:`.configure_mappers`")
 def compile_mappers():
-    """Compile all mappers that have been defined.
-
-    This is equivalent to calling ``compile()`` on any individual mapper.
-
-    """
-    for m in list(_mapper_registry):
-        m.compile()
+    """Initialize the inter-mapper relationships of all mappers that have been defined."""
+    
+    configure_mappers()
 
 def clear_mappers():
     """Remove all mappers from all classes.

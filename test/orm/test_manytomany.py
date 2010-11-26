@@ -90,7 +90,7 @@ class M2MTest(_base.MappedTest):
             'places':relationship(Place, secondary=place_input, backref='transitions')
         })
         assert_raises_message(sa.exc.ArgumentError, "Error creating backref",
-                                 sa.orm.compile_mappers)
+                                 sa.orm.configure_mappers)
 
     @testing.resolve_artifact_names
     def test_circular(self):

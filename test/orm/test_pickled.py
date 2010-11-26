@@ -8,7 +8,7 @@ from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\
-                            compile_mappers
+                            configure_mappers
 from test.orm import _base, _fixtures
 
 

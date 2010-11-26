@@ -2,6 +2,7 @@ from sqlalchemy import *
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from sqlalchemy.test import *
+from sqlalchemy.test.testing import assert_raises_message
 from test.orm import _base
 
 
@@ -11,7 +12,7 @@ class CompileTest(_base.ORMTest):
     def teardown(self):
         clear_mappers()
 
-    def testone(self):
+    def test_with_polymorphic(self):
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,
@@ -69,9 +70,9 @@ class CompileTest(_base.ORMTest):
         # this requires that the compilation of order_mapper's "surrogate
         # mapper" occur after the initial setup of MapperProperty objects on
         # the mapper.
-        class_mapper(Product).compile()
+        configure_mappers()
 
-    def testtwo(self):
+    def test_conflicting_backref_one(self):
         """test that conflicting backrefs raises an exception"""
         metadata = MetaData(testing.db)
 
@@ -115,13 +116,13 @@ class CompileTest(_base.ORMTest):
 
         mapper(OrderProduct, orderproduct)
 
-        try:
-            class_mapper(Product).compile()
-            assert False
-        except sa_exc.ArgumentError, e:
-            assert str(e).index("Error creating backref ") > -1
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Error creating backref",
+            configure_mappers
+        )
 
-    def testthree(self):
+    def test_misc_one(self):
         metadata = MetaData(testing.db)
         node_table = Table("node", metadata,
             Column('node_id', Integer, primary_key=True),
@@ -158,11 +159,12 @@ class CompileTest(_base.ORMTest):
         finally:
             metadata.drop_all()
 
-    def testfour(self):
+    def test_conflicting_backref_two(self):
         meta = MetaData()
 
         a = Table('a', meta, Column('id', Integer, primary_key=True))
-        b = Table('b', meta, Column('id', Integer, primary_key=True), Column('a_id', Integer, ForeignKey('a.id')))
+        b = Table('b', meta, Column('id', Integer, primary_key=True), 
+                                Column('a_id', Integer, ForeignKey('a.id')))
 
         class A(object):pass
         class B(object):pass
@@ -174,10 +176,9 @@ class CompileTest(_base.ORMTest):
             'a':relationship(A, backref='b')
         })
 
-        try:
-            compile_mappers()
-            assert False
-        except sa_exc.ArgumentError, e:
-            assert str(e).index("Error creating backref") > -1
-
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Error creating backref",
+            configure_mappers
+        )
 

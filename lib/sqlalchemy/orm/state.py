@@ -8,10 +8,12 @@ defines a large part of the ORM's interactivity.
 from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
-                                        
+
 from sqlalchemy.orm import exc as orm_exc, attributes, interfaces
 from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
     PASSIVE_NO_FETCH, NEVER_SET, ATTR_WAS_SET, NO_VALUE
+
+mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
 import sys
 
@@ -166,8 +168,8 @@ class InstanceState(object):
                         "Cannot deserialize object of type %r - no mapper() has"
                         " been configured for this class within the current Python process!" %
                         self.class_)
-        elif manager.is_mapped and not manager.mapper.compiled:
-            manager.mapper.compile()
+        elif manager.is_mapped and not manager.mapper.configured:
+            mapperlib.configure_mappers()
             
         self.committed_state = state.get('committed_state', {})
         self.pending = state.get('pending', {})

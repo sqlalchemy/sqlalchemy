@@ -57,7 +57,7 @@ class QueryTest(_fixtures.FixtureTest):
 
         mapper(CompositePk, composite_pk_table)
 
-        compile_mappers()
+        configure_mappers()
 
 class RowTupleTest(QueryTest):
     run_setup_mappers = None
