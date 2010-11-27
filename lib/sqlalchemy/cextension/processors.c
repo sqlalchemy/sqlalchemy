@@ -204,6 +204,14 @@ UnicodeResultProcessor_process(UnicodeResultProcessor *self, PyObject *value)
     return PyUnicode_Decode(str, len, encoding, errors);
 }
 
+static void
+UnicodeResultProcessor_dealloc(UnicodeResultProcessor *self)
+{
+    Py_XDECREF(self->encoding);
+    Py_XDECREF(self->errors);
+    self->ob_type->tp_free((PyObject*)self);
+}
+
 static PyMethodDef UnicodeResultProcessor_methods[] = {
     {"process", (PyCFunction)UnicodeResultProcessor_process, METH_O,
      "The value processor itself."},
@@ -216,7 +224,7 @@ static PyTypeObject UnicodeResultProcessorType = {
     "sqlalchemy.cprocessors.UnicodeResultProcessor",        /* tp_name */
     sizeof(UnicodeResultProcessor),             /* tp_basicsize */
     0,                                          /* tp_itemsize */
-    0,                                          /* tp_dealloc */
+    (destructor)UnicodeResultProcessor_dealloc, /* tp_dealloc */
     0,                                          /* tp_print */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */

@@ -11,7 +11,8 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, \
 from sqlalchemy.test.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
-from sqlalchemy.processors import to_decimal_processor_factory
+from sqlalchemy.processors import to_decimal_processor_factory, \
+    to_unicode_processor_factory
 from sqlalchemy.test.util import gc_collect
 from decimal import Decimal as _python_Decimal
 import gc
@@ -581,3 +582,12 @@ class MemUsageTest(EnsureZeroed):
         def go():
             to_decimal_processor_factory(_python_Decimal, 10)(1.2)
         go()
+
+    @testing.requires.cextensions
+    def test_UnicodeResultProcessor_init(self):
+        @profile_memory
+        def go():
+            to_unicode_processor_factory('utf8')
+        go()
+
+

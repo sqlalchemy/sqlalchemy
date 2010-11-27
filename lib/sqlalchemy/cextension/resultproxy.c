@@ -107,11 +107,11 @@ BaseRowProxy_init(BaseRowProxy *self, PyObject *args, PyObject *kwds)
 static PyObject *
 BaseRowProxy_reduce(PyObject *self)
 {
-	PyObject *method, *state;
-	PyObject *module, *reconstructor, *cls;
+    PyObject *method, *state;
+    PyObject *module, *reconstructor, *cls;
 
-	method = PyObject_GetAttrString(self, "__getstate__");
-	if (method == NULL)
+    method = PyObject_GetAttrString(self, "__getstate__");
+    if (method == NULL)
         return NULL;
 
     state = PyObject_CallObject(method, NULL);
@@ -503,8 +503,8 @@ static PyGetSetDef BaseRowProxy_getseters[] = {
 static PyMethodDef BaseRowProxy_methods[] = {
     {"values", (PyCFunction)BaseRowProxy_values, METH_NOARGS,
      "Return the values represented by this BaseRowProxy as a list."},
-	{"__reduce__",  (PyCFunction)BaseRowProxy_reduce, METH_NOARGS,
-	 "Pickle support method."},
+    {"__reduce__",  (PyCFunction)BaseRowProxy_reduce, METH_NOARGS,
+     "Pickle support method."},
     {NULL}  /* Sentinel */
 };
 
