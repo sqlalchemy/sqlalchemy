@@ -1129,7 +1129,7 @@ class DDLCompiler(engine.Compiled):
             context.setdefault('schema', sch)
             context.setdefault('fullname', preparer.format_table(ddl.target))
         
-        return ddl.statement % context
+        return self.sql_compiler.post_process_text(ddl.statement % context)
 
     def visit_create_table(self, create):
         table = create.element

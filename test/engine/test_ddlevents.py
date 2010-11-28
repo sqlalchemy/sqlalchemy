@@ -2,12 +2,12 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
     DropConstraint
 from sqlalchemy import create_engine
-from sqlalchemy import MetaData, Integer, String, event, exc
+from sqlalchemy import MetaData, Integer, String, event, exc, text
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 import sqlalchemy as tsa
 from sqlalchemy.test import TestBase, testing, engines
-from sqlalchemy.test.testing import AssertsCompiledSQL
+from sqlalchemy.test.testing import AssertsCompiledSQL, eq_
 from nose import SkipTest
 
 class DDLEventTest(TestBase):
@@ -404,6 +404,30 @@ class DDLExecutionTest(TestBase):
                 r = eval(py)
                 assert list(r) == [(1,)], py
 
+    @testing.fails_on('postgresql+pg8000', 'pg8000 requires explicit types')
+    def test_platform_escape(self):
+        """test the escaping of % characters in the DDL construct."""
+        
+        default_from = testing.db.dialect.statement_compiler(
+                            testing.db.dialect, DDL("")).default_from()
+        
+        eq_(
+            testing.db.execute(
+                text("select 'foo%something'" + default_from)
+            ).scalar(),
+            'foo%something'
+        )
+    
+        eq_(
+            testing.db.execute(
+                DDL("select 'foo%%something'" + default_from)
+            ).scalar(),
+            'foo%something'
+        )
+    
+
+        
+        
 class DDLTest(TestBase, AssertsCompiledSQL):
     def mock_engine(self):
         executor = lambda *a, **kw: None
