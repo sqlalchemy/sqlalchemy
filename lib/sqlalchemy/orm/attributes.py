@@ -488,16 +488,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         state.mutable_dict.pop(self.key)
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        if initiator and initiator.parent_token is self.parent_token:
-            return
-
-        if self.dispatch.on_set:
-            old = self.get(state, dict_)
-            value = self.fire_replace_event(state, dict_, 
-                                            value, old, initiator)
-
-        state.modified_event(dict_, self, True, NEVER_SET)
-        dict_[self.key] = value
+        ScalarAttributeImpl.set(self, state, dict_, value, initiator, passive)
         state.mutable_dict[self.key] = value
 
 

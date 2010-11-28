@@ -166,6 +166,7 @@ class CompositeColumnLoader(ColumnLoader):
             compare_function=compare,
             copy_function=copy,
             mutable_scalars=True,
+            active_history=self.parent_property.active_history,
         )
 
     def create_row_processor(self, selectcontext, path, mapper, 

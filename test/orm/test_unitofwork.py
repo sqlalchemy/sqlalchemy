@@ -410,8 +410,8 @@ class MutableTypesTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_expire_attribute_set(self):
-        """test one SELECT emitted when assigning to an expired
-        mutable attribute - this will become 0 in 0.7.
+        """test no SELECT emitted when assigning to an expired
+        mutable attribute.
         
         """
         
@@ -423,7 +423,7 @@ class MutableTypesTest(_base.MappedTest):
         assert 'data' not in f1.__dict__
         def go():
             f1.data = pickleable.Bar(10, 15)
-        self.sql_count_(1, go)
+        self.sql_count_(0, go)
         session.commit()
         
         eq_(f1.data.x, 10)
@@ -448,8 +448,8 @@ class MutableTypesTest(_base.MappedTest):
         
     @testing.resolve_artifact_names
     def test_deferred_attribute_set(self):
-        """test one SELECT emitted when assigning to a deferred
-        mutable attribute - this will become 0 in 0.7.
+        """test no SELECT emitted when assigning to a deferred
+        mutable attribute.
         
         """
         sa.orm.clear_mappers()
@@ -467,7 +467,7 @@ class MutableTypesTest(_base.MappedTest):
         f1 = session.query(Foo).first()
         def go():
             f1.data = pickleable.Bar(10, 15)
-        self.sql_count_(1, go)
+        self.sql_count_(0, go)
         session.commit()
         
         eq_(f1.data.x, 10)
