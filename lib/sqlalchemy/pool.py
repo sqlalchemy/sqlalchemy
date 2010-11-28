@@ -168,7 +168,7 @@ class Pool(log.Identified):
         
         return _ConnectionFairy(self).checkout()
 
-    def create_connection(self):
+    def _create_connection(self):
         """Called by subclasses to create a new ConnectionRecord."""
         
         return _ConnectionRecord(self)
@@ -219,7 +219,7 @@ class Pool(log.Identified):
         self._threadconns.current = weakref.ref(agent)
         return agent.checkout()
 
-    def return_conn(self, record):
+    def _return_conn(self, record):
         """Given a _ConnectionRecord, return it to the :class:`.Pool`.
         
         This method is called when an instrumented DBAPI connection
@@ -228,23 +228,23 @@ class Pool(log.Identified):
         """
         if self._use_threadlocal and hasattr(self._threadconns, "current"):
             del self._threadconns.current
-        self.do_return_conn(record)
+        self._do_return_conn(record)
 
-    def get(self):
+    def _get(self):
         """Return a non-instrumented DBAPI connection from this :class:`.Pool`.
         
         This is called by ConnectionRecord in order to get its DBAPI 
         resource.
         
         """
-        return self.do_get()
+        return self._do_get()
 
-    def do_get(self):
+    def _do_get(self):
         """Implementation for :meth:`get`, supplied by subclasses."""
         
         raise NotImplementedError()
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         """Implementation for :meth:`return_conn`, supplied by subclasses."""
         
         raise NotImplementedError()
@@ -350,7 +350,7 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
         pool.logger.debug("Connection %r being returned to pool", connection)
         if pool.dispatch.on_checkin:
             pool.dispatch.on_checkin(connection, connection_record)
-        pool.return_conn(connection_record)
+        pool._return_conn(connection_record)
 
 _refs = set()
 
@@ -365,7 +365,7 @@ class _ConnectionFairy(object):
         self._pool = pool
         self.__counter = 0
         try:
-            rec = self._connection_record = pool.get()
+            rec = self._connection_record = pool._get()
             conn = self.connection = self._connection_record.get_connection()
             rec.fairy = weakref.ref(
                             self, 
@@ -472,7 +472,7 @@ class _ConnectionFairy(object):
             _refs.remove(self._connection_record)
             self._connection_record.fairy = None
             self._connection_record.connection = None
-            self._pool.do_return_conn(self._connection_record)
+            self._pool._do_return_conn(self._connection_record)
             self._detached_info = \
               self._connection_record.info.copy()
             self._connection_record = None
@@ -572,13 +572,7 @@ class SingletonThreadPool(Pool):
         
         self._all_conns.clear()
             
-    def dispose_local(self):
-        if hasattr(self._conn, 'current'):
-            conn = self._conn.current()
-            self._all_conns.discard(conn)
-            del self._conn.current
-
-    def cleanup(self):
+    def _cleanup(self):
         while len(self._all_conns) > self.size:
             self._all_conns.pop()
 
@@ -586,21 +580,21 @@ class SingletonThreadPool(Pool):
         return "SingletonThreadPool id:%d size: %d" % \
                             (id(self), len(self._all_conns))
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         pass
 
-    def do_get(self):
+    def _do_get(self):
         try:
             c = self._conn.current()
             if c:
                 return c
         except AttributeError:
             pass
-        c = self.create_connection()
+        c = self._create_connection()
         self._conn.current = weakref.ref(c)
         self._all_conns.add(c)
         if len(self._all_conns) > self.size:
-            self.cleanup()
+            self._cleanup()
         return c
 
 class QueuePool(Pool):
@@ -695,7 +689,7 @@ class QueuePool(Pool):
                           use_threadlocal=self._use_threadlocal,
                           _dispatch=self.dispatch)
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         try:
             self._pool.put(conn, False)
         except sqla_queue.Full:
@@ -708,7 +702,7 @@ class QueuePool(Pool):
                 finally:
                     self._overflow_lock.release()
 
-    def do_get(self):
+    def _do_get(self):
         try:
             wait = self._max_overflow > -1 and \
                         self._overflow >= self._max_overflow
@@ -717,7 +711,7 @@ class QueuePool(Pool):
             if self._max_overflow > -1 and \
                         self._overflow >= self._max_overflow:
                 if not wait:
-                    return self.do_get()
+                    return self._do_get()
                 else:
                     raise exc.TimeoutError(
                             "QueuePool limit of size %d overflow %d reached, "
@@ -731,10 +725,10 @@ class QueuePool(Pool):
                         self._overflow >= self._max_overflow:
                 if self._overflow_lock is not None:
                     self._overflow_lock.release()
-                return self.do_get()
+                return self._do_get()
 
             try:
-                con = self.create_connection()
+                con = self._create_connection()
                 self._overflow += 1
             finally:
                 if self._overflow_lock is not None:
@@ -791,14 +785,11 @@ class NullPool(Pool):
     def status(self):
         return "NullPool"
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         conn.close()
 
-    def do_return_invalid(self, conn):
-        pass
-
-    def do_get(self):
-        return self.create_connection()
+    def _do_get(self):
+        return self._create_connection()
 
     def recreate(self):
         self.logger.info("Pool recreating")
@@ -850,16 +841,13 @@ class StaticPool(Pool):
                               logging_name=self._orig_logging_name,
                               _dispatch=self.dispatch)
 
-    def create_connection(self):
+    def _create_connection(self):
         return self._conn
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         pass
 
-    def do_return_invalid(self, conn):
-        pass
-
-    def do_get(self):
+    def _do_get(self):
         return self.connection
 
 class AssertionPool(Pool):
@@ -880,16 +868,12 @@ class AssertionPool(Pool):
     def status(self):
         return "AssertionPool"
 
-    def do_return_conn(self, conn):
+    def _do_return_conn(self, conn):
         if not self._checked_out:
             raise AssertionError("connection is not checked out")
         self._checked_out = False
         assert conn is self._conn
 
-    def do_return_invalid(self, conn):
-        self._conn = None
-        self._checked_out = False
-    
     def dispose(self):
         self._checked_out = False
         if self._conn:
@@ -901,12 +885,12 @@ class AssertionPool(Pool):
                             logging_name=self._orig_logging_name,
                             _dispatch=self.dispatch)
         
-    def do_get(self):
+    def _do_get(self):
         if self._checked_out:
             raise AssertionError("connection is already checked out")
             
         if not self._conn:
-            self._conn = self.create_connection()
+            self._conn = self._create_connection()
         
         self._checked_out = True
         return self._conn
