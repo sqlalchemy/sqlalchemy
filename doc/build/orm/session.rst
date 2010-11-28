@@ -428,7 +428,7 @@ Lets use the canonical example of the User and Address objects::
     
         id = Column(Integer, primary_key=True)
         name = Column(String(50), nullable=False)
-        addresses = relationship("Address", backref="user")
+        addresses = relationship("Address", backref="user", cascade_backrefs=True)
     
     class Address(Base):
         __tablename__ = 'address'
@@ -472,21 +472,17 @@ and made our ``a1`` object pending, as though we had added it.   Now we have
     >>> a1 is existing_a1
     False
 
-Above, our ``a1`` is already pending in the session. The
-subsequent :meth:`~.Session.merge` operation essentially
-does nothing. Cascade can be configured via the ``cascade``
-option on :func:`.relationship`, although in this case it
-would mean removing the ``save-update`` cascade from the
-``User.addresses`` relationship - and usually, that behavior
-is extremely convenient.  The solution here would usually be to not assign
-``a1.user`` to an object already persistent in the target
-session.
+Above, our ``a1`` is already pending in the session. The subsequent
+:meth:`~.Session.merge` operation essentially does nothing. To resolve this
+issue, the ``cascade_backrefs`` flag should be set to its default of
+``False``. Further detail on cascade operation is at
+:ref:`unitofwork_cascades`.
 
-Note that a new :func:`.relationship` option introduced in 0.6.5, 
-``cascade_backrefs=False``, will also prevent the ``Address`` from
-being added to the session via the ``a1.user = u1`` assignment.
 
-Further detail on cascade operation is at :ref:`unitofwork_cascades`.
+.. note:: Up until version 0.7 of SQLAlchemy, the "cascade backrefs" flag
+   defaulted to ``True`` and prior to 0.6.5 there was no way to disable it,
+   without turning off "save-update" cascade entirely.
+
 
 Another example of unexpected state::
 
@@ -884,8 +880,8 @@ objects to allow attachment to only one parent at a time.
 The default value for ``cascade`` on :func:`~sqlalchemy.orm.relationship` is
 ``save-update, merge``.
 
-``save-update`` cascade also takes place on backrefs by default.   This means
-that, given a mapping such as this::
+``save-update`` cascade, by default, does not take place on backrefs (new in 0.7).
+This means that, given a mapping such as this::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, items_table, backref='order')
@@ -893,8 +889,8 @@ that, given a mapping such as this::
 
 If an ``Order`` is already in the session, and is assigned to the ``order``
 attribute of an ``Item``, the backref appends the ``Item`` to the ``orders``
-collection of that ``Order``, resulting in the ``save-update`` cascade taking
-place::
+collection of that ``Order``, however, the ``Item`` will not yet be present
+in the session::
 
     >>> o1 = Order()
     >>> session.add(o1)
@@ -906,22 +902,34 @@ place::
     >>> i1 in o1.orders
     True
     >>> i1 in session
-    True
-    
-This behavior can be disabled as of 0.6.5 using the ``cascade_backrefs`` flag::
+    False
+
+You can of course :func:`~.Session.add` ``i1`` to the session at a later
+point.  SQLAlchemy defaults to this behavior as of 0.7 as it is helpful for
+situations where an object needs to be kept out of a session until it's
+construction is completed, but still needs to be given associations to objects
+which are already persistent in the target session.  It's more intuitive
+that "cascades" into a :class:`.Session` work from left to right only, and also
+allows session membership behavior to be more compatible with relationships that
+don't have backrefs configured.
+
+The save-update cascade can be made bi-directional using ``cascade_backrefs`` flag::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, items_table, backref='order', 
-                                    cascade_backrefs=False)
+                                    cascade_backrefs=True)
     })
 
-So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``orders``
-collection of ``o1``, but will not add ``i1`` to the session.   You can of
-course :func:`~.Session.add` ``i1`` to the session at a later point.   This option
-may be helpful for situations where an object needs to be kept out of a
-session until it's construction is completed, but still needs to be given
-associations to objects which are already persistent in the target session.
+Using the above mapping with the previous usage example,
+the assignment of ``i1.order = o1`` will append ``i1`` to the ``orders``
+collection of ``o1``, and will add ``i1`` to the session.   ``cascade_backrefs``
+is specific to just one direction, so the above configuration still would not
+cascade an ``Order`` into the session if it were associated with an ``Item``
+already in the session, unless ``cascade_backrefs`` were also configured on the
+"order" side of the relationship.
 
+Setting ``cascade_backrefs=True`` on a relationship and its backref makes the 
+operation compatible with the default behavior of SQLAlchemy 0.6 and earlier.
 
 .. _unitofwork_transaction:
 

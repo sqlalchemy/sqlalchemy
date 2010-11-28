@@ -267,17 +267,18 @@ def relationship(argument, secondary=None, **kwargs):
       * ``all`` - shorthand for "save-update,merge, refresh-expire,
         expunge, delete"
     
-    :param cascade_backrefs=True:
+    :param cascade_backrefs=False:
       a boolean value indicating if the ``save-update`` cascade should
-      operate along a backref event.   When set to ``False`` on a
+      operate along a backref event.   When set to ``True`` on a
       one-to-many relationship that has a many-to-one backref, assigning
       a persistent object to the many-to-one attribute on a transient object
-      will not add the transient to the session.  Similarly, when
-      set to ``False`` on a many-to-one relationship that has a one-to-many
+      will add the transient to the session.  Similarly, when
+      set to ``True`` on a many-to-one relationship that has a one-to-many
       backref, appending a persistent object to the one-to-many collection
-      on a transient object will not add the transient to the session.
+      on a transient object will add the transient to the session.
       
-      ``cascade_backrefs`` is new in 0.6.5.
+      ``cascade_backrefs`` is new in 0.6.5.  The default value changes
+      from ``True`` to ``False`` as of the 0.7 series.
       
     :param collection_class:
       a class or callable that returns a new list-holding object. will

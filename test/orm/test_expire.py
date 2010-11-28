@@ -973,6 +973,7 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         
         u1 = User(name='u1')
         a1.user = u1
+        
         sess.flush()
 
         # expire 'addresses'.  backrefs
@@ -983,7 +984,8 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         # in user.addresses
         a2 = Address(email_address='a2')
         a2.user = u1
-
+        sess.add(a2)
+        
         # expire u1.addresses again.  this expires
         # "pending" as well.
         sess.expire(u1, ['addresses'])
@@ -994,6 +996,7 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         # only two addresses pulled from the DB, no "pending"
         assert len(u1.addresses) == 2
         
+        # flushes a2
         sess.flush()
         sess.expire_all()
         assert len(u1.addresses) == 3
