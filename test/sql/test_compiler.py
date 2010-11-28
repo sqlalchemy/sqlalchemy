@@ -2263,6 +2263,18 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 expected,
                 dialect=dialect
             )
+
+    def test_literal_as_text_fromstring(self):
+        self.assert_compile(
+            and_("a", "b"),
+            "a AND b"
+        )
+        
+    def test_literal_as_text_nonstring_raise(self):
+        assert_raises(exc.ArgumentError,
+            and_, ("a",), ("b",)
+        )
+        
         
 class CRUDTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):

@@ -1056,8 +1056,10 @@ def _column_as_key(element):
 def _literal_as_text(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
-    elif not isinstance(element, Visitable):
+    elif isinstance(element, basestring):
         return _TextClause(unicode(element))
+    elif not isinstance(element, Visitable):
+        raise exc.ArgumentError("SQL expression object or string expected.")
     else:
         return element
 
