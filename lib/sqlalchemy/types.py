@@ -533,16 +533,17 @@ class MutableType(object):
     performance impact, described below.
     
     A :class:`MutableType` usually allows a flag called
-    ``mutable=True`` to enable/disable the "mutability" flag,
+    ``mutable=False`` to enable/disable the "mutability" flag,
     represented on this class by :meth:`is_mutable`.  Examples 
     include :class:`PickleType` and 
     :class:`~sqlalchemy.dialects.postgresql.base.ARRAY`.  Setting
-    this flag to ``False`` effectively disables any mutability-
-    specific behavior by the ORM.
+    this flag to ``True`` enables mutability-specific behavior
+    by the ORM.
     
-    :meth:`copy_value` and :meth:`compare_values` represent a copy
-    and compare function for values of this type - implementing
-    subclasses should override these appropriately.
+    The :meth:`copy_value` and :meth:`compare_values` functions
+    represent a copy and compare function for values of this
+    type - implementing subclasses should override these
+    appropriately.
 
     The usage of mutable types has significant performance
     implications when using the ORM. In order to detect changes, the
@@ -561,8 +562,7 @@ class MutableType(object):
     
     Note that for small numbers (< 100 in the Session at a time)
     of objects with "mutable" values, the performance degradation is 
-    negligible.  In most cases it's likely that the convenience allowed 
-    by "mutable" change detection outweighs the performance penalty.
+    negligible.  
     
     It is perfectly fine to represent "mutable" data types with the
     "mutable" flag set to False, which eliminates any performance
@@ -1552,15 +1552,12 @@ class PickleType(MutableType, TypeDecorator):
     the way out, allowing any pickleable Python object to be stored as
     a serialized binary field.
 
-    **Note:** be sure to read the notes for :class:`MutableType` regarding
-    ORM performance implications.
-    
     """
 
     impl = LargeBinary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, 
-                    pickler=None, mutable=True, comparator=None):
+                    pickler=None, mutable=False, comparator=None):
         """
         Construct a PickleType.
 
@@ -1570,15 +1567,18 @@ class PickleType(MutableType, TypeDecorator):
           cPickle is not available.  May be any object with
           pickle-compatible ``dumps` and ``loads`` methods.
 
-        :param mutable: defaults to True; implements
+        :param mutable: defaults to False; implements
           :meth:`AbstractType.is_mutable`.   When ``True``, incoming
-          objects should provide an ``__eq__()`` method which
-          performs the desired deep comparison of members, or the
-          ``comparator`` argument must be present.  
+          objects will be compared against copies of themselves 
+          using the Python "equals" operator, unless the 
+          ``comparator`` argument is present.   See
+          :class:`.MutableType` for details on "mutable" type
+          behavior. (default changed from ``True`` in 
+          0.7.0).   
 
-        :param comparator: optional. a 2-arg callable predicate used
-          to compare values of this type.  Otherwise, 
-          the == operator is used to compare values.
+        :param comparator: a 2-arg callable predicate used
+          to compare values of this type.  If left as ``None``, 
+          the Python "equals" operator is used to compare values.
 
         """
         self.protocol = protocol

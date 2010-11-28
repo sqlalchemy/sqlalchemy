@@ -259,7 +259,7 @@ class MutableTypesTest(_base.MappedTest):
         Table('mutable_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('data', sa.PickleType),
+            Column('data', sa.PickleType(mutable=True)),
             Column('val', sa.Unicode(30)))
 
     @classmethod
@@ -507,7 +507,8 @@ class PickledDictsTest(_base.MappedTest):
         Table('mutable_t', metadata,
             Column('id', Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('data', sa.PickleType(comparator=operator.eq)))
+            Column('data', 
+                sa.PickleType(comparator=operator.eq, mutable=True)))
 
     @classmethod
     def setup_classes(cls):

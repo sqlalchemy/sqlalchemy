@@ -224,15 +224,11 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     The ARRAY type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
     
-    **Note:** be sure to read the notes for 
-    :class:`.MutableType` regarding ORM 
-    performance implications.   The :class:`.ARRAY` type's 
-    mutability can be disabled using the "mutable" flag.
     
     """
     __visit_name__ = 'ARRAY'
     
-    def __init__(self, item_type, mutable=True, as_tuple=False):
+    def __init__(self, item_type, mutable=False, as_tuple=False):
         """Construct an ARRAY.
 
         E.g.::
@@ -247,14 +243,19 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           ``ARRAY(ARRAY(Integer))`` or such. The type mapping figures out on
           the fly
 
-        :param mutable=True: Specify whether lists passed to this
-          class should be considered mutable. If so, generic copy operations
-          (typically used by the ORM) will shallow-copy values.
+        :param mutable=False: Specify whether lists passed to this
+          class should be considered mutable - this enables 
+          "mutable types" mode in the ORM.  Be sure to read the 
+          notes for :class:`.MutableType` regarding ORM 
+          performance implications (default changed from ``True`` in 
+          0.7.0).   
         
-        :param as_tuple=False: Specify whether return results should be converted
-          to tuples from lists.  DBAPIs such as psycopg2 return lists by default.
-          When tuples are returned, the results are hashable.   This flag can only
-          be set to ``True`` when ``mutable`` is set to ``False``. (new in 0.6.5)
+        :param as_tuple=False: Specify whether return results
+          should be converted to tuples from lists. DBAPIs such
+          as psycopg2 return lists by default. When tuples are
+          returned, the results are hashable. This flag can only
+          be set to ``True`` when ``mutable`` is set to
+          ``False``. (new in 0.6.5)
           
         """
         if isinstance(item_type, ARRAY):

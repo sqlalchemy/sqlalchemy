@@ -1608,9 +1608,11 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         class Foo(object):
             pass
 
-        footable = Table('foo', metadata, Column('id', Integer,
-                         primary_key=True), Column('intarr',
-                         postgresql.ARRAY(Integer), nullable=True))
+        footable = Table('foo', metadata, 
+                        Column('id', Integer,primary_key=True), 
+                        Column('intarr', 
+                            postgresql.ARRAY(Integer, mutable=True), 
+                            nullable=True))
         mapper(Foo, footable)
         metadata.create_all()
         sess = create_session()
@@ -1648,7 +1650,8 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         assert_raises_message(
             exc.ArgumentError, 
             "mutable must be set to False if as_tuple is True.",
-            postgresql.ARRAY, Integer, as_tuple=True)
+            postgresql.ARRAY, Integer, mutable=True, 
+                as_tuple=True)
         
         t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True),
