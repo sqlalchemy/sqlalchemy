@@ -606,7 +606,7 @@ class Mapper(object):
                     if self.with_polymorphic is None \
                         or self.with_polymorphic[1].corresponding_column(col) \
                         is None:
-                        util.warn("Could not map polymorphic_on column "
+                        raise sa_exc.InvalidRequestError("Could not map polymorphic_on column "
                                   "'%s' to the mapped table - polymorphic "
                                   "loads will not function properly"
                                   % col.description)
