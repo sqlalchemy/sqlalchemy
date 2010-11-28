@@ -1120,11 +1120,11 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             ]
         )
         
-    def test_union_labels(self):
+    def test_union_literal_expressions_compile(self):
         """test that column expressions translate during 
             the _from_statement() portion of union(), others"""
         
-        s = create_session()
+        s = Session()
         q1 = s.query(User, literal("x"))
         q2 = s.query(User, literal_column("'y'"))
         q3 = q1.union(q2)
@@ -1138,9 +1138,21 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             , use_default_dialect = True
         )
 
+    def test_union_literal_expressions_results(self):
+        s = Session()
+
+        q1 = s.query(User, literal("x"))
+        q2 = s.query(User, literal_column("'y'"))
+        q3 = q1.union(q2)
+
         q4 = s.query(User, literal_column("'x'").label('foo'))
         q5 = s.query(User, literal("y"))
         q6 = q4.union(q5)
+
+        eq_(
+            [x['name'] for x in q6.column_descriptions],
+            ['User', 'foo']
+        )
         
         for q in (q3.order_by(User.id, "anon_1_anon_2"), q6.order_by(User.id, "foo")):
             eq_(q.all(),
@@ -1155,11 +1167,20 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
                     (User(id=10, name=u'chuck'), u'y')
                 ]
             )
-            
+    
+    def test_union_labeled_anonymous_columns(self):
+        s = Session()
+        
         c1, c2 = column('c1'), column('c2')
         q1 = s.query(User, c1.label('foo'), c1.label('bar'))
         q2 = s.query(User, c1.label('foo'), c2.label('bar'))
         q3 = q1.union(q2)
+        
+        eq_(
+            [x['name'] for x in q3.column_descriptions],
+            ['User', 'foo', 'bar']
+        )
+
         self.assert_compile(
             q3,
             "SELECT anon_1.users_id AS anon_1_users_id, "
@@ -1171,6 +1192,28 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             "FROM users) AS anon_1",
             use_default_dialect=True
         )
+    
+    def test_union_mapped_colnames_preserved_across_subquery(self):
+        s = Session()
+        q1 = s.query(User.name)
+        q2 = s.query(User.name)
+        
+        # the label names in the subquery are the typical anonymized ones
+        self.assert_compile(
+            q1.union(q2),
+            "SELECT anon_1.users_name AS anon_1_users_name "
+            "FROM (SELECT users.name AS users_name FROM users "
+            "UNION SELECT users.name AS users_name FROM users) AS anon_1",
+            use_default_dialect=True
+        )
+        
+        # but in the returned named tuples,
+        # due to [ticket:1942], this should be 'name', not 'users_name'
+        eq_(
+            [x['name'] for x in q1.union(q2).column_descriptions],
+            ['name']
+        )
+        
         
     @testing.fails_on('mysql', "mysql doesn't support intersect")
     def test_intersect(self):
@@ -1871,7 +1914,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             , use_default_dialect=True
         )
     
-    def test_multi_tuple_Form(self):
+    def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superceded by the two-element join() form.
         
         Not deprecating this style as of yet.

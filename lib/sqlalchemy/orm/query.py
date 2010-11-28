@@ -2760,6 +2760,7 @@ class _ColumnEntity(_QueryEntity):
         
     def adapt_to_selectable(self, query, sel):
         c = _ColumnEntity(query, sel.corresponding_column(self.column))
+        c._label_name = self._label_name 
         c.entity_zero = self.entity_zero
         c.entities = self.entities
         
