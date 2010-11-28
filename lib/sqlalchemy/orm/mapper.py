@@ -447,11 +447,6 @@ class Mapper(object):
 
         self.tables = sqlutil.find_tables(self.mapped_table)
 
-        if not self.tables:
-            raise sa_exc.InvalidRequestError(
-                    "Could not find any Table objects in mapped table '%s'" 
-                    % self.mapped_table)
-
         self._pks_by_table = {}
         self._cols_by_table = {}
 

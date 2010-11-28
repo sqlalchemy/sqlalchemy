@@ -371,7 +371,7 @@ class ConcreteTest(_base.MappedTest):
 
         self.assert_sql_count(testing.db, go, 1)
 
-
+        
 class PropertyInheritanceTest(_base.MappedTest):
 
     @classmethod
