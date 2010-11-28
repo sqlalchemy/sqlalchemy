@@ -438,7 +438,6 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
         # the _SingleParent extension sets the backref get to "active" !
         # u1 gets loaded and deleted
         u2.address = a1
-        sess.add(u2)
         sess.commit()
         assert sess.query(User).count() == 1
         

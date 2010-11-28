@@ -258,7 +258,6 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
         
         c = session.query(Company).first()
         daboss.company = c
-        session.add(daboss)
         manager_list = [e for e in c.employees if isinstance(e, Manager)]
         session.flush()
         session.expunge_all()

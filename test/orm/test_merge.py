@@ -4,9 +4,8 @@ from sqlalchemy import Integer, PickleType, String
 import operator
 from test.lib import testing
 from sqlalchemy.util import OrderedSet
-from sqlalchemy.orm import mapper, relationship, create_session, \
-    PropComparator, synonym, comparable_property, sessionmaker, \
-    attributes, Session
+from sqlalchemy.orm import mapper, relationship, create_session, PropComparator, \
+                            synonym, comparable_property, sessionmaker, attributes
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
 from test.lib.testing import eq_, ne_
@@ -877,22 +876,13 @@ class MergeTest(_fixtures.FixtureTest):
     def test_cascade_doesnt_blowaway_manytoone(self):
         """a merge test that was fixed by [ticket:1202]"""
         
-        s = Session()
-        
-        mapper(Address, addresses)
+        s = create_session(autoflush=True)
         mapper(User, users, properties={
-            'addresses':relationship(Address,backref='user')
-        })
+            'addresses':relationship(mapper(Address, addresses),backref='user')})
 
-        u1 = s.merge(User(id=1, name='ed'))
-        a1 = Address(user=u1, email_address='x')
-        s.add(a1)
-        
+        a1 = Address(user=s.merge(User(id=1, name='ed')), email_address='x')
         before_id = id(a1.user)
-        
-        # autoflushes a1, u1
-        u2 = s.merge(User(id=1, name='jack'))
-        a2 = Address(user=u2, email_address='x')
+        a2 = Address(user=s.merge(User(id=1, name='jack')), email_address='x')
         after_id = id(a1.user)
         other_id = id(a2.user)
         eq_(before_id, other_id)
