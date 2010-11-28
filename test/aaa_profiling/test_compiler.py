@@ -27,7 +27,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
             for c in t.c:
                 c.type._type_affinity
         from sqlalchemy import types
-        for t in types.type_map.values():
+        for t in types._type_map.values():
             t._type_affinity
             
     @profiling.function_call_count(69, {'2.4': 44, 

@@ -18,7 +18,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'String', 'Integer', 'SmallInteger', 'BigInteger', 'Numeric',
             'Float', 'DateTime', 'Date', 'Time', 'LargeBinary', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable',
-            'UnicodeText','PickleType', 'Interval', 'type_map', 'Enum' ]
+            'UnicodeText','PickleType', 'Interval', 'Enum' ]
 
 import inspect
 import datetime as dt
@@ -117,7 +117,7 @@ class AbstractType(Visitable):
             return self.__class__
     
     def _coerce_compared_value(self, op, value):
-        _coerced_type = type_map.get(type(value), NULLTYPE)
+        _coerced_type = _type_map.get(type(value), NULLTYPE)
         if _coerced_type is NULLTYPE or _coerced_type._type_affinity \
             is self._type_affinity:
             return self
@@ -1930,10 +1930,8 @@ STRINGTYPE = String()
 
 # using VARCHAR/NCHAR so that we dont get the genericized "String"
 # type which usually resolves to TEXT/CLOB
-# NOTE: this dict is not meant to be public and will be underscored
-# in 0.7, see [ticket:1870]. 
 
-type_map = {
+_type_map = {
     str: String(),
     # Py3K
     #bytes : LargeBinary(),

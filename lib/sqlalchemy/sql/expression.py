@@ -2400,7 +2400,7 @@ class _BindParamClause(ColumnElement):
                     _compared_to_type._coerce_compared_value(
                         _compared_to_operator, value)
             else:
-                self.type = sqltypes.type_map.get(type(value),
+                self.type = sqltypes._type_map.get(type(value),
                         sqltypes.NULLTYPE)
         elif isinstance(type_, type):
             self.type = type_()
