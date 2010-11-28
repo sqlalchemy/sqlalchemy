@@ -772,7 +772,7 @@ class DistinctPKTest(_base.MappedTest):
         mapper(Employee, employee_table, inherits=person_mapper,
                         properties={'pid':person_table.c.id, 
                                     'eid':employee_table.c.id})
-        self._do_test(True)
+        self._do_test(False)
 
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)

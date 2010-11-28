@@ -138,15 +138,31 @@ class GetTest(QueryTest):
         u2 = s.query(User).get(7)
         assert u is not u2
 
-    def test_get_composite_pk(self):
-        s = create_session()
+    def test_get_composite_pk_no_result(self):
+        s = Session()
         assert s.query(CompositePk).get((100,100)) is None
+        
+    def test_get_composite_pk_result(self):
+        s = Session()
         one_two = s.query(CompositePk).get((1,2))
         assert one_two.i == 1
         assert one_two.j == 2
         assert one_two.k == 3
+    
+    def test_get_too_few_params(self):
+        s = Session()
         q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, 7)        
+        assert_raises(sa_exc.InvalidRequestError, q.get, 7)
+
+    def test_get_too_few_params_tuple(self):
+        s = Session()
+        q = s.query(CompositePk)
+        assert_raises(sa_exc.InvalidRequestError, q.get, (7,))
+
+    def test_get_too_many_params(self):
+        s = Session()
+        q = s.query(CompositePk)
+        assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
     
     def test_get_null_pk(self):
         """test that a mapping which can have None in a 
@@ -214,8 +230,9 @@ class GetTest(QueryTest):
 
     @testing.requires.unicode_connections
     def test_unicode(self):
-        """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail
-        on postgresql, mysql and oracle unless it is converted to an encoded string"""
+        """test that Query.get properly sets up the type for the bind
+        parameter. using unicode would normally fail on postgresql, mysql and
+        oracle unless it is converted to an encoded string"""
 
         metadata = MetaData(engines.utf8_engine())
         table = Table('unicode_data', metadata,

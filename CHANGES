@@ -43,6 +43,10 @@ CHANGES
     a placeholder flag for forwards compatibility,
     as it will be needed in 0.7 for composites.
     [ticket:1976]
+
+  - Query.get() will raise if the number of params
+    in a composite key is too large, as well as too 
+    small. [ticket:1977]
     
 - sql
   - Fixed operator precedence rules for multiple
