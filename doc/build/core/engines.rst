@@ -209,18 +209,19 @@ To use a SQLite ``:memory:`` database, specify an empty URL::
 
     sqlite_memory_db = create_engine('sqlite://')
 
-The :class:`~sqlalchemy.engine.base.Engine` will ask the connection pool for a
+The :class:`.Engine` will ask the connection pool for a
 connection when the ``connect()`` or ``execute()`` methods are called. The
-default connection pool, :class:`~sqlalchemy.pool.QueuePool`, as well as the
-default connection pool used with SQLite,
-:class:`~sqlalchemy.pool.SingletonThreadPool`, will open connections to the
+default connection pool, :class:`~.QueuePool`, will open connections to the
 database on an as-needed basis. As concurrent statements are executed,
-:class:`~sqlalchemy.pool.QueuePool` will grow its pool of connections to a
+:class:`.QueuePool` will grow its pool of connections to a
 default size of five, and will allow a default "overflow" of ten. Since the
-:class:`~sqlalchemy.engine.base.Engine` is essentially "home base" for the
+:class:`.Engine` is essentially "home base" for the
 connection pool, it follows that you should keep a single
-:class:`~sqlalchemy.engine.base.Engine` per database established within an
+:class:`.Engine` per database established within an
 application, rather than creating a new one for each connection.
+
+.. note:: :class:`.QueuePool` is not used by default for SQLite engines.  See
+ :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
 
 .. autoclass:: sqlalchemy.engine.url.URL
     :members:

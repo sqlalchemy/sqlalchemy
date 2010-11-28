@@ -529,15 +529,15 @@ class SingletonThreadPool(Pool):
     Maintains one connection per each thread, never moving a connection to a
     thread other than the one which it was created in.
 
-    This is used for SQLite, which both does not handle multithreading by
-    default, and also requires a singleton connection if a :memory: database
-    is being used.
-
     Options are the same as those of :class:`Pool`, as well as:
 
     :param pool_size: The number of threads in which to maintain connections 
         at once.  Defaults to five.
-      
+
+    :class:`.SingletonThreadPool` is used by the SQLite dialect
+    automatically when a memory-based database is used.  
+    See :ref:`sqlite_toplevel`.
+
     """
 
     def __init__(self, creator, pool_size=5, **kw):
@@ -604,7 +604,12 @@ class SingletonThreadPool(Pool):
         return c
 
 class QueuePool(Pool):
-    """A Pool that imposes a limit on the number of open connections."""
+    """A :class:`Pool` that imposes a limit on the number of open connections.
+    
+    :class:`.QueuePool` is the default pooling implementation used for 
+    all :class:`.Engine` objects, unless the SQLite dialect is in use.
+    
+    """
 
     def __init__(self, creator, pool_size=5, max_overflow=10, timeout=30,
                  **kw):
@@ -776,6 +781,10 @@ class NullPool(Pool):
     Reconnect-related functions such as ``recycle`` and connection
     invalidation are not supported by this Pool implementation, since
     no connections are held persistently.
+    
+    :class:`.NullPool` is used by the SQlite dilalect automatically
+    when a file-based database is used (as of SQLAlchemy 0.7).   
+    See :ref:`sqlite_toplevel`.
 
     """
 

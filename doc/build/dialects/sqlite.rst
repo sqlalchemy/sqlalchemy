@@ -1,3 +1,5 @@
+.. _sqlite_toplevel:
+
 SQLite
 ======
 

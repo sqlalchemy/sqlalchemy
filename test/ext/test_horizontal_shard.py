@@ -16,7 +16,7 @@ class ShardTest(TestBase):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
         try:
-            db1 = create_engine('sqlite:///shard1.db')
+            db1 = create_engine('sqlite:///shard1.db', pool_threadlocal=True)
         except ImportError:
             raise SkipTest('Requires sqlite')
         db2 = create_engine('sqlite:///shard2.db')
@@ -29,7 +29,8 @@ class ShardTest(TestBase):
 
         def id_generator(ctx):
             # in reality, might want to use a separate transaction for this.
-            c = db1.connect()
+            
+            c = db1.contextual_connect()
             nextid = c.execute(ids.select(for_update=True)).scalar()
             c.execute(ids.update(values={ids.c.nextid : ids.c.nextid + 1}))
             return nextid

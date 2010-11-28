@@ -15,7 +15,7 @@ as the base class for their own corresponding classes.
 import re, random
 from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy import exc, types as sqltypes, util
+from sqlalchemy import exc, types as sqltypes, util, pool
 
 AUTOCOMMIT_REGEXP = re.compile(
             r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
@@ -143,6 +143,10 @@ class DefaultDialect(base.Dialect):
     @property
     def dialect_description(self):
         return self.name + "+" + self.driver
+    
+    @classmethod
+    def get_pool_class(cls, url):
+        return getattr(cls, 'poolclass', pool.QueuePool)
         
     def initialize(self, connection):
         try:

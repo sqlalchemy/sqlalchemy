@@ -37,8 +37,6 @@ class EngineStrategy(object):
 class DefaultEngineStrategy(EngineStrategy):
     """Base class for built-in stratgies."""
 
-    pool_threadlocal = False
-    
     def create(self, name_or_url, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -84,8 +82,9 @@ class DefaultEngineStrategy(EngineStrategy):
                     
             creator = kwargs.pop('creator', connect)
 
-            poolclass = (kwargs.pop('poolclass', None) or
-                         getattr(dialect_cls, 'poolclass', poollib.QueuePool))
+            poolclass = kwargs.pop('poolclass', None)
+            if poolclass is None:
+                poolclass = dialect_cls.get_pool_class(u)
             pool_args = {}
 
             # consume pool arguments from kwargs, translating a few of
@@ -100,7 +99,6 @@ class DefaultEngineStrategy(EngineStrategy):
                 tk = translate.get(k, k)
                 if tk in kwargs:
                     pool_args[k] = kwargs.pop(tk)
-            pool_args.setdefault('use_threadlocal', self.pool_threadlocal)
             pool = poolclass(creator, **pool_args)
         else:
             if isinstance(pool, poollib._DBProxy):
@@ -163,7 +161,6 @@ class ThreadLocalEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring an Engine with thredlocal behavior."""
     
     name = 'threadlocal'
-    pool_threadlocal = True
     engine_cls = threadlocal.TLEngine
 
 ThreadLocalEngineStrategy()

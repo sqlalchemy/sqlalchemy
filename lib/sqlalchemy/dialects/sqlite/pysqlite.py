@@ -87,7 +87,7 @@ processing. Execution of "func.current_date()" will return a string.
 "func.current_timestamp()" is registered as returning a DATETIME type in
 SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
 
-Threading Behavior
+Pooling Behavior
 ------------------
 
 Pysqlite connections do not support being moved between threads, unless
@@ -100,26 +100,22 @@ application **cannot** share data from a ``:memory:`` database across threads
 unless access to the connection is limited to a single worker thread which communicates
 through a queueing mechanism to concurrent threads.
 
-To provide a default which accomodates SQLite's default threading capabilities
-somewhat reasonably, the SQLite dialect will specify that the :class:`~sqlalchemy.pool.SingletonThreadPool`
-be used by default.  This pool maintains a single SQLite connection per thread
-that is held open up to a count of five concurrent threads.  When more than five threads
-are used, a cleanup mechanism will dispose of excess unused connections.   
+To provide for these two behaviors, the pysqlite dialect will select a :class:`.Pool`
+implementation suitable:
 
-Two optional pool implementations that may be appropriate for particular SQLite usage scenarios:
-
- * the :class:`sqlalchemy.pool.StaticPool` might be appropriate for a multithreaded
-   application using an in-memory database, assuming the threading issues inherent in 
-   pysqlite are somehow accomodated for.  This pool holds persistently onto a single connection
-   which is never closed, and is returned for all requests.
+* When a ``:memory:`` SQLite database is specified, the dialect will use :class:`.SingletonThreadPool`.
+  This pool maintains a single connection per thread, so that all access to the engine within
+  the current thread use the same ``:memory:`` database.
+* When a file-based database is specified, the dialect will use :class:`.NullPool` as the source 
+  of connections.  This pool closes and discards connections which are returned to the pool immediately.
+  SQLite file-based connections have extermely low overhead, so pooling is not necessary.
+  The scheme also prevents a connection from being used again in a different thread
+  and works best with SQLite's coarse-grained file locking.
    
- * the :class:`sqlalchemy.pool.NullPool` might be appropriate for an application that
-   makes use of a file-based sqlite database.  This pool disables any actual "pooling"
-   behavior, and simply opens and closes real connections corresonding to the :func:`connect()`
-   and :func:`close()` methods.  SQLite can "connect" to a particular file with very high 
-   efficiency, so this option may actually perform better without the extra overhead
-   of :class:`SingletonThreadPool`.  NullPool will of course render a ``:memory:`` connection
-   useless since the database would be lost as soon as the connection is "returned" to the pool.
+  .. note:: The default selection of :class:`.NullPool` for SQLite file-based databases 
+              is new in SQLAlchemy 0.7. Previous versions
+              select :class:`.SingletonThreadPool` by
+              default for all SQLite databases.
 
 Unicode
 -------
@@ -171,7 +167,6 @@ class _SQLite_pysqliteDate(DATE):
 
 class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = 'qmark'
-    poolclass = pool.SingletonThreadPool
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,
@@ -208,6 +203,13 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             except ImportError:
                 raise e
         return sqlite
+
+    @classmethod
+    def get_pool_class(cls, url):
+        if url.database and url.database != ':memory:':
+            return pool.NullPool
+        else:
+            return pool.SingletonThreadPool
 
     def _get_server_version_info(self, connection):
         return self.dbapi.sqlite_version_info

@@ -8,9 +8,12 @@ from sqlalchemy.sql import operators, visitors
 
 import datetime
 
-# step 2. databases
+# step 2. databases.
+# db1 is used for id generation. The "pool_threadlocal" 
+# causes the id_generator() to use the same connection as that
+# of an ongoing transaction within db1.
 echo = True
-db1 = create_engine('sqlite://', echo=echo)
+db1 = create_engine('sqlite://', echo=echo, pool_threadlocal=True)
 db2 = create_engine('sqlite://', echo=echo)
 db3 = create_engine('sqlite://', echo=echo)
 db4 = create_engine('sqlite://', echo=echo)

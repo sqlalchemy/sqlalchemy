@@ -35,10 +35,12 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
   engine = create_engine('postgresql://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
 
-In the case of SQLite, a :class:`SingletonThreadPool` is provided instead,
-to provide compatibility with SQLite's restricted threading model, as well
-as to provide a reasonable default behavior to SQLite "memory" databases,
-which maintain their entire dataset within the scope of a single connection.
+In the case of SQLite, the :class:`.SingletonThreadPool` or
+:class:`.NullPool` are selected by the dialect to provide
+greater compatibility with SQLite's threading and locking
+model, as well as to provide a reasonable default behavior
+to SQLite "memory" databases, which maintain their entire
+dataset within the scope of a single connection.
 
 All SQLAlchemy pool implementations have in common
 that none of them "pre create" connections - all implementations wait

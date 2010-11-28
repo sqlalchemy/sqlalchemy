@@ -4,7 +4,7 @@ from sqlalchemy.test.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql, schema
+from sqlalchemy import exc, sql, schema, pool
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
 from sqlalchemy.test import *
@@ -318,7 +318,18 @@ class DialectTest(TestBase, AssertsExecutionResults):
             except exc.DBAPIError:
                 pass
             raise
+        
+    def test_pool_class(self):
+        e = create_engine('sqlite+pysqlite://')
+        assert e.pool.__class__ is pool.SingletonThreadPool
 
+        e = create_engine('sqlite+pysqlite:///:memory:')
+        assert e.pool.__class__ is pool.SingletonThreadPool
+        
+        e = create_engine('sqlite+pysqlite:///foo.db')
+        assert e.pool.__class__ is pool.NullPool
+        
+        
     def test_dont_reflect_autoindex(self):
         meta = MetaData(testing.db)
         t = Table('foo', meta, Column('bar', String, primary_key=True))
