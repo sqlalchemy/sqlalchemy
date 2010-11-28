@@ -2,9 +2,6 @@
 
 Derived from mailing list-reported problems and trac tickets.
 
-These are generally very old 0.1-era tests and at some point should 
-be cleaned up and modernized.
-
 """
 import datetime
 
@@ -583,6 +580,12 @@ class EagerTest7(_base.MappedTest):
               Column('company_id', Integer, ForeignKey("companies.company_id")),
               Column('date', sa.DateTime))
 
+        Table('items', metadata,
+              Column('item_id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('invoice_id', Integer, ForeignKey('invoices.invoice_id')),
+              Column('code', String(20)),
+              Column('qty', Integer))
+
     @classmethod
     def setup_classes(cls):
         class Company(_base.ComparableEntity):
@@ -594,11 +597,14 @@ class EagerTest7(_base.MappedTest):
         class Phone(_base.ComparableEntity):
             pass
 
+        class Item(_base.ComparableEntity):
+            pass
+
         class Invoice(_base.ComparableEntity):
             pass
 
     @testing.resolve_artifact_names
-    def test_load_m2o_attached_to_o2m(self):
+    def testone(self):
         """
         Tests eager load of a many-to-one attached to a one-to-many.  this
         testcase illustrated the bug, which is that when the single Company is
@@ -632,12 +638,66 @@ class EagerTest7(_base.MappedTest):
 
         session.expunge_all()
         i = session.query(Invoice).get(invoice_id)
-        
-        def go():
-            eq_(c, i.company)
-            eq_(c.addresses, i.company.addresses)
-        self.assert_sql_count(testing.db, go, 0)
 
+        eq_(c, i.company)
+
+    @testing.resolve_artifact_names
+    def testtwo(self):
+        """The original testcase that includes various complicating factors"""
+
+        mapper(Phone, phone_numbers)
+
+        mapper(Address, addresses, properties={
+            'phones': relationship(Phone, lazy='joined', backref='address',
+                               order_by=phone_numbers.c.phone_id)})
+
+        mapper(Company, companies, properties={
+            'addresses': relationship(Address, lazy='joined', backref='company',
+                                  order_by=addresses.c.address_id)})
+
+        mapper(Item, items)
+
+        mapper(Invoice, invoices, properties={
+            'items': relationship(Item, lazy='joined', backref='invoice',
+                              order_by=items.c.item_id),
+            'company': relationship(Company, lazy='joined', backref='invoices')})
+
+        c1 = Company(company_name='company 1', addresses=[
+            Address(address='a1 address',
+                    phones=[Phone(type='home', number='1111'),
+                            Phone(type='work', number='22222')]),
+            Address(address='a2 address',
+                    phones=[Phone(type='home', number='3333'),
+                            Phone(type='work', number='44444')])
+            ])
+
+        session = create_session()
+        session.add(c1)
+        session.flush()
+
+        company_id = c1.company_id
+
+        session.expunge_all()
+
+        a = session.query(Company).get(company_id)
+
+        # set up an invoice
+        i1 = Invoice(date=datetime.datetime.now(), company=a)
+
+        item1 = Item(code='aaaa', qty=1, invoice=i1)
+        item2 = Item(code='bbbb', qty=2, invoice=i1)
+        item3 = Item(code='cccc', qty=3, invoice=i1)
+
+        session.flush()
+        invoice_id = i1.invoice_id
+
+        session.expunge_all()
+        c = session.query(Company).get(company_id)
+
+        session.expunge_all()
+        i = session.query(Invoice).get(invoice_id)
+
+        eq_(c, i.company)
 
 
 class EagerTest8(_base.MappedTest):

@@ -3068,7 +3068,7 @@ class RequirementsTest(_base.MappedTest):
         h6 = H6()
         h6.h1a = h1
         h6.h1b = x = H1()
-        s.add(x)
+        assert x in s
 
         h6.h1b.h2s.append(H2())
 

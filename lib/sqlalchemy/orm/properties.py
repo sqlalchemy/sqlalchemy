@@ -452,7 +452,7 @@ class RelationshipProperty(StrategizedProperty):
         single_parent=False, innerjoin=False,
         doc=None,
         active_history=False,
-        cascade_backrefs=False,
+        cascade_backrefs=True,
         load_on_pending=False,
         strategy_class=None, _local_remote_pairs=None, 
         query_class=None):

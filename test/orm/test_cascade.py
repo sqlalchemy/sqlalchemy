@@ -1472,15 +1472,13 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         mapper(Address, addresses)
         mapper(User, users, properties={
-                'addresses':relationship(Address, 
-                            backref=backref('user', cascade_backrefs=True), 
-                            )
+                'addresses':relationship(Address, backref='user', 
+                            cascade_backrefs=False)
         })
         
         mapper(Dingaling, dingalings, properties={
-                'address' : relationship(Address, 
-                            backref=backref('dingalings', cascade_backrefs=True), 
-                            )
+                'address' : relationship(Address, backref='dingalings', 
+                            cascade_backrefs=False)
         })
 
     @testing.resolve_artifact_names
