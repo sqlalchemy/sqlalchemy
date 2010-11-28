@@ -514,7 +514,7 @@ class MemUsageTest(EnsureZeroed):
         table1 = Table("mytable", metadata,
             Column('col1', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
-            Column('col2', PickleType(comparator=operator.eq))
+            Column('col2', PickleType(comparator=operator.eq, mutable=True))
             )
         
         class Foo(object):
