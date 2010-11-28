@@ -1568,7 +1568,27 @@ class SessionExtensionTest(_fixtures.FixtureTest):
         conn = sess.connection()
         assert log == ['after_begin']
 
+    @testing.resolve_artifact_names
+    def test_multiple_extensions(self):
+        log = []
+        class MyExt1(sa.orm.session.SessionExtension):
+            def before_commit(self, session):
+                log.append('before_commit_one')
+        
 
+        class MyExt2(sa.orm.session.SessionExtension):
+            def before_commit(self, session):
+                log.append('before_commit_two')
+
+        mapper(User, users)
+        sess = create_session(extension = [MyExt1(), MyExt2()])
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        assert log == [
+            'before_commit_one',
+            'before_commit_two',
+            ]
         
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'

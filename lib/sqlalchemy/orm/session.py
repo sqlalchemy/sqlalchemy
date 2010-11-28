@@ -515,7 +515,7 @@ class Session(object):
         
         if extension:
             for ext in util.to_list(extension):
-                SessionExtension._adapt_listener(self, extension)
+                SessionExtension._adapt_listener(self, ext)
         
         if binds is not None:
             for mapperortable, bind in binds.iteritems():
