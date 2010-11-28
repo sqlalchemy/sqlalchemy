@@ -42,25 +42,10 @@ or as the class itself::
     
         @hybrid.method
         def intersects(self, other):
-            return (self.start < other.end) & (self.end > other.start)
+            return self.contains(other.start) | self.contains(other.end)
 
-    mapper(Interval1, interval_table1)
 
-    session = sessionmaker(engine)()
-
-    session.add_all(
-        [Interval1(1,4), Interval1(3,15), Interval1(11,16)]
-    )
-    intervals = 
-
-    for interval in intervals:
-        session.add(interval)
-        session.add(Interval2(interval.start, interval.length))
-
-    session.commit()
-
-    ### TODO ADD EXAMPLES HERE AND STUFF THIS ISN'T FINISHED ###
-    
+        
 """
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, interfaces

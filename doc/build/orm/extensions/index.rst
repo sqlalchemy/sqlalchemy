@@ -14,5 +14,6 @@ functionality to the core behavior.
     declarative
     orderinglist
     horizontal_shard
+    hybrid
     sqlsoup
 
