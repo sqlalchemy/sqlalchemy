@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import sys
 from operator import and_
 
@@ -6,14 +6,14 @@ import sqlalchemy.orm.collections as collections
 from sqlalchemy.orm.collections import collection
 
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey, text
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relationship, \
     attributes, instrumentation
 from test.orm import _base
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 
 class Canary(sa.orm.interfaces.AttributeExtension):
     def __init__(self):

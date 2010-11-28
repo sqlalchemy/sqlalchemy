@@ -1,6 +1,6 @@
 """Test event registration and listening."""
 
-from sqlalchemy.test.testing import TestBase, eq_, assert_raises
+from test.lib.testing import TestBase, eq_, assert_raises
 from sqlalchemy import event, exc, util
 
 class TestEvents(TestBase):

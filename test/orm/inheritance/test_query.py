@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm import interfaces
@@ -6,10 +6,10 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine import default
 
-from sqlalchemy.test import AssertsCompiledSQL, testing
+from test.lib import AssertsCompiledSQL, testing
 from test.orm import _base, _fixtures
-from sqlalchemy.test.testing import eq_
-from sqlalchemy.test.schema import Table, Column
+from test.lib.testing import eq_
+from test.lib.schema import Table, Column
 
 class Company(_fixtures.Base):
     pass

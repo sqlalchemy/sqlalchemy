@@ -1,9 +1,9 @@
 import threading, time
 from sqlalchemy import pool, interfaces, create_engine, select, event
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase, testing
-from sqlalchemy.test.util import gc_collect, lazy_gc
-from sqlalchemy.test.testing import eq_
+from test.lib import TestBase, testing
+from test.lib.util import gc_collect, lazy_gc
+from test.lib.testing import eq_
 
 mcid = 1
 class MockDBAPI(object):

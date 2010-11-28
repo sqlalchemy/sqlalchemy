@@ -1,11 +1,11 @@
-from sqlalchemy.test.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises
 import time
 import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase, testing, engines
-from sqlalchemy.test.util import gc_collect
+from test.lib import TestBase, testing, engines
+from test.lib.util import gc_collect
 from sqlalchemy import exc
 
 class MockDisconnect(Exception):

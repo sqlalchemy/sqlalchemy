@@ -1,10 +1,10 @@
 
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 
 
 class AssociationTest(_base.MappedTest):

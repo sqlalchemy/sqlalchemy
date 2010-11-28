@@ -1,13 +1,13 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 from sqlalchemy.schema import DDL, CheckConstraint, AddConstraint, \
     DropConstraint
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData, Integer, String, event, exc, text
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase, testing, engines
-from sqlalchemy.test.testing import AssertsCompiledSQL, eq_
+from test.lib import TestBase, testing, engines
+from test.lib.testing import AssertsCompiledSQL, eq_
 from nose import SkipTest
 
 class DDLEventTest(TestBase):

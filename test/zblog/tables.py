@@ -1,7 +1,7 @@
 """application table metadata objects are described here."""
 
 from sqlalchemy import *
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 
 metadata = MetaData()
 

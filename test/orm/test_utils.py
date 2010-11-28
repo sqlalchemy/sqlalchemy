@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 from sqlalchemy.orm import interfaces, util
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -8,10 +8,10 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper, create_session
 
 
-from sqlalchemy.test import TestBase, testing
+from test.lib import TestBase, testing
 
 from test.orm import _fixtures
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 
 
 class AliasedClassTest(TestBase):

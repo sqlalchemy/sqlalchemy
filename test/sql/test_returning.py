@@ -1,7 +1,7 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy import *
-from sqlalchemy.test import *
-from sqlalchemy.test.schema import Table, Column
+from test.lib import *
+from test.lib.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
 class ReturningTest(TestBase, AssertsExecutionResults):

@@ -7,7 +7,7 @@ import datetime
 import sys
 import time
 from sqlalchemy import *
-from sqlalchemy.test import *
+from test.lib import *
 ITERATIONS = 1
 dbapi_session = engines.ReplayableSession()
 metadata = None

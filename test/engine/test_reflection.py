@@ -1,12 +1,12 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import StringIO, unicodedata
 from sqlalchemy import types as sql_types
 from sqlalchemy import schema
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 import sqlalchemy as sa
-from sqlalchemy.test import TestBase, ComparesTables, \
+from test.lib import TestBase, ComparesTables, \
                             testing, engines, AssertsCompiledSQL
 
 create_inspector = Inspector.from_engine

@@ -1,6 +1,6 @@
 from sqlalchemy import *
-from sqlalchemy.test.testing import eq_, TestBase
-from sqlalchemy.test import engines
+from test.lib.testing import eq_, TestBase
+from test.lib import engines
 
 # TODO: we should probably build mock bases for
 # these to share with test_reconnect, test_parseconnect

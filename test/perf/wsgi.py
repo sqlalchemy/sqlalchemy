@@ -4,7 +4,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import thread
-from sqlalchemy.test import *
+from test.lib import *
 
 port = 8000
 

@@ -1,11 +1,11 @@
 from sqlalchemy import *
 from sqlalchemy.sql import table, column, ClauseElement
 from sqlalchemy.sql.expression import  _clone, _from_objects
-from sqlalchemy.test import *
+from test.lib import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 
 class TraversalTest(TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify

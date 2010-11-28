@@ -1,8 +1,8 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from sqlalchemy.test.compat import gc_collect
-from sqlalchemy.test import TestBase, AssertsExecutionResults, profiling, testing
+from test.lib.compat import gc_collect
+from test.lib import TestBase, AssertsExecutionResults, profiling, testing
 from test.orm import _fixtures
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.

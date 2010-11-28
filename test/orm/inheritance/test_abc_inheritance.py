@@ -2,8 +2,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
 
-from sqlalchemy.test import testing
-from sqlalchemy.test.schema import Table, Column
+from test.lib import testing
+from test.lib.schema import Table, Column
 from test.orm import _base
 
 

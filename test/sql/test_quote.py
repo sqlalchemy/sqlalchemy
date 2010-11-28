@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import sql, schema
 from sqlalchemy.sql import compiler
-from sqlalchemy.test import *
+from test.lib import *
 
 class QuoteTest(TestBase, AssertsCompiledSQL):
     @classmethod

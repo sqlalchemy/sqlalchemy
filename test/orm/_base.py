@@ -3,11 +3,11 @@ import sys
 import types
 import sqlalchemy as sa
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.test import config, testing
-from sqlalchemy.test.testing import resolve_artifact_names, adict
-from sqlalchemy.test.engines import drop_all_tables
+from test.lib import config, testing
+from test.lib.testing import resolve_artifact_names, adict
+from test.lib.engines import drop_all_tables
 from sqlalchemy.util import function_named
-from sqlalchemy.test.entities import BasicEntity, ComparableEntity
+from test.lib.entities import BasicEntity, ComparableEntity
 
 Entity = BasicEntity
 

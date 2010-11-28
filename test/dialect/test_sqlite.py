@@ -1,13 +1,13 @@
 """SQLite-specific tests."""
 
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, schema, pool
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
-from sqlalchemy.test import *
+from test.lib import *
 
 
 class TestTypes(TestBase, AssertsExecutionResults):

@@ -2,7 +2,7 @@
 
 
 from sqlalchemy import exc as sa_exceptions
-from sqlalchemy.test import TestBase
+from test.lib import TestBase
 
 # Py3K 
 #StandardError = BaseException 

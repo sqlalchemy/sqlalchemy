@@ -3,7 +3,7 @@ import testenv; testenv.simple_setup()
 import random, string
 
 from sqlalchemy.orm import attributes
-from sqlalchemy.test.util import gc_collect
+from test.lib.util import gc_collect
 
 # with this test, run top.  make sure the Python process doenst grow in size arbitrarily.
 

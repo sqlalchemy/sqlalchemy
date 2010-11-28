@@ -2,7 +2,7 @@
 import thread, time
 from sqlalchemy import *
 import sqlalchemy.pool as pool
-from sqlalchemy.test import testing
+from test.lib import testing
 
 db = create_engine(testing.db.url, pool_timeout=30, echo_pool=True)
 metadata = MetaData(db)

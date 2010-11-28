@@ -2,7 +2,7 @@ import time
 #import sqlalchemy.orm.attributes as attributes
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test import *
+from test.lib import *
 
 """
 

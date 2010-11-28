@@ -1,8 +1,8 @@
 import time, resource
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test.util import gc_collect
-from sqlalchemy.test import profiling
+from test.lib.util import gc_collect
+from test.lib import profiling
 
 db = create_engine('sqlite://')
 metadata = MetaData(db)

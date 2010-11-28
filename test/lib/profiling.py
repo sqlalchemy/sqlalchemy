@@ -6,8 +6,7 @@ in a more fine-grained way than nose's profiling plugin.
 """
 
 import os, sys
-from sqlalchemy_nose import config
-from sqlalchemy.test.util import function_named, gc_collect
+from test.lib.util import function_named, gc_collect
 from nose import SkipTest
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'

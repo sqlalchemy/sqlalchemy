@@ -1,5 +1,5 @@
 from sqlalchemy import *
-from sqlalchemy.test import *
+from test.lib import *
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 

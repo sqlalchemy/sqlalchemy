@@ -1,5 +1,5 @@
 # -*- encoding: utf-8
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import datetime
 import os
 import re
@@ -11,8 +11,8 @@ from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
 from sqlalchemy.engine import url
-from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, emits_warning_on, \
+from test.lib import *
+from test.lib.testing import eq_, emits_warning_on, \
     assert_raises_message
 
 class CompileTest(TestBase, AssertsCompiledSQL):

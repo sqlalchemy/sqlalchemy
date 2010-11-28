@@ -5,7 +5,7 @@ from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import table, column
-from sqlalchemy.test import *
+from test.lib import *
 
 class UserDefinedTest(TestBase, AssertsCompiledSQL):
 

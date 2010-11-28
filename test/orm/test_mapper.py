@@ -1,10 +1,10 @@
 """General mapper operations with an emphasis on selecting/loading."""
 
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from test.lib.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
-from sqlalchemy.test import testing, pickleable
+from test.lib import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import mapper, relationship, backref, \
     create_session, class_mapper, configure_mappers, reconstructor, \
@@ -13,10 +13,10 @@ from sqlalchemy.orm import defer, deferred, synonym, attributes, \
     column_property, composite, relationship, dynamic_loader, \
     comparable_property, AttributeExtension
 from sqlalchemy.orm.instrumentation import ClassManager
-from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
+from test.lib.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
-from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 from sqlalchemy import event
+from test.lib.assertsql import AllOf, CompiledSQL
 
 class MapperTest(_fixtures.FixtureTest):
 

@@ -1,12 +1,12 @@
 """MaxDB-specific tests."""
 
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import StringIO, sys
 from sqlalchemy import *
 from sqlalchemy import exc, sql
 from decimal import Decimal
 from sqlalchemy.databases import maxdb
-from sqlalchemy.test import *
+from test.lib import *
 
 
 # TODO

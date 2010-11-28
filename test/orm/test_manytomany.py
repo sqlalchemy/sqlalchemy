@@ -1,10 +1,10 @@
-from sqlalchemy.test.testing import assert_raises, \
+from test.lib.testing import assert_raises, \
     assert_raises_message, eq_
 import sqlalchemy as sa
-from sqlalchemy.test import testing
+from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.schema import Column
+from test.lib.schema import Table
+from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     exc as orm_exc, sessionmaker
 from test.orm import _base

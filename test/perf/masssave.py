@@ -2,7 +2,7 @@ import gc
 import types
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test import *
+from test.lib import *
 
 
 NUM = 2500

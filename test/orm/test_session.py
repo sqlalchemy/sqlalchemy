@@ -1,18 +1,18 @@
-from sqlalchemy.test.testing import eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
-from sqlalchemy.test.util import gc_collect
+from test.lib.util import gc_collect
 import inspect
 import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
     make_transient, Session
 from sqlalchemy.orm.attributes import instance_state
 import sqlalchemy as sa
-from sqlalchemy.test import engines, testing, config
+from test.lib import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
     exc as orm_exc, object_session
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
 from sqlalchemy import event

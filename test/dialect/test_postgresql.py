@@ -1,6 +1,6 @@
 # coding: utf-8
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
-from sqlalchemy.test import  engines
+from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib import  engines
 import datetime
 import decimal
 from sqlalchemy import *
@@ -8,10 +8,10 @@ from sqlalchemy.orm import *
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
-from sqlalchemy.test import *
-from sqlalchemy.test.util import round_decimal
+from test.lib import *
+from test.lib.util import round_decimal
 from sqlalchemy.sql import table, column
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from test.engine._base import TablesTest
 import logging
 

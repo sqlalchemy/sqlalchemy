@@ -3,10 +3,10 @@ from sqlalchemy.orm import attributes, instrumentation
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, ne_, assert_raises
+from test.lib import *
+from test.lib.testing import eq_, ne_, assert_raises
 from test.orm import _base
-from sqlalchemy.test.util import gc_collect, all_partial_orderings
+from test.lib.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import cmp, jython
 from sqlalchemy import event, topological
 

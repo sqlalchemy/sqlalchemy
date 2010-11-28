@@ -123,14 +123,14 @@ def _engine_pool(options, file_config):
 post_configure['engine_pool'] = _engine_pool
 
 def _create_testing_engine(options, file_config):
-    from sqlalchemy.test import engines, testing
+    from test.lib import engines, testing
     global db
     db = engines.testing_engine(db_url, db_opts)
     testing.db = db
 post_configure['create_engine'] = _create_testing_engine
 
 def _prep_testing_database(options, file_config):
-    from sqlalchemy.test import engines
+    from test.lib import engines
     from sqlalchemy import schema
 
     # also create alt schemas etc. here?
@@ -152,7 +152,7 @@ def _prep_testing_database(options, file_config):
 post_configure['prep_db'] = _prep_testing_database
 
 def _set_table_options(options, file_config):
-    from sqlalchemy.test import schema
+    from test.lib import schema
 
     table_options = schema.table_options
     for spec in options.tableopts:
@@ -167,7 +167,7 @@ def _reverse_topological(options, file_config):
     if options.reversetop:
         from sqlalchemy.orm import unitofwork, session, mapper, dependency
         from sqlalchemy import topological
-        from sqlalchemy.test.util import RandomSet
+        from test.lib.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = dependency.set = RandomSet
 post_configure['topological'] = _reverse_topological
 

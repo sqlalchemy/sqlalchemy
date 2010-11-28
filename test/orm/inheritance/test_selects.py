@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from sqlalchemy.test import testing
+from test.lib import testing
 from test.orm._fixtures import Base
 from test.orm._base import MappedTest
 

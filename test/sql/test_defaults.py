@@ -1,13 +1,13 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import datetime
 from sqlalchemy import Sequence, Column, func
 from sqlalchemy.schema import CreateSequence, DropSequence
 from sqlalchemy.sql import select, text
 import sqlalchemy as sa
-from sqlalchemy.test import testing, engines
+from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc
-from sqlalchemy.test.schema import Table
-from sqlalchemy.test.testing import eq_
+from test.lib.schema import Table
+from test.lib.testing import eq_
 from test.sql import _base
 
 

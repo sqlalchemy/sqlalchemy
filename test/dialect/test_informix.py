@@ -1,6 +1,6 @@
 from sqlalchemy import *
 from sqlalchemy.databases import informix
-from sqlalchemy.test import *
+from test.lib import *
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):

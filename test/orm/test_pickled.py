@@ -1,10 +1,10 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 import pickle
 import sqlalchemy as sa
-from sqlalchemy.test import testing
-from sqlalchemy.test.testing import assert_raises_message
+from test.lib import testing
+from test.lib.testing import assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, exc, MetaData
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\

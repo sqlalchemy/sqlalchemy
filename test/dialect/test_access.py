@@ -1,7 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy import sql
 from sqlalchemy.databases import access
-from sqlalchemy.test import *
+from test.lib import *
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):

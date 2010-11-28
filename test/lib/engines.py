@@ -1,6 +1,6 @@
 import sys, types, weakref
 from collections import deque
-from sqlalchemy_nose import config
+from test.bootstrap import config
 from sqlalchemy.util import function_named, callable
 from sqlalchemy import event
 import re
@@ -129,7 +129,7 @@ def testing_engine(url=None, options=None):
     """Produce an engine configured by --options with optional overrides."""
 
     from sqlalchemy import create_engine
-    from sqlalchemy.test.assertsql import asserter
+    from test.lib.assertsql import asserter
 
     url = url or config.db_url
     options = options or config.db_opts

@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises
 import copy
 import pickle
 
@@ -7,8 +7,8 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.ext.associationproxy import *
 from sqlalchemy.ext.associationproxy import _AssociationList
-from sqlalchemy.test import *
-from sqlalchemy.test.util import gc_collect
+from test.lib import *
+from test.lib.util import gc_collect
 from sqlalchemy.sql import not_
 from test.orm import _base
 

@@ -1,17 +1,17 @@
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 from sqlalchemy.orm import mapper, relationship, create_session, \
     clear_mappers, sessionmaker, class_mapper
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.util import jython
 import operator
-from sqlalchemy.test import testing, engines
+from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
     PickleType, create_engine, Unicode
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 import sqlalchemy as sa
 from sqlalchemy.sql import column
-from sqlalchemy.test.util import gc_collect
+from test.lib.util import gc_collect
 import gc
 import weakref
 from test.orm import _base

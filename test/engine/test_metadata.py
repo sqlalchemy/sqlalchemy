@@ -1,17 +1,17 @@
-from sqlalchemy.test.testing import assert_raises
-from sqlalchemy.test.testing import assert_raises_message
-from sqlalchemy.test.testing import emits_warning
+from test.lib.testing import assert_raises
+from test.lib.testing import assert_raises_message
+from test.lib.testing import emits_warning
 
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
     ForeignKeyConstraint, ColumnDefault, Index
-from sqlalchemy.test.schema import Table, Column
+from test.lib.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
-from sqlalchemy.test import TestBase, ComparesTables, \
+from test.lib import TestBase, ComparesTables, \
     AssertsCompiledSQL, testing, engines
-from sqlalchemy.test.testing import eq_
+from test.lib.testing import eq_
 
 class MetaDataTest(TestBase, ComparesTables):
     def test_metadata_connect(self):

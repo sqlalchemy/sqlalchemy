@@ -4,8 +4,8 @@ from sqlalchemy import sql
 from sqlalchemy.orm import *
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
-from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_
+from test.lib import *
+from test.lib.testing import eq_
 from nose import SkipTest
 
 # TODO: ShardTest can be turned into a base for further subclasses

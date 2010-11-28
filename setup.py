@@ -56,7 +56,7 @@ elif BUILD_CEXTENSIONS:
 
 def find_packages(dir_):
     packages = []
-    for pkg in ['sqlalchemy', 'sqlalchemy_nose']:
+    for pkg in ['sqlalchemy']:
         for _dir, subdirectories, files in os.walk(os.path.join(dir_, pkg)):
             if '__init__.py' in files:
                 lib, fragment = _dir.split(os.sep, 1)
@@ -82,17 +82,8 @@ setup(name = "SQLAlchemy",
       package_dir = {'':'lib'},
       license = "MIT License",
 
-      # TODO: this is nice, but Python 3 support ?
-      # any way to make it not install for build/install ?
-      #setup_requires=["setuptools_hg"],
-
       tests_require = ['nose >= 0.11'],
-      test_suite = "nose.collector",
-      entry_points = {
-          'nose.plugins.0.10': [
-              'sqlalchemy = sqlalchemy_nose.noseplugin:NoseSQLAlchemy',
-              ]
-          },
+      test_suite = "sqla_nose",
       
       long_description = """\
 SQLAlchemy is:

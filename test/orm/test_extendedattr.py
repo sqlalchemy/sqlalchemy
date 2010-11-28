@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import pickle
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, instrumentation
@@ -7,7 +7,7 @@ from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribut
 from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import InstrumentationManager
-from sqlalchemy.test import *
+from test.lib import *
 from test.orm import _base
 
 class MyTypesManager(InstrumentationManager):

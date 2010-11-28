@@ -2,7 +2,7 @@ import testenv; testenv.simple_setup()
 import sys, time
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test import profiling
+from test.lib import profiling
 
 db = create_engine('sqlite://')
 metadata = MetaData(db)
