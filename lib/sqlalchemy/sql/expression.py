@@ -50,7 +50,7 @@ __all__ = [
     'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'type_coerce',
     'union', 'union_all', 'update', ]
 
-PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
+PARSE_AUTOCOMMIT = util.symbol('PARSE_AUTOCOMMIT')
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.

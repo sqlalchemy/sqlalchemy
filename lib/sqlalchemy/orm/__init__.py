@@ -1017,7 +1017,6 @@ def clear_mappers():
     finally:
         mapperlib._COMPILE_MUTEX.release()
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an joined eager load.
@@ -1065,7 +1064,6 @@ def joinedload(*keys, **kw):
     else:
         return strategies.EagerLazyOption(keys, lazy='joined')
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def joinedload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an joined eager load.
@@ -1159,7 +1157,6 @@ def subqueryload_all(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy="subquery", chained=True)
     
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
     name into a lazy load.
@@ -1205,7 +1202,6 @@ def contains_alias(alias):
     """
     return AliasOption(alias)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def contains_eager(*keys, **kwargs):
     """Return a ``MapperOption`` that will indicate to the query that
     the given attribute should be eagerly loaded from columns currently
@@ -1249,7 +1245,6 @@ def contains_eager(*keys, **kwargs):
             propagate_to_loaders=False), \
         strategies.LoadEagerFromAliasOption(keys, alias=alias)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a deferred load.
@@ -1259,7 +1254,6 @@ def defer(*keys):
     """
     return strategies.DeferredOption(keys, defer=True)
 
-@sa_util.accepts_a_list_as_starargs(list_deprecation='deprecated')
 def undefer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the
     given name into a non-deferred (regular column) load.

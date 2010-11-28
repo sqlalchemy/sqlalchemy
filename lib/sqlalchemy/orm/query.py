@@ -954,7 +954,6 @@ class Query(object):
         return self.filter(sql.and_(*clauses))
 
     @_generative(_no_statement_condition, _no_limit_offset)
-    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def order_by(self, *criterion):
         """apply one or more ORDER BY criterion to the query and return 
         the newly resulting ``Query``
@@ -987,7 +986,6 @@ class Query(object):
             self._order_by = self._order_by + criterion
 
     @_generative(_no_statement_condition, _no_limit_offset)
-    @util.accepts_a_list_as_starargs(list_deprecation='deprecated')
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return 
         the newly resulting ``Query``"""
