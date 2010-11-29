@@ -740,13 +740,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" \
                 % orderby).label("mssql_rn")
                                    ).order_by(None).alias()
-
+            
+            mssql_rn = sql.column('mssql_rn')
             limitselect = sql.select([c for c in select.c if
                                         c.key!='mssql_rn'])
-            limitselect.append_whereclause("mssql_rn>%s" % self.process(sql.literal(_offset)))
+            limitselect.append_whereclause(mssql_rn> _offset)
             if _limit is not None:
-                limitselect.append_whereclause("mssql_rn<=%s" % 
-                                            (self.process(sql.literal(_limit + _offset))))
+                limitselect.append_whereclause(mssql_rn<=(_limit + _offset))
             return self.process(limitselect, iswrapper=True, **kwargs)
         else:
             return compiler.SQLCompiler.visit_select(self, select, **kwargs)
