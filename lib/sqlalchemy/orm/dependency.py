@@ -727,9 +727,9 @@ class ManyToOneDP(DependencyProcessor):
             child is not None and \
             not uowcommit.session._contains_state(child):
             util.warn(
-                "Child %s not in session, %s "
+                "Object of type %s not in session, %s "
                 "operation along '%s' won't proceed" % 
-                (mapperutil.state_str(child), operation, self.prop))
+                (mapperutil.state_class_str(child), operation, self.prop))
             return
             
         if clearkeys or child is None:
@@ -1097,9 +1097,9 @@ class ManyToManyDP(DependencyProcessor):
         if child is not None and not uowcommit.session._contains_state(child):
             if not child.deleted:
                 util.warn(
-                    "Child %s not in session, %s "
+                    "Object of type %s not in session, %s "
                     "operation along '%s' won't proceed" % 
-                    (mapperutil.state_str(child), operation, self.prop))
+                    (mapperutil.state_class_str(child), operation, self.prop))
             return False
             
         self._verify_canload(child)

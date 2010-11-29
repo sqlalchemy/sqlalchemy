@@ -94,7 +94,12 @@ class NoseSQLAlchemy(Plugin):
         
     def describeTest(self, test):
         return ""
-        
+    
+    def wantFunction(self, fn):
+        if fn.__module__.startswith('test.lib') or \
+            fn.__module__.startswith('test.bootstrap'):
+            return False
+            
     def wantClass(self, cls):
         """Return true if you want the main test selector to collect
         tests from this class, false if you don't, and None if you don't

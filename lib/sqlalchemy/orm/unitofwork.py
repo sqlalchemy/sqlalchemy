@@ -180,9 +180,9 @@ class UOWTransaction(object):
                             operation=None, prop=None):
         if not self.session._contains_state(state):
             if not state.deleted and operation is not None:
-                util.warn("Object %s not in session, %s operation "
+                util.warn("Object of type %s not in session, %s operation "
                             "along '%s' will not proceed" % 
-                            (mapperutil.state_str(state), operation, prop))
+                            (mapperutil.state_class_str(state), operation, prop))
             return False
 
         if state not in self.states:

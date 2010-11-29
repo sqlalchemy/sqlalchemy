@@ -684,6 +684,17 @@ def warn_exception(func, *args, **kwargs):
 
 
 def warn(msg, stacklevel=3):
+    """Issue a warning.
+    
+    If msg is a string, :class:`.exc.SAWarning` is used as 
+    the category.
+    
+    .. note:: This function is swapped out when the test suite
+       runs, with a compatible version that uses 
+       warnings.warn_explicit, so that the warnings registry can
+       be controlled.
+       
+    """
     if isinstance(msg, basestring):
         warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:

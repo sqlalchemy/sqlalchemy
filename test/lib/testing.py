@@ -13,7 +13,8 @@ from test.lib import assertsql, util as testutil
 from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 
-from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool, orm
+from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, \
+    pool, orm
 from sqlalchemy.engine import default
 from nose import SkipTest
 
@@ -333,7 +334,6 @@ def emits_warning(*messages):
     strings; these will be matched to the root of the warning description by
     warnings.filterwarnings().
     """
-
     # TODO: it would be nice to assert that a named warning was
     # emitted. should work with some monkeypatching of warnings,
     # and may work on non-CPython if they keep to the spirit of
@@ -427,15 +427,25 @@ def uses_deprecated(*messages):
         return function_named(safe, fn.__name__)
     return decorate
 
+def testing_warn(msg, stacklevel=3):
+    """Replaces sqlalchemy.util.warn during tests."""
+    
+    filename = "test.lib.testing"
+    lineno = 1
+    if isinstance(msg, basestring):
+        warnings.warn_explicit(msg, sa_exc.SAWarning, filename, lineno)
+    else:
+        warnings.warn_explicit(msg, filename, lineno)
+
 def resetwarnings():
     """Reset warning behavior to testing defaults."""
-
+    
+    util.warn = util.langhelpers.warn = testing_warn
+    
     warnings.filterwarnings('ignore',
                             category=sa_exc.SAPendingDeprecationWarning) 
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
-
-#    warnings.simplefilter('error')
 
 
 def global_cleanup_assertions():
