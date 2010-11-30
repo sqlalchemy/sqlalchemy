@@ -82,7 +82,11 @@ CHANGES
     and return values as Python UUID() objects rather than
     strings.  Currently, the UUID type is only known to 
     work with psycopg2.  [ticket:1956]
-        
+
+  - Fixed bug whereby KeyError would occur with non-ENUM 
+    supported PG versions after a pool dispose+recreate
+    would occur, [ticket:1989]
+    
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 
     has_table() property works again.  Regression from

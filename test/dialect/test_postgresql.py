@@ -411,6 +411,24 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             metadata.drop_all()
             assert not testing.db.dialect.has_type(testing.db,
                     'fourfivesixtype')
+    
+    def test_no_support(self):
+        def server_version_info(self):
+            return (8, 2)
+            
+        e = engines.testing_engine()
+        dialect = e.dialect
+        dialect._get_server_version_info = server_version_info
+        
+        assert dialect.supports_native_enum
+        e.connect()
+        assert not dialect.supports_native_enum
+        
+        # initialize is called again on new pool
+        e.dispose()
+        e.connect()
+        assert not dialect.supports_native_enum
+        
 
     def test_reflection(self):
         metadata = MetaData(testing.db)
