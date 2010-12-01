@@ -1293,24 +1293,15 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             testing.db.execute('drop table speedy_users')
 
-    @testing.emits_warning()
+    @testing.provide_metadata
     def test_index_reflection(self):
         """ Reflecting partial & expression-based indexes should warn
         """
 
-        import warnings
-
-        def capture_warnings(*args, **kw):
-            capture_warnings._orig_showwarning(*args, **kw)
-            capture_warnings.warnings.append(args)
-
-        capture_warnings._orig_showwarning = warnings.warn
-        capture_warnings.warnings = []
-        m1 = MetaData(testing.db)
-        t1 = Table('party', m1, Column('id', String(10),
+        t1 = Table('party', metadata, Column('id', String(10),
                    nullable=False), Column('name', String(20),
                    index=True), Column('aname', String(20)))
-        m1.create_all()
+        metadata.create_all()
         testing.db.execute("""
           create index idx1 on party ((id || name))
         """)
@@ -1321,17 +1312,10 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             create index idx3 on party using btree
                 (lower(name::text), lower(aname::text))
         """)
-        try:
+
+        def go():
             m2 = MetaData(testing.db)
-            warnings.warn = capture_warnings
             t2 = Table('party', m2, autoload=True)
-            wrn = capture_warnings.warnings
-            assert str(wrn[0][0]) \
-                == 'Skipped unsupported reflection of '\
-                'expression-based index idx1'
-            assert str(wrn[1][0]) \
-                == 'Predicate of partial index idx2 ignored during '\
-                'reflection'
             assert len(t2.indexes) == 2
 
             # Make sure indexes are in the order we expect them in
@@ -1344,9 +1328,17 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             assert r2.unique == False
             assert [t2.c.id] == r1.columns
             assert [t2.c.name] == r2.columns
-        finally:
-            warnings.warn = capture_warnings._orig_showwarning
-            m1.drop_all()
+
+        testing.assert_warnings(go,
+            [
+                'Skipped unsupported reflection of '
+                'expression-based index idx1',
+                'Predicate of partial index idx2 ignored during '
+                'reflection',
+                'Skipped unsupported reflection of '
+                'expression-based index idx3'
+            ])
+        
 
     @testing.fails_on('postgresql+pypostgresql',
                       'pypostgresql bombs on multiple calls')
