@@ -224,8 +224,8 @@ class UserDefinedExtensionTest(_base.ORMTest):
 
             instrumentation.register_class(Post)
             instrumentation.register_class(Blog)
-            attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-            attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), trackparent=True, useobject=True)
+            attributes.register_attribute(Post, 'blog', uselist=False, backref='posts', trackparent=True, useobject=True)
+            attributes.register_attribute(Blog, 'posts', uselist=True, backref='blog', trackparent=True, useobject=True)
             b = Blog()
             (p1, p2, p3) = (Post(), Post(), Post())
             b.posts.append(p1)

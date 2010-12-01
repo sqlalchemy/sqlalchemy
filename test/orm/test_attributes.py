@@ -348,7 +348,7 @@ class AttributesTest(_base.ORMTest):
             return [bar1, bar2, bar3]
 
         attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lambda o:func1, useobject=True, extension=[ReceiveEvents()])
-        attributes.register_attribute(Bar, 'foos', uselist=True, useobject=True, extension=[attributes.GenericBackrefExtension('bars')])
+        attributes.register_attribute(Bar, 'foos', uselist=True, useobject=True, backref="bars")
 
         x = Foo()
         assert_raises(AssertionError, Bar(id=4).foos.append, x)
@@ -413,10 +413,10 @@ class AttributesTest(_base.ORMTest):
 
         # set up instrumented attributes with backrefs
         attributes.register_attribute(Post, 'blog', uselist=False,
-                                        extension=attributes.GenericBackrefExtension('posts'),
+                                        backref='posts',
                                         trackparent=True, useobject=True)
         attributes.register_attribute(Blog, 'posts', uselist=True,
-                                        extension=attributes.GenericBackrefExtension('blog'),
+                                        backref='blog',
                                         trackparent=True, useobject=True)
 
         # create objects as if they'd been freshly loaded from the database (without history)
@@ -701,11 +701,9 @@ class BackrefTest(_base.ORMTest):
         instrumentation.register_class(Student)
         instrumentation.register_class(Course)
         attributes.register_attribute(Student, 'courses', uselist=True,
-                extension=attributes.GenericBackrefExtension('students'
-                ), useobject=True)
+                backref="students", useobject=True)
         attributes.register_attribute(Course, 'students', uselist=True,
-                extension=attributes.GenericBackrefExtension('courses'
-                ), useobject=True)
+                backref="courses", useobject=True)
 
         s = Student()
         c = Course()
@@ -729,10 +727,10 @@ class BackrefTest(_base.ORMTest):
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
         attributes.register_attribute(Post, 'blog', uselist=False,
-                extension=attributes.GenericBackrefExtension('posts'),
+                backref='posts',
                 trackparent=True, useobject=True)
         attributes.register_attribute(Blog, 'posts', uselist=True,
-                extension=attributes.GenericBackrefExtension('blog'),
+                backref='blog',
                 trackparent=True, useobject=True)
         b = Blog()
         (p1, p2, p3) = (Post(), Post(), Post())
@@ -762,12 +760,14 @@ class BackrefTest(_base.ORMTest):
         class Jack(object):pass
         instrumentation.register_class(Port)
         instrumentation.register_class(Jack)
-        attributes.register_attribute(Port, 'jack', uselist=False,
-                extension=attributes.GenericBackrefExtension('port'),
-                useobject=True)
+
+        attributes.register_attribute(Port, 'jack', uselist=False, 
+                                            useobject=True, backref="port")
+        
         attributes.register_attribute(Jack, 'port', uselist=False,
-                extension=attributes.GenericBackrefExtension('jack'),
-                useobject=True)
+                                            useobject=True, backref="jack")
+        
+                
         p = Port()
         j = Jack()
         p.jack = j
@@ -798,16 +798,16 @@ class BackrefTest(_base.ORMTest):
         instrumentation.register_class(Child)
         instrumentation.register_class(SubChild)
         attributes.register_attribute(Parent, 'child', uselist=False,
-                extension=attributes.GenericBackrefExtension('parent'),
+                backref="parent",
                 parent_token = p_token,
                 useobject=True)
         attributes.register_attribute(Child, 'parent', uselist=False,
-                extension=attributes.GenericBackrefExtension('child'),
+                backref="child",
                 parent_token = c_token,
                 useobject=True)
         attributes.register_attribute(SubChild, 'parent',
                 uselist=False,
-                extension=attributes.GenericBackrefExtension('child'),
+                backref="child",
                 parent_token = c_token,
                 useobject=True)
         
@@ -833,15 +833,15 @@ class BackrefTest(_base.ORMTest):
         instrumentation.register_class(SubParent)
         instrumentation.register_class(Child)
         attributes.register_attribute(Parent, 'children', uselist=True,
-                extension=attributes.GenericBackrefExtension('parent'),
+                backref='parent',
                 parent_token = p_token,
                 useobject=True)
         attributes.register_attribute(SubParent, 'children', uselist=True,
-                extension=attributes.GenericBackrefExtension('parent'),
+                backref='parent',
                 parent_token = p_token,
                 useobject=True)
         attributes.register_attribute(Child, 'parent', uselist=False,
-                extension=attributes.GenericBackrefExtension('children'),
+                backref='children',
                 parent_token = c_token,
                 useobject=True)
         
@@ -899,8 +899,8 @@ class PendingBackrefTest(_base.ORMTest):
 
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
-        attributes.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'), trackparent=True, useobject=True)
-        attributes.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'), callable_=lazy_posts, trackparent=True, useobject=True)
+        attributes.register_attribute(Post, 'blog', uselist=False, backref='posts', trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True, backref='blog', callable_=lazy_posts, trackparent=True, useobject=True)
 
     def test_lazy_add(self):
         global lazy_load
@@ -1355,8 +1355,8 @@ class HistoryTest(_base.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, useobject=True)
-        attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
+        attributes.register_attribute(Foo, 'bars', uselist=True, backref='foo', trackparent=True, useobject=True)
+        attributes.register_attribute(Bar, 'foo', uselist=False, backref='bars', trackparent=True, useobject=True)
 
         f1 = Foo()
         b1 = Bar()
@@ -1388,8 +1388,8 @@ class HistoryTest(_base.ORMTest):
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'bars', uselist=True, extension=attributes.GenericBackrefExtension('foo'), trackparent=True, callable_=lazyload, useobject=True)
-        attributes.register_attribute(Bar, 'foo', uselist=False, extension=attributes.GenericBackrefExtension('bars'), trackparent=True, useobject=True)
+        attributes.register_attribute(Foo, 'bars', uselist=True, backref='foo', trackparent=True, callable_=lazyload, useobject=True)
+        attributes.register_attribute(Bar, 'foo', uselist=False, backref='bars', trackparent=True, useobject=True)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
         lazy_load = [bar1, bar2, bar3]

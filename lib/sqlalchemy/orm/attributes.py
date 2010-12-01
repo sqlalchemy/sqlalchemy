@@ -791,21 +791,10 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return getattr(user_data, '_sa_adapter')
 
-class GenericBackrefExtension(interfaces.AttributeExtension):
-    """An extension which synchronizes a two-way relationship.
+def backref_listeners(attribute, key, uselist):
+    """Apply listeners to synchronize a two-way relationship."""
 
-    A typical two-way relationship is a parent object containing a list of
-    child objects, where each child object references the parent.  The other
-    are two objects which contain scalar references to each other.
-
-    """
-    
-    active_history = False
-    
-    def __init__(self, key):
-        self.key = key
-
-    def set(self, state, child, oldchild, initiator):
+    def set_(state, child, oldchild, initiator):
         if oldchild is child:
             return child
 
@@ -814,7 +803,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild),\
                                     instance_dict(oldchild)
-            impl = old_state.get_impl(self.key)
+            impl = old_state.get_impl(key)
             try:
                 impl.remove(old_state, 
                             old_dict, 
@@ -826,7 +815,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.get_impl(self.key).append(
+            child_state.get_impl(key).append(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
@@ -834,10 +823,10 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
                                             passive=PASSIVE_NO_FETCH)
         return child
 
-    def append(self, state, child, initiator):
+    def append(state, child, initiator):
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
-        child_state.get_impl(self.key).append(
+        child_state.get_impl(key).append(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
@@ -845,18 +834,24 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
                                             passive=PASSIVE_NO_FETCH)
         return child
 
-    def remove(self, state, child, initiator):
+    def remove(state, child, initiator):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.get_impl(self.key).remove(
+            child_state.get_impl(key).remove(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
                                             initiator,
                                             passive=PASSIVE_NO_FETCH)
-
-
+    
+    if uselist:
+        event.listen(append, "on_append", attribute, retval=False, raw=True)
+    else:
+        event.listen(set_, "on_set", attribute, retval=False, raw=True)
+    # TODO: need coverage in test/orm/ of remove event
+    event.listen(remove, "on_remove", attribute, retval=False, raw=True)
+        
 class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occured on an instrumented
@@ -1010,14 +1005,15 @@ def register_attribute(class_, key, **kw):
     comparator = kw.pop('comparator', None)
     parententity = kw.pop('parententity', None)
     doc = kw.pop('doc', None)
-    register_descriptor(class_, key, 
+    desc = register_descriptor(class_, key, 
                             comparator, parententity, doc=doc)
     register_attribute_impl(class_, key, **kw)
+    return desc
     
 def register_attribute_impl(class_, key,         
         uselist=False, callable_=None, 
         useobject=False, mutable_scalars=False, 
-        impl_class=None, **kw):
+        impl_class=None, backref=None, **kw):
     
     manager = manager_of_class(class_)
     if uselist:
@@ -1044,6 +1040,9 @@ def register_attribute_impl(class_, key,
         impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 
     manager[key].impl = impl
+    
+    if backref:
+        backref_listeners(manager[key], backref, uselist)
 
     manager.post_configure_attribute(key)
 
@@ -1058,6 +1057,7 @@ def register_descriptor(class_, key, comparator=None,
     descriptor.__doc__ = doc
         
     manager.instrument_attribute(key, descriptor)
+    return descriptor
 
 def unregister_attribute(class_, key):
     manager_of_class(class_).uninstrument_attribute(key)

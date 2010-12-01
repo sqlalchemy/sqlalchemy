@@ -1347,10 +1347,6 @@ class RelationshipProperty(StrategizedProperty):
                 )
             mapper._configure_property(backref_key, relationship)
         if self.back_populates:
-            self.extension = list(util.to_list(self.extension,
-                                  default=[]))
-            self.extension.append(
-                    attributes.GenericBackrefExtension(self.back_populates))
             self._add_reverse_property(self.back_populates)
         
     def _post_init(self):

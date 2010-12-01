@@ -47,7 +47,6 @@ def _register_attribute(strategy, mapper, useobject,
     
     if useobject:
         attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
-
     
     for m in mapper.self_and_descendants:
         if prop is m._props.get(prop.key):
@@ -60,7 +59,7 @@ def _register_attribute(strategy, mapper, useobject,
                 uselist=uselist, 
                 copy_function=copy_function, 
                 compare_function=compare_function, 
-                useobject=useobject, 
+                useobject=useobject,
                 extension=attribute_ext, 
                 trackparent=useobject, 
                 typecallable=typecallable,
@@ -398,6 +397,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 useobject=True,
                 callable_=self._class_level_loader,
                 uselist = self.parent_property.uselist,
+                backref = self.parent_property.back_populates,
                 typecallable = self.parent_property.collection_class,
                 active_history = \
                     self.parent_property.active_history or \
