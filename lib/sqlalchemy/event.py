@@ -5,7 +5,7 @@ from sqlalchemy import util, exc
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')
 
-def listen(fn, identifier, target, *args, **kw):
+def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
     
     """
@@ -13,12 +13,12 @@ def listen(fn, identifier, target, *args, **kw):
     for evt_cls in _registrars[identifier]:
         tgt = evt_cls.accept_with(target)
         if tgt is not None:
-            tgt.dispatch.listen(fn, identifier, tgt, *args, **kw)
+            tgt.dispatch.listen(tgt, identifier, fn, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
                                 (identifier,target))
 
-def remove(fn, identifier, target):
+def remove(target, identifier, fn):
     """Remove an event listener.
     
     Note that some event removals, particularly for those event dispatchers
@@ -28,7 +28,7 @@ def remove(fn, identifier, target):
     """
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls.accept_with(target):
-            tgt.dispatch.remove(fn, identifier, tgt, *args, **kw)
+            tgt.dispatch.remove(identifier, tgt, fn, *args, **kw)
             return
 
 _registrars = util.defaultdict(list)
@@ -116,11 +116,11 @@ class Events(object):
             return None
 
     @classmethod
-    def listen(cls, fn, identifier, target, propagate=False):
+    def listen(cls, target, identifier, fn, propagate=False):
         getattr(target.dispatch, identifier).append(fn, target, propagate)
     
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, target, identifier, fn):
         getattr(target.dispatch, identifier).remove(fn, target)
     
     @classmethod

@@ -468,8 +468,8 @@ class EngineEventsTest(TestBase):
             engines.testing_engine(options=dict(implicit_returning=False,
                                    strategy='threadlocal'))
             ]:
-            event.listen(execute, 'on_before_execute', engine)
-            event.listen(cursor_execute, 'on_before_cursor_execute', engine)
+            event.listen(engine, 'on_before_execute', execute)
+            event.listen(engine, 'on_before_cursor_execute', cursor_execute)
             
             m = MetaData(engine)
             t1 = Table('t1', m, 
@@ -528,8 +528,8 @@ class EngineEventsTest(TestBase):
             canary.append('cursor_execute')
             
         engine = engines.testing_engine()
-        event.listen(on_execute, 'on_before_execute', engine)
-        event.listen(on_cursor_execute, 'on_before_cursor_execute', engine)
+        event.listen(engine, 'on_before_execute', on_execute)
+        event.listen(engine, 'on_before_cursor_execute', on_cursor_execute)
         conn = engine.connect()
         c2 = conn.execution_options(foo='bar')
         eq_(c2._execution_options, {'foo':'bar'})
@@ -558,11 +558,11 @@ class EngineEventsTest(TestBase):
         
         assert_raises(
             tsa.exc.ArgumentError,
-            event.listen, tracker("on_begin"), "on_begin", engine, retval=True
+            event.listen, engine, "on_begin", tracker("on_begin"), retval=True
         )
         
-        event.listen(on_execute, "on_before_execute", engine, retval=True)
-        event.listen(on_cursor_execute, "on_before_cursor_execute", engine, retval=True)
+        event.listen(engine, "on_before_execute", on_execute, retval=True)
+        event.listen(engine, "on_before_cursor_execute", on_cursor_execute, retval=True)
         engine.execute("select 1")
         eq_(
             canary, ['execute', 'cursor_execute']
@@ -578,11 +578,11 @@ class EngineEventsTest(TestBase):
             return go
             
         engine = engines.testing_engine()
-        event.listen(tracker('execute'), 'on_before_execute', engine)
-        event.listen(tracker('cursor_execute'), 'on_before_cursor_execute', engine)
-        event.listen(tracker('begin'), 'on_begin', engine)
-        event.listen(tracker('commit'), 'on_commit', engine)
-        event.listen(tracker('rollback'), 'on_rollback', engine)
+        event.listen(engine, 'on_before_execute', tracker('execute'))
+        event.listen(engine, 'on_before_cursor_execute', tracker('cursor_execute'))
+        event.listen(engine, 'on_begin', tracker('begin'))
+        event.listen(engine, 'on_commit', tracker('commit'))
+        event.listen(engine, 'on_rollback', tracker('rollback'))
         
         conn = engine.connect()
         trans = conn.begin()
@@ -611,7 +611,7 @@ class EngineEventsTest(TestBase):
                     'rollback_savepoint', 'release_savepoint',
                     'rollback', 'begin_twophase', 
                        'prepare_twophase', 'commit_twophase']:
-            event.listen(tracker(name), 'on_%s' % name, engine)
+            event.listen(engine, 'on_%s' % name, tracker(name))
 
         conn = engine.connect()
 

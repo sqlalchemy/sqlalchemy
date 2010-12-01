@@ -24,7 +24,7 @@ class MergeTest(_fixtures.FixtureTest):
                 canary.called += 1
             canary.called = 0
 
-        event.listen(canary, 'on_load', cls)
+        event.listen(cls, 'on_load', canary)
 
         return canary
 

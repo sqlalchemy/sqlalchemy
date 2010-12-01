@@ -1592,9 +1592,9 @@ class ListenerTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True)
         attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
         
-        event.listen(on_set, 'on_set', Foo.data, retval=True)
-        event.listen(on_append, 'on_append', Foo.barlist, retval=True)
-        event.listen(on_append, 'on_append', Foo.barset, retval=True)
+        event.listen(Foo.data, 'on_set', on_set, retval=True)
+        event.listen(Foo.barlist, 'on_append', on_append, retval=True)
+        event.listen(Foo.barset, 'on_append', on_append, retval=True)
         
         f1 = Foo()
         f1.data = "some data"
@@ -1648,7 +1648,7 @@ class ListenerTest(_base.ORMTest):
             canary.append(value)
             
         def events_a():
-            event.listen(on_set, 'on_set', classes[0].attrib, propagate=True)
+            event.listen(classes[0].attrib, 'on_set', on_set, propagate=True)
         
         def teardown():
             classes[:] = [None, None, None]

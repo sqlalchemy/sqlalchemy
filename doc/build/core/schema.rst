@@ -1221,14 +1221,14 @@ constraint will be added via ALTER:
     from sqlalchemy import event
     
     event.listen(
-        AddConstraint(constraint),
+        users,
         "on_after_create", 
-        users
+        AddConstraint(constraint)
     )
     event.listen(
-        DropConstraint(constraint),
+        users,
         "on_before_drop",
-        users
+        DropConstraint(constraint)
     )
 
     {sql}users.create(engine)
@@ -1257,27 +1257,27 @@ If our :class:`~sqlalchemy.schema.CheckConstraint` was only supported by
 Postgresql and not other databases, we could limit its usage to just that dialect::
 
     event.listen(
-        AddConstraint(constraint).execute_if(dialect='postgresql'),
+        users,
         'on_after_create',
-        users
+        AddConstraint(constraint).execute_if(dialect='postgresql')
     )
     event.listen(
-        DropConstraint(constraint).execute_if(dialect='postgresql'),
+        users,
         'on_before_drop',
-        users
+        DropConstraint(constraint).execute_if(dialect='postgresql')
     )
 
 Or to any set of dialects::
     
     event.listen(
-        AddConstraint(constraint).execute_if(dialect=('postgresql', 'mysql')),
+        users,
         "on_after_create",
-        users
+        AddConstraint(constraint).execute_if(dialect=('postgresql', 'mysql'))
     )
     event.listen(
-        DropConstraint(constraint).execute_if(dialect=('postgresql', 'mysql')),
+        users,
         "on_before_drop",
-        users
+        DropConstraint(constraint).execute_if(dialect=('postgresql', 'mysql'))
     )
 
 When using a callable, the callable is passed the ddl element, the
@@ -1299,14 +1299,14 @@ that check for the presence of our named constraint:
         return not should_create(ddl, target, connection, **kw)
 
     event.listen(
-        AddConstraint(constraint).execute_if(callable_=should_create),
+        users,
         "on_after_create",
-        users
+        AddConstraint(constraint).execute_if(callable_=should_create)
     )
     event.listen(
-        DropConstraint(constraint).execute_if(callable_=should_drop),
+        users,
         "on_before_drop",
-        users
+        DropConstraint(constraint).execute_if(callable_=should_drop)
     )
 
     {sql}users.create(engine)
@@ -1334,11 +1334,11 @@ other DDL elements except it accepts a string which is the text to be emitted:
 .. sourcecode:: python+sql
     
     event.listen(
+        metadata,
+        "on_after_create",
         DDL("ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length "
-            " CHECK (length(user_name) >= 8)"),
-        "on_after_create",
-        metadata
+            " CHECK (length(user_name) >= 8)")
     )
 
 A more comprehensive method of creating libraries of DDL constructs is to use

@@ -29,7 +29,7 @@ class TestEvents(TestBase):
         def listen(x, y):
             pass
         
-        event.listen(listen, "on_event_one", Target)
+        event.listen(Target, "on_event_one", listen)
         
         eq_(len(Target().dispatch.on_event_one), 1)
         eq_(len(Target().dispatch.on_event_two), 0)
@@ -39,7 +39,7 @@ class TestEvents(TestBase):
             pass
         
         t1 = Target()
-        event.listen(listen, "on_event_one", t1)
+        event.listen(t1, "on_event_one", listen)
 
         eq_(len(Target().dispatch.on_event_one), 0)
         eq_(len(t1.dispatch.on_event_one), 1)
@@ -53,10 +53,10 @@ class TestEvents(TestBase):
         def listen_two(x, y):
             pass
 
-        event.listen(listen_one, "on_event_one", Target)
+        event.listen(Target, "on_event_one", listen_one)
         
         t1 = Target()
-        event.listen(listen_two, "on_event_one", t1)
+        event.listen(t1, "on_event_one", listen_two)
 
         eq_(len(Target().dispatch.on_event_one), 1)
         eq_(len(t1.dispatch.on_event_one), 2)
@@ -66,7 +66,7 @@ class TestEvents(TestBase):
         def listen_three(x, y):
             pass
         
-        event.listen(listen_three, "on_event_one", Target)
+        event.listen(Target, "on_event_one", listen_three)
         eq_(len(Target().dispatch.on_event_one), 2)
         eq_(len(t1.dispatch.on_event_one), 3)
         
@@ -111,8 +111,8 @@ class TestAcceptTargets(TestBase):
         def listen_four(x, y):
             pass
             
-        event.listen(listen_one, "on_event_one", TargetOne)
-        event.listen(listen_two, "on_event_one", TargetTwo)
+        event.listen(TargetOne, "on_event_one", listen_one)
+        event.listen(TargetTwo, "on_event_one", listen_two)
         
         eq_(
             list(TargetOne().dispatch.on_event_one),
@@ -127,8 +127,8 @@ class TestAcceptTargets(TestBase):
         t1 = TargetOne()
         t2 = TargetTwo()
 
-        event.listen(listen_three, "on_event_one", t1)
-        event.listen(listen_four, "on_event_one", t2)
+        event.listen(t1, "on_event_one", listen_three)
+        event.listen(t2, "on_event_one", listen_four)
         
         eq_(
             list(t1.dispatch.on_event_one),
@@ -167,7 +167,7 @@ class TestCustomTargets(TestBase):
         def listen(x, y):
             pass
         
-        event.listen(listen, "on_event_one", "one")
+        event.listen("one", "on_event_one", listen)
 
         eq_(
             list(Target().dispatch.on_event_one),
@@ -188,14 +188,14 @@ class TestListenOverride(TestBase):
         
         class TargetEvents(event.Events):
             @classmethod
-            def listen(cls, fn, identifier, target, add=False):
+            def listen(cls, target, identifier, fn, add=False):
                 if add:
                     def adapt(x, y):
                         fn(x + y)
                 else:
                     adapt = fn
                     
-                event.Events.listen(adapt, identifier, target)
+                event.Events.listen(target, identifier, adapt)
                     
             def on_event_one(self, x, y):
                 pass
@@ -214,8 +214,8 @@ class TestListenOverride(TestBase):
         def listen_two(x, y):
             result.append((x, y))
         
-        event.listen(listen_one, "on_event_one", Target, add=True)
-        event.listen(listen_two, "on_event_one", Target)
+        event.listen(Target, "on_event_one", listen_one, add=True)
+        event.listen(Target, "on_event_one", listen_two)
 
         t1 = Target()
         t1.dispatch.on_event_one(5, 7)
@@ -252,8 +252,8 @@ class TestPropagate(TestBase):
         
         t1 = Target()
         
-        event.listen(listen_one, "on_event_one", t1, propagate=True)
-        event.listen(listen_two, "on_event_two", t1)
+        event.listen(t1, "on_event_one", listen_one, propagate=True)
+        event.listen(t1, "on_event_two", listen_two)
 
         t2 = Target()
         

@@ -1218,7 +1218,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
         def my_listener(*arg, **kw):
             pass
         
-        event.listen(my_listener, 'on_before_flush', Session)
+        event.listen(Session, 'on_before_flush', my_listener)
         
         s = Session()
         assert my_listener in s.dispatch.on_before_flush
@@ -1234,8 +1234,8 @@ class SessionEventsTest(_fixtures.FixtureTest):
         S1 = sessionmaker()
         S2 = sessionmaker()
         
-        event.listen(my_listener_one, 'on_before_flush', Session)
-        event.listen(my_listener_two, 'on_before_flush', S1)
+        event.listen(Session, 'on_before_flush', my_listener_one)
+        event.listen(S1, 'on_before_flush', my_listener_two)
         
         s1 = S1()
         assert my_listener_one in s1.dispatch.on_before_flush
@@ -1257,7 +1257,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
             "requries that its creation callable is a Session subclass.",
-            event.listen, my_listener_one, "on_before_flush", scope
+            event.listen, scope, "on_before_flush", my_listener_one
         )
 
     def test_scoped_session_invalid_class(self):
@@ -1276,7 +1276,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
             "requries that its creation callable is a Session subclass.",
-            event.listen, my_listener_one, "on_before_flush", scope
+            event.listen, scope, "on_before_flush", my_listener_one
         )
     
     def test_scoped_session_listen(self):
@@ -1286,7 +1286,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             pass
         
         scope = scoped_session(sessionmaker())
-        event.listen(my_listener_one, "on_before_flush", scope)
+        event.listen(scope, "on_before_flush", my_listener_one)
         
         assert my_listener_one in scope().dispatch.on_before_flush
     
@@ -1311,7 +1311,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             'on_after_bulk_update',
             'on_after_bulk_delete'
         ]:
-            event.listen(listener(evt), evt, sess)
+            event.listen(sess, evt, listener(evt))
         
         return sess, canary
         
@@ -1392,7 +1392,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             session.flush()
         
         sess = Session()
-        event.listen(before_flush, 'on_before_flush', sess)
+        event.listen(sess, 'on_before_flush', before_flush)
         sess.add(User(name='foo'))
         assert_raises_message(sa.exc.InvalidRequestError,
                               'already flushing', sess.flush)
@@ -1413,7 +1413,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
                     session.delete(x)
                     
         sess = Session()
-        event.listen(before_flush, 'on_before_flush', sess)
+        event.listen(sess, 'on_before_flush', before_flush)
 
         u = User(name='u1')
         sess.add(u)
@@ -1460,7 +1460,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
                 obj.name += " modified"
                     
         sess = Session(autoflush=True)
-        event.listen(before_flush, 'on_before_flush', sess)
+        event.listen(sess, 'on_before_flush', before_flush)
         
         u = User(name='u1')
         sess.add(u)

@@ -21,7 +21,7 @@ class DDLEvents(event.Events):
             connection.execute("ALTER TABLE %s SET name=foo_%s" % 
                                     (target.name, target.name))
                                     
-        event.listen(on_after_create, "on_after_create", some_table)
+        event.listen(some_table, "on_after_create", on_after_create)
     
     DDL events integrate closely with the 
     :class:`.DDL` class and the :class:`.DDLElement` hierarchy
@@ -30,9 +30,9 @@ class DDLEvents(event.Events):
     
         from sqlalchemy import DDL
         event.listen(
-            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s"),
+            some_table,
             "on_after_create",
-            some_table
+            DDL("ALTER TABLE %(table)s SET name=foo_%(table)s")
         )
     
     The methods here define the name of an event as well
@@ -126,7 +126,7 @@ class PoolEvents(event.Events):
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
             
-        events.listen(my_on_checkout, 'on_checkout', Pool)
+        events.listen(Pool, 'on_checkout', my_on_checkout)
 
     In addition to accepting the :class:`.Pool` class and :class:`.Pool` instances,
     :class:`.PoolEvents` also accepts :class:`.Engine` objects and
@@ -137,7 +137,7 @@ class PoolEvents(event.Events):
         engine = create_engine("postgresql://scott:tiger@localhost/test")
         
         # will associate with engine.pool
-        events.listen(my_on_checkout, 'on_checkout', engine)
+        events.listen(engine, 'on_checkout', my_on_checkout)
 
     """
     
@@ -227,7 +227,7 @@ class EngineEvents(event.Events):
             log.info("Received statement: %s" % clauseelement)
         
         engine = create_engine('postgresql://scott:tiger@localhost/test')
-        event.listen(on_before_execute, "on_before_execute", engine)
+        event.listen(engine, "on_before_execute", on_before_execute)
     
     Some events allow modifiers to the listen() function.
     
@@ -241,7 +241,7 @@ class EngineEvents(event.Events):
     """
     
     @classmethod
-    def listen(cls, fn, identifier, target, retval=False):
+    def listen(cls, target, identifier, fn, retval=False):
         from sqlalchemy.engine.base import Connection, \
             _listener_connection_cls
         if target.Connection is Connection:
@@ -271,7 +271,7 @@ class EngineEvents(event.Events):
                     "'on_before_cursor_execute' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
-        event.Events.listen(fn, identifier, target)
+        event.Events.listen(target, identifier, fn)
 
     def on_before_execute(self, conn, clauseelement, multiparams, params):
         """Intercept high level execute() events."""

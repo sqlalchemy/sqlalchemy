@@ -48,7 +48,7 @@ class InitTest(_base.ORMTest):
         manager = instrumentation.manager_of_class(cls)
         def on_init(state, args, kwargs):
             canary.append((cls, 'on_init', state.class_))
-        event.listen(on_init, 'on_init', manager, raw=True)
+        event.listen(manager, 'on_init', on_init, raw=True)
 
     def test_ai(self):
         inits = []
@@ -554,7 +554,7 @@ class OnLoadTest(_base.ORMTest):
         try:
             instrumentation.register_class(A)
             manager = instrumentation.manager_of_class(A)
-            event.listen(canary, 'on_load', manager)
+            event.listen(manager, 'on_load', canary)
 
             a = A()
             p_a = pickle.dumps(a)

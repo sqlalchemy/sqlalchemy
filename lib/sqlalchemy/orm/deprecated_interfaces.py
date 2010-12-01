@@ -86,8 +86,8 @@ class MapperExtension(object):
                         def reconstruct(instance):
                             ls_meth(self, instance)
                         return reconstruct
-                    event.listen(go(ls_meth), 'on_load', 
-                                        self.class_manager, raw=False, propagate=True)
+                    event.listen(self.class_manager, 'on_load', 
+                                        go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_instance':
                     def go(ls_meth):
                         def init_instance(instance, args, kwargs):
@@ -95,8 +95,8 @@ class MapperExtension(object):
                                         self.class_manager.original_init, 
                                         instance, args, kwargs)
                         return init_instance
-                    event.listen(go(ls_meth), 'on_init', 
-                                            self.class_manager, raw=False, propagate=True)
+                    event.listen(self.class_manager, 'on_init', 
+                                        go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_failed':
                     def go(ls_meth):
                         def init_failed(instance, args, kwargs):
@@ -105,10 +105,10 @@ class MapperExtension(object):
                                             instance, args, kwargs)
                             
                         return init_failed
-                    event.listen(go(ls_meth), 'on_init_failure', 
-                                        self.class_manager, raw=False, propagate=True)
+                    event.listen(self.class_manager, 'on_init_failure', 
+                                        go(ls_meth), raw=False, propagate=True)
                 else:
-                    event.listen(ls_meth, "on_%s" % meth, self, 
+                    event.listen(self, "on_%s" % meth, ls_meth, 
                                         raw=False, retval=True, propagate=True)
 
 
@@ -395,16 +395,16 @@ class SessionExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(listener.before_commit, 'on_before_commit', self)
-        event.listen(listener.after_commit, 'on_after_commit', self)
-        event.listen(listener.after_rollback, 'on_after_rollback', self)
-        event.listen(listener.before_flush, 'on_before_flush', self)
-        event.listen(listener.after_flush, 'on_after_flush', self)
-        event.listen(listener.after_flush_postexec, 'on_after_flush_postexec', self)
-        event.listen(listener.after_begin, 'on_after_begin', self)
-        event.listen(listener.after_attach, 'on_after_attach', self)
-        event.listen(listener.after_bulk_update, 'on_after_bulk_update', self)
-        event.listen(listener.after_bulk_delete, 'on_after_bulk_delete', self)
+        event.listen(self, 'on_before_commit', listener.before_commit)
+        event.listen(self, 'on_after_commit', listener.after_commit)
+        event.listen(self, 'on_after_rollback', listener.after_rollback)
+        event.listen(self, 'on_before_flush', listener.before_flush)
+        event.listen(self, 'on_after_flush', listener.after_flush)
+        event.listen(self, 'on_after_flush_postexec', listener.after_flush_postexec)
+        event.listen(self, 'on_after_begin', listener.after_begin)
+        event.listen(self, 'on_after_attach', listener.after_attach)
+        event.listen(self, 'on_after_bulk_update', listener.after_bulk_update)
+        event.listen(self, 'on_after_bulk_delete', listener.after_bulk_delete)
 
     def before_commit(self, session):
         """Execute right before commit is called.
@@ -534,13 +534,13 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(listener.append, 'on_append', self,
+        event.listen(self, 'on_append', listener.append,
                             active_history=listener.active_history,
                             raw=True, retval=True)
-        event.listen(listener.remove, 'on_remove', self,
+        event.listen(self, 'on_remove', listener.remove,
                             active_history=listener.active_history, 
                             raw=True, retval=True)
-        event.listen(listener.set, 'on_set', self,
+        event.listen(self, 'on_set', listener.set,
                             active_history=listener.active_history, 
                             raw=True, retval=True)
     

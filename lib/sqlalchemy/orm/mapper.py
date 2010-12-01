@@ -400,14 +400,14 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
-        event.listen(_event_on_init, 'on_init', manager, raw=True)
-        event.listen(_event_on_resurrect, 'on_resurrect', manager, raw=True)
+        event.listen(manager, 'on_init', _event_on_init, raw=True)
+        event.listen(manager, 'on_resurrect', _event_on_resurrect, raw=True)
         
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
                     self._reconstructor = method
-                    event.listen(_event_on_load, 'on_load', manager, raw=True)
+                    event.listen(manager, 'on_load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method

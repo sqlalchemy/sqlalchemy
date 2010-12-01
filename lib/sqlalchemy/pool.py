@@ -136,7 +136,7 @@ class Pool(log.Identified):
             self.dispatch.update(_dispatch, only_propagate=False)
         if events:
             for fn, target in events:
-                event.listen(fn, target, self)
+                event.listen(self, target, fn)
         if listeners:
             util.warn_deprecated(
                         "The 'listeners' argument to Pool (and "

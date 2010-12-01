@@ -78,13 +78,13 @@ class PoolListener(object):
         listener = util.as_interface(listener, methods=('connect',
                                 'first_connect', 'checkout', 'checkin'))
         if hasattr(listener, 'connect'):
-            event.listen(listener.connect, 'on_connect', self)
+            event.listen(self, 'on_connect', listener.connect)
         if hasattr(listener, 'first_connect'):
-            event.listen(listener.first_connect, 'on_first_connect', self)
+            event.listen(self, 'on_first_connect', listener.first_connect)
         if hasattr(listener, 'checkout'):
-            event.listen(listener.checkout, 'on_checkout', self)
+            event.listen(self, 'on_checkout', listener.checkout)
         if hasattr(listener, 'checkin'):
-            event.listen(listener.checkin, 'on_checkin', self)
+            event.listen(self, 'on_checkin', listener.checkin)
             
         
     def connect(self, dbapi_con, con_record):
@@ -187,7 +187,7 @@ class ConnectionProxy(object):
                                     clauseelement, *multiparams,
                                     **params)
 
-        event.listen(adapt_execute, 'on_before_execute', self)
+        event.listen(self, 'on_before_execute', adapt_execute)
 
         def adapt_cursor_execute(conn, cursor, statement, 
                                 parameters,context, executemany, ):
@@ -209,8 +209,7 @@ class ConnectionProxy(object):
                 executemany,
                 )
 
-        event.listen(adapt_cursor_execute, 'on_before_cursor_execute',
-                     self)
+        event.listen(self, 'on_before_cursor_execute', adapt_cursor_execute)
 
         def do_nothing_callback(*arg, **kw):
             pass
@@ -222,24 +221,24 @@ class ConnectionProxy(object):
 
             return util.update_wrapper(go, fn)
 
-        event.listen(adapt_listener(listener.begin), 'on_begin', self)
-        event.listen(adapt_listener(listener.rollback), 'on_rollback',
-                     self)
-        event.listen(adapt_listener(listener.commit), 'on_commit', self)
-        event.listen(adapt_listener(listener.savepoint), 'on_savepoint'
-                     , self)
-        event.listen(adapt_listener(listener.rollback_savepoint),
-                     'on_rollback_savepoint', self)
-        event.listen(adapt_listener(listener.release_savepoint),
-                     'on_release_savepoint', self)
-        event.listen(adapt_listener(listener.begin_twophase),
-                     'on_begin_twophase', self)
-        event.listen(adapt_listener(listener.prepare_twophase),
-                     'on_prepare_twophase', self)
-        event.listen(adapt_listener(listener.rollback_twophase),
-                     'on_rollback_twophase', self)
-        event.listen(adapt_listener(listener.commit_twophase),
-                     'on_commit_twophase', self)
+        event.listen(self, 'on_begin', adapt_listener(listener.begin))
+        event.listen(self, 'on_rollback',
+                     adapt_listener(listener.rollback))
+        event.listen(self, 'on_commit', adapt_listener(listener.commit))
+        event.listen(self, 'on_savepoint',
+                     adapt_listener(listener.savepoint))
+        event.listen(self, 'on_rollback_savepoint',
+                     adapt_listener(listener.rollback_savepoint))
+        event.listen(self, 'on_release_savepoint',
+                     adapt_listener(listener.release_savepoint))
+        event.listen(self, 'on_begin_twophase',
+                     adapt_listener(listener.begin_twophase))
+        event.listen(self, 'on_prepare_twophase',
+                     adapt_listener(listener.prepare_twophase))
+        event.listen(self, 'on_rollback_twophase',
+                     adapt_listener(listener.rollback_twophase))
+        event.listen(self, 'on_commit_twophase',
+                     adapt_listener(listener.commit_twophase))
         
         
     def execute(self, conn, execute, clauseelement, *multiparams, **params):

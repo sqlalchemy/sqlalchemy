@@ -383,8 +383,7 @@ class Table(SchemaItem, expression.TableClause):
         def adapt_listener(target, connection, **kw):
             listener(event_name, target, connection, **kw)
             
-        event.listen(adapt_listener, 
-                        "on_" + event_name.replace('-', '_'), self)
+        event.listen(self, "on_" + event_name.replace('-', '_'), adapt_listener)
 
     def _set_parent(self, metadata):
         metadata._add_table(self.name, self.schema, self)
@@ -1750,8 +1749,8 @@ class ForeignKeyConstraint(Constraint):
                 return table in set(kw['tables']) and \
                             bind.dialect.supports_alter
             
-            event.listen(AddConstraint(self, on=supports_alter), "on_after_create", table.metadata)
-            event.listen(DropConstraint(self, on=supports_alter), "on_before_drop", table.metadata)
+            event.listen(table.metadata, "on_after_create", AddConstraint(self, on=supports_alter))
+            event.listen(table.metadata, "on_before_drop", DropConstraint(self, on=supports_alter))
             
             
     def copy(self, **kw):
@@ -2082,8 +2081,7 @@ class MetaData(SchemaItem):
         def adapt_listener(target, connection, **kw):
             listener(event, target, connection, **kw)
             
-        event.listen(adapt_listener, 
-                        "on_" + event_name.replace('-', '_'), self)
+        event.listen(self, "on_" + event_name.replace('-', '_'), adapt_listener)
 
     def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
@@ -2216,9 +2214,9 @@ class DDLElement(expression.Executable, expression.ClauseElement):
     itself an event receiving callable::
     
         event.listen(
-            AddConstraint(constraint).execute_if(dialect='postgresql'),
+            users,
             'on_after_create',
-            users
+            AddConstraint(constraint).execute_if(dialect='postgresql')
         )
 
     See also:
@@ -2307,7 +2305,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
                                     target, connection, **kw):
                 return connection.execute(self.against(target))
             
-        event.listen(call_event, "on_" + event_name.replace('-', '_'), target)
+        event.listen(target, "on_" + event_name.replace('-', '_'), call_event)
 
     @expression._generative
     def against(self, target):
@@ -2323,9 +2321,9 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         Used to provide a wrapper for event listening::
         
             event.listen(
-                        DDL("my_ddl").execute_if(dialect='postgresql'), 
+                        metadata,
                         'on_before_create', 
-                        metadata
+                        DDL("my_ddl").execute_if(dialect='postgresql')
                     )
         
         :param dialect: May be a string, tuple or a callable
@@ -2444,10 +2442,10 @@ class DDL(DDLElement):
       from sqlalchemy import event, DDL
       
       tbl = Table('users', metadata, Column('uid', Integer))
-      event.listen(DDL('DROP TRIGGER users_trigger'), 'on_before_create', tbl)
+      event.listen(tbl, 'on_before_create', DDL('DROP TRIGGER users_trigger'))
 
       spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE')
-      event.listen(spow.execute_if(dialect='somedb'), 'on_after_create', tbl)
+      event.listen(tbl, 'on_after_create', spow.execute_if(dialect='somedb'))
 
       drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
       connection.execute(drop_spow)

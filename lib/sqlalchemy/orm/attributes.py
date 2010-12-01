@@ -846,11 +846,11 @@ def backref_listeners(attribute, key, uselist):
                                             passive=PASSIVE_NO_FETCH)
     
     if uselist:
-        event.listen(append, "on_append", attribute, retval=False, raw=True)
+        event.listen(attribute, "on_append", append, retval=False, raw=True)
     else:
-        event.listen(set_, "on_set", attribute, retval=False, raw=True)
+        event.listen(attribute, "on_set", set_, retval=False, raw=True)
     # TODO: need coverage in test/orm/ of remove event
-    event.listen(remove, "on_remove", attribute, retval=False, raw=True)
+    event.listen(attribute, "on_remove", remove, retval=False, raw=True)
         
 class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,

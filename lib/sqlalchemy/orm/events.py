@@ -26,11 +26,11 @@ class InstrumentationEvents(event.Events):
             return None
 
     @classmethod
-    def listen(cls, fn, identifier, target, propagate=False):
-        event.Events.listen(fn, identifier, target, propagate=propagate)
+    def listen(cls, target, identifier, fn, propagate=False):
+        event.Events.listen(target, identifier, fn, propagate=propagate)
 
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instrumentation events not yet implemented")
 
     def on_class_instrument(self, cls):
@@ -81,20 +81,20 @@ class InstanceEvents(event.Events):
         return None
     
     @classmethod
-    def listen(cls, fn, identifier, target, raw=False, propagate=False):
+    def listen(cls, target, identifier, fn, raw=False, propagate=False):
         if not raw:
             orig_fn = fn
             def wrap(state, *arg, **kw):
                 return orig_fn(state.obj(), *arg, **kw)
             fn = wrap
 
-        event.Events.listen(fn, identifier, target, propagate=propagate)
+        event.Events.listen(target, identifier, fn, propagate=propagate)
         if propagate:
             for mgr in target.subclass_managers(True):
-                event.Events.listen(fn, identifier, mgr, True)
+                event.Events.listen(mgr, identifier, fn, True)
             
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instance events not yet implemented")
         
     def on_init(self, target, args, kwargs):
@@ -154,7 +154,7 @@ class MapperEvents(event.Events):
         
         # associate the listener function with SomeMappedClass,
         # to execute during the "on_before_insert" hook
-        event.listen(my_before_insert_listener, 'on_before_insert', SomeMappedClass)
+        event.listen(SomeMappedClass, 'on_before_insert', my_before_insert_listener)
 
     Available targets include mapped classes, instances of
     :class:`.Mapper` (i.e. returned by :func:`.mapper`,
@@ -168,7 +168,7 @@ class MapperEvents(event.Events):
             log.debug("Instance %s being inserted" % target)
             
         # attach to all mappers
-        event.listen(some_listener, 'on_before_insert', mapper)
+        event.listen(mapper, 'on_before_insert', some_listener)
     
     Mapper events provide hooks into critical sections of the
     mapper, including those related to object instrumentation,
@@ -223,7 +223,7 @@ class MapperEvents(event.Events):
             return target
         
     @classmethod
-    def listen(cls, fn, identifier, target, 
+    def listen(cls, target, identifier, fn, 
                             raw=False, retval=False, propagate=False):
         from sqlalchemy.orm.interfaces import EXT_CONTINUE
 
@@ -249,9 +249,9 @@ class MapperEvents(event.Events):
         
         if propagate:
             for mapper in target.self_and_descendants:
-                event.Events.listen(fn, identifier, mapper, propagate=True)
+                event.Events.listen(mapper, identifier, fn, propagate=True)
         else:
-            event.Events.listen(fn, identifier, target)
+            event.Events.listen(target, identifier, fn)
         
     def on_instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
@@ -623,7 +623,7 @@ class MapperEvents(event.Events):
         """
 
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of mapper events not yet implemented")
     
 class SessionEvents(event.Events):
@@ -639,7 +639,7 @@ class SessionEvents(event.Events):
         
         Session = sessionmaker()
         
-        event.listen(my_before_commit, "on_before_commit", Session)
+        event.listen(Session, "on_before_commit", my_before_commit)
     
     The :func:`~.event.listen` function will accept
     :class:`.Session` objects as well as the return result
@@ -673,7 +673,7 @@ class SessionEvents(event.Events):
             return None
         
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of session events not yet implemented")
 
     def on_before_commit(self, session):
@@ -762,7 +762,7 @@ class AttributeEvents(event.Events):
         def my_append_listener(target, value, initiator):
             print "received append event for target: %s" % target
         
-        event.listen(my_append_listener, 'on_append', MyClass.collection)
+        event.listen(MyClass.collection, 'on_append', my_append_listener)
     
     Listeners have the option to return a possibly modified version
     of the value, when the ``retval=True`` flag is passed
@@ -775,7 +775,7 @@ class AttributeEvents(event.Events):
         
         # setup listener on UserContact.phone attribute, instructing
         # it to use the return value
-        listen(validate_phone, 'on_set', UserContact.phone, retval=True)
+        listen(UserContact.phone, 'on_set', validate_phone, retval=True)
     
     A validation function like the above can also raise an exception
     such as :class:`ValueError` to halt the operation.
@@ -807,7 +807,7 @@ class AttributeEvents(event.Events):
     """
     
     @classmethod
-    def listen(cls, fn, identifier, target, active_history=False, 
+    def listen(cls, target, identifier, fn, active_history=False, 
                                         raw=False, retval=False,
                                         propagate=False):
         if active_history:
@@ -828,7 +828,7 @@ class AttributeEvents(event.Events):
                     return orig_fn(target, value, *arg)
             fn = wrap
             
-        event.Events.listen(fn, identifier, target, propagate)
+        event.Events.listen(target, identifier, fn, propagate)
         
         if propagate:
             from sqlalchemy.orm.instrumentation import manager_of_class
@@ -836,10 +836,10 @@ class AttributeEvents(event.Events):
             manager = manager_of_class(target.class_)
             
             for mgr in manager.subclass_managers(True):
-                event.Events.listen(fn, identifier, mgr[target.key], True)
+                event.Events.listen(mgr[target.key], identifier, fn, True)
         
     @classmethod
-    def remove(cls, fn, identifier, target):
+    def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of attribute events not yet implemented")
         
     def on_append(self, target, value, initiator):

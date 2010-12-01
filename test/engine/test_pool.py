@@ -199,7 +199,7 @@ class PoolEventsTest(PoolTestBase):
         def on_first_connect(*arg, **kw):
             canary.append('first_connect')
         
-        event.listen(on_first_connect, 'on_first_connect', p)
+        event.listen(p, 'on_first_connect', on_first_connect)
         
         return p, canary
 
@@ -208,7 +208,7 @@ class PoolEventsTest(PoolTestBase):
         canary = []
         def on_connect(*arg, **kw):
             canary.append('connect')
-        event.listen(on_connect, 'on_connect', p)
+        event.listen(p, 'on_connect', on_connect)
         
         return p, canary
 
@@ -217,7 +217,7 @@ class PoolEventsTest(PoolTestBase):
         canary = []
         def on_checkout(*arg, **kw):
             canary.append('checkout')
-        event.listen(on_checkout, 'on_checkout', p)
+        event.listen(p, 'on_checkout', on_checkout)
         
         return p, canary
 
@@ -226,7 +226,7 @@ class PoolEventsTest(PoolTestBase):
         canary = []
         def on_checkin(*arg, **kw):
             canary.append('checkin')
-        event.listen(on_checkin, 'on_checkin', p)
+        event.listen(p, 'on_checkin', on_checkin)
         
         return p, canary
         
@@ -361,10 +361,10 @@ class PoolEventsTest(PoolTestBase):
             canary.append("listen_four")
             
         engine = create_engine(testing.db.url)
-        event.listen(listen_one, 'on_connect', pool.Pool)
-        event.listen(listen_two, 'on_connect', engine.pool)
-        event.listen(listen_three, 'on_connect', engine)
-        event.listen(listen_four, 'on_connect', engine.__class__)
+        event.listen(pool.Pool, 'on_connect', listen_one)
+        event.listen(engine.pool, 'on_connect', listen_two)
+        event.listen(engine, 'on_connect', listen_three)
+        event.listen(engine.__class__, 'on_connect', listen_four)
 
         engine.execute(select([1])).close()
         eq_(
@@ -382,9 +382,9 @@ class PoolEventsTest(PoolTestBase):
         def listen_three(*args):
             canary.append("listen_three")
         
-        event.listen(listen_one, 'on_connect', pool.Pool)
-        event.listen(listen_two, 'on_connect', pool.QueuePool)
-        event.listen(listen_three, 'on_connect', pool.SingletonThreadPool)
+        event.listen(pool.Pool, 'on_connect', listen_one)
+        event.listen(pool.QueuePool, 'on_connect', listen_two)
+        event.listen(pool.SingletonThreadPool, 'on_connect', listen_three)
         
         p1 = pool.QueuePool(creator=MockDBAPI().connect)
         p2 = pool.SingletonThreadPool(creator=MockDBAPI().connect)

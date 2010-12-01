@@ -28,7 +28,7 @@ and that a user-defined listener function should receive two positional argument
     def my_on_connect(dbapi_con, connection_record):
         print "New DBAPI connection:", dbapi_con
         
-    listen(my_on_connect, 'on_connect', Pool)
+    listen(Pool, 'on_connect', my_on_connect)
 
 Targets
 -------
@@ -51,17 +51,17 @@ classes and objects::
     my_engine = create_engine('postgresql://ed@localhost/test')
     
     # associate listener with all instances of Pool
-    listen(my_on_connect, 'on_connect', Pool)
+    listen(Pool, 'on_connect', my_on_connect)
 
     # associate listener with all instances of Pool
     # via the Engine class
-    listen(my_on_connect, 'on_connect', Engine)
+    listen(Engine, 'on_connect', my_on_connect)
 
     # associate listener with my_pool
-    listen(my_on_connect, 'on_connect', my_pool)
+    listen(my_pool, 'on_connect', my_on_connect)
 
     # associate listener with my_engine.pool
-    listen(my_on_connect, 'on_connect', my_engine)
+    listen(my_engine, 'on_connect', my_on_connect)
 
 Modifiers
 ----------
@@ -78,7 +78,7 @@ which modifies the subsequent handling.   By default, no listener ever requires 
         
     # setup listener on UserContact.phone attribute, instructing
     # it to use the return value
-    listen(validate_phone, 'on_set', UserContact.phone, retval=True)
+    listen(UserContact.phone, 'on_set', validate_phone, retval=True)
 
 Event Reference
 ----------------

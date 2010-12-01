@@ -2580,11 +2580,11 @@ class MapperEventsTest(_fixtures.FixtureTest):
         def on_init_e(target, args, kwargs):
             canary.append(('on_init_e', target))
         
-        event.listen(on_init_a, 'on_init', mapper)
-        event.listen(on_init_b, 'on_init', Mapper)
-        event.listen(on_init_c, 'on_init', class_mapper(A))
-        event.listen(on_init_d, 'on_init', A)
-        event.listen(on_init_e, 'on_init', A, propagate=True)
+        event.listen(mapper, 'on_init', on_init_a)
+        event.listen(Mapper, 'on_init', on_init_b)
+        event.listen(class_mapper(A), 'on_init', on_init_c)
+        event.listen(A, 'on_init', on_init_d)
+        event.listen(A, 'on_init', on_init_e, propagate=True)
         
         a = A()
         eq_(canary, [('on_init_a', a),('on_init_b', a),
@@ -2624,7 +2624,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
             'on_before_delete',
             'on_after_delete'
         ]:
-            event.listen(evt(meth), meth, mapper, **kw)
+            event.listen(mapper, meth, evt(meth), **kw)
         return canary
 
     @testing.resolve_artifact_names
@@ -2732,8 +2732,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
             return u
             
         mapper(User, users)
-        event.listen(create_instance, 'on_create_instance', 
-                        User, retval=True)
+        event.listen(User, 'on_create_instance', create_instance, retval=True)
         sess = create_session()
         u1 = User()
         u1.name = 'ed'
@@ -2749,7 +2748,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
         def on_instrument_class(mapper, cls):
             canary.append(cls)
             
-        event.listen(on_instrument_class, 'on_instrument_class', Mapper)
+        event.listen(Mapper, 'on_instrument_class', on_instrument_class)
         
         mapper(User, users)
         eq_(canary, [User])
