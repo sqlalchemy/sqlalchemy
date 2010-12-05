@@ -28,6 +28,7 @@ entity, and another related table holding key/value pairs::
 Because the key/value pairs in a vertical scheme are not fixed in advance,
 accessing them like a Python dict can be very convenient.  The example below
 can be used with many common vertical schemas as-is or with minor adaptations.
+
 """
 
 class VerticalProperty(object):
@@ -58,7 +59,7 @@ class VerticalPropertyDictMixin(object):
 
     _property_mapping:
       A string, the name of the Python attribute holding a dict-based
-      relation of _property_type instances.
+      relationship of _property_type instances.
 
     Using the VerticalProperty class above as an example,::
 
@@ -67,10 +68,10 @@ class VerticalPropertyDictMixin(object):
           _property_mapping = 'props'
 
       mapper(MyObj, sometable, properties={
-        'props': relation(VerticalProperty,
+        'props': relationship(VerticalProperty,
                           collection_class=attribute_mapped_collection('key'))})
 
-    Dict-like access to MyObj is proxied through to the 'props' relation::
+    Dict-like access to MyObj is proxied through to the 'props' relationship::
 
       myobj['key'] = 'value'
       # ...is shorthand for:
@@ -124,7 +125,7 @@ class VerticalPropertyDictMixin(object):
 if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_)
-    from sqlalchemy.orm import mapper, relation, create_session
+    from sqlalchemy.orm import mapper, relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     metadata = MetaData()
@@ -165,7 +166,7 @@ if __name__ == '__main__':
 
 
     mapper(Animal, animals, properties={
-        'facts': relation(
+        'facts': relationship(
             AnimalFact, backref='animal',
             collection_class=attribute_mapped_collection('key')),
         })
@@ -174,7 +175,7 @@ if __name__ == '__main__':
 
     metadata.bind = 'sqlite:///'
     metadata.create_all()
-    session = create_session()
+    session = Session()
 
     stoat = Animal(u'stoat')
     stoat[u'color'] = u'reddish'
@@ -185,8 +186,7 @@ if __name__ == '__main__':
     print stoat.facts[u'color']
 
     session.add(stoat)
-    session.flush()
-    session.expunge_all()
+    session.commit()
 
     critter = session.query(Animal).filter(Animal.name == u'stoat').one()
     print critter[u'color']
@@ -196,7 +196,7 @@ if __name__ == '__main__':
 
     print 'changing cuteness:'
     metadata.bind.echo = True
-    session.flush()
+    session.commit()
     metadata.bind.echo = False
 
     marten = Animal(u'marten')
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     loris[u'cuteness'] = u'fairly'
     loris[u'poisonous-part'] = u'elbows'
     session.add(loris)
-    session.flush()
+    session.commit()
 
     q = (session.query(Animal).
          filter(Animal.facts.any(

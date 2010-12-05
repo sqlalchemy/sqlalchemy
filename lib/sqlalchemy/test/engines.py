@@ -1,8 +1,9 @@
 import sys, types, weakref
 from collections import deque
-import config
+from sqlalchemy_nose import config
 from sqlalchemy.util import function_named, callable
 import re
+import warnings
 
 class ConnectionKiller(object):
     def __init__(self):
@@ -24,8 +25,7 @@ class ConnectionKiller(object):
                 except (SystemExit, KeyboardInterrupt):
                     raise
                 except Exception, e:
-                    # fixme
-                    sys.stderr.write("\n" + str(e) + "\n")
+                    warnings.warn("testing_reaper couldn't close connection: %s" % e)
 
     def rollback_all(self):
         self._apply_all(('rollback',))
@@ -80,10 +80,12 @@ def close_open_connections(fn):
             testing_reaper.close_all()
     return function_named(decorated, fn.__name__)
 
-def all_dialects():
+def all_dialects(exclude=None):
     import sqlalchemy.databases as d
     for name in d.__all__:
         # TEMPORARY
+        if exclude and name in exclude:
+            continue
         mod = getattr(d, name, None)
         if not mod:
             mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
@@ -103,6 +105,11 @@ class ReconnectFixture(object):
         return conn
 
     def shutdown(self):
+        # TODO: this doesn't cover all cases
+        # as nicely as we'd like, namely MySQLdb.
+        # would need to implement R. Brewer's
+        # proxy server idea to get better
+        # coverage.
         for c in list(self.connections):
             c.close()
         self.connections = []
@@ -240,7 +247,11 @@ class ReplayableSession(object):
             else:
                 buffer.append(result)
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return self._subject
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -273,7 +284,11 @@ class ReplayableSession(object):
                 return self
             else:
                 return result
-
+        
+        @property
+        def _sqla_unwrap(self):
+            return None
+            
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -287,3 +302,4 @@ class ReplayableSession(object):
                 raise AttributeError(key)
             else:
                 return result
+

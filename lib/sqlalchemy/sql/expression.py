@@ -1,5 +1,5 @@
 # expression.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -7,12 +7,12 @@
 """Defines the base components of SQL expression trees.
 
 All components are derived from a common base class
-:class:`~sqlalchemy.sql.expression.ClauseElement`.  Common behaviors are organized
+:class:`ClauseElement`.  Common behaviors are organized
 based on class hierarchies, in some cases via mixins.
 
 All object construction from this package occurs via functions which
-in some cases will construct composite ``ClauseElement`` structures
-together, and in other cases simply return a single ``ClauseElement``
+in some cases will construct composite :class:`ClauseElement` structures
+together, and in other cases simply return a single :class:`ClauseElement`
 constructed directly.  The function interface affords a more "DSL-ish"
 feel to constructing SQL expressions and also allows future class
 reorganizations.
@@ -29,27 +29,28 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc, types as sqltypes
+from sqlalchemy import util, exc
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.visitors import Visitable, cloned_traverse
 import operator
 
-functions, schema, sql_util = None, None, None
-DefaultDialect, ClauseAdapter, Annotated = None, None, None
+functions = util.importlater("sqlalchemy.sql", "functions")
+sqlutil = util.importlater("sqlalchemy.sql", "util")
+sqltypes = util.importlater("sqlalchemy", "types")
+default = util.importlater("sqlalchemy.engine", "default")
 
 __all__ = [
-    'Alias', 'ClauseElement',
-    'ColumnCollection', 'ColumnElement',
-    'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join',
-    'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
-    'between', 'bindparam', 'case', 'cast', 'column', 'delete',
-    'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func',
-    'modifier', 'collate',
-    'insert', 'intersect', 'intersect_all', 'join', 'label', 'literal',
-    'literal_column', 'not_', 'null', 'or_', 'outparam', 'outerjoin', 'select',
-    'subquery', 'table', 'text', 'union', 'union_all', 'update', ]
+    'Alias', 'ClauseElement', 'ColumnCollection', 'ColumnElement',
+    'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 'Select',
+    'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc', 'between',
+    'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
+    'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
+    'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
+    'literal', 'literal_column', 'not_', 'null', 'or_', 'outparam',
+    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'type_coerce',
+    'union', 'union_all', 'update', ]
 
-
+PARSE_AUTOCOMMIT = util._symbol('PARSE_AUTOCOMMIT')
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.
@@ -74,10 +75,10 @@ def asc(column):
 def outerjoin(left, right, onclause=None):
     """Return an ``OUTER JOIN`` clause element.
 
-    The returned object is an instance of :class:`~sqlalchemy.sql.expression.Join`.
+    The returned object is an instance of :class:`Join`.
 
-    Similar functionality is also available via the ``outerjoin()``
-    method on any :class:`~sqlalchemy.sql.expression.FromClause`.
+    Similar functionality is also available via the :func:`outerjoin()`
+    method on any :class:`FromClause`.
 
     left
       The left side of the join.
@@ -90,8 +91,8 @@ def outerjoin(left, right, onclause=None):
       foreign key relationships established between left and right
       otherwise.
 
-    To chain joins together, use the ``join()`` or ``outerjoin()``
-    methods on the resulting ``Join`` object.
+    To chain joins together, use the :func:`join()` or :func:`outerjoin()`
+    methods on the resulting :class:`Join` object.
 
     """
     return Join(left, right, onclause, isouter=True)
@@ -99,10 +100,10 @@ def outerjoin(left, right, onclause=None):
 def join(left, right, onclause=None, isouter=False):
     """Return a ``JOIN`` clause element (regular inner join).
 
-    The returned object is an instance of :class:`~sqlalchemy.sql.expression.Join`.
+    The returned object is an instance of :class:`Join`.
 
-    Similar functionality is also available via the ``join()`` method
-    on any :class:`~sqlalchemy.sql.expression.FromClause`.
+    Similar functionality is also available via the :func:`join()` method
+    on any :class:`FromClause`.
 
     left
       The left side of the join.
@@ -115,8 +116,8 @@ def join(left, right, onclause=None, isouter=False):
       foreign key relationships established between left and right
       otherwise.
 
-    To chain joins together, use the ``join()`` or ``outerjoin()``
-    methods on the resulting ``Join`` object.
+    To chain joins together, use the :func:`join()` or :func:`outerjoin()`
+    methods on the resulting :class:`Join` object.
 
     """
     return Join(left, right, onclause, isouter)
@@ -124,135 +125,121 @@ def join(left, right, onclause=None, isouter=False):
 def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     """Returns a ``SELECT`` clause element.
 
-    Similar functionality is also available via the ``select()``
-    method on any :class:`~sqlalchemy.sql.expression.FromClause`.
+    Similar functionality is also available via the :func:`select()`
+    method on any :class:`FromClause`.
 
-    The returned object is an instance of
-     :class:`~sqlalchemy.sql.expression.Select`.
+    The returned object is an instance of :class:`Select`.
 
-    All arguments which accept ``ClauseElement`` arguments also accept
+    All arguments which accept :class:`ClauseElement` arguments also accept
     string arguments, which will be converted as appropriate into
-    either ``text()`` or ``literal_column()`` constructs.
+    either :func:`text()` or :func:`literal_column()` constructs.
 
-    columns
-      A list of ``ClauseElement`` objects, typically ``ColumnElement``
-      objects or subclasses, which will form the columns clause of the
-      resulting statement.  For all members which are instances of
-      ``Selectable``, the individual ``ColumnElement`` members of the
-      ``Selectable`` will be added individually to the columns clause.
-      For example, specifying a ``Table`` instance will result in all
-      the contained ``Column`` objects within to be added to the
-      columns clause.
+    :param columns:
+      A list of :class:`ClauseElement` objects, typically
+      :class:`ColumnElement` objects or subclasses, which will form the
+      columns clause of the resulting statement. For all members which are
+      instances of :class:`Selectable`, the individual :class:`ColumnElement`
+      members of the :class:`Selectable` will be added individually to the
+      columns clause. For example, specifying a
+      :class:`~sqlalchemy.schema.Table` instance will result in all the
+      contained :class:`~sqlalchemy.schema.Column` objects within to be added
+      to the columns clause.
 
-      This argument is not present on the form of ``select()``
-      available on ``Table``.
+      This argument is not present on the form of :func:`select()`
+      available on :class:`~sqlalchemy.schema.Table`.
 
-    whereclause
-      A ``ClauseElement`` expression which will be used to form the
+    :param whereclause:
+      A :class:`ClauseElement` expression which will be used to form the
       ``WHERE`` clause.
 
-    from_obj
-      A list of ``ClauseElement`` objects which will be added to the
-      ``FROM`` clause of the resulting statement.  Note that "from"
-      objects are automatically located within the columns and
-      whereclause ClauseElements.  Use this parameter to explicitly
-      specify "from" objects which are not automatically locatable.
-      This could include ``Table`` objects that aren't otherwise
-      present, or ``Join`` objects whose presence will supercede that
-      of the ``Table`` objects already located in the other clauses.
+    :param from_obj:
+      A list of :class:`ClauseElement` objects which will be added to the
+      ``FROM`` clause of the resulting statement. Note that "from" objects are
+      automatically located within the columns and whereclause ClauseElements.
+      Use this parameter to explicitly specify "from" objects which are not
+      automatically locatable. This could include
+      :class:`~sqlalchemy.schema.Table` objects that aren't otherwise present,
+      or :class:`Join` objects whose presence will supercede that of the
+      :class:`~sqlalchemy.schema.Table` objects already located in the other
+      clauses.
 
-    \**kwargs
-      Additional parameters include:
+    :param autocommit:
+      Deprecated.  Use .execution_options(autocommit=<True|False>)
+      to set the autocommit option.
 
-      autocommit
-        indicates this SELECT statement modifies the database, and
-        should be subject to autocommit behavior if no transaction
-        has been started.
+    :param prefixes:
+      a list of strings or :class:`ClauseElement` objects to include
+      directly after the SELECT keyword in the generated statement,
+      for dialect-specific query features.
 
-      prefixes
-        a list of strings or ``ClauseElement`` objects to include
-        directly after the SELECT keyword in the generated statement,
-        for dialect-specific query features.
+    :param distinct=False:
+      when ``True``, applies a ``DISTINCT`` qualifier to the columns
+      clause of the resulting statement.
 
-      distinct=False
-        when ``True``, applies a ``DISTINCT`` qualifier to the columns
-        clause of the resulting statement.
+    :param use_labels=False:
+      when ``True``, the statement will be generated using labels
+      for each column in the columns clause, which qualify each
+      column with its parent table's (or aliases) name so that name
+      conflicts between columns in different tables don't occur.
+      The format of the label is <tablename>_<column>.  The "c"
+      collection of the resulting :class:`Select` object will use these
+      names as well for targeting column members.
 
-      use_labels=False
-        when ``True``, the statement will be generated using labels
-        for each column in the columns clause, which qualify each
-        column with its parent table's (or aliases) name so that name
-        conflicts between columns in different tables don't occur.
-        The format of the label is <tablename>_<column>.  The "c"
-        collection of the resulting ``Select`` object will use these
-        names as well for targeting column members.
+    :param for_update=False:
+      when ``True``, applies ``FOR UPDATE`` to the end of the
+      resulting statement.  Certain database dialects also support
+      alternate values for this parameter, for example mysql
+      supports "read" which translates to ``LOCK IN SHARE MODE``,
+      and oracle supports "nowait" which translates to ``FOR UPDATE
+      NOWAIT``.
 
-      for_update=False
-        when ``True``, applies ``FOR UPDATE`` to the end of the
-        resulting statement.  Certain database dialects also support
-        alternate values for this parameter, for example mysql
-        supports "read" which translates to ``LOCK IN SHARE MODE``,
-        and oracle supports "nowait" which translates to ``FOR UPDATE
-        NOWAIT``.
+    :param correlate=True:
+      indicates that this :class:`Select` object should have its
+      contained :class:`FromClause` elements "correlated" to an enclosing
+      :class:`Select` object.  This means that any :class:`ClauseElement`
+      instance within the "froms" collection of this :class:`Select`
+      which is also present in the "froms" collection of an
+      enclosing select will not be rendered in the ``FROM`` clause
+      of this select statement.
 
-      correlate=True
-        indicates that this ``Select`` object should have its
-        contained ``FromClause`` elements "correlated" to an enclosing
-        ``Select`` object.  This means that any ``ClauseElement``
-        instance within the "froms" collection of this ``Select``
-        which is also present in the "froms" collection of an
-        enclosing select will not be rendered in the ``FROM`` clause
-        of this select statement.
+    :param group_by:
+      a list of :class:`ClauseElement` objects which will comprise the
+      ``GROUP BY`` clause of the resulting select.
 
-      group_by
-        a list of ``ClauseElement`` objects which will comprise the
-        ``GROUP BY`` clause of the resulting select.
+    :param having:
+      a :class:`ClauseElement` that will comprise the ``HAVING`` clause
+      of the resulting select when ``GROUP BY`` is used.
 
-      having
-        a ``ClauseElement`` that will comprise the ``HAVING`` clause
-        of the resulting select when ``GROUP BY`` is used.
+    :param order_by:
+      a scalar or list of :class:`ClauseElement` objects which will
+      comprise the ``ORDER BY`` clause of the resulting select.
 
-      order_by
-        a scalar or list of ``ClauseElement`` objects which will
-        comprise the ``ORDER BY`` clause of the resulting select.
+    :param limit=None:
+      a numerical value which usually compiles to a ``LIMIT``
+      expression in the resulting select.  Databases that don't
+      support ``LIMIT`` will attempt to provide similar
+      functionality.
 
-      limit=None
-        a numerical value which usually compiles to a ``LIMIT``
-        expression in the resulting select.  Databases that don't
-        support ``LIMIT`` will attempt to provide similar
-        functionality.
+    :param offset=None:
+      a numeric value which usually compiles to an ``OFFSET``
+      expression in the resulting select.  Databases that don't
+      support ``OFFSET`` will attempt to provide similar
+      functionality.
 
-      offset=None
-        a numeric value which usually compiles to an ``OFFSET``
-        expression in the resulting select.  Databases that don't
-        support ``OFFSET`` will attempt to provide similar
-        functionality.
-
-      bind=None
-        an ``Engine`` or ``Connection`` instance to which the
-        resulting ``Select ` object will be bound.  The ``Select``
-        object will otherwise automatically bind to whatever
-        ``Connectable`` instances can be located within its contained
-        ``ClauseElement`` members.
-
-      scalar=False
-        deprecated.  Use select(...).as_scalar() to create a "scalar
-        column" proxy for an existing Select object.
+    :param bind=None:
+      an ``Engine`` or ``Connection`` instance to which the
+      resulting ``Select ` object will be bound.  The ``Select``
+      object will otherwise automatically bind to whatever
+      ``Connectable`` instances can be located within its contained
+      :class:`ClauseElement` members.
 
     """
-    if 'scalar' in kwargs:
-        util.warn_deprecated(
-            'scalar option is deprecated; see docs for details')
-    scalar = kwargs.pop('scalar', False)
-    s = Select(columns, whereclause=whereclause, from_obj=from_obj, **kwargs)
-    if scalar:
-        return s.as_scalar()
-    else:
-        return s
+    return Select(columns, whereclause=whereclause, from_obj=from_obj,
+                  **kwargs)
 
 def subquery(alias, *args, **kwargs):
-    """Return an :class:`~sqlalchemy.sql.expression.Alias` object derived 
-    from a :class:`~sqlalchemy.sql.expression.Select`.
+    """Return an :class:`Alias` object derived 
+    from a :class:`Select`.
 
     name
       alias name
@@ -260,41 +247,40 @@ def subquery(alias, *args, **kwargs):
     \*args, \**kwargs
 
       all other arguments are delivered to the
-      :func:`~sqlalchemy.sql.expression.select` function.
+      :func:`select` function.
 
     """
     return Select(*args, **kwargs).alias(alias)
 
 def insert(table, values=None, inline=False, **kwargs):
-    """Return an :class:`~sqlalchemy.sql.expression.Insert` clause element.
+    """Return an :class:`Insert` clause element.
 
-    Similar functionality is available via the ``insert()`` method on
+    Similar functionality is available via the :func:`insert()` method on
     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be inserted into.
 
-    :param values: A dictionary which specifies the column specifications of the
-      ``INSERT``, and is optional.  If left as None, the column
-      specifications are determined from the bind parameters used
-      during the compile phase of the ``INSERT`` statement.  If the
-      bind parameters also are None during the compile phase, then the
-      column specifications will be generated from the full list of
-      table columns.  Note that the :meth:`~Insert.values()` generative method
-      may also be used for this.
+    :param values: A dictionary which specifies the column specifications of
+     the ``INSERT``, and is optional. If left as None, the column
+     specifications are determined from the bind parameters used during the
+     compile phase of the ``INSERT`` statement. If the bind parameters also
+     are None during the compile phase, then the column specifications will be
+     generated from the full list of table columns. Note that the
+     :meth:`~Insert.values()` generative method may also be used for this.
 
     :param prefixes: A list of modifier keywords to be inserted between INSERT
-    and INTO. Alternatively, the :meth:`~Insert.prefix_with` generative method
-    may be used.
+      and INTO. Alternatively, the :meth:`~Insert.prefix_with` generative
+      method may be used.
 
     :param inline: if True, SQL defaults will be compiled 'inline' into the
-    statement and not pre-executed.
+      statement and not pre-executed.
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
     within `values` on a per-key basis.
 
-    The keys within `values` can be either ``Column`` objects or their
-    string identifiers.  Each key may reference one of:
+    The keys within `values` can be either :class:`~sqlalchemy.schema.Column`
+    objects or their string identifiers. Each key may reference one of:
 
     * a literal data value (i.e. string, number, etc.);
     * a Column object;
@@ -308,16 +294,16 @@ def insert(table, values=None, inline=False, **kwargs):
     return Insert(table, values, inline=inline, **kwargs)
 
 def update(table, whereclause=None, values=None, inline=False, **kwargs):
-    """Return an :class:`~sqlalchemy.sql.expression.Update` clause element.
+    """Return an :class:`Update` clause element.
 
-    Similar functionality is available via the ``update()`` method on
+    Similar functionality is available via the :func:`update()` method on
     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be updated.
 
-    :param whereclause: A ``ClauseElement`` describing the ``WHERE`` condition
-    of the ``UPDATE`` statement. Note that the :meth:`~Update.where()`
-    generative method may also be used for this.
+    :param whereclause: A :class:`ClauseElement` describing the ``WHERE``
+     condition of the ``UPDATE`` statement. Note that the
+     :meth:`~Update.where()` generative method may also be used for this.
 
     :param values:
       A dictionary which specifies the ``SET`` conditions of the
@@ -337,7 +323,8 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     compile-time bind parameters override the information specified
     within `values` on a per-key basis.
 
-    The keys within `values` can be either ``Column`` objects or their
+    The keys within `values` can be either :class:`~sqlalchemy.schema.Column`
+    objects or their
     string identifiers. Each key may reference one of:
 
     * a literal data value (i.e. string, number, etc.);
@@ -357,16 +344,16 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
             **kwargs)
 
 def delete(table, whereclause = None, **kwargs):
-    """Return a :class:`~sqlalchemy.sql.expression.Delete` clause element.
+    """Return a :class:`Delete` clause element.
 
-    Similar functionality is available via the ``delete()`` method on
+    Similar functionality is available via the :func:`delete()` method on
     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be updated.
 
     :param whereclause: A :class:`ClauseElement` describing the ``WHERE``
-    condition of the ``UPDATE`` statement. Note that the :meth:`~Delete.where()`
-    generative method may be used instead.
+      condition of the ``UPDATE`` statement. Note that the
+      :meth:`~Delete.where()` generative method may be used instead.
 
     """
     return Delete(table, whereclause, **kwargs)
@@ -375,7 +362,7 @@ def and_(*clauses):
     """Join a list of clauses together using the ``AND`` operator.
 
     The ``&`` operator is also overloaded on all
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclasses to produce the
+    :class:`_CompareMixin` subclasses to produce the
     same result.
 
     """
@@ -387,7 +374,7 @@ def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
 
     The ``|`` operator is also overloaded on all
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclasses to produce the
+    :class:`_CompareMixin` subclasses to produce the
     same result.
 
     """
@@ -399,7 +386,7 @@ def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
 
     The ``~`` operator is also overloaded on all
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclasses to produce the
+    :class:`_CompareMixin` subclasses to produce the
     same result.
 
     """
@@ -415,20 +402,13 @@ def between(ctest, cleft, cright):
 
     Equivalent of SQL ``clausetest BETWEEN clauseleft AND clauseright``.
 
-    The ``between()`` method on all
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclasses provides
+    The :func:`between()` method on all
+    :class:`_CompareMixin` subclasses provides
     similar functionality.
 
     """
     ctest = _literal_as_binds(ctest)
-    return _BinaryExpression(
-        ctest,
-        ClauseList(
-            _literal_as_binds(cleft, type_=ctest.type),
-            _literal_as_binds(cright, type_=ctest.type),
-            operator=operators.and_,
-            group=False),
-        operators.between_op)
+    return ctest.between(cleft, cright)
 
 
 def case(whens, value=None, else_=None):
@@ -449,7 +429,8 @@ def case(whens, value=None, else_=None):
     The expressions used for THEN and ELSE,
     when specified as strings, will be interpreted
     as bound values. To specify textual SQL expressions
-    for these, use the text(<string>) construct.
+    for these, use the :func:`literal_column`
+    construct. 
 
     The expressions used for the WHEN criterion
     may only be literal strings when "value" is
@@ -468,6 +449,17 @@ def case(whens, value=None, else_=None):
               'engineer': emp.c.salary * 1.1,
               'manager':  emp.c.salary * 3,
           })
+
+    Using :func:`literal_column()`, to allow for databases that
+    do not support bind parameters in the ``then`` clause.  The type
+    can be specified which determines the type of the :func:`case()` construct
+    overall::
+    
+        case([(orderline.c.qty > 100, 
+                literal_column("'greaterthan100'", String)),
+              (orderline.c.qty > 10, literal_column("'greaterthan10'",
+                String))
+            ], else_=literal_column("'lethan10'", String))
 
     """
     
@@ -504,7 +496,7 @@ def collate(expression, collation):
         operators.collate, type_=expr.type)
 
 def exists(*args, **kwargs):
-    """Return an ``EXISTS`` clause as applied to a :class:`~sqlalchemy.sql.expression.Select` object.
+    """Return an ``EXISTS`` clause as applied to a :class:`Select` object.
 
     Calling styles are of the following forms::
 
@@ -526,116 +518,116 @@ def union(*selects, **kwargs):
     """Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
-    A similar ``union()`` method is available on all
-    :class:`~sqlalchemy.sql.expression.FromClause` subclasses.
+    A similar :func:`union()` method is available on all
+    :class:`FromClause` subclasses.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
        available keyword arguments are the same as those of
-       :func:`~sqlalchemy.sql.expression.select`.
+       :func:`select`.
 
     """
-    return _compound_select('UNION', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.UNION, *selects, **kwargs)
 
 def union_all(*selects, **kwargs):
     """Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
-    A similar ``union_all()`` method is available on all
-    :class:`~sqlalchemy.sql.expression.FromClause` subclasses.
+    A similar :func:`union_all()` method is available on all
+    :class:`FromClause` subclasses.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
-      :func:`~sqlalchemy.sql.expression.select`.
+      :func:`select`.
 
     """
-    return _compound_select('UNION ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.UNION_ALL, *selects, **kwargs)
 
 def except_(*selects, **kwargs):
     """Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
-      :func:`~sqlalchemy.sql.expression.select`.
+      :func:`select`.
 
     """
-    return _compound_select('EXCEPT', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.EXCEPT, *selects, **kwargs)
 
 def except_all(*selects, **kwargs):
     """Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
-      :func:`~sqlalchemy.sql.expression.select`.
+      :func:`select`.
 
     """
-    return _compound_select('EXCEPT ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.EXCEPT_ALL, *selects, **kwargs)
 
 def intersect(*selects, **kwargs):
     """Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
-      :func:`~sqlalchemy.sql.expression.select`.
+      :func:`select`.
 
     """
-    return _compound_select('INTERSECT', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.INTERSECT, *selects, **kwargs)
 
 def intersect_all(*selects, **kwargs):
     """Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`~sqlalchemy.sql.expression.CompoundSelect`.
+    :class:`CompoundSelect`.
 
     \*selects
-      a list of :class:`~sqlalchemy.sql.expression.Select` instances.
+      a list of :class:`Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
-      :func:`~sqlalchemy.sql.expression.select`.
+      :func:`select`.
 
     """
-    return _compound_select('INTERSECT ALL', *selects, **kwargs)
+    return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
 
 def alias(selectable, alias=None):
-    """Return an :class:`~sqlalchemy.sql.expression.Alias` object.
+    """Return an :class:`Alias` object.
 
-    An ``Alias`` represents any :class:`~sqlalchemy.sql.expression.FromClause`
+    An :class:`Alias` represents any :class:`FromClause`
     with an alternate name assigned within SQL, typically using the ``AS``
     clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
 
-    Similar functionality is available via the ``alias()`` method
-    available on all ``FromClause`` subclasses.
+    Similar functionality is available via the :func:`alias()` method
+    available on all :class:`FromClause` subclasses.
 
       selectable
-        any ``FromClause`` subclass, such as a table, select
+        any :class:`FromClause` subclass, such as a table, select
         statement, etc..
 
       alias
@@ -649,41 +641,97 @@ def alias(selectable, alias=None):
 def literal(value, type_=None):
     """Return a literal clause, bound to a bind parameter.
 
-    Literal clauses are created automatically when non-
-    ``ClauseElement`` objects (such as strings, ints, dates, etc.) are
-    used in a comparison operation with a
-    :class:`~sqlalchemy.sql.expression._CompareMixin` subclass, such as a ``Column``
-    object.  Use this function to force the generation of a literal
-    clause, which will be created as a
-    :class:`~sqlalchemy.sql.expression._BindParamClause` with a bound value.
+    Literal clauses are created automatically when non- :class:`ClauseElement`
+    objects (such as strings, ints, dates, etc.) are used in a comparison
+    operation with a :class:`_CompareMixin`
+    subclass, such as a :class:`~sqlalchemy.schema.Column` object. Use this function to force the
+    generation of a literal clause, which will be created as a
+    :class:`_BindParamClause` with a bound value.
 
-    value
-      the value to be bound.  Can be any Python object supported by
-      the underlying DB-API, or is translatable via the given type
-      argument.
+    :param value: the value to be bound. Can be any Python object supported by
+        the underlying DB-API, or is translatable via the given type argument.
 
-    type\_
-      an optional :class:`~sqlalchemy.types.TypeEngine` which will provide
-      bind-parameter translation for this literal.
+    :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine` which
+        will provide bind-parameter translation for this literal.
 
     """
     return _BindParamClause(None, value, type_=type_, unique=True)
 
+def tuple_(*expr):
+    """Return a SQL tuple.   
+    
+    Main usage is to produce a composite IN construct::
+    
+        tuple_(table.c.col1, table.c.col2).in_(
+            [(1, 2), (5, 12), (10, 19)]
+        )
+    
+    """
+    return _Tuple(*expr)
+
+def type_coerce(expr, type_):
+    """Coerce the given expression into the given type, on the Python side only.
+    
+    :func:`.type_coerce` is roughly similar to :func:.`cast`, except no
+    "CAST" expression is rendered - the given type is only applied towards
+    expression typing and against received result values.
+    
+    e.g.::
+    
+        from sqlalchemy.types import TypeDecorator
+        import uuid
+        
+        class AsGuid(TypeDecorator):
+            impl = String
+
+            def process_bind_param(self, value, dialect):
+                if value is not None:
+                    return str(value)
+                else:
+                    return None
+            
+            def process_result_value(self, value, dialect):
+                if value is not None:
+                    return uuid.UUID(value)
+                else:
+                    return None
+        
+        conn.execute(
+            select([type_coerce(mytable.c.ident, AsGuid)]).\\
+                    where(
+                        type_coerce(mytable.c.ident, AsGuid) == 
+                        uuid.uuid3(uuid.NAMESPACE_URL, 'bar')
+                    )
+        )            
+    
+    """
+    if hasattr(expr, '__clause_expr__'):
+        return type_coerce(expr.__clause_expr__())
+        
+    elif not isinstance(expr, Visitable):
+        if expr is None:
+            return null()
+        else:
+            return literal(expr, type_=type_)
+    else:
+        return _Label(None, expr, type_=type_)
+    
+    
 def label(name, obj):
-    """Return a :class:`~sqlalchemy.sql.expression._Label` object for the given
-    :class:`~sqlalchemy.sql.expression.ColumnElement`.
+    """Return a :class:`_Label` object for the
+    given :class:`ColumnElement`.
 
     A label changes the name of an element in the columns clause of a
     ``SELECT`` statement, typically via the ``AS`` SQL keyword.
 
     This functionality is more conveniently available via the
-    ``label()`` method on ``ColumnElement``.
+    :func:`label()` method on :class:`ColumnElement`.
 
     name
       label name
 
     obj
-      a ``ColumnElement``.
+      a :class:`ColumnElement`.
 
     """
     return _Label(name, obj)
@@ -693,15 +741,15 @@ def column(text, type_=None):
     ``SELECT`` statement.
 
     The object returned is an instance of
-    :class:`~sqlalchemy.sql.expression.ColumnClause`, which represents the
-    "syntactical" portion of the schema-level :class:`~sqlalchemy.schema.Column`
-    object.
+    :class:`ColumnClause`, which represents the
+    "syntactical" portion of the schema-level
+    :class:`~sqlalchemy.schema.Column` object.
 
     text
       the name of the column.  Quoting rules will be applied to the
       clause like any other column name.  For textual column
       constructs that are not to be quoted, use the
-      :func:`~sqlalchemy.sql.expression.literal_column` function.
+      :func:`literal_column` function.
 
     type\_
       an optional :class:`~sqlalchemy.types.TypeEngine` object which will
@@ -724,7 +772,7 @@ def literal_column(text, type_=None):
       the text of the expression; can be any SQL expression.  Quoting rules
       will not be applied.  To specify a column-name expression which should
       be subject to quoting rules, use the
-      :func:`~sqlalchemy.sql.expression.column` function.
+      :func:`column` function.
 
     type\_
       an optional :class:`~sqlalchemy.types.TypeEngine` object which will
@@ -735,7 +783,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 def table(name, *columns):
-    """Return a :class:`~sqlalchemy.sql.expression.TableClause` object.
+    """Return a :class:`TableClause` object.
 
     This is a primitive version of the :class:`~sqlalchemy.schema.Table` object,
     which is a subclass of this object.
@@ -743,7 +791,7 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, shortname=None, type_=None, unique=False):
+def bindparam(key, value=None, type_=None, unique=False, required=False):
     """Create a bind parameter clause with the given key.
 
     value
@@ -754,23 +802,25 @@ def bindparam(key, value=None, shortname=None, type_=None, unique=False):
       a sqlalchemy.types.TypeEngine object indicating the type of this
       bind param, will invoke type-specific bind parameter processing
 
-    shortname
-      deprecated.
-
     unique
       if True, bind params sharing the same name will have their
       underlying ``key`` modified to a uniquely generated name.
       mostly useful with value-based bind params.
 
+    required
+      A value is required at execution time.
+      
     """
     if isinstance(key, ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, unique=unique, shortname=shortname)
+        return _BindParamClause(key.name, value, type_=key.type, 
+                                unique=unique, required=required)
     else:
-        return _BindParamClause(key, value, type_=type_, unique=unique, shortname=shortname)
+        return _BindParamClause(key, value, type_=type_, 
+                                unique=unique, required=required)
 
 def outparam(key, type_=None):
-    """Create an 'OUT' parameter for usage in functions (stored procedures), for
-    databases which support them.
+    """Create an 'OUT' parameter for usage in functions (stored procedures),
+    for databases which support them.
 
     The ``outparam`` can be used like a regular function parameter.
     The "output" value will be available from the
@@ -782,41 +832,97 @@ def outparam(key, type_=None):
                 key, None, type_=type_, unique=False, isoutparam=True)
 
 def text(text, bind=None, *args, **kwargs):
-    """Create literal text to be inserted into a query.
+    """Create a SQL construct that is represented by a literal string.
+    
+    E.g.::
+    
+        t = text("SELECT * FROM users")
+        result = connection.execute(t)
+        
+    The advantages :func:`text` provides over a plain string are
+    backend-neutral support for bind parameters, per-statement
+    execution options, as well as 
+    bind parameter and result-column typing behavior, allowing 
+    SQLAlchemy type constructs to play a role when executing
+    a statement that is specified literally.
+    
+    Bind parameters are specified by name, using the format ``:name``.
+    E.g.::
+    
+        t = text("SELECT * FROM users WHERE id=:user_id")
+        result = connection.execute(t, user_id=12)
+        
+    To invoke SQLAlchemy typing logic for bind parameters, the 
+    ``bindparams`` list allows specification of :func:`bindparam`
+    constructs which specify the type for a given name::
+    
+        t = text("SELECT id FROM users WHERE updated_at>:updated",
+                    bindparams=[bindparam('updated', DateTime())]
+                )
+                
+    Typing during result row processing is also an important concern.   
+    Result column types
+    are specified using the ``typemap`` dictionary, where the keys
+    match the names of columns.  These names are taken from what
+    the DBAPI returns as ``cursor.description``::
+    
+        t = text("SELECT id, name FROM users",
+                typemap={
+                    'id':Integer,
+                    'name':Unicode
+                }
+        )
+    
+    The :func:`text` construct is used internally for most cases when
+    a literal string is specified for part of a larger query, such as
+    within :func:`select()`, :func:`update()`,
+    :func:`insert()` or :func:`delete()`.   In those cases, the same
+    bind parameter syntax is applied::
+    
+        s = select([users.c.id, users.c.name]).where("id=:user_id")
+        result = connection.execute(s, user_id=12)
+    
+    Using :func:`text` explicitly usually implies the construction
+    of a full, standalone statement.   As such, SQLAlchemy refers
+    to it as an :class:`Executable` object, and it supports
+    the :meth:`Executable.execution_options` method.  For example,
+    a :func:`text` construct that should be subject to "autocommit"
+    can be set explicitly so using the ``autocommit`` option::
+    
+        t = text("EXEC my_procedural_thing()").\\
+                execution_options(autocommit=True)
+                
+    Note that SQLAlchemy's usual "autocommit" behavior applies to
+    :func:`text` constructs - that is, statements which begin
+    with a phrase such as ``INSERT``, ``UPDATE``, ``DELETE``, 
+    or a variety of other phrases specific to certain backends, will 
+    be eligible for autocommit if no transaction is in progress.
 
-    When constructing a query from a ``select()``, ``update()``,
-    ``insert()`` or ``delete()``, using plain strings for argument
-    values will usually result in text objects being created
-    automatically.  Use this function when creating textual clauses
-    outside of other ``ClauseElement`` objects, or optionally wherever
-    plain text is to be used.
-
-    text
+    :param text:
       the text of the SQL statement to be created.  use ``:<param>``
       to specify bind parameters; they will be compiled to their
       engine-specific format.
 
-    bind
+    :param autocommit:
+      Deprecated.  Use .execution_options(autocommit=<True|False>)
+      to set the autocommit option.
+
+    :param bind:
       an optional connection or engine to be used for this text query.
 
-    autocommit=True
-      indicates this SELECT statement modifies the database, and
-      should be subject to autocommit behavior if no transaction
-      has been started.
-
-    bindparams
-      a list of ``bindparam()`` instances which can be used to define
+    :param bindparams:
+      a list of :func:`bindparam()` instances which can be used to define
       the types and/or initial values for the bind parameters within
       the textual statement; the keynames of the bindparams must match
       those within the text of the statement.  The types will be used
       for pre-processing on bind values.
 
-    typemap
+    :param typemap:
       a dictionary mapping the names of columns represented in the
-      ``SELECT`` clause of the textual statement to type objects,
+      columns clause of a ``SELECT`` statement  to type objects,
       which will be used to perform post-processing on columns within
-      the result set (for textual statements that produce result
-      sets).
+      the result set.   This argument applies to any expression 
+      that returns result sets.
 
     """
     return _TextClause(text, bind=bind, *args, **kwargs)
@@ -853,15 +959,14 @@ class _FunctionGenerator(object):
         o = self.opts.copy()
         o.update(kwargs)
         if len(self.__names) == 1:
-            global functions
-            if functions is None:
-                from sqlalchemy.sql import functions
             func = getattr(functions, self.__names[-1].lower(), None)
-            if func is not None:
+            if func is not None and \
+                    isinstance(func, type) and \
+                    issubclass(func, Function):
                 return func(*c, **o)
 
-        return Function(
-                    self.__names[-1], packagenames=self.__names[0:-1], *c, **o)
+        return Function(self.__names[-1],
+                        packagenames=self.__names[0:-1], *c, **o)
 
 # "func" global - i.e. func.count()
 func = _FunctionGenerator()
@@ -904,10 +1009,9 @@ def _cloned_intersection(a, b):
 
     """
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
-    return set(elem for elem in a if all_overlap.intersection(elem._cloned_set))
+    return set(elem for elem in a
+               if all_overlap.intersection(elem._cloned_set))
 
-def _compound_select(keyword, *selects, **kwargs):
-    return CompoundSelect(keyword, *selects, **kwargs)
 
 def _is_literal(element):
     return not isinstance(element, Visitable) and \
@@ -962,19 +1066,37 @@ def _literal_as_binds(element, name=None, type_=None):
     else:
         return element
 
+def _type_from_args(args):
+    for a in args:
+        if not isinstance(a.type, sqltypes.NullType):
+            return a.type
+    else:
+        return sqltypes.NullType
+
 def _no_literals(element):
     if hasattr(element, '__clause_element__'):
         return element.__clause_element__()
     elif not isinstance(element, Visitable):
-        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' function "
-                "to indicate a SQL expression literal, or 'literal()' to indicate a bound value." % element)
+        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' "
+                                "function to indicate a SQL expression "
+                                "literal, or 'literal()' to indicate a "
+                                "bound value." % element)
     else:
         return element
 
-def _corresponding_column_or_error(fromclause, column, require_embedded=False):
+def _only_column_elements(element, name):
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    if not isinstance(element, ColumnElement):
+        raise exc.ArgumentError("Column-based expression object expected for argument '%s'; "
+                                "got: '%s', type %s" % (name, element, type(element)))
+    return element
+    
+def _corresponding_column_or_error(fromclause, column,
+                                        require_embedded=False):
     c = fromclause.corresponding_column(column,
             require_embedded=require_embedded)
-    if not c:
+    if c is None:
         raise exc.InvalidRequestError(
                 "Given column '%s', attached to table '%s', "
                 "failed to locate a corresponding column from table '%s'"
@@ -984,8 +1106,17 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
                 )
     return c
 
+@util.decorator
+def _generative(fn, *args, **kw):
+    """Mark a method as generative."""
+
+    self = args[0]._generate()
+    fn(self, *args[1:], **kw)
+    return self
+
+
 def is_column(col):
-    """True if ``col`` is an instance of ``ColumnElement``."""
+    """True if ``col`` is an instance of :class:`ColumnElement`."""
     
     return isinstance(col, ColumnElement)
 
@@ -1023,6 +1154,18 @@ class ClauseElement(Visitable):
 
         return c
 
+    @property
+    def _constructor(self):
+        """return the 'constructor' for this ClauseElement.
+        
+        This is for the purposes for creating a new object of 
+        this type.   Usually, its just the element's __class__.  
+        However, the "Annotated" version of the object overrides
+        to return the class of its proxied element.
+
+        """
+        return self.__class__
+
     @util.memoized_property
     def _cloned_set(self):
         """Return the set consisting all cloned anscestors of this
@@ -1044,16 +1187,24 @@ class ClauseElement(Visitable):
         d = self.__dict__.copy()
         d.pop('_is_clone_of', None)
         return d
+    
+    if util.jython:
+        def __hash__(self):
+            """Return a distinct hash code.
 
+            ClauseElements may have special equality comparisons which
+            makes us rely on them having unique hash codes for use in
+            hash-based collections. Stock __hash__ doesn't guarantee
+            unique values on platforms with moving GCs.
+            """
+            return id(self)
+        
     def _annotate(self, values):
         """return a copy of this ClauseElement with the given annotations
         dictionary.
         
         """
-        global Annotated
-        if Annotated is None:
-            from sqlalchemy.sql.util import Annotated
-        return Annotated(self, values)
+        return sqlutil.Annotated(self, values)
 
     def _deannotate(self):
         """return a copy of this ClauseElement with an empty annotations
@@ -1063,7 +1214,7 @@ class ClauseElement(Visitable):
         return self._clone()
 
     def unique_params(self, *optionaldict, **kwargs):
-        """Return a copy with ``bindparam()`` elments replaced.
+        """Return a copy with :func:`bindparam()` elments replaced.
 
         Same functionality as ``params()``, except adds `unique=True`
         to affected bind parameters so that multiple statements can be
@@ -1073,9 +1224,9 @@ class ClauseElement(Visitable):
         return self._params(True, optionaldict, kwargs)
 
     def params(self, *optionaldict, **kwargs):
-        """Return a copy with ``bindparam()`` elments replaced.
+        """Return a copy with :func:`bindparam()` elments replaced.
 
-        Returns a copy of this ClauseElement with ``bindparam()``
+        Returns a copy of this ClauseElement with :func:`bindparam()`
         elements replaced with values taken from the given dictionary::
 
           >>> clause = column('x') + bindparam('foo')
@@ -1101,11 +1252,15 @@ class ClauseElement(Visitable):
                 bind._convert_to_unique()
         return cloned_traverse(self, {}, {'bindparam':visit_bindparam})
 
-    def compare(self, other):
+    def compare(self, other, **kw):
         """Compare this ClauseElement to the given ClauseElement.
 
         Subclasses should override the default behavior, which is a
         straight identity comparison.
+        
+        \**kw are arguments consumed by subclass compare() methods and
+        may be used to modify the criteria for comparison.
+        (see :class:`ColumnElement`)
 
         """
         return self is other
@@ -1120,7 +1275,7 @@ class ClauseElement(Visitable):
         pass
 
     def get_children(self, **kwargs):
-        """Return immediate child elements of this ``ClauseElement``.
+        """Return immediate child elements of this :class:`ClauseElement`.
 
         This is used for visit traversal.
 
@@ -1134,6 +1289,29 @@ class ClauseElement(Visitable):
         return []
 
     def self_group(self, against=None):
+        """Apply a 'grouping' to this :class:`.ClauseElement`.
+        
+        This method is overridden by subclasses to return a 
+        "grouping" construct, i.e. parenthesis.   In particular
+        it's used by "binary" expressions to provide a grouping
+        around themselves when placed into a larger expression, 
+        as well as by :func:`.select` constructs when placed into
+        the FROM clause of another :func:`.select`.  (Note that 
+        subqueries should be normally created using the 
+        :func:`.Select.alias` method, as many platforms require
+        nested SELECT statements to be named).
+        
+        As expressions are composed together, the application of
+        :meth:`self_group` is automatic - end-user code should never 
+        need to use this method directly.  Note that SQLAlchemy's
+        clause constructs take operator precedence into account - 
+        so parenthesis might not be needed, for example, in 
+        an expression like ``x OR (y AND z)`` - AND takes precedence
+        over OR.
+        
+        The base :meth:`self_group` method of :class:`.ClauseElement`
+        just returns self.
+        """
         return self
 
     # TODO: remove .bind as a method from the root ClauseElement.
@@ -1158,10 +1336,15 @@ class ClauseElement(Visitable):
                 return engine
         else:
             return None
-
+    
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.execute` method.')
     def execute(self, *multiparams, **params):
-        """Compile and execute this ``ClauseElement``."""
-
+        """Compile and execute this :class:`ClauseElement`.
+        
+        """
         e = self.bind
         if e is None:
             label = getattr(self, 'description', self.__class__.__name__)
@@ -1173,9 +1356,13 @@ class ClauseElement(Visitable):
             raise exc.UnboundExecutionError(msg)
         return e._execute_clauseelement(self, multiparams, params)
 
+    @util.pending_deprecation('0.7',
+                              'Only SQL expressions which subclass '
+                              ':class:`.Executable` may provide the '
+                              ':func:`.scalar` method.')
     def scalar(self, *multiparams, **params):
-        """Compile and execute this ``ClauseElement``, returning the result's
-        scalar representation.
+        """Compile and execute this :class:`ClauseElement`, returning
+        the result's scalar representation.
         
         """
         return self.execute(*multiparams, **params).scalar()
@@ -1184,43 +1371,33 @@ class ClauseElement(Visitable):
         """Compile this SQL expression.
 
         The return value is a :class:`~sqlalchemy.engine.Compiled` object.
-        Calling `str()` or `unicode()` on the returned value will yield a string
-        representation of the result. The :class:`~sqlalchemy.engine.Compiled`
-        object also can return a dictionary of bind parameter names and values
-        using the `params` accessor.
+        Calling ``str()`` or ``unicode()`` on the returned value will yield a
+        string representation of the result. The
+        :class:`~sqlalchemy.engine.Compiled` object also can return a
+        dictionary of bind parameter names and values
+        using the ``params`` accessor.
 
         :param bind: An ``Engine`` or ``Connection`` from which a
-          ``Compiled`` will be acquired.  This argument
-          takes precedence over this ``ClauseElement``'s
-          bound engine, if any.
+            ``Compiled`` will be acquired. This argument takes precedence over
+            this :class:`ClauseElement`'s bound engine, if any.
+
+        :param column_keys: Used for INSERT and UPDATE statements, a list of
+            column names which should be present in the VALUES clause of the
+            compiled statement. If ``None``, all columns from the target table
+            object are rendered.
 
         :param dialect: A ``Dialect`` instance frmo which a ``Compiled``
-          will be acquired.  This argument takes precedence
-          over the `bind` argument as well as this
-          ``ClauseElement``'s bound engine, if any.
+            will be acquired. This argument takes precedence over the `bind`
+            argument as well as this :class:`ClauseElement`'s bound engine, if
+            any.
 
-        \**kw
-        
-          Keyword arguments are passed along to the compiler, 
-          which can affect the string produced.
-          
-          Keywords for a statement compiler are:
-        
-          column_keys
-            Used for INSERT and UPDATE statements, a list of
-            column names which should be present in the VALUES clause
-            of the compiled statement.  If ``None``, all columns
-            from the target table object are rendered.
-
-          inline
-            Used for INSERT statements, for a dialect which does
-            not support inline retrieval of newly generated
-            primary key columns, will force the expression used
-            to create the new primary key value to be rendered
-            inline within the INSERT statement's VALUES clause.
-            This typically refers to Sequence execution but
-            may also refer to any server-side default generation
-            function associated with a primary key `Column`.
+        :param inline: Used for INSERT statements, for a dialect which does
+            not support inline retrieval of newly generated primary key
+            columns, will force the expression used to create the new primary
+            key value to be rendered inline within the INSERT statement's
+            VALUES clause. This typically refers to Sequence execution but may
+            also refer to any server-side default generation function
+            associated with a primary key `Column`.
 
         """
         
@@ -1231,16 +1408,14 @@ class ClauseElement(Visitable):
                 dialect = self.bind.dialect
                 bind = self.bind
             else:
-                global DefaultDialect
-                if DefaultDialect is None:
-                    from sqlalchemy.engine.default import DefaultDialect
-                dialect = DefaultDialect()
+                dialect = default.DefaultDialect()
         compiler = self._compiler(dialect, bind=bind, **kw)
         compiler.compile()
         return compiler
     
     def _compiler(self, dialect, **kw):
-        """Return a compiler appropriate for this ClauseElement, given a Dialect."""
+        """Return a compiler appropriate for this ClauseElement, given a
+        Dialect."""
         
         return dialect.statement_compiler(dialect, self, **kw)
         
@@ -1260,16 +1435,8 @@ class ClauseElement(Visitable):
     def __invert__(self):
         return self._negate()
 
-    if util.jython:
-        def __hash__(self):
-            """Return a distinct hash code.
-
-            ClauseElements may have special equality comparisons which
-            makes us rely on them having unique hash codes for use in
-            hash-based collections. Stock __hash__ doesn't guarantee
-            unique values on platforms with moving GCs.
-            """
-            return id(self)
+    def __nonzero__(self):
+       raise TypeError("Boolean value of this clause is not defined")
 
     def _negate(self):
         if hasattr(self, 'negation_clause'):
@@ -1348,6 +1515,9 @@ class ColumnOperators(Operators):
     def __ge__(self, other):
         return self.operate(operators.ge, other)
 
+    def __neg__(self):
+        return self.operate(operators.neg)
+
     def concat(self, other):
         return self.operate(operators.concat_op, other)
 
@@ -1421,33 +1591,57 @@ class ColumnOperators(Operators):
         return self.reverse_operate(operators.truediv, other)
 
 class _CompareMixin(ColumnOperators):
-    """Defines comparison and math operations for ``ClauseElement`` instances."""
+    """Defines comparison and math operations for :class:`ClauseElement`
+    instances."""
 
-    def __compare(self, op, obj, negate=None, reverse=False, **kwargs):
+    def __compare(self, op, obj, negate=None, reverse=False,
+                        **kwargs
+        ):
         if obj is None or isinstance(obj, _Null):
             if op == operators.eq:
-                return _BinaryExpression(self, null(), operators.is_, negate=operators.isnot)
+                return _BinaryExpression(self, null(), operators.is_,
+                        negate=operators.isnot)
             elif op == operators.ne:
-                return _BinaryExpression(self, null(), operators.isnot, negate=operators.is_)
+                return _BinaryExpression(self, null(), operators.isnot,
+                        negate=operators.is_)
             else:
-                raise exc.ArgumentError("Only '='/'!=' operators can be used with NULL")
+                raise exc.ArgumentError("Only '='/'!=' operators can "
+                        "be used with NULL")
         else:
-            obj = self._check_literal(obj)
+            obj = self._check_literal(op, obj)
 
         if reverse:
-            return _BinaryExpression(obj, self, op, type_=sqltypes.Boolean, negate=negate, modifiers=kwargs)
+            return _BinaryExpression(obj, 
+                            self, 
+                            op, 
+                            type_=sqltypes.BOOLEANTYPE, 
+                            negate=negate, modifiers=kwargs)
         else:
-            return _BinaryExpression(self, obj, op, type_=sqltypes.Boolean, negate=negate, modifiers=kwargs)
+            return _BinaryExpression(self, 
+                            obj, 
+                            op, 
+                            type_=sqltypes.BOOLEANTYPE, 
+                            negate=negate, modifiers=kwargs)
 
     def __operate(self, op, obj, reverse=False):
-        obj = self._check_literal(obj)
-
-        type_ = self._compare_type(obj)
-
+        obj = self._check_literal(op, obj)
+        
         if reverse:
-            return _BinaryExpression(obj, self, type_.adapt_operator(op), type_=type_)
+            left, right = obj, self
         else:
-            return _BinaryExpression(self, obj, type_.adapt_operator(op), type_=type_)
+            left, right = self, obj
+        
+        if left.type is None:
+            op, result_type = sqltypes.NULLTYPE._adapt_expression(op,
+                    right.type)
+        elif right.type is None:
+            op, result_type = left.type._adapt_expression(op,
+                    sqltypes.NULLTYPE)
+        else:
+            op, result_type = left.type._adapt_expression(op,
+                    right.type)
+        return _BinaryExpression(left, right, op, type_=result_type)
+        
 
     # a mapping of operators with the method they use, along with their negated
     # operator for comparison operators
@@ -1485,41 +1679,65 @@ class _CompareMixin(ColumnOperators):
         seq_or_selectable = _clause_element_as_expr(seq_or_selectable)
             
         if isinstance(seq_or_selectable, _ScalarSelect):
-            return self.__compare( op, seq_or_selectable, negate=negate_op)
-
+            return self.__compare(op, seq_or_selectable,
+                                  negate=negate_op)
         elif isinstance(seq_or_selectable, _SelectBaseMixin):
-            # TODO: if we ever want to support (x, y, z) IN (select x, y, z from table),
-            # we would need a multi-column version of as_scalar() to produce a multi-
-            # column selectable that does not export itself as a FROM clause
-            return self.__compare( op, seq_or_selectable.as_scalar(), negate=negate_op)
 
-        elif isinstance(seq_or_selectable, Selectable):
-            return self.__compare( op, seq_or_selectable, negate=negate_op)
+            # TODO: if we ever want to support (x, y, z) IN (select x,
+            # y, z from table), we would need a multi-column version of
+            # as_scalar() to produce a multi- column selectable that
+            # does not export itself as a FROM clause
 
+            return self.__compare(op, seq_or_selectable.as_scalar(),
+                                  negate=negate_op)
+        elif isinstance(seq_or_selectable, (Selectable, _TextClause)):
+            return self.__compare(op, seq_or_selectable,
+                                  negate=negate_op)
+        
+            
         # Handle non selectable arguments as sequences
+
         args = []
         for o in seq_or_selectable:
             if not _is_literal(o):
-                if not isinstance( o, _CompareMixin):
-                    raise exc.InvalidRequestError( 
-                        "in() function accepts either a list of non-selectable values, or a selectable: %r" % o)
+                if not isinstance(o, _CompareMixin):
+                    raise exc.InvalidRequestError('in() function accept'
+                            's either a list of non-selectable values, '
+                            'or a selectable: %r' % o)
             else:
-                o = self._bind_param(o)
+                o = self._bind_param(op, o)
             args.append(o)
-
         if len(args) == 0:
-            # Special case handling for empty IN's, behave like comparison against zero row selectable
+
+            # Special case handling for empty IN's, behave like
+            # comparison against zero row selectable.  We use != to
+            # build the contradiction as it handles NULL values
+            # appropriately, i.e. "not (x IN ())" should not return NULL
+            # values for x.
+
+            util.warn('The IN-predicate on "%s" was invoked with an '
+                      'empty sequence. This results in a '
+                      'contradiction, which nonetheless can be '
+                      'expensive to evaluate.  Consider alternative '
+                      'strategies for improved performance.' % self)
             return self != self
 
-        return self.__compare(op, ClauseList(*args).self_group(against=op), negate=negate_op)
+        return self.__compare(op,
+                              ClauseList(*args).self_group(against=op),
+                              negate=negate_op)
 
+    def __neg__(self):
+        return _UnaryExpression(self, operator=operators.neg)
+        
     def startswith(self, other, escape=None):
         """Produce the clause ``LIKE '<other>%'``"""
 
         # use __radd__ to force string concat behavior
         return self.__compare(
             operators.like_op,
-            literal_column("'%'", type_=sqltypes.String).__radd__(self._check_literal(other)),
+            literal_column("'%'", type_=sqltypes.String).__radd__(
+                                self._check_literal(operators.like_op, other)
+                            ),
             escape=escape)
 
     def endswith(self, other, escape=None):
@@ -1527,7 +1745,8 @@ class _CompareMixin(ColumnOperators):
 
         return self.__compare(
             operators.like_op,
-            literal_column("'%'", type_=sqltypes.String) + self._check_literal(other),
+            literal_column("'%'", type_=sqltypes.String) + 
+                self._check_literal(operators.like_op, other),
             escape=escape)
 
     def contains(self, other, escape=None):
@@ -1536,7 +1755,7 @@ class _CompareMixin(ColumnOperators):
         return self.__compare(
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String) +
-                self._check_literal(other) +
+                self._check_literal(operators.like_op, other) +
                 literal_column("'%'", type_=sqltypes.String),
             escape=escape)
 
@@ -1546,7 +1765,9 @@ class _CompareMixin(ColumnOperators):
         The allowed contents of ``other`` are database backend specific.
 
         """
-        return self.__compare(operators.match_op, self._check_literal(other))
+        return self.__compare(operators.match_op,
+                              self._check_literal(operators.match_op,
+                              other))
 
     def label(self, name):
         """Produce a column label, i.e. ``<columnname> AS <name>``.
@@ -1568,16 +1789,19 @@ class _CompareMixin(ColumnOperators):
 
     def distinct(self):
         """Produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
-        return _UnaryExpression(self, operator=operators.distinct_op, type_=self.type)
+
+        return _UnaryExpression(self, operator=operators.distinct_op,
+                                type_=self.type)
 
     def between(self, cleft, cright):
-        """Produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
+        """Produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND
+        <cright>``"""
 
         return _BinaryExpression(
                 self,
                 ClauseList(
-                    self._check_literal(cleft),
-                    self._check_literal(cright),
+                    self._check_literal(operators.and_, cleft),
+                    self._check_literal(operators.and_, cright),
                     operator=operators.and_,
                     group=False),
                 operators.between_op)
@@ -1598,56 +1822,61 @@ class _CompareMixin(ColumnOperators):
 
           somecolumn * 5
 
-        operator
-          a string which will be output as the infix operator between
-          this ``ClauseElement`` and the expression passed to the
+        :param operator: a string which will be output as the infix operator
+          between this :class:`ClauseElement` and the expression passed to the
           generated function.
 
+        This function can also be used to make bitwise operators explicit. For
+        example::
+
+          somecolumn.op('&')(0xff)
+
+        is a bitwise AND of the value in somecolumn.
+          
         """
         return lambda other: self.__operate(operator, other)
 
-    def _bind_param(self, obj):
-        return _BindParamClause(None, obj, type_=self.type, unique=True)
+    def _bind_param(self, operator, obj):
+        return _BindParamClause(None, obj, 
+                                    _compared_to_operator=operator, 
+                                    _compared_to_type=self.type, unique=True)
 
-    def _check_literal(self, other):
-        if isinstance(other, _BindParamClause) and isinstance(other.type, sqltypes.NullType):
+    def _check_literal(self, operator, other):
+        if isinstance(other, _BindParamClause) and \
+            isinstance(other.type, sqltypes.NullType):
+            # TODO: perhaps we should not mutate the incoming bindparam()
+            # here and instead make a copy of it.  this might
+            # be the only place that we're mutating an incoming construct.
             other.type = self.type
             return other
         elif hasattr(other, '__clause_element__'):
             return other.__clause_element__()
         elif not isinstance(other, ClauseElement):
-            return self._bind_param(other)
+            return self._bind_param(operator, other)
         elif isinstance(other, (_SelectBaseMixin, Alias)):
             return other.as_scalar()
         else:
             return other
 
-    def _compare_type(self, obj):
-        """Allow subclasses to override the type used in constructing
-        ``_BinaryExpression`` objects.
-
-        Default return value is the type of the given object.
-
-        """
-        return obj.type
 
 class ColumnElement(ClauseElement, _CompareMixin):
-    """Represent an element that is usable within the "column clause" portion of a ``SELECT`` statement.
+    """Represent an element that is usable within the "column clause" portion
+    of a ``SELECT`` statement.
 
     This includes columns associated with tables, aliases, and
     subqueries, expressions, function calls, SQL keywords such as
-    ``NULL``, literals, etc.  ``ColumnElement`` is the ultimate base
+    ``NULL``, literals, etc.  :class:`ColumnElement` is the ultimate base
     class for all such elements.
 
-    ``ColumnElement`` supports the ability to be a *proxy* element,
-    which indicates that the ``ColumnElement`` may be associated with
-    a ``Selectable`` which was derived from another ``Selectable``.
-    An example of a "derived" ``Selectable`` is an ``Alias`` of a
-    ``Table``.
+    :class:`ColumnElement` supports the ability to be a *proxy* element,
+    which indicates that the :class:`ColumnElement` may be associated with
+    a :class:`Selectable` which was derived from another :class:`Selectable`.
+    An example of a "derived" :class:`Selectable` is an :class:`Alias` of a
+    :class:`~sqlalchemy.schema.Table`.
 
-    A ``ColumnElement``, by subclassing the ``_CompareMixin`` mixin
-    class, provides the ability to generate new ``ClauseElement``
-    objects using Python expressions.  See the ``_CompareMixin``
+    A :class:`ColumnElement`, by subclassing the :class:`_CompareMixin` mixin
+    class, provides the ability to generate new :class:`ClauseElement`
+    objects using Python expressions.  See the :class:`_CompareMixin`
     docstring for more details.
 
     """
@@ -1676,26 +1905,59 @@ class ColumnElement(ClauseElement, _CompareMixin):
         return s
 
     def shares_lineage(self, othercolumn):
-        """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``."""
+        """Return True if the given :class:`ColumnElement` 
+        has a common ancestor to this :class:`ColumnElement`."""
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
     def _make_proxy(self, selectable, name=None):
-        """Create a new ``ColumnElement`` representing this
-        ``ColumnElement`` as it appears in the select list of a
+        """Create a new :class:`ColumnElement` representing this
+        :class:`ColumnElement` as it appears in the select list of a
         descending selectable.
 
         """
-
-        if name:
-            co = ColumnClause(name, selectable, type_=getattr(self, 'type', None))
+        if name is None:
+            name = self.anon_label
+            # TODO: may want to change this to anon_label,
+            # or some value that is more useful than the
+            # compiled form of the expression
+            key = str(self)
         else:
-            name = str(self)
-            co = ColumnClause(self.anon_label, selectable, type_=getattr(self, 'type', None))
-
+            key = name
+            
+        co = ColumnClause(name, selectable, type_=getattr(self,
+                          'type', None))
         co.proxies = [self]
-        selectable.columns[name] = co
+        selectable.columns[key] = co
         return co
+
+    def compare(self, other, use_proxies=False, equivalents=None, **kw):
+        """Compare this ColumnElement to another.
+        
+        Special arguments understood:
+        
+        :param use_proxies: when True, consider two columns that
+          share a common base column as equivalent (i.e. shares_lineage())
+        
+        :param equivalents: a dictionary of columns as keys mapped to sets
+          of columns. If the given "other" column is present in this
+          dictionary, if any of the columns in the correponding set() pass the
+          comparison test, the result is True. This is used to expand the
+          comparison to other columns that may be known to be equivalent to
+          this one via foreign key or other criterion.
+
+        """
+        to_compare = (other, )
+        if equivalents and other in equivalents:
+            to_compare = equivalents[other].union(to_compare)
+
+        for oth in to_compare:
+            if use_proxies and self.shares_lineage(oth):
+                return True
+            elif oth is self:
+                return True
+        else:
+            return False
 
     @util.memoized_property
     def anon_label(self):
@@ -1711,7 +1973,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
         expressions and function calls.
 
         """
-        return _generated_label("%%(%d %s)s" % (id(self), getattr(self, 'name', 'anon')))
+        return _generated_label('%%(%d %s)s' % (id(self), getattr(self,
+                                'name', 'anon')))
 
 class ColumnCollection(util.OrderedProperties):
     """An ordered dictionary that stores a list of ColumnElement
@@ -1730,8 +1993,9 @@ class ColumnCollection(util.OrderedProperties):
         return repr([str(c) for c in self])
 
     def replace(self, column):
-        """add the given column to this collection, removing unaliased versions of this column
-           as well as existing columns with the same key.
+        """add the given column to this collection, removing unaliased
+           versions of this column  as well as existing columns with the
+           same key.
 
             e.g.::
 
@@ -1761,14 +2025,17 @@ class ColumnCollection(util.OrderedProperties):
 
     def __setitem__(self, key, value):
         if key in self:
-            # this warning is primarily to catch select() statements which have conflicting
-            # column names in their exported columns collection
+
+            # this warning is primarily to catch select() statements
+            # which have conflicting column names in their exported
+            # columns collection
+
             existing = self[key]
             if not existing.shares_lineage(value):
-                table = getattr(existing, 'table', None) and existing.table.description
-                util.warn(("Column %r on table %r being replaced by another "
-                           "column with the same key.  Consider use_labels "
-                           "for select() statements.")  % (key, table))
+                util.warn('Column %r on table %r being replaced by '
+                          'another column with the same key.  Consider '
+                          'use_labels for select() statements.' % (key,
+                          getattr(existing, 'table', None)))
         util.OrderedProperties.__setitem__(self, key, value)
 
     def remove(self, column):
@@ -1794,9 +2061,11 @@ class ColumnCollection(util.OrderedProperties):
         return util.OrderedProperties.__contains__(self, other)
 
     def contains_column(self, col):
+
         # have to use a Set here, because it will compare the identity
-        # of the column, not just using "==" for comparison which will always return a
-        # "True" value (i.e. a BinaryClause...)
+        # of the column, not just using "==" for comparison which will
+        # always return a "True" value (i.e. a BinaryClause...)
+
         return col in util.column_set(self)
 
 class ColumnSet(util.ordered_column_set):
@@ -1837,7 +2106,8 @@ class FromClause(Selectable):
     schema = None
 
     def count(self, whereclause=None, **params):
-        """return a SELECT COUNT generated against this ``FromClause``."""
+        """return a SELECT COUNT generated against this
+        :class:`FromClause`."""
 
         if self.primary_key:
             col = list(self.primary_key)[0]
@@ -1850,28 +2120,30 @@ class FromClause(Selectable):
                     **params)
 
     def select(self, whereclause=None, **params):
-        """return a SELECT of this ``FromClause``."""
+        """return a SELECT of this :class:`FromClause`."""
 
         return select([self], whereclause, **params)
 
     def join(self, right, onclause=None, isouter=False):
-        """return a join of this ``FromClause`` against another ``FromClause``."""
+        """return a join of this :class:`FromClause` against another
+        :class:`FromClause`."""
 
         return Join(self, right, onclause, isouter)
 
     def outerjoin(self, right, onclause=None):
-        """return an outer join of this ``FromClause`` against another ``FromClause``."""
+        """return an outer join of this :class:`FromClause` against another
+        :class:`FromClause`."""
 
         return Join(self, right, onclause, True)
 
     def alias(self, name=None):
-        """return an alias of this ``FromClause``.
+        """return an alias of this :class:`FromClause`.
         
         For table objects, this has the effect of the table being rendered
         as ``tablename AS aliasname`` in a SELECT statement.  
         For select objects, the effect is that of creating a named
         subquery, i.e. ``(select ...) AS aliasname``.
-        The ``alias()`` method is the general way to create
+        The :func:`alias()` method is the general way to create
         a "subquery" out of an existing SELECT.
         
         The ``name`` parameter is optional, and if left blank an 
@@ -1884,7 +2156,8 @@ class FromClause(Selectable):
         return Alias(self, name)
 
     def is_derived_from(self, fromclause):
-        """Return True if this FromClause is 'derived' from the given FromClause.
+        """Return True if this FromClause is 'derived' from the given
+        FromClause.
 
         An example would be an Alias of a Table is derived from that Table.
 
@@ -1893,13 +2166,11 @@ class FromClause(Selectable):
 
     def replace_selectable(self, old, alias):
         """replace all occurences of FromClause 'old' with the given Alias 
-        object, returning a copy of this ``FromClause``.
+        object, returning a copy of this :class:`FromClause`.
         
         """
-        global ClauseAdapter
-        if ClauseAdapter is None:
-            from sqlalchemy.sql.util import ClauseAdapter
-        return ClauseAdapter(alias).traverse(self)
+
+        return sqlutil.ClauseAdapter(alias).traverse(self)
 
     def correspond_on_equivalents(self, column, equivalents):
         """Return corresponding_column for the given column, or if None
@@ -1915,60 +2186,66 @@ class FromClause(Selectable):
         return col
 
     def corresponding_column(self, column, require_embedded=False):
-        """Given a ``ColumnElement``, return the exported ``ColumnElement``
-        object from this ``Selectable`` which corresponds to that
-        original ``Column`` via a common anscestor column.
-
-        :param column: the target ``ColumnElement`` to be matched
-
-        :param require_embedded: only return corresponding columns for the given
-          ``ColumnElement``, if the given ``ColumnElement`` is
-          actually present within a sub-element of this
-          ``FromClause``.  Normally the column will match if it merely
-          shares a common anscestor with one of the exported columns
-          of this ``FromClause``.
-
+        """Given a :class:`ColumnElement`, return the exported
+        :class:`ColumnElement` object from this :class:`Selectable`
+        which corresponds to that original
+        :class:`~sqlalchemy.schema.Column` via a common anscestor
+        column.
+        
+        :param column: the target :class:`ColumnElement` to be matched
+        
+        :param require_embedded: only return corresponding columns for
+        the given :class:`ColumnElement`, if the given
+        :class:`ColumnElement` is actually present within a sub-element
+        of this :class:`FromClause`.  Normally the column will match if
+        it merely shares a common anscestor with one of the exported
+        columns of this :class:`FromClause`.
+        
         """
+
         # dont dig around if the column is locally present
+
         if self.c.contains_column(column):
             return column
-
         col, intersect = None, None
         target_set = column.proxy_set
         cols = self.c
         for c in cols:
-            i = c.proxy_set.intersection(target_set)
-            if i and \
-                (not require_embedded or c.proxy_set.issuperset(target_set)):
-                
+            i = target_set.intersection(itertools.chain(*[p._cloned_set
+                    for p in c.proxy_set]))
+            if i and (not require_embedded
+                      or c.proxy_set.issuperset(target_set)):
                 if col is None:
+
                     # no corresponding column yet, pick this one.
+
                     col, intersect = c, i
                 elif len(i) > len(intersect):
-                    # 'c' has a larger field of correspondence than 'col'.
-                    # i.e. selectable.c.a1_x->a1.c.x->table.c.x matches
-                    # a1.c.x->table.c.x better than 
+
+                    # 'c' has a larger field of correspondence than
+                    # 'col'. i.e. selectable.c.a1_x->a1.c.x->table.c.x
+                    # matches a1.c.x->table.c.x better than
                     # selectable.c.x->table.c.x does.
+
                     col, intersect = c, i
                 elif i == intersect:
-                    # they have the same field of correspondence.
-                    # see which proxy_set has fewer columns in it, which indicates
-                    # a closer relationship with the root column. Also take into
-                    # account the "weight" attribute which CompoundSelect() uses to
-                    # give higher precedence to columns based on vertical position
-                    # in the compound statement, and discard columns that have no
-                    # reference to the target column (also occurs with
-                    # CompoundSelect)
-                    col_distance = util.reduce(operator.add, 
-                                        [sc._annotations.get('weight', 1) 
-                                            for sc in col.proxy_set 
-                                            if sc.shares_lineage(column)]
-                                    )
-                    c_distance = util.reduce(operator.add, 
-                                        [sc._annotations.get('weight', 1) 
-                                            for sc in c.proxy_set 
-                                            if sc.shares_lineage(column)]
-                                    )
+
+                    # they have the same field of correspondence. see
+                    # which proxy_set has fewer columns in it, which
+                    # indicates a closer relationship with the root
+                    # column. Also take into account the "weight"
+                    # attribute which CompoundSelect() uses to give
+                    # higher precedence to columns based on vertical
+                    # position in the compound statement, and discard
+                    # columns that have no reference to the target
+                    # column (also occurs with CompoundSelect)
+
+                    col_distance = util.reduce(operator.add,
+                            [sc._annotations.get('weight', 1) for sc in
+                            col.proxy_set if sc.shares_lineage(column)])
+                    c_distance = util.reduce(operator.add,
+                            [sc._annotations.get('weight', 1) for sc in
+                            c.proxy_set if sc.shares_lineage(column)])
                     if c_distance < col_distance:
                         col, intersect = c, i
         return col
@@ -1985,36 +2262,43 @@ class FromClause(Selectable):
     def _reset_exported(self):
         """delete memoized collections when a FromClause is cloned."""
 
-        for attr in ('_columns', '_primary_key' '_foreign_keys', 'locate_all_froms'):
+        for attr in '_columns', '_primary_key', '_foreign_keys', \
+            'locate_all_froms':
             self.__dict__.pop(attr, None)
 
     @util.memoized_property
     def _columns(self):
-        """Return the collection of Column objects contained by this FromClause."""
+        """Return the collection of Column objects contained by this
+        FromClause."""
 
         self._export_columns()
         return self._columns
 
     @util.memoized_property
     def _primary_key(self):
-        """Return the collection of Column objects which comprise the primary key of this FromClause."""
+        """Return the collection of Column objects which comprise the
+        primary key of this FromClause."""
 
         self._export_columns()
         return self._primary_key
 
     @util.memoized_property
     def _foreign_keys(self):
-        """Return the collection of ForeignKey objects which this FromClause references."""
+        """Return the collection of ForeignKey objects which this
+        FromClause references."""
 
         self._export_columns()
         return self._foreign_keys
-
     columns = property(attrgetter('_columns'), doc=_columns.__doc__)
-    primary_key = property(attrgetter('_primary_key'), doc=_primary_key.__doc__)
-    foreign_keys = property(attrgetter('_foreign_keys'), doc=_foreign_keys.__doc__)
+    primary_key = property(attrgetter('_primary_key'),
+                           doc=_primary_key.__doc__)
+    foreign_keys = property(attrgetter('_foreign_keys'),
+                            doc=_foreign_keys.__doc__)
 
     # synonyms for 'columns'
-    c = _select_iterable = property(attrgetter('columns'), doc=_columns.__doc__)
+
+    c = _select_iterable = property(attrgetter('columns'),
+                                    doc=_columns.__doc__)
 
     def _export_columns(self):
         """Initialize column collections."""
@@ -2030,96 +2314,98 @@ class FromClause(Selectable):
 class _BindParamClause(ColumnElement):
     """Represent a bind parameter.
 
-    Public constructor is the ``bindparam()`` function.
+    Public constructor is the :func:`bindparam()` function.
 
     """
 
     __visit_name__ = 'bindparam'
     quote = None
 
-    def __init__(self, key, value, type_=None, unique=False, isoutparam=False, shortname=None):
+    def __init__(self, key, value, type_=None, unique=False, 
+                            isoutparam=False, required=False, 
+                            _compared_to_operator=None,
+                            _compared_to_type=None):
         """Construct a _BindParamClause.
 
-        key
+        :param key:
           the key for this bind param.  Will be used in the generated
           SQL statement for dialects that use named parameters.  This
           value may be modified when part of a compilation operation,
-          if other ``_BindParamClause`` objects exist with the same
+          if other :class:`_BindParamClause` objects exist with the same
           key, or if its length is too long and truncation is
           required.
 
-        value
+        :param value:
           Initial value for this bind param.  This value may be
           overridden by the dictionary of parameters sent to statement
           compilation/execution.
 
-        shortname
-          deprecated.
-
-        type\_
+        :param type\_:
           A ``TypeEngine`` object that will be used to pre-process the
-          value corresponding to this ``_BindParamClause`` at
+          value corresponding to this :class:`_BindParamClause` at
           execution time.
 
-        unique
+        :param unique:
           if True, the key name of this BindParamClause will be
-          modified if another ``_BindParamClause`` of the same name
+          modified if another :class:`_BindParamClause` of the same name
           already has been located within the containing
-          ``ClauseElement``.
-
-        isoutparam
-          if True, the parameter should be treated like a stored procedure "OUT"
-          parameter.
+          :class:`ClauseElement`.
+        
+        :param required:
+          a value is required at execution time.
+          
+        :param isoutparam:
+          if True, the parameter should be treated like a stored procedure
+          "OUT" parameter.
 
         """
         if unique:
-            self.key = _generated_label("%%(%d %s)s" % (id(self), key or 'param'))
+            self.key = _generated_label('%%(%d %s)s' % (id(self), key
+                    or 'param'))
         else:
-            self.key = key or _generated_label("%%(%d param)s" % id(self))
+            self.key = key or _generated_label('%%(%d param)s'
+                    % id(self))
         self._orig_key = key or 'param'
         self.unique = unique
         self.value = value
         self.isoutparam = isoutparam
-        self.shortname = shortname
-
+        self.required = required
         if type_ is None:
-            self.type = sqltypes.type_map.get(type(value), sqltypes.NullType)()
+            if _compared_to_type is not None:
+                self.type = \
+                    _compared_to_type._coerce_compared_value(
+                        _compared_to_operator, value)
+            else:
+                self.type = sqltypes.type_map.get(type(value),
+                        sqltypes.NULLTYPE)
         elif isinstance(type_, type):
             self.type = type_()
         else:
             self.type = type_
-
+            
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
-            c.key = _generated_label("%%(%d %s)s" % (id(c), c._orig_key or 'param'))
+            c.key = _generated_label('%%(%d %s)s' % (id(c), c._orig_key
+                    or 'param'))
         return c
 
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = _generated_label("%%(%d %s)s" % (id(self), self._orig_key or 'param'))
+            self.key = _generated_label('%%(%d %s)s' % (id(self),
+                    self._orig_key or 'param'))
 
     def bind_processor(self, dialect):
         return self.type.dialect_impl(dialect).bind_processor(dialect)
 
-    def _compare_type(self, obj):
-        if not isinstance(self.type, sqltypes.NullType):
-            return self.type
-        else:
-            return obj.type
+    def compare(self, other, **kw):
+        """Compare this :class:`_BindParamClause` to the given
+        clause."""
 
-    def compare(self, other):
-        """Compare this ``_BindParamClause`` to the given clause.
-
-        Since ``compare()`` is meant to compare statement syntax, this
-        method returns True if the two ``_BindParamClauses`` have just
-        the same type.
-
-        """
-        return isinstance(other, _BindParamClause) and \
-                    other.type.__class__ == self.type.__class__ and \
-                    self.value == other.value
+        return isinstance(other, _BindParamClause) \
+            and self.type._compare_type_affinity(other.type) \
+            and self.value == other.value
 
     def __getstate__(self):
         """execute a deferred value for serialization purposes."""
@@ -2132,9 +2418,8 @@ class _BindParamClause(ColumnElement):
         return d
 
     def __repr__(self):
-        return "_BindParamClause(%r, %r, type_=%r)" % (
-            self.key, self.value, self.type
-            )
+        return '_BindParamClause(%r, %r, type_=%r)' % (self.key,
+                self.value, self.type)
 
 class _TypeClause(ClauseElement):
     """Handle a type keyword in a SQL statement.
@@ -2149,40 +2434,153 @@ class _TypeClause(ClauseElement):
         self.type = type
 
 
-class _TextClause(ClauseElement):
+class _Generative(object):
+    """Allow a ClauseElement to generate itself via the
+    @_generative decorator.
+    
+    """
+    
+    def _generate(self):
+        s = self.__class__.__new__(self.__class__)
+        s.__dict__ = self.__dict__.copy()
+        return s
+
+
+class Executable(_Generative):
+    """Mark a ClauseElement as supporting execution.
+    
+    :class:`Executable` is a superclass for all "statement" types
+    of objects, including :func:`select`, :func:`delete`, :func:`update`,
+    :func:`insert`, :func:`text`.
+     
+    """
+
+    supports_execution = True
+    _execution_options = util.frozendict()
+
+    @_generative
+    def execution_options(self, **kw):
+        """ Set non-SQL options for the statement which take effect during
+        execution.
+        
+        Current options include:
+        
+        * autocommit - when True, a COMMIT will be invoked after execution 
+          when executed in 'autocommit' mode, i.e. when an explicit
+          transaction is not begun on the connection. Note that DBAPI
+          connections by default are always in a transaction - SQLAlchemy uses
+          rules applied to different kinds of statements to determine if
+          COMMIT will be invoked in order to provide its "autocommit" feature.
+          Typically, all INSERT/UPDATE/DELETE statements as well as
+          CREATE/DROP statements have autocommit behavior enabled; SELECT
+          constructs do not. Use this option when invoking a SELECT or other
+          specific SQL construct where COMMIT is desired (typically when
+          calling stored procedures and such).
+          
+        * stream_results - indicate to the dialect that results should be 
+          "streamed" and not pre-buffered, if possible.  This is a limitation
+          of many DBAPIs.  The flag is currently understood only by the
+          psycopg2 dialect.
+
+        * compiled_cache - a dictionary where :class:`Compiled` objects
+          will be cached when the :class:`Connection` compiles a clause 
+          expression into a dialect- and parameter-specific 
+          :class:`Compiled` object.   It is the user's responsibility to
+          manage the size of this dictionary, which will have keys
+          corresponding to the dialect, clause element, the column
+          names within the VALUES or SET clause of an INSERT or UPDATE, 
+          as well as the "batch" mode for an INSERT or UPDATE statement.
+          The format of this dictionary is not guaranteed to stay the
+          same in future releases.
+          
+          This option is usually more appropriate
+          to use via the 
+          :meth:`sqlalchemy.engine.base.Connection.execution_options()`
+          method of :class:`Connection`, rather than upon individual 
+          statement objects, though the effect is the same.
+          
+        See also:
+        
+            :meth:`sqlalchemy.engine.base.Connection.execution_options()`
+
+            :meth:`sqlalchemy.orm.query.Query.execution_options()`
+            
+        """
+        self._execution_options = self._execution_options.union(kw)
+
+    def execute(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`."""
+
+        e = self.bind
+        if e is None:
+            label = getattr(self, 'description', self.__class__.__name__)
+            msg = ('This %s is not bound and does not support direct '
+                   'execution. Supply this statement to a Connection or '
+                   'Engine for execution. Or, assign a bind to the statement '
+                   'or the Metadata of its underlying tables to enable '
+                   'implicit execution via this method.' % label)
+            raise exc.UnboundExecutionError(msg)
+        return e._execute_clauseelement(self, multiparams, params)
+
+    def scalar(self, *multiparams, **params):
+        """Compile and execute this :class:`.Executable`, returning the
+        result's scalar representation.
+        
+        """
+        return self.execute(*multiparams, **params).scalar()
+
+# legacy, some outside users may be calling this
+_Executable = Executable
+    
+class _TextClause(Executable, ClauseElement):
     """Represent a literal SQL text fragment.
 
-    Public constructor is the ``text()`` function.
+    Public constructor is the :func:`text()` function.
 
     """
 
     __visit_name__ = 'textclause'
 
     _bind_params_regex = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
-    supports_execution = True
-
+    _execution_options = \
+        Executable._execution_options.union({'autocommit'
+            : PARSE_AUTOCOMMIT})
+    
     @property
     def _select_iterable(self):
         return (self,)
 
     _hide_froms = []
 
-    def __init__(self, text = "", bind=None, 
-                    bindparams=None, typemap=None, autocommit=False):
+    def __init__(
+        self,
+        text='',
+        bind=None,
+        bindparams=None,
+        typemap=None,
+        autocommit=None,
+        ):
         self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
-        self._autocommit = autocommit
+        if autocommit is not None:
+            util.warn_deprecated('autocommit on text() is deprecated.  '
+                                 'Use .execution_options(autocommit=Tru'
+                                 'e)')
+            self._execution_options = \
+                self._execution_options.union({'autocommit'
+                    : autocommit})
         if typemap is not None:
             for key in typemap.keys():
                 typemap[key] = sqltypes.to_instance(typemap[key])
 
         def repl(m):
             self.bindparams[m.group(1)] = bindparam(m.group(1))
-            return ":%s" % m.group(1)
+            return ':%s' % m.group(1)
 
         # scan the string and search for bind parameter names, add them
         # to the list of bindparams
+
         self.text = self._bind_params_regex.sub(repl, text)
         if bindparams is not None:
             for b in bindparams:
@@ -2193,7 +2591,13 @@ class _TextClause(ClauseElement):
         if self.typemap is not None and len(self.typemap) == 1:
             return list(self.typemap)[0]
         else:
-            return None
+            return sqltypes.NULLTYPE
+
+    def self_group(self, against=None):
+        if against is operators.in_op:
+            return _Grouping(self)
+        else:
+            return self
 
     def _copy_internals(self, clone=_clone):
         self.bindparams = dict((b.key, clone(b))
@@ -2206,7 +2610,7 @@ class _TextClause(ClauseElement):
 class _Null(ColumnElement):
     """Represent the NULL keyword in a SQL statement.
 
-    Public constructor is the ``null()`` function.
+    Public constructor is the :func:`null()` function.
 
     """
 
@@ -2236,7 +2640,14 @@ class ClauseList(ClauseElement):
             self.clauses = [
                 _literal_as_text(clause)
                 for clause in clauses if clause is not None]
-
+    
+    @util.memoized_property
+    def type(self):
+        if self.clauses:
+            return self.clauses[0].type
+        else:
+            return sqltypes.NULLTYPE
+            
     def __iter__(self):
         return iter(self.clauses)
 
@@ -2253,7 +2664,8 @@ class ClauseList(ClauseElement):
         # and a "flattened" ClauseList of ClauseLists.  flatten()
         # method ?
         if self.group_contents:
-            self.clauses.append(_literal_as_text(clause).self_group(against=self.operator))
+            self.clauses.append(_literal_as_text(clause).\
+                                self_group(against=self.operator))
         else:
             self.clauses.append(_literal_as_text(clause))
 
@@ -2268,22 +2680,22 @@ class ClauseList(ClauseElement):
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
-        if self.group and self.operator is not against and \
-                operators.is_precedent(self.operator, against):
+        if self.group and operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
 
-    def compare(self, other):
-        """Compare this ``ClauseList`` to the given ``ClauseList``,
+    def compare(self, other, **kw):
+        """Compare this :class:`ClauseList` to the given :class:`ClauseList`,
         including a comparison of all the clause items.
 
         """
         if not isinstance(other, ClauseList) and len(self.clauses) == 1:
-            return self.clauses[0].compare(other)
-        elif isinstance(other, ClauseList) and len(self.clauses) == len(other.clauses):
+            return self.clauses[0].compare(other, **kw)
+        elif isinstance(other, ClauseList) and \
+                len(self.clauses) == len(other.clauses):
             for i in range(0, len(self.clauses)):
-                if not self.clauses[i].compare(other.clauses[i]):
+                if not self.clauses[i].compare(other.clauses[i], **kw):
                     return False
             else:
                 return self.operator == other.operator
@@ -2295,12 +2707,31 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
     def __init__(self, *clauses, **kwargs):
         super(BooleanClauseList, self).__init__(*clauses, **kwargs)
-        self.type = sqltypes.to_instance(kwargs.get('type_', sqltypes.Boolean))
+        self.type = sqltypes.to_instance(kwargs.get('type_',
+                sqltypes.Boolean))
 
     @property
     def _select_iterable(self):
         return (self, )
 
+class _Tuple(ClauseList, ColumnElement):
+    
+    def __init__(self, *clauses, **kw):
+        clauses = [_literal_as_binds(c) for c in clauses]
+        super(_Tuple, self).__init__(*clauses, **kw)
+        self.type = _type_from_args(clauses)
+
+    @property
+    def _select_iterable(self):
+        return (self, )
+
+    def _bind_param(self, operator, obj):
+        return _Tuple(*[
+            _BindParamClause(None, o, _compared_to_operator=operator,
+                             _compared_to_type=self.type, unique=True)
+            for o in obj
+        ]).self_group()
+    
 
 class _Case(ColumnElement):
     __visit_name__ = 'case'
@@ -2311,13 +2742,15 @@ class _Case(ColumnElement):
         except TypeError:
             pass
 
-        if value:
+        if value is not None:
             whenlist = [
-                (_literal_as_binds(c).self_group(), _literal_as_binds(r)) for (c, r) in whens
+                (_literal_as_binds(c).self_group(), 
+                _literal_as_binds(r)) for (c, r) in whens
             ]
         else:
             whenlist = [
-                (_no_literals(c).self_group(), _literal_as_binds(r)) for (c, r) in whens
+                (_no_literals(c).self_group(), 
+                _literal_as_binds(r)) for (c, r) in whens
             ]
 
         if whenlist:
@@ -2338,41 +2771,35 @@ class _Case(ColumnElement):
             self.else_ = None
 
     def _copy_internals(self, clone=_clone):
-        if self.value:
+        if self.value is not None:
             self.value = clone(self.value)
         self.whens = [(clone(x), clone(y)) for x, y in self.whens]
-        if self.else_:
+        if self.else_ is not None:
             self.else_ = clone(self.else_)
 
     def get_children(self, **kwargs):
-        if self.value:
+        if self.value is not None:
             yield self.value
         for x, y in self.whens:
             yield x
             yield y
-        if self.else_:
+        if self.else_ is not None:
             yield self.else_ 
 
     @property
     def _from_objects(self):
-        return list(itertools.chain(*[x._from_objects for x in self.get_children()]))
+        return list(itertools.chain(*[x._from_objects for x in
+                    self.get_children()]))
 
-class Function(ColumnElement, FromClause):
-    """Describe a SQL function."""
-
-    __visit_name__ = 'function'
-
-    def __init__(self, name, *clauses, **kwargs):
-        self.packagenames = kwargs.get('packagenames', None) or []
-        self.name = name
-        self._bind = kwargs.get('bind', None)
+class FunctionElement(Executable, ColumnElement, FromClause):
+    """Base for SQL function-oriented constructs."""
+    
+    def __init__(self, *clauses, **kwargs):
         args = [_literal_as_binds(c, self.name) for c in clauses]
-        self.clause_expr = ClauseList(operator=operators.comma_op, group_contents=True, *args).self_group()
-        self.type = sqltypes.to_instance(kwargs.get('type_', None))
-
-    @property
-    def key(self):
-        return self.name
+        self.clause_expr = ClauseList(
+                                operator=operators.comma_op,
+                                 group_contents=True, *args).\
+                                 self_group()
 
     @property
     def columns(self):
@@ -2381,7 +2808,7 @@ class Function(ColumnElement, FromClause):
     @util.memoized_property
     def clauses(self):
         return self.clause_expr.element
-        
+
     @property
     def _from_objects(self):
         return self.clauses._from_objects
@@ -2393,21 +2820,42 @@ class Function(ColumnElement, FromClause):
         self.clause_expr = clone(self.clause_expr)
         self._reset_exported()
         util.reset_memoized(self, 'clauses')
-        
-    def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
 
     def select(self):
-        return select([self])
+        s = select([self])
+        if self._execution_options:
+            s = s.execution_options(**self._execution_options)
+        return s
 
     def scalar(self):
-        return select([self]).execute().scalar()
+        return self.select().execute().scalar()
 
     def execute(self):
-        return select([self]).execute()
+        return self.select().execute()
 
-    def _compare_type(self, obj):
-        return self.type
+    def _bind_param(self, operator, obj):
+        return _BindParamClause(None, obj, _compared_to_operator=operator, 
+                                _compared_to_type=self.type, unique=True)
+
+    
+class Function(FunctionElement):
+    """Describe a named SQL function."""
+
+    __visit_name__ = 'function'
+
+    def __init__(self, name, *clauses, **kw):
+        self.packagenames = kw.pop('packagenames', None) or []
+        self.name = name
+        self._bind = kw.get('bind', None)
+        self.type = sqltypes.to_instance(kw.get('type_', None))
+        
+        FunctionElement.__init__(self, *clauses, **kw)
+
+    def _bind_param(self, operator, obj):
+        return _BindParamClause(self.name, obj,
+                                _compared_to_operator=operator,
+                                _compared_to_type=self.type,
+                                unique=True)
 
 
 class _Cast(ColumnElement):
@@ -2455,11 +2903,13 @@ class _UnaryExpression(ColumnElement):
 
     __visit_name__ = 'unary'
 
-    def __init__(self, element, operator=None, modifier=None, type_=None, negate=None):
+    def __init__(self, element, operator=None, modifier=None, 
+                            type_=None, negate=None):
         self.operator = operator
         self.modifier = modifier
 
-        self.element = _literal_as_text(element).self_group(against=self.operator or self.modifier)
+        self.element = _literal_as_text(element).\
+                    self_group(against=self.operator or self.modifier)
         self.type = sqltypes.to_instance(type_)
         self.negate = negate
 
@@ -2473,14 +2923,15 @@ class _UnaryExpression(ColumnElement):
     def get_children(self, **kwargs):
         return self.element,
 
-    def compare(self, other):
-        """Compare this ``_UnaryExpression`` against the given ``ClauseElement``."""
+    def compare(self, other, **kw):
+        """Compare this :class:`_UnaryExpression` against the given
+        :class:`ClauseElement`."""
 
         return (
             isinstance(other, _UnaryExpression) and
             self.operator == other.operator and
             self.modifier == other.modifier and
-            self.element.compare(other.element)
+            self.element.compare(other.element, **kw)
         )
 
     def _negate(self):
@@ -2494,8 +2945,9 @@ class _UnaryExpression(ColumnElement):
         else:
             return super(_UnaryExpression, self)._negate()
 
-    def self_group(self, against):
-        if self.operator and operators.is_precedent(self.operator, against):
+    def self_group(self, against=None):
+        if self.operator and operators.is_precedent(self.operator,
+                against):
             return _Grouping(self)
         else:
             return self
@@ -2506,7 +2958,8 @@ class _BinaryExpression(ColumnElement):
 
     __visit_name__ = 'binary'
 
-    def __init__(self, left, right, operator, type_=None, negate=None, modifiers=None):
+    def __init__(self, left, right, operator, type_=None, 
+                    negate=None, modifiers=None):
         self.left = _literal_as_text(left).self_group(against=operator)
         self.right = _literal_as_text(right).self_group(against=operator)
         self.operator = operator
@@ -2516,7 +2969,13 @@ class _BinaryExpression(ColumnElement):
             self.modifiers = {}
         else:
             self.modifiers = modifiers
-
+    
+    def __nonzero__(self):
+        try:
+            return self.operator(hash(self.left), hash(self.right))
+        except:
+            raise TypeError("Boolean value of this clause is not defined")
+        
     @property
     def _from_objects(self):
         return self.left._from_objects + self.right._from_objects
@@ -2528,27 +2987,26 @@ class _BinaryExpression(ColumnElement):
     def get_children(self, **kwargs):
         return self.left, self.right
 
-    def compare(self, other):
-        """Compare this ``_BinaryExpression`` against the given ``_BinaryExpression``."""
+    def compare(self, other, **kw):
+        """Compare this :class:`_BinaryExpression` against the 
+        given :class:`_BinaryExpression`."""
 
         return (
             isinstance(other, _BinaryExpression) and
             self.operator == other.operator and
             (
-                self.left.compare(other.left) and
-                self.right.compare(other.right) or
+                self.left.compare(other.left, **kw) and
+                self.right.compare(other.right, **kw) or
                 (
                     operators.is_commutative(self.operator) and
-                    self.left.compare(other.right) and
-                    self.right.compare(other.left)
+                    self.left.compare(other.right, **kw) and
+                    self.right.compare(other.left, **kw)
                 )
             )
         )
 
     def self_group(self, against=None):
-        # use small/large defaults for comparison so that unknown
-        # operators are always parenthesized
-        if self.operator is not against and operators.is_precedent(self.operator, against):
+        if operators.is_precedent(self.operator, against):
             return _Grouping(self)
         else:
             return self
@@ -2560,7 +3018,7 @@ class _BinaryExpression(ColumnElement):
                 self.right,
                 self.negate,
                 negate=self.operator,
-                type_=self.type,
+                type_=sqltypes.BOOLEANTYPE,
                 modifiers=self.modifiers)
         else:
             return super(_BinaryExpression, self)._negate()
@@ -2570,14 +3028,15 @@ class _Exists(_UnaryExpression):
     _from_objects = []
 
     def __init__(self, *args, **kwargs):
-        if args and isinstance(args[0], _SelectBaseMixin):
+        if args and isinstance(args[0], (_SelectBaseMixin, _ScalarSelect)):
             s = args[0]
         else:
             if not args:
                 args = ([literal_column('*')],)
             s = select(*args, **kwargs).as_scalar().self_group()
 
-        _UnaryExpression.__init__(self, s, operator=operators.exists, type_=sqltypes.Boolean)
+        _UnaryExpression.__init__(self, s, operator=operators.exists,
+                                  type_=sqltypes.Boolean)
 
     def select(self, whereclause=None, **params):
         return select([self], whereclause, **params)
@@ -2588,8 +3047,8 @@ class _Exists(_UnaryExpression):
         return e
 
     def select_from(self, clause):
-        """return a new exists() construct with the given expression set as its FROM
-        clause.
+        """return a new exists() construct with the given expression set as
+        its FROM clause.
         
         """
         e = self._clone()
@@ -2597,8 +3056,8 @@ class _Exists(_UnaryExpression):
         return e
 
     def where(self, clause):
-        """return a new exists() construct with the given expression added to its WHERE
-        clause, joined to the existing clause via AND, if any.
+        """return a new exists() construct with the given expression added to
+        its WHERE clause, joined to the existing clause via AND, if any.
         
         """
         e = self._clone()
@@ -2606,11 +3065,12 @@ class _Exists(_UnaryExpression):
         return e
 
 class Join(FromClause):
-    """represent a ``JOIN`` construct between two ``FromClause`` elements.
+    """represent a ``JOIN`` construct between two :class:`FromClause`
+    elements.
 
-    The public constructor function for ``Join`` is the module-level
-    ``join()`` function, as well as the ``join()`` method available
-    off all ``FromClause`` subclasses.
+    The public constructor function for :class:`Join` is the module-level
+    :func:`join()` function, as well as the :func:`join()` method available
+    off all :class:`FromClause` subclasses.
 
     """
     __visit_name__ = 'join'
@@ -2644,15 +3104,14 @@ class Join(FromClause):
         return _FromGrouping(self)
 
     def _populate_column_collection(self):
-        columns = [c for c in self.left.columns] + [c for c in self.right.columns]
+        columns = [c for c in self.left.columns] + \
+                        [c for c in self.right.columns]
 
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
-        self._primary_key.extend(sql_util.reduce_columns(
+        self._primary_key.extend(sqlutil.reduce_columns(
                 (c for c in columns if c.primary_key), self.onclause))
         self._columns.update((col._label, col) for col in columns)
-        self._foreign_keys.update(itertools.chain(*[col.foreign_keys for col in columns]))
+        self._foreign_keys.update(itertools.chain(
+                        *[col.foreign_keys for col in columns]))
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
@@ -2664,11 +3123,12 @@ class Join(FromClause):
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
 
-    def _match_primaries(self, primary, secondary):
-        global sql_util
-        if not sql_util:
-            from sqlalchemy.sql import util as sql_util
-        return sql_util.join_condition(primary, secondary)
+    def _match_primaries(self, left, right):
+        if isinstance(left, Join):
+            left_right = left.right
+        else:
+            left_right = None
+        return sqlutil.join_condition(left, right, a_subset=left_right)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
         """Create a :class:`Select` from this :class:`Join`.
@@ -2682,18 +3142,14 @@ class Join(FromClause):
           select, for columns that are calculated to be "equivalent"
           based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
-          as well.  This flag is specific to a particular use case
-          by the ORM and will be deprecated in 0.6.
+          as well.
 
         :param \**kwargs: all other kwargs are sent to the 
           underlying :func:`select()` function.
 
         """
         if fold_equivalents:
-            global sql_util
-            if not sql_util:
-                from sqlalchemy.sql import util as sql_util
-            collist = sql_util.folded_equivalents(self)
+            collist = sqlutil.folded_equivalents(self)
         else:
             collist = [self.left, self.right]
 
@@ -2704,16 +3160,18 @@ class Join(FromClause):
         return self.left.bind or self.right.bind
 
     def alias(self, name=None):
-        """Create a ``Select`` out of this ``Join`` clause and return an ``Alias`` of it.
+        """Create a :class:`Select` out of this :class:`Join` clause and
+        return an :class:`Alias` of it.
 
-        The ``Select`` is not correlating.
+        The :class:`Select` is not correlating.
 
         """
         return self.select(use_labels=True, correlate=False).alias(name)
 
     @property
     def _hide_froms(self):
-        return itertools.chain(*[_from_objects(x.left, x.right) for x in self._cloned_set])
+        return itertools.chain(*[_from_objects(x.left, x.right)
+                               for x in self._cloned_set])
 
     @property
     def _from_objects(self):
@@ -2729,9 +3187,9 @@ class Alias(FromClause):
     sub-select within a SQL statement using the ``AS`` keyword (or
     without the keyword on certain databases such as Oracle).
 
-    This object is constructed from the ``alias()`` module level
-    function as well as the ``alias()`` method available on all
-    ``FromClause`` subclasses.
+    This object is constructed from the :func:`alias()` module level
+    function as well as the :func:`alias()` method available on all
+    :class:`FromClause` subclasses.
 
     """
 
@@ -2745,12 +3203,13 @@ class Alias(FromClause):
         self.original = baseselectable
         self.supports_execution = baseselectable.supports_execution
         if self.supports_execution:
-            self._autocommit = baseselectable._autocommit
+            self._execution_options = baseselectable._execution_options
         self.element = selectable
         if alias is None:
             if self.original.named_with_column:
                 alias = getattr(self.original, 'name', None)
-            alias = _generated_label('%%(%d %s)s' % (id(self), alias or 'anon'))
+            alias = _generated_label('%%(%d %s)s' % (id(self), alias
+                    or 'anon'))
         self.name = alias
 
     @property
@@ -2765,7 +3224,8 @@ class Alias(FromClause):
         try:
             return self.element.as_scalar()
         except AttributeError:
-            raise AttributeError("Element %s does not support 'as_scalar()'" % self.element)
+            raise AttributeError("Element %s does not support "
+                                 "'as_scalar()'" % self.element)
         
     def is_derived_from(self, fromclause):
         if fromclause in self._cloned_set:
@@ -2781,10 +3241,11 @@ class Alias(FromClause):
         self.element = _clone(self.element)
         baseselectable = self.element
         while isinstance(baseselectable, Alias):
-            baseselectable = baseselectable.selectable
+            baseselectable = baseselectable.element
         self.original = baseselectable
 
-    def get_children(self, column_collections=True, aliased_selectables=True, **kwargs):
+    def get_children(self, column_collections=True, 
+                        aliased_selectables=True, **kwargs):
         if column_collections:
             for c in self.c:
                 yield c
@@ -2799,6 +3260,7 @@ class Alias(FromClause):
     def bind(self):
         return self.element.bind
 
+
 class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
 
@@ -2807,10 +3269,6 @@ class _Grouping(ColumnElement):
     def __init__(self, element):
         self.element = element
         self.type = getattr(element, 'type', None)
-
-    @property
-    def key(self):
-        return self.element.key
 
     @property
     def _label(self):
@@ -2876,9 +3334,9 @@ class _Label(ColumnElement):
     Represent a label, as typically applied to any column-level
     element using the ``AS`` sql keyword.
 
-    This object is constructed from the ``label()`` module level
-    function as well as the ``label()`` method available on all
-    ``ColumnElement`` subclasses.
+    This object is constructed from the :func:`label()` module level
+    function as well as the :func:`label()` method available on all
+    :class:`ColumnElement` subclasses.
 
     """
 
@@ -2887,14 +3345,14 @@ class _Label(ColumnElement):
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
             element = element.element
-        self.name = self.key = self._label = name or \
-                                _generated_label("%%(%d %s)s" % (
-                                    id(self), getattr(element, 'name', 'anon'))
-                                )
+        self.name = self.key = self._label = name \
+            or _generated_label('%%(%d %s)s' % (id(self),
+                                getattr(element, 'name', 'anon')))
         self._element = element
         self._type = type_
         self.quote = element.quote
-
+        self.proxies = [element]
+        
     @util.memoized_property
     def type(self):
         return sqltypes.to_instance(
@@ -2904,18 +3362,23 @@ class _Label(ColumnElement):
     @util.memoized_property
     def element(self):
         return self._element.self_group(against=operators.as_)
+    
+    def self_group(self, against=None):
+        sub_element = self._element.self_group(against=against)
+        if sub_element is not self._element:
+            return _Label(self.name, 
+                        sub_element, 
+                        type_=self._type)
+        else:
+            return self._element
+        
+    @property
+    def primary_key(self):
+        return self.element.primary_key
 
-    def _proxy_attr(name):
-        get = attrgetter(name)
-        def attr(self):
-            return get(self.element)
-        return property(attr)
-
-    proxies = _proxy_attr('proxies')
-    base_columns = _proxy_attr('base_columns')
-    proxy_set = _proxy_attr('proxy_set')
-    primary_key = _proxy_attr('primary_key')
-    foreign_keys = _proxy_attr('foreign_keys')
+    @property
+    def foreign_keys(self):
+        return self.element.foreign_keys
 
     def get_children(self, **kwargs):
         return self.element,
@@ -2932,6 +3395,7 @@ class _Label(ColumnElement):
             e = self.element._make_proxy(selectable, name=self.name)
         else:
             e = column(self.name)._make_proxy(selectable=selectable)
+            
         e.proxies.append(self)
         return e
 
@@ -2940,9 +3404,9 @@ class ColumnClause(_Immutable, ColumnElement):
 
     This includes columns associated with tables, aliases and select
     statements, but also any arbitrary text.  May or may not be bound
-    to an underlying ``Selectable``.  ``ColumnClause`` is usually
-    created publically via the ``column()`` function or the
-    ``literal_column()`` function.
+    to an underlying :class:`Selectable`.  :class:`ColumnClause` is usually
+    created publically via the :func:`column()` function or the
+    :func:`literal_column()` function.
 
     text
       the text of the element.
@@ -2951,18 +3415,20 @@ class ColumnClause(_Immutable, ColumnElement):
       parent selectable.
 
     type
-      ``TypeEngine`` object which can associate this ``ColumnClause``
+      ``TypeEngine`` object which can associate this :class:`ColumnClause`
       with a type.
 
     is_literal
-      if True, the ``ColumnClause`` is assumed to be an exact
+      if True, the :class:`ColumnClause` is assumed to be an exact
       expression that will be delivered to the output with no quoting
       rules applied regardless of case sensitive settings.  the
-      ``literal_column()`` function is usually used to create such a
-      ``ColumnClause``.
+      :func:`literal_column()` function is usually used to create such a
+      :class:`ColumnClause`.
 
     """
     __visit_name__ = 'column'
+
+    onupdate = default = server_default = server_onupdate = None
 
     def __init__(self, text, selectable=None, type_=None, is_literal=False):
         self.key = self.name = text
@@ -2983,23 +3449,25 @@ class ColumnClause(_Immutable, ColumnElement):
         if self.is_literal:
             return None
 
-        elif self.table and self.table.named_with_column:
+        elif self.table is not None and self.table.named_with_column:
             if getattr(self.table, 'schema', None):
-                label = self.table.schema + "_" + \
+                label = self.table.schema.replace('.', '_') + "_" + \
                             _escape_for_generated(self.table.name) + "_" + \
                             _escape_for_generated(self.name)
             else:
                 label = _escape_for_generated(self.table.name) + "_" + \
                             _escape_for_generated(self.name)
 
+            # ensure the label name doesn't conflict with that
+            # of an existing column
             if label in self.table.c:
-                # TODO: coverage does not seem to be present for this
                 _label = label
                 counter = 1
                 while _label in self.table.c:
                     _label = label + "_" + str(counter)
                     counter += 1
                 label = _label
+
             return _generated_label(label)
 
         else:
@@ -3013,19 +3481,22 @@ class ColumnClause(_Immutable, ColumnElement):
 
     @property
     def _from_objects(self):
-        if self.table:
+        if self.table is not None:
             return [self.table]
         else:
             return []
 
-    def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type_=self.type, unique=True)
+    def _bind_param(self, operator, obj):
+        return _BindParamClause(self.name, obj,
+                                _compared_to_operator=operator,
+                                _compared_to_type=self.type,
+                                unique=True)
 
     def _make_proxy(self, selectable, name=None, attach=True):
         # propagate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
-        c = ColumnClause(
+        c = self._constructor(
                     name or self.name, 
                     selectable=selectable, 
                     type_=self.type, 
@@ -3035,9 +3506,6 @@ class ColumnClause(_Immutable, ColumnElement):
         if attach:
             selectable.columns[c.name] = c
         return c
-
-    def _compare_type(self, obj):
-        return self.type
 
 class TableClause(_Immutable, FromClause):
     """Represents a "table" construct.
@@ -3051,7 +3519,7 @@ class TableClause(_Immutable, FromClause):
     __visit_name__ = 'table'
 
     named_with_column = True
-
+    
     def __init__(self, name, *columns):
         super(TableClause, self).__init__()
         self.name = self.fullname = name
@@ -3083,6 +3551,9 @@ class TableClause(_Immutable, FromClause):
             return []
 
     def count(self, whereclause=None, **params):
+        """return a SELECT COUNT generated against this
+        :class:`TableClause`."""
+        
         if self.primary_key:
             col = list(self.primary_key)[0]
         else:
@@ -3094,18 +3565,18 @@ class TableClause(_Immutable, FromClause):
                     **params)
 
     def insert(self, values=None, inline=False, **kwargs):
-        """Generate an :func:`~sqlalchemy.sql.expression.insert()` construct."""
+        """Generate an :func:`insert()` construct."""
 
         return insert(self, values=values, inline=inline, **kwargs)
 
     def update(self, whereclause=None, values=None, inline=False, **kwargs):
-        """Generate an :func:`~sqlalchemy.sql.expression.update()` construct."""
+        """Generate an :func:`update()` construct."""
 
         return update(self, whereclause=whereclause, 
                             values=values, inline=inline, **kwargs)
 
     def delete(self, whereclause=None, **kwargs):
-        """Generate a :func:`~sqlalchemy.sql.expression.delete()` construct."""
+        """Generate a :func:`delete()` construct."""
 
         return delete(self, whereclause, **kwargs)
 
@@ -3113,18 +3584,8 @@ class TableClause(_Immutable, FromClause):
     def _from_objects(self):
         return [self]
 
-@util.decorator
-def _generative(fn, *args, **kw):
-    """Mark a method as generative."""
-
-    self = args[0]._generate()
-    fn(self, *args[1:], **kw)
-    return self
-
-class _SelectBaseMixin(object):
-    """Base class for ``Select`` and ``CompoundSelects``."""
-
-    supports_execution = True
+class _SelectBaseMixin(Executable):
+    """Base class for :class:`Select` and ``CompoundSelects``."""
 
     def __init__(self,
             use_labels=False,
@@ -3134,10 +3595,16 @@ class _SelectBaseMixin(object):
             order_by=None,
             group_by=None,
             bind=None,
-            autocommit=False):
+            autocommit=None):
         self.use_labels = use_labels
         self.for_update = for_update
-        self._autocommit = autocommit
+        if autocommit is not None:
+            util.warn_deprecated('autocommit on select() is '
+                                 'deprecated.  Use .execution_options(a'
+                                 'utocommit=True)')
+            self._execution_options = \
+                self._execution_options.union({'autocommit'
+                    : autocommit})
         self._limit = limit
         self._offset = offset
         self._bind = bind
@@ -3146,14 +3613,14 @@ class _SelectBaseMixin(object):
         self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
 
     def as_scalar(self):
-        """return a 'scalar' representation of this selectable, which can be used
-        as a column expression.
+        """return a 'scalar' representation of this selectable, which can be
+        used as a column expression.
 
-        Typically, a select statement which has only one column in its columns clause
-        is eligible to be used as a scalar expression.
+        Typically, a select statement which has only one column in its columns
+        clause is eligible to be used as a scalar expression.
 
         The returned object is an instance of 
-        :class:`~sqlalchemy.sql.expression._ScalarSelect`.
+        :class:`_ScalarSelect`.
 
         """
         return _ScalarSelect(self)
@@ -3162,17 +3629,18 @@ class _SelectBaseMixin(object):
     def apply_labels(self):
         """return a new selectable with the 'use_labels' flag set to True.
 
-        This will result in column expressions being generated using labels against their
-        table name, such as "SELECT somecolumn AS tablename_somecolumn". This allows
-        selectables which contain multiple FROM clauses to produce a unique set of column
-        names regardless of name conflicts among the individual FROM clauses.
+        This will result in column expressions being generated using labels
+        against their table name, such as "SELECT somecolumn AS
+        tablename_somecolumn". This allows selectables which contain multiple
+        FROM clauses to produce a unique set of column names regardless of
+        name conflicts among the individual FROM clauses.
 
         """
         self.use_labels = True
 
     def label(self, name):
-        """return a 'scalar' representation of this selectable, embedded as a subquery
-        with a label.
+        """return a 'scalar' representation of this selectable, embedded as a
+        subquery with a label.
 
         See also ``as_scalar()``.
 
@@ -3180,12 +3648,21 @@ class _SelectBaseMixin(object):
         return self.as_scalar().label(name)
 
     @_generative
+    @util.deprecated('0.6',
+                     message=":func:`.autocommit` is deprecated. Use "
+                     ":func:`.Executable.execution_options` with the "
+                     "'autocommit' flag.")
     def autocommit(self):
-        """return a new selectable with the 'autocommit' flag set to True."""
+        """return a new selectable with the 'autocommit' flag set to
+        True."""
 
-        self._autocommit = True
+        self._execution_options = \
+            self._execution_options.union({'autocommit': True})
 
     def _generate(self):
+        """Override the default _generate() method to also clear out
+        exported collections."""
+
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
         s._reset_exported()
@@ -3193,32 +3670,40 @@ class _SelectBaseMixin(object):
 
     @_generative
     def limit(self, limit):
-        """return a new selectable with the given LIMIT criterion applied."""
+        """return a new selectable with the given LIMIT criterion
+        applied."""
 
         self._limit = limit
 
     @_generative
     def offset(self, offset):
-        """return a new selectable with the given OFFSET criterion applied."""
+        """return a new selectable with the given OFFSET criterion
+        applied."""
 
         self._offset = offset
 
     @_generative
     def order_by(self, *clauses):
-        """return a new selectable with the given list of ORDER BY criterion applied.
-
-        The criterion will be appended to any pre-existing ORDER BY criterion.
-
+        """return a new selectable with the given list of ORDER BY
+        criterion applied.
+        
+        The criterion will be appended to any pre-existing ORDER BY
+        criterion.
+        
         """
+
         self.append_order_by(*clauses)
 
     @_generative
     def group_by(self, *clauses):
-        """return a new selectable with the given list of GROUP BY criterion applied.
-
-        The criterion will be appended to any pre-existing GROUP BY criterion.
-
+        """return a new selectable with the given list of GROUP BY
+        criterion applied.
+        
+        The criterion will be appended to any pre-existing GROUP BY
+        criterion.
+        
         """
+
         self.append_group_by(*clauses)
 
     def append_order_by(self, *clauses):
@@ -3230,7 +3715,7 @@ class _SelectBaseMixin(object):
         if len(clauses) == 1 and clauses[0] is None:
             self._order_by_clause = ClauseList()
         else:
-            if getattr(self, '_order_by_clause', None):
+            if getattr(self, '_order_by_clause', None) is not None:
                 clauses = list(self._order_by_clause) + list(clauses)
             self._order_by_clause = ClauseList(*clauses)
 
@@ -3243,7 +3728,7 @@ class _SelectBaseMixin(object):
         if len(clauses) == 1 and clauses[0] is None:
             self._group_by_clause = ClauseList()
         else:
-            if getattr(self, '_group_by_clause', None):
+            if getattr(self, '_group_by_clause', None) is not None:
                 clauses = list(self._group_by_clause) + list(clauses)
             self._group_by_clause = ClauseList(*clauses)
 
@@ -3257,17 +3742,14 @@ class _ScalarSelect(_Grouping):
 
     def __init__(self, element):
         self.element = element
-        cols = list(element.c)
-        if len(cols) != 1:
-            raise exc.InvalidRequestError("Scalar select can only be created "
-                    "from a Select object that has exactly one column expression.")
-        self.type = cols[0].type
+        self.type = element._scalar_type()
 
     @property
     def columns(self):
-        raise exc.InvalidRequestError("Scalar Select expression has no columns; "
-                    "use this object directly within a column-level expression.")
-    c  = columns
+        raise exc.InvalidRequestError('Scalar Select expression has no '
+                'columns; use this object directly within a '
+                'column-level expression.')
+    c = columns
 
     def self_group(self, **kwargs):
         return self
@@ -3281,6 +3763,13 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     __visit_name__ = 'compound_select'
 
+    UNION = util.symbol('UNION')
+    UNION_ALL = util.symbol('UNION ALL')
+    EXCEPT = util.symbol('EXCEPT')
+    EXCEPT_ALL = util.symbol('EXCEPT ALL')
+    INTERSECT = util.symbol('INTERSECT')
+    INTERSECT_ALL = util.symbol('INTERSECT ALL')
+    
     def __init__(self, keyword, *selects, **kwargs):
         self._should_correlate = kwargs.pop('correlate', False)
         self.keyword = keyword
@@ -3295,21 +3784,19 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
             if not numcols:
                 numcols = len(s.c)
             elif len(s.c) != numcols:
-                raise exc.ArgumentError(
-                        "All selectables passed to CompoundSelect must "
-                        "have identical numbers of columns; select #%d has %d columns,"
-                        " select #%d has %d" %
-                        (1, len(self.selects[0].c), n+1, len(s.c))
-                )
+                raise exc.ArgumentError('All selectables passed to '
+                        'CompoundSelect must have identical numbers of '
+                        'columns; select #%d has %d columns, select '
+                        '#%d has %d' % (1, len(self.selects[0].c), n
+                        + 1, len(s.c)))
 
-            # unions group from left to right, so don't group first select
-            if n:
-                self.selects.append(s.self_group(self))
-            else:
-                self.selects.append(s)
+            self.selects.append(s.self_group(self))
 
         _SelectBaseMixin.__init__(self, **kwargs)
-
+    
+    def _scalar_type(self):
+        return self.selects[0]._scalar_type()
+        
     def self_group(self, against=None):
         return _FromGrouping(self)
 
@@ -3321,21 +3808,28 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     def _populate_column_collection(self):
         for cols in zip(*[s.c for s in self.selects]):
-            # this is a slightly hacky thing - the union exports a column that
-            # resembles just that of the *first* selectable.  to get at a "composite" column,
-            # particularly foreign keys, you have to dig through the proxies collection 
-            # which we generate below.  We may want to improve upon this,
-            # such as perhaps _make_proxy can accept a list of other columns that
-            # are "shared" - schema.column can then copy all the ForeignKeys in.
-            # this would allow the union() to have all those fks too.
-            proxy = cols[0]._make_proxy(
-                            self, name=self.use_labels and cols[0]._label or None)
-            
-            # hand-construct the "proxies" collection to include all derived columns
-            # place a 'weight' annotation corresponding to how low in the list of
-            # select()s the column occurs, so that the corresponding_column() operation
-            # can resolve conflicts
-            proxy.proxies = [c._annotate({'weight':i + 1}) for i, c in enumerate(cols)]
+
+            # this is a slightly hacky thing - the union exports a
+            # column that resembles just that of the *first* selectable.
+            # to get at a "composite" column, particularly foreign keys,
+            # you have to dig through the proxies collection which we
+            # generate below.  We may want to improve upon this, such as
+            # perhaps _make_proxy can accept a list of other columns
+            # that are "shared" - schema.column can then copy all the
+            # ForeignKeys in. this would allow the union() to have all
+            # those fks too.
+
+            proxy = cols[0]._make_proxy(self, name=self.use_labels
+                    and cols[0]._label or None)
+
+            # hand-construct the "proxies" collection to include all
+            # derived columns place a 'weight' annotation corresponding
+            # to how low in the list of select()s the column occurs, so
+            # that the corresponding_column() operation can resolve
+            # conflicts
+
+            proxy.proxies = [c._annotate({'weight': i + 1}) for (i,
+                             c) in enumerate(cols)]
             
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
@@ -3347,8 +3841,9 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
                 setattr(self, attr, clone(getattr(self, attr)))
 
     def get_children(self, column_collections=True, **kwargs):
-        return (column_collections and list(self.c) or []) + \
-            [self._order_by_clause, self._group_by_clause] + list(self.selects)
+        return (column_collections and list(self.c) or []) \
+            + [self._order_by_clause, self._group_by_clause] \
+            + list(self.selects)
 
     def bind(self):
         if self._bind:
@@ -3372,7 +3867,10 @@ class Select(_SelectBaseMixin, FromClause):
     """
 
     __visit_name__ = 'select'
-
+    
+    _prefixes = ()
+    _hints = util.frozendict()
+    
     def __init__(self, 
                 columns, 
                 whereclause=None, 
@@ -3385,11 +3883,11 @@ class Select(_SelectBaseMixin, FromClause):
         """Construct a Select object.
 
         The public constructor for Select is the
-        :func:`~sqlalchemy.sql.expression.select` function; see that function for
+        :func:`select` function; see that function for
         argument descriptions.
 
         Additional generative and mutator methods are available on the
-        :class:`~sqlalchemy.sql.expression._SelectBaseMixin` superclass.
+        :class:`_SelectBaseMixin` superclass.
 
         """
         self._should_correlate = correlate
@@ -3397,38 +3895,45 @@ class Select(_SelectBaseMixin, FromClause):
 
         self._correlate = set()
         self._froms = util.OrderedSet()
-
-        if columns:
-            self._raw_columns = [
-                isinstance(c, _ScalarSelect) and 
-                c.self_group(against=operators.comma_op) or c
-                for c in [_literal_as_column(c) for c in columns]
-            ]
+        
+        try:
+            cols_present = bool(columns)
+        except TypeError:
+            raise exc.ArgumentError("columns argument to select() must "
+                                "be a Python list or other iterable")
+            
+        if cols_present:
+            self._raw_columns = []
+            for c in columns:
+                c = _literal_as_column(c)
+                if isinstance(c, _ScalarSelect):
+                    c = c.self_group(against=operators.comma_op)
+                self._raw_columns.append(c)
 
             self._froms.update(_from_objects(*self._raw_columns))
         else:
             self._raw_columns = []
 
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
             self._froms.update(_from_objects(self._whereclause))
         else:
             self._whereclause = None
 
-        if from_obj:
-            self._froms.update(
-                _is_literal(f) and _TextClause(f) or f
-                for f in util.to_list(from_obj))
+        if from_obj is not None:
+            for f in util.to_list(from_obj):
+                if _is_literal(f):
+                    self._froms.add(_TextClause(f))
+                else:
+                    self._froms.add(f)
 
-        if having:
+        if having is not None:
             self._having = _literal_as_text(having)
         else:
             self._having = None
 
         if prefixes:
-            self._prefixes = [_literal_as_text(p) for p in prefixes]
-        else:
-            self._prefixes = []
+            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
 
         _SelectBaseMixin.__init__(self, **kwargs)
 
@@ -3449,25 +3954,64 @@ class Select(_SelectBaseMixin, FromClause):
 
         if len(froms) > 1 or self._correlate:
             if self._correlate:
-                froms = froms.difference(_cloned_intersection(froms, self._correlate))
-
+                froms = froms.difference(_cloned_intersection(froms,
+                        self._correlate))
             if self._should_correlate and existing_froms:
-                froms = froms.difference(_cloned_intersection(froms, existing_froms))
+                froms = froms.difference(_cloned_intersection(froms,
+                        existing_froms))
 
                 if not len(froms):
-                    raise exc.InvalidRequestError(
-                            "Select statement '%s' returned no FROM clauses "
-                            "due to auto-correlation; specify correlate(<tables>) "
-                            "to control correlation manually." % self)
+                    raise exc.InvalidRequestError("Select statement '%s"
+                            "' returned no FROM clauses due to "
+                            "auto-correlation; specify "
+                            "correlate(<tables>) to control "
+                            "correlation manually." % self)
 
         return froms
+
+    def _scalar_type(self):
+        elem = self._raw_columns[0]
+        cols = list(elem._select_iterable)
+        return cols[0].type
 
     @property
     def froms(self):
         """Return the displayed list of FromClause elements."""
 
         return self._get_display_froms()
-
+    
+    @_generative
+    def with_hint(self, selectable, text, dialect_name='*'):
+        """Add an indexing hint for the given selectable to this
+        :class:`Select`.
+        
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the given :class:`.Table` or :class:`.Alias` passed as the
+        *selectable* argument. The dialect implementation
+        typically uses Python string substitution syntax
+        with the token ``%(name)s`` to render the name of
+        the table or alias. E.g. when using Oracle, the
+        following::
+        
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)")
+            
+        Would render SQL as::
+        
+            select /*+ index(mytable ix_mytable) */ ... from mytable
+            
+        The ``dialect_name`` option will limit the rendering of a particular
+        hint to a particular backend. Such as, to add hints for both Oracle
+        and Sybase simultaneously::
+        
+            select([mytable]).\\
+                with_hint(mytable, "+ index(%(name)s ix_mytable)", 'oracle').\\
+                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+        
+        """
+        self._hints = self._hints.union({(selectable, dialect_name):text})
+        
     @property
     def type(self):
         raise exc.InvalidRequestError("Select objects don't have a type.  "
@@ -3477,9 +4021,10 @@ class Select(_SelectBaseMixin, FromClause):
     @util.memoized_instancemethod
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.
-
-        This set is a superset of that returned by the ``froms`` property, which
-        is specifically for those FromClause elements that would actually be rendered.
+        
+         This set is a superset of that returned by the ``froms`` property,
+        which is specifically for those FromClause elements that would
+        actually be rendered.
 
         """
         return self._froms.union(_from_objects(*list(self._froms)))
@@ -3508,7 +4053,8 @@ class Select(_SelectBaseMixin, FromClause):
         self._froms = util.OrderedSet(from_cloned[f] for f in self._froms)
         self._correlate = set(from_cloned[f] for f in self._correlate)
         self._raw_columns = [clone(c) for c in self._raw_columns]
-        for attr in ('_whereclause', '_having', '_order_by_clause', '_group_by_clause'):
+        for attr in '_whereclause', '_having', '_order_by_clause', \
+            '_group_by_clause':
             if getattr(self, attr) is not None:
                 setattr(self, attr, clone(getattr(self, attr)))
 
@@ -3552,8 +4098,8 @@ class Select(_SelectBaseMixin, FromClause):
 
     @_generative
     def where(self, whereclause):
-        """return a new select() construct with the given expression added to its 
-        WHERE clause, joined to the existing clause via AND, if any.
+        """return a new select() construct with the given expression added to
+        its WHERE clause, joined to the existing clause via AND, if any.
         
         """
 
@@ -3561,33 +4107,33 @@ class Select(_SelectBaseMixin, FromClause):
 
     @_generative
     def having(self, having):
-        """return a new select() construct with the given expression added to its HAVING
-          clause, joined to the existing clause via AND, if any.
+        """return a new select() construct with the given expression added to
+        its HAVING clause, joined to the existing clause via AND, if any.
          
         """
         self.append_having(having)
 
     @_generative
     def distinct(self):
-        """return a new select() construct which will apply DISTINCT to its columns
-         clause.
+        """return a new select() construct which will apply DISTINCT to its
+        columns clause.
          
          """
         self._distinct = True
 
     @_generative
     def prefix_with(self, clause):
-        """return a new select() construct which will apply the given expression to the
-         start of its columns clause, not using any commas.
+        """return a new select() construct which will apply the given
+        expression to the start of its columns clause, not using any commas.
 
          """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + [clause]
+        self._prefixes = self._prefixes + (clause,)
 
     @_generative
     def select_from(self, fromclause):
-        """return a new select() construct with the given FROM expression applied to its
-         list of FROM objects.
+        """return a new select() construct with the given FROM expression
+        applied to its list of FROM objects.
 
          """
         fromclause = _literal_as_text(fromclause)
@@ -3595,17 +4141,19 @@ class Select(_SelectBaseMixin, FromClause):
 
     @_generative
     def correlate(self, *fromclauses):
-        """return a new select() construct which will correlate the given FROM clauses to
-        that of an enclosing select(), if a match is found.
+        """return a new select() construct which will correlate the given FROM
+        clauses to that of an enclosing select(), if a match is found.
         
-         By "match", the given fromclause must be present in this select's list of FROM
-        objects and also present in an enclosing select's list of FROM objects.
+        By "match", the given fromclause must be present in this select's
+        list of FROM objects and also present in an enclosing select's list of
+        FROM objects.
         
-         Calling this method turns off the select's default behavior of
-        "auto-correlation". Normally, select() auto-correlates all of its FROM clauses to
-        those of an embedded select when compiled.
+        Calling this method turns off the select's default behavior of
+        "auto-correlation". Normally, select() auto-correlates all of its FROM
+        clauses to those of an embedded select when compiled.
         
-         If the fromclause is None, correlation is disabled for the returned select().
+        If the fromclause is None, correlation is disabled for the returned
+        select().
 
         """
         self._should_correlate = False
@@ -3615,14 +4163,15 @@ class Select(_SelectBaseMixin, FromClause):
             self._correlate = self._correlate.union(fromclauses)
 
     def append_correlation(self, fromclause):
-        """append the given correlation expression to this select() construct."""
+        """append the given correlation expression to this select()
+        construct."""
 
         self._should_correlate = False
         self._correlate = self._correlate.union([fromclause])
 
     def append_column(self, column):
-        """append the given column expression to the columns clause of this select()
-        construct.
+        """append the given column expression to the columns clause of this
+        select() construct.
         
         """
         column = _literal_as_column(column)
@@ -3640,10 +4189,11 @@ class Select(_SelectBaseMixin, FromClause):
         
         """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes.union([clause])
+        self._prefixes = self._prefixes + (clause,)
 
     def append_whereclause(self, whereclause):
-        """append the given expression to this select() construct's WHERE criterion.
+        """append the given expression to this select() construct's WHERE
+        criterion.
 
         The expression will be joined to existing WHERE criterion via AND.
 
@@ -3657,7 +4207,8 @@ class Select(_SelectBaseMixin, FromClause):
             self._whereclause = whereclause
 
     def append_having(self, having):
-        """append the given expression to this select() construct's HAVING criterion.
+        """append the given expression to this select() construct's HAVING
+        criterion.
 
         The expression will be joined to existing HAVING criterion via AND.
 
@@ -3668,8 +4219,8 @@ class Select(_SelectBaseMixin, FromClause):
             self._having = _literal_as_text(having)
 
     def append_from(self, fromclause):
-        """append the given FromClause expression to this select() construct's FROM
-        clause.
+        """append the given FromClause expression to this select() construct's
+        FROM clause.
 
         """
         if _is_literal(fromclause):
@@ -3692,10 +4243,12 @@ class Select(_SelectBaseMixin, FromClause):
             c._make_proxy(self, name=self.use_labels and c._label or None)
 
     def self_group(self, against=None):
-        """return a 'grouping' construct as per the ClauseElement specification.
-
-        This produces an element that can be embedded in an expression.  Note that
-        this method is called automatically as needed when constructing expressions.
+        """return a 'grouping' construct as per the ClauseElement
+        specification.
+        
+         This produces an element that can be embedded in an expression. Note
+        that this method is called automatically as needed when constructing
+        expressions.
 
         """
         if isinstance(against, CompoundSelect):
@@ -3703,7 +4256,8 @@ class Select(_SelectBaseMixin, FromClause):
         return _FromGrouping(self)
 
     def union(self, other, **kwargs):
-        """return a SQL UNION of this select() construct against the given selectable."""
+        """return a SQL UNION of this select() construct against the given
+        selectable."""
 
         return union(self, other, **kwargs)
 
@@ -3715,13 +4269,14 @@ class Select(_SelectBaseMixin, FromClause):
         return union_all(self, other, **kwargs)
 
     def except_(self, other, **kwargs):
-        """return a SQL EXCEPT of this select() construct against the given selectable."""
+        """return a SQL EXCEPT of this select() construct against the given
+        selectable."""
 
         return except_(self, other, **kwargs)
 
     def except_all(self, other, **kwargs):
-        """return a SQL EXCEPT ALL of this select() construct against the given
-        selectable.
+        """return a SQL EXCEPT ALL of this select() construct against the
+        given selectable.
         
         """
         return except_all(self, other, **kwargs)
@@ -3734,8 +4289,8 @@ class Select(_SelectBaseMixin, FromClause):
         return intersect(self, other, **kwargs)
 
     def intersect_all(self, other, **kwargs):
-        """return a SQL INTERSECT ALL of this select() construct against the given
-        selectable.
+        """return a SQL INTERSECT ALL of this select() construct against the
+        given selectable.
         
         """
         return intersect_all(self, other, **kwargs)
@@ -3761,19 +4316,15 @@ class Select(_SelectBaseMixin, FromClause):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class _UpdateBase(ClauseElement):
+class _UpdateBase(Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = 'update_base'
 
-    supports_execution = True
-    _autocommit = True
+    _execution_options = \
+        Executable._execution_options.union({'autocommit': True})
+    kwargs = util.frozendict()
     
-    def _generate(self):
-        s = self.__class__.__new__(self.__class__)
-        s.__dict__ = self.__dict__.copy()
-        return s
-
     def _process_colparams(self, parameters):
         if isinstance(parameters, (list, tuple)):
             pp = {}
@@ -3803,7 +4354,8 @@ class _UpdateBase(ClauseElement):
             if m:
                 self._returning = kwargs.pop(k)
                 util.warn_deprecated(
-                    "The %r argument is deprecated.  Please use statement.returning(col1, col2, ...)" % k
+                    "The %r argument is deprecated.  Please "
+                    "use statement.returning(col1, col2, ...)" % k
                 )
         return kwargs
     
@@ -3811,10 +4363,10 @@ class _UpdateBase(ClauseElement):
     def returning(self, *cols):
         """Add a RETURNING or equivalent clause to this statement.
         
-        The given list of columns represent columns within the table
-        that is the target of the INSERT, UPDATE, or DELETE.  Each 
-        element can be any column expression.  ``Table`` objects
-        will be expanded into their individual columns.
+        The given list of columns represent columns within the table that is
+        the target of the INSERT, UPDATE, or DELETE. Each element can be any
+        column expression. :class:`~sqlalchemy.schema.Table` objects will be
+        expanded into their individual columns.
         
         Upon compilation, a RETURNING clause, or database equivalent, 
         will be rendered within the statement.   For INSERT and UPDATE, 
@@ -3851,15 +4403,16 @@ class _ValuesBase(_UpdateBase):
 
     @_generative
     def values(self, *args, **kwargs):
-        """specify the VALUES clause for an INSERT statement, or the SET clause for an
-        UPDATE.
+        """specify the VALUES clause for an INSERT statement, or the SET
+        clause for an UPDATE.
 
             \**kwargs
                 key=<somevalue> arguments
 
             \*args
-                A single dictionary can be sent as the first positional argument. This
-                allows non-string based keys, such as Column objects, to be used.
+                A single dictionary can be sent as the first positional
+                argument. This allows non-string based keys, such as Column
+                objects, to be used.
 
         """
         if args:
@@ -3878,11 +4431,13 @@ class _ValuesBase(_UpdateBase):
 class Insert(_ValuesBase):
     """Represent an INSERT construct.
 
-    The ``Insert`` object is created using the :func:`insert()` function.
+    The :class:`Insert` object is created using the :func:`insert()` function.
 
     """
     __visit_name__ = 'insert'
-
+    
+    _prefixes = ()
+    
     def __init__(self, 
                 table, 
                 values=None, 
@@ -3897,11 +4452,10 @@ class Insert(_ValuesBase):
         self.inline = inline
         self._returning = returning
         if prefixes:
-            self._prefixes = [_literal_as_text(p) for p in prefixes]
-        else:
-            self._prefixes = []
-            
-        self.kwargs = self._process_deprecated_kw(kwargs)
+            self._prefixes = tuple([_literal_as_text(p) for p in prefixes])
+        
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self.select is not None:
@@ -3922,12 +4476,12 @@ class Insert(_ValuesBase):
 
         """
         clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + [clause]
+        self._prefixes = self._prefixes + (clause,)
 
 class Update(_ValuesBase):
     """Represent an Update construct.
 
-    The ``Update`` object is created using the :func:`update()` function.
+    The :class:`Update` object is created using the :func:`update()` function.
 
     """
     __visit_name__ = 'update'
@@ -3943,13 +4497,14 @@ class Update(_ValuesBase):
         _ValuesBase.__init__(self, table, values)
         self._bind = bind
         self._returning = returning
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
         self.inline = inline
 
-        self.kwargs = self._process_deprecated_kw(kwargs)
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -3964,12 +4519,13 @@ class Update(_ValuesBase):
 
     @_generative
     def where(self, whereclause):
-        """return a new update() construct with the given expression added to its WHERE
-        clause, joined to the existing clause via AND, if any.
+        """return a new update() construct with the given expression added to
+        its WHERE clause, joined to the existing clause via AND, if any.
         
         """
         if self._whereclause is not None:
-            self._whereclause = and_(self._whereclause, _literal_as_text(whereclause))
+            self._whereclause = and_(self._whereclause,
+                    _literal_as_text(whereclause))
         else:
             self._whereclause = _literal_as_text(whereclause)
 
@@ -3977,7 +4533,7 @@ class Update(_ValuesBase):
 class Delete(_UpdateBase):
     """Represent a DELETE construct.
 
-    The ``Delete`` object is created using the :func:`delete()` function.
+    The :class:`Delete` object is created using the :func:`delete()` function.
 
     """
 
@@ -3993,12 +4549,13 @@ class Delete(_UpdateBase):
         self.table = table
         self._returning = returning
         
-        if whereclause:
+        if whereclause is not None:
             self._whereclause = _literal_as_text(whereclause)
         else:
             self._whereclause = None
 
-        self.kwargs = self._process_deprecated_kw(kwargs)
+        if kwargs:
+            self.kwargs = self._process_deprecated_kw(kwargs)
 
     def get_children(self, **kwargs):
         if self._whereclause is not None:
@@ -4011,7 +4568,8 @@ class Delete(_UpdateBase):
         """Add the given WHERE clause to a newly returned delete construct."""
 
         if self._whereclause is not None:
-            self._whereclause = and_(self._whereclause, _literal_as_text(whereclause))
+            self._whereclause = and_(self._whereclause,
+                    _literal_as_text(whereclause))
         else:
             self._whereclause = _literal_as_text(whereclause)
 
@@ -4019,10 +4577,11 @@ class Delete(_UpdateBase):
         # TODO: coverage
         self._whereclause = clone(self._whereclause)
 
-class _IdentifiedClause(ClauseElement):
+class _IdentifiedClause(Executable, ClauseElement):
+
     __visit_name__ = 'identified'
-    supports_execution = True
-    _autocommit = False
+    _execution_options = \
+        Executable._execution_options.union({'autocommit': False})
     quote = None
 
     def __init__(self, ident):
@@ -4036,3 +4595,5 @@ class RollbackToSavepointClause(_IdentifiedClause):
 
 class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = 'release_savepoint'
+
+

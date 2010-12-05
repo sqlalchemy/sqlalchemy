@@ -12,8 +12,25 @@ import sqlalchemy as sa
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""
 
-class ConcurrentModificationError(sa.exc.SQLAlchemyError):
-    """Rows have been modified outside of the unit of work."""
+class StaleDataError(sa.exc.SQLAlchemyError):
+    """An operation encountered database state that is unaccounted for.
+    
+    Two conditions cause this to happen:
+    
+    * A flush may have attempted to update or delete rows
+      and an unexpected number of rows were matched during 
+      the UPDATE or DELETE statement.   Note that when 
+      version_id_col is used, rows in UPDATE or DELETE statements
+      are also matched against the current known version
+      identifier.
+      
+    * A mapped object with version_id_col was refreshed, 
+      and the version number coming back from the database does
+      not match that of the object itself.
+      
+    """
+    
+ConcurrentModificationError = StaleDataError
 
 
 class FlushError(sa.exc.SQLAlchemyError):
@@ -21,9 +38,12 @@ class FlushError(sa.exc.SQLAlchemyError):
 
 
 class UnmappedError(sa.exc.InvalidRequestError):
-    """TODO"""
+    """Base for exceptions that involve expected mappings not present."""
 
-
+class DetachedInstanceError(sa.exc.SQLAlchemyError):
+    """An attempt to access unloaded attributes on a 
+    mapped instance that is detached."""
+    
 class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 
@@ -33,10 +53,8 @@ class UnmappedInstanceError(UnmappedError):
                 mapper = sa.orm.class_mapper(type(obj))
                 name = _safe_cls_name(type(obj))
                 msg = ("Class %r is mapped, but this instance lacks "
-                       "instrumentation.  Possible causes: instance created "
-                       "before sqlalchemy.orm.mapper(%s) was called, or "
-                       "instance was pickled/depickled without instrumentation"
-                       "information." % (name, name))
+                       "instrumentation.  This occurs when the instance is created "
+                       "before sqlalchemy.orm.mapper(%s) was called." % (name, name))
             except UnmappedClassError:
                 msg = _default_unmapped(type(obj))
                 if isinstance(obj, type):

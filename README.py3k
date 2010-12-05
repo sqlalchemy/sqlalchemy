@@ -1,0 +1,60 @@
+=================
+PYTHON 3 SUPPORT
+=================
+
+Current Python 3k support in SQLAlchemy is provided by a customized
+2to3 script which wraps Python's 2to3 tool.
+
+Installing Distribute
+---------------------
+
+Distribute should be installed with the Python3 installation.  The
+distribute bootloader is included.
+
+Running as a user with permission to modify the Python distribution,
+install Distribute:
+
+    python3 distribute_setup.py
+    
+
+Installing SQLAlchemy in Python 3
+---------------------------------
+
+Once Distribute is installed, SQLAlchemy can be installed directly.  
+The 2to3 process will kick in which takes several minutes:
+
+    python3 setup.py install
+
+Converting Tests, Examples, Source to Python 3
+----------------------------------------------
+
+To convert all files in the source distribution, run 
+SQLAlchemys "sa2to3.py" script, which monkeypatches a preprocessor
+onto the 2to3 tool:
+
+    python3 sa2to3.py --no-diffs -w lib test examples
+
+The above will rewrite all files in-place in Python 3 format.
+
+Running Tests
+-------------
+
+To run the unit tests, ensure Distribute is installed as above,
+and also that at least the ./lib/ and ./test/ directories have been converted
+to Python 3 using the source tool above.   A Python 3 version of Nose
+can be acquired from Bitbucket using Mercurial:
+
+    hg clone http://bitbucket.org/jpellerin/nose3/
+    cd nose3
+    python3 setup.py install
+
+The tests can then be run using the "nosetests3" script installed by the above,
+using the same instructions in README.unittests.
+
+Current 3k Issues
+-----------------
+
+Current bugs and tickets related to Py3k are on the Py3k milestone in trac:
+
+http://www.sqlalchemy.org/trac/query?status=new&status=assigned&status=reopened&milestone=py3k
+

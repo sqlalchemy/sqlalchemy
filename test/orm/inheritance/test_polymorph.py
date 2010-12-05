@@ -1,4 +1,4 @@
-"""tests basic polymorphic mapper loading/saving, minimal relations"""
+"""tests basic polymorphic mapper loading/saving, minimal relationships"""
 
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
@@ -70,7 +70,7 @@ class InsertOrderTest(PolymorphTest):
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
         mapper(Company, companies, properties={
-            'employees': relation(Person,
+            'employees': relationship(Person,
                                   backref='company',
                                   order_by=person_join.c.person_id)
         })
@@ -87,17 +87,17 @@ class InsertOrderTest(PolymorphTest):
         session.expunge_all()
         eq_(session.query(Company).get(c.company_id), c)
 
-class RelationToSubclassTest(PolymorphTest):
+class RelationshipToSubclassTest(PolymorphTest):
     def test_basic(self):
-        """test a relation to an inheriting mapper where the relation is to a subclass
+        """test a relationship to an inheriting mapper where the relationship is to a subclass
         but the join condition is expressed by the parent table.
 
         also test that backrefs work in this case.
 
         this test touches upon a lot of the join/foreign key determination code in properties.py
         and creates the need for properties.py to search for conditions individually within
-        the mapper's local table as well as the mapper's 'mapped' table, so that relations
-        requiring lots of specificity (like self-referential joins) as well as relations requiring
+        the mapper's local table as well as the mapper's 'mapped' table, so that relationships
+        requiring lots of specificity (like self-referential joins) as well as relationships requiring
         more generalization (like the example here) both come up with proper results."""
 
         mapper(Person, people)
@@ -106,7 +106,7 @@ class RelationToSubclassTest(PolymorphTest):
         mapper(Manager, managers, inherits=Person)
 
         mapper(Company, companies, properties={
-            'managers': relation(Manager, backref="company")
+            'managers': relationship(Manager, backref="company")
         })
 
         sess = create_session()
@@ -123,11 +123,11 @@ class RelationToSubclassTest(PolymorphTest):
 class RoundTripTest(PolymorphTest):
     pass
 
-def _generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with_polymorphic):
+def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop, with_polymorphic):
     """generates a round trip test.
 
     include_base - whether or not to include the base 'person' type in the union.
-    lazy_relation - whether or not the Company relation to People is lazy or eager.
+    lazy_relationship - whether or not the Company relationship to People is lazy or eager.
     redefine_colprop - if we redefine the 'name' column to be 'people_name' on the base Person class
     use_literal_join - primary join condition is explicitly specified
     """
@@ -173,7 +173,7 @@ def _generate_round_trip_test(include_base, lazy_relation, redefine_colprop, wit
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
 
         mapper(Company, companies, properties={
-            'employees': relation(Person, lazy=lazy_relation,
+            'employees': relationship(Person, lazy=lazy_relationship,
                                   cascade="all, delete-orphan",
             backref="company", order_by=people.c.person_id
             )
@@ -217,7 +217,7 @@ def _generate_round_trip_test(include_base, lazy_relation, redefine_colprop, wit
             cc = session.query(Company).get(c.company_id)
             eq_(cc.employees, employees)
             
-        if not lazy_relation:
+        if not lazy_relationship:
             if with_polymorphic != 'none':
                 self.assert_sql_count(testing.db, go, 1)
             else:
@@ -287,18 +287,18 @@ def _generate_round_trip_test(include_base, lazy_relation, redefine_colprop, wit
         
     test_roundtrip = function_named(
         test_roundtrip, "test_%s%s%s_%s" % (
-          (lazy_relation and "lazy" or "eager"),
+          (lazy_relationship and "lazy" or "eager"),
           (include_base and "_inclbase" or ""),
           (redefine_colprop and "_redefcol" or ""),
           with_polymorphic))
     setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
 
-for lazy_relation in [True, False]:
+for lazy_relationship in [True, False]:
     for redefine_colprop in [True, False]:
         for with_polymorphic in ['unions', 'joins', 'auto', 'none']:
             if with_polymorphic == 'unions':
                 for include_base in [True, False]:
-                    _generate_round_trip_test(include_base, lazy_relation, redefine_colprop, with_polymorphic)
+                    _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop, with_polymorphic)
             else:
-                _generate_round_trip_test(False, lazy_relation, redefine_colprop, with_polymorphic)
+                _generate_round_trip_test(False, lazy_relationship, redefine_colprop, with_polymorphic)
 

@@ -38,13 +38,13 @@ cascade = "all, delete-orphan"
 use_backref = True
 
 if use_backref:
-    class_mapper(T1).add_property( 't2s', relation(T2, backref=backref("t1", cascade=cascade), cascade=cascade))
-    class_mapper(T2).add_property ( 't3s', relation(T3, backref=backref("t2",cascade=cascade), cascade=cascade) )
-    class_mapper(T3).add_property( 't4s', relation(T4, backref=backref("t3", cascade=cascade), cascade=cascade) )
+    class_mapper(T1).add_property( 't2s', relationship(T2, backref=backref("t1", cascade=cascade), cascade=cascade))
+    class_mapper(T2).add_property ( 't3s', relationship(T3, backref=backref("t2",cascade=cascade), cascade=cascade) )
+    class_mapper(T3).add_property( 't4s', relationship(T4, backref=backref("t3", cascade=cascade), cascade=cascade) )
 else:
-    T1.mapper.add_property( 't2s', relation(T2, cascade=cascade))
-    T2.mapper.add_property ( 't3s', relation(T3, cascade=cascade) )
-    T3.mapper.add_property( 't4s', relation(T4, cascade=cascade) )
+    T1.mapper.add_property( 't2s', relationship(T2, cascade=cascade))
+    T2.mapper.add_property ( 't3s', relationship(T3, cascade=cascade) )
+    T3.mapper.add_property( 't4s', relationship(T4, cascade=cascade) )
 
 now = time.time()
 print "start"

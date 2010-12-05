@@ -10,6 +10,21 @@ SQLAlchemy requires Python 2.4 or higher.  One or more DB-API implementations
 are also required for database access.  See docs/intro.html for more
 information on supported DB-API implementations.
 
+Python 3 Compatibility
+----------------------
+
+Please see README.py3k for Python 3 installation and testing instructions.
+
+Installation Tools
+------------------
+
+Installation is supported with standard Python distutils, as well
+as with setuptools or Distribute.  Distribute is recommended.
+Distribute can be installed using the provided "distribute_setup.py" 
+script.  The original setuptools may be installed using the 
+"ez_setup.py" script if preferred, or simply do nothing and distutils
+will be used.
+
 Installing
 ----------
 
@@ -20,11 +35,28 @@ To install::
 To use without installation, include the ``lib`` directory in your Python
 path.
 
+Installing the C extension
+--------------------------
+
+If installing with Setuptools or Distribute, the C extensions are built 
+and installed using the --with-cextensions flag:
+
+  python setup.py --with-cextensions install
+
+If using plain Distutils, change the BUILD_CEXTENSIONS flag in setup.py
+to "True".
+
+Running Tests
+-------------
+
+Please see README.unittests for full instructions on running unit tests.
+
 Package Contents
 ----------------
 
   doc/
-     HTML documentation, including tutorials and API reference.
+     HTML documentation, including tutorials and API reference.  Point
+     a browser to the "index.html" to start.
 
   examples/
      Fully commented and executable implementations for a variety of tasks.
@@ -33,8 +65,7 @@ Package Contents
      SQLAlchemy.
 
   test/
-     Unit tests for SQLAlchemy.  See ``README.unittests`` for more
-     information.
+     Unit tests for SQLAlchemy.
 
 Help
 ----
@@ -47,3 +78,4 @@ License
 
 SQLAlchemy is distributed under the `MIT license
 <http://www.opensource.org/licenses/mit-license.php>`_.
+

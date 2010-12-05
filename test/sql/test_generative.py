@@ -5,7 +5,7 @@ from sqlalchemy.test import *
 from sqlalchemy.sql.visitors import *
 from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
-
+from sqlalchemy.test.testing import eq_
 
 class TraversalTest(TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its ability to copy and modify
@@ -178,7 +178,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
 
     def test_binary(self):
         clause = t1.c.col2 == t2.c.col2
-        assert str(clause) == CloningVisitor().traverse(clause)
+        eq_(str(clause), str(CloningVisitor().traverse(clause)))
 
     def test_binary_anon_label_quirk(self):
         t = table('t1', column('col1'))
@@ -207,6 +207,31 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert c1 == str(clause)
         assert str(clause2) == str(t1.join(t2, t1.c.col2==t2.c.col3))
     
+    def test_aliased_column_adapt(self):
+        clause = t1.select()
+        
+        aliased = t1.select().alias()
+        aliased2 = t1.alias()
+ 
+        adapter = sql_util.ColumnAdapter(aliased)
+        
+        f = select([
+            adapter.columns[c]
+            for c in aliased2.c
+        ]).select_from(aliased)
+    
+        s = select([aliased2]).select_from(aliased)
+        eq_(str(s), str(f))
+ 
+        f = select([
+            adapter.columns[func.count(aliased2.c.col1)]
+        ]).select_from(aliased)
+        eq_(
+            str(select([func.count(aliased2.c.col1)]).select_from(aliased)),
+            str(f)
+        )
+        
+        
     def test_text(self):
         clause = text("select * from table where foo=:bar", bindparams=[bindparam('bar')])
         c1 = str(clause)
@@ -286,6 +311,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         assert u2.compile().params == {'id_param':7}
         assert u3.compile().params == {'id_param':10}
     
+    def test_in(self):
+        expr = t1.c.col1.in_(['foo', 'bar'])
+        expr2 = CloningVisitor().traverse(expr)
+        assert str(expr) == str(expr2)
+        
     def test_adapt_union(self):
         u = union(t1.select().where(t1.c.col1==4), t1.select().where(t1.c.col1==5)).alias()
         
@@ -338,6 +368,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         s4 = sql_util.ClauseAdapter(table('foo')).traverse(s3)
         assert orig == str(s) == str(s3) == str(s4)
 
+        subq = subq.alias('subq')
+        s = select([t1.c.col1, subq.c.col1], from_obj=[t1, subq, t1.join(subq, t1.c.col1==subq.c.col2)])
+        s5 = CloningVisitor().traverse(s)
+        assert orig == str(s) == str(s5)
+        
     def test_correlated_select(self):
         s = select(['*'], t1.c.col1==t2.c.col1, from_obj=[t1, t2]).correlate(t2)
         class Vis(CloningVisitor):
@@ -780,6 +815,29 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(select_copy, "SELECT FOOBER table1.col1, table1.col2, table1.col3 FROM table1")
         self.assert_compile(s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1")
 
+    def test_execution_options(self):
+        s = select().execution_options(foo='bar')
+        s2 = s.execution_options(bar='baz')
+        s3 = s.execution_options(foo='not bar')
+        # The original select should not be modified.
+        assert s._execution_options == dict(foo='bar')
+        # s2 should have its execution_options based on s, though.
+        assert s2._execution_options == dict(foo='bar', bar='baz')
+        assert s3._execution_options == dict(foo='not bar')
+
+    # this feature not available yet
+    def _NOTYET_test_execution_options_in_kwargs(self):
+        s = select(execution_options=dict(foo='bar'))
+        s2 = s.execution_options(bar='baz')
+        # The original select should not be modified.
+        assert s._execution_options == dict(foo='bar')
+        # s2 should have its execution_options based on s, though.
+        assert s2._execution_options == dict(foo='bar', bar='baz')
+    
+    # this feature not available yet
+    def _NOTYET_test_execution_options_in_text(self):
+        s = text('select 42', execution_options=dict(foo='bar'))
+        assert s._execution_options == dict(foo='bar')
 
 class InsertTest(TestBase, AssertsCompiledSQL):
     """Tests the generative capability of Insert"""

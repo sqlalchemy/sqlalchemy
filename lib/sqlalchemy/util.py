@@ -1,10 +1,17 @@
 # util.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect, itertools, operator, sys, warnings, weakref, gc
+import inspect
+import itertools
+import operator
+import sys
+import warnings
+import weakref
+import re
+
 # Py2K
 import __builtin__
 # end Py2K
@@ -19,6 +26,7 @@ except ImportError:
 
 py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 jython = sys.platform.startswith('java')
+win32 = sys.platform.startswith('win')
 
 if py3k:
     set_types = set
@@ -138,7 +146,62 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
+class frozendict(dict):
+    @property
+    def _blocked_attribute(obj):
+        raise AttributeError, "A frozendict cannot be modified."
+
+    __delitem__ = __setitem__ = clear = _blocked_attribute
+    pop = popitem = setdefault = update = _blocked_attribute
+
+    def __new__(cls, *args):
+        new = dict.__new__(cls)
+        dict.__init__(new, *args)
+        return new
+
+    def __init__(self, *args):
+        pass
+
+    def __reduce__(self):
+        return frozendict, (dict(self), )
+
+    def union(self, d):
+        if not self:
+            return frozendict(d)
+        else:
+            d2 = self.copy()
+            d2.update(d)
+            return frozendict(d2)
+            
+    def __repr__(self):
+        return "frozendict(%s)" % dict.__repr__(self)
+
+
+# find or create a dict implementation that supports __missing__
+class _probe(dict):
+    def __missing__(self, key):
+        return 1
         
+try:
+    try:
+        _probe()['missing']
+        py25_dict = dict
+    except KeyError:
+        class py25_dict(dict):
+            def __getitem__(self, key):
+                try:
+                    return dict.__getitem__(self, key)
+                except KeyError:
+                    try:
+                        missing = self.__missing__
+                    except AttributeError:
+                        raise KeyError(key)
+                    else:
+                        return missing(key)
+finally:
+    del _probe
+
+
 def to_list(x, default=None):
     if x is None:
         return default
@@ -185,6 +248,20 @@ except:
             newkeywords.update(fkeywords)
             return func(*(args + fargs), **newkeywords)
         return newfunc
+
+try:
+    import hashlib
+    _md5 = hashlib.md5
+except ImportError:
+    import md5
+    _md5 = md5.new
+
+def md5_hex(x):
+    # Py3K
+    #x = x.encode('utf-8')
+    m = _md5()
+    m.update(x)
+    return m.hexdigest()
 
 
 def accepts_a_list_as_starargs(list_deprecation=None):
@@ -320,7 +397,7 @@ def get_cls_kwargs(cls):
         if has_kw:
             stack.update(class_.__bases__)
     args.discard('self')
-    return list(args)
+    return args
 
 def get_func_kwargs(func):
     """Return the full set of legal kwargs for the given `func`."""
@@ -424,6 +501,18 @@ def unbound_method_to_callable(func_or_cls):
     else:
         return func_or_cls
 
+class portable_instancemethod(object):
+    """Turn an instancemethod into a (parent, name) pair
+    to produce a serializable callable.
+    
+    """
+    def __init__(self, meth):
+        self.target = meth.im_self
+        self.name = meth.__name__
+
+    def __call__(self, *arg, **kw):
+        return getattr(self.target, self.name)(*arg, **kw)
+        
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
 
@@ -469,10 +558,11 @@ def class_hierarchy(cls):
     return list(hier)
 
 def iterate_attributes(cls):
-    """iterate all the keys and attributes associated with a class, without using getattr().
+    """iterate all the keys and attributes associated 
+       with a class, without using getattr().
 
-    Does not use getattr() so that class-sensitive descriptors (i.e. property.__get__())
-    are not called.
+       Does not use getattr() so that class-sensitive 
+       descriptors (i.e. property.__get__()) are not called.
 
     """
     keys = dir(cls)
@@ -494,6 +584,18 @@ def asbool(obj):
             raise ValueError("String is not true/false: %r" % obj)
     return bool(obj)
 
+def bool_or_str(*text):
+    """Return a callable that will evaulate a string as 
+    boolean, or one of a set of "alternate" string values.
+    
+    """
+    def bool_or_value(obj):
+        if obj in text:
+            return obj
+        else:
+            return asbool(obj)
+    return bool_or_value
+    
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -540,10 +642,15 @@ def duck_type_collection(specimen, default=None):
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
+    # Py3K
+    #if hasattr(dictlike, 'items'):
+    #    return dictlike.items()
+    # Py2K
     if hasattr(dictlike, 'iteritems'):
         return dictlike.iteritems()
     elif hasattr(dictlike, 'items'):
         return iter(dictlike.items())
+    # end Py2K
 
     getter = getattr(dictlike, '__getitem__', getattr(dictlike, 'get', None))
     if getter is None:
@@ -566,9 +673,13 @@ def assert_arg_type(arg, argtype, name):
         return arg
     else:
         if isinstance(argtype, tuple):
-            raise exc.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join("'%s'" % str(a) for a in argtype), str(type(arg))))
+            raise exc.ArgumentError(
+                            "Argument '%s' is expected to be one of type %s, got '%s'" % 
+                            (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
         else:
-            raise exc.ArgumentError("Argument '%s' is expected to be of type '%s', got '%s'" % (name, str(argtype), str(type(arg))))
+            raise exc.ArgumentError(
+                            "Argument '%s' is expected to be of type '%s', got '%s'" % 
+                            (name, argtype, type(arg)))
 
 _creation_order = 1
 def set_creation_order(instance):
@@ -629,6 +740,24 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
         except AttributeError:
             pass
         setattr(into_cls, method, env[method])
+
+class NamedTuple(tuple):
+    """tuple() subclass that adds labeled names.
+    
+    Is also pickleable.
+    
+    """
+
+    def __new__(cls, vals, labels=None):
+        vals = list(vals)
+        t = tuple.__new__(cls, vals)
+        if labels:
+            t.__dict__ = dict(itertools.izip(labels, vals))
+            t._labels = labels
+        return t
+
+    def keys(self):
+        return [l for l in self._labels if l is not None]
 
 
 class OrderedProperties(object):
@@ -970,7 +1099,7 @@ class IdentitySet(object):
         if len(self) < len(other):
             return False
 
-        for m in itertools.ifilterfalse(self._members.has_key,
+        for m in itertools.ifilterfalse(self._members.__contains__,
                                         other._members.iterkeys()):
             return False
         return True
@@ -1151,23 +1280,30 @@ class UniqueAppender(object):
 
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
-    class on a per-thread scoped basis, or on a customized scope.
+    class on the basis of a "scope" function.
+    
+    The object implements ``__call__`` as the "getter", so by
+    calling ``myregistry()`` the contained object is returned
+    for the current scope.
 
-    createfunc
+    :param createfunc:
       a callable that returns a new object to be placed in the registry
 
-    scopefunc
+    :param scopefunc:
       a callable that will return a key to store/retrieve an object.
-      If None, ScopedRegistry uses a threading.local object instead.
-
     """
-    def __new__(cls, createfunc, scopefunc=None):
-        if not scopefunc:
-            return object.__new__(_TLocalRegistry)
-        else:
-            return object.__new__(cls)
 
     def __init__(self, createfunc, scopefunc):
+        """Construct a new :class:`.ScopedRegistry`.
+        
+        :param createfunc:  A creation function that will generate
+          a new value for the current scope, if none is present.
+          
+        :param scopefunc:  A function that returns a hashable
+          token representing the current scope (such as, current
+          thread identifier).
+        
+        """
         self.createfunc = createfunc
         self.scopefunc = scopefunc
         self.registry = {}
@@ -1180,19 +1316,29 @@ class ScopedRegistry(object):
             return self.registry.setdefault(key, self.createfunc())
 
     def has(self):
+        """Return True if an object is present in the current scope."""
+        
         return self.scopefunc() in self.registry
 
     def set(self, obj):
+        """Set the value forthe current scope."""
+        
         self.registry[self.scopefunc()] = obj
 
     def clear(self):
+        """Clear the current scope, if any."""
+        
         try:
             del self.registry[self.scopefunc()]
         except KeyError:
             pass
 
-class _TLocalRegistry(ScopedRegistry):
-    def __init__(self, createfunc, scopefunc=None):
+class ThreadLocalRegistry(ScopedRegistry):
+    """A :class:`.ScopedRegistry` that uses a ``threading.local()`` 
+    variable for storage.
+    
+    """
+    def __init__(self, createfunc):
         self.createfunc = createfunc
         self.registry = threading.local()
 
@@ -1350,6 +1496,7 @@ def function_named(fn, name):
                           fn.func_defaults, fn.func_closure)
     return fn
 
+
 class memoized_property(object):
     """A read-only @property that is only evaluated once."""
     def __init__(self, fget, doc=None):
@@ -1359,7 +1506,7 @@ class memoized_property(object):
 
     def __get__(self, obj, cls):
         if obj is None:
-            return None
+            return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result
 
@@ -1379,7 +1526,7 @@ class memoized_instancemethod(object):
 
     def __get__(self, obj, cls):
         if obj is None:
-            return None
+            return self
         def oneshot(*args, **kw):
             result = self.fget(obj, *args, **kw)
             memo = lambda *a, **kw: result
@@ -1394,6 +1541,70 @@ class memoized_instancemethod(object):
 def reset_memoized(instance, name):
     instance.__dict__.pop(name, None)
 
+
+class group_expirable_memoized_property(object):
+    """A family of @memoized_properties that can be expired in tandem."""
+
+    def __init__(self):
+        self.attributes = []
+
+    def expire_instance(self, instance):
+        """Expire all memoized properties for *instance*."""
+        stash = instance.__dict__
+        for attribute in self.attributes:
+            stash.pop(attribute, None)
+
+    def __call__(self, fn):
+        self.attributes.append(fn.__name__)
+        return memoized_property(fn)
+
+class importlater(object):
+    """Deferred import object.
+    
+    e.g.::
+    
+        somesubmod = importlater("mypackage.somemodule", "somesubmod")
+        
+    is equivalent to::
+    
+        from mypackage.somemodule import somesubmod
+        
+    except evaluted upon attribute access to "somesubmod".
+    
+    """
+    def __init__(self, path, addtl=None):
+        self._il_path = path
+        self._il_addtl = addtl
+    
+    @memoized_property
+    def _il_module(self):
+        if self._il_addtl:
+            m = __import__(self._il_path, globals(), locals(), 
+                                [self._il_addtl])
+            try:
+                return getattr(m, self._il_addtl)
+            except AttributeError:
+                raise ImportError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, self._il_addtl)
+                    )
+        else:
+            m = __import__(self._il_path)
+            for token in self._il_path.split(".")[1:]:
+                m = getattr(m, token)
+            return m
+        
+    def __getattr__(self, key):
+        try:
+            attr = getattr(self._il_module, key)
+        except AttributeError:
+            raise AttributeError(
+                        "Module %s has no attribute '%s'" % 
+                        (self._il_path, key)
+                    )
+        self.__dict__[key] = attr
+        return attr
+        
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.
 
@@ -1480,34 +1691,88 @@ class WeakIdentityMapping(weakref.WeakKeyDictionary):
     def _ref(self, object):
         return self._keyed_weakref(object, self._cleanup)
 
+import time
+if win32 or jython:
+    time_func = time.clock
+else:
+    time_func = time.time 
 
-def warn(msg):
+class LRUCache(dict):
+    """Dictionary with 'squishy' removal of least
+    recently used items.
+    
+    """
+    def __init__(self, capacity=100, threshold=.5):
+        self.capacity = capacity
+        self.threshold = threshold
+
+    def __getitem__(self, key):
+        item = dict.__getitem__(self, key)
+        item[2] = time_func()
+        return item[1]
+
+    def values(self):
+        return [i[1] for i in dict.values(self)]
+
+    def setdefault(self, key, value):
+        if key in self:
+            return self[key]
+        else:
+            self[key] = value
+            return value
+
+    def __setitem__(self, key, value):
+        item = dict.get(self, key)
+        if item is None:
+            item = [key, value, time_func()]
+            dict.__setitem__(self, key, item)
+        else:
+            item[1] = value
+        self._manage_size()
+
+    def _manage_size(self):
+        while len(self) > self.capacity + self.capacity * self.threshold:
+            bytime = sorted(dict.values(self), 
+                            key=operator.itemgetter(2),
+                            reverse=True)
+            for item in bytime[self.capacity:]:
+                try:
+                    del self[item[0]]
+                except KeyError:
+                    # if we couldnt find a key, most 
+                    # likely some other thread broke in 
+                    # on us. loop around and try again
+                    break
+
+def warn(msg, stacklevel=3):
     if isinstance(msg, basestring):
-        warnings.warn(msg, exc.SAWarning, stacklevel=3)
+        warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:
-        warnings.warn(msg, stacklevel=3)
+        warnings.warn(msg, stacklevel=stacklevel)
 
-def warn_deprecated(msg):
-    warnings.warn(msg, exc.SADeprecationWarning, stacklevel=3)
+def warn_deprecated(msg, stacklevel=3):
+    warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
 
-def warn_pending_deprecation(msg):
-    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=3)
+def warn_pending_deprecation(msg, stacklevel=3):
+    warnings.warn(msg, exc.SAPendingDeprecationWarning, stacklevel=stacklevel)
 
-def deprecated(message=None, add_deprecation_to_docstring=True):
+def deprecated(version, message=None, add_deprecation_to_docstring=True):
     """Decorates a function and issues a deprecation warning on use.
 
-    message
+    :param message:
       If provided, issue message in the warning.  A sensible default
       is used if not provided.
 
-    add_deprecation_to_docstring
+    :param add_deprecation_to_docstring:
       Default True.  If False, the wrapped function's __doc__ is left
       as-is.  If True, the 'message' is prepended to the docs if
       provided, or sensible default if message is omitted.
+
     """
 
     if add_deprecation_to_docstring:
-        header = message is not None and message or 'Deprecated.'
+        header = ".. deprecated:: %s %s" % \
+                    (version, (message or ''))
     else:
         header = None
 
@@ -1524,37 +1789,49 @@ def pending_deprecation(version, message=None,
                         add_deprecation_to_docstring=True):
     """Decorates a function and issues a pending deprecation warning on use.
 
-    version
+    :param version:
       An approximate future version at which point the pending deprecation
       will become deprecated.  Not used in messaging.
 
-    message
+    :param message:
       If provided, issue message in the warning.  A sensible default
       is used if not provided.
 
-    add_deprecation_to_docstring
+    :param add_deprecation_to_docstring:
       Default True.  If False, the wrapped function's __doc__ is left
       as-is.  If True, the 'message' is prepended to the docs if
       provided, or sensible default if message is omitted.
     """
 
     if add_deprecation_to_docstring:
-        header = message is not None and message or 'Deprecated.'
+        header = ".. deprecated:: %s (pending) %s" % \
+                        (version, (message or ''))
     else:
         header = None
 
     if message is None:
         message = "Call to deprecated function %(func)s"
-
+    
     def decorate(fn):
         return _decorate_with_warning(
             fn, exc.SAPendingDeprecationWarning,
             message % dict(func=fn.__name__), header)
     return decorate
 
+def _sanitize_rest(text):
+    def repl(m):
+        type_, name = m.group(1, 2)
+        if type_ in ("func", "meth"):
+            name += "()"
+        return name
+    return re.sub(r'\:(\w+)\:`~?\.?(.+?)`', repl, text)
+    
+    
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
+    message = _sanitize_rest(message)
+    
     @decorator
     def warned(fn, *args, **kwargs):
         warnings.warn(wtype(message), stacklevel=3)
@@ -1577,3 +1854,22 @@ def _decorate_with_warning(func, wtype, message, docstring_header=None):
     decorated = warned(func)
     decorated.__doc__ = doc
     return decorated
+
+class classproperty(property):
+    """A decorator that behaves like @property except that operates
+    on classes rather than instances.
+
+    The decorator is currently special when using the declarative
+    module, but note that the 
+    :class:`~.sqlalchemy.ext.declarative.declared_attr`
+    decorator should be used for this purpose with declarative.
+    
+    """
+    
+    def __init__(self, fget, *arg, **kw):
+        super(classproperty, self).__init__(fget, *arg, **kw)
+        self.__doc__ = fget.__doc__
+        
+    def __get__(desc, self, cls):
+        return desc.fget(cls)
+

@@ -3,7 +3,9 @@ import copy, threading
 from sqlalchemy import util, sql, exc
 from sqlalchemy.test import TestBase
 from sqlalchemy.test.testing import eq_, is_, ne_
-from sqlalchemy.test.util import gc_collect
+from sqlalchemy.test.util import gc_collect, picklers
+from sqlalchemy.util import classproperty
+
 
 class OrderedDictTest(TestBase):
     def test_odict(self):
@@ -53,7 +55,8 @@ class OrderedDictTest(TestBase):
         eq_(o.values(), [1, 2, 3, 4, 5, 6])
 
     def test_odict_constructor(self):
-        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'), ('password', '')])
+        o = util.OrderedDict([('name', 'jbe'), ('fullname', 'jonathan'
+                             ), ('password', '')])
         eq_(o.keys(), ['name', 'fullname', 'password'])
 
     def test_odict_copy(self):
@@ -77,6 +80,47 @@ class OrderedSetTest(TestBase):
         eq_(o.intersection(iter([3,4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3,4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
 
+class FrozenDictTest(TestBase):
+    def test_serialize(self):
+        d = util.frozendict({1:2, 3:4})
+        for loads, dumps in picklers():
+            print loads(dumps(d))
+        
+
+class MemoizedAttrTest(TestBase):
+    def test_memoized_property(self):
+        val = [20]
+        class Foo(object):
+            @util.memoized_property
+            def bar(self):
+                v = val[0]
+                val[0] += 1
+                return v
+                
+        ne_(Foo.bar, None)
+        f1 = Foo()
+        assert 'bar' not in f1.__dict__
+        eq_(f1.bar, 20)
+        eq_(f1.bar, 20)
+        eq_(val[0], 21)
+        eq_(f1.__dict__['bar'] , 20)
+
+    def test_memoized_instancemethod(self):
+        val = [20]
+        class Foo(object):
+            @util.memoized_instancemethod
+            def bar(self):
+                v = val[0]
+                val[0] += 1
+                return v
+
+        ne_(Foo.bar, None)
+        f1 = Foo()
+        assert 'bar' not in f1.__dict__
+        eq_(f1.bar(), 20)
+        eq_(f1.bar(), 20)
+        eq_(val[0], 21)
+        
 class ColumnCollectionTest(TestBase):
     def test_in(self):
         cc = sql.ColumnCollection()
@@ -105,23 +149,71 @@ class ColumnCollectionTest(TestBase):
         assert (cc1==cc2).compare(c1 == c2)
         assert not (cc1==cc3).compare(c2 == c3)
 
+class LRUTest(TestBase):
+
+    def test_lru(self):                
+        class item(object):
+            def __init__(self, id):
+                self.id = id
+
+            def __str__(self):
+                return "item id %d" % self.id
+
+        l = util.LRUCache(10, threshold=.2)
+
+        for id in range(1,20):
+            l[id] = item(id)
+
+        # first couple of items should be gone
+        assert 1 not in l
+        assert 2 not in l
+
+        # next batch over the threshold of 10 should be present
+        for id_ in range(11,20):
+            assert id_ in l
+
+        l[12]
+        l[15]
+        l[23] = item(23)
+        l[24] = item(24)
+        l[25] = item(25)
+        l[26] = item(26)
+        l[27] = item(27)
+
+        assert 11 not in l
+        assert 13 not in l
+
+        for id_ in (25, 24, 23, 14, 12, 19, 18, 17, 16, 15):
+            assert id_ in l
+
+        i1 = l[25]
+        i2 = item(25)
+        l[25] = i2
+        assert 25 in l
+        assert l[25] is i2
+        
+
 class ImmutableSubclass(str):
     pass
 
 class FlattenIteratorTest(TestBase):
+
     def test_flatten(self):
-        assert list(util.flatten_iterator([[1,2,3], [4,5,6], 7, 8])) == [1,2,3,4,5,6,7,8]
+        assert list(util.flatten_iterator([[1, 2, 3], [4, 5, 6], 7,
+                    8])) == [1, 2, 3, 4, 5, 6, 7, 8]
 
     def test_str_with_iter(self):
-        """ensure that a str object with an __iter__ method (like in PyPy) is not interpreted
-        as an iterable.
+        """ensure that a str object with an __iter__ method (like in
+        PyPy) is not interpreted as an iterable.
         
         """
         class IterString(str):
             def __iter__(self):
-                return iter(self + "")
+                return iter(self + '')
 
-        assert list(util.flatten_iterator([IterString("asdf"), [IterString("x"), IterString("y")]])) == ["asdf", "x", "y"]
+        assert list(util.flatten_iterator([IterString('asdf'),
+                    [IterString('x'), IterString('y')]])) == ['asdf',
+                'x', 'y']
                 
 class HashOverride(object):
     def __init__(self, value=None):
@@ -143,6 +235,7 @@ class EqOverride(object):
             return self.value != other.value
         else:
             return True
+            
 class HashEqOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -294,7 +387,8 @@ class OrderedIdentitySetTest(TestBase):
         elem = object
         eq_ = self.assert_eq
         
-        a, b, c, d, e, f, g = elem(), elem(), elem(), elem(), elem(), elem(), elem()
+        a, b, c, d, e, f, g = \
+                elem(), elem(), elem(), elem(), elem(), elem(), elem()
         
         s1 = util.OrderedIdentitySet([a, b, c])
         s2 = util.OrderedIdentitySet([d, e, f])
@@ -336,19 +430,19 @@ class DictlikeIteritemsTest(TestBase):
     def test_object(self):
         self._notok(object())
 
+    # Py2K
     def test_duck_1(self):
         class duck1(object):
             def iteritems(duck):
                 return iter(self.baseline)
         self._ok(duck1())
+    # end Py2K
 
-    # Py2K
     def test_duck_2(self):
         class duck2(object):
             def items(duck):
                 return list(self.baseline)
         self._ok(duck2())
-    # end Py2K
 
     # Py2K
     def test_duck_3(self):
@@ -890,13 +984,11 @@ class AsInterfaceTest(TestBase):
 
     def test_dict(self):
         obj = {}
-
         assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something)
+                      cls=self.Something)
+        assert_raises(TypeError, util.as_interface, obj, methods='foo')
         assert_raises(TypeError, util.as_interface, obj,
-                          methods=('foo'))
-        assert_raises(TypeError, util.as_interface, obj,
-                          cls=self.Something, required=('foo'))
+                      cls=self.Something, required='foo')
 
         def assertAdapted(obj, *methods):
             assert isinstance(obj, type)
@@ -907,34 +999,29 @@ class AsInterfaceTest(TestBase):
             assert not found
 
         fn = lambda self: 123
-
         obj = {'foo': fn, 'bar': fn}
-
         res = util.as_interface(obj, cls=self.Something)
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, cls=self.Something, required=self.Something)
+        res = util.as_interface(obj, cls=self.Something,
+                                required=self.Something)
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, cls=self.Something, required=('foo',))
+        res = util.as_interface(obj, cls=self.Something, required=('foo'
+                                , ))
         assertAdapted(res, 'foo', 'bar')
-
         res = util.as_interface(obj, methods=('foo', 'bar'))
         assertAdapted(res, 'foo', 'bar')
-
         res = util.as_interface(obj, methods=('foo', 'bar', 'baz'))
         assertAdapted(res, 'foo', 'bar')
-
-        res = util.as_interface(obj, methods=('foo', 'bar'), required=('foo',))
+        res = util.as_interface(obj, methods=('foo', 'bar'),
+                                required=('foo', ))
         assertAdapted(res, 'foo', 'bar')
-
-        assert_raises(TypeError, util.as_interface, obj, methods=('foo',))
-
-        assert_raises(TypeError, util.as_interface, obj,
-                          methods=('foo', 'bar', 'baz'), required=('baz',))
-
+        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
+                      , ))
+        assert_raises(TypeError, util.as_interface, obj, methods=('foo'
+                      , 'bar', 'baz'), required=('baz', ))
         obj = {'foo': 123}
-        assert_raises(TypeError, util.as_interface, obj, cls=self.Something)
+        assert_raises(TypeError, util.as_interface, obj,
+                      cls=self.Something)
 
 
 class TestClassHierarchy(TestBase):
@@ -973,3 +1060,22 @@ class TestClassHierarchy(TestBase):
         eq_(set(util.class_hierarchy(A)), set((A, B, object)))
     # end Py2K
         
+
+class TestClassProperty(TestBase):
+
+    def test_simple(self):
+        class A(object):
+            something = {'foo':1}
+
+        class B(A):
+
+            @classproperty
+            def something(cls):
+                d = dict(super(B,cls).something)
+                d.update({'bazz':2})
+                return d
+
+        eq_(B.something,{
+                'foo':1,
+                'bazz':2,
+                })

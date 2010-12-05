@@ -8,23 +8,14 @@ styles of persistence are identical, as is the structure of the main Document cl
 
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer, String,
     PickleType)
-from sqlalchemy.orm import mapper, create_session
+from sqlalchemy.orm import mapper, Session
 
 import sys, os
 
-import logging
-logging.basicConfig()
-
-# uncomment to show SQL statements
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
-# uncomment to show SQL statements and result sets
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-
 from xml.etree import ElementTree
 
-engine = create_engine('sqlite://')
-meta = MetaData(engine)
+e = create_engine('sqlite://')
+meta = MetaData()
 
 # setup a comparator for the PickleType since it's a mutable
 # element.
@@ -39,7 +30,7 @@ documents = Table('documents', meta,
     Column('element', PickleType(comparator=are_elements_equal))
 )
 
-meta.create_all()
+meta.create_all(e)
 
 # our document class.  contains a string name,
 # and the ElementTree root element.  
@@ -58,12 +49,11 @@ filename = os.path.join(os.path.dirname(__file__), "test.xml")
 doc = ElementTree.parse(filename)
     
 # save to DB
-session = create_session()
+session = Session(e)
 session.add(Document("test.xml", doc))
-session.flush()
+session.commit()
 
-# clear session (to illustrate a full load), restore
-session.expunge_all()
+# restore
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print

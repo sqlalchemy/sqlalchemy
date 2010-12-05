@@ -7,7 +7,9 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, exc as sa_exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, attributes, deferred
+from sqlalchemy.orm import mapper, relationship, create_session, \
+                        attributes, deferred, exc as orm_exc, defer, undefer,\
+                        strategies, state, lazyload, backref, Session
 from test.orm import _base, _fixtures
 
 
@@ -16,7 +18,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user'),
+            'addresses':relationship(Address, backref='user'),
             })
         mapper(Address, addresses)
 
@@ -59,7 +61,8 @@ class ExpireTest(_fixtures.FixtureTest):
         u = s.query(User).get(7)
         s.expunge_all()
 
-        assert_raises_message(sa.exc.InvalidRequestError, r"is not persistent within this Session", s.expire, u)
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        r"is not persistent within this Session", s.expire, u)
 
     @testing.resolve_artifact_names
     def test_get_refreshes(self):
@@ -86,6 +89,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert s.query(User).get(10) is None
         assert u not in s # and expunges
 
+        # trick the "deleted" flag so we can re-add for the sake
+        # of this test
+        del attributes.instance_state(u).deleted
+        
         # add it back
         s.add(u)
         # nope, raises ObjectDeletedError
@@ -119,7 +126,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_lazyload_autoflushes(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, order_by=addresses.c.email_address)
+            'addresses':relationship(Address, order_by=addresses.c.email_address)
         })
         mapper(Address, addresses)
         s = create_session(autoflush=True, autocommit=False)
@@ -141,18 +148,22 @@ class ExpireTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_refresh_collection_exception(self):
-        """test graceful failure for currently unsupported immediate refresh of a collection"""
+        """test graceful failure for currently unsupported 
+        immediate refresh of a collection"""
         
         mapper(User, users, properties={
-            'addresses':relation(Address, order_by=addresses.c.email_address)
+            'addresses':relationship(Address, order_by=addresses.c.email_address)
         })
         mapper(Address, addresses)
         s = create_session(autoflush=True, autocommit=False)
         u = s.query(User).get(8)
-        assert_raises_message(sa_exc.InvalidRequestError, "properties specified for refresh", s.refresh, u, ['addresses'])
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        "properties specified for refresh", 
+                        s.refresh, u, ['addresses'])
         
         # in contrast to a regular query with no columns
-        assert_raises_message(sa_exc.InvalidRequestError, "no columns with which to SELECT", s.query().all)
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        "no columns with which to SELECT", s.query().all)
         
     @testing.resolve_artifact_names
     def test_refresh_cancels_expire(self):
@@ -190,7 +201,7 @@ class ExpireTest(_fixtures.FixtureTest):
 
         sess.expire(u, attribute_names=['name'])
         sess.expunge(u)
-        assert_raises(sa.exc.UnboundExecutionError, getattr, u, 'name')
+        assert_raises(orm_exc.DetachedInstanceError, getattr, u, 'name')
 
     @testing.resolve_artifact_names
     def test_pending_raises(self):
@@ -200,7 +211,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess = create_session()
         u = User(id=15)
         sess.add(u)
-        assert_raises(sa.exc.InvalidRequestError, sess.expire, u, ['name'])
+        assert_raises(sa_exc.InvalidRequestError, sess.expire, u, ['name'])
 
     @testing.resolve_artifact_names
     def test_no_instance_key(self):
@@ -218,7 +229,23 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'name' not in u.__dict__
         sess.add(u)
         assert u.name == 'jack'
+    
+    @testing.resolve_artifact_names
+    def test_no_instance_key_no_pk(self):
+        # same as test_no_instance_key, but the PK columns
+        # are absent.  ensure an error is raised.
+        mapper(User, users)
+        sess = create_session()
+        u = sess.query(User).get(7)
 
+        sess.expire(u, attribute_names=['name', 'id'])
+        sess.expunge(u)
+        attributes.instance_state(u).key = None
+        assert 'name' not in u.__dict__
+        sess.add(u)
+        assert_raises(sa_exc.InvalidRequestError, getattr, u, 'name')
+
+        
     @testing.resolve_artifact_names
     def test_expire_preserves_changes(self):
         """test that the expire load operation doesn't revert post-expire changes"""
@@ -283,7 +310,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire_cascade(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all, refresh-expire")
+            'addresses':relationship(Address, cascade="all, refresh-expire")
         })
         mapper(Address, addresses)
         s = create_session()
@@ -292,14 +319,66 @@ class ExpireTest(_fixtures.FixtureTest):
 
         u.addresses[0].email_address = 'someotheraddress'
         s.expire(u)
-        u.name
-        print attributes.instance_state(u).dict
         assert u.addresses[0].email_address == 'ed@wood.com'
+
+    @testing.resolve_artifact_names
+    def test_refresh_cascade(self):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade="all, refresh-expire")
+        })
+        mapper(Address, addresses)
+        s = create_session()
+        u = s.query(User).get(8)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+        u.addresses[0].email_address = 'someotheraddress'
+        s.refresh(u)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+
+    def test_expire_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending_orphan(self):
+        cascade = 'save-update, refresh-expire, delete, delete-orphan'
+        self._test_cascade_to_pending(cascade, False)
+
+    def test_expire_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, True)
+
+    def test_refresh_cascade_pending(self):
+        cascade = 'save-update, refresh-expire'
+        self._test_cascade_to_pending(cascade, False)
+        
+    @testing.resolve_artifact_names
+    def _test_cascade_to_pending(self, cascade, expire_or_refresh):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, cascade=cascade)
+        })
+        mapper(Address, addresses)
+        s = create_session()
+
+        u = s.query(User).get(8)
+        a = Address(id=12, email_address='foobar')
+        
+        u.addresses.append(a)
+        if expire_or_refresh:
+            s.expire(u)
+        else:
+            s.refresh(u)
+        if "delete-orphan" in cascade:
+            assert a not in s
+        else:
+            assert a in s
+        
+        assert a not in u.addresses
+        s.flush()
 
     @testing.resolve_artifact_names
     def test_expired_lazy(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user'),
+            'addresses':relationship(Address, backref='user'),
             })
         mapper(Address, addresses)
 
@@ -321,7 +400,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expired_eager(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -335,7 +414,7 @@ class ExpireTest(_fixtures.FixtureTest):
         def go():
             assert u.addresses[0].email_address == 'jack@bean.com'
             assert u.name == 'jack'
-        # two loads, since relation() + scalar are
+        # two loads, since relationship() + scalar are
         # separate right now on per-attribute load
         self.assert_sql_count(testing.db, go, 2)
         assert 'name' in u.__dict__
@@ -349,14 +428,14 @@ class ExpireTest(_fixtures.FixtureTest):
             sess.query(User).filter_by(id=7).one()
             assert u.addresses[0].email_address == 'jack@bean.com'
             assert u.name == 'jack'
-        # one load, since relation() + scalar are
+        # one load, since relationship() + scalar are
         # together when eager load used with Query
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
-    def test_relation_changes_preserved(self):
+    def test_relationship_changes_preserved(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -370,19 +449,19 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(u.addresses) == 2
 
     @testing.resolve_artifact_names
-    def test_eagerload_props_dontload(self):
-        # relations currently have to load separately from scalar instances.
+    def test_joinedload_props_dontload(self):
+        # relationships currently have to load separately from scalar instances.
         # the use case is: expire "addresses".  then access it.  lazy load
         # fires off to load "addresses", but needs foreign key or primary key
         # attributes in order to lazy load; hits those attributes, such as
         # below it hits "u.id".  "u.id" triggers full unexpire operation,
-        # eagerloads addresses since lazy=False.  this is all wihtin lazy load
-        # which fires unconditionally; so an unnecessary eagerload (or
+        # joinedloads addresses since lazy='joined'.  this is all wihtin lazy load
+        # which fires unconditionally; so an unnecessary joinedload (or
         # lazyload) was issued.  would prefer not to complicate lazyloading to
         # "figure out" that the operation should be aborted right now.
 
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
         sess = create_session()
@@ -466,7 +545,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_partial_expire_lazy(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user'),
+            'addresses':relationship(Address, backref='user'),
             })
         mapper(Address, addresses)
 
@@ -511,7 +590,7 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_partial_expire_eager(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -550,9 +629,9 @@ class ExpireTest(_fixtures.FixtureTest):
         #self.assert_sql_count(testing.db, go, 0)
 
     @testing.resolve_artifact_names
-    def test_relations_load_on_query(self):
+    def test_relationships_load_on_query(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user'),
+            'addresses':relationship(Address, backref='user'),
             })
         mapper(Address, addresses)
 
@@ -565,7 +644,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expire(u, ['name', 'addresses'])
         assert 'name' not in u.__dict__
         assert 'addresses' not in u.__dict__
-        (sess.query(User).options(sa.orm.eagerload('addresses')).
+        (sess.query(User).options(sa.orm.joinedload('addresses')).
          filter_by(id=8).all())
         assert 'name' in u.__dict__
         assert 'addresses' in u.__dict__
@@ -638,9 +717,9 @@ class ExpireTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
-    def test_eagerload_query_refreshes(self):
+    def test_joinedload_query_refreshes(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined'),
             })
         mapper(Address, addresses)
 
@@ -657,7 +736,8 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire_all(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=False),
+            'addresses':relationship(Address, backref='user', lazy='joined', 
+                                    order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 
@@ -674,6 +754,131 @@ class ExpireTest(_fixtures.FixtureTest):
         eq_(self.static.user_address_result, userlist)
         assert len(list(sess)) == 9
 
+    @testing.resolve_artifact_names
+    def test_state_change_col_to_deferred(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
+        mapper(User, users)
+        
+        sess = create_session()
+        
+        # deferred attribute option, gets the LoadDeferredColumns
+        # callable
+        u1 = sess.query(User).options(defer(User.name)).first()
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    strategies.LoadDeferredColumns
+                )
+                
+        # expire the attr, it gets the InstanceState callable
+        sess.expire(u1, ['name'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+                
+        # load it, callable is gone
+        u1.name
+        assert 'name' not in attributes.instance_state(u1).callables
+
+        # same for expire all
+        sess.expunge_all()
+        u1 = sess.query(User).options(defer(User.name)).first()
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+        
+        # load over it.  everything normal.
+        sess.query(User).first()
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        sess.expunge_all()
+        u1 = sess.query(User).first()
+        # for non present, still expires the same way
+        del u1.name
+        sess.expire(u1)
+        assert 'name' in attributes.instance_state(u1).callables
+        
+    @testing.resolve_artifact_names
+    def test_state_deferred_to_col(self):
+        """Behavioral test to verify the current activity of loader callables."""
+        
+        mapper(User, users, properties={'name':deferred(users.c.name)})
+
+        sess = create_session()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        # mass expire, the attribute was loaded, 
+        # the attribute gets the callable
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+
+        # load it, callable is gone
+        u1.name
+        assert 'name' not in attributes.instance_state(u1).callables
+        
+        # mass expire, attribute was loaded but then deleted,
+        # the callable goes away - the state wants to flip 
+        # it back to its "deferred" loader.
+        sess.expunge_all()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        del u1.name
+        sess.expire(u1)
+        assert 'name' not in attributes.instance_state(u1).callables
+
+        # single attribute expire, the attribute gets the callable
+        sess.expunge_all()
+        u1 = sess.query(User).options(undefer(User.name)).first()
+        sess.expire(u1, ['name'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['name'],
+                    state.InstanceState
+                )
+
+    @testing.resolve_artifact_names
+    def test_state_noload_to_lazy(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
+        mapper(User, users, properties={'addresses':relationship(Address, lazy='noload')})
+        mapper(Address, addresses)
+        
+        sess = create_session()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        # expire, it stays
+        sess.expire(u1)
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        
+        # load over it.  callable goes away.
+        sess.query(User).first()
+        assert 'addresses' not in attributes.instance_state(u1).callables
+        
+        sess.expunge_all()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        sess.expire(u1, ['addresses'])
+        assert isinstance(
+                    attributes.instance_state(u1).callables['addresses'],
+                    strategies.LoadLazyAttribute
+                )
+        
+        # load the attr, goes away
+        u1.addresses
+        assert 'addresses' not in attributes.instance_state(u1).callables
+        
+        
+        
 class PolymorphicExpireTest(_base.MappedTest):
     run_inserts = 'once'
     run_deletes = None
@@ -686,7 +891,8 @@ class PolymorphicExpireTest(_base.MappedTest):
            Column('person_id', Integer, primary_key=True,
                   test_needs_autoincrement=True),
            Column('name', String(50)),
-           Column('type', String(30)))
+           Column('type', String(30)),
+           )
 
         engineers = Table('engineers', metadata,
            Column('person_id', Integer, ForeignKey('people.person_id'),
@@ -713,11 +919,15 @@ class PolymorphicExpireTest(_base.MappedTest):
             {'person_id':2, 'status':'new engineer'},
             {'person_id':3, 'status':'old engineer'},
         )
-
+    
+    @classmethod
     @testing.resolve_artifact_names
-    def test_poly_deferred(self):
+    def setup_mappers(cls):
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
+        
+    @testing.resolve_artifact_names
+    def test_poly_deferred(self):
 
         sess = create_session()
         [p1, e1, e2] = sess.query(Person).order_by(people.c.person_id).all()
@@ -753,6 +963,34 @@ class PolymorphicExpireTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 2)
         eq_(Engineer.name.get_history(e1), (['new engineer name'],(), ['engineer1']))
 
+    @testing.resolve_artifact_names
+    def test_no_instance_key(self):
+        
+        sess = create_session()
+        e1 = sess.query(Engineer).get(2)
+
+        sess.expire(e1, attribute_names=['name'])
+        sess.expunge(e1)
+        attributes.instance_state(e1).key = None
+        assert 'name' not in e1.__dict__
+        sess.add(e1)
+        assert e1.name == 'engineer1'
+    
+    @testing.resolve_artifact_names
+    def test_no_instance_key(self):
+        # same as test_no_instance_key, but the PK columns
+        # are absent.  ensure an error is raised.
+        sess = create_session()
+        e1 = sess.query(Engineer).get(2)
+
+        sess.expire(e1, attribute_names=['name', 'person_id'])
+        sess.expunge(e1)
+        attributes.instance_state(e1).key = None
+        assert 'name' not in e1.__dict__
+        sess.add(e1)
+        assert_raises(sa_exc.InvalidRequestError, getattr, e1, 'name')
+
+
 class ExpiredPendingTest(_fixtures.FixtureTest):
     run_define_tables = 'once'
     run_setup_classes = 'once'
@@ -762,7 +1000,7 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expired_pending(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user'),
+            'addresses':relationship(Address, backref='user'),
             })
         mapper(Address, addresses)
 
@@ -804,7 +1042,7 @@ class RefreshTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_refresh(self):
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), backref='user')
+            'addresses':relationship(mapper(Address, addresses), backref='user')
         })
         s = create_session()
         u = s.query(User).get(7)
@@ -843,7 +1081,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s = create_session()
         u = s.query(User).get(7)
         s.expunge_all()
-        assert_raises_message(sa.exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
+        assert_raises_message(sa_exc.InvalidRequestError, r"is not persistent within this Session", lambda: s.refresh(u))
 
     @testing.resolve_artifact_names
     def test_refresh_expired(self):
@@ -862,7 +1100,7 @@ class RefreshTest(_fixtures.FixtureTest):
         fire the lazy loader or create any problems"""
 
         s = create_session()
-        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        mapper(User, users, properties={'addresses':relationship(mapper(Address, addresses))})
         q = s.query(User).options(sa.orm.lazyload('addresses'))
         u = q.filter(users.c.id==8).first()
         def go():
@@ -874,7 +1112,7 @@ class RefreshTest(_fixtures.FixtureTest):
         """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
 
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), lazy=False)
+            'addresses':relationship(mapper(Address, addresses), lazy='joined')
         })
 
         s = create_session()
@@ -897,7 +1135,7 @@ class RefreshTest(_fixtures.FixtureTest):
         s = create_session()
         mapper(Address, addresses)
 
-        mapper(User, users, properties = dict(addresses=relation(Address,cascade="all, delete-orphan",lazy=False)) )
+        mapper(User, users, properties = dict(addresses=relationship(Address,cascade="all, delete-orphan",lazy='joined')) )
 
         u = User()
         u.name='Justin'

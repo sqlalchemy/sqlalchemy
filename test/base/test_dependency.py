@@ -1,42 +1,32 @@
 import sqlalchemy.topological as topological
 from sqlalchemy.test import TestBase
+from sqlalchemy.test.testing import assert_raises, eq_
+from sqlalchemy import exc, util
 
 
 class DependencySortTest(TestBase):
-    def assert_sort(self, tuples, node, collection=None):
-        print str(node)
-        def assert_tuple(tuple, node):
-            if node[1]:
-                cycles = node[1]
-            else:
-                cycles = []
-            if tuple[0] is node[0] or tuple[0] in cycles:
-                tuple.pop()
-                if tuple[0] is node[0] or tuple[0] in cycles:
-                    return
-            elif len(tuple) > 1 and tuple[1] is node[0]:
-                assert False, "Tuple not in dependency tree: " + str(tuple) + " " + str(node)
-            for c in node[2]:
-                assert_tuple(tuple, c)
 
-        for tuple in tuples:
-            assert_tuple(list(tuple), node)
+    def assert_sort(self, tuples, allitems=None):
+        if allitems is None:
+            allitems = self._nodes_from_tuples(tuples)
+        else:
+            allitems = self._nodes_from_tuples(tuples).union(allitems)
+        result = list(topological.sort(tuples, allitems))
+        deps = util.defaultdict(set)
+        for parent, child in tuples:
+            deps[parent].add(child)
+        assert len(result)
+        for i, node in enumerate(result):
+            for n in result[i:]:
+                assert node not in deps[n]
 
-        if collection is None:
-            collection = set()
-        items = set()
-        def assert_unique(n):
-            for item in [i for i in n[1] or [n[0]]]:
-                assert item not in items, node
-                items.add(item)
-                if item in collection:
-                    collection.remove(item)
-            for item in n[2]:
-                assert_unique(item)
-        assert_unique(node)
-        assert len(collection) == 0
+    def _nodes_from_tuples(self, tups):
+        s = set()
+        for tup in tups:
+            s.update(tup)
+        return s
 
-    def testsort(self):
+    def test_sort_one(self):
         rootnode = 'root'
         node2 = 'node2'
         node3 = 'node3'
@@ -54,12 +44,11 @@ class DependencySortTest(TestBase):
             (rootnode, node3),
             (rootnode, node4),
             (node4, subnode3),
-            (node4, subnode4)
-        ]
-        head = topological.sort_as_tree(tuples, [])
-        self.assert_sort(tuples, head)
+            (node4, subnode4),
+            ]
+        self.assert_sort(tuples)
 
-    def testsort2(self):
+    def test_sort_two(self):
         node1 = 'node1'
         node2 = 'node2'
         node3 = 'node3'
@@ -67,74 +56,20 @@ class DependencySortTest(TestBase):
         node5 = 'node5'
         node6 = 'node6'
         node7 = 'node7'
-        tuples = [
-            (node1, node2),
-            (node3, node4),
-            (node4, node5),
-            (node5, node6),
-            (node6, node2)
-        ]
-        head = topological.sort_as_tree(tuples, [node7])
-        self.assert_sort(tuples, head, [node7])
+        tuples = [(node1, node2), (node3, node4), (node4, node5),
+                  (node5, node6), (node6, node2)]
+        self.assert_sort(tuples, [node7])
 
-    def testsort3(self):
-        ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
-        node1 = 'keywords'
-        node2 = 'itemkeyowrds'
-        node3 = 'items'
-        tuples = [
-            (node1, node2),
-            (node3, node2),
-            (node1,node3)
-        ]
-        head1 = topological.sort_as_tree(tuples, [node1, node2, node3])
-        head2 = topological.sort_as_tree(tuples, [node3, node1, node2])
-        head3 = topological.sort_as_tree(tuples, [node3, node2, node1])
-
-        # TODO: figure out a "node == node2" function
-        #self.assert_(str(head1) == str(head2) == str(head3))
-        print "\n" + str(head1)
-        print "\n" + str(head2)
-        print "\n" + str(head3)
-
-    def testsort4(self):
+    def test_sort_three(self):
         node1 = 'keywords'
         node2 = 'itemkeyowrds'
         node3 = 'items'
         node4 = 'hoho'
-        tuples = [
-            (node1, node2),
-            (node4, node1),
-            (node1, node3),
-            (node3, node2)
-        ]
-        head = topological.sort_as_tree(tuples, [])
-        self.assert_sort(tuples, head)
+        tuples = [(node1, node2), (node4, node1), (node1, node3),
+                  (node3, node2)]
+        self.assert_sort(tuples)
 
-    def testsort5(self):
-        # this one, depenending on the weather,
-        node1 = 'node1' #'00B94190'
-        node2 = 'node2' #'00B94990'
-        node3 = 'node3' #'00B9A9B0'
-        node4 = 'node4' #'00B4F210'
-        tuples = [
-            (node4, node1),
-            (node1, node2),
-            (node4, node3),
-            (node2, node3),
-            (node4, node2),
-            (node3, node3)
-        ]
-        allitems = [
-            node1,
-            node2,
-            node3,
-            node4
-        ]
-        head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
-        self.assert_sort(tuples, head)
-
-    def testcircular(self):
+    def test_raise_on_cycle_one(self):
         node1 = 'node1'
         node2 = 'node2'
         node3 = 'node3'
@@ -146,44 +81,180 @@ class DependencySortTest(TestBase):
             (node1, node2),
             (node2, node3),
             (node3, node1),
-            (node4, node1)
-        ]
-        allitems = [node1, node2, node3, node4]
-        head = topological.sort_as_tree(tuples, allitems, with_cycles=True)
-        self.assert_sort(tuples, head)
+            (node4, node1),
+            ]
+        allitems = self._nodes_from_tuples(tuples)
 
-    def testcircular2(self):
-        # this condition was arising from ticket:362
-        # and was not treated properly by topological sort
+        try:
+            list(topological.sort(tuples, allitems))
+            assert False
+        except exc.CircularDependencyError, err:
+            eq_(err.cycles, set(['node1', 'node3', 'node2', 'node5',
+                'node4']))
+            eq_(err.edges, set([('node3', 'node1'), ('node4', 'node1'),
+                ('node2', 'node3'), ('node1', 'node2'), 
+                ('node4','node5'), ('node5', 'node4')]))
+
+    def test_raise_on_cycle_two(self):
+
+        # this condition was arising from ticket:362 and was not treated
+        # properly by topological sort
+
         node1 = 'node1'
         node2 = 'node2'
         node3 = 'node3'
         node4 = 'node4'
+        tuples = [(node1, node2), (node3, node1), (node2, node4),
+                  (node3, node2), (node2, node3)]
+        allitems = self._nodes_from_tuples(tuples)
+
+        try:
+            list(topological.sort(tuples, allitems))
+            assert False
+        except exc.CircularDependencyError, err:
+            eq_(err.cycles, set(['node1', 'node3', 'node2']))
+            eq_(err.edges, set([('node3', 'node1'), ('node2', 'node3'),
+                ('node3', 'node2'), ('node1', 'node2'), 
+                ('node2','node4')]))
+
+    def test_raise_on_cycle_three(self):
+        question, issue, providerservice, answer, provider = \
+            'Question', 'Issue', 'ProviderService', 'Answer', 'Provider'
         tuples = [
-            (node1, node2),
-            (node3, node1),
-            (node2, node4),
-            (node3, node2),
-            (node2, node3)
-        ]
-        head = topological.sort_as_tree(tuples, [], with_cycles=True)
-        self.assert_sort(tuples, head)
+            (question, issue),
+            (providerservice, issue),
+            (provider, question),
+            (question, provider),
+            (providerservice, question),
+            (provider, providerservice),
+            (question, answer),
+            (issue, question),
+            ]
+        allitems = self._nodes_from_tuples(tuples)
+        assert_raises(exc.CircularDependencyError, list,
+                      topological.sort(tuples, allitems))
 
-    def testcircular3(self):
-        question, issue, providerservice, answer, provider = "Question", "Issue", "ProviderService", "Answer", "Provider"
+        # TODO: test find_cycles
 
-        tuples = [(question, issue), (providerservice, issue), (provider, question), (question, provider), (providerservice, question), (provider, providerservice), (question, answer), (issue, question)]
-
-        head = topological.sort_as_tree(tuples, [], with_cycles=True)
-        self.assert_sort(tuples, head)
-
-    def testbigsort(self):
+    def test_large_sort(self):
         tuples = [(i, i + 1) for i in range(0, 1500, 2)]
-        head = topological.sort_as_tree(tuples, [])
+        self.assert_sort(tuples)
 
+    def test_ticket_1380(self):
 
-    def testids(self):
         # ticket:1380 regression: would raise a KeyError
-        topological.sort([(id(i), i) for i in range(3)], [])
 
+        tuples = [(id(i), i) for i in range(3)]
+        self.assert_sort(tuples)
 
+    def test_find_cycle_one(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        tuples = [(node1, node2), (node3, node1), (node2, node4),
+                  (node3, node2), (node2, node3)]
+        eq_(topological.find_cycles(tuples,
+            self._nodes_from_tuples(tuples)), set([node1, node2,
+            node3]))
+
+    def test_find_multiple_cycles_one(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        node7 = 'node7'
+        node8 = 'node8'
+        node9 = 'node9'
+        tuples = [  # cycle 1 cycle 2 cycle 3 cycle 4, but only if cycle
+                    # 1 nodes are present
+            (node1, node2),
+            (node2, node4),
+            (node4, node1),
+            (node9, node9),
+            (node7, node5),
+            (node5, node7),
+            (node1, node6),
+            (node6, node8),
+            (node8, node4),
+            (node3, node1),
+            (node3, node2),
+            ]
+        allnodes = set([
+            node1,
+            node2,
+            node3,
+            node4,
+            node5,
+            node6,
+            node7,
+            node8,
+            node9,
+            ])
+        eq_(topological.find_cycles(tuples, allnodes), set([
+            'node8',
+            'node1',
+            'node2',
+            'node5',
+            'node4',
+            'node7',
+            'node6',
+            'node9',
+            ]))
+
+    def test_find_multiple_cycles_two(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        tuples = [  # cycle 1 cycle 2
+            (node1, node2),
+            (node2, node4),
+            (node4, node1),
+            (node1, node6),
+            (node6, node2),
+            (node2, node4),
+            (node4, node1),
+            ]
+        allnodes = set([
+            node1,
+            node2,
+            node3,
+            node4,
+            node5,
+            node6,
+            ])
+        eq_(topological.find_cycles(tuples, allnodes), set(['node1',
+            'node2', 'node4']))
+
+    def test_find_multiple_cycles_three(self):
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        tuples = [  # cycle 1 cycle 2 cycle3 cycle4
+            (node1, node2),
+            (node2, node1),
+            (node2, node3),
+            (node3, node2),
+            (node2, node4),
+            (node4, node2),
+            (node2, node5),
+            (node5, node6),
+            (node6, node2),
+            ]
+        allnodes = set([
+            node1,
+            node2,
+            node3,
+            node4,
+            node5,
+            node6,
+            ])
+        eq_(topological.find_cycles(tuples, allnodes), allnodes)

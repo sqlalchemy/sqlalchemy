@@ -8,13 +8,16 @@ import types
 import warnings
 from cStringIO import StringIO
 
-from sqlalchemy.test import config, assertsql, util as testutil
-from sqlalchemy.util import function_named
+from sqlalchemy_nose import config
+from sqlalchemy.test import assertsql, util as testutil
+from sqlalchemy.util import function_named, py3k
 from engines import drop_all_tables
 
-from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool
+from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, pool, orm
+from sqlalchemy.engine import default
 from nose import SkipTest
 
+    
 _ops = { '<': operator.lt,
          '>': operator.gt,
          '==': operator.eq,
@@ -31,7 +34,7 @@ db = None
 # more sugar, installed by __init__
 requires = None
 
-def fails_if(callable_):
+def fails_if(callable_, reason=None):
     """Mark a test as expected to fail if callable_ returns True.
 
     If the callable returns false, the test is run and reported as normal.
@@ -205,7 +208,24 @@ def _block_unconditionally(db, reason):
         return function_named(maybe, fn_name)
     return decorate
 
-
+def only_on(dbs, reason):
+    carp = _should_carp_about_exclusion(reason)
+    spec = db_spec(*util.to_list(dbs))
+    def decorate(fn):
+        fn_name = fn.__name__
+        def maybe(*args, **kw):
+            if spec(config.db):
+                return fn(*args, **kw)
+            else:
+                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                    fn_name, config.db.name, config.db.driver, reason)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
+                return True
+        return function_named(maybe, fn_name)
+    return decorate
+    
 def exclude(db, op, spec, reason):
     """Mark a test as unsupported by specific database server versions.
 
@@ -289,13 +309,18 @@ def _server_version(bind=None):
 def skip_if(predicate, reason=None):
     """Skip a test if predicate is true."""
     reason = reason or predicate.__name__
+    carp = _should_carp_about_exclusion(reason)
+    
     def decorate(fn):
         fn_name = fn.__name__
         def maybe(*args, **kw):
             if predicate():
                 msg = "'%s' skipped on DB %s version '%s': %s" % (
                     fn_name, config.db.name, _server_version(), reason)
-                raise SkipTest(msg)
+                print msg
+                if carp:
+                    print >> sys.stderr, msg
+                return True
             else:
                 return fn(*args, **kw)
         return function_named(maybe, fn_name)
@@ -374,6 +399,7 @@ def uses_deprecated(*messages):
     verbiage emitted by the sqlalchemy.util.deprecated decorator.
     """
 
+    
     def decorate(fn):
         def safe(*args, **kw):
             # todo: should probably be strict about this, too
@@ -411,8 +437,6 @@ def resetwarnings():
 
 #    warnings.simplefilter('error')
 
-    if sys.version_info < (2, 4):
-        warnings.filterwarnings('ignore', category=FutureWarning)
 
 def global_cleanup_assertions():
     """Check things that have to be finalized at the end of a test suite.
@@ -496,9 +520,12 @@ def startswith_(a, fragment, msg=None):
 def assert_raises(except_cls, callable_, *args, **kw):
     try:
         callable_(*args, **kw)
-        assert False, "Callable did not raise an exception"
+        success = False
     except except_cls, e:
-        pass
+        success = True
+    
+    # assert outside the block so it works for AssertionError too !
+    assert success, "Callable did not raise an exception"
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     try:
@@ -506,6 +533,7 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
         assert False, "Callable did not raise an exception"
     except except_cls, e:
         assert re.search(msg, str(e)), "%r !~ %s" % (msg, e)
+        print str(e)
 
 def fail(msg):
     assert False, msg
@@ -519,6 +547,23 @@ def fixture(table, columns, *rows):
                                     for column_values in rows])
     table.append_ddl_listener('after-create', onload)
 
+def provide_metadata(fn):
+    """Provides a bound MetaData object for a single test, 
+    drops it afterwards."""
+    def maybe(*args, **kw):
+        metadata = schema.MetaData(db)
+        context = dict(fn.func_globals)
+        context['metadata'] = metadata
+        # jython bug #1034
+        rebound = types.FunctionType(
+            fn.func_code, context, fn.func_name, fn.func_defaults,
+            fn.func_closure)
+        try:
+            return rebound(*args, **kw)
+        finally:
+            metadata.drop_all()
+    return function_named(maybe, fn.__name__)
+    
 def resolve_artifact_names(fn):
     """Decorator, augment function globals with tables and classes.
 
@@ -583,60 +628,68 @@ class TestBase(object):
         assert val, msg
         
 class AssertsCompiledSQL(object):
-    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None):
+    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None, use_default_dialect=False):
+        if use_default_dialect:
+            dialect = default.DefaultDialect()
+            
         if dialect is None:
             dialect = getattr(self, '__dialect__', None)
 
         kw = {}
         if params is not None:
             kw['column_keys'] = params.keys()
-
+        
+        if isinstance(clause, orm.Query):
+            context = clause._compile_context()
+            context.statement.use_labels = True
+            clause = context.statement
+            
         c = clause.compile(dialect=dialect, **kw)
 
-        print "\nSQL String:\n" + str(c) + repr(getattr(c, 'params', {}))
-
+        param_str = repr(getattr(c, 'params', {}))
+        # Py3K
+        #param_str = param_str.encode('utf-8').decode('ascii', 'ignore')
+        
+        print "\nSQL String:\n" + str(c) + param_str
+        
         cc = re.sub(r'[\n\t]', '', str(c))
-
+        
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
         if checkparams is not None:
             eq_(c.construct_params(params), checkparams)
 
 class ComparesTables(object):
-    def assert_tables_equal(self, table, reflected_table):
+    def assert_tables_equal(self, table, reflected_table, strict_types=False):
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
             eq_(c.name, reflected_c.name)
             assert reflected_c is reflected_table.c[c.name]
             eq_(c.primary_key, reflected_c.primary_key)
             eq_(c.nullable, reflected_c.nullable)
-            self.assert_types_base(reflected_c, c)
+            
+            if strict_types:
+                assert type(reflected_c.type) is type(c.type), \
+                    "Type '%s' doesn't correspond to type '%s'" % (reflected_c.type, c.type)
+            else:
+                self.assert_types_base(reflected_c, c)
 
             if isinstance(c.type, sqltypes.String):
                 eq_(c.type.length, reflected_c.type.length)
 
             eq_(set([f.column.name for f in c.foreign_keys]), set([f.column.name for f in reflected_c.foreign_keys]))
-            if c.default:
+            if c.server_default:
                 assert isinstance(reflected_c.server_default,
                                   schema.FetchedValue)
-            elif against(('mysql', '<', (5, 0))):
-                # ignore reflection of bogus db-generated DefaultClause()
-                pass
-            elif not c.primary_key or not against('postgresql', 'mssql'):
-                #print repr(c)
-                assert reflected_c.default is None, reflected_c.default
 
         assert len(table.primary_key) == len(reflected_table.primary_key)
         for c in table.primary_key:
-            assert reflected_table.primary_key.columns[c.name]
+            assert reflected_table.primary_key.columns[c.name] is not None
     
     def assert_types_base(self, c1, c2):
-        base_mro = sqltypes.TypeEngine.__mro__
-        assert len(
-            set(type(c1.type).__mro__).difference(base_mro).intersection(
-            set(type(c2.type).__mro__).difference(base_mro)
-            )
-        ) > 0, "On column %r, type '%s' doesn't correspond to type '%s'" % (c1.name, c1.type, c2.type)
+        assert c1.type._compare_type_affinity(c2.type),\
+                "On column %r, type '%s' doesn't correspond to type '%s'" % \
+                (c1.name, c1.type, c2.type)
 
 class AssertsExecutionResults(object):
     def assert_result(self, result, class_, *objects):

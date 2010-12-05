@@ -2,16 +2,13 @@ Table of Contents
 =================
 
 .. toctree::
-
+    :maxdepth: 2
+    
     intro
-    ormtutorial
-    sqlexpression
-    mappers
-    session
-    dbengine
-    metadata
-    reference/index
-
+    orm/index
+    core/index
+    dialects/index
+    
 Indices and tables
 ------------------
 

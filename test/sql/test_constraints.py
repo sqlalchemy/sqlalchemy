@@ -183,18 +183,37 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_too_long_idx_name(self):
         dialect = testing.db.dialect.__class__()
-        dialect.max_identifier_length = 20
 
-        t1 = Table("sometable", MetaData(), Column("foo", Integer))
-        self.assert_compile(
-            schema.CreateIndex(Index("this_name_is_too_long_for_what_were_doing", t1.c.foo)),
-            "CREATE INDEX this_name_is_t_1 ON sometable (foo)",
-            dialect=dialect
-        )
+        for max_ident, max_index in [(22, None), (256, 22)]:
+            dialect.max_identifier_length = max_ident
+            dialect.max_index_name_length = max_index
+
+            for tname, cname, exp in [
+                ('sometable', 'this_name_is_too_long', 'ix_sometable_t_09aa'),
+                ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
+            ]:
         
-        self.assert_compile(
-            schema.CreateIndex(Index("this_other_name_is_too_long_for_what_were_doing", t1.c.foo)),
-            "CREATE INDEX this_other_nam_1 ON sometable (foo)",
+                t1 = Table(tname, MetaData(), 
+                            Column(cname, Integer, index=True),
+                        )
+                ix1 = list(t1.indexes)[0]
+        
+                self.assert_compile(
+                    schema.CreateIndex(ix1),
+                    "CREATE INDEX %s "
+                    "ON %s (%s)" % (exp, tname, cname),
+                    dialect=dialect
+                )
+        
+        dialect.max_identifier_length = 22
+        dialect.max_index_name_length = None
+        
+        t1 = Table('t', MetaData(), Column('c', Integer))
+        assert_raises(
+            exc.IdentifierError,
+            schema.CreateIndex(Index(
+                        "this_other_name_is_too_long_for_what_were_doing", 
+                        t1.c.c)).compile,
             dialect=dialect
         )
 
@@ -275,7 +294,7 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE tbl (a INTEGER, b INTEGER  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
+            "CREATE TABLE tbl (a INTEGER, b INTEGER CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
         )
     
     def test_use_alter(self):
@@ -316,10 +335,36 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
                 Column('b', Integer)
         )
         
-        constraint = CheckConstraint('a < b',name="my_test_constraint", deferrable=True,initially='DEFERRED', table=t)
+        constraint = CheckConstraint('a < b',name="my_test_constraint",
+                                        deferrable=True,initially='DEFERRED', table=t)
+
+        
+        # before we create an AddConstraint,
+        # the CONSTRAINT comes out inline
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "CONSTRAINT my_test_constraint CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            ")"
+        )
+
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint  CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+            "ALTER TABLE tbl ADD CONSTRAINT my_test_constraint "
+                    "CHECK (a < b) DEFERRABLE INITIALLY DEFERRED"
+        )
+
+        # once we make an AddConstraint,
+        # inline compilation of the CONSTRAINT
+        # is disabled
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl ("
+            "a INTEGER, "
+            "b INTEGER"
+            ")"
         )
 
         self.assert_compile(
@@ -350,13 +395,13 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         t2.append_constraint(constraint)
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE t2 ADD CONSTRAINT uq_cst  UNIQUE (a, b)"
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cst UNIQUE (a, b)"
         )
         
         constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
         self.assert_compile(
             schema.AddConstraint(constraint),
-            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2  UNIQUE (a, b)"
+            "ALTER TABLE t2 ADD CONSTRAINT uq_cs2 UNIQUE (a, b)"
         )
         
         assert t.c.a.primary_key is False

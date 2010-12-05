@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, backref, create_session
+from sqlalchemy.orm import mapper, relationship, backref, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -21,18 +21,12 @@ class EagerTest(_base.MappedTest):
     
     @classmethod
     def define_tables(cls, metadata):
-        # determine a literal value for "false" based on the dialect
-        # FIXME: this DefaultClause setup is bogus.
-
-        dialect = testing.db.dialect
-        bp = sa.Boolean().dialect_impl(dialect).bind_processor(dialect)
-
-        if bp:
-            false = str(bp(False))
-        elif testing.against('maxdb'):
-            false = text('FALSE')
+        
+        if testing.db.dialect.supports_native_boolean:
+            false = 'false'
         else:
-            false = str(False)
+            false = "0"
+            
         cls.other_artifacts['false'] = false
 
         Table('owners', metadata ,
@@ -77,13 +71,13 @@ class EagerTest(_base.MappedTest):
         mapper(Category, categories)
 
         mapper(Option, options, properties=dict(
-            owner=relation(Owner),
-            test=relation(Thing)))
+            owner=relationship(Owner),
+            test=relationship(Thing)))
 
         mapper(Thing, tests, properties=dict(
-            owner=relation(Owner, backref='tests'),
-            category=relation(Category),
-            owner_option=relation(Option,
+            owner=relationship(Owner, backref='tests'),
+            category=relationship(Category),
+            owner_option=relationship(Option,
                 primaryjoin=sa.and_(tests.c.id == options.c.test_id,
                                     tests.c.owner_id == options.c.owner_id),
                 foreign_keys=[options.c.test_id, options.c.owner_id],
@@ -130,7 +124,7 @@ class EagerTest(_base.MappedTest):
         eq_(result, [(1, u'Some Category'), (3, u'Some Category')])
 
     @testing.resolve_artifact_names
-    def test_withouteagerload(self):
+    def test_withoutjoinedload(self):
         s = create_session()
         l = (s.query(Thing).
              select_from(tests.outerjoin(options,
@@ -145,15 +139,15 @@ class EagerTest(_base.MappedTest):
         eq_(result, [u'1 Some Category', u'3 Some Category'])
 
     @testing.resolve_artifact_names
-    def test_witheagerload(self):
+    def test_withjoinedload(self):
         """
-        Test that an eagerload locates the correct "from" clause with which to
+        Test that an joinedload locates the correct "from" clause with which to
         attach to, when presented with a query that already has a complicated
         from clause.
 
         """
         s = create_session()
-        q=s.query(Thing).options(sa.orm.eagerload('category'))
+        q=s.query(Thing).options(sa.orm.joinedload('category'))
 
         l=(q.select_from(tests.outerjoin(options,
                                          sa.and_(tests.c.id ==
@@ -169,9 +163,9 @@ class EagerTest(_base.MappedTest):
 
     @testing.resolve_artifact_names
     def test_dslish(self):
-        """test the same as witheagerload except using generative"""
+        """test the same as withjoinedload except using generative"""
         s = create_session()
-        q = s.query(Thing).options(sa.orm.eagerload('category'))
+        q = s.query(Thing).options(sa.orm.joinedload('category'))
         l = q.filter (
             sa.and_(tests.c.owner_id == 1,
                     sa.or_(options.c.someoption == None,
@@ -185,7 +179,7 @@ class EagerTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_without_outerjoin_literal(self):
         s = create_session()
-        q = s.query(Thing).options(sa.orm.eagerload('category'))
+        q = s.query(Thing).options(sa.orm.joinedload('category'))
         l = (q.filter(
             (tests.c.owner_id==1) &
             ('options.someoption is null or options.someoption=%s' % false)).
@@ -197,7 +191,7 @@ class EagerTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_withoutouterjoin(self):
         s = create_session()
-        q = s.query(Thing).options(sa.orm.eagerload('category'))
+        q = s.query(Thing).options(sa.orm.joinedload('category'))
         l = q.filter(
             (tests.c.owner_id==1) &
             ((options.c.someoption==None) | (options.c.someoption==False))
@@ -243,12 +237,12 @@ class EagerTest2(_base.MappedTest):
         mapper(Left, left)
         mapper(Right, right)
         mapper(Middle, middle, properties=dict(
-            left=relation(Left,
-                          lazy=False,
-                          backref=backref('middle',lazy=False)),
-            right=relation(Right,
-                           lazy=False,
-                           backref=backref('middle', lazy=False)))),
+            left=relationship(Left,
+                          lazy='joined',
+                          backref=backref('middle',lazy='joined')),
+            right=relationship(Right,
+                           lazy='joined',
+                           backref=backref('middle', lazy='joined')))),
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -304,10 +298,10 @@ class EagerTest3(_base.MappedTest):
     def test_nesting_with_functions(self):
         mapper(Data, datas)
         mapper(Foo, foo, properties={
-            'data': relation(Data,backref=backref('foo',uselist=False))})
+            'data': relationship(Data,backref=backref('foo',uselist=False))})
 
         mapper(Stat, stats, properties={
-            'data':relation(Data)})
+            'data':relationship(Data)})
 
         session = create_session()
 
@@ -330,7 +324,7 @@ class EagerTest3(_base.MappedTest):
         arb_data = sa.select(
             [stats.c.data_id, sa.func.max(stats.c.somedata).label('max')],
             stats.c.data_id <= 5,
-            group_by=[stats.c.data_id]).alias('arb')
+            group_by=[stats.c.data_id])
 
         arb_result = arb_data.execute().fetchall()
 
@@ -340,10 +334,12 @@ class EagerTest3(_base.MappedTest):
         # extract just the "data_id" from it
         arb_result = [row['data_id'] for row in arb_result]
 
+        arb_data = arb_data.alias('arb')
+        
         # now query for Data objects using that above select, adding the
         # "order by max desc" separately
         q = (session.query(Data).
-             options(sa.orm.eagerload('foo')).
+             options(sa.orm.joinedload('foo')).
              select_from(datas.join(arb_data, arb_data.c.data_id == datas.c.id)).
              order_by(sa.desc(arb_data.c.max)).
              limit(10))
@@ -380,8 +376,8 @@ class EagerTest4(_base.MappedTest):
     def test_basic(self):
         mapper(Employee, employees)
         mapper(Department, departments, properties=dict(
-            employees=relation(Employee,
-                               lazy=False,
+            employees=relationship(Employee,
+                               lazy='joined',
                                backref='department')))
 
         d1 = Department(name='One')
@@ -400,7 +396,7 @@ class EagerTest4(_base.MappedTest):
              join('employees').
              filter(Employee.name.startswith('J')).
              distinct().
-             order_by([sa.desc(Department.name)]))
+             order_by(sa.desc(Department.name)))
 
         eq_(q.count(), 2)
         assert q[0] is d2
@@ -457,7 +453,7 @@ class EagerTest5(_base.MappedTest):
         commentMapper = mapper(Comment, comments)
 
         baseMapper = mapper(Base, base, properties=dict(
-            comments=relation(Comment, lazy=False,
+            comments=relationship(Comment, lazy='joined',
                               cascade='all, delete-orphan')))
 
         mapper(Derived, derived, inherits=baseMapper)
@@ -534,21 +530,21 @@ class EagerTest6(_base.MappedTest):
         p_m = mapper(Part, parts)
 
         mapper(InheritedPart, inherited_part, properties=dict(
-            part=relation(Part, lazy=False)))
+            part=relationship(Part, lazy='joined')))
 
         d_m = mapper(Design, design, properties=dict(
-            inheritedParts=relation(InheritedPart,
+            inheritedParts=relationship(InheritedPart,
                                     cascade="all, delete-orphan",
                                     backref="design")))
 
         mapper(DesignType, design_types)
 
         d_m.add_property(
-            "type", relation(DesignType, lazy=False, backref="designs"))
+            "type", relationship(DesignType, lazy='joined', backref="designs"))
 
         p_m.add_property(
-            "design", relation(
-                Design, lazy=False,
+            "design", relationship(
+                Design, lazy='joined',
                 backref=backref("parts", cascade="all, delete-orphan")))
 
 
@@ -619,10 +615,10 @@ class EagerTest7(_base.MappedTest):
         mapper(Address, addresses)
 
         mapper(Company, companies, properties={
-            'addresses' : relation(Address, lazy=False)})
+            'addresses' : relationship(Address, lazy='joined')})
 
         mapper(Invoice, invoices, properties={
-            'company': relation(Company, lazy=False)})
+            'company': relationship(Company, lazy='joined')})
 
         a1 = Address(address='a1 address')
         a2 = Address(address='a2 address')
@@ -652,19 +648,19 @@ class EagerTest7(_base.MappedTest):
         mapper(Phone, phone_numbers)
 
         mapper(Address, addresses, properties={
-            'phones': relation(Phone, lazy=False, backref='address',
+            'phones': relationship(Phone, lazy='joined', backref='address',
                                order_by=phone_numbers.c.phone_id)})
 
         mapper(Company, companies, properties={
-            'addresses': relation(Address, lazy=False, backref='company',
+            'addresses': relationship(Address, lazy='joined', backref='company',
                                   order_by=addresses.c.address_id)})
 
         mapper(Item, items)
 
         mapper(Invoice, invoices, properties={
-            'items': relation(Item, lazy=False, backref='invoice',
+            'items': relationship(Item, lazy='joined', backref='invoice',
                               order_by=items.c.item_id),
-            'company': relation(Company, lazy=False, backref='invoices')})
+            'company': relationship(Company, lazy='joined', backref='invoices')})
 
         c1 = Company(company_name='company 1', addresses=[
             Address(address='a1 address',
@@ -782,7 +778,7 @@ class EagerTest8(_base.MappedTest):
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
         mapper(Joined, jjj, properties=dict(
-            type=relation(Task_Type, lazy=False)))
+            type=relationship(Task_Type, lazy='joined')))
 
         session = create_session()
 
@@ -835,18 +831,18 @@ class EagerTest9(_base.MappedTest):
         mapper(Transaction, transactions)
 
         mapper(Entry, entries, properties=dict(
-            account=relation(Account,
+            account=relationship(Account,
                              uselist=False,
-                             backref=backref('entries', lazy=True,
+                             backref=backref('entries', lazy='select',
                                              order_by=entries.c.entry_id)),
-            transaction=relation(Transaction,
+            transaction=relationship(Transaction,
                                  uselist=False,
-                                 backref=backref('entries', lazy=False,
+                                 backref=backref('entries', lazy='joined',
                                                  order_by=entries.c.entry_id))))
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
-    def test_eagerload_on_path(self):
+    def test_joinedload_on_path(self):
         session = create_session()
 
         tx1 = Transaction(name='tx1')
@@ -870,7 +866,7 @@ class EagerTest9(_base.MappedTest):
             # "accounts" off the immediate "entries"; only the "accounts" off
             # the entries->transaction->entries
             acc = (session.query(Account).
-                   options(sa.orm.eagerload_all('entries.transaction.entries.account')).
+                   options(sa.orm.joinedload_all('entries.transaction.entries.account')).
                    order_by(Account.account_id)).first()
 
             # no sql occurs

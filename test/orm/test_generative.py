@@ -4,7 +4,7 @@ from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey, MetaData, func
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
 
@@ -37,8 +37,8 @@ class GenerativeQueryTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_selectby(self):
         res = create_session().query(Foo).filter_by(range=5)
-        assert res.order_by([Foo.bar])[0].bar == 5
-        assert res.order_by([sa.desc(Foo.bar)])[0].bar == 95
+        assert res.order_by(Foo.bar)[0].bar == 5
+        assert res.order_by(sa.desc(Foo.bar))[0].bar == 95
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -48,6 +48,9 @@ class GenerativeQueryTest(_base.MappedTest):
         orig = query.all()
         
         assert query[1] == orig[1]
+        assert query[-4] == orig[-4]
+        assert query[-1] == orig[-1]
+        
         assert list(query[10:20]) == orig[10:20]
         assert list(query[10:]) == orig[10:]
         assert list(query[:10]) == orig[:10]
@@ -77,12 +80,12 @@ class GenerativeQueryTest(_base.MappedTest):
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         # end Py2K
-        
+    
+    @testing.fails_if(lambda:testing.against('mysql+mysqldb') and
+            testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma'),
+            "unknown incompatibility")
     @testing.resolve_artifact_names
     def test_aggregate_1(self):
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
-            testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma')):
-            return
 
         query = create_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar<30).one() == (435,)
@@ -93,7 +96,7 @@ class GenerativeQueryTest(_base.MappedTest):
     def test_aggregate_2(self):
         query = create_session().query(func.avg(foo.c.bar))
         avg = query.filter(foo.c.bar < 30).one()[0]
-        eq_(round(avg, 1), 14.5)
+        eq_(float(round(avg, 1)), 14.5)
 
     @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
     @testing.resolve_artifact_names
@@ -105,14 +108,14 @@ class GenerativeQueryTest(_base.MappedTest):
         # Py2K
         avg_f = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
         # end Py2K
-        assert round(avg_f, 1) == 14.5
+        assert float(round(avg_f, 1)) == 14.5
 
         # Py3K
         #avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).__next__()[0]
         # Py2K
         avg_o = query.filter(foo.c.bar<30).values(sa.func.avg(foo.c.bar)).next()[0]
         # end Py2K
-        assert round(avg_o, 1) == 14.5
+        assert float(round(avg_o, 1)) == 14.5
 
     @testing.resolve_artifact_names
     def test_filter(self):
@@ -134,13 +137,13 @@ class GenerativeQueryTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_order_by(self):
         query = create_session().query(Foo)
-        assert query.order_by([Foo.bar])[0].bar == 0
-        assert query.order_by([sa.desc(Foo.bar)])[0].bar == 99
+        assert query.order_by(Foo.bar)[0].bar == 0
+        assert query.order_by(sa.desc(Foo.bar))[0].bar == 99
 
     @testing.resolve_artifact_names
     def test_offset(self):
         query = create_session().query(Foo)
-        assert list(query.order_by([Foo.bar]).offset(10))[0].bar == 10
+        assert list(query.order_by(Foo.bar).offset(10))[0].bar == 10
 
     @testing.resolve_artifact_names
     def test_offset(self):
@@ -199,7 +202,7 @@ class GenerativeTest2(_base.MappedTest):
         eq_(res.count(), 1)
 
 
-class RelationsTest(_fixtures.FixtureTest):
+class RelationshipsTest(_fixtures.FixtureTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -208,8 +211,8 @@ class RelationsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(User, users, properties={
-            'orders':relation(mapper(Order, orders, properties={
-                'addresses':relation(mapper(Address, addresses))}))})
+            'orders':relationship(mapper(Order, orders, properties={
+                'addresses':relationship(mapper(Address, addresses))}))})
 
 
     @testing.resolve_artifact_names
@@ -217,7 +220,7 @@ class RelationsTest(_fixtures.FixtureTest):
         """Query.join"""
 
         session = create_session()
-        q = (session.query(User).join(['orders', 'addresses']).
+        q = (session.query(User).join('orders', 'addresses').
              filter(Address.id == 1))
         eq_([User(id=7)], q.all())
 
@@ -226,7 +229,7 @@ class RelationsTest(_fixtures.FixtureTest):
         """Query.outerjoin"""
 
         session = create_session()
-        q = (session.query(User).outerjoin(['orders', 'addresses']).
+        q = (session.query(User).outerjoin('orders', 'addresses').
              filter(sa.or_(Order.id == None, Address.id == 1)))
         eq_(set([User(id=7), User(id=8), User(id=10)]),
             set(q.all()))
@@ -237,7 +240,7 @@ class RelationsTest(_fixtures.FixtureTest):
 
         session = create_session()
 
-        q = (session.query(User).outerjoin(['orders', 'addresses']).
+        q = (session.query(User).outerjoin('orders', 'addresses').
              filter(sa.or_(Order.id == None, Address.id == 1)))
         eq_(q.count(), 4)
 

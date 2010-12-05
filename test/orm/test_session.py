@@ -1,13 +1,17 @@
-from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
+from sqlalchemy.test.testing import eq_, assert_raises, \
+    assert_raises_message
 from sqlalchemy.test.util import gc_collect
 import inspect
 import pickle
-from sqlalchemy.orm import create_session, sessionmaker, attributes
+from sqlalchemy.orm import create_session, sessionmaker, attributes, \
+    make_transient, Session
+from sqlalchemy.orm.attributes import instance_state
 import sqlalchemy as sa
 from sqlalchemy.test import engines, testing, config
 from sqlalchemy import Integer, String, Sequence
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, backref, eagerload
+from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
+    exc as orm_exc, object_session
 from sqlalchemy.test.testing import eq_
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
@@ -64,6 +68,20 @@ class SessionTest(_fixtures.FixtureTest):
         finally:
             c.close()
 
+    @testing.resolve_artifact_names
+    def test_object_session_raises(self):
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            object()
+        )
+
+        assert_raises(
+            orm_exc.UnmappedInstanceError,
+            object_session, 
+            User()
+        )
+        
     @testing.requires.sequences
     def test_sequence_execute(self):
         seq = Sequence("some_sequence")
@@ -79,7 +97,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_expunge_cascade(self):
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relation(Address,
+            'addresses':relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -103,36 +121,16 @@ class SessionTest(_fixtures.FixtureTest):
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
-    def test_table_binds_from_expression(self):
-        """Session can extract Table objects from ClauseElements and match them to tables."""
+    def test_mapped_binds(self):
 
-        mapper(Address, addresses)
-        mapper(User, users, properties={
-            'addresses':relation(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
+        # ensure tables are unbound
+        m2 = sa.MetaData()
+        users_unbound =users.tometadata(m2)
+        addresses_unbound = addresses.tometadata(m2)
 
-        Session = sessionmaker(binds={users: self.metadata.bind,
-                                      addresses: self.metadata.bind})
-        sess = Session()
-
-        sess.execute(users.insert(), params=dict(id=1, name='ed'))
-        eq_(sess.execute(users.select(users.c.id == 1)).fetchall(),
-            [(1, 'ed')])
-
-        eq_(sess.execute(users.select(User.id == 1)).fetchall(),
-            [(1, 'ed')])
-
-        sess.close()
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_mapped_binds_from_expression(self):
-        """Session can extract Table objects from ClauseElements and match them to tables."""
-
-        mapper(Address, addresses)
-        mapper(User, users, properties={
-            'addresses':relation(Address,
+        mapper(Address, addresses_unbound)
+        mapper(User, users_unbound, properties={
+            'addresses':relationship(Address,
                                  backref=backref("user", cascade="all"),
                                  cascade="all")})
 
@@ -140,12 +138,60 @@ class SessionTest(_fixtures.FixtureTest):
                                       Address: self.metadata.bind})
         sess = Session()
 
-        sess.execute(users.insert(), params=dict(id=1, name='ed'))
-        eq_(sess.execute(users.select(users.c.id == 1)).fetchall(),
-            [(1, 'ed')])
+        u1 = User(id=1, name='ed')
+        sess.add(u1)
+        eq_(sess.query(User).filter(User.id==1).all(),
+            [User(id=1, name='ed')])
 
-        eq_(sess.execute(users.select(User.id == 1)).fetchall(),
-            [(1, 'ed')])
+        # test expression binding
+
+        sess.execute(users_unbound.insert(), params=dict(id=2,
+                     name='jack'))
+        eq_(sess.execute(users_unbound.select(users_unbound.c.id
+            == 2)).fetchall(), [(2, 'jack')])
+
+        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        sess.execute(users_unbound.delete())
+        eq_(sess.execute(users_unbound.select()).fetchall(), [])
+        
+        sess.close()
+
+    @engines.close_open_connections
+    @testing.resolve_artifact_names
+    def test_table_binds(self):
+
+        # ensure tables are unbound
+        m2 = sa.MetaData()
+        users_unbound =users.tometadata(m2)
+        addresses_unbound = addresses.tometadata(m2)
+
+        mapper(Address, addresses_unbound)
+        mapper(User, users_unbound, properties={
+            'addresses':relationship(Address,
+                                 backref=backref("user", cascade="all"),
+                                 cascade="all")})
+
+        Session = sessionmaker(binds={users_unbound: self.metadata.bind,
+                                      addresses_unbound: self.metadata.bind})
+        sess = Session()
+
+        u1 = User(id=1, name='ed')
+        sess.add(u1)
+        eq_(sess.query(User).filter(User.id==1).all(),
+            [User(id=1, name='ed')])
+
+        sess.execute(users_unbound.insert(), params=dict(id=2, name='jack'))
+
+        eq_(sess.execute(users_unbound.select(users_unbound.c.id
+            == 2)).fetchall(), [(2, 'jack')])
+
+        eq_(sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            [(2, 'jack')])
+
+        sess.execute(users_unbound.delete())
+        eq_(sess.execute(users_unbound.select()).fetchall(), [])
 
         sess.close()
 
@@ -180,7 +226,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert conn2.execute("select count(1) from users").scalar() == 0
         sess.commit()
         assert conn1.execute("select count(1) from users").scalar() == 1
-        assert testing.db.connect().execute("select count(1) from users").scalar() == 1
+
+        assert testing.db.connect().execute('select count(1) from users'
+                ).scalar() == 1
         sess.close()
 
     @testing.requires.independent_connections
@@ -206,6 +254,80 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.resolve_artifact_names
+    def test_make_transient(self):
+        mapper(User, users)
+        sess = create_session()
+        sess.add(User(name='test'))
+        sess.flush()
+        
+        u1 = sess.query(User).first()
+        make_transient(u1)
+        assert u1 not in sess
+        sess.add(u1)
+        assert u1 in sess.new
+
+        u1 = sess.query(User).first()
+        sess.expunge(u1)
+        make_transient(u1)
+        sess.add(u1)
+        assert u1 in sess.new
+        
+        # test expired attributes 
+        # get unexpired
+        u1 = sess.query(User).first()
+        sess.expire(u1)
+        make_transient(u1)
+        assert u1.id is None
+        assert u1.name is None
+
+        # works twice
+        make_transient(u1)
+        
+        sess.close()
+        
+        u1.name = 'test2'
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        make_transient(u1)
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+
+    @testing.resolve_artifact_names
+    def test_deleted_flag(self):
+        mapper(User, users)
+        
+        sess = sessionmaker()()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        sess.rollback()
+        assert u1 in sess
+        
+        sess.delete(u1)
+        sess.commit()
+        assert u1 not in sess
+        assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
+        
+        make_transient(u1)
+        sess.add(u1)
+        sess.commit()
+        
+        eq_(sess.query(User).count(), 1)
+        
+    @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
         """test that an expression which is dependent on object state is 
         evaluated after the session autoflushes.   This is the lambda
@@ -213,7 +335,7 @@ class SessionTest(_fixtures.FixtureTest):
         
         """
         mapper(User, users, properties={
-            'addresses':relation(Address, backref="user")})
+            'addresses':relationship(Address, backref="user")})
         mapper(Address, addresses)
 
         sess = create_session(autoflush=True, autocommit=False)
@@ -232,24 +354,28 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(q.one(), Address(email_address='foo'))
 
 
+
     @testing.requires.independent_connections
     @engines.close_open_connections
     @testing.resolve_artifact_names
     def test_autoflush_unbound(self):
         mapper(User, users)
-
         try:
             sess = create_session(autocommit=False, autoflush=True)
             u = User()
-            u.name='ed'
+            u.name = 'ed'
             sess.add(u)
             u2 = sess.query(User).filter_by(name='ed').one()
             assert u2 is u
-            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
-            assert testing.db.connect().execute("select count(1) from users").scalar() == 0
+            assert sess.execute('select count(1) from users',
+                                mapper=User).scalar() == 1
+            assert testing.db.connect().execute('select count(1) from '
+                    'users').scalar() == 0
             sess.commit()
-            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
-            assert testing.db.connect().execute("select count(1) from users").scalar() == 1
+            assert sess.execute('select count(1) from users',
+                                mapper=User).scalar() == 1
+            assert testing.db.connect().execute('select count(1) from '
+                    'users').scalar() == 1
             sess.close()
         except:
             sess.rollback()
@@ -261,21 +387,22 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-
-        sess = create_session(bind=conn1, autocommit=False, autoflush=True)
+        sess = create_session(bind=conn1, autocommit=False,
+                              autoflush=True)
         u = User()
-        u.name='ed'
+        u.name = 'ed'
         sess.add(u)
         sess.commit()
-        assert conn1.execute("select count(1) from users").scalar() == 1
-        assert testing.db.connect().execute("select count(1) from users").scalar() == 1
+        assert conn1.execute('select count(1) from users').scalar() == 1
+        assert testing.db.connect().execute('select count(1) from users'
+                ).scalar() == 1
         sess.commit()
 
     @testing.resolve_artifact_names
     def test_autoflush_rollback(self):
         mapper(Address, addresses)
         mapper(User, users, properties={
-            'addresses':relation(Address)})
+            'addresses':relationship(Address)})
 
         _fixtures.run_inserts_for(users)
         _fixtures.run_inserts_for(addresses)
@@ -378,23 +505,23 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_heavy_nesting(self):
         session = create_session(bind=testing.db)
-
         session.begin()
-        session.connection().execute(users.insert().values(name='user1'))
-
+        session.connection().execute(users.insert().values(name='user1'
+                ))
         session.begin(subtransactions=True)
-
         session.begin_nested()
-
-        session.connection().execute(users.insert().values(name='user2'))
-        assert session.connection().execute("select count(1) from users").scalar() == 2
-
+        session.connection().execute(users.insert().values(name='user2'
+                ))
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 2
         session.rollback()
-        assert session.connection().execute("select count(1) from users").scalar() == 1
-        session.connection().execute(users.insert().values(name='user3'))
-
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 1
+        session.connection().execute(users.insert().values(name='user3'
+                ))
         session.commit()
-        assert session.connection().execute("select count(1) from users").scalar() == 2
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 2
 
     @testing.fails_on('sqlite', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -579,27 +706,53 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_error_on_using_inactive_session(self):
         mapper(User, users)
-
         sess = create_session(autocommit=True)
-
         sess.begin()
         sess.begin(subtransactions=True)
-
         sess.add(User(name='u1'))
         sess.flush()
-
         sess.rollback()
-        assert_raises_message(sa.exc.InvalidRequestError, "inactive due to a rollback in a subtransaction", sess.begin, subtransactions=True)
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              "This Session's transaction has been "
+                              r"rolled back by a nested rollback\(\) "
+                              "call.  To begin a new transaction, "
+                              r"issue Session.rollback\(\) first.",
+                              sess.begin, subtransactions=True)
         sess.close()
 
+    @testing.resolve_artifact_names
+    def test_preserve_flush_error(self):
+        mapper(User, users)
+        sess = Session()
+
+        sess.add(User(id=5))
+        assert_raises(
+            sa.exc.DBAPIError,
+            sess.commit
+        )
+        
+        for i in range(5):
+            assert_raises_message(sa.exc.InvalidRequestError,
+                              "^This Session's transaction has been "
+                              r"rolled back due to a previous exception during flush. To "
+                              "begin a new transaction with this "
+                              "Session, first issue "
+                              r"Session.rollback\(\). Original exception "
+                              "was:",
+                              sess.commit)
+        sess.rollback()
+        sess.add(User(id=5, name='some name'))
+        sess.commit()
+        
+        
     @testing.resolve_artifact_names
     def test_no_autocommit_with_explicit_commit(self):
         mapper(User, users)
         session = create_session(autocommit=False)
-
         session.add(User(name='ed'))
         session.transaction.commit()
-        assert session.transaction is not None, "autocommit=False should start a new transaction"
+        assert session.transaction is not None, \
+            'autocommit=False should start a new transaction'
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -612,10 +765,14 @@ class SessionTest(_fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert transaction._connection_for_bind(testing.db) is transaction._connection_for_bind(c) is c
+        assert transaction._connection_for_bind(testing.db) \
+            is transaction._connection_for_bind(c) is c
 
-        assert_raises_message(sa.exc.InvalidRequestError, "Session already has a Connection associated", transaction._connection_for_bind, testing.db.connect())
-
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'Session already has a Connection '
+                              'associated',
+                              transaction._connection_for_bind,
+                              testing.db.connect())
         transaction.rollback()
         assert len(sess.query(User).all()) == 0
         sess.close()
@@ -656,21 +813,20 @@ class SessionTest(_fixtures.FixtureTest):
         assert c.scalar("select count(1) from users") == 1
 
 
-    @testing.uses_deprecated()
     @engines.close_open_connections
     @testing.resolve_artifact_names
-    def test_save_update_delete(self):
+    def test_add_delete(self):
 
         s = create_session()
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all, delete")
+            'addresses':relationship(Address, cascade="all, delete")
         })
         mapper(Address, addresses)
 
         user = User(name='u1')
 
-        assert_raises_message(sa.exc.InvalidRequestError, "is not persisted", s.update, user)
-        assert_raises_message(sa.exc.InvalidRequestError, "is not persisted", s.delete, user)
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'is not persisted', s.delete, user)
 
         s.add(user)
         s.flush()
@@ -696,14 +852,13 @@ class SessionTest(_fixtures.FixtureTest):
         assert user in s
         assert user not in s.dirty
 
-        assert_raises_message(sa.exc.InvalidRequestError, "is already persistent", s.save, user)
-
         s2 = create_session()
-        assert_raises_message(sa.exc.InvalidRequestError, "is already attached to session", s2.delete, user)
-
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'is already attached to session',
+                              s2.delete, user)
         u2 = s2.query(User).get(user.id)
-        assert_raises_message(sa.exc.InvalidRequestError, "another instance with key", s.delete, u2)
-
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'another instance with key', s.delete, u2)
         s.expire(user)
         s.expunge(user)
         assert user not in s
@@ -718,7 +873,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_is_modified(self):
         s = create_session()
 
-        mapper(User, users, properties={'addresses':relation(Address)})
+        mapper(User, users, properties={'addresses':relationship(Address)})
         mapper(Address, addresses)
 
         # save user
@@ -759,7 +914,8 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_weak_ref(self):
-        """test the weak-referencing identity map, which strongly-references modified items."""
+        """test the weak-referencing identity map, which strongly-
+        references modified items."""
 
         s = create_session()
         mapper(User, users)
@@ -818,18 +974,38 @@ class SessionTest(_fixtures.FixtureTest):
         assert not s.dirty
         
         assert not s.identity_map
-    
+
+    @testing.resolve_artifact_names
+    def test_identity_conflict(self):
+        mapper(User, users)
+        for s in (
+            create_session(),
+            create_session(weak_identity_map=False),
+        ):
+            users.delete().execute()
+            u1 = User(name="ed")
+            s.add(u1)
+            s.flush()
+            s.expunge(u1)
+            u2 = s.query(User).first()
+            s.expunge(u2)
+            s.identity_map.add(sa.orm.attributes.instance_state(u1))
+
+            assert_raises(AssertionError, s.identity_map.add,
+                          sa.orm.attributes.instance_state(u2))
+        
+        
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2m(self):
         s = sessionmaker()()
         mapper(User, users, properties={
-            "addresses":relation(Address, backref="user")
+            "addresses":relationship(Address, backref="user")
         })
         mapper(Address, addresses)
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
         
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         user.addresses[0].user # lazyload
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
         
@@ -837,7 +1013,7 @@ class SessionTest(_fixtures.FixtureTest):
         gc_collect()
         assert len(s.identity_map) == 0
 
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         user.addresses[0].email_address='ed2'
         user.addresses[0].user # lazyload
         del user
@@ -845,20 +1021,20 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 2
         
         s.commit()
-        user = s.query(User).options(eagerload(User.addresses)).one()
+        user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
         
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2o(self):
         s = sessionmaker()()
         mapper(User, users, properties={
-            "address":relation(Address, backref="user", uselist=False)
+            "address":relationship(Address, backref="user", uselist=False)
         })
         mapper(Address, addresses)
         s.add(User(name="ed", address=Address(email_address="ed1")))
         s.commit()
 
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         user.address.user
         eq_(user, User(name="ed", address=Address(email_address="ed1")))
 
@@ -866,7 +1042,7 @@ class SessionTest(_fixtures.FixtureTest):
         gc_collect()
         assert len(s.identity_map) == 0
 
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         user.address.email_address='ed2'
         user.address.user # lazyload
 
@@ -875,7 +1051,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(s.identity_map) == 2
         
         s.commit()
-        user = s.query(User).options(eagerload(User.address)).one()
+        user = s.query(User).options(joinedload(User.address)).one()
         eq_(user, User(name="ed", address=Address(email_address="ed2")))
     
     @testing.resolve_artifact_names
@@ -953,7 +1129,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_no_save_cascade_1(self):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relation(Address, cascade="none", backref="user")))
+            addresses=relationship(Address, cascade="none", backref="user")))
         s = create_session()
 
         u = User(name='u1')
@@ -972,7 +1148,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_no_save_cascade_2(self):
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
-            addresses=relation(Address,
+            addresses=relationship(Address,
                                cascade="all",
                                backref=backref("user", cascade="none"))))
 
@@ -1009,43 +1185,61 @@ class SessionTest(_fixtures.FixtureTest):
                 log.append('after_begin')
             def after_attach(self, session, instance):
                 log.append('after_attach')
-            def after_bulk_update(self, session, query, query_context, result):
+            def after_bulk_update(
+                self,
+                session,
+                query,
+                query_context,
+                result,
+                ):
                 log.append('after_bulk_update')
-            def after_bulk_delete(self, session, query, query_context, result):
+
+            def after_bulk_delete(
+                self,
+                session,
+                query,
+                query_context,
+                result,
+                ):
                 log.append('after_bulk_delete')
 
         sess = create_session(extension = MyExt())
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert log == ['after_attach', 'before_flush', 'after_begin', 'after_flush', 'before_commit', 'after_commit', 'after_flush_postexec']
-
+        assert log == [
+            'after_attach',
+            'before_flush',
+            'after_begin',
+            'after_flush',
+            'before_commit',
+            'after_commit',
+            'after_flush_postexec',
+            ]
         log = []
         sess = create_session(autocommit=False, extension=MyExt())
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        assert log == ['after_attach', 'before_flush', 'after_begin', 'after_flush', 'after_flush_postexec']
-
+        assert log == ['after_attach', 'before_flush', 'after_begin',
+                       'after_flush', 'after_flush_postexec']
         log = []
         u.name = 'ed'
         sess.commit()
-        assert log == ['before_commit', 'before_flush', 'after_flush', 'after_flush_postexec', 'after_commit']
-
+        assert log == ['before_commit', 'before_flush', 'after_flush',
+                       'after_flush_postexec', 'after_commit']
         log = []
         sess.commit()
         assert log == ['before_commit', 'after_commit']
-
         log = []
         sess.query(User).delete()
         assert log == ['after_begin', 'after_bulk_delete']
-
         log = []
         sess.query(User).update({'name': 'foo'})
         assert log == ['after_bulk_update']
-        
         log = []
-        sess = create_session(autocommit=False, extension=MyExt(), bind=testing.db)
+        sess = create_session(autocommit=False, extension=MyExt(),
+                              bind=testing.db)
         conn = sess.connection()
         assert log == ['after_begin']
 
@@ -1062,7 +1256,8 @@ class SessionTest(_fixtures.FixtureTest):
                         session.add(User(name='another %s' % obj.name))
                 for obj in list(session.deleted):
                     if isinstance(obj, User):
-                        x = session.query(User).filter(User.name=='another %s' % obj.name).one()
+                        x = session.query(User).filter(User.name
+                                == 'another %s' % obj.name).one()
                         session.delete(x)
                     
         sess = create_session(extension = MyExt(), autoflush=True)
@@ -1142,21 +1337,20 @@ class SessionTest(_fixtures.FixtureTest):
         
         sess = create_session(extension=MyExt())
         sess.add(User(name='foo'))
-        assert_raises_message(sa.exc.InvalidRequestError, "already flushing", sess.flush)
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'already flushing', sess.flush)
 
     @testing.resolve_artifact_names
     def test_pickled_update(self):
         mapper(User, users)
         sess1 = create_session()
         sess2 = create_session()
-
         u1 = User(name='u1')
         sess1.add(u1)
-
-        assert_raises_message(sa.exc.InvalidRequestError, "already attached to session", sess2.add, u1)
-
+        assert_raises_message(sa.exc.InvalidRequestError,
+                              'already attached to session', sess2.add,
+                              u1)
         u2 = pickle.loads(pickle.dumps(u1))
-
         sess2.add(u2)
 
     @testing.resolve_artifact_names
@@ -1216,6 +1410,22 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
+    @testing.resolve_artifact_names
+    def test_identity_map_mutate(self):
+        mapper(User, users)
+
+        sess = Session()
+        
+        sess.add_all([User(name='u1'), User(name='u2'), User(name='u3')])
+        sess.commit()
+        
+        u1, u2, u3 = sess.query(User).all()
+        for i, (key, value) in enumerate(sess.identity_map.iteritems()):
+            if i == 2:
+                del u3
+                gc_collect()
+        
+        
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
@@ -1224,10 +1434,9 @@ class DisposedStates(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global t1
-        t1 = Table('t1', metadata, 
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', String(50))
-            )
+        t1 = Table('t1', metadata, Column('id', Integer,
+                   primary_key=True, test_needs_autoincrement=True),
+                   Column('data', String(50)))
 
     @classmethod
     def setup_mappers(cls):
@@ -1243,20 +1452,22 @@ class DisposedStates(_base.MappedTest):
         super(DisposedStates, self).teardown()
         
     def _set_imap_in_disposal(self, sess, *objs):
-        """remove selected objects from the given session, as though they 
-        were dereferenced and removed from WeakIdentityMap.
+        """remove selected objects from the given session, as though
+        they were dereferenced and removed from WeakIdentityMap.
         
-        Hardcodes the identity map's "all_states()" method to return the full list
-        of states.  This simulates the all_states() method returning results, afterwhich
-        some of the states get garbage collected (this normally only happens during
-        asynchronous gc).  The Session now has one or more 
-        InstanceState's which have been removed from the identity map and disposed.
+        Hardcodes the identity map's "all_states()" method to return the
+        full list of states.  This simulates the all_states() method
+        returning results, afterwhich some of the states get garbage
+        collected (this normally only happens during asynchronous gc).
+        The Session now has one or more InstanceState's which have been
+        removed from the identity map and disposed.
         
         Will the Session not trip over this ???  Stay tuned.
         
         """
+
         all_states = sess.identity_map.all_states()
-        sess.identity_map.all_states = lambda: all_states
+        sess.identity_map.all_states = lambda : all_states
         for obj in objs:
             state = attributes.instance_state(obj)
             sess.identity_map.remove(state)
@@ -1266,7 +1477,8 @@ class DisposedStates(_base.MappedTest):
         global sess
         sess = create_session(**kwargs)
 
-        data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'), T('t5')]
+        data = o1, o2, o3, o4, o5 = [T('t1'), T('t2'), T('t3'), T('t4'
+                ), T('t5')]
 
         sess.add_all(data)
 
@@ -1323,8 +1535,9 @@ class SessionInterface(testing.TestBase):
         return ok
 
     def _map_it(self, cls):
-        return mapper(cls, Table('t', sa.MetaData(),
-                                 Column('id', Integer, primary_key=True, test_needs_autoincrement=True)))
+        return mapper(cls, Table('t', sa.MetaData(), Column('id',
+                      Integer, primary_key=True,
+                      test_needs_autoincrement=True)))
 
     @testing.uses_deprecated()
     def _test_instance_guards(self, user_arg):
@@ -1368,13 +1581,8 @@ class SessionInterface(testing.TestBase):
 
         raises_('refresh', user_arg)
 
-        raises_('save', user_arg)
-
-        raises_('save_or_update', user_arg)
-
-        raises_('update', user_arg)
-
-        instance_methods = self._public_session_methods() - self._class_methods
+        instance_methods = self._public_session_methods() \
+            - self._class_methods
 
         eq_(watchdog, instance_methods,
             watchdog.symmetric_difference(instance_methods))
@@ -1443,10 +1651,9 @@ class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('users', metadata,
-              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('name', String(20)),
-              test_needs_acid=True)
+        Table('users', metadata, Column('id', Integer,
+              primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(20)), test_needs_acid=True)
 
     @classmethod
     def setup_classes(cls):

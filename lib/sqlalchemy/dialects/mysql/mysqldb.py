@@ -1,5 +1,18 @@
 """Support for the MySQL database via the MySQL-python adapter.
 
+MySQL-Python is available at:
+
+    http://sourceforge.net/projects/mysql-python
+    
+At least version 1.2.1 or 1.2.2 should be used.
+
+Connecting
+-----------
+
+Connect string format::
+
+    mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
+    
 Character Sets
 --------------
 
@@ -14,22 +27,33 @@ enabling ``use_unicode`` in the driver by default.  For regular encoded
 strings, also pass ``use_unicode=0`` in the connection arguments::
 
   # set client encoding to utf8; all strings come back as unicode
-  create_engine('mysql:///mydb?charset=utf8')
+  create_engine('mysql+mysqldb:///mydb?charset=utf8')
 
   # set client encoding to utf8; all strings come back as utf8 str
-  create_engine('mysql:///mydb?charset=utf8&use_unicode=0')
+  create_engine('mysql+mysqldb:///mydb?charset=utf8&use_unicode=0')
+
+Known Issues
+-------------
+
+MySQL-python at least as of version 1.2.2 has a serious memory leak related
+to unicode conversion, a feature which is disabled via ``use_unicode=0``.   
+The recommended connection form with SQLAlchemy is::
+
+    engine = create_engine('mysql://scott:tiger@localhost/test?charset=utf8&use_unicode=0', pool_recycle=3600)
+
+
 """
 
-import decimal
 import re
 
-from sqlalchemy.dialects.mysql.base import (DECIMAL, MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, NUMERIC, _NumericType)
+from sqlalchemy.dialects.mysql.base import (MySQLDialect, MySQLExecutionContext,
+                                            MySQLCompiler, MySQLIdentifierPreparer)
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
+from sqlalchemy import processors
 
-class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
     
     @property
     def rowcount(self):
@@ -39,7 +63,7 @@ class MySQL_mysqldbExecutionContext(MySQLExecutionContext):
             return self.cursor.rowcount
         
         
-class MySQL_mysqldbCompiler(MySQLCompiler):
+class MySQLCompiler_mysqldb(MySQLCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
     
@@ -47,41 +71,28 @@ class MySQL_mysqldbCompiler(MySQLCompiler):
         return text.replace('%', '%%')
 
 
-class _DecimalType(_NumericType):
-    def result_processor(self, dialect):
-        if self.asdecimal:
-            return
-        def process(value):
-            if isinstance(value, decimal.Decimal):
-                return float(value)
-            else:
-                return value
-        return process
+class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
+    
+    def _escape_identifier(self, value):
+        value = value.replace(self.escape_quote, self.escape_to_quote)
+        return value.replace("%", "%%")
 
-
-class _MySQLdbNumeric(_DecimalType, NUMERIC):
-    pass
-
-
-class _MySQLdbDecimal(_DecimalType, DECIMAL):
-    pass
-
-
-class MySQL_mysqldb(MySQLDialect):
+class MySQLDialect_mysqldb(MySQLDialect):
     driver = 'mysqldb'
     supports_unicode_statements = False
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
-    default_paramstyle = 'format'
-    execution_ctx_cls = MySQL_mysqldbExecutionContext
-    statement_compiler = MySQL_mysqldbCompiler
+    supports_native_decimal = True
 
+    default_paramstyle = 'format'
+    execution_ctx_cls = MySQLExecutionContext_mysqldb
+    statement_compiler = MySQLCompiler_mysqldb
+    preparer = MySQLIdentifierPreparer_mysqldb
+    
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
-            sqltypes.Numeric: _MySQLdbNumeric,
-            DECIMAL: _MySQLdbDecimal
         }
     )
     
@@ -133,9 +144,6 @@ class MySQL_mysqldb(MySQLDialect):
             opts['client_flag'] = client_flag
         return [[], opts]
     
-    def do_ping(self, connection):
-        connection.ping()
-
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
@@ -148,10 +156,7 @@ class MySQL_mysqldb(MySQLDialect):
         return tuple(version)
 
     def _extract_error_code(self, exception):
-        try:
-            return exception.orig.args[0]
-        except AttributeError:
-            return None
+        return exception.args[0]
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -191,4 +196,4 @@ class MySQL_mysqldb(MySQLDialect):
                 return 'latin1'
 
 
-dialect = MySQL_mysqldb
+dialect = MySQLDialect_mysqldb

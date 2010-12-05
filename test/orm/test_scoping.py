@@ -4,7 +4,7 @@ from sqlalchemy.test import testing
 from sqlalchemy.orm import scoped_session
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, query
+from sqlalchemy.orm import mapper, relationship, query
 from sqlalchemy.test.testing import eq_
 from test.orm import _base
 
@@ -54,7 +54,7 @@ class ScopedSessionTest(_base.MappedTest):
             custom_query = Session.query_property(query_cls=CustomQuery)
 
         mapper(SomeObject, table1, properties={
-            'options':relation(SomeOtherObject)})
+            'options':relationship(SomeOtherObject)})
         mapper(SomeOtherObject, table2)
 
         s = SomeObject(id=1, data="hello")
@@ -76,7 +76,22 @@ class ScopedSessionTest(_base.MappedTest):
         assert not isinstance(SomeOtherObject.query, CustomQuery)
         assert isinstance(SomeOtherObject.custom_query, query.Query)
 
+    def test_config_errors(self):
+        Session = scoped_session(sa.orm.sessionmaker())
+    
+        s = Session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Scoped session is already present",
+            Session, bind=testing.db
+        )
 
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "At least one scoped session is already present. ",
+            Session.configure, bind=testing.db
+        )
+        
 class ScopedMapperTest(_ScopedTest):
 
     @classmethod
@@ -101,7 +116,7 @@ class ScopedMapperTest(_ScopedTest):
     def setup_mappers(cls):
         Session = scoped_session(sa.orm.create_session)
         Session.mapper(SomeObject, table1, properties={
-            'options':relation(SomeOtherObject)
+            'options':relationship(SomeOtherObject)
         })
         Session.mapper(SomeOtherObject, table2)
 

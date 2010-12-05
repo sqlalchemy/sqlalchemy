@@ -4,18 +4,22 @@ from sqlalchemy.test import *
 
 class FoundRowsTest(TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
+    
+    __requires__ = ('sane_rowcount', )
+    
     @classmethod
     def setup_class(cls):
+        global employees_table, metadata
         metadata = MetaData(testing.db)
 
-        global employees_table
-
         employees_table = Table('employees', metadata,
-            Column('employee_id', Integer, Sequence('employee_id_seq', optional=True), primary_key=True),
+            Column('employee_id', Integer, 
+                        Sequence('employee_id_seq', optional=True), 
+                        primary_key=True),
             Column('name', String(50)),
             Column('department', String(1)),
         )
-        employees_table.create()
+        metadata.create_all()
 
     def setup(self):
         global data
@@ -36,7 +40,7 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
 
     @classmethod
     def teardown_class(cls):
-        employees_table.drop()
+        metadata.drop_all()
 
     def testbasic(self):
         s = employees_table.select()
@@ -49,22 +53,19 @@ class FoundRowsTest(TestBase, AssertsExecutionResults):
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='Z')
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testing.db.dialect.supports_sane_rowcount:
-            assert r.rowcount == 3
+        assert r.rowcount == 3
 
     def test_update_rowcount2(self):
         # WHERE matches 3, 0 rows changed
         department = employees_table.c.department
         r = employees_table.update(department=='C').execute(department='C')
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testing.db.dialect.supports_sane_rowcount:
-            assert r.rowcount == 3
+        assert r.rowcount == 3
 
     def test_delete_rowcount(self):
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
         r = employees_table.delete(department=='C').execute()
         print "expecting 3, dialect reports %s" % r.rowcount
-        if testing.db.dialect.supports_sane_rowcount:
-            assert r.rowcount == 3
+        assert r.rowcount == 3
 

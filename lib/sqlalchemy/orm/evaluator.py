@@ -35,7 +35,8 @@ class EvaluatorCompiler(object):
 
     def visit_column(self, clause):
         if 'parentmapper' in clause._annotations:
-            key = clause._annotations['parentmapper']._get_col_to_prop(clause).key
+            key = clause._annotations['parentmapper'].\
+              _columntoproperty[clause].key
         else:
             key = clause.key
         get_corresponding_attr = operator.attrgetter(key)
@@ -54,7 +55,7 @@ class EvaluatorCompiler(object):
                 if has_null:
                     return None
                 return False
-        if clause.operator is operators.and_:
+        elif clause.operator is operators.and_:
             def evaluate(obj):
                 for sub_evaluate in evaluators:
                     value = sub_evaluate(obj)
@@ -63,6 +64,8 @@ class EvaluatorCompiler(object):
                             return None
                         return False
                 return True
+        else:
+            raise UnevaluatableError("Cannot evaluate clauselist with operator %s" % clause.operator)
 
         return evaluate
 

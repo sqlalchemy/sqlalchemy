@@ -1,10 +1,33 @@
+"""Support for the MySQL database via the pyodbc adapter.
+
+pyodbc is available at:
+
+    http://pypi.python.org/pypi/pyodbc/
+
+Connecting
+----------
+
+Connect string::
+
+    mysql+pyodbc://<username>:<password>@<dsnname>
+
+Limitations
+-----------
+
+The mysql-pyodbc dialect is subject to unresolved character encoding issues 
+which exist within the current ODBC drivers available.
+(see http://code.google.com/p/pyodbc/issues/detail?id=25).   Consider usage
+of OurSQL, MySQLdb, or MySQL-connector/Python.
+
+"""
+
 from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
 from sqlalchemy.connectors.pyodbc import PyODBCConnector
 from sqlalchemy.engine import base as engine_base
 from sqlalchemy import util
 import re
 
-class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
     def get_lastrowid(self):
         cursor = self.create_cursor()
@@ -13,17 +36,16 @@ class MySQL_pyodbcExecutionContext(MySQLExecutionContext):
         cursor.close()
         return lastrowid
 
-class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
+class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
     supports_unicode_statements = False
-    execution_ctx_cls = MySQL_pyodbcExecutionContext
+    execution_ctx_cls = MySQLExecutionContext_pyodbc
 
     pyodbc_driver_name = "MySQL"
     
     def __init__(self, **kw):
         # deal with http://code.google.com/p/pyodbc/issues/detail?id=25
         kw.setdefault('convert_unicode', True)
-        MySQLDialect.__init__(self, **kw)
-        PyODBCConnector.__init__(self, **kw)
+        super(MySQLDialect_pyodbc, self).__init__(**kw)
 
     def _detect_charset(self, connection):
         """Sniff out the character set in use for connection results."""
@@ -44,11 +66,11 @@ class MySQL_pyodbc(PyODBCConnector, MySQLDialect):
         return 'latin1'
     
     def _extract_error_code(self, exception):
-        m = re.compile(r"\((\d+)\)").search(str(exception.orig.args))
+        m = re.compile(r"\((\d+)\)").search(str(exception.args))
         c = m.group(1)
         if c:
             return int(c)
         else:
             return None
 
-dialect = MySQL_pyodbc
+dialect = MySQLDialect_pyodbc

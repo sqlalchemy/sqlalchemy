@@ -1,5 +1,5 @@
 # firebird.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -7,11 +7,10 @@
 """
 Support for the Firebird database.
 
-Connectivity is usually supplied via the kinterbasdb_
-DBAPI module.
+Connectivity is usually supplied via the kinterbasdb_ DBAPI module.
 
-Firebird dialects
------------------
+Dialects
+~~~~~~~~
 
 Firebird offers two distinct dialects_ (not to be confused with a
 SQLAlchemy ``Dialect``):
@@ -27,8 +26,8 @@ adjusts its representation of SQL accordingly.  However,
 support for dialect 1 is not well tested and probably has
 incompatibilities.
 
-Firebird Locking Behavior
--------------------------
+Locking Behavior
+~~~~~~~~~~~~~~~~
 
 Firebird locks tables aggressively.  For this reason, a DROP TABLE may
 hang until other transactions are released.  SQLAlchemy does its best
@@ -48,28 +47,29 @@ The above use case can be alleviated by calling ``first()`` on the
 all remaining cursor/connection resources.
 
 RETURNING support
------------------
+~~~~~~~~~~~~~~~~~
 
-Firebird 2.0 supports returning a result set from inserts, and 2.1 extends
-that to deletes and updates.
+Firebird 2.0 supports returning a result set from inserts, and 2.1
+extends that to deletes and updates. This is generically exposed by
+the SQLAlchemy ``returning()`` method, such as::
 
-To use this pass the column/expression list to the ``firebird_returning``
-parameter when creating the queries::
+    # INSERT..RETURNING
+    result = table.insert().returning(table.c.col1, table.c.col2).\\
+                   values(name='foo')
+    print result.fetchall()
 
-  raises = tbl.update(empl.c.sales > 100, values=dict(salary=empl.c.salary * 1.1),
-                      firebird_returning=[empl.c.id, empl.c.salary]).execute().fetchall()
+    # UPDATE..RETURNING
+    raises = empl.update().returning(empl.c.id, empl.c.salary).\\
+                  where(empl.c.sales>100).\\
+                  values(dict(salary=empl.c.salary * 1.1))
+    print raises.fetchall()
 
-
-.. [#] Well, that is not the whole story, as the client may still ask
-       a different (lower) dialect...
 
 .. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
-.. _kinterbasdb: http://sourceforge.net/projects/kinterbasdb
 
 """
 
-
-import datetime, decimal, re
+import datetime, re
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import exc, types as sqltypes, sql, util
@@ -77,75 +77,74 @@ from sqlalchemy.sql import expression
 from sqlalchemy.engine import base, default, reflection
 from sqlalchemy.sql import compiler
 
-from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, CHAR, DATE,
-                               FLOAT, INTEGER, NUMERIC, SMALLINT,
-                               TEXT, TIME, TIMESTAMP, VARCHAR)
+
+from sqlalchemy.types import (BIGINT, BLOB, BOOLEAN, DATE,
+                              FLOAT, INTEGER, NUMERIC, SMALLINT,
+                              TEXT, TIME, TIMESTAMP)
 
 
-RESERVED_WORDS = set(
-   ["action", "active", "add", "admin", "after", "all", "alter", "and", "any",
-    "as", "asc", "ascending", "at", "auto", "autoddl", "avg", "based", "basename",
-    "base_name", "before", "begin", "between", "bigint", "blob", "blobedit", "buffer",
-    "by", "cache", "cascade", "case", "cast", "char", "character", "character_length",
-    "char_length", "check", "check_point_len", "check_point_length", "close", "collate",
-    "collation", "column", "commit", "committed", "compiletime", "computed", "conditional",
-    "connect", "constraint", "containing", "continue", "count", "create", "cstring",
-    "current", "current_connection", "current_date", "current_role", "current_time",
-    "current_timestamp", "current_transaction", "current_user", "cursor", "database",
-    "date", "day", "db_key", "debug", "dec", "decimal", "declare", "default", "delete",
-    "desc", "descending", "describe", "descriptor", "disconnect", "display", "distinct",
-    "do", "domain", "double", "drop", "echo", "edit", "else", "end", "entry_point",
-    "escape", "event", "exception", "execute", "exists", "exit", "extern", "external",
-    "extract", "fetch", "file", "filter", "float", "for", "foreign", "found", "free_it",
-    "from", "full", "function", "gdscode", "generator", "gen_id", "global", "goto",
-    "grant", "group", "group_commit_", "group_commit_wait", "having", "help", "hour",
-    "if", "immediate", "in", "inactive", "index", "indicator", "init", "inner", "input",
-    "input_type", "insert", "int", "integer", "into", "is", "isolation", "isql", "join",
-    "key", "lc_messages", "lc_type", "left", "length", "lev", "level", "like", "logfile",
-    "log_buffer_size", "log_buf_size", "long", "manual", "max", "maximum", "maximum_segment",
-    "max_segment", "merge", "message", "min", "minimum", "minute", "module_name", "month",
-    "names", "national", "natural", "nchar", "no", "noauto", "not", "null", "numeric",
-    "num_log_buffers", "num_log_bufs", "octet_length", "of", "on", "only", "open", "option",
-    "or", "order", "outer", "output", "output_type", "overflow", "page", "pagelength",
-    "pages", "page_size", "parameter", "password", "plan", "position", "post_event",
-    "precision", "prepare", "primary", "privileges", "procedure", "protected", "public",
-    "quit", "raw_partitions", "rdb$db_key", "read", "real", "record_version", "recreate",
-    "references", "release", "release", "reserv", "reserving", "restrict", "retain",
-    "return", "returning_values", "returns", "revoke", "right", "role", "rollback",
-    "row_count", "runtime", "savepoint", "schema", "second", "segment", "select",
-    "set", "shadow", "shared", "shell", "show", "singular", "size", "smallint",
-    "snapshot", "some", "sort", "sqlcode", "sqlerror", "sqlwarning", "stability",
-    "starting", "starts", "statement", "static", "statistics", "sub_type", "sum",
-    "suspend", "table", "terminator", "then", "time", "timestamp", "to", "transaction",
-    "translate", "translation", "trigger", "trim", "type", "uncommitted", "union",
-    "unique", "update", "upper", "user", "using", "value", "values", "varchar",
-    "variable", "varying", "version", "view", "wait", "wait_time", "weekday", "when",
-    "whenever", "where", "while", "with", "work", "write", "year", "yearday" ])
+RESERVED_WORDS = set([
+    "active", "add", "admin", "after", "all", "alter", "and", "any", "as",
+    "asc", "ascending", "at", "auto", "avg", "before", "begin", "between",
+    "bigint", "bit_length", "blob", "both", "by", "case", "cast", "char",
+    "character", "character_length", "char_length", "check", "close",
+    "collate", "column", "commit", "committed", "computed", "conditional",
+    "connect", "constraint", "containing", "count", "create", "cross",
+    "cstring", "current", "current_connection", "current_date",
+    "current_role", "current_time", "current_timestamp",
+    "current_transaction", "current_user", "cursor", "database", "date",
+    "day", "dec", "decimal", "declare", "default", "delete", "desc",
+    "descending", "disconnect", "distinct", "do", "domain", "double",
+    "drop", "else", "end", "entry_point", "escape", "exception",
+    "execute", "exists", "exit", "external", "extract", "fetch", "file",
+    "filter", "float", "for", "foreign", "from", "full", "function",
+    "gdscode", "generator", "gen_id", "global", "grant", "group",
+    "having", "hour", "if", "in", "inactive", "index", "inner",
+    "input_type", "insensitive", "insert", "int", "integer", "into", "is",
+    "isolation", "join", "key", "leading", "left", "length", "level",
+    "like", "long", "lower", "manual", "max", "maximum_segment", "merge",
+    "min", "minute", "module_name", "month", "names", "national",
+    "natural", "nchar", "no", "not", "null", "numeric", "octet_length",
+    "of", "on", "only", "open", "option", "or", "order", "outer",
+    "output_type", "overflow", "page", "pages", "page_size", "parameter",
+    "password", "plan", "position", "post_event", "precision", "primary",
+    "privileges", "procedure", "protected", "rdb$db_key", "read", "real",
+    "record_version", "recreate", "recursive", "references", "release",
+    "reserv", "reserving", "retain", "returning_values", "returns",
+    "revoke", "right", "rollback", "rows", "row_count", "savepoint",
+    "schema", "second", "segment", "select", "sensitive", "set", "shadow",
+    "shared", "singular", "size", "smallint", "snapshot", "some", "sort",
+    "sqlcode", "stability", "start", "starting", "starts", "statistics",
+    "sub_type", "sum", "suspend", "table", "then", "time", "timestamp",
+    "to", "trailing", "transaction", "trigger", "trim", "uncommitted",
+    "union", "unique", "update", "upper", "user", "using", "value",
+    "values", "varchar", "variable", "varying", "view", "wait", "when",
+    "where", "while", "with", "work", "write", "year",
+    ])
 
 
-class _FBBoolean(sqltypes.Boolean):
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            return value and True or False
-        return process
+class _StringType(sqltypes.String):
+    """Base for Firebird string types."""
 
-    def bind_processor(self, dialect):
-        def process(value):
-            if value is True:
-                return 1
-            elif value is False:
-                return 0
-            elif value is None:
-                return None
-            else:
-                return value and True or False
-        return process
+    def __init__(self, charset = None, **kw):
+        self.charset = charset
+        super(_StringType, self).__init__(**kw)
 
+class VARCHAR(_StringType, sqltypes.VARCHAR):
+    """Firebird VARCHAR type"""
+    __visit_name__ = 'VARCHAR'
+
+    def __init__(self, length = None, **kwargs):
+        super(VARCHAR, self).__init__(length=length, **kwargs) 
+
+class CHAR(_StringType, sqltypes.CHAR):
+    """Firebird CHAR type"""
+    __visit_name__ = 'CHAR'
+
+    def __init__(self, length = None, **kwargs):
+        super(CHAR, self).__init__(length=length, **kwargs)
 
 colspecs = {
-    sqltypes.Boolean: _FBBoolean,
 }
 
 ischema_names = {
@@ -165,8 +164,8 @@ ischema_names = {
     }
 
 
-# TODO: date conversion types (should be implemented as _FBDateTime, _FBDate, etc.
-# as bind/result functionality is required)
+# TODO: date conversion types (should be implemented as _FBDateTime, 
+# _FBDate, etc. as bind/result functionality is required)
 
 class FBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_):
@@ -181,6 +180,22 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BLOB(self, type_):
         return "BLOB SUB_TYPE 0"
 
+    def _extend_string(self, type_, basic):
+        charset = getattr(type_, 'charset',  None)
+        if charset is None:
+            return basic
+        else:
+            return '%s CHARACTER SET %s' % (basic, charset)
+
+    def visit_CHAR(self, type_):
+        basic = super(FBTypeCompiler, self).visit_CHAR(type_)
+        return self._extend_string(type_, basic)
+
+    def visit_VARCHAR(self, type_):
+        basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
+        return self._extend_string(type_, basic)
+        
+
 
 class FBCompiler(sql.compiler.SQLCompiler):
     """Firebird specific idiosincrasies"""
@@ -188,18 +203,25 @@ class FBCompiler(sql.compiler.SQLCompiler):
     def visit_mod(self, binary, **kw):
         # Firebird lacks a builtin modulo operator, but there is
         # an equivalent function in the ib_udf library.
-        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        return "mod(%s, %s)" % (
+                                self.process(binary.left),
+                                self.process(binary.right))
 
     def visit_alias(self, alias, asfrom=False, **kwargs):
         if self.dialect._version_two:
-            return super(FBCompiler, self).visit_alias(alias, asfrom=asfrom, **kwargs)
+            return super(FBCompiler, self).\
+                        visit_alias(alias, asfrom=asfrom, **kwargs)
         else:
             # Override to not use the AS keyword which FB 1.5 does not like
             if asfrom:
-                alias_name = isinstance(alias.name, expression._generated_label) and \
-                                self._truncated_identifier("alias", alias.name) or alias.name
+                alias_name = isinstance(alias.name,
+                                expression._generated_label) and \
+                                self._truncated_identifier("alias",
+                                alias.name) or alias.name
 
-                return self.process(alias.original, asfrom=asfrom, **kwargs) + " " + \
+                return self.process(
+                            alias.original, asfrom=asfrom, **kwargs) + \
+                            " " + \
                             self.preparer.format_alias(alias, alias_name)
             else:
                 return self.process(alias.original, **kwargs)
@@ -222,7 +244,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
     visit_char_length_func = visit_length_func
 
     def function_argspec(self, func, **kw):
-        if func.clauses:
+        if func.clauses is not None and len(func.clauses):
             return self.process(func.clause_expr)
         else:
             return ""
@@ -257,10 +279,10 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
         columns = [
                 self.process(
-                    self.label_select_column(None, c, asfrom=False), 
-                    within_columns_clause=True, 
+                    self.label_select_column(None, c, asfrom=False),
+                    within_columns_clause=True,
                     result_map=self.result_map
-                ) 
+                )
                 for c in expression._select_iterables(returning_cols)
             ]
         return 'RETURNING ' + ', '.join(columns)
@@ -272,28 +294,31 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
     def visit_create_sequence(self, create):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
 
+        # no syntax for these
+        # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
+        if create.element.start is not None:
+            raise NotImplemented(
+                        "Firebird SEQUENCE doesn't support START WITH")
+        if create.element.increment is not None:
+            raise NotImplemented(
+                        "Firebird SEQUENCE doesn't support INCREMENT BY")
+
         if self.dialect._version_two:
-            return "CREATE SEQUENCE %s" % self.preparer.format_sequence(create.element)
+            return "CREATE SEQUENCE %s" % \
+                        self.preparer.format_sequence(create.element)
         else:
-            return "CREATE GENERATOR %s" % self.preparer.format_sequence(create.element)
+            return "CREATE GENERATOR %s" % \
+                        self.preparer.format_sequence(create.element)
 
     def visit_drop_sequence(self, drop):
         """Generate a ``DROP GENERATOR`` statement for the sequence."""
 
         if self.dialect._version_two:
-            return "DROP SEQUENCE %s" % self.preparer.format_sequence(drop.element)
+            return "DROP SEQUENCE %s" % \
+                        self.preparer.format_sequence(drop.element)
         else:
-            return "DROP GENERATOR %s" % self.preparer.format_sequence(drop.element)
-
-
-class FBDefaultRunner(base.DefaultRunner):
-    """Firebird specific idiosincrasies"""
-
-    def visit_sequence(self, seq):
-        """Get the next value from the sequence using ``gen_id()``."""
-
-        return self.execute_string("SELECT gen_id(%s, 1) FROM rdb$database" % \
-            self.dialect.identifier_preparer.format_sequence(seq))
+            return "DROP GENERATOR %s" % \
+                        self.preparer.format_sequence(drop.element)
 
 
 class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
@@ -305,26 +330,39 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
         super(FBIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
 
+class FBExecutionContext(default.DefaultExecutionContext):
+    def fire_sequence(self, seq):
+        """Get the next value from the sequence using ``gen_id()``."""
+
+        return self._execute_scalar(
+                "SELECT gen_id(%s, 1) FROM rdb$database" % 
+                self.dialect.identifier_preparer.format_sequence(seq)
+                )
+
+
 class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
 
     name = 'firebird'
 
     max_identifier_length = 31
-    
+
     supports_sequences = True
     sequences_optional = False
     supports_default_values = True
     postfetch_lastrowid = False
-    
+
+    supports_native_boolean = False
+
     requires_name_normalize = True
     supports_empty_insert = False
 
+
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
-    defaultrunner = FBDefaultRunner
     preparer = FBIdentifierPreparer
     type_compiler = FBTypeCompiler
+    execution_ctx_cls = FBExecutionContext
 
     colspecs = colspecs
     ischema_names = ischema_names
@@ -346,7 +384,7 @@ class FBDialect(default.DefaultDialect):
             }
         else:
             self.implicit_returning = True
-            
+
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
         # that is padded with spaces
@@ -369,10 +407,11 @@ class FBDialect(default.DefaultDialect):
             return name
 
     def has_table(self, connection, table_name, schema=None):
-        """Return ``True`` if the given table exists, ignoring the `schema`."""
+        """Return ``True`` if the given table exists, ignoring 
+        the `schema`."""
 
         tblqry = """
-        SELECT 1 FROM rdb$database
+        SELECT 1 AS has_table FROM rdb$database
         WHERE EXISTS (SELECT rdb$relation_name
                       FROM rdb$relations
                       WHERE rdb$relation_name=?)
@@ -380,11 +419,11 @@ class FBDialect(default.DefaultDialect):
         c = connection.execute(tblqry, [self.denormalize_name(table_name)])
         return c.first() is not None
 
-    def has_sequence(self, connection, sequence_name):
+    def has_sequence(self, connection, sequence_name, schema=None):
         """Return ``True`` if the given sequence (generator) exists."""
 
         genqry = """
-        SELECT 1 FROM rdb$database
+        SELECT 1 AS has_sequence FROM rdb$database
         WHERE EXISTS (SELECT rdb$generator_name
                       FROM rdb$generators
                       WHERE rdb$generator_name=?)
@@ -392,17 +431,14 @@ class FBDialect(default.DefaultDialect):
         c = connection.execute(genqry, [self.denormalize_name(sequence_name)])
         return c.first() is not None
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         s = """
         SELECT DISTINCT rdb$relation_name
         FROM rdb$relation_fields
         WHERE rdb$system_flag=0 AND rdb$view_context IS NULL
         """
         return [self.normalize_name(row[0]) for row in connection.execute(s)]
-
-    @reflection.cache
-    def get_table_names(self, connection, schema=None, **kw):
-        return self.table_names(connection, schema)
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
@@ -442,7 +478,9 @@ class FBDialect(default.DefaultDialect):
         return pkfields
 
     @reflection.cache
-    def get_column_sequence(self, connection, table_name, column_name, schema=None, **kw):
+    def get_column_sequence(self, connection, 
+                                table_name, column_name, 
+                                schema=None, **kw):
         tablename = self.denormalize_name(table_name)
         colname = self.denormalize_name(column_name)
         # Heuristic-query to determine the generator associated to a PK field
@@ -453,17 +491,17 @@ class FBDialect(default.DefaultDialect):
                   ON tabdep.rdb$dependent_name=trigdep.rdb$dependent_name
                      AND trigdep.rdb$depended_on_type=14
                      AND trigdep.rdb$dependent_type=2
-             JOIN rdb$triggers trig ON trig.rdb$trigger_name=tabdep.rdb$dependent_name
+             JOIN rdb$triggers trig ON
+                    trig.rdb$trigger_name=tabdep.rdb$dependent_name
         WHERE tabdep.rdb$depended_on_name=?
           AND tabdep.rdb$depended_on_type=0
           AND trig.rdb$trigger_type=1
           AND tabdep.rdb$field_name=?
           AND (SELECT count(*)
-               FROM rdb$dependencies trigdep2
-               WHERE trigdep2.rdb$dependent_name = trigdep.rdb$dependent_name) = 2
+           FROM rdb$dependencies trigdep2
+           WHERE trigdep2.rdb$dependent_name = trigdep.rdb$dependent_name) = 2
         """
-        genc = connection.execute(genqry, [tablename, colname])
-        genr = genc.fetchone()
+        genr = connection.execute(genqry, [tablename, colname]).first()
         if genr is not None:
             return dict(name=self.normalize_name(genr['fgenerator']))
 
@@ -475,14 +513,19 @@ class FBDialect(default.DefaultDialect):
                         r.rdb$null_flag AS null_flag,
                         t.rdb$type_name AS ftype,
                         f.rdb$field_sub_type AS stype,
-                        f.rdb$field_length AS flen,
+                        f.rdb$field_length/
+                            COALESCE(cs.rdb$bytes_per_character,1) AS flen,
                         f.rdb$field_precision AS fprec,
                         f.rdb$field_scale AS fscale,
-                        COALESCE(r.rdb$default_source, f.rdb$default_source) AS fdefault
+                        COALESCE(r.rdb$default_source, 
+                                f.rdb$default_source) AS fdefault
         FROM rdb$relation_fields r
              JOIN rdb$fields f ON r.rdb$field_source=f.rdb$field_name
              JOIN rdb$types t
-                  ON t.rdb$type=f.rdb$field_type AND t.rdb$field_name='RDB$FIELD_TYPE'
+              ON t.rdb$type=f.rdb$field_type AND
+                    t.rdb$field_name='RDB$FIELD_TYPE'
+             LEFT JOIN rdb$character_sets cs ON
+                    f.rdb$character_set_id=cs.rdb$character_set_id
         WHERE f.rdb$system_flag=0 AND r.rdb$relation_name=?
         ORDER BY r.rdb$field_position
         """
@@ -498,8 +541,9 @@ class FBDialect(default.DefaultDialect):
             if row is None:
                 break
             name = self.normalize_name(row['fname'])
-            # get the data type
+            orig_colname = row['fname']
 
+            # get the data type
             colspec = row['ftype'].rstrip()
             coltype = self.ischema_names.get(colspec)
             if coltype is None:
@@ -507,7 +551,9 @@ class FBDialect(default.DefaultDialect):
                           (colspec, name))
                 coltype = sqltypes.NULLTYPE
             elif colspec == 'INT64':
-                coltype = coltype(precision=row['fprec'], scale=row['fscale'] * -1)
+                coltype = coltype(
+                                precision=row['fprec'], 
+                                scale=row['fscale'] * -1)
             elif colspec in ('VARYING', 'CSTRING'):
                 coltype = coltype(row['flen'])
             elif colspec == 'TEXT':
@@ -523,15 +569,27 @@ class FBDialect(default.DefaultDialect):
             # does it have a default value?
             defvalue = None
             if row['fdefault'] is not None:
-                # the value comes down as "DEFAULT 'value'"
-                assert row['fdefault'].upper().startswith('DEFAULT '), row
-                defvalue = row['fdefault'][8:]
+                # the value comes down as "DEFAULT 'value'": there may be
+                # more than one whitespace around the "DEFAULT" keyword
+                # and it may also be lower case 
+                # (see also http://tracker.firebirdsql.org/browse/CORE-356)
+                defexpr = row['fdefault'].lstrip()
+                assert defexpr[:8].rstrip().upper() == \
+                            'DEFAULT', "Unrecognized default value: %s" % \
+                            defexpr
+                defvalue = defexpr[8:].strip()
+                if defvalue == 'NULL':
+                    # Redundant
+                    defvalue = None
             col_d = {
                 'name' : name,
                 'type' : coltype,
                 'nullable' :  not bool(row['null_flag']),
                 'default' : defvalue
             }
+
+            if orig_colname.lower() == orig_colname:
+                col_d['quote'] = True
 
             # if the PK is a single field, try to see if its linked to
             # a sequence thru a trigger
@@ -554,7 +612,8 @@ class FBDialect(default.DefaultDialect):
         FROM rdb$relation_constraints rc
              JOIN rdb$indices ix1 ON ix1.rdb$index_name=rc.rdb$index_name
              JOIN rdb$indices ix2 ON ix2.rdb$index_name=ix1.rdb$foreign_key
-             JOIN rdb$index_segments cse ON cse.rdb$index_name=ix1.rdb$index_name
+             JOIN rdb$index_segments cse ON
+                        cse.rdb$index_name=ix1.rdb$index_name
              JOIN rdb$index_segments se
                   ON se.rdb$index_name=ix2.rdb$index_name
                      AND se.rdb$field_position=cse.rdb$field_position
@@ -578,9 +637,10 @@ class FBDialect(default.DefaultDialect):
             if not fk['name']:
                 fk['name'] = cname
                 fk['referred_table'] = self.normalize_name(row['targetrname'])
-            fk['constrained_columns'].append(self.normalize_name(row['fname']))
+            fk['constrained_columns'].append(
+                                self.normalize_name(row['fname']))
             fk['referred_columns'].append(
-                            self.normalize_name(row['targetfname']))
+                                self.normalize_name(row['targetfname']))
         return fks.values()
 
     @reflection.cache
@@ -593,7 +653,8 @@ class FBDialect(default.DefaultDialect):
              JOIN rdb$index_segments ic
                   ON ix.rdb$index_name=ic.rdb$index_name
              LEFT OUTER JOIN rdb$relation_constraints
-                  ON rdb$relation_constraints.rdb$index_name = ic.rdb$index_name
+                  ON rdb$relation_constraints.rdb$index_name =
+                        ic.rdb$index_name
         WHERE ix.rdb$relation_name=? AND ix.rdb$foreign_key IS NULL
           AND rdb$relation_constraints.rdb$constraint_type IS NULL
         ORDER BY index_name, field_name
@@ -608,11 +669,12 @@ class FBDialect(default.DefaultDialect):
                 indexrec['column_names'] = []
                 indexrec['unique'] = bool(row['unique_flag'])
 
-            indexrec['column_names'].append(self.normalize_name(row['field_name']))
+            indexrec['column_names'].append(
+                                self.normalize_name(row['field_name']))
 
         return indexes.values()
 
-    def do_execute(self, cursor, statement, parameters, **kwargs):
+    def do_execute(self, cursor, statement, parameters, context=None):
         # kinterbase does not accept a None, but wants an empty list
         # when there are no arguments.
         cursor.execute(statement, parameters or [])

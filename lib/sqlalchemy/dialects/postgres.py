@@ -7,3 +7,4 @@ warn_deprecated(
     )
     
 from sqlalchemy.dialects.postgresql import *
+from sqlalchemy.dialects.postgresql import base

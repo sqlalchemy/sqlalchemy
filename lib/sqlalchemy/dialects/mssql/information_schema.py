@@ -1,3 +1,5 @@
+# TODO: should be using the sys. catalog with SQL Server, not information schema
+
 from sqlalchemy import Table, MetaData, Column, ForeignKey
 from sqlalchemy.types import String, Unicode, Integer, TypeDecorator
 
@@ -21,7 +23,7 @@ tables = Table("TABLES", ischema,
     Column("TABLE_CATALOG", CoerceUnicode, key="table_catalog"),
     Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
     Column("TABLE_NAME", CoerceUnicode, key="table_name"),
-    Column("TABLE_TYPE", String, key="table_type"),
+    Column("TABLE_TYPE", String(convert_unicode=True), key="table_type"),
     schema="INFORMATION_SCHEMA")
 
 columns = Table("COLUMNS", ischema,
@@ -42,7 +44,7 @@ constraints = Table("TABLE_CONSTRAINTS", ischema,
     Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
     Column("TABLE_NAME", CoerceUnicode, key="table_name"),
     Column("CONSTRAINT_NAME", CoerceUnicode, key="constraint_name"),
-    Column("CONSTRAINT_TYPE", String, key="constraint_type"),
+    Column("CONSTRAINT_TYPE", String(convert_unicode=True), key="constraint_type"),
     schema="INFORMATION_SCHEMA")
 
 column_constraints = Table("CONSTRAINT_COLUMN_USAGE", ischema,
@@ -64,9 +66,14 @@ ref_constraints = Table("REFERENTIAL_CONSTRAINTS", ischema,
     Column("CONSTRAINT_CATALOG", CoerceUnicode, key="constraint_catalog"),
     Column("CONSTRAINT_SCHEMA", CoerceUnicode, key="constraint_schema"),
     Column("CONSTRAINT_NAME", CoerceUnicode, key="constraint_name"),
-    Column("UNIQUE_CONSTRAINT_CATLOG", CoerceUnicode, key="unique_constraint_catalog"),  # TODO: is CATLOG misspelled ?
-    Column("UNIQUE_CONSTRAINT_SCHEMA", CoerceUnicode, key="unique_constraint_schema"),
-    Column("UNIQUE_CONSTRAINT_NAME", CoerceUnicode, key="unique_constraint_name"),
+    # TODO: is CATLOG misspelled ?
+    Column("UNIQUE_CONSTRAINT_CATLOG", CoerceUnicode,
+                                        key="unique_constraint_catalog"),  
+                                        
+    Column("UNIQUE_CONSTRAINT_SCHEMA", CoerceUnicode,
+                                        key="unique_constraint_schema"),
+    Column("UNIQUE_CONSTRAINT_NAME", CoerceUnicode,
+                                        key="unique_constraint_name"),
     Column("MATCH_OPTION", String, key="match_option"),
     Column("UPDATE_RULE", String, key="update_rule"),
     Column("DELETE_RULE", String, key="delete_rule"),

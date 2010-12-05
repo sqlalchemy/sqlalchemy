@@ -10,7 +10,11 @@ from test.orm import _base
 def produce_test(parent, child, direction):
     """produce a testcase for A->B->C inheritance with a self-referential
     relationship between two of the classes, using either one-to-many or
-    many-to-one."""
+    many-to-one.
+    
+    the old "no discriminator column" pattern is used.
+    
+    """
     class ABCTest(_base.MappedTest):
         @classmethod
         def define_tables(cls, metadata):
@@ -55,6 +59,8 @@ def produce_test(parent, child, direction):
                 child_table.update(values={child_table.c.parent_id:None}).execute()
             super(ABCTest, self).teardown()
 
+
+        @testing.uses_deprecated("fold_equivalents is deprecated.")
         def test_roundtrip(self):
             parent_table = {"a":ta, "b":tb, "c": tc}[parent]
             child_table = {"a":ta, "b":tb, "c": tc}[child]
@@ -70,9 +76,9 @@ def produce_test(parent, child, direction):
             btoc = tc.c.id==tb.c.id
 
             if direction == ONETOMANY:
-                relationjoin = parent_table.c.id==child_table.c.parent_id
+                relationshipjoin = parent_table.c.id==child_table.c.parent_id
             elif direction == MANYTOONE:
-                relationjoin = parent_table.c.child_id==child_table.c.id
+                relationshipjoin = parent_table.c.child_id==child_table.c.id
                 if parent is child:
                     remote_side = [child_table.c.id]
 
@@ -105,7 +111,7 @@ def produce_test(parent, child, direction):
             parent_class = parent_mapper.class_
             child_class = child_mapper.class_
 
-            parent_mapper.add_property("collection", relation(child_mapper, primaryjoin=relationjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
+            parent_mapper.add_property("collection", relationship(child_mapper, primaryjoin=relationshipjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
 
             sess = create_session()
 

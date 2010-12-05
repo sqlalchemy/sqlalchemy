@@ -1,5 +1,5 @@
 # __init__.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
@@ -42,6 +42,8 @@ from sqlalchemy.sql import (
     select,
     subquery,
     text,
+    tuple_,
+    type_coerce,
     union,
     union_all,
     update,
@@ -50,6 +52,7 @@ from sqlalchemy.sql import (
 from sqlalchemy.types import (
     BLOB,
     BOOLEAN,
+    BigInteger,
     Binary,
     Boolean,
     CHAR,
@@ -59,12 +62,14 @@ from sqlalchemy.types import (
     DECIMAL,
     Date,
     DateTime,
+    Enum,
     FLOAT,
     Float,
     INT,
     INTEGER,
     Integer,
     Interval,
+    LargeBinary,
     NCHAR,
     NVARCHAR,
     NUMERIC,
@@ -110,6 +115,6 @@ from sqlalchemy.engine import create_engine, engine_from_config
 __all__ = sorted(name for name, obj in locals().items()
                  if not (name.startswith('_') or inspect.ismodule(obj)))
                  
-__version__ = '0.6beta1'
+__version__ = '0.6.6'
 
 del inspect, sys

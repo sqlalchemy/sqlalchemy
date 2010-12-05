@@ -40,16 +40,17 @@ class VisitableType(type):
         
         # set up an optimized visit dispatch function
         # for use by the compiler
-        visit_name = cls.__visit_name__
-        if isinstance(visit_name, str):
-            getter = operator.attrgetter("visit_%s" % visit_name)
-            def _compiler_dispatch(self, visitor, **kw):
-                return getter(visitor)(self, **kw)
-        else:
-            def _compiler_dispatch(self, visitor, **kw):
-                return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
-    
-        cls._compiler_dispatch = _compiler_dispatch
+        if '__visit_name__' in cls.__dict__:
+            visit_name = cls.__visit_name__
+            if isinstance(visit_name, str):
+                getter = operator.attrgetter("visit_%s" % visit_name)
+                def _compiler_dispatch(self, visitor, **kw):
+                    return getter(visitor)(self, **kw)
+            else:
+                def _compiler_dispatch(self, visitor, **kw):
+                    return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
+
+            cls._compiler_dispatch = _compiler_dispatch
         
         super(VisitableType, cls).__init__(clsname, bases, clsdict)
 
@@ -69,11 +70,11 @@ class ClauseVisitor(object):
     
     __traverse_options__ = {}
     
-    def traverse_single(self, obj):
+    def traverse_single(self, obj, **kw):
         for v in self._visitor_iterator:
             meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
             if meth:
-                return meth(obj)
+                return meth(obj, **kw)
     
     def iterate(self, obj):
         """traverse the given expression structure, returning an iterator of all elements."""
@@ -150,7 +151,7 @@ class ReplacingCloningVisitor(CloningVisitor):
         def replace(elem):
             for v in self._visitor_iterator:
                 e = v.replace(elem)
-                if e:
+                if e is not None:
                     return e
         return replacement_traverse(obj, self.__traverse_options__, replace)
 
@@ -236,7 +237,7 @@ def replacement_traverse(obj, opts, replace):
 
     def clone(element):
         newelem = replace(element)
-        if newelem:
+        if newelem is not None:
             stop_on.add(newelem)
             return newelem
 

@@ -1,0 +1,10 @@
+syntax:regexp
+^build/
+^doc/build/output
+.pyc$
+.orig$
+.egg-info
+.*,cover
+\.coverage
+\.DS_Store
+test.cfg

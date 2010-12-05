@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy.test import testing
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.test.schema import Table, Column
-from sqlalchemy.orm import mapper, relation, create_session
+from sqlalchemy.orm import mapper, relationship, create_session
 from test.orm import _base
 from sqlalchemy.test.testing import eq_
 
@@ -42,7 +42,7 @@ class TriggerDefaultsTest(_base.MappedTest):
             sa.DDL("CREATE TRIGGER dt_ins BEFORE INSERT ON dt "
                          "FOR EACH ROW BEGIN "
                          "SET NEW.col2='ins'; SET NEW.col4='ins'; END",
-                         on=lambda event, schema_item, bind, **kw: 
+                         on=lambda ddl, event, target, bind, **kw: 
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                 ),
             ):
@@ -67,7 +67,7 @@ class TriggerDefaultsTest(_base.MappedTest):
             sa.DDL("CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
                         "FOR EACH ROW BEGIN "
                         "SET NEW.col3='up'; SET NEW.col4='up'; END",
-                        on=lambda event, schema_item, bind, **kw: 
+                        on=lambda ddl, event, target, bind, **kw: 
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                     ),
             ):

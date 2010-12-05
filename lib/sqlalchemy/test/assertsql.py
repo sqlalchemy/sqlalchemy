@@ -63,7 +63,7 @@ class ExactSQL(SQLMatchRule):
         if not context:
             return
             
-        _received_statement = _process_engine_statement(statement, context)
+        _received_statement = _process_engine_statement(context.unicode_statement, context)
         _received_parameters = context.compiled_parameters
         
         # TODO: remove this step once all unit tests
@@ -101,7 +101,7 @@ class RegexSQL(SQLMatchRule):
         if not context:
             return
 
-        _received_statement = _process_engine_statement(statement, context)
+        _received_statement = _process_engine_statement(context.unicode_statement, context)
         _received_parameters = context.compiled_parameters
 
         equivalent = bool(self.regex.match(_received_statement))
@@ -138,7 +138,7 @@ class CompiledSQL(SQLMatchRule):
         if not context:
             return
 
-        _received_parameters = context.compiled_parameters
+        _received_parameters = list(context.compiled_parameters)
         
         # recompile from the context, using the default dialect
         compiled = context.compiled.statement.\
@@ -156,19 +156,29 @@ class CompiledSQL(SQLMatchRule):
             if not isinstance(params, list):
                 params = [params]
             
-            # do a positive compare only
-            for param, received in zip(params, _received_parameters):
-                for k, v in param.iteritems():
-                    if k not in received or received[k] != v:
-                        equivalent = False
-                        break
+            all_params = list(params)
+            all_received = list(_received_parameters)
+            while params:
+                param = dict(params.pop(0))
+                for k, v in context.compiled.params.iteritems():
+                    param.setdefault(k, v)
+                    
+                if param not in _received_parameters:
+                    equivalent = False
+                    break
+                else:
+                    _received_parameters.remove(param)
+            if _received_parameters:
+                equivalent = False
         else:
             params = {}
 
         self._result = equivalent
         if not self._result:
             self._errmsg = "Testing for compiled statement %r partial params %r, " \
-                    "received %r with params %r" % (self.statement, params, _received_statement, _received_parameters)
+                    "received %r with params %r" % \
+                    (self.statement, all_params, _received_statement, all_received)
+            #print self._errmsg
     
         
 class CountStatements(AssertRule):
@@ -216,6 +226,9 @@ class AllOf(AssertRule):
         return len(self.rules) == 0
         
 def _process_engine_statement(query, context):
+    if util.jython:
+        # oracle+zxjdbc passes a PyStatement when returning into
+        query = unicode(query)
     if context.engine.name == 'mssql' and query.endswith('; select scope_identity()'):
         query = query[:-25]
     

@@ -1,4 +1,4 @@
-from sqlalchemy.test.testing import assert_raises, assert_raises_message
+from sqlalchemy.test.testing import assert_raises, assert_raises_message, eq_
 import sys
 from sqlalchemy import *
 from sqlalchemy.test import *
@@ -32,14 +32,14 @@ class CaseTest(TestBase, AssertsCompiledSQL):
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.requires.subqueries
-    def testcase(self):
+    def test_case(self):
         inner = select([case([
                 [info_table.c.pk < 3,
                         'lessthan3'],
         [and_(info_table.c.pk >= 3, info_table.c.pk < 7),
                         'gt3']]).label('x'),
         info_table.c.pk, info_table.c.info],
-                from_obj=[info_table]).alias('q_inner')
+                from_obj=[info_table])
 
         inner_result = inner.execute().fetchall()
 
@@ -59,7 +59,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
             ('gt3', 6, 'pk_6_data')
         ]
 
-        outer = select([inner])
+        outer = select([inner.alias('q_inner')])
 
         outer_result = outer.execute().fetchall()
 
@@ -79,7 +79,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
                         6]],
                 else_ = 0).label('x'),
         info_table.c.pk, info_table.c.info],
-                from_obj=[info_table]).alias('q_inner')
+                from_obj=[info_table])
 
         else_result = w_else.execute().fetchall()
 
@@ -99,7 +99,25 @@ class CaseTest(TestBase, AssertsCompiledSQL):
         
         self.assert_compile(case([("x", "y")], value=t.c.col1), "CASE test.col1 WHEN :param_1 THEN :param_2 END")
         self.assert_compile(case([(t.c.col1==7, "y")], else_="z"), "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
+        
+    def test_text_doesnt_explode(self):
 
+        for s in [
+            select([case([(info_table.c.info == 'pk_4_data',
+                   text("'yes'"))], else_=text("'no'"
+                   ))]).order_by(info_table.c.info),
+                   
+           select([case([(info_table.c.info == 'pk_4_data',
+                  literal_column("'yes'"))], else_=literal_column("'no'"
+                  ))]).order_by(info_table.c.info),
+                   
+        ]:
+            eq_(s.execute().fetchall(), [
+                (u'no', ), (u'no', ), (u'no', ), (u'yes', ),
+                (u'no', ), (u'no', ),
+                ])
+        
+        
         
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')

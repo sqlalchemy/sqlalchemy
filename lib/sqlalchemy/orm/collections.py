@@ -52,7 +52,7 @@ decoration::
   class InstrumentedList(list):
       pass
 
-Collection classes can be specified in ``relation(collection_class=)`` as
+Collection classes can be specified in ``relationship(collection_class=)`` as
 types or a function that returns an instance.  Collection classes are
 inspected and instrumented during the mapper compilation phase.  The
 collection_class callable will be executed once to produce a specimen
@@ -129,18 +129,19 @@ def column_mapped_collection(mapping_spec):
     from sqlalchemy.orm.util import _state_mapper
     from sqlalchemy.orm.attributes import instance_state
 
-    cols = [expression._no_literals(q) for q in util.to_list(mapping_spec)]
+    cols = [expression._only_column_elements(q, "mapping_spec") 
+                for q in util.to_list(mapping_spec)]
     if len(cols) == 1:
         def keyfunc(value):
             state = instance_state(value)
             m = _state_mapper(state)
-            return m._get_state_attr_by_column(state, cols[0])
+            return m._get_state_attr_by_column(state, state.dict, cols[0])
     else:
         mapping_spec = tuple(cols)
         def keyfunc(value):
             state = instance_state(value)
             m = _state_mapper(state)
-            return tuple(m._get_state_attr_by_column(state, c)
+            return tuple(m._get_state_attr_by_column(state, state.dict, c)
                          for c in mapping_spec)
     return lambda: MappedCollection(keyfunc)
 
@@ -188,7 +189,7 @@ class collection(object):
     The recipe decorators all require parens, even those that take no
     arguments::
 
-        @collection.adds('entity'):
+        @collection.adds('entity')
         def insert(self, position, entity): ...
 
         @collection.removes_return()
@@ -252,7 +253,7 @@ class collection(object):
 
         The remover method is called with one positional argument: the value
         to remove. The method will be automatically decorated with
-        'removes_return()' if not already decorated::
+        :meth:`removes_return` if not already decorated::
 
             @collection.remover
             def zap(self, entity): ...
@@ -292,7 +293,7 @@ class collection(object):
         """Tag the method as instrumented.
 
         This tag will prevent any decoration from being applied to the method.
-        Use this if you are orchestrating your own calls to collection_adapter
+        Use this if you are orchestrating your own calls to :func:`.collection_adapter`
         in one of the basic SQLAlchemy interface methods, or to prevent
         an automatic ABC method decoration from wrapping your implementation::
 
@@ -338,7 +339,7 @@ class collection(object):
 
         The default converter implementation will use duck-typing to do the
         conversion.  A dict-like collection will be convert into an iterable
-        of dictionary values, and other types will simply be iterated.
+        of dictionary values, and other types will simply be iterated::
 
             @collection.converter
             def convert(self, other): ...
@@ -441,7 +442,8 @@ class collection(object):
 # public instrumentation interface for 'internally instrumented'
 # implementations
 def collection_adapter(collection):
-    """Fetch the CollectionAdapter for a collection."""
+    """Fetch the :class:`.CollectionAdapter` for a collection."""
+    
     return getattr(collection, '_sa_adapter', None)
 
 def collection_iter(collection):
@@ -471,15 +473,20 @@ class CollectionAdapter(object):
 
     """
     def __init__(self, attr, owner_state, data):
-        self.attr = attr
-        # TODO: figure out what this being a weakref buys us
+        self._key = attr.key
         self._data = weakref.ref(data)
         self.owner_state = owner_state
         self.link_to_self(data)
+    
+    @property
+    def data(self):
+        "The entity collection being adapted."
+        return self._data()
 
-    data = property(lambda s: s._data(),
-                    doc="The entity collection being adapted.")
-
+    @util.memoized_property
+    def attr(self):
+        return self.owner_state.manager[self._key].impl
+        
     def link_to_self(self, data):
         """Link a collection to this adapter, and fire a link event."""
         setattr(data, '_sa_adapter', self)
@@ -539,6 +546,7 @@ class CollectionAdapter(object):
 
     def append_with_event(self, item, initiator=None):
         """Add an entity to the collection, firing mutation events."""
+        
         getattr(self._data(), '_sa_appender')(item, _sa_initiator=initiator)
 
     def append_without_event(self, item):
@@ -579,13 +587,16 @@ class CollectionAdapter(object):
     def fire_append_event(self, item, initiator=None):
         """Notify that a entity has entered the collection.
 
-        Initiator is the InstrumentedAttribute that initiated the membership
+        Initiator is a token owned by the InstrumentedAttribute that initiated the membership
         mutation, and should be left as None unless you are passing along
         an initiator value from a chained operation.
 
         """
         if initiator is not False and item is not None:
-            return self.attr.fire_append_event(self.owner_state, self.owner_state.dict, item, initiator)
+            return self.attr.fire_append_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    item, initiator)
         else:
             return item
 
@@ -598,7 +609,10 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
-            self.attr.fire_remove_event(self.owner_state, self.owner_state.dict, item, initiator)
+            self.attr.fire_remove_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    item, initiator)
 
     def fire_pre_remove_event(self, initiator=None):
         """Notify that an entity is about to be removed from the collection.
@@ -607,15 +621,18 @@ class CollectionAdapter(object):
         fire_remove_event().
 
         """
-        self.attr.fire_pre_remove_event(self.owner_state, self.owner_state.dict, initiator=initiator)
+        self.attr.fire_pre_remove_event(
+                                    self.owner_state, 
+                                    self.owner_state.dict, 
+                                    initiator=initiator)
 
     def __getstate__(self):
-        return {'key': self.attr.key,
+        return {'key': self._key,
                 'owner_state': self.owner_state,
                 'data': self.data}
 
     def __setstate__(self, d):
-        self.attr = getattr(d['owner_state'].obj().__class__, d['key']).impl
+        self._key = d['key']
         self.owner_state = d['owner_state']
         self._data = weakref.ref(d['data'])
 

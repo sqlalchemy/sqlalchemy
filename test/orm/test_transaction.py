@@ -3,6 +3,7 @@ from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import *
 from sqlalchemy.test.util import gc_collect
 from sqlalchemy.test import testing
@@ -17,12 +18,13 @@ class TransactionTest(FixtureTest):
     @classmethod
     def setup_mappers(cls):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user',
+            'addresses':relationship(Address, backref='user',
                                  cascade="all, delete-orphan", order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 
 
+    
 class FixtureDataTest(TransactionTest):
     run_inserts = 'each'
     
@@ -490,6 +492,48 @@ class AutoCommitTest(TransactionTest):
         assert u2 not in sess
         assert u1 in sess
         assert sess.query(User).filter_by(name='ed').one() is u1
+
+class NaturalPKRollbackTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+            Column('name', String(50), primary_key=True)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_rollback_recover(self):
+        mapper(User, users)
+
+        session = sessionmaker()()
+
+        u1, u2, u3= \
+            User(name='u1'),\
+            User(name='u2'),\
+            User(name='u3')
+
+        session.add_all([u1, u2, u3])
+
+        session.commit()
+
+        session.delete(u2)
+        u4 = User(name='u2')
+        session.add(u4)
+        session.flush()
+
+        u5 = User(name='u3')
+        session.add(u5)
+        assert_raises(orm_exc.FlushError, session.flush)
+
+        assert u5 not in session
+        assert u2 not in session.deleted
+
+        session.rollback()
+
         
         
 

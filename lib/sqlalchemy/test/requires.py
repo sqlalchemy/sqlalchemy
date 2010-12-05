@@ -9,8 +9,13 @@ from testing import \
      _block_unconditionally as no_support, \
      _chain_decorators_on, \
      exclude, \
-     emits_warning_on
+     emits_warning_on,\
+     skip_if,\
+     fails_on,\
+     fails_on_everything_except
 
+import testing
+import sys
 
 def deferrable_constraints(fn):
     """Target database must support derferable constraints."""
@@ -45,6 +50,9 @@ def boolean_col_expressions(fn):
         no_support('firebird', 'not supported by database'),
         no_support('oracle', 'not supported by database'),
         no_support('mssql', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        no_support('maxdb', 'FIXME: verify not supported by database'),
+        no_support('informix', 'not supported by database'),
     )
     
 def identity(fn):
@@ -63,6 +71,15 @@ def identity(fn):
         no_support('sybase', 'not supported by database'),
         )
 
+def independent_cursors(fn):
+    """Target must support simultaneous, independent database cursors on a single connection."""
+
+    return _chain_decorators_on(
+        fn,
+        no_support('mssql+pyodbc', 'no driver support'),
+        no_support('mssql+mxodbc', 'no driver support'),
+        )
+
 def independent_connections(fn):
     """Target must support simultaneous, independent database connections."""
 
@@ -70,7 +87,9 @@ def independent_connections(fn):
     # ODBC as well.
     return _chain_decorators_on(
         fn,
-        no_support('sqlite', 'no driver support')
+        no_support('sqlite', 'no driver support'),
+        exclude('mssql', '<', (9, 0, 0),
+                'SQL Server 2005+ is required for independent connections'),
         )
 
 def row_triggers(fn):
@@ -102,8 +121,17 @@ def savepoints(fn):
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        exclude('informix', '<', (11, 55, 'xC3'), 'not supported by database'),
         )
 
+def denormalized_names(fn):
+    """Target database must have 'denormalized', i.e. UPPERCASE as case insensitive names."""
+    
+    return skip_if(
+                lambda: not testing.db.dialect.requires_name_normalize,
+                "Backend does not require denomralized names."
+            )(fn)
+    
 def schemas(fn):
     """Target database must support external schemas, and have one named 'test_schema'."""
     
@@ -122,8 +150,21 @@ def sequences(fn):
         no_support('mysql', 'no SEQUENCE support'),
         no_support('sqlite', 'no SEQUENCE support'),
         no_support('sybase', 'no SEQUENCE support'),
+        no_support('informix', 'no SEQUENCE support'),
         )
 
+def update_nowait(fn):
+    """Target database must support SELECT...FOR UPDATE NOWAIT"""
+    return _chain_decorators_on(
+        fn,
+        no_support('access', 'no FOR UPDATE NOWAIT support'),
+        no_support('firebird', 'no FOR UPDATE NOWAIT support'),
+        no_support('mssql', 'no FOR UPDATE NOWAIT support'),
+        no_support('mysql', 'no FOR UPDATE NOWAIT support'),
+        no_support('sqlite', 'no FOR UPDATE NOWAIT support'),
+        no_support('sybase', 'no FOR UPDATE NOWAIT support'),
+    )
+    
 def subqueries(fn):
     """Target database must support subqueries."""
     return _chain_decorators_on(
@@ -131,6 +172,33 @@ def subqueries(fn):
         exclude('mysql', '<', (4, 1, 1), 'no subquery support'),
         )
 
+def intersect(fn):
+    """Target database must support INTERSECT or equivlaent."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('firebird', 'no support for INTERSECT'),
+        fails_on('mysql', 'no support for INTERSECT'),
+        fails_on('sybase', 'no support for INTERSECT'),
+        fails_on('informix', 'no support for INTERSECT'),
+    )
+
+def except_(fn):
+    """Target database must support EXCEPT or equivlaent (i.e. MINUS)."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('firebird', 'no support for EXCEPT'),
+        fails_on('mysql', 'no support for EXCEPT'),
+        fails_on('sybase', 'no support for EXCEPT'),
+        fails_on('informix', 'no support for EXCEPT'),
+    )
+
+def offset(fn):
+    """Target database must support some method of adding OFFSET or equivalent to a result set."""
+    return _chain_decorators_on(
+        fn,
+        fails_on('sybase', 'no support for OFFSET or equivalent'),
+    )
+    
 def returning(fn):
     return _chain_decorators_on(
         fn,
@@ -174,5 +242,86 @@ def unicode_ddl(fn):
         no_support('maxdb', 'database support flakey'),
         no_support('oracle', 'FIXME: no support in database?'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
+        no_support('mssql+pymssql', 'no FreeTDS support'),
         exclude('mysql', '<', (4, 1, 1), 'no unicode connection support'),
         )
+
+def sane_rowcount(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not testing.db.dialect.supports_sane_rowcount)
+    )
+
+def cextensions(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not _has_cextensions(), "C extensions not installed")
+    )
+    
+def dbapi_lastrowid(fn):
+    return _chain_decorators_on(
+        fn,
+        fails_on_everything_except('mysql+mysqldb', 'mysql+oursql', 'sqlite+pysqlite')
+    )
+    
+def sane_multi_rowcount(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not testing.db.dialect.supports_sane_multi_rowcount)
+    )
+
+def reflects_pk_names(fn):
+    """Target driver reflects the name of primary key constraints."""
+    return _chain_decorators_on(
+        fn,
+        fails_on_everything_except('postgresql', 'oracle')
+    )
+    
+def python2(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info >= (3,),
+            "Python version 2.xx is required."
+            )
+    )
+
+def python26(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (2, 6),
+            "Python version 2.6 or greater is required"
+        )
+    )
+
+def python25(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (2, 5),
+            "Python version 2.5 or greater is required"
+        )
+    )
+    
+def _has_cextensions():
+    try:
+        from sqlalchemy import cresultproxy, cprocessors
+        return True
+    except ImportError:
+        return False
+        
+def _has_sqlite():
+    from sqlalchemy import create_engine
+    try:
+        e = create_engine('sqlite://')
+        return True
+    except ImportError:
+        return False
+
+def sqlite(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: not _has_sqlite())
+    )
+

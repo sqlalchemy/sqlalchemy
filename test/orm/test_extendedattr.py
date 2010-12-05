@@ -161,21 +161,21 @@ class UserDefinedExtensionTest(_base.ORMTest):
             
             assert Foo in attributes.instrumentation_registry._state_finders
             f = Foo()
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
             f.a = "this is some new a"
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             f.a = "this is another new a"
             eq_(f.a, "this is another new a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire_attributes(None)
+            attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
@@ -197,13 +197,13 @@ class UserDefinedExtensionTest(_base.ORMTest):
             attributes.register_class(Foo)
             attributes.register_class(Bar)
 
-            def func1():
+            def func1(**kw):
                 print "func1"
                 return "this is the foo attr"
-            def func2():
+            def func2(**kw):
                 print "func2"
                 return "this is the bar attr"
-            def func3():
+            def func3(**kw):
                 print "func3"
                 return "this is the shared attr"
             attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
@@ -266,27 +266,27 @@ class UserDefinedExtensionTest(_base.ORMTest):
             f1 = Foo()
             f1.name = 'f1'
 
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1'], (), ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), (['f1'], (), ()))
 
             b1 = Bar()
             b1.name = 'b1'
             f1.bars.append(b1)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
 
             attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
             attributes.instance_state(b1).commit_all(attributes.instance_dict(b1))
 
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))
 
             f1.name = 'f1mod'
             b2 = Bar()
             b2.name = 'b2'
             f1.bars.append(b2)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'name'), (['f1mod'], (), ['f1']))
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [b1], []))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), (['f1mod'], (), ['f1']))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b2], [b1], []))
             f1.bars.remove(b1)
-            eq_(attributes.get_history(attributes.instance_state(f1), 'bars'), ([b2], [], [b1]))
+            eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b2], [], [b1]))
 
     def test_null_instrumentation(self):
         class Foo(MyBaseClass):

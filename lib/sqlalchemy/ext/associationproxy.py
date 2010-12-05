@@ -13,6 +13,7 @@ from sqlalchemy import exceptions
 from sqlalchemy import orm
 from sqlalchemy import util
 from sqlalchemy.orm import collections
+from sqlalchemy.sql import not_
 
 
 def association_proxy(target_collection, attr, **kw):
@@ -29,13 +30,13 @@ def association_proxy(target_collection, attr, **kw):
     always in sync with *target_collection*, and mutations made to either
     collection will be reflected in both.
 
-    Implements a Python property representing a relation as a collection of
+    Implements a Python property representing a relationship as a collection of
     simpler values.  The proxied property will mimic the collection type of
-    the target (list, dict or set), or, in the case of a one to one relation,
+    the target (list, dict or set), or, in the case of a one to one relationship,
     a simple scalar value.
 
-    :param target_collection: Name of the relation attribute we'll proxy to,
-      usually created with :func:`~sqlalchemy.orm.relation`.
+    :param target_collection: Name of the relationship attribute we'll proxy to,
+      usually created with :func:`~sqlalchemy.orm.relationship`.
 
     :param attr: Attribute on the associated instances we'll proxy for.
 
@@ -43,7 +44,7 @@ def association_proxy(target_collection, attr, **kw):
       by this proxy property would look like [getattr(obj1, *attr*),
       getattr(obj2, *attr*)]
 
-      If the relation is one-to-one or otherwise uselist=False, then simply:
+      If the relationship is one-to-one or otherwise uselist=False, then simply:
       getattr(obj, *attr*)
 
     :param creator: optional.
@@ -57,14 +58,14 @@ def association_proxy(target_collection, attr, **kw):
       If you want to construct instances differently, supply a *creator*
       function that takes arguments as above and returns instances.
 
-      For scalar relations, creator() will be called if the target is None.
+      For scalar relationships, creator() will be called if the target is None.
       If the target is present, set operations are proxied to setattr() on the
       associated object.
 
       If you have an associated object with multiple attributes, you may set
       up multiple association proxies mapping to different attributes.  See
       the unit tests for examples, and for examples of how creator() functions
-      can be used to construct the scalar relation on-demand in this
+      can be used to construct the scalar relationship on-demand in this
       situation.
 
     :param \*\*kw: Passes along any other keyword arguments to
@@ -83,7 +84,7 @@ class AssociationProxy(object):
 
         target_collection
           Name of the collection we'll proxy to, usually created with
-          'relation()' in a mapper setup.
+          'relationship()' in a mapper setup.
 
         attr
           Attribute on the collected instances we'll proxy for.  For example,
@@ -116,7 +117,7 @@ class AssociationProxy(object):
           sniffing the target collection.  If your collection type can't be
           determined by duck typing or you'd like to use a different
           collection implementation, you may supply a factory function to
-          produce those collections.  Only applicable to non-scalar relations.
+          produce those collections.  Only applicable to non-scalar relationships.
 
         proxy_bulk_set
           Optional, use with proxy_factory.  See the _set() method for
@@ -220,7 +221,7 @@ class AssociationProxy(object):
         self.collection_class = util.duck_type_collection(lazy_collection())
 
         if self.proxy_factory:
-            return self.proxy_factory(lazy_collection, creator, self.value_attr)
+            return self.proxy_factory(lazy_collection, creator, self.value_attr, self)
 
         if self.getset_factory:
             getter, setter = self.getset_factory(self.collection_class, self)
@@ -266,6 +267,26 @@ class AssociationProxy(object):
                'no proxy_bulk_set supplied for custom '
                'collection_class implementation')
 
+    @property
+    def _comparator(self):
+        return self._get_property().comparator
+
+    def any(self, criterion=None, **kwargs):
+        return self._comparator.any(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
+    
+    def has(self, criterion=None, **kwargs):
+        return self._comparator.has(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
+
+    def contains(self, obj):
+        return self._comparator.any(**{self.value_attr: obj})
+
+    def __eq__(self, obj):
+        return self._comparator.has(**{self.value_attr: obj})
+
+    def __ne__(self, obj):
+        return not_(self.__eq__(obj))
+
+
 class _lazy_collection(object):
     def __init__(self, obj, target):
         self.ref = weakref.ref(obj)
@@ -295,7 +316,7 @@ class _AssociationCollection(object):
 
         lazy_collection
           A callable returning a list-based collection of entities (usually an
-          object attribute managed by a SQLAlchemy relation())
+          object attribute managed by a SQLAlchemy relationship())
 
         creator
           A function that creates new target entities.  Given one parameter:

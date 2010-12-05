@@ -6,7 +6,8 @@ by noseplugin.NoseSQLAlchemy.
 
 """
 
-from sqlalchemy.test import testing, engines, requires, profiling, pickleable, config
+from sqlalchemy_nose import config
+from sqlalchemy.test import testing, engines, requires, profiling, pickleable
 from sqlalchemy.test.schema import Column, Table
 from sqlalchemy.test.testing import \
      AssertsCompiledSQL, \

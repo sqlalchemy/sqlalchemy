@@ -5,7 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy.util import ScopedRegistry, to_list, get_cls_kwargs, deprecated
+from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, \
+                            to_list, get_cls_kwargs, deprecated,\
+                            warn
 from sqlalchemy.orm import (
     EXT_CONTINUE, MapperExtension, class_mapper, object_session
     )
@@ -21,15 +23,22 @@ class ScopedSession(object):
 
     Usage::
 
-      Session = scoped_session(sessionmaker(autoflush=True))
+      Session = scoped_session(sessionmaker())
 
-      ... use session normally.
+    ... use Session normally.
+      
+    The internal registry is accessible as well,
+    and by default is an instance of :class:`.ThreadLocalRegistry`.
+      
 
     """
 
     def __init__(self, session_factory, scopefunc=None):
         self.session_factory = session_factory
-        self.registry = ScopedRegistry(session_factory, scopefunc)
+        if scopefunc:
+            self.registry = ScopedRegistry(session_factory, scopefunc)
+        else:
+            self.registry = ThreadLocalRegistry(session_factory)
         self.extension = _ScopedExt(self)
 
     def __call__(self, **kwargs):
@@ -37,7 +46,8 @@ class ScopedSession(object):
             scope = kwargs.pop('scope', False)
             if scope is not None:
                 if self.registry.has():
-                    raise sa_exc.InvalidRequestError("Scoped session is already present; no new arguments may be specified.")
+                    raise sa_exc.InvalidRequestError("Scoped session is already present; "
+                                                    "no new arguments may be specified.")
                 else:
                     sess = self.session_factory(**kwargs)
                     self.registry.set(sess)
@@ -48,18 +58,18 @@ class ScopedSession(object):
             return self.registry()
 
     def remove(self):
+        """Dispose of the current contextual session."""
+        
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
 
-    @deprecated("Session.mapper is deprecated.  "
+    @deprecated("0.5", ":meth:`.ScopedSession.mapper` is deprecated.  "
         "Please see http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper "
         "for information on how to replicate its behavior.")
     def mapper(self, *args, **kwargs):
-        """return a mapper() function which associates this ScopedSession with the Mapper.
-        
-        DEPRECATED.
-        
+        """return a :func:`.mapper` function which associates this ScopedSession with the Mapper.
+
         """
 
         from sqlalchemy.orm import mapper
@@ -77,6 +87,11 @@ class ScopedSession(object):
 
     def configure(self, **kwargs):
         """reconfigure the sessionmaker used by this ScopedSession."""
+        
+        if self.registry.has():
+            warn('At least one scoped session is already present. '
+                      ' configure() can not affect sessions that have '
+                      'already been created.')
 
         self.session_factory.configure(**kwargs)
 
@@ -85,6 +100,7 @@ class ScopedSession(object):
         class when called.
 
         e.g.::
+        
             Session = scoped_session(sessionmaker())
 
             class MyClass(object):
@@ -131,7 +147,7 @@ def makeprop(name):
     def get(self):
         return getattr(self.registry(), name)
     return property(get, set)
-for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map', 'is_active'):
+for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map', 'is_active', 'autoflush'):
     setattr(ScopedSession, prop, makeprop(prop))
 
 def clslevel(name):
@@ -195,10 +211,5 @@ class _ScopedExt(MapperExtension):
         return EXT_CONTINUE
 
     def dispose_class(self, mapper, class_):
-        if hasattr(class_, '__init__') and hasattr(class_.__init__, '_oldinit'):
-            if class_.__init__._oldinit is not None:
-                class_.__init__ = class_.__init__._oldinit
-            else:
-                delattr(class_, '__init__')
         if hasattr(class_, 'query'):
             delattr(class_, 'query')

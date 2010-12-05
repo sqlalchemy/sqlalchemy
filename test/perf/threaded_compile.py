@@ -2,7 +2,6 @@
 when additional mappers are created while the existing
 collection is being compiled."""
 
-import testenv; testenv.simple_setup()
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import thread, time
@@ -63,7 +62,7 @@ def run3():
         foo()
         time.sleep(.05)
 
-mapper(T1, t1, properties={'t2':relation(T2, backref="t1")})
+mapper(T1, t1, properties={'t2':relationship(T2, backref="t1")})
 mapper(T2, t2)
 print "START"
 for j in range(0, 5):

@@ -52,7 +52,8 @@ class Queue:
         return n
 
     def empty(self):
-        """Return True if the queue is empty, False otherwise (not reliable!)."""
+        """Return True if the queue is empty, False otherwise (not
+        reliable!)."""
 
         self.mutex.acquire()
         n = self._empty()
@@ -60,7 +61,8 @@ class Queue:
         return n
 
     def full(self):
-        """Return True if the queue is full, False otherwise (not reliable!)."""
+        """Return True if the queue is full, False otherwise (not
+        reliable!)."""
 
         self.mutex.acquire()
         n = self._full()

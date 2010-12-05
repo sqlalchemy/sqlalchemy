@@ -1,13 +1,13 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Michael Bayer mike_mp@zzzcomputing.com
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Exceptions used with SQLAlchemy.
 
-The base exception class is SQLAlchemyError.  Exceptions which are raised as a
+The base exception class is :class:`.SQLAlchemyError`.  Exceptions which are raised as a
 result of DBAPI exceptions are all subclasses of
-:class:`~sqlalchemy.exc.DBAPIError`.
+:class:`.DBAPIError`.
 
 """
 
@@ -26,7 +26,11 @@ class ArgumentError(SQLAlchemyError):
 
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected"""
-
+    def __init__(self, message, cycles, edges):
+        message += ": cycles: %r all edges: %r" % (cycles, edges)
+        SQLAlchemyError.__init__(self, message)
+        self.cycles = cycles
+        self.edges = edges
 
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""
@@ -60,6 +64,10 @@ class InvalidRequestError(SQLAlchemyError):
 
     """
 
+class ResourceClosedError(InvalidRequestError):
+    """An operation was requested from a connection, cursor, or other
+    object that's in a closed state."""
+    
 class NoSuchColumnError(KeyError, InvalidRequestError):
     """A nonexistent column is requested from a ``RowProxy``."""
 

@@ -31,50 +31,22 @@ class BindTest(testing.TestBase):
                 table.drop(*args[0], **args[1])
                 assert not table.exists(*args[0], **args[1])
 
-    def test_create_drop_err(self):
+    def test_create_drop_err_metadata(self):
         metadata = MetaData()
-        table = Table('test_table', metadata,
-            Column('foo', Integer))
-
-        for meth in [
-            metadata.create_all,
-            metadata.drop_all,
-            table.create,
-            table.drop,
-        ]:
+        table = Table('test_table', metadata, Column('foo', Integer))
+        for meth in [metadata.create_all, metadata.drop_all]:
             try:
                 meth()
                 assert False
             except exc.UnboundExecutionError, e:
-                eq_(
-                    str(e),
-                    "The MetaData "
-                    "is not bound to an Engine or Connection.  "
-                    "Execution can not proceed without a database to execute "
-                    "against.  Either execute with an explicit connection or "
-                    "assign the MetaData's .bind to enable implicit execution.")
+                eq_(str(e),
+                    "The MetaData is not bound to an Engine or "
+                    "Connection.  Execution can not proceed without a "
+                    "database to execute against.  Either execute with "
+                    "an explicit connection or assign the MetaData's "
+                    ".bind to enable implicit execution.")
 
-        for meth in [
-            table.exists,
-            # future:
-            #table.create,
-            #table.drop,
-        ]:
-            try:
-                meth()
-                assert False
-            except exc.UnboundExecutionError, e:
-                eq_(
-                    str(e),
-                    "The Table 'test_table' "
-                    "is not bound to an Engine or Connection.  "
-                    "Execution can not proceed without a database to execute "
-                    "against.  Either execute with an explicit connection or "
-                    "assign this Table's .metadata.bind to enable implicit "
-                    "execution.")
-
-    @testing.future
-    def test_create_drop_err2(self):
+    def test_create_drop_err_table(self):
         metadata = MetaData()
         table = Table('test_table', metadata,
             Column('foo', Integer))
@@ -175,7 +147,8 @@ class BindTest(testing.TestBase):
             table.insert().execute(foo=7)
             trans.rollback()
             metadata.bind = None
-            assert conn.execute("select count(1) from test_table").scalar() == 0
+            assert conn.execute('select count(*) from test_table'
+                                ).scalar() == 0
         finally:
             metadata.drop_all(bind=conn)
 
@@ -189,7 +162,7 @@ class BindTest(testing.TestBase):
             for elem in [
                 table.select,
                 lambda **kwargs: sa.func.current_timestamp(**kwargs).select(),
-#                func.current_timestamp().select,
+               # func.current_timestamp().select,
                 lambda **kwargs:text("select * from test_table", **kwargs)
             ]:
                 for bind in (
@@ -210,12 +183,13 @@ class BindTest(testing.TestBase):
                     e.execute()
                     assert False
                 except exc.UnboundExecutionError, e:
-                    assert str(e).endswith(
-                        'is not bound and does not support direct '
-                        'execution. Supply this statement to a Connection or '
-                        'Engine for execution. Or, assign a bind to the '
-                        'statement or the Metadata of its underlying tables to '
-                        'enable implicit execution via this method.')
+                    assert str(e).endswith('is not bound and does not '
+                            'support direct execution. Supply this '
+                            'statement to a Connection or Engine for '
+                            'execution. Or, assign a bind to the '
+                            'statement or the Metadata of its '
+                            'underlying tables to enable implicit '
+                            'execution via this method.')
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()

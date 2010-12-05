@@ -52,16 +52,30 @@ class SavePostTest(ZBlogTest):
         clear_mappers()
         super(SavePostTest, cls).teardown_class()
 
-    def testattach(self):
-        """test that a transient/pending instance has proper bi-directional behavior.
-
-        this requires that lazy loaders do not fire off for a transient/pending instance."""
-        s = create_session(bind=testing.db)
+    def test_attach_noautoflush(self):
+        """Test pending backref behavior."""
+        
+        s = create_session(bind=testing.db, autoflush=False)
 
         s.begin()
         try:
             blog = s.query(Blog).get(blog_id)
             post = Post(headline="asdf asdf", summary="asdfasfd")
+            s.add(post)
+            post.blog_id=blog_id
+            post.blog = blog
+            assert post in blog.posts
+        finally:
+            s.rollback()
+
+    def test_attach_autoflush(self):
+        s = create_session(bind=testing.db, autoflush=True)
+
+        s.begin()
+        try:
+            blog = s.query(Blog).get(blog_id)
+            user = s.query(User).get(user_id)
+            post = Post(headline="asdf asdf", summary="asdfasfd", user=user)
             s.add(post)
             post.blog_id=blog_id
             post.blog = blog

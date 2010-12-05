@@ -15,7 +15,7 @@ class IdentityMap(dict):
         self._mutable_attrs = set()
         self._modified = set()
         self._wr = weakref.ref(self)
-
+        
     def replace(self, state):
         raise NotImplementedError()
         
@@ -61,7 +61,7 @@ class IdentityMap(dict):
             
     def has_key(self, key):
         return key in self
-        
+    
     def popitem(self):
         raise NotImplementedError("IdentityMap uses remove() to remove data")
 
@@ -81,6 +81,9 @@ class IdentityMap(dict):
         raise NotImplementedError("IdentityMap uses remove() to remove data")
         
 class WeakInstanceDict(IdentityMap):
+    def __init__(self):
+        IdentityMap.__init__(self)
+        self._remove_mutex = base_util.threading.Lock()
 
     def __getitem__(self, key):
         state = dict.__getitem__(self, key)
@@ -102,7 +105,8 @@ class WeakInstanceDict(IdentityMap):
                 return False
         except KeyError:
             return False
-        return o is not None
+        else:
+            return o is not None
     
     def contains_state(self, state):
         return dict.get(self, state.key) is state
@@ -121,7 +125,9 @@ class WeakInstanceDict(IdentityMap):
     def add(self, state):
         if state.key in self:
             if dict.__getitem__(self, state.key) is not state:
-                raise AssertionError("A conflicting state is already present in the identity map for key %r" % state.key)
+                raise AssertionError("A conflicting state is already "
+                                    "present in the identity map for key %r" 
+                                    % (state.key, ))
         else:
             dict.__setitem__(self, state.key, state)
             self._manage_incoming_state(state)
@@ -131,8 +137,13 @@ class WeakInstanceDict(IdentityMap):
         self.remove(state)
         
     def remove(self, state):
-        if dict.pop(self, state.key) is not state:
-            raise AssertionError("State %s is not present in this identity map" % state)
+        self._remove_mutex.acquire()
+        try:
+            if dict.pop(self, state.key) is not state:
+                raise AssertionError("State %s is not present in this identity map" % state)
+        finally:
+            self._remove_mutex.release()
+            
         self._manage_removed_state(state)
     
     def discard(self, state):
@@ -141,47 +152,65 @@ class WeakInstanceDict(IdentityMap):
             self._manage_removed_state(state)
         
     def get(self, key, default=None):
-        try:
-            return self[key]
-        except KeyError:
+        state = dict.get(self, key, default)
+        if state is default:
             return default
-    
-    # Py2K        
+        o = state.obj()
+        if o is None:
+            o = state._is_really_none()
+        if o is None:
+            return default
+        return o
+
+
     def items(self):
-        return list(self.iteritems())
-
-    def iteritems(self):
-        for state in dict.itervalues(self):
-    # end Py2K
-    # Py3K
-    #def items(self):
-    #    for state in dict.values(self):
-            value = state.obj()
-            if value is not None:
-                yield state.key, value
-
     # Py2K
+        return list(self.iteritems())
+    
+    def iteritems(self):
+    # end Py2K
+        self._remove_mutex.acquire()
+        try:
+            result = []
+            for state in dict.values(self):
+                value = state.obj()
+                if value is not None:
+                    result.append((state.key, value))
+
+            return iter(result)
+        finally:
+            self._remove_mutex.release()
+        
     def values(self):
+    # Py2K
         return list(self.itervalues())
 
     def itervalues(self):
-        for state in dict.itervalues(self):
     # end Py2K
-    # Py3K
-    #def values(self):
-    #    for state in dict.values(self):
-            instance = state.obj()
-            if instance is not None:
-                yield instance
+        self._remove_mutex.acquire()
+        try:
+            result = []
+            for state in dict.values(self):
+                value = state.obj()
+                if value is not None:
+                    result.append(value)
 
-    def all_states(self):
-        # Py3K
-        # return list(dict.values(self))
-        
-        # Py2K
-        return dict.values(self)
-        # end Py2K
+            return iter(result)
+        finally:
+            self._remove_mutex.release()
     
+    def all_states(self):
+        self._remove_mutex.acquire()
+        try:
+            # Py3K
+            # return list(dict.values(self))
+        
+            # Py2K
+            return dict.values(self)
+            # end Py2K
+        finally:
+            self._remove_mutex.release()
+            
     def prune(self):
         return 0
         
@@ -203,11 +232,15 @@ class StrongInstanceDict(IdentityMap):
 
         dict.__setitem__(self, state.key, state.obj())
         self._manage_incoming_state(state)
-        
+
     def add(self, state):
-        dict.__setitem__(self, state.key, state.obj())
-        self._manage_incoming_state(state)
-    
+        if state.key in self:
+            if attributes.instance_state(dict.__getitem__(self, state.key)) is not state:
+                raise AssertionError("A conflicting state is already present in the identity map for key %r" % (state.key, ))
+        else:
+            dict.__setitem__(self, state.key, state.obj())
+            self._manage_incoming_state(state)
+        
     def remove(self, state):
         if attributes.instance_state(dict.pop(self, state.key)) is not state:
             raise AssertionError("State %s is not present in this identity map" % state)
@@ -226,7 +259,7 @@ class StrongInstanceDict(IdentityMap):
         """prune unreferenced, non-dirty states."""
         
         ref_count = len(self)
-        dirty = [s.obj() for s in self.all_states() if s.check_modified()]
+        dirty = [s.obj() for s in self.all_states() if s.modified]
 
         # work around http://bugs.python.org/issue6149
         keepers = weakref.WeakValueDictionary()

@@ -46,8 +46,8 @@ class OrderingListTest(TestBase):
             metadata.clear()
 
     def _setup(self, test_collection_class):
-        """Build a relation situation using the given test_collection_class
-        factory"""
+        """Build a relationship situation using the given
+        test_collection_class factory"""
 
         global metadata, slides_table, bullets_table, Slide, Bullet
 
@@ -77,7 +77,7 @@ class OrderingListTest(TestBase):
                 return '<Bullet "%s" pos %s>' % (self.text, self.position)
 
         mapper(Slide, slides_table, properties={
-            'bullets': relation(Bullet, lazy=False,
+            'bullets': relationship(Bullet, lazy='joined',
                                 collection_class=test_collection_class,
                                 backref='slide',
                                 order_by=[bullets_table.c.position])
@@ -382,7 +382,16 @@ class OrderingListTest(TestBase):
         fibbed.insert(4, Pos())
         fibbed.insert(6, Pos())
 
-        for li, pos in (0,1), (1,2), (2,3), (3,5), (4,8), (5,13), (6,21), (7,34):
+        for li, pos in (
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 5),
+            (4, 8),
+            (5, 13),
+            (6, 21),
+            (7, 34),
+            ):
             self.assert_(fibbed[li].position == pos)
 
         alpha_factory = ordering_list('position',

@@ -1,43 +1,33 @@
 """illustrates an explicit way to persist an XML document expressed using ElementTree.
 
-This example explicitly marshals/unmarshals the ElementTree document into 
-mapped entities which have their own tables.  Compare to pickle.py which 
+This example explicitly marshals/unmarshals the ElementTree document into
+mapped entities which have their own tables.  Compare to pickle.py which
 uses pickle to accomplish the same task.  Note that the usage of both
 styles of persistence are identical, as is the structure of the main Document class.
 """
 
-################################# PART I - Imports/Coniguration ###########################################
+################################# PART I - Imports/Coniguration ####################################
 from sqlalchemy import (MetaData, Table, Column, Integer, String, ForeignKey,
-    Unicode, and_)
-from sqlalchemy.orm import mapper, relation, create_session, lazyload
+    Unicode, and_, create_engine)
+from sqlalchemy.orm import mapper, relationship, Session, lazyload
 
 import sys, os, StringIO, re
 
-import logging
-logging.basicConfig()
-
-# uncomment to show SQL statements
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
-# uncomment to show SQL statements and result sets
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-
-
 from xml.etree import ElementTree
 
+e = create_engine('sqlite://')
 meta = MetaData()
-meta.bind = 'sqlite://'
 
-################################# PART II - Table Metadata ###########################################
-    
-# stores a top level record of an XML document.  
+################################# PART II - Table Metadata #########################################
+
+# stores a top level record of an XML document.
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
     Column('filename', String(30), unique=True),
     Column('element_id', Integer, ForeignKey('elements.element_id'))
 )
 
-# stores XML nodes in an adjacency list model.  This corresponds to 
+# stores XML nodes in an adjacency list model.  This corresponds to
 # Element and SubElement objects.
 elements = Table('elements', meta,
     Column('element_id', Integer, primary_key=True),
@@ -54,33 +44,33 @@ attributes = Table('attributes', meta,
     Column('name', Unicode(100), nullable=False, primary_key=True),
     Column('value', Unicode(255)))
 
-meta.create_all()
+meta.create_all(e)
 
 #################################### PART III - Model #############################################
 
 # our document class.  contains a string name,
-# and the ElementTree root element.  
+# and the ElementTree root element.
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
-        
+
     def __str__(self):
         buf = StringIO.StringIO()
         self.element.write(buf)
         return buf.getvalue()
 
-#################################### PART IV - Persistence Mapping ###################################
+#################################### PART IV - Persistence Mapping #################################
 
-# Node class.  a non-public class which will represent 
+# Node class.  a non-public class which will represent
 # the DB-persisted Element/SubElement object.  We cannot create mappers for
-# ElementTree elements directly because they are at the very least not new-style 
+# ElementTree elements directly because they are at the very least not new-style
 # classes, and also may be backed by native implementations.
 # so here we construct an adapter.
 class _Node(object):
     pass
 
-# Attribute class.  also internal, this will represent the key/value attributes stored for 
+# Attribute class.  also internal, this will represent the key/value attributes stored for
 # a particular Node.
 class _Attribute(object):
     def __init__(self, name, value):
@@ -89,12 +79,13 @@ class _Attribute(object):
 
 # setup mappers.  Document will eagerly load a list of _Node objects.
 mapper(Document, documents, properties={
-    '_root':relation(_Node, lazy=False, cascade="all")
+    '_root':relationship(_Node, lazy='joined', cascade="all")
 })
 
 mapper(_Node, elements, properties={
-    'children':relation(_Node, cascade="all"),  
-    'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
+    'children':relationship(_Node, cascade="all"),
+    # eagerly load attributes
+    'attributes':relationship(_Attribute, lazy='joined', cascade="all, delete-orphan"),
 })
 
 mapper(_Attribute, attributes)
@@ -106,10 +97,10 @@ class ElementTreeMarshal(object):
     def __get__(self, document, owner):
         if document is None:
             return self
-            
+
         if hasattr(document, '_element'):
             return document._element
-        
+
         def traverse(node, parent=None):
             if parent is not None:
                 elem = ElementTree.SubElement(parent, node.tag)
@@ -125,7 +116,7 @@ class ElementTreeMarshal(object):
 
         document._element = ElementTree.ElementTree(traverse(document._root))
         return document._element
-    
+
     def __set__(self, document, element):
         def traverse(node):
             n = _Node()
@@ -138,7 +129,7 @@ class ElementTreeMarshal(object):
 
         document._root = traverse(element.getroot())
         document._element = element
-    
+
     def __delete__(self, document):
         del document._element
         document._root = []
@@ -146,12 +137,12 @@ class ElementTreeMarshal(object):
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
 
-########################################### PART V - Basic Persistence Example ############################
+########################################### PART V - Basic Persistence Example #####################
 
 line = "\n--------------------------------------------------------"
 
 # save to DB
-session = create_session()
+session = Session(e)
 
 # get ElementTree documents
 for file in ('test.xml', 'test2.xml', 'test3.xml'):
@@ -160,24 +151,21 @@ for file in ('test.xml', 'test2.xml', 'test3.xml'):
     session.add(Document(file, doc))
 
 print "\nSaving three documents...", line
-session.flush()
+session.commit()
 print "Done."
-
-# clear session (to illustrate a full load), restore
-session.expunge_all()
 
 print "\nFull text of document 'text.xml':", line
 document = session.query(Document).filter_by(filename="test.xml").first()
 
 print document
 
-############################################ PART VI - Searching for Paths #######################################
+############################################ PART VI - Searching for Paths #########################
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 d = session.query(Document).join('_root', aliased=True).filter(_Node.tag==u'somefile').\
     join('children', aliased=True, from_joinpoint=True).filter(_Node.tag==u'header').\
-    join('children', aliased=True, from_joinpoint=True).filter(and_(_Node.tag==u'field1', _Node.text==u'hi')).\
-    one()
+    join('children', aliased=True, from_joinpoint=True).filter(
+            and_(_Node.tag==u'field1', _Node.text==u'hi')).one()
 print d
 
 # generalize the above approach into an extremely impoverished xpath function:
@@ -192,9 +180,11 @@ def find_document(path, compareto):
         attribute = 'children'
         if attrname:
             if attrvalue:
-                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(and_(_Attribute.name==attrname, _Attribute.value==attrvalue))
+                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(
+                        and_(_Attribute.name==attrname, _Attribute.value==attrvalue))
             else:
-                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(_Attribute.name==attrname)
+                query = query.join('attributes', aliased=True, from_joinpoint=True).filter(
+                        _Attribute.name==attrname)
     return query.options(lazyload('_root')).filter(_Node.text==compareto).all()
 
 for path, compareto in (

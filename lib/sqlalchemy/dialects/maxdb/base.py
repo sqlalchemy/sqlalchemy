@@ -5,6 +5,8 @@
 
 """Support for the MaxDB database.
 
+This dialect is *not* ported to SQLAlchemy 0.6.
+
 This dialect is *not* tested on SQLAlchemy 0.6.
 
 Overview
@@ -58,10 +60,10 @@ this.
 """
 import datetime, itertools, re
 
-from sqlalchemy import exc, schema, sql, util
+from sqlalchemy import exc, schema, sql, util, processors
 from sqlalchemy.sql import operators as sql_operators, expression as sql_expr
 from sqlalchemy.sql import compiler, visitors
-from sqlalchemy.engine import base as engine_base, default
+from sqlalchemy.engine import base as engine_base, default, reflection
 from sqlalchemy import types as sqltypes
 
 
@@ -83,7 +85,13 @@ class _StringType(sqltypes.String):
                     return value
             return process
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
+        #XXX: this code is probably very slow and one should try (if at all
+        # possible) to determine the correct code path on a per-connection
+        # basis (ie, here in result_processor, instead of inside the processor
+        # function itself) and probably also use a few generic
+        # processors, or possibly per query (though there is no mechanism
+        # for that yet).
         def process(value):
             while True:
                 if value is None:
@@ -150,6 +158,7 @@ class MaxNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):
         return None
 
+
 class MaxTimestamp(sqltypes.DateTime):
     def bind_processor(self, dialect):
         def process(value):
@@ -169,26 +178,31 @@ class MaxTimestamp(sqltypes.DateTime):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            elif dialect.datetimeformat == 'internal':
-                return datetime.datetime(
-                    *[int(v)
-                      for v in (value[0:4], value[4:6], value[6:8],
-                                value[8:10], value[10:12], value[12:14],
-                                value[14:])])
-            elif dialect.datetimeformat == 'iso':
-                return datetime.datetime(
-                    *[int(v)
-                      for v in (value[0:4], value[5:7], value[8:10],
-                                value[11:13], value[14:16], value[17:19],
-                                value[20:])])
-            else:
-                raise exc.InvalidRequestError(
-                    "datetimeformat '%s' is not supported." % (
-                    dialect.datetimeformat,))
+    def result_processor(self, dialect, coltype):
+        if dialect.datetimeformat == 'internal':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.datetime(
+                        *[int(v)
+                          for v in (value[0:4], value[4:6], value[6:8],
+                                    value[8:10], value[10:12], value[12:14],
+                                    value[14:])])
+        elif dialect.datetimeformat == 'iso':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.datetime(
+                        *[int(v)
+                          for v in (value[0:4], value[5:7], value[8:10],
+                                    value[11:13], value[14:16], value[17:19],
+                                    value[20:])])
+        else:
+            raise exc.InvalidRequestError(
+                "datetimeformat '%s' is not supported." % 
+                dialect.datetimeformat)
         return process
 
 
@@ -209,20 +223,25 @@ class MaxDate(sqltypes.Date):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            elif dialect.datetimeformat == 'internal':
-                return datetime.date(
-                    *[int(v) for v in (value[0:4], value[4:6], value[6:8])])
-            elif dialect.datetimeformat == 'iso':
-                return datetime.date(
-                    *[int(v) for v in (value[0:4], value[5:7], value[8:10])])
-            else:
-                raise exc.InvalidRequestError(
-                    "datetimeformat '%s' is not supported." % (
-                    dialect.datetimeformat,))
+    def result_processor(self, dialect, coltype):
+        if dialect.datetimeformat == 'internal':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.date(int(value[0:4]), int(value[4:6]), 
+                                         int(value[6:8]))
+        elif dialect.datetimeformat == 'iso':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.date(int(value[0:4]), int(value[5:7]), 
+                                         int(value[8:10]))
+        else:
+            raise exc.InvalidRequestError(
+                "datetimeformat '%s' is not supported." % 
+                dialect.datetimeformat)
         return process
 
 
@@ -243,34 +262,33 @@ class MaxTime(sqltypes.Time):
                     dialect.datetimeformat,))
         return process
 
-    def result_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            elif dialect.datetimeformat == 'internal':
-                t = datetime.time(
-                    *[int(v) for v in (value[0:4], value[4:6], value[6:8])])
-                return t
-            elif dialect.datetimeformat == 'iso':
-                return datetime.time(
-                    *[int(v) for v in (value[0:4], value[5:7], value[8:10])])
-            else:
-                raise exc.InvalidRequestError(
-                    "datetimeformat '%s' is not supported." % (
-                    dialect.datetimeformat,))
+    def result_processor(self, dialect, coltype):
+        if dialect.datetimeformat == 'internal':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.time(int(value[0:4]), int(value[4:6]), 
+                                         int(value[6:8]))
+        elif dialect.datetimeformat == 'iso':
+            def process(value):
+                if value is None:
+                    return None
+                else:
+                    return datetime.time(int(value[0:4]), int(value[5:7]),
+                                         int(value[8:10]))
+        else:
+            raise exc.InvalidRequestError(
+                "datetimeformat '%s' is not supported." % 
+                dialect.datetimeformat)
         return process
 
 
-class MaxBlob(sqltypes.Binary):
+class MaxBlob(sqltypes.LargeBinary):
     def bind_processor(self, dialect):
-        def process(value):
-            if value is None:
-                return None
-            else:
-                return str(value)
-        return process
+        return processors.to_str
 
-    def result_processor(self, dialect):
+    def result_processor(self, dialect, coltype):
         def process(value):
             if value is None:
                 return None
@@ -304,7 +322,7 @@ class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_string(self, type_):
         return self._string_spec("VARCHAR", type_)
 
-    def visit_binary(self, type_):
+    def visit_large_binary(self, type_):
         return "LONG BYTE"
     
     def visit_numeric(self, type_):
@@ -325,7 +343,7 @@ colspecs = {
     sqltypes.Time: MaxTime,
     sqltypes.String: MaxString,
     sqltypes.Unicode:MaxUnicode,
-    sqltypes.Binary: MaxBlob,
+    sqltypes.LargeBinary: MaxBlob,
     sqltypes.Text: MaxText,
     sqltypes.CHAR: MaxChar,
     sqltypes.TIMESTAMP: MaxTimestamp,
@@ -372,13 +390,9 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
                     sql = "SELECT CURRENT_SCHEMA.%s.CURRVAL FROM DUAL" % (
                         self.compiled.preparer.format_table(table))
 
-                if self.connection.engine._should_log_info:
-                    self.connection.engine.logger.info(sql)
                 rs = self.cursor.execute(sql)
                 id = rs.fetchone()[0]
 
-                if self.connection.engine._should_log_debug:
-                    self.connection.engine.logger.debug([id])
                 if not self._last_inserted_ids:
                     # This shouldn't ever be > 1?  Right?
                     self._last_inserted_ids = \
@@ -400,6 +414,12 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
             return self._rowcount
         else:
             return self.cursor.rowcount
+
+    def fire_sequence(self, seq):
+        if seq.optional:
+            return None
+        return self._execute_scalar("SELECT %s.NEXTVAL FROM DUAL" % (
+            self.dialect.identifier_preparer.format_sequence(seq)))
 
 class MaxDBCachedColumnRow(engine_base.RowProxy):
     """A RowProxy that only runs result_processors once per column."""
@@ -459,7 +479,8 @@ class MaxDBCompiler(compiler.SQLCompiler):
         'UTCDATE', 'UTCDIFF'])
 
     def visit_mod(self, binary, **kw):
-        return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
+        return "mod(%s, %s)" % \
+                    (self.process(binary.left), self.process(binary.right))
         
     def default_from(self):
         return ' FROM DUAL'
@@ -512,8 +533,9 @@ class MaxDBCompiler(compiler.SQLCompiler):
         if sequence.optional:
             return None
         else:
-            return (self.dialect.identifier_preparer.format_sequence(sequence) +
-                    ".NEXTVAL")
+            return (
+                self.dialect.identifier_preparer.format_sequence(sequence) +
+                ".NEXTVAL")
 
     class ColumnSnagger(visitors.ClauseVisitor):
         def __init__(self):
@@ -538,8 +560,8 @@ class MaxDBCompiler(compiler.SQLCompiler):
 
         return labels
 
-    def order_by_clause(self, select):
-        order_by = self.process(select._order_by_clause)
+    def order_by_clause(self, select, **kw):
+        order_by = self.process(select._order_by_clause, **kw)
 
         # ORDER BY clauses in DISTINCT queries must reference aliased
         # inner columns by alias name, not true column name.
@@ -608,14 +630,6 @@ class MaxDBCompiler(compiler.SQLCompiler):
                          ') VALUES (',
                          ', '.join([c[1] for c in colparams]),
                          ')'))
-
-
-class MaxDBDefaultRunner(engine_base.DefaultRunner):
-    def visit_sequence(self, seq):
-        if seq.optional:
-            return None
-        return self.execute_string("SELECT %s.NEXTVAL FROM DUAL" % (
-            self.dialect.identifier_preparer.format_sequence(seq)))
 
 
 class MaxDBIdentifierPreparer(compiler.IdentifierPreparer):
@@ -805,8 +819,9 @@ class MaxDBDialect(default.DefaultDialect):
     preparer = MaxDBIdentifierPreparer
     statement_compiler = MaxDBCompiler
     ddl_compiler = MaxDBDDLCompiler
-    defaultrunner = MaxDBDefaultRunner
     execution_ctx_cls = MaxDBExecutionContext
+
+    ported_sqla_06 = False
 
     colspecs = colspecs
     ischema_names = ischema_names
@@ -847,14 +862,10 @@ class MaxDBDialect(default.DefaultDialect):
         # COMMIT/ROLLBACK so omitting it should be relatively ok.
         pass
 
-    def get_default_schema_name(self, connection):
-        try:
-            return self._default_schema_name
-        except AttributeError:
-            name = self.identifier_preparer._normalize_name(
-                connection.execute('SELECT CURRENT_SCHEMA FROM DUAL').scalar())
-            self._default_schema_name = name
-            return name
+    def _get_default_schema_name(self, connection):
+        return self.identifier_preparer._normalize_name(
+                connection.execute(
+                        'SELECT CURRENT_SCHEMA FROM DUAL').scalar())
 
     def has_table(self, connection, table_name, schema=None):
         denormalize = self.identifier_preparer._denormalize_name
@@ -870,11 +881,10 @@ class MaxDBDialect(default.DefaultDialect):
             bind.append(denormalize(schema))
 
         rp = connection.execute(sql, bind)
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
+        return bool(rp.first())
 
-    def table_names(self, connection, schema):
+    @reflection.cache
+    def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
             sql = (" SELECT TABLENAME FROM TABLES WHERE "
                    " SCHEMANAME=CURRENT_SCHEMA ")
@@ -1020,8 +1030,9 @@ class MaxDBDialect(default.DefaultDialect):
                              autoload=True, autoload_with=connection,
                              **table_kw)
 
-            constraint = schema.ForeignKeyConstraint(columns, referants, link_to_name=True,
-                                                     **constraint_kw)
+            constraint = schema.ForeignKeyConstraint(
+                            columns, referants, link_to_name=True,
+                            **constraint_kw)
             table.append_constraint(constraint)
 
     def has_sequence(self, connection, name):
@@ -1031,10 +1042,7 @@ class MaxDBDialect(default.DefaultDialect):
                "WHERE SEQUENCE_NAME=? ")
 
         rp = connection.execute(sql, denormalize(name))
-        found = bool(rp.fetchone())
-        rp.close()
-        return found
-
+        return bool(rp.first())
 
 
 def _autoserial_column(table):

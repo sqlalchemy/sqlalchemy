@@ -1,11 +1,12 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.test import *
+from sqlalchemy.test import profiling
 
 NUM = 500
 DIVISOR = 50
 
-meta = MetaData(testing.db)
+engine = create_engine('sqlite://')
+meta = MetaData(engine)
 items = Table('items', meta,
               Column('item_id', Integer, primary_key=True),
               Column('value', String(100)))
@@ -16,7 +17,7 @@ subitems = Table('subitems', meta,
 
 class Item(object):pass
 class SubItem(object):pass
-mapper(Item, items, properties={'subs':relation(SubItem, lazy=False)})
+mapper(Item, items, properties={'subs':relationship(SubItem, lazy='joined')})
 mapper(SubItem, subitems)
 
 def load():
@@ -34,8 +35,8 @@ def load():
         #print l
         subitems.insert().execute(*l)
 
-@profiling.profiled('masseagerload', always=True, sort=['cumulative'])
-def masseagerload(session):
+@profiling.profiled('massjoinedload', always=True, sort=['cumulative'])
+def massjoinedload(session):
     session.begin()
     query = session.query(Item)
     l = query.all()
@@ -45,7 +46,7 @@ def all():
     meta.create_all()
     try:
         load()
-        masseagerload(create_session())
+        massjoinedload(create_session())
     finally:
         meta.drop_all()
 

@@ -152,5 +152,54 @@ class ConnectionProxy(object):
         """Intercept low-level cursor execute() events."""
         
         return execute(cursor, statement, parameters, context)
-
+    
+    def begin(self, conn, begin):
+        """Intercept begin() events."""
+        
+        return begin()
+        
+    def rollback(self, conn, rollback):
+        """Intercept rollback() events."""
+        
+        return rollback()
+        
+    def commit(self, conn, commit):
+        """Intercept commit() events."""
+        
+        return commit()
+        
+    def savepoint(self, conn, savepoint, name=None):
+        """Intercept savepoint() events."""
+        
+        return savepoint(name=name)
+        
+    def rollback_savepoint(self, conn, rollback_savepoint, name, context):
+        """Intercept rollback_savepoint() events."""
+        
+        return rollback_savepoint(name, context)
+        
+    def release_savepoint(self, conn, release_savepoint, name, context):
+        """Intercept release_savepoint() events."""
+        
+        return release_savepoint(name, context)
+        
+    def begin_twophase(self, conn, begin_twophase, xid):
+        """Intercept begin_twophase() events."""
+        
+        return begin_twophase(xid)
+        
+    def prepare_twophase(self, conn, prepare_twophase, xid):
+        """Intercept prepare_twophase() events."""
+        
+        return prepare_twophase(xid)
+        
+    def rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
+        """Intercept rollback_twophase() events."""
+        
+        return rollback_twophase(xid, is_prepared)
+        
+    def commit_twophase(self, conn, commit_twophase, xid, is_prepared):
+        """Intercept commit_twophase() events."""
+        
+        return commit_twophase(xid, is_prepared)
         

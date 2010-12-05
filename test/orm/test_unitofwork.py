@@ -11,8 +11,10 @@ from sqlalchemy.test import engines, testing, pickleable
 from sqlalchemy import Integer, String, ForeignKey, literal_column
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relation, create_session, column_property
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    column_property, attributes, Session, reconstructor, object_session
 from sqlalchemy.test.testing import eq_, ne_
+from sqlalchemy.test.util import gc_collect
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
@@ -35,7 +37,7 @@ class HistoryTest(_fixtures.FixtureTest):
     def test_backref(self):
         am = mapper(Address, addresses)
         m = mapper(User, users, properties=dict(
-            addresses = relation(am, backref='user', lazy=False)))
+            addresses = relationship(am, backref='user', lazy='joined')))
 
         session = create_session(autocommit=False)
 
@@ -52,122 +54,25 @@ class HistoryTest(_fixtures.FixtureTest):
         assert u.addresses[0].user == u
         session.close()
 
-
-class VersioningTest(_base.MappedTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        Table('version_table', metadata,
-              Column('id', Integer, primary_key=True,
-                     test_needs_autoincrement=True),
-              Column('version_id', Integer, nullable=False),
-              Column('value', String(40), nullable=False))
-
-    @classmethod
-    def setup_classes(cls):
-        class Foo(_base.ComparableEntity):
-            pass
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_basic(self):
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-
-        s1 = create_session(autocommit=False)
-        f1 = Foo(value='f1')
-        f2 = Foo(value='f2')
-        s1.add_all((f1, f2))
-        s1.commit()
-
-        f1.value='f1rev2'
-        s1.commit()
-
-        s2 = create_session(autocommit=False)
-        f1_s = s2.query(Foo).get(f1.id)
-        f1_s.value='f1rev3'
-        s2.commit()
-
-        f1.value='f1rev3mine'
-
-        # Only dialects with a sane rowcount can detect the
-        # ConcurrentModificationError
-        if testing.db.dialect.supports_sane_rowcount:
-            assert_raises(sa.orm.exc.ConcurrentModificationError, s1.commit)
-            s1.rollback()
-        else:
-            s1.commit()
-
-        # new in 0.5 !  dont need to close the session
-        f1 = s1.query(Foo).get(f1.id)
-        f2 = s1.query(Foo).get(f2.id)
-
-        f1_s.value='f1rev4'
-        s2.commit()
-
-        s1.delete(f1)
-        s1.delete(f2)
-
-        if testing.db.dialect.supports_sane_multi_rowcount:
-            assert_raises(sa.orm.exc.ConcurrentModificationError, s1.commit)
-        else:
-            s1.commit()
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_versioncheck(self):
-        """query.with_lockmode performs a 'version check' on an already loaded instance"""
-
-        s1 = create_session(autocommit=False)
-
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
-        f1s1 = Foo(value='f1 value')
-        s1.add(f1s1)
-        s1.commit()
-
-        s2 = create_session(autocommit=False)
-        f1s2 = s2.query(Foo).get(f1s1.id)
-        f1s2.value='f1 new value'
-        s2.commit()
-
-        # load, version is wrong
-        assert_raises(sa.orm.exc.ConcurrentModificationError, s1.query(Foo).with_lockmode('read').get, f1s1.id)
-
-        # reload it
-        s1.query(Foo).populate_existing().get(f1s1.id)
-        # now assert version OK
-        s1.query(Foo).with_lockmode('read').get(f1s1.id)
-
-        # assert brand new load is OK too
-        s1.close()
-        s1.query(Foo).with_lockmode('read').get(f1s1.id)
-
-    @engines.close_open_connections
-    @testing.resolve_artifact_names
-    def test_noversioncheck(self):
-        """test query.with_lockmode works when the mapper has no version id col"""
-        s1 = create_session(autocommit=False)
-        mapper(Foo, version_table)
-        f1s1 = Foo(value="foo", version_id=0)
-        s1.add(f1s1)
-        s1.commit()
-
-        s2 = create_session(autocommit=False)
-        f1s2 = s2.query(Foo).with_lockmode('read').get(f1s1.id)
-        assert f1s2.id == f1s1.id
-        assert f1s2.value == f1s1.value
-
 class UnicodeTest(_base.MappedTest):
     __requires__ = ('unicode_connections',)
 
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('mysql+oursql'):
+            from sqlalchemy.dialects.mysql import VARCHAR
+            uni_type = VARCHAR(50, collation='utf8_unicode_ci')
+        else:
+            uni_type = sa.Unicode(50)
+        
         Table('uni_t1', metadata,
             Column('id',  Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('txt', sa.Unicode(50), unique=True))
+            Column('txt', uni_type, unique=True))
         Table('uni_t2', metadata,
             Column('id',  Integer, primary_key=True,
                    test_needs_autoincrement=True),
-            Column('txt', sa.Unicode(50), ForeignKey('uni_t1')))
+            Column('txt', uni_type, ForeignKey('uni_t1')))
 
     @classmethod
     def setup_classes(cls):
@@ -189,11 +94,11 @@ class UnicodeTest(_base.MappedTest):
         session.commit()
 
         self.assert_(t1.txt == txt)
-
+    
     @testing.resolve_artifact_names
-    def test_relation(self):
+    def test_relationship(self):
         mapper(Test, uni_t1, properties={
-            't2s': relation(Test2)})
+            't2s': relationship(Test2)})
         mapper(Test2, uni_t2)
 
         txt = u"\u0160\u0110\u0106\u010c\u017d"
@@ -243,7 +148,8 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
     def teardown_class(cls):
         super(UnicodeSchemaTest, cls).teardown_class()
 
-    @testing.fails_on('mssql', 'pyodbc returns a non unicode encoding of the results description.')
+    @testing.fails_on('mssql+pyodbc',
+                      'pyodbc returns a non unicode encoding of the results description.')
     @testing.resolve_artifact_names
     def test_mapping(self):
         class A(_base.ComparableEntity):
@@ -252,7 +158,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
             pass
 
         mapper(A, t1, properties={
-            't2s':relation(B)})
+            't2s':relationship(B)})
         mapper(B, t2)
 
         a1 = A()
@@ -269,7 +175,7 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-        new_a1 = (session.query(A).options(sa.orm.eagerload('t2s')).
+        new_a1 = (session.query(A).options(sa.orm.joinedload('t2s')).
                   filter(t1.c.a == a1.a)).one()
         assert new_a1.a == a1.a
         assert new_a1.t2s[0].d == b1.d
@@ -280,7 +186,8 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
         assert new_a1.t2s[0].d == b1.d
         session.expunge_all()
 
-    @testing.fails_on('mssql', 'pyodbc returns a non unicode encoding of the results description.')
+    @testing.fails_on('mssql+pyodbc',
+                      'pyodbc returns a non unicode encoding of the results description.')
     @testing.resolve_artifact_names
     def test_inheritance_mapping(self):
         class A(_base.ComparableEntity):
@@ -304,7 +211,47 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
 
         eq_([A(b=5), B(e=7)], session.query(A).all())
 
+class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('t1', metadata,
+            Column('id', sa.Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', sa.LargeBinary),
+        )
 
+    @classmethod
+    def setup_classes(cls):
+        class Foo(_base.BasicEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_binary_equality(self):
+        
+        # Py3K
+        #data = b"this is some data"
+        # Py2K
+        data = "this is some data"
+        # end Py2K
+        
+        mapper(Foo, t1)
+        
+        s = create_session()
+        
+        f1 = Foo(data=data)
+        s.add(f1)
+        s.flush()
+        s.expire_all()
+        f1 = s.query(Foo).first()
+        assert f1.data == data
+        f1.data = data
+        eq_(
+            sa.orm.attributes.get_history(f1, "data"),
+            ((), [data], ())
+        )
+        def go():
+            s.flush()
+        self.assert_sql_count(testing.db, go, 0)
+        
 class MutableTypesTest(_base.MappedTest):
 
     @classmethod
@@ -326,73 +273,76 @@ class MutableTypesTest(_base.MappedTest):
         mapper(Foo, mutable_t)
 
     @testing.resolve_artifact_names
-    def test_basic(self):
-        """Changes are detected for types marked as MutableType."""
-
-        f1 = Foo()
-        f1.data = pickleable.Bar(4,5)
-
-        session = create_session()
+    def test_modified_status(self):
+        f1 = Foo(data = pickleable.Bar(4,5))
+        
+        session = Session()
         session.add(f1)
-        session.flush()
-        session.expunge_all()
+        session.commit()
 
-        f2 = session.query(Foo).filter_by(id=f1.id).one()
+        f2 = session.query(Foo).first()
         assert 'data' in sa.orm.attributes.instance_state(f2).unmodified
         eq_(f2.data, f1.data)
 
         f2.data.y = 19
         assert f2 in session.dirty
         assert 'data' not in sa.orm.attributes.instance_state(f2).unmodified
-        session.flush()
-        session.expunge_all()
-
-        f3 = session.query(Foo).filter_by(id=f1.id).one()
+    
+    @testing.resolve_artifact_names
+    def test_mutations_persisted(self):
+        f1 = Foo(data = pickleable.Bar(4,5))
+        
+        session = Session()
+        session.add(f1)
+        session.commit()
+        f1.data
+        session.close()
+        
+        f2 = session.query(Foo).first()
+        f2.data.y = 19
+        session.commit()
+        f2.data
+        session.close()
+        
+        f3 = session.query(Foo).first()
         ne_(f3.data,f1.data)
         eq_(f3.data, pickleable.Bar(4, 19))
-
+        
     @testing.resolve_artifact_names
-    def test_mutable_changes(self):
-        """Mutable changes are detected or not detected correctly"""
+    def test_no_unnecessary_update(self):
+        f1 = Foo(data = pickleable.Bar(4,5), val = u'hi')
 
-        f1 = Foo()
-        f1.data = pickleable.Bar(4,5)
-        f1.val = u'hi'
-
-        session = create_session(autocommit=False)
+        session = Session()
         session.add(f1)
         session.commit()
 
-        bind = self.metadata.bind
-
         self.sql_count_(0, session.commit)
+        
         f1.val = u'someothervalue'
-        self.assert_sql(bind, session.commit, [
+        self.assert_sql(testing.db, session.commit, [
             ("UPDATE mutable_t SET val=:val "
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'someothervalue'})])
 
         f1.val = u'hi'
         f1.data.x = 9
-        self.assert_sql(bind, session.commit, [
+        self.assert_sql(testing.db, session.commit, [
             ("UPDATE mutable_t SET data=:data, val=:val "
              "WHERE mutable_t.id = :mutable_t_id",
              {'mutable_t_id': f1.id, 'val': u'hi', 'data':f1.data})])
-
+        
     @testing.resolve_artifact_names
-    def test_resurrect(self):
-        f1 = Foo()
-        f1.data = pickleable.Bar(4,5)
-        f1.val = u'hi'
+    def test_mutated_state_resurrected(self):
+        f1 = Foo(data = pickleable.Bar(4,5), val = u'hi')
 
-        session = create_session(autocommit=False)
+        session = Session()
         session.add(f1)
         session.commit()
 
         f1.data.y = 19
         del f1
 
-        gc.collect()
+        gc_collect()
         assert len(session.identity_map) == 1
 
         session.commit()
@@ -400,20 +350,155 @@ class MutableTypesTest(_base.MappedTest):
         assert session.query(Foo).one().data == pickleable.Bar(4, 19)
 
     @testing.resolve_artifact_names
-    def test_unicode(self):
-        """Equivalent Unicode values are not flagged as changed."""
+    def test_mutated_plus_scalar_state_change_resurrected(self):
+        """test that a non-mutable attribute event subsequent to
+        a mutable event prevents the object from falling into
+        resurrected state.
+        
+         """
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        f1.data.x = 10
+        f1.data.y = 15
+        f1.val=u'some new val'
+
+        assert sa.orm.attributes.instance_state(f1)._strong_obj is not None
+        
+        del f1
+        session.commit()
+        eq_(
+            session.query(Foo.val).all(),
+            [('some new val', )]
+        )
+
+    @testing.resolve_artifact_names
+    def test_non_mutated_state_not_resurrected(self):
+        f1 = Foo(data = pickleable.Bar(4,5))
+        
+        session = Session()
+        session.add(f1)
+        session.commit()
+        
+        session = Session()
+        f1 = session.query(Foo).first()
+        del f1
+        gc_collect()
+
+        assert len(session.identity_map) == 0
+        f1 = session.query(Foo).first()
+        assert not attributes.instance_state(f1).modified
+
+    @testing.resolve_artifact_names
+    def test_scalar_no_net_change_no_update(self):
+        """Test that a no-net-change on a scalar attribute event
+        doesn't cause an UPDATE for a mutable state.
+        
+         """
 
         f1 = Foo(val=u'hi')
 
-        session = create_session(autocommit=False)
+        session = Session()
         session.add(f1)
         session.commit()
-        session.expunge_all()
+        session.close()
 
-        f1 = session.query(Foo).get(f1.id)
+        f1 = session.query(Foo).first()
         f1.val = u'hi'
         self.sql_count_(0, session.commit)
 
+    @testing.resolve_artifact_names
+    def test_expire_attribute_set(self):
+        """test one SELECT emitted when assigning to an expired
+        mutable attribute - this will become 0 in 0.7.
+        
+        """
+        
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        
+        assert 'data' not in f1.__dict__
+        def go():
+            f1.data = pickleable.Bar(10, 15)
+        self.sql_count_(1, go)
+        session.commit()
+        
+        eq_(f1.data.x, 10)
+
+    @testing.resolve_artifact_names
+    def test_expire_mutate(self):
+        """test mutations are detected on an expired mutable
+        attribute."""
+        
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        
+        assert 'data' not in f1.__dict__
+        def go():
+            f1.data.x = 10
+        self.sql_count_(1, go)
+        session.commit()
+        
+        eq_(f1.data.x, 10)
+        
+    @testing.resolve_artifact_names
+    def test_deferred_attribute_set(self):
+        """test one SELECT emitted when assigning to a deferred
+        mutable attribute - this will become 0 in 0.7.
+        
+        """
+        sa.orm.clear_mappers()
+        mapper(Foo, mutable_t, properties={
+            'data':sa.orm.deferred(mutable_t.c.data)
+        })
+
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        
+        session.close()
+        
+        f1 = session.query(Foo).first()
+        def go():
+            f1.data = pickleable.Bar(10, 15)
+        self.sql_count_(1, go)
+        session.commit()
+        
+        eq_(f1.data.x, 10)
+
+    @testing.resolve_artifact_names
+    def test_deferred_mutate(self):
+        """test mutations are detected on a deferred mutable
+        attribute."""
+        
+        sa.orm.clear_mappers()
+        mapper(Foo, mutable_t, properties={
+            'data':sa.orm.deferred(mutable_t.c.data)
+        })
+
+        f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
+        session = Session()
+        session.add(f1)
+        session.commit()
+        
+        session.close()
+        
+        f1 = session.query(Foo).first()
+        def go():
+            f1.data.x = 10
+        self.sql_count_(1, go)
+        session.commit()
+        
+        def go():
+            eq_(f1.data.x, 10)
+        self.sql_count_(1, go)
+        
 
 class PickledDictsTest(_base.MappedTest):
 
@@ -597,7 +682,7 @@ class ForeignPKTest(_base.MappedTest):
     def test_basic(self):
         m1 = mapper(PersonSite, peoplesites)
         m2 = mapper(Person, people, properties={
-            'sites' : relation(PersonSite)})
+            'sites' : relationship(PersonSite)})
 
         sa.orm.compile_mappers()
         eq_(list(m2.get_property('sites').synchronize_pairs),
@@ -716,7 +801,7 @@ class PassiveDeletesTest(_base.MappedTest):
     def test_basic(self):
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
-            'children':relation(MyOtherClass,
+            'children':relationship(MyOtherClass,
                                 passive_deletes=True,
                                 cascade="all")})
         session = create_session()
@@ -738,12 +823,17 @@ class PassiveDeletesTest(_base.MappedTest):
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
     
+    @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     @testing.resolve_artifact_names
     def test_backwards_pd(self):
-        # the unusual scenario where a trigger or something might be deleting
-        # a many-to-one on deletion of the parent row
+        """Test that passive_deletes=True disables a delete from an m2o.
+        
+        This is not the usual usage and it now raises a warning, but test
+        that it works nonetheless.
+
+        """
         mapper(MyOtherClass, myothertable, properties={
-            'myclass':relation(MyClass, cascade="all, delete", passive_deletes=True)
+            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
         mapper(MyClass, mytable)
         
@@ -761,8 +851,17 @@ class PassiveDeletesTest(_base.MappedTest):
         session.delete(mco)
         session.flush()
         
+        # mytable wasn't deleted, is the point.
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 0
+    
+    @testing.resolve_artifact_names
+    def test_aaa_m2o_emits_warning(self):
+        mapper(MyOtherClass, myothertable, properties={
+            'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
+        })
+        mapper(MyClass, mytable)
+        assert_raises(sa.exc.SAWarning, sa.orm.compile_mappers)
         
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)
@@ -795,7 +894,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         mapper(MyOtherClass, myothertable)
         try:
             mapper(MyClass, mytable, properties={
-                'children':relation(MyOtherClass,
+                'children':relationship(MyOtherClass,
                                     passive_deletes='all',
                                     cascade="all")})
             assert False
@@ -808,7 +907,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
     def test_extra_passive(self):
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
-            'children': relation(MyOtherClass,
+            'children': relationship(MyOtherClass,
                                  passive_deletes='all',
                                  cascade="save-update")})
 
@@ -831,7 +930,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
     def test_extra_passive_2(self):
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
-            'children': relation(MyOtherClass,
+            'children': relationship(MyOtherClass,
                                  passive_deletes='all',
                                  cascade="save-update")})
 
@@ -850,6 +949,39 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         assert_raises(sa.exc.DBAPIError, session.flush)
 
 
+class ColumnCollisionTest(_base.MappedTest):
+    """Ensure the mapper doesn't break bind param naming rules on flush."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('book', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('book_id', String(50)),
+            Column('title', String(50))
+        )
+    
+    @testing.resolve_artifact_names
+    def test_naming(self):
+        class Book(_base.ComparableEntity):
+            pass
+    
+        mapper(Book, book)
+        sess = create_session()
+        
+        b1 = Book(book_id='abc', title='def')
+        sess.add(b1)
+        sess.flush()
+        
+        b1.title = 'ghi'
+        sess.flush()
+        sess.close()
+        eq_(
+            sess.query(Book).first(),
+            Book(book_id='abc', title='ghi')
+        )
+        
+        
+        
 class DefaultTest(_base.MappedTest):
     """Exercise mappings on columns with DefaultGenerators.
 
@@ -1001,11 +1133,11 @@ class DefaultTest(_base.MappedTest):
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     @testing.resolve_artifact_names
-    def test_used_in_relation(self):
+    def test_used_in_relationship(self):
         """A server-side default can be used as the target of a foreign key"""
 
         mapper(Hoho, default_t, properties={
-            'secondaries':relation(Secondary, order_by=secondary_table.c.id)})
+            'secondaries':relationship(Secondary, order_by=secondary_table.c.id)})
         mapper(Secondary, secondary_table)
 
         h1 = Hoho()
@@ -1107,7 +1239,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Basic save of one to many."""
 
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True)
+            addresses = relationship(mapper(Address, addresses), lazy='select')
         ))
         u = User(name= 'one2manytester')
         a = Address(email_address='one2many@test.org')
@@ -1147,7 +1279,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         """Modifying the child items of an object."""
 
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u1.addresses = []
@@ -1195,7 +1327,7 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         """
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1219,7 +1351,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_child_move_2(self):
         m = mapper(User, users, properties=dict(
-            addresses = relation(mapper(Address, addresses), lazy=True)))
+            addresses = relationship(mapper(Address, addresses), lazy='select')))
 
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1242,8 +1374,8 @@ class OneToManyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_o2m_delete_parent(self):
         m = mapper(User, users, properties=dict(
-            address = relation(mapper(Address, addresses),
-                               lazy=True,
+            address = relationship(mapper(Address, addresses),
+                               lazy='select',
                                uselist=False)))
 
         u = User(name='one2onetester')
@@ -1265,8 +1397,8 @@ class OneToManyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_one_to_one(self):
         m = mapper(User, users, properties=dict(
-            address = relation(mapper(Address, addresses),
-                               lazy=True,
+            address = relationship(mapper(Address, addresses),
+                               lazy='select',
                                uselist=False)))
 
         u = User(name='one2onetester')
@@ -1286,7 +1418,7 @@ class OneToManyTest(_fixtures.FixtureTest):
     def test_bidirectional(self):
         m1 = mapper(User, users)
         m2 = mapper(Address, addresses, properties=dict(
-            user = relation(m1, lazy=False, backref='addresses')))
+            user = relationship(m1, lazy='joined', backref='addresses')))
 
 
         u = User(name='test')
@@ -1299,13 +1431,13 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
 
     @testing.resolve_artifact_names
-    def test_double_relation(self):
+    def test_double_relationship(self):
         m2 = mapper(Address, addresses)
         m = mapper(User, users, properties={
-            'boston_addresses' : relation(m2, primaryjoin=
+            'boston_addresses' : relationship(m2, primaryjoin=
                         sa.and_(users.c.id==addresses.c.user_id,
                                 addresses.c.email_address.like('%boston%'))),
-            'newyork_addresses' : relation(m2, primaryjoin=
+            'newyork_addresses' : relationship(m2, primaryjoin=
                         sa.and_(users.c.id==addresses.c.user_id,
                                 addresses.c.email_address.like('%newyork%')))})
 
@@ -1354,7 +1486,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # select both
         userlist = session.query(User).filter(
-            users.c.id.in_([u.id, u2.id])).order_by([users.c.name]).all()
+            users.c.id.in_([u.id, u2.id])).order_by(users.c.name).all()
 
         eq_(u.id, userlist[0].id)
         eq_(userlist[0].name, 'modifiedname')
@@ -1387,14 +1519,14 @@ class SaveTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_lazyattr_commit(self):
-        """Lazily loaded relations.
+        """Lazily loaded relationships.
 
         When a lazy-loaded list is unloaded, and a commit occurs, that the
         'passive' call on that list does not blow away its value
 
         """
         mapper(User, users, properties = {
-            'addresses': relation(mapper(Address, addresses))})
+            'addresses': relationship(mapper(Address, addresses))})
 
         u = User(name='u1')
         u.addresses.append(Address(email_address='u1@e1'))
@@ -1541,7 +1673,7 @@ class SaveTest(_fixtures.FixtureTest):
     def test_history_get(self):
         """The history lazy-fetches data when it wasn't otherwise loaded."""
         mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all, delete-orphan")})
+            'addresses':relationship(Address, cascade="all, delete-orphan")})
         mapper(Address, addresses)
 
         u = User(name='u1')
@@ -1605,7 +1737,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     def test_m2o_one_to_one(self):
         # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties=dict(
-            user = relation(mapper(User, users), lazy=True, uselist=False)))
+            user = relationship(mapper(User, users), lazy='select', uselist=False)))
 
         session = create_session()
 
@@ -1656,7 +1788,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_1(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relation(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1681,7 +1813,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_2(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relation(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         a2 = Address(email_address='emailaddress2')
@@ -1712,7 +1844,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_3(self):
         m = mapper(Address, addresses, properties=dict(
-            user = relation(mapper(User, users), lazy=True)))
+            user = relationship(mapper(User, users), lazy='select')))
 
         a1 = Address(email_address='emailaddress1')
         u1 = User(name='user1')
@@ -1740,7 +1872,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_bidirectional_no_load(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, backref='user', lazy=None)})
+            'addresses':relationship(Address, backref='user', lazy='noload')})
         mapper(Address, addresses)
 
         # try it on unsaved objects
@@ -1770,9 +1902,9 @@ class ManyToManyTest(_fixtures.FixtureTest):
         mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties=dict(
-                keywords=relation(Keyword,
+                keywords=relationship(Keyword,
                                   item_keywords,
-                                  lazy=False,
+                                  lazy='joined',
                                   order_by=keywords.c.name)))
 
         data = [Item,
@@ -1878,7 +2010,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         """
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords = relation(Keyword, item_keywords, lazy=False),
+            keywords = relationship(Keyword, item_keywords, lazy='joined'),
             ))
 
         i = Item(description='i1')
@@ -1898,12 +2030,12 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_scalar(self):
-        """sa.dependency won't delete an m2m relation referencing None."""
+        """sa.dependency won't delete an m2m relationship referencing None."""
 
         mapper(Keyword, keywords)
 
         mapper(Item, items, properties=dict(
-            keyword=relation(Keyword, secondary=item_keywords, uselist=False)))
+            keyword=relationship(Keyword, secondary=item_keywords, uselist=False)))
 
         i = Item(description='x')
         session = create_session()
@@ -1917,9 +2049,9 @@ class ManyToManyTest(_fixtures.FixtureTest):
         """Assorted history operations on a many to many"""
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-            keywords=relation(Keyword,
+            keywords=relationship(Keyword,
                               secondary=item_keywords,
-                              lazy=False,
+                              lazy='joined',
                               order_by=keywords.c.name)))
 
         k1 = Keyword(name='keyword 1')
@@ -1958,15 +2090,15 @@ class ManyToManyTest(_fixtures.FixtureTest):
         mapper(IKAssociation, item_keywords,
                primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
                properties=dict(
-                 keyword=relation(mapper(Keyword, keywords, non_primary=True),
-                                  lazy=False,
+                 keyword=relationship(mapper(Keyword, keywords, non_primary=True),
+                                  lazy='joined',
                                   uselist=False,
                                   order_by=keywords.c.name      # note here is a valid place where order_by can be used
-                                  )))                           # on a scalar relation(); to determine eager ordering of
+                                  )))                           # on a scalar relationship(); to determine eager ordering of
                                                                 # the parent object within its collection.
 
         mapper(Item, items, properties=dict(
-            keywords=relation(IKAssociation, lazy=False)))
+            keywords=relationship(IKAssociation, lazy='joined')))
 
         session = create_session()
 
@@ -2001,7 +2133,7 @@ class SaveTest2(_fixtures.FixtureTest):
     def test_m2o_nonmatch(self):
         mapper(User, users)
         mapper(Address, addresses, properties=dict(
-            user = relation(User, lazy=True, uselist=False)))
+            user = relationship(User, lazy='select', uselist=False)))
 
         session = create_session()
 
@@ -2058,7 +2190,7 @@ class SaveTest3(_base.MappedTest):
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
-                keywords = relation(Keyword, secondary=assoc, lazy=False),))
+                keywords = relationship(Keyword, secondary=assoc, lazy='joined'),))
 
         i = Item()
         k1 = Keyword()
@@ -2118,7 +2250,68 @@ class BooleanColTest(_base.MappedTest):
         sess.flush()
         eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
 
-
+class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
+    """Test that objects with NULL identity keys aren't permitted to complete a flush.
+    
+    User-defined callables that execute during a load may modify state
+    on instances which results in their being autoflushed, before attributes
+    are populated.  If the primary key identifiers are missing, an explicit assertion
+    is needed to check that the object doesn't go through the flush process with
+    no net changes and gets placed in the identity map with an incorrect 
+    identity key.
+    
+    """
+    @classmethod
+    def define_tables(cls, metadata):
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+        )
+    
+    @testing.resolve_artifact_names
+    def test_flush_raises(self):
+        class T1(_base.ComparableEntity):
+            @reconstructor
+            def go(self):
+                # blow away 'id', no change event.
+                # this simulates a callable occuring
+                # before 'id' was even populated, i.e. a callable
+                # within an attribute_mapped_collection
+                self.__dict__.pop('id', None)
+                
+                # generate a change event, perhaps this occurs because
+                # someone wrote a broken attribute_mapped_collection that 
+                # inappropriately fires off change events when it should not,
+                # now we're dirty
+                self.data = 'foo bar'
+                
+                # blow away that change, so an UPDATE does not occur
+                # (since it would break)
+                self.__dict__.pop('data', None)
+                
+                # flush ! any lazyloader here would trigger
+                # autoflush, for example.
+                sess.flush()
+                
+        mapper(T1, t1)
+        
+        sess = Session()
+        sess.add(T1(data='test', id=5))
+        sess.commit()
+        sess.close()
+        
+        # make sure that invalid state doesn't get into the session
+        # with the wrong key.  If the identity key is not NULL, at least
+        # the population process would continue after the erroneous flush
+        # and thing would right themselves.
+        assert_raises_message(sa.orm.exc.FlushError,
+                              'has a NULL identity key.  Check if this '
+                              'flush is occuring at an inappropriate '
+                              'time, such as during a load operation.',
+                              sess.query(T1).first)
+        
+        
+    
 class RowSwitchTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -2157,7 +2350,7 @@ class RowSwitchTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_onetomany(self):
         mapper(T5, t5, properties={
-            't6s':relation(T6, cascade="all, delete-orphan")
+            't6s':relationship(T6, cascade="all, delete-orphan")
         })
         mapper(T6, t6)
 
@@ -2199,7 +2392,7 @@ class RowSwitchTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_manytomany(self):
         mapper(T5, t5, properties={
-            't7s':relation(T7, secondary=t5t7, cascade="all")
+            't7s':relationship(T7, secondary=t5t7, cascade="all")
         })
         mapper(T7, t7)
 
@@ -2220,7 +2413,12 @@ class RowSwitchTest(_base.MappedTest):
             T7(data='third t7', id=3),
             T7(data='fourth t7', id=4),
             ])
+
         sess.delete(o5)
+        assert o5 in sess.deleted
+        assert o5.t7s[0] in sess.deleted
+        assert o5.t7s[1] in sess.deleted
+        
         sess.add(o6)
         sess.flush()
 
@@ -2231,7 +2429,7 @@ class RowSwitchTest(_base.MappedTest):
     def test_manytoone(self):
 
         mapper(T6, t6, properties={
-            't5':relation(T5)
+            't5':relationship(T5)
         })
         mapper(T5, t5)
 
@@ -2295,6 +2493,14 @@ class InheritingRowSwitchTest(_base.MappedTest):
         self.assert_sql_execution(testing.db, sess.flush,
             CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.id = :parent_id",
                 {'pdata':'c2', 'parent_id':1}
+            ),
+            
+            # this fires as of [ticket:1362], since we synchronzize
+            # PK/FKs on UPDATES.  c2 is new so the history shows up as
+            # pure added, update occurs.  If a future change limits the
+            # sync operation during _save_obj().update, this is safe to remove again.
+            CompiledSQL("UPDATE child SET pid=:pid WHERE child.id = :child_id",
+                {'pid':1, 'child_id':1}
             )
         )
         

@@ -1,6 +1,6 @@
 from sqlalchemy.dialects.maxdb.base import MaxDBDialect
 
-class MaxDB_sapdb(MaxDBDialect):
+class MaxDBDialect_sapdb(MaxDBDialect):
     driver = 'sapdb'
     
     @classmethod
@@ -14,4 +14,4 @@ class MaxDB_sapdb(MaxDBDialect):
         return [], opts
 
 
-dialect = MaxDB_sapdb
+dialect = MaxDBDialect_sapdb

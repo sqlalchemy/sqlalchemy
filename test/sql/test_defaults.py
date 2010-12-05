@@ -1,10 +1,11 @@
 from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 import datetime
 from sqlalchemy import Sequence, Column, func
+from sqlalchemy.schema import CreateSequence, DropSequence
 from sqlalchemy.sql import select, text
 import sqlalchemy as sa
 from sqlalchemy.test import testing, engines
-from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean
+from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.testing import eq_
 from test.sql import _base
@@ -284,7 +285,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_insertmany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -300,7 +301,16 @@ class DefaultTest(testing.TestBase):
               12, today, 'py'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, 'py')])
-
+    
+    def test_missing_many_param(self):
+        assert_raises_message(exc.InvalidRequestError, 
+            "A value is required for bind parameter 'col7', in parameter group 1",
+            t.insert().execute,
+            {'col4':7, 'col7':12, 'col8':19},
+            {'col4':7, 'col8':19},
+            {'col4':7, 'col7':12, 'col8':19},
+        )
+        
     def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
@@ -309,7 +319,7 @@ class DefaultTest(testing.TestBase):
     @testing.fails_on('firebird', 'Data type unknown')
     def test_updatemany(self):
         # MySQL-Python 1.2.2 breaks functions in execute_many :(
-        if (testing.against('mysql') and not testing.against('+zxjdbc') and
+        if (testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:3] == (1, 2, 2)):
             return
 
@@ -356,7 +366,7 @@ class DefaultTest(testing.TestBase):
         l = l.first()
         eq_(55, l['col3'])
 
-
+    
 class PKDefaultTest(_base.TablesTest):
     __requires__ = ('subqueries',)
 
@@ -526,10 +536,10 @@ class AutoIncrementTest(_base.TablesTest):
         nonai.insert().execute(id=1, data='row 1')
 
 
-class SequenceTest(testing.TestBase):
-    __requires__ = ('sequences',)
+class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
 
     @classmethod
+    @testing.requires.sequences
     def setup_class(cls):
         global cartitems, sometable, metadata
         metadata = MetaData(testing.db)
@@ -547,15 +557,69 @@ class SequenceTest(testing.TestBase):
 
         metadata.create_all()
 
-    def testseqnonpk(self):
+
+    def test_compile(self):
+        self.assert_compile(
+            CreateSequence(Sequence('foo_seq')),
+            "CREATE SEQUENCE foo_seq",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence('foo_seq', start=5)),
+            "CREATE SEQUENCE foo_seq START WITH 5",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence('foo_seq', increment=2)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            CreateSequence(Sequence('foo_seq', increment=2, start=5)),
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 5",
+            use_default_dialect=True,
+        )
+
+        self.assert_compile(
+            DropSequence(Sequence('foo_seq')),
+            "DROP SEQUENCE foo_seq",
+            use_default_dialect=True,
+        )
+        
+
+    @testing.fails_on('firebird', 'no FB support for start/increment')
+    @testing.requires.sequences
+    def test_start_increment(self):
+        for seq in (
+                Sequence('foo_seq'), 
+                Sequence('foo_seq', start=8), 
+                Sequence('foo_seq', increment=5)):
+            seq.create(testing.db)
+            try:
+                values = [
+                    testing.db.execute(seq) for i in range(3)
+                ]
+                start = seq.start or 1
+                inc = seq.increment or 1
+                assert values == list(xrange(start, start + inc * 3, inc))
+                
+            finally:
+                seq.drop(testing.db)
+        
+    @testing.requires.sequences
+    def test_seq_nonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
 
         engine = engines.testing_engine(options={'implicit_returning':False})
         result = engine.execute(sometable.insert(), name="somename")
-        assert 'id' in result.postfetch_cols()
+
+        assert set(result.postfetch_cols()) == set([sometable.c.obj_id])
 
         result = engine.execute(sometable.insert(), name="someother")
-        assert 'id' in result.postfetch_cols()
+        assert set(result.postfetch_cols()) == set([sometable.c.obj_id])
 
         sometable.insert().execute(
             {'name':'name3'},
@@ -566,7 +630,8 @@ class SequenceTest(testing.TestBase):
              (3, "name3", 3),
              (4, "name4", 4)])
 
-    def testsequence(self):
+    @testing.requires.sequences
+    def test_sequence(self):
         cartitems.insert().execute(description='hi')
         cartitems.insert().execute(description='there')
         r = cartitems.insert().execute(description='lala')
@@ -584,6 +649,7 @@ class SequenceTest(testing.TestBase):
     @testing.fails_on('maxdb', 'FIXME: unknown')
     # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
     # throwing off the numbers for these tests...
+    @testing.requires.sequences
     def test_implicit_sequence_exec(self):
         s = Sequence("my_sequence", metadata=MetaData(testing.db))
         s.create()
@@ -594,6 +660,7 @@ class SequenceTest(testing.TestBase):
             s.drop()
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
+    @testing.requires.sequences
     def teststandalone_explicit(self):
         s = Sequence("my_sequence")
         s.create(bind=testing.db)
@@ -603,6 +670,7 @@ class SequenceTest(testing.TestBase):
         finally:
             s.drop(testing.db)
 
+    @testing.requires.sequences
     def test_checkfirst(self):
         s = Sequence("my_sequence")
         s.create(testing.db, checkfirst=False)
@@ -611,11 +679,13 @@ class SequenceTest(testing.TestBase):
         s.drop(testing.db, checkfirst=True)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
+    @testing.requires.sequences
     def teststandalone2(self):
-        x = cartitems.c.cart_id.sequence.execute()
+        x = cartitems.c.cart_id.default.execute()
         self.assert_(1 <= x <= 4)
 
     @classmethod
+    @testing.requires.sequences
     def teardown_class(cls):
         metadata.drop_all()
 

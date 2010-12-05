@@ -6,6 +6,22 @@ JDBC Driver
 The official MySQL JDBC driver is at
 http://dev.mysql.com/downloads/connector/j/.
 
+Connecting
+----------
+
+Connect string format:
+
+    mysql+zxjdbc://<user>:<password>@<hostname>[:<port>]/<database>
+
+Character Sets
+--------------
+
+SQLAlchemy zxjdbc dialects pass unicode straight through to the
+zxjdbc/JDBC layer. To allow multiple character sets to be sent from the
+MySQL Connector/J JDBC driver, by default SQLAlchemy sets its
+``characterEncoding`` connection property to ``UTF-8``. It may be
+overriden via a ``create_engine`` URL parameter.
+
 """
 import re
 
@@ -13,8 +29,8 @@ from sqlalchemy import types as sqltypes, util
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
 
-class _JDBCBit(BIT):
-    def result_processor(self, dialect):
+class _ZxJDBCBit(BIT):
+    def result_processor(self, dialect, coltype):
         """Converts boolean or byte arrays from MySQL Connector/J to longs."""
         def process(value):
             if value is None:
@@ -29,7 +45,7 @@ class _JDBCBit(BIT):
         return process
 
 
-class MySQL_jdbcExecutionContext(MySQLExecutionContext):
+class MySQLExecutionContext_zxjdbc(MySQLExecutionContext):
     def get_lastrowid(self):
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
@@ -38,17 +54,17 @@ class MySQL_jdbcExecutionContext(MySQLExecutionContext):
         return lastrowid
 
 
-class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
-    execution_ctx_cls = MySQL_jdbcExecutionContext
-
+class MySQLDialect_zxjdbc(ZxJDBCConnector, MySQLDialect):
     jdbc_db_name = 'mysql'
     jdbc_driver_name = 'com.mysql.jdbc.Driver'
+
+    execution_ctx_cls = MySQLExecutionContext_zxjdbc
 
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
             sqltypes.Time: sqltypes.Time,
-            BIT: _JDBCBit
+            BIT: _ZxJDBCBit
         }
     )
 
@@ -71,12 +87,12 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
 
     def _driver_kwargs(self):
         """return kw arg dict to be sent to connect()."""
-        return dict(CHARSET=self.encoding, yearIsDateType='false')
+        return dict(characterEncoding='UTF-8', yearIsDateType='false')
 
     def _extract_error_code(self, exception):
         # e.g.: DBAPIError: (Error) Table 'test.u2' doesn't exist
         # [SQLCode: 1146], [SQLState: 42S02] 'DESCRIBE `u2`' ()
-        m = re.compile(r"\[SQLCode\: (\d+)\]").search(str(exception.orig.args))
+        m = re.compile(r"\[SQLCode\: (\d+)\]").search(str(exception.args))
         c = m.group(1)
         if c:
             return int(c)
@@ -92,4 +108,4 @@ class MySQL_jdbc(ZxJDBCConnector, MySQLDialect):
                 version.append(n)
         return tuple(version)
 
-dialect = MySQL_jdbc
+dialect = MySQLDialect_zxjdbc

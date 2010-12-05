@@ -4,7 +4,7 @@
 """Defines operators used in SQL expressions."""
 
 from operator import (
-    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq
+    and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg
     )
     
 # Py2K
@@ -83,9 +83,13 @@ def desc_op(a):
 def asc_op(a):
     return a.asc()
 
+
 _commutative = set([eq, ne, add, mul])
 def is_commutative(op):
     return op in _commutative
+
+_associative = _commutative.union([concat_op, and_, or_])
+    
 
 _smallest = symbol('_smallest')
 _largest = symbol('_largest')
@@ -98,6 +102,7 @@ _PRECEDENCE = {
     div: 7,
     # end Py2K
     mod: 7,
+    neg: 7,
     add: 6,
     sub: 6,
     concat_op: 6,
@@ -130,5 +135,8 @@ _PRECEDENCE = {
 }
 
 def is_precedent(operator, against):
-    return (_PRECEDENCE.get(operator, _PRECEDENCE[_smallest]) <=
+    if operator is against and operator in _associative:
+        return False
+    else:
+        return (_PRECEDENCE.get(operator, _PRECEDENCE[_smallest]) <=
             _PRECEDENCE.get(against, _PRECEDENCE[_largest]))

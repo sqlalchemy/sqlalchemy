@@ -83,15 +83,18 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
             (2, "data2"),
         ], repr(result)
   
-        r = s.limit(2).offset(1).execute()
-        result = []
-        for row in r:
-            result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
-        assert result == [
-            (2, "data2"),
-            (3, "data3"),
-        ], repr(result)
-
+        @testing.requires.offset
+        def go():
+            r = s.limit(2).offset(1).execute()
+            result = []
+            for row in r:
+                result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
+            assert result == [
+                (2, "data2"),
+                (3, "data3"),
+            ], repr(result)
+        go()
+        
     def test_table_alias_names(self):
         if testing.against('oracle'):
             self.assert_compile(
