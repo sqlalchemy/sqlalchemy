@@ -1,4 +1,4 @@
-from sqlalchemy.util import jython, function_named, defaultdict
+from sqlalchemy.util import jython, defaultdict, decorator
 
 import gc
 import time
@@ -104,4 +104,23 @@ def all_partial_orderings(tuples, elements):
                         yield [elem] + sub_ordering
     
     return iter(_all_orderings(elements))
+
+
+def function_named(fn, name):
+    """Return a function with a given __name__.
+
+    Will assign to __name__ and return the original function if possible on
+    the Python implementation, otherwise a new function will be constructed.
+
+    This function should be phased out as much as possible
+    in favor of @decorator.   Tests that "generate" many named tests
+    should be modernized.
+    
+    """
+    try:
+        fn.__name__ = name
+    except TypeError:
+        fn = types.FunctionType(fn.func_code, fn.func_globals, name,
+                          fn.func_defaults, fn.func_closure)
+    return fn
 

@@ -7,29 +7,26 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from test.lib.schema import Table
 from test.lib.schema import Column
 from test.lib.testing import eq_, ne_
-from sqlalchemy.util import function_named
+from test.lib.util import decorator
 from test.orm import _base
 
-
-def modifies_instrumentation_finders(fn):
-    def decorated(*args, **kw):
-        pristine = instrumentation.instrumentation_finders[:]
-        try:
-            fn(*args, **kw)
-        finally:
-            del instrumentation.instrumentation_finders[:]
-            instrumentation.instrumentation_finders.extend(pristine)
-    return function_named(decorated, fn.func_name)
+@decorator
+def modifies_instrumentation_finders(fn, *args, **kw):
+    pristine = instrumentation.instrumentation_finders[:]
+    try:
+        fn(*args, **kw)
+    finally:
+        del instrumentation.instrumentation_finders[:]
+        instrumentation.instrumentation_finders.extend(pristine)
 
 def with_lookup_strategy(strategy):
-    def decorate(fn):
-        def wrapped(*args, **kw):
-            try:
-                instrumentation._install_lookup_strategy(strategy)
-                return fn(*args, **kw)
-            finally:
-                instrumentation._install_lookup_strategy(sa.util.symbol('native'))
-        return function_named(wrapped, fn.func_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        try:
+            instrumentation._install_lookup_strategy(strategy)
+            return fn(*args, **kw)
+        finally:
+            instrumentation._install_lookup_strategy(sa.util.symbol('native'))
     return decorate
 
 

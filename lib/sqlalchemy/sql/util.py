@@ -1,4 +1,5 @@
-from sqlalchemy import exc, schema, topological, util, sql, types as sqltypes
+from sqlalchemy import exc, schema, util, sql, types as sqltypes
+from sqlalchemy.util import topological
 from sqlalchemy.sql import expression, operators, visitors
 from itertools import chain
 

@@ -1,7 +1,8 @@
 import sys, types, weakref
 from collections import deque
 from test.bootstrap import config
-from sqlalchemy.util import function_named, callable
+from test.lib.util import decorator
+from sqlalchemy.util import callable
 from sqlalchemy import event
 import re
 import warnings
@@ -44,42 +45,38 @@ testing_reaper = ConnectionKiller()
 def drop_all_tables(metadata):
     testing_reaper.close_all()
     metadata.drop_all()
-    
-def assert_conns_closed(fn):
-    def decorated(*args, **kw):
-        try:
-            fn(*args, **kw)
-        finally:
-            testing_reaper.assert_all_closed()
-    return function_named(decorated, fn.__name__)
 
-def rollback_open_connections(fn):
+@decorator
+def assert_conns_closed(fn, *args, **kw):
+    try:
+        fn(*args, **kw)
+    finally:
+        testing_reaper.assert_all_closed()
+
+@decorator
+def rollback_open_connections(fn, *args, **kw):
     """Decorator that rolls back all open connections after fn execution."""
 
-    def decorated(*args, **kw):
-        try:
-            fn(*args, **kw)
-        finally:
-            testing_reaper.rollback_all()
-    return function_named(decorated, fn.__name__)
-
-def close_first(fn):
-    """Decorator that closes all connections before fn execution."""
-    def decorated(*args, **kw):
-        testing_reaper.close_all()
+    try:
         fn(*args, **kw)
-    return function_named(decorated, fn.__name__)
-    
-    
-def close_open_connections(fn):
-    """Decorator that closes all connections after fn execution."""
+    finally:
+        testing_reaper.rollback_all()
 
-    def decorated(*args, **kw):
-        try:
-            fn(*args, **kw)
-        finally:
-            testing_reaper.close_all()
-    return function_named(decorated, fn.__name__)
+@decorator
+def close_first(fn, *args, **kw):
+    """Decorator that closes all connections before fn execution."""
+    
+    testing_reaper.close_all()
+    fn(*args, **kw)
+    
+    
+@decorator
+def close_open_connections(fn, *args, **kw):
+    """Decorator that closes all connections after fn execution."""
+    try:
+        fn(*args, **kw)
+    finally:
+        testing_reaper.close_all()
 
 def all_dialects(exclude=None):
     import sqlalchemy.databases as d

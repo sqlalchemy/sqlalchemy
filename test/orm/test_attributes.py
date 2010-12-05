@@ -7,8 +7,8 @@ from test.lib import *
 from test.lib.testing import eq_, ne_, assert_raises
 from test.orm import _base
 from test.lib.util import gc_collect, all_partial_orderings
-from sqlalchemy.util import cmp, jython
-from sqlalchemy import event, topological
+from sqlalchemy.util import cmp, jython, topological
+from sqlalchemy import event
 
 # global for pickling tests
 MyTest = None

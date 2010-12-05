@@ -6,7 +6,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy import exc as sa_exc
 from test.lib import Column, testing
-from sqlalchemy.util import function_named
+from test.lib.util import function_named
 from test.orm import _fixtures, _base
 
 class Person(_fixtures.Base):

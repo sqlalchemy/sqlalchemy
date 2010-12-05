@@ -12,7 +12,8 @@ organizes them in order of dependency, and executes.
 
 """
 
-from sqlalchemy import util, topological
+from sqlalchemy import util
+from sqlalchemy.util import topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import _state_mapper

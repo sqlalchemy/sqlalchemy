@@ -371,20 +371,6 @@ def as_interface(obj, cls=None, methods=None, required=None):
     raise TypeError("dictionary does not contain required keys %s" %
                     ', '.join(required - found))
 
-def function_named(fn, name):
-    """Return a function with a given __name__.
-
-    Will assign to __name__ and return the original function if possible on
-    the Python implementation, otherwise a new function will be constructed.
-
-    """
-    try:
-        fn.__name__ = name
-    except TypeError:
-        fn = types.FunctionType(fn.func_code, fn.func_globals, name,
-                          fn.func_defaults, fn.func_closure)
-    return fn
-
 
 class memoized_property(object):
     """A read-only @property that is only evaluated once."""

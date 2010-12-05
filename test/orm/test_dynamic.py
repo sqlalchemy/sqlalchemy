@@ -7,7 +7,6 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
 from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message
-from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 
 

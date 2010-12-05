@@ -2,7 +2,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from test.lib import testing
-from sqlalchemy.util import function_named
+from test.lib.util import function_named
 from test.orm import _base
 from test.lib.schema import Table, Column
 

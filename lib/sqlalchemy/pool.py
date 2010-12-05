@@ -20,7 +20,7 @@ SQLAlchemy connection pool.
 import weakref, time, threading
 
 from sqlalchemy import exc, log, event, events, interfaces, util
-from sqlalchemy import queue as sqla_queue
+from sqlalchemy.util import queue as sqla_queue
 from sqlalchemy.util import threading, pickle, memoized_property
 
 proxies = {}

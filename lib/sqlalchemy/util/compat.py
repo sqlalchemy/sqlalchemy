@@ -1,4 +1,5 @@
 """Handle Python version/platform incompatibilities."""
+
 import sys
 
 # Py2K

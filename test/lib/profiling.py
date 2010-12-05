@@ -6,7 +6,7 @@ in a more fine-grained way than nose's profiling plugin.
 """
 
 import os, sys
-from test.lib.util import function_named, gc_collect
+from test.lib.util import gc_collect, decorator
 from nose import SkipTest
 
 __all__ = 'profiled', 'function_call_count', 'conditional_call_count'
@@ -38,34 +38,33 @@ def profiled(target=None, **target_opts):
     all_targets.add(target)
 
     filename = "%s.prof" % target
+    
+    @decorator
+    def decorate(fn, *args, **kw):
+        if (target not in profile_config['targets'] and
+            not target_opts.get('always', None)):
+            return fn(*args, **kw)
 
-    def decorator(fn):
-        def profiled(*args, **kw):
-            if (target not in profile_config['targets'] and
-                not target_opts.get('always', None)):
-                return fn(*args, **kw)
+        elapsed, load_stats, result = _profile(
+            filename, fn, *args, **kw)
 
-            elapsed, load_stats, result = _profile(
-                filename, fn, *args, **kw)
+        report = target_opts.get('report', profile_config['report'])
+        if report:
+            sort_ = target_opts.get('sort', profile_config['sort'])
+            limit = target_opts.get('limit', profile_config['limit'])
+            print "Profile report for target '%s' (%s)" % (
+                target, filename)
 
-            report = target_opts.get('report', profile_config['report'])
-            if report:
-                sort_ = target_opts.get('sort', profile_config['sort'])
-                limit = target_opts.get('limit', profile_config['limit'])
-                print "Profile report for target '%s' (%s)" % (
-                    target, filename)
-
-                stats = load_stats()
-                stats.sort_stats(*sort_)
-                if limit:
-                    stats.print_stats(limit)
-                else:
-                    stats.print_stats()
-                #stats.print_callers()
-            os.unlink(filename)
-            return result
-        return function_named(profiled, fn.__name__)
-    return decorator
+            stats = load_stats()
+            stats.sort_stats(*sort_)
+            if limit:
+                stats.print_stats(limit)
+            else:
+                stats.print_stats()
+            #stats.print_callers()
+        os.unlink(filename)
+        return result
+    return decorate
 
 def function_call_count(count=None, versions={}, variance=0.05):
     """Assert a target for a test case's function call count.
@@ -109,35 +108,34 @@ def function_call_count(count=None, versions={}, variance=0.05):
 
     if count is None:
         return lambda fn: fn
+    
+    @decorator
+    def decorate(fn, *args, **kw):
+        try:
+            filename = "%s.prof" % fn.__name__
 
-    def decorator(fn):
-        def counted(*args, **kw):
-            try:
-                filename = "%s.prof" % fn.__name__
+            elapsed, stat_loader, result = _profile(
+                filename, fn, *args, **kw)
 
-                elapsed, stat_loader, result = _profile(
-                    filename, fn, *args, **kw)
+            stats = stat_loader()
+            calls = stats.total_calls
 
-                stats = stat_loader()
-                calls = stats.total_calls
+            stats.sort_stats('calls', 'cumulative')
+            stats.print_stats()
+            #stats.print_callers()
+            deviance = int(count * variance)
+            if (calls < (count - deviance) or
+                calls > (count + deviance)):
+                raise AssertionError(
+                    "Function call count %s not within %s%% "
+                    "of expected %s. (Python version %s)" % (
+                    calls, (variance * 100), count, py_version))
 
-                stats.sort_stats('calls', 'cumulative')
-                stats.print_stats()
-                #stats.print_callers()
-                deviance = int(count * variance)
-                if (calls < (count - deviance) or
-                    calls > (count + deviance)):
-                    raise AssertionError(
-                        "Function call count %s not within %s%% "
-                        "of expected %s. (Python version %s)" % (
-                        calls, (variance * 100), count, py_version))
-
-                return result
-            finally:
-                if os.path.exists(filename):
-                    os.unlink(filename)
-        return function_named(counted, fn.__name__)
-    return decorator
+            return result
+        finally:
+            if os.path.exists(filename):
+                os.unlink(filename)
+    return decorate
 
 def conditional_call_count(discriminator, categories):
     """Apply a function call count conditionally at runtime.
@@ -153,17 +151,15 @@ def conditional_call_count(discriminator, categories):
     have a function count penalty not seen in the full suite, due to lazy
     initialization in the DB-API, SA, etc.
     """
+    @decorator
+    def decorate(fn, *args, **kw):
+        criteria = categories.get(discriminator(), None)
+        if criteria is None:
+            return fn(*args, **kw)
 
-    def decorator(fn):
-        def at_runtime(*args, **kw):
-            criteria = categories.get(discriminator(), None)
-            if criteria is None:
-                return fn(*args, **kw)
-
-            rewrapped = function_call_count(*criteria)(fn)
-            return rewrapped(*args, **kw)
-        return function_named(at_runtime, fn.__name__)
-    return decorator
+        rewrapped = function_call_count(*criteria)(fn)
+        return rewrapped(*args, **kw)
+    return decorate
 
 
 def _profile(filename, fn, *args, **kw):

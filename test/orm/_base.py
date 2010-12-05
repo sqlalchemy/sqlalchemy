@@ -6,7 +6,6 @@ import sqlalchemy.exceptions as sa_exc
 from test.lib import config, testing
 from test.lib.testing import resolve_artifact_names, adict
 from test.lib.engines import drop_all_tables
-from sqlalchemy.util import function_named
 from test.lib.entities import BasicEntity, ComparableEntity
 
 Entity = BasicEntity

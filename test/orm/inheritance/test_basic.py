@@ -7,7 +7,6 @@ from sqlalchemy.orm import exc as orm_exc, attributes
 from test.lib.assertsql import AllOf, CompiledSQL
 
 from test.lib import testing, engines
-from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 from test.lib.schema import Table, Column
 

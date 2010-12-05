@@ -10,7 +10,7 @@ from cStringIO import StringIO
 
 from test.bootstrap import config
 from test.lib import assertsql, util as testutil
-from sqlalchemy.util import function_named, py3k
+from sqlalchemy.util import py3k, decorator
 from engines import drop_all_tables
 
 from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, \
@@ -47,44 +47,39 @@ def fails_if(callable_, reason=None):
     docstring = getattr(callable_, '__doc__', None) or callable_.__name__
     description = docstring.split('\n')[0]
 
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if not callable_():
-                return fn(*args, **kw)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if not callable_():
+            return fn(*args, **kw)
+        else:
+            try:
+                fn(*args, **kw)
+            except Exception, ex:
+                print ("'%s' failed as expected (condition: %s): %s " % (
+                    fn.__name__, description, str(ex)))
+                return True
             else:
-                try:
-                    fn(*args, **kw)
-                except Exception, ex:
-                    print ("'%s' failed as expected (condition: %s): %s " % (
-                        fn_name, description, str(ex)))
-                    return True
-                else:
-                    raise AssertionError(
-                        "Unexpected success for '%s' (condition: %s)" %
-                        (fn_name, description))
-        return function_named(maybe, fn_name)
+                raise AssertionError(
+                    "Unexpected success for '%s' (condition: %s)" %
+                    (fn.__name__, description))
     return decorate
 
-
-def future(fn):
+@decorator
+def future(fn, *args, **kw):
     """Mark a test as expected to unconditionally fail.
 
     Takes no arguments, omit parens when using as a decorator.
     """
 
-    fn_name = fn.__name__
-    def decorated(*args, **kw):
-        try:
-            fn(*args, **kw)
-        except Exception, ex:
-            print ("Future test '%s' failed as expected: %s " % (
-                fn_name, str(ex)))
-            return True
-        else:
-            raise AssertionError(
-                "Unexpected success for future test '%s'" % fn_name)
-    return function_named(decorated, fn_name)
+    try:
+        fn(*args, **kw)
+    except Exception, ex:
+        print ("Future test '%s' failed as expected: %s " % (
+            fn.__name__, str(ex)))
+        return True
+    else:
+        raise AssertionError(
+            "Unexpected success for future test '%s'" % fn.__name__)
 
 def db_spec(*dbs):
     dialects = set([x for x in dbs if '+' not in x])
@@ -110,25 +105,23 @@ def fails_on(dbs, reason):
     """
 
     spec = db_spec(dbs)
-     
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if not spec(config.db):
-                return fn(*args, **kw)
+    
+    @decorator
+    def decorate(fn, *args, **kw):
+        if not spec(config.db):
+            return fn(*args, **kw)
+        else:
+            try:
+                fn(*args, **kw)
+            except Exception, ex:
+                print ("'%s' failed as expected on DB implementation "
+                        "'%s+%s': %s" % (
+                    fn.__name__, config.db.name, config.db.driver, reason))
+                return True
             else:
-                try:
-                    fn(*args, **kw)
-                except Exception, ex:
-                    print ("'%s' failed as expected on DB implementation "
-                            "'%s+%s': %s" % (
-                        fn_name, config.db.name, config.db.driver, reason))
-                    return True
-                else:
-                    raise AssertionError(
-                         "Unexpected success for '%s' on DB implementation '%s+%s'" %
-                         (fn_name, config.db.name, config.db.driver))
-        return function_named(maybe, fn_name)
+                raise AssertionError(
+                     "Unexpected success for '%s' on DB implementation '%s+%s'" %
+                     (fn.__name__, config.db.name, config.db.driver))
     return decorate
 
 def fails_on_everything_except(*dbs):
@@ -140,24 +133,22 @@ def fails_on_everything_except(*dbs):
 
     spec = db_spec(*dbs)
     
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if spec(config.db):
-                return fn(*args, **kw)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if spec(config.db):
+            return fn(*args, **kw)
+        else:
+            try:
+                fn(*args, **kw)
+            except Exception, ex:
+                print ("'%s' failed as expected on DB implementation "
+                        "'%s+%s': %s" % (
+                    fn.__name__, config.db.name, config.db.driver, str(ex)))
+                return True
             else:
-                try:
-                    fn(*args, **kw)
-                except Exception, ex:
-                    print ("'%s' failed as expected on DB implementation "
-                            "'%s+%s': %s" % (
-                        fn_name, config.db.name, config.db.driver, str(ex)))
-                    return True
-                else:
-                    raise AssertionError(
-                      "Unexpected success for '%s' on DB implementation '%s+%s'" %
-                      (fn_name, config.db.name, config.db.driver))
-        return function_named(maybe, fn_name)
+                raise AssertionError(
+                  "Unexpected success for '%s' on DB implementation '%s+%s'" %
+                  (fn.__name__, config.db.name, config.db.driver))
     return decorate
 
 def crashes(db, reason):
@@ -169,19 +160,17 @@ def crashes(db, reason):
     """
     carp = _should_carp_about_exclusion(reason)
     spec = db_spec(db)
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if spec(config.db):
-                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
-                    fn_name, config.db.name, config.db.driver, reason)
-                print msg
-                if carp:
-                    print >> sys.stderr, msg
-                return True
-            else:
-                return fn(*args, **kw)
-        return function_named(maybe, fn_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if spec(config.db):
+            msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                fn.__name__, config.db.name, config.db.driver, reason)
+            print msg
+            if carp:
+                print >> sys.stderr, msg
+            return True
+        else:
+            return fn(*args, **kw)
     return decorate
 
 def _block_unconditionally(db, reason):
@@ -194,37 +183,33 @@ def _block_unconditionally(db, reason):
     """
     carp = _should_carp_about_exclusion(reason)
     spec = db_spec(db)
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if spec(config.db):
-                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
-                    fn_name, config.db.name, config.db.driver, reason)
-                print msg
-                if carp:
-                    print >> sys.stderr, msg
-                return True
-            else:
-                return fn(*args, **kw)
-        return function_named(maybe, fn_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if spec(config.db):
+            msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                fn.__name__, config.db.name, config.db.driver, reason)
+            print msg
+            if carp:
+                print >> sys.stderr, msg
+            return True
+        else:
+            return fn(*args, **kw)
     return decorate
 
 def only_on(dbs, reason):
     carp = _should_carp_about_exclusion(reason)
     spec = db_spec(*util.to_list(dbs))
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if spec(config.db):
-                return fn(*args, **kw)
-            else:
-                msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
-                    fn_name, config.db.name, config.db.driver, reason)
-                print msg
-                if carp:
-                    print >> sys.stderr, msg
-                return True
-        return function_named(maybe, fn_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if spec(config.db):
+            return fn(*args, **kw)
+        else:
+            msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
+                fn.__name__, config.db.name, config.db.driver, reason)
+            print msg
+            if carp:
+                print >> sys.stderr, msg
+            return True
     return decorate
     
 def exclude(db, op, spec, reason):
@@ -241,19 +226,17 @@ def exclude(db, op, spec, reason):
     """
     carp = _should_carp_about_exclusion(reason)
     
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if _is_excluded(db, op, spec):
-                msg = "'%s' unsupported on DB %s version '%s': %s" % (
-                    fn_name, config.db.name, _server_version(), reason)
-                print msg
-                if carp:
-                    print >> sys.stderr, msg
-                return True
-            else:
-                return fn(*args, **kw)
-        return function_named(maybe, fn_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if _is_excluded(db, op, spec):
+            msg = "'%s' unsupported on DB %s version '%s': %s" % (
+                fn.__name__, config.db.name, _server_version(), reason)
+            print msg
+            if carp:
+                print >> sys.stderr, msg
+            return True
+        else:
+            return fn(*args, **kw)
     return decorate
 
 def _should_carp_about_exclusion(reason):
@@ -312,19 +295,17 @@ def skip_if(predicate, reason=None):
     reason = reason or predicate.__name__
     carp = _should_carp_about_exclusion(reason)
     
-    def decorate(fn):
-        fn_name = fn.__name__
-        def maybe(*args, **kw):
-            if predicate():
-                msg = "'%s' skipped on DB %s version '%s': %s" % (
-                    fn_name, config.db.name, _server_version(), reason)
-                print msg
-                if carp:
-                    print >> sys.stderr, msg
-                return True
-            else:
-                return fn(*args, **kw)
-        return function_named(maybe, fn_name)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if predicate():
+            msg = "'%s' skipped on DB %s version '%s': %s" % (
+                fn.__name__, config.db.name, _server_version(), reason)
+            print msg
+            if carp:
+                print >> sys.stderr, msg
+            return True
+        else:
+            return fn(*args, **kw)
     return decorate
 
 def emits_warning(*messages):
@@ -339,26 +320,26 @@ def emits_warning(*messages):
     # and may work on non-CPython if they keep to the spirit of
     # warnings.showwarning's docstring.
     # - update: jython looks ok, it uses cpython's module
-    def decorate(fn):
-        def safe(*args, **kw):
-            # todo: should probably be strict about this, too
-            filters = [dict(action='ignore',
-                            category=sa_exc.SAPendingDeprecationWarning)]
-            if not messages:
-                filters.append(dict(action='ignore',
-                                     category=sa_exc.SAWarning))
-            else:
-                filters.extend(dict(action='ignore',
-                                     message=message,
-                                     category=sa_exc.SAWarning)
-                                for message in messages)
-            for f in filters:
-                warnings.filterwarnings(**f)
-            try:
-                return fn(*args, **kw)
-            finally:
-                resetwarnings()
-        return function_named(safe, fn.__name__)
+    
+    @decorator
+    def decorate(fn, *args, **kw):
+        # todo: should probably be strict about this, too
+        filters = [dict(action='ignore',
+                        category=sa_exc.SAPendingDeprecationWarning)]
+        if not messages:
+            filters.append(dict(action='ignore',
+                                 category=sa_exc.SAWarning))
+        else:
+            filters.extend(dict(action='ignore',
+                                 message=message,
+                                 category=sa_exc.SAWarning)
+                            for message in messages)
+        for f in filters:
+            warnings.filterwarnings(**f)
+        try:
+            return fn(*args, **kw)
+        finally:
+            resetwarnings()
     return decorate
 
 def emits_warning_on(db, *warnings):
@@ -370,21 +351,20 @@ def emits_warning_on(db, *warnings):
     """
     spec = db_spec(db)
     
-    def decorate(fn):
-        def maybe(*args, **kw):
-            if isinstance(db, basestring):
-                if not spec(config.db):
-                    return fn(*args, **kw)
-                else:
-                    wrapped = emits_warning(*warnings)(fn)
-                    return wrapped(*args, **kw)
+    @decorator
+    def decorate(fn, *args, **kw):
+        if isinstance(db, basestring):
+            if not spec(config.db):
+                return fn(*args, **kw)
             else:
-                if not _is_excluded(*db):
-                    return fn(*args, **kw)
-                else:
-                    wrapped = emits_warning(*warnings)(fn)
-                    return wrapped(*args, **kw)
-        return function_named(maybe, fn.__name__)
+                wrapped = emits_warning(*warnings)(fn)
+                return wrapped(*args, **kw)
+        else:
+            if not _is_excluded(*db):
+                return fn(*args, **kw)
+            else:
+                wrapped = emits_warning(*warnings)(fn)
+                return wrapped(*args, **kw)
     return decorate
 
 def assert_warnings(fn, warnings):
@@ -411,32 +391,30 @@ def uses_deprecated(*messages):
     verbiage emitted by the sqlalchemy.util.deprecated decorator.
     """
 
-    
-    def decorate(fn):
-        def safe(*args, **kw):
-            # todo: should probably be strict about this, too
-            filters = [dict(action='ignore',
-                            category=sa_exc.SAPendingDeprecationWarning)]
-            if not messages:
-                filters.append(dict(action='ignore',
-                                    category=sa_exc.SADeprecationWarning))
-            else:
-                filters.extend(
-                    [dict(action='ignore',
-                          message=message,
-                          category=sa_exc.SADeprecationWarning)
-                     for message in
-                     [ (m.startswith('//') and
-                        ('Call to deprecated function ' + m[2:]) or m)
-                       for m in messages] ])
+    @decorator
+    def decorate(fn, *args, **kw):
+        # todo: should probably be strict about this, too
+        filters = [dict(action='ignore',
+                        category=sa_exc.SAPendingDeprecationWarning)]
+        if not messages:
+            filters.append(dict(action='ignore',
+                                category=sa_exc.SADeprecationWarning))
+        else:
+            filters.extend(
+                [dict(action='ignore',
+                      message=message,
+                      category=sa_exc.SADeprecationWarning)
+                 for message in
+                 [ (m.startswith('//') and
+                    ('Call to deprecated function ' + m[2:]) or m)
+                   for m in messages] ])
 
-            for f in filters:
-                warnings.filterwarnings(**f)
-            try:
-                return fn(*args, **kw)
-            finally:
-                resetwarnings()
-        return function_named(safe, fn.__name__)
+        for f in filters:
+            warnings.filterwarnings(**f)
+        try:
+            return fn(*args, **kw)
+        finally:
+            resetwarnings()
     return decorate
 
 def testing_warn(msg, stacklevel=3):
@@ -569,24 +547,24 @@ def fixture(table, columns, *rows):
                                     for column_values in rows])
     table.append_ddl_listener('after-create', onload)
 
-def provide_metadata(fn):
+@decorator
+def provide_metadata(fn, *args, **kw):
     """Provides a bound MetaData object for a single test, 
     drops it afterwards."""
-    def maybe(*args, **kw):
-        metadata = schema.MetaData(db)
-        context = dict(fn.func_globals)
-        context['metadata'] = metadata
-        # jython bug #1034
-        rebound = types.FunctionType(
-            fn.func_code, context, fn.func_name, fn.func_defaults,
-            fn.func_closure)
-        try:
-            return rebound(*args, **kw)
-        finally:
-            metadata.drop_all()
-    return function_named(maybe, fn.__name__)
-    
-def resolve_artifact_names(fn):
+    metadata = schema.MetaData(db)
+    context = dict(fn.func_globals)
+    context['metadata'] = metadata
+    # jython bug #1034
+    rebound = types.FunctionType(
+        fn.func_code, context, fn.func_name, fn.func_defaults,
+        fn.func_closure)
+    try:
+        return rebound(*args, **kw)
+    finally:
+        metadata.drop_all()
+
+@decorator
+def resolve_artifact_names(fn, *args, **kw):
     """Decorator, augment function globals with tables and classes.
 
     Swaps out the function's globals at execution time. The 'global' statement
@@ -601,17 +579,15 @@ def resolve_artifact_names(fn):
     # Also: it's lame that CPython accepts a dict-subclass for globals, but
     # only calls dict methods.  That would allow 'global' to pass through to
     # the func_globals.
-    def resolved(*args, **kwargs):
-        self = args[0]
-        context = dict(fn.func_globals)
-        for source in self._artifact_registries:
-            context.update(getattr(self, source))
-        # jython bug #1034
-        rebound = types.FunctionType(
-            fn.func_code, context, fn.func_name, fn.func_defaults,
-            fn.func_closure)
-        return rebound(*args, **kwargs)
-    return function_named(resolved, fn.func_name)
+    self = args[0]
+    context = dict(fn.func_globals)
+    for source in self._artifact_registries:
+        context.update(getattr(self, source))
+    # jython bug #1034
+    rebound = types.FunctionType(
+        fn.func_code, context, fn.func_name, fn.func_defaults,
+        fn.func_closure)
+    return rebound(*args, **kw)
 
 class adict(dict):
     """Dict keys available as attributes.  Shadows."""
