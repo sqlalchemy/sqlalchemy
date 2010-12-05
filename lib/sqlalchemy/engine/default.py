@@ -556,8 +556,6 @@ class DefaultExecutionContext(base.ExecutionContext):
     def connection(self):
         return self._connection._branch()
 
-
-
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
 

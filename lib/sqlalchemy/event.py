@@ -45,6 +45,20 @@ class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with 
     listener collections.
     
+    Classes which define a "dispatch" member will return a 
+    non-instantiated :class:`._Dispatch` subclass when the member 
+    is accessed at the class level.  When the "dispatch" member is 
+    accessed at the instance level of its owner, an instance
+    of the :class:`._Dispatch` class is returned.
+    
+    A :class:`._Dispatch` class is generated for each :class:`.Events`
+    class defined, by the :func:`._create_dispatcher_class` function.  
+    The original :class:`.Events` classes remain untouched.   
+    This decouples the construction of :class:`.Events` subclasses from
+    the implementation used by the event internals, and allows 
+    inspecting tools like Sphinx to work in an unsurprising
+    way against the public API.
+    
     """
     
     def __init__(self, parent_cls):
@@ -75,6 +89,9 @@ class _EventMeta(type):
         return type.__init__(cls, classname, bases, dict_)
     
 def _create_dispatcher_class(cls, classname, bases, dict_):
+    """Create a :class:`._Dispatch` class corresponding to an 
+    :class:`.Events` class."""
+    
     # there's all kinds of ways to do this,
     # i.e. make a Dispatch class that shares the 'listen' method
     # of the Event class, this is the straight monkeypatch.
@@ -130,7 +147,7 @@ class Events(object):
                 getattr(cls.dispatch, attr).clear()
                 
 class _DispatchDescriptor(object):
-    """Class-level attributes on _Dispatch classes."""
+    """Class-level attributes on :class:`._Dispatch` classes."""
     
     def __init__(self, fn):
         self.__name__ = fn.__name__
@@ -162,8 +179,9 @@ class _DispatchDescriptor(object):
         return result
 
 class _ListenerCollection(object):
-    """Represent a collection of listeners linked
-    to an instance of _Dispatch.
+    """Instance-level attributes on instances of :class:`._Dispatch`.
+    
+    Represents a collection of listeners.
     
     """
 

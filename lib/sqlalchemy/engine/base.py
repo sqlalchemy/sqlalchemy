@@ -1225,13 +1225,14 @@ class Connection(Connectable):
     def _execute_function(self, func, multiparams, params):
         """Execute a sql.FunctionElement object."""
 
-        return self._execute_clauseelement(func.select(), multiparams, params)
+        return self._execute_clauseelement(func.select(), 
+                                            multiparams, params)
 
     def _execute_default(self, default, multiparams, params):
         """Execute a schema.ColumnDefault object."""
         
         try:
-            dialect = self.engine.dialect
+            dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
                                 dialect, self)
         except Exception, e:
@@ -1242,21 +1243,18 @@ class Connection(Connectable):
         if self.should_close_with_result:
             self.close()
         return ret
-
+    
     def _execute_ddl(self, ddl, params, multiparams):
         """Execute a schema.DDL object."""
         
-        try:
-            dialect = self.engine.dialect
-            context = dialect.execution_ctx_cls.\
-                        _init_ddl(
-                                    dialect, 
-                                    self, 
-                                    ddl.compile(dialect=self.dialect))
-        except Exception, e:
-            self._handle_dbapi_exception(e, None, None, None, None)
-            raise
-        return self.__execute_context(context)
+        dialect = self.dialect
+        return self._execute_context(
+            dialect,
+            dialect.execution_ctx_cls._init_ddl,
+            None, 
+            None,
+            ddl.compile(dialect=dialect)
+        )
 
     def _execute_clauseelement(self, elem, multiparams, params):
         """Execute a sql.ClauseElement object."""
@@ -1267,7 +1265,7 @@ class Connection(Connectable):
         else:
             keys = []
 
-        dialect = self.engine.dialect
+        dialect = self.dialect
         if 'compiled_cache' in self._execution_options:
             key = dialect, elem, tuple(keys), len(params) > 1
             if key in self._execution_options['compiled_cache']:
@@ -1282,57 +1280,103 @@ class Connection(Connectable):
                             dialect=dialect, column_keys=keys, 
                             inline=len(params) > 1)
 
-        try:
-            context = dialect.execution_ctx_cls.\
-                            _init_compiled(dialect, self, compiled_sql, params)
-        except Exception, e:
-            self._handle_dbapi_exception(e, None, params, None, None)
-            raise
-        return self.__execute_context(context)
+
+        return self._execute_context(
+            dialect,
+            dialect.execution_ctx_cls._init_compiled,
+            None, 
+            params,
+            compiled_sql, params
+        )
 
     def _execute_compiled(self, compiled, multiparams, params):
         """Execute a sql.Compiled object."""
 
-        try:
-            dialect = self.engine.dialect
-            parameters=self.__distill_params(multiparams, params)
-            context = dialect.execution_ctx_cls.\
-                            _init_compiled(dialect, self, 
-                                            compiled, parameters)
-        except Exception, e:
-            self._handle_dbapi_exception(e, None, parameters, None, None)
-            raise
-        return self.__execute_context(context)
+        dialect = self.dialect
+        parameters=self.__distill_params(multiparams, params)
+        return self._execute_context(
+            dialect,
+            dialect.execution_ctx_cls._init_compiled,
+            None, 
+            parameters,
+            compiled, parameters
+        )
 
     def _execute_text(self, statement, multiparams, params):
         """Execute a string SQL statement."""
         
+        dialect = self.dialect
         parameters = self.__distill_params(multiparams, params)
-        try:
-            dialect = self.engine.dialect
-            context = dialect.execution_ctx_cls.\
-                            _init_statement(dialect, self, 
-                                            statement, parameters)
-        except Exception, e:
-            self._handle_dbapi_exception(e, statement, parameters, 
-                                            None, None)
-            raise
-        return self.__execute_context(context)
+        return self._execute_context(
+            dialect,
+            dialect.execution_ctx_cls._init_statement,
+            statement, 
+            parameters,
+            statement, parameters
+        )
 
-    def __execute_context(self, context):
+    _before_cursor_execute = None
+    _after_cursor_execute = None
+
+    def _execute_context(self, dialect, constructor, 
+                                    statement, parameters, *args):
+        """Create an :class:`.ExecutionContext` and execute, returning
+        a :class:`.ResultProxy`."""
+        
+        try:
+            context = constructor(dialect, self, *args)
+        except Exception, e:
+            self._handle_dbapi_exception(e, 
+                        statement, parameters, 
+                        None, None)
+            raise
+
         if context.compiled:
             context.pre_exec()
             
-        if context.executemany:
-            self._cursor_executemany(
-                            context.cursor, 
-                            context.statement, 
-                            context.parameters, context=context)
-        else:
-            self._cursor_execute(
-                            context.cursor, 
-                            context.statement, 
-                            context.parameters[0], context=context)
+        cursor, statement, parameters = context.cursor, \
+                                        context.statement, \
+                                        context.parameters
+                                        
+        if not context.executemany:
+            parameters = parameters[0]
+                
+        if self._before_cursor_execute:
+            statement, parameters = self._before_cursor_execute(
+                                            context,
+                                            cursor, 
+                                            statement, 
+                                            parameters)
+
+        if self._echo:
+            self.engine.logger.info(statement)
+            self.engine.logger.info("%r", parameters)
+        try:
+            if context.executemany:
+                self.dialect.do_executemany(
+                                    cursor, 
+                                    statement, 
+                                    parameters, 
+                                    context)
+            else:
+                self.dialect.do_execute(
+                                    cursor, 
+                                    statement, 
+                                    parameters, 
+                                    context)
+        except Exception, e:
+            self._handle_dbapi_exception(
+                                e, 
+                                statement, 
+                                parameters, 
+                                cursor, 
+                                context)
+            raise
+
+
+        if self._after_cursor_execute:
+            self._after_cursor_execute(context, cursor, 
+                                        statement, parameters)
             
         if context.compiled:
             context.post_exec()
@@ -1342,16 +1386,56 @@ class Connection(Connectable):
         
         # create a resultproxy, get rowcount/implicit RETURNING
         # rows, close cursor if no further results pending
-        r = context.get_result_proxy()._autoclose()
+        result = context.get_result_proxy()
 
+        if context.isinsert:
+            if context._is_implicit_returning:
+                context._fetch_implicit_returning(result)
+                result.close(_autoclose_connection=False)
+            elif not context._is_explicit_returning:
+                result.close(_autoclose_connection=False)
+        elif result._metadata is None:
+            # no results, get rowcount 
+            # (which requires open cursor on some drivers
+            # such as kintersbasdb, mxodbc),
+            result.rowcount
+            result.close(_autoclose_connection=False)
+        
         if self.__transaction is None and context.should_autocommit:
             self._commit_impl()
         
-        if r.closed and self.should_close_with_result:
+        if result.closed and self.should_close_with_result:
             self.close()
         
-        return r
-    
+        return result
+
+    def _cursor_execute(self, cursor, statement, parameters):
+        """Execute a statement + params on the given cursor.
+
+        Adds appropriate logging and exception handling.
+        
+        This method is used by DefaultDialect for special-case
+        executions, such as for sequences and column defaults.   
+        The path of statement execution in the majority of cases 
+        terminates at _execute_context().
+        
+        """
+        if self._echo:
+            self.engine.logger.info(statement)
+            self.engine.logger.info("%r", parameters)
+        try:
+            self.dialect.do_execute(
+                                cursor, 
+                                statement, 
+                                parameters)
+        except Exception, e:
+            self._handle_dbapi_exception(
+                                e, 
+                                statement, 
+                                parameters, 
+                                cursor)
+            raise
+
     def _safe_close_cursor(self, cursor):
         """Close the given cursor, catching exceptions
         and turning into log warnings.
@@ -1418,45 +1502,6 @@ class Connection(Connectable):
             
         finally:
             del self._reentrant_error
-
-    def _cursor_execute(self, cursor, statement, parameters, context=None):
-        if self._echo:
-            self.engine.logger.info(statement)
-            self.engine.logger.info("%r", parameters)
-        try:
-            self.dialect.do_execute(
-                                cursor, 
-                                statement, 
-                                parameters, 
-                                context)
-        except Exception, e:
-            self._handle_dbapi_exception(
-                                e, 
-                                statement, 
-                                parameters, 
-                                cursor, 
-                                context)
-            raise
-
-    def _cursor_executemany(self, cursor, statement, 
-                                        parameters, context=None):
-        if self._echo:
-            self.engine.logger.info(statement)
-            self.engine.logger.info("%r", parameters)
-        try:
-            self.dialect.do_executemany(
-                                cursor, 
-                                statement, 
-                                parameters, 
-                                context)
-        except Exception, e:
-            self._handle_dbapi_exception(
-                                e, 
-                                statement, 
-                                parameters, 
-                                cursor, 
-                                context)
-            raise
 
     # poor man's multimethod/generic function thingy
     executors = {
@@ -1662,7 +1707,6 @@ class Engine(Connectable, log.Identified):
         self.engine = self
         log.instance_logger(self, echoflag=echo)
         if proxy:
-#            util.warn_deprecated("The 'proxy' argument to create_engine() is deprecated.  Use event.listen().")
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
             self.update_execution_options(**execution_options)
@@ -1941,95 +1985,69 @@ def _listener_connection_cls(cls, dispatch):
                                     *(multiparams or []), 
                                     **(params or {}))
 
-        def _cursor_execute(self, cursor, statement, 
-                                    parameters, context=None):
+        def _before_cursor_execute(self, context, cursor, 
+                                            statement, parameters):
             for fn in dispatch.on_before_cursor_execute:
                 statement, parameters = \
                             fn(self, cursor, statement, parameters, 
-                                            context, False)
-            
-            ret = super(EventListenerConnection, self).\
-                        _cursor_execute(cursor, statement, parameters, 
-                                            context)
-
-            for fn in dispatch.on_after_cursor_execute:
-                fn(self, cursor, statement, parameters, context, False)
-            
-            return ret
-            
-        def _cursor_executemany(self, cursor, statement, 
-                                    parameters, context=None):
-            for fn in dispatch.on_before_cursor_execute:
-                statement, parameters = \
-                            fn(self, cursor, statement, parameters, 
-                                        context, True)
-
-            ret = super(EventListenerConnection, self).\
-                        _cursor_executemany(cursor, statement, 
-                                        parameters, context)
-
-            for fn in dispatch.on_after_cursor_execute:
-                fn(self, cursor, statement, parameters, context, True)
-            
-            return ret
+                                        context, context.executemany)
+            return statement, parameters
+        
+        def _after_cursor_execute(self, context, cursor, 
+                                            statement, parameters):
+            dispatch.on_after_cursor_execute(self, cursor, 
+                                                statement, 
+                                                parameters, 
+                                                context, 
+                                                context.executemany)
             
         def _begin_impl(self):
-            for fn in dispatch.on_begin:
-                fn(self)
+            dispatch.on_begin(self)
             return super(EventListenerConnection, self).\
                         _begin_impl()
             
         def _rollback_impl(self):
-            for fn in dispatch.on_rollback:
-                fn(self)
+            dispatch.on_rollback(self)
             return super(EventListenerConnection, self).\
                         _rollback_impl()
 
         def _commit_impl(self):
-            for fn in dispatch.on_commit:
-                fn(self)
+            dispatch.on_commit(self)
             return super(EventListenerConnection, self).\
                         _commit_impl()
 
         def _savepoint_impl(self, name=None):
-            for fn in dispatch.on_savepoint:
-                fn(self, name)
+            dispatch.on_savepoint(self, name)
             return super(EventListenerConnection, self).\
                         _savepoint_impl(name=name)
                 
         def _rollback_to_savepoint_impl(self, name, context):
-            for fn in dispatch.on_rollback_savepoint:
-                fn(self, name, context)
+            dispatch.on_rollback_savepoint(self, name, context)
             return super(EventListenerConnection, self).\
                         _rollback_to_savepoint_impl(name, context)
             
         def _release_savepoint_impl(self, name, context):
-            for fn in dispatch.on_release_savepoint:
-                fn(self, name, context)
+            dispatch.on_release_savepoint(self, name, context)
             return super(EventListenerConnection, self).\
                         _release_savepoint_impl(name, context)
             
         def _begin_twophase_impl(self, xid):
-            for fn in dispatch.on_begin_twophase:
-                fn(self, xid)
+            dispatch.on_begin_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _begin_twophase_impl(xid)
 
         def _prepare_twophase_impl(self, xid):
-            for fn in dispatch.on_prepare_twophase:
-                fn(self, xid)
+            dispatch.on_prepare_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _prepare_twophase_impl(xid)
 
         def _rollback_twophase_impl(self, xid, is_prepared):
-            for fn in dispatch.on_rollback_twophase:
-                fn(self, xid)
+            dispatch.on_rollback_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _rollback_twophase_impl(xid, is_prepared)
 
         def _commit_twophase_impl(self, xid, is_prepared):
-            for fn in dispatch.on_commit_twophase:
-                fn(self, xid, is_prepared)
+            dispatch.on_commit_twophase(self, xid, is_prepared)
             return super(EventListenerConnection, self).\
                         _commit_twophase_impl(xid, is_prepared)
 
@@ -2203,7 +2221,10 @@ class ResultMetaData(object):
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
 
-        for i, (colname, coltype) in enumerate(m[0:2] for m in metadata):
+        for i, rec in enumerate(metadata):
+            colname = rec[0]
+            coltype = rec[1]
+            
             if dialect.description_encoding:
                 colname = colname.decode(dialect.description_encoding)
 
@@ -2288,9 +2309,6 @@ class ResultMetaData(object):
                 return True
             except exc.NoSuchColumnError:
                 return False
-
-    def __len__(self):
-        return len(self.keys)
 
     def __getstate__(self):
         return {
@@ -2404,27 +2422,6 @@ class ResultProxy(object):
         
         return self._saved_cursor.description
             
-    def _autoclose(self):
-        """called by the Connection to autoclose cursors that have no pending
-        results beyond those used by an INSERT/UPDATE/DELETE with no explicit
-        RETURNING clause.
-        
-        """
-        if self.context.isinsert:
-            if self.context._is_implicit_returning:
-                self.context._fetch_implicit_returning(self)
-                self.close(_autoclose_connection=False)
-            elif not self.context._is_explicit_returning:
-                self.close(_autoclose_connection=False)
-        elif self._metadata is None:
-            # no results, get rowcount 
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc),
-            self.rowcount
-            self.close(_autoclose_connection=False)
-        
-        return self
-    
     def close(self, _autoclose_connection=True):
         """Close this ResultProxy.
 
