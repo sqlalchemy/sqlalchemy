@@ -325,10 +325,10 @@ binary in CHAR(16) if desired::
                 return str(value)
             else:
                 if not isinstance(value, uuid.UUID):
-                    return "%x" % uuid.UUID(value)
+                    return "%.32x" % uuid.UUID(value)
                 else:
                     # hexstring
-                    return "%x" % value
+                    return "%.32x" % value
 
         def process_result_value(self, value, dialect):
             if value is None:

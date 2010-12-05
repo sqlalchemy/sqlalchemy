@@ -1,4 +1,3 @@
-import testenv; testenv.simple_setup()
 import sys, time
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -87,7 +86,7 @@ def all():
 
         run_profiled(sa_profiled_insert_many,
                      'SQLAlchemy bulk insert/select, profiled',
-                     1000)
+                     50000)
 
         print "\nIndividual INSERTS via execute():\n"
 
@@ -101,7 +100,7 @@ def all():
 
         run_profiled(sa_profiled_insert,
                      'SQLAlchemy individual insert/select, profiled',
-                     1000)
+                     50000)
 
     finally:
         metadata.drop_all()

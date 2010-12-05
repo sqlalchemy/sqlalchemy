@@ -840,7 +840,7 @@ class DistinctPKTest(_base.MappedTest):
         mapper(Employee, employee_table, inherits=person_mapper,
                         properties={'pid':person_table.c.id, 
                                     'eid':employee_table.c.id})
-        self._do_test(True)
+        self._do_test(False)
 
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)
@@ -1337,21 +1337,25 @@ class OptimizedLoadTest(_base.MappedTest):
             pass
         class Sub(Base):
             pass
-        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
+        mapper(Base, base, polymorphic_on=base.c.type, 
+                            polymorphic_identity='base')
         m = mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
         
         s1 = Sub()
-        assert m._optimized_get_statement(attributes.instance_state(s1), ['counter2']) is None
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is None
         
         # loads s1.id as None
         eq_(s1.id, None)
         
         # this now will come up with a value of None for id - should reject
-        assert m._optimized_get_statement(attributes.instance_state(s1), ['counter2']) is None
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is None
         
         s1.id = 1
         attributes.instance_state(s1).commit_all(s1.__dict__, None)
-        assert m._optimized_get_statement(attributes.instance_state(s1), ['counter2']) is not None
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is not None
         
     @testing.resolve_artifact_names
     def test_load_expired_on_pending_twolevel(self):
@@ -1362,7 +1366,8 @@ class OptimizedLoadTest(_base.MappedTest):
         class SubSub(Sub):
             pass
             
-        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
+        mapper(Base, base, polymorphic_on=base.c.type, 
+                    polymorphic_identity='base')
         mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
         mapper(SubSub, subsub, inherits=Sub, polymorphic_identity='subsub')
         sess = Session()
@@ -1372,11 +1377,13 @@ class OptimizedLoadTest(_base.MappedTest):
                 testing.db,
                 sess.flush,
                 CompiledSQL(
-                    "INSERT INTO base (data, type, counter) VALUES (:data, :type, :counter)",
+                    "INSERT INTO base (data, type, counter) VALUES "
+                    "(:data, :type, :counter)",
                     [{'data':'s1','type':'subsub','counter':1}]
                 ),
                 CompiledSQL(
-                    "INSERT INTO sub (id, sub, counter) VALUES (:id, :sub, :counter)",
+                    "INSERT INTO sub (id, sub, counter) VALUES "
+                    "(:id, :sub, :counter)",
                     lambda ctx:[{'counter': 1, 'sub': None, 'id': s1.id}]
                 ),
                 CompiledSQL(
@@ -1397,11 +1404,13 @@ class PKDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         parents = Table('parents', metadata,
-                           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                           Column('id', Integer, primary_key=True, 
+                                    test_needs_autoincrement=True),
                            Column('name', String(60)))
                            
         children = Table('children', metadata,
-                        Column('id', Integer, ForeignKey('parents.id'), primary_key=True),
+                        Column('id', Integer, ForeignKey('parents.id'), 
+                                    primary_key=True),
                         Column('type', Integer,primary_key=True),
                         Column('name', String(60)))
 

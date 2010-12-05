@@ -771,7 +771,10 @@ class PGDialect(default.DefaultDialect):
         self.supports_native_enum = self.server_version_info >= (8, 3)
         if not self.supports_native_enum:
             self.colspecs = self.colspecs.copy()
-            del self.colspecs[ENUM]
+            # pop base Enum type
+            self.colspecs.pop(sqltypes.Enum, None)
+            # psycopg2, others may have placed ENUM here as well
+            self.colspecs.pop(ENUM, None)
 
     def on_connect(self):
         if self.isolation_level is not None:

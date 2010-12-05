@@ -1288,9 +1288,11 @@ class OptionsTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_eager_degrade(self):
-        """An eager relationship automatically degrades to a lazy relationship if eager columns are not available"""
+        """An eager relationship automatically degrades to a lazy relationship 
+        if eager columns are not available"""
         mapper(User, users, properties=dict(
-            addresses = relationship(mapper(Address, addresses), lazy='joined')))
+            addresses = relationship(mapper(Address, addresses), 
+                                lazy='joined', order_by=addresses.c.id)))
 
         sess = create_session()
         # first test straight eager load, 1 statement

@@ -43,8 +43,23 @@ CHANGES
     a placeholder flag for forwards compatibility,
     as it will be needed in 0.7 for composites.
     [ticket:1976]
-    
+
+  - Query.get() will raise if the number of params
+    in a composite key is too large, as well as too 
+    small. [ticket:1977]
+
+  - Backport of "optimized get" fix from 0.7,
+    improves the generation of joined-inheritance
+    "load expired row" behavior.  [ticket:1992]
+
 - sql
+  - Fixed operator precedence rules for multiple
+    chains of a single non-associative operator.
+    I.e. "x - (y - z)" will compile as "x - (y - z)"
+    and not "x - y - z".  Also works with labels,
+    i.e. "x - (y - z).label('foo')"
+    [ticket:1984]
+    
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
     in declarative mixins.  [ticket:1967]
@@ -60,6 +75,9 @@ CHANGES
     [ticket:1871]
 
 - postgresql
+  - Single element tuple expressions inside an IN clause
+    parenthesize correctly, also from [ticket:1984]
+    
   - Ensured every numeric, float, int code, scalar + array,
     are recognized by psycopg2 and pg8000's "numeric" 
     base type. [ticket:1955]
@@ -68,7 +86,11 @@ CHANGES
     and return values as Python UUID() objects rather than
     strings.  Currently, the UUID type is only known to 
     work with psycopg2.  [ticket:1956]
-        
+
+  - Fixed bug whereby KeyError would occur with non-ENUM 
+    supported PG versions after a pool dispose+recreate
+    would occur, [ticket:1989]
+    
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 
     has_table() property works again.  Regression from
@@ -98,6 +120,18 @@ CHANGES
 - declarative
   - An error is raised if __table_args__ is not in tuple
     or dict format, and is not None.  [ticket:1972]
+
+- sqlsoup
+  - Added "map_to()" method to SqlSoup, which is a "master"
+    method which accepts explicit arguments for each aspect of
+    the selectable and mapping, including a base class per
+    mapping. [ticket:1975]
+
+  - Mapped selectables used with the map(), with_labels(),
+    join() methods no longer put the given argument into the
+    internal "cache" dictionary.  Particularly since the
+    join() and select() objects are created in the method
+    itself this was pretty much a pure memory leaking behavior.
     
 0.6.5
 =====

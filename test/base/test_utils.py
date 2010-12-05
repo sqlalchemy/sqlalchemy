@@ -149,8 +149,6 @@ class ColumnCollectionTest(TestBase):
         assert (cc1==cc2).compare(c1 == c2)
         assert not (cc1==cc3).compare(c2 == c3)
 
-
-
 class LRUTest(TestBase):
 
     def test_lru(self):                

@@ -1926,6 +1926,12 @@ class Query(object):
             q = self._clone()
 
         if ident is not None:
+            if len(ident) != len(mapper.primary_key):
+                raise sa_exc.InvalidRequestError(
+                "Incorrect number of values in identifier to formulate "
+                "primary key for query.get(); primary key columns are %s" %
+                ','.join("'%s'" % c for c in mapper.primary_key))
+
             (_get_clause, _get_params) = mapper._get_clause
             
             # None present in ident - turn those comparisons
@@ -1946,12 +1952,6 @@ class Query(object):
                 for id_val, primary_key in zip(ident, mapper.primary_key)
             ])
 
-            if len(params) != len(mapper.primary_key):
-                raise sa_exc.InvalidRequestError(
-                "Incorrect number of values in identifier to formulate "
-                "primary key for query.get(); primary key columns are %s" %
-                ','.join("'%s'" % c for c in mapper.primary_key))
-                        
             q._params = params
 
         if lockmode is not None:
