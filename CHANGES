@@ -69,6 +69,9 @@ CHANGES
     str() on values.
     
 - engine
+  - Fixed memory leak in C version of Decimal result
+    processor.  [ticket:1978]
+    
   - Implemented sequence check capability for the C 
     version of RowProxy, as well as 2.7 style 
     "collections.Sequence" registration for RowProxy.
