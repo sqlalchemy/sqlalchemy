@@ -53,7 +53,7 @@ class ExecutionTest(TestBase):
         c.execute("select 1")
         
         @profiling.function_call_count(36, versions={'2.6':35, '2.5':35, 
-                                                    '2.4':21}, 
+                                                    '2.4':21, '3':34}, 
                                             variance=.05)
         def go():
             c.execute("select 1")
@@ -66,7 +66,7 @@ class ExecutionTest(TestBase):
         e.execute("select 1")
 
         @profiling.function_call_count(59, versions={'2.4':41, '2.5':58, 
-                                                    '2.6':58}, 
+                                                    '2.6':58, '3':57}, 
                                             variance=.05)
         def go():
             e.execute("select 1")

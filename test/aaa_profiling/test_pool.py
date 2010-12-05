@@ -20,7 +20,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count(72, {'2.4': 63, '2.7':67, 
                                             '2.7+cextension':67,
-                                            '3.0':65, '3.1':65},
+                                            '3.0':73, '3.1':73},
                                             variance=.10)
     def test_first_connect(self):
         conn = pool.connect()
