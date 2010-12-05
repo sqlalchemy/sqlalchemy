@@ -3,7 +3,8 @@ from sqlalchemy.test.testing import eq_, assert_raises, assert_raises_message
 from sqlalchemy import *
 from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
-from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import exc as orm_exc, attributes
+from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 
 from sqlalchemy.test import testing, engines
 from sqlalchemy.util import function_named
@@ -1115,22 +1116,29 @@ class OptimizedLoadTest(_base.MappedTest):
     
     @classmethod
     def define_tables(cls, metadata):
-        global base, sub, with_comp
-        base = Table('base', metadata,
+        Table('base', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50)),
-            Column('type', String(50))
+            Column('type', String(50)),
+            Column('counter', Integer, server_default="1")
         )
-        sub = Table('sub', metadata, 
+        Table('sub', metadata, 
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
-            Column('sub', String(50))
+            Column('sub', String(50)),
+            Column('counter', Integer, server_default="1"),
+            Column('counter2', Integer, server_default="1")
         )
-        with_comp = Table('with_comp', metadata,
+        Table('subsub', metadata,
+            Column('id', Integer, ForeignKey('sub.id'), primary_key=True),
+            Column('counter2', Integer, server_default="1")
+        )
+        Table('with_comp', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
             Column('a', String(10)),
             Column('b', String(10))
         )
     
+    @testing.resolve_artifact_names
     def test_optimized_passes(self):
         """"test that the 'optimized load' routine doesn't crash when 
         a column in the join condition is not available."""
@@ -1160,6 +1168,7 @@ class OptimizedLoadTest(_base.MappedTest):
         s1 = sess.query(Base).first()
         assert s1.sub == 's1sub'
 
+    @testing.resolve_artifact_names
     def test_column_expression(self):
         class Base(_base.BasicEntity):
             pass
@@ -1177,6 +1186,7 @@ class OptimizedLoadTest(_base.MappedTest):
         s1 = sess.query(Base).first()
         assert s1.concat == 's1sub|s1sub'
 
+    @testing.resolve_artifact_names
     def test_column_expression_joined(self):
         class Base(_base.ComparableEntity):
             pass
@@ -1206,6 +1216,7 @@ class OptimizedLoadTest(_base.MappedTest):
             ]
         )
 
+    @testing.resolve_artifact_names
     def test_composite_column_joined(self):
         class Base(_base.ComparableEntity):
             pass
@@ -1234,17 +1245,118 @@ class OptimizedLoadTest(_base.MappedTest):
         assert s2test.comp
         eq_(s1test.comp, Comp('ham', 'cheese'))
         eq_(s2test.comp, Comp('bacon', 'eggs'))
+    
+    @testing.resolve_artifact_names
+    def test_load_expired_on_pending(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub(Base):
+            pass
+        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='base')
+        mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
+        sess = Session()
+        s1 = Sub(data='s1')
+        sess.add(s1)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "INSERT INTO base (data, type) VALUES (:data, :type)",
+                    [{'data':'s1','type':'sub'}]
+                ),
+                CompiledSQL(
+                    "SELECT base.counter AS base_counter, "
+                    "sub.counter AS sub_counter FROM base JOIN sub ON base.id = "
+                    "sub.id WHERE base.id = :param_1",
+                    lambda ctx:{'param_1':s1.id}
+                ),
+                CompiledSQL(
+                    "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
+                    lambda ctx:{'id':s1.id, 'sub':None}
+                ),
+        )
+
+    @testing.resolve_artifact_names
+    def test_dont_generate_on_none(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub(Base):
+            pass
+        mapper(Base, base, polymorphic_on=base.c.type, 
+                            polymorphic_identity='base')
+        m = mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
+        
+        s1 = Sub()
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is None
+        
+        # loads s1.id as None
+        eq_(s1.id, None)
+        
+        # this now will come up with a value of None for id - should reject
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is None
+        
+        s1.id = 1
+        attributes.instance_state(s1).commit_all(s1.__dict__, None)
+        assert m._optimized_get_statement(attributes.instance_state(s1), 
+                                ['counter2']) is not None
+        
+    @testing.resolve_artifact_names
+    def test_load_expired_on_pending_twolevel(self):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub(Base):
+            pass
+        class SubSub(Sub):
+            pass
+            
+        mapper(Base, base, polymorphic_on=base.c.type, 
+                    polymorphic_identity='base')
+        mapper(Sub, sub, inherits=Base, polymorphic_identity='sub')
+        mapper(SubSub, subsub, inherits=Sub, polymorphic_identity='subsub')
+        sess = Session()
+        s1 = SubSub(data='s1', counter=1)
+        sess.add(s1)
+        self.assert_sql_execution(
+                testing.db,
+                sess.flush,
+                CompiledSQL(
+                    "INSERT INTO base (data, type, counter) VALUES "
+                    "(:data, :type, :counter)",
+                    [{'data':'s1','type':'subsub','counter':1}]
+                ),
+                CompiledSQL(
+                    "INSERT INTO sub (id, sub, counter) VALUES "
+                    "(:id, :sub, :counter)",
+                    lambda ctx:[{'counter': 1, 'sub': None, 'id': s1.id}]
+                ),
+                CompiledSQL(
+                    "SELECT sub.counter2 AS sub_counter2, "
+                    "subsub.counter2 AS subsub_counter2 FROM base "
+                    "JOIN sub ON base.id = sub.id JOIN "
+                    "subsub ON sub.id = subsub.id WHERE base.id = :param_1",
+                    lambda ctx:{u'param_1': s1.id}
+                ),
+                CompiledSQL(
+                    "INSERT INTO subsub (id) VALUES (:id)",
+                    lambda ctx:{'id':s1.id}
+                ),
+        )
+        
         
         
 class PKDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         parents = Table('parents', metadata,
-                           Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                           Column('id', Integer, primary_key=True, 
+                                    test_needs_autoincrement=True),
                            Column('name', String(60)))
                            
         children = Table('children', metadata,
-                        Column('id', Integer, ForeignKey('parents.id'), primary_key=True),
+                        Column('id', Integer, ForeignKey('parents.id'), 
+                                    primary_key=True),
                         Column('type', Integer,primary_key=True),
                         Column('name', String(60)))
 

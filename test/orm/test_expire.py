@@ -9,7 +9,7 @@ from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
-                        strategies, state, lazyload, backref
+                        strategies, state, lazyload, backref, Session
 from test.orm import _base, _fixtures
 
 
@@ -240,7 +240,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'name' not in u.__dict__
         sess.add(u)
         assert_raises(sa_exc.InvalidRequestError, getattr, u, 'name')
-        
+
         
     @testing.resolve_artifact_names
     def test_expire_preserves_changes(self):
@@ -886,7 +886,8 @@ class PolymorphicExpireTest(_base.MappedTest):
            Column('person_id', Integer, primary_key=True,
                   test_needs_autoincrement=True),
            Column('name', String(50)),
-           Column('type', String(30)))
+           Column('type', String(30)),
+           )
 
         engineers = Table('engineers', metadata,
            Column('person_id', Integer, ForeignKey('people.person_id'),
@@ -913,11 +914,15 @@ class PolymorphicExpireTest(_base.MappedTest):
             {'person_id':2, 'status':'new engineer'},
             {'person_id':3, 'status':'old engineer'},
         )
-
+    
+    @classmethod
     @testing.resolve_artifact_names
-    def test_poly_deferred(self):
+    def setup_mappers(cls):
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
+        
+    @testing.resolve_artifact_names
+    def test_poly_deferred(self):
 
         sess = create_session()
         [p1, e1, e2] = sess.query(Person).order_by(people.c.person_id).all()
@@ -952,6 +957,34 @@ class PolymorphicExpireTest(_base.MappedTest):
             assert e2.status == 'old engineer'
         self.assert_sql_count(testing.db, go, 2)
         eq_(Engineer.name.get_history(e1), (['new engineer name'],(), ['engineer1']))
+
+    @testing.resolve_artifact_names
+    def test_no_instance_key(self):
+        
+        sess = create_session()
+        e1 = sess.query(Engineer).get(2)
+
+        sess.expire(e1, attribute_names=['name'])
+        sess.expunge(e1)
+        attributes.instance_state(e1).key = None
+        assert 'name' not in e1.__dict__
+        sess.add(e1)
+        assert e1.name == 'engineer1'
+    
+    @testing.resolve_artifact_names
+    def test_no_instance_key(self):
+        # same as test_no_instance_key, but the PK columns
+        # are absent.  ensure an error is raised.
+        sess = create_session()
+        e1 = sess.query(Engineer).get(2)
+
+        sess.expire(e1, attribute_names=['name', 'person_id'])
+        sess.expunge(e1)
+        attributes.instance_state(e1).key = None
+        assert 'name' not in e1.__dict__
+        sess.add(e1)
+        assert_raises(sa_exc.InvalidRequestError, getattr, e1, 'name')
+
 
 class ExpiredPendingTest(_fixtures.FixtureTest):
     run_define_tables = 'once'

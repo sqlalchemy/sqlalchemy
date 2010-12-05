@@ -47,7 +47,11 @@ CHANGES
   - Query.get() will raise if the number of params
     in a composite key is too large, as well as too 
     small. [ticket:1977]
-    
+
+  - Backport of "optimized get" fix from 0.7,
+    improves the generation of joined-inheritance
+    "load expired row" behavior.  [ticket:1992]
+
 - sql
   - Fixed operator precedence rules for multiple
     chains of a single non-associative operator.

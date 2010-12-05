@@ -1322,10 +1322,10 @@ class Mapper(object):
         """
         props = self._props
         
-        tables = set(chain(*
-                        (sqlutil.find_tables(props[key].columns[0],
-                        check_columns=True) 
-                        for key in attribute_names)
+        tables = set(chain(
+                        *[sqlutil.find_tables(c, check_columns=True) 
+                        for key in attribute_names
+                        for c in props[key].columns]
                     ))
         
         if self.base_mapper.local_table in tables:
@@ -1344,7 +1344,7 @@ class Mapper(object):
                 leftval = self._get_committed_state_attr_by_column(
                                                     state, state.dict, 
                                                     leftcol, passive=True)
-                if leftval is attributes.PASSIVE_NO_RESULT:
+                if leftval is attributes.PASSIVE_NO_RESULT or leftval is None:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval,
                                             type_=binary.right.type)
@@ -1352,7 +1352,7 @@ class Mapper(object):
                 rightval = self._get_committed_state_attr_by_column(
                                                     state, state.dict, 
                                                     rightcol, passive=True)
-                if rightval is attributes.PASSIVE_NO_RESULT:
+                if rightval is attributes.PASSIVE_NO_RESULT or rightval is None:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval,
                                             type_=binary.right.type)
@@ -2442,6 +2442,7 @@ def _load_scalar_attributes(state, attribute_names):
     has_key = state.has_identity
     
     result = False
+
     if mapper.inherits and not mapper.concrete:
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
