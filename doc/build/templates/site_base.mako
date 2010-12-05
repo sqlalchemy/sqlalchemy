@@ -7,6 +7,10 @@
 </%text>
 
 <div style="text-align:right">
+<b>Jump to Version:</b> <a href="/docs/07/">0.7</a> | <a href="/docs/06/">0.6</a> | <a href="/docs/05/">0.5</a>
+</div>
+
+<div style="text-align:right">
 <b>PDF Download:</b> <a href="${pathto('sqlalchemy_' + release.replace('.', '_') + '.pdf', 1)}">download</a>
 </div>
 
