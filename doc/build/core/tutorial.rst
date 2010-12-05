@@ -53,13 +53,13 @@ Version Check
 =============
 
 
-A quick check to verify that we are on at least **version 0.6** of SQLAlchemy:
+A quick check to verify that we are on at least **version 0.7** of SQLAlchemy:
 
 .. sourcecode:: pycon+sql
 
     >>> import sqlalchemy
     >>> sqlalchemy.__version__ # doctest:+SKIP
-    0.6.0
+    0.7.0
 
 Connecting
 ==========

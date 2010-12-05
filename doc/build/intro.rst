@@ -96,15 +96,15 @@ SQLAlchemy is designed to operate with a `DB-API <http://www.python.org/doc/peps
 Checking the Installed SQLAlchemy Version
 =========================================
 
-This documentation covers SQLAlchemy version 0.6.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
+This documentation covers SQLAlchemy version 0.7.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
 
 .. sourcecode:: python+sql
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     0.6.0
+     0.7.0
 
-0.5 to 0.6 Migration
+0.6 to 0.7 Migration
 =====================
 
-Notes on what's changed from 0.5 to 0.6 is available on the SQLAlchemy wiki at `06Migration <http://www.sqlalchemy.org/trac/wiki/06Migration>`_.
+Notes on what's changed from 0.6 to 0.7 is available on the SQLAlchemy wiki at `07Migration <http://www.sqlalchemy.org/trac/wiki/07Migration>`_.

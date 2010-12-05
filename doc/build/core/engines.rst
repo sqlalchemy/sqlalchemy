@@ -43,7 +43,7 @@ SQLAlchemy includes many :class:`~sqlalchemy.engine.base.Dialect` implementation
 backends; each is described as its own package in the :ref:`sqlalchemy.dialects_toplevel` package.  A 
 SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed.
 
-The table below summarizes the state of DBAPI support in SQLAlchemy 0.6.  The values 
+The table below summarizes the state of DBAPI support in SQLAlchemy 0.7.  The values 
 translate as:
 
 * yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.   
