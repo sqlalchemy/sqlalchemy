@@ -61,6 +61,8 @@ def clear_managers():
 class Pool(log.Identified):
     """Abstract base class for connection pools."""
 
+    _no_finalize = False
+    
     def __init__(self, 
                     creator, recycle=-1, echo=None, 
                     use_threadlocal=False,
@@ -226,18 +228,12 @@ class Pool(log.Identified):
         has its ``close()`` method called.
         
         """
-        if self._use_threadlocal and hasattr(self._threadconns, "current"):
-            del self._threadconns.current
+        if self._use_threadlocal:
+            try:
+                del self._threadconns.current
+            except AttributeError:
+                pass
         self._do_return_conn(record)
-
-    def _get(self):
-        """Return a non-instrumented DBAPI connection from this :class:`.Pool`.
-        
-        This is called by ConnectionRecord in order to get its DBAPI 
-        resource.
-        
-        """
-        return self._do_get()
 
     def _do_get(self):
         """Implementation for :meth:`get`, supplied by subclasses."""
@@ -324,12 +320,14 @@ class _ConnectionRecord(object):
             raise
 
 
-def _finalize_fairy(connection, connection_record, pool, ref=None):
+def _finalize_fairy(connection, connection_record, pool, ref, echo):
     _refs.discard(connection_record)
+    
+    if pool._no_finalize:
+        return
         
     if ref is not None and \
-                (connection_record.fairy is not ref or 
-                isinstance(pool, AssertionPool)):
+                connection_record.fairy is not ref:
         return
 
     if connection is not None:
@@ -347,7 +345,9 @@ def _finalize_fairy(connection, connection_record, pool, ref=None):
                 
     if connection_record is not None:
         connection_record.fairy = None
-        pool.logger.debug("Connection %r being returned to pool", connection)
+        if echo:
+            pool.logger.debug("Connection %r being returned to pool", 
+                                    connection)
         if pool.dispatch.on_checkin:
             pool.dispatch.on_checkin(connection, connection_record)
         pool._return_conn(connection_record)
@@ -359,17 +359,19 @@ class _ConnectionFairy(object):
     support."""
 
     __slots__ = '_pool', '__counter', 'connection', \
-                '_connection_record', '__weakref__', '_detached_info'
+                '_connection_record', '__weakref__', \
+                '_detached_info', '_echo'
     
     def __init__(self, pool):
         self._pool = pool
         self.__counter = 0
+        self._echo = _echo = pool._should_log_debug()
         try:
-            rec = self._connection_record = pool._get()
+            rec = self._connection_record = pool._do_get()
             conn = self.connection = self._connection_record.get_connection()
             rec.fairy = weakref.ref(
                             self, 
-                            lambda ref:_finalize_fairy(conn, rec, pool, ref)
+                            lambda ref:_finalize_fairy(conn, rec, pool, ref, _echo)
                         )
             _refs.add(rec)
         except:
@@ -377,7 +379,8 @@ class _ConnectionFairy(object):
             self.connection = None 
             self._connection_record = None
             raise
-        self._pool.logger.debug("Connection %r checked out from pool" %
+        if self._echo:
+            self._pool.logger.debug("Connection %r checked out from pool" %
                        self.connection)
 
     @property
@@ -482,7 +485,8 @@ class _ConnectionFairy(object):
             self._close()
 
     def _close(self):
-        _finalize_fairy(self.connection, self._connection_record, self._pool)
+        _finalize_fairy(self.connection, self._connection_record, 
+                            self._pool, None, self._echo)
         self.connection = None
         self._connection_record = None
 
@@ -822,7 +826,8 @@ class AssertionPool(Pool):
     than desired.
 
     """
-
+    _no_finalize = True
+    
     def __init__(self, *args, **kw):
         self._conn = None
         self._checked_out = False

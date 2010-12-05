@@ -830,6 +830,7 @@ class Connection(Connectable):
         
         """
         self.engine = engine
+        self.dialect = engine.dialect
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
         self.should_close_with_result = close_with_result
@@ -886,12 +887,6 @@ class Connection(Connectable):
         c._execution_options = c._execution_options.union(opt)
         return c
     
-    @property
-    def dialect(self):
-        "Dialect used by this Connection."
-
-        return self.engine.dialect
-
     @property
     def closed(self):
         """Return True if this connection is closed."""
