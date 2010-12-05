@@ -18,7 +18,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
                          use_threadlocal=True)
 
 
-    @profiling.function_call_count(64, {'2.4': 42, '2.7':67, 
+    @profiling.function_call_count(72, {'2.4': 42, '2.7':67, 
                                             '2.7+cextension':67,
                                             '3.0':65, '3.1':65},
                                             variance=.10)
