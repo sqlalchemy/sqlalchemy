@@ -1228,63 +1228,100 @@ class Connection(Connectable):
                 return [multiparams]
 
     def _execute_function(self, func, multiparams, params):
+        """Execute a sql.FunctionElement object."""
+
         return self._execute_clauseelement(func.select(), multiparams, params)
 
     def _execute_default(self, default, multiparams, params):
-        ctx = self.__create_execution_context()
+        """Execute a schema.ColumnDefault object."""
+        
+        try:
+            dialect = self.engine.dialect
+            ctx = dialect.execution_ctx_cls._init_default(
+                                dialect, self)
+        except Exception, e:
+            self._handle_dbapi_exception(e, None, None, None, None)
+            raise
+        
         ret = ctx._exec_default(default)
         if self.should_close_with_result:
             self.close()
         return ret
 
     def _execute_ddl(self, ddl, params, multiparams):
-        context = self.__create_execution_context(
-                        compiled_ddl=ddl.compile(dialect=self.dialect),
-                        parameters=None
-                    )
+        """Execute a schema.DDL object."""
+        
+        try:
+            dialect = self.engine.dialect
+            context = dialect.execution_ctx_cls.\
+                        _init_ddl(
+                                    dialect, 
+                                    self, 
+                                    ddl.compile(dialect=self.dialect))
+        except Exception, e:
+            self._handle_dbapi_exception(e, None, None, None, None)
+            raise
         return self.__execute_context(context)
 
     def _execute_clauseelement(self, elem, multiparams, params):
+        """Execute a sql.ClauseElement object."""
+        
         params = self.__distill_params(multiparams, params)
         if params:
             keys = params[0].keys()
         else:
             keys = []
 
+        dialect = self.engine.dialect
         if 'compiled_cache' in self._execution_options:
-            key = self.dialect, elem, tuple(keys), len(params) > 1
+            key = dialect, elem, tuple(keys), len(params) > 1
             if key in self._execution_options['compiled_cache']:
                 compiled_sql = self._execution_options['compiled_cache'][key]
             else:
                 compiled_sql = elem.compile(
-                                dialect=self.dialect, column_keys=keys, 
+                                dialect=dialect, column_keys=keys, 
                                 inline=len(params) > 1)
                 self._execution_options['compiled_cache'][key] = compiled_sql
         else:
             compiled_sql = elem.compile(
-                            dialect=self.dialect, column_keys=keys, 
+                            dialect=dialect, column_keys=keys, 
                             inline=len(params) > 1)
 
-        context = self.__create_execution_context(
-                        compiled_sql=compiled_sql,
-                        parameters=params
-                    )
+        try:
+            context = dialect.execution_ctx_cls.\
+                            _init_compiled(dialect, self, compiled_sql, params)
+        except Exception, e:
+            self._handle_dbapi_exception(e, None, params, None, None)
+            raise
         return self.__execute_context(context)
 
     def _execute_compiled(self, compiled, multiparams, params):
         """Execute a sql.Compiled object."""
 
-        context = self.__create_execution_context(
-                    compiled_sql=compiled,
-                    parameters=self.__distill_params(multiparams, params)
-                )
+        try:
+            dialect = self.engine.dialect
+            parameters=self.__distill_params(multiparams, params)
+            context = dialect.execution_ctx_cls.\
+                            _init_compiled(dialect, self, 
+                                            compiled, parameters)
+        except Exception, e:
+            self._handle_dbapi_exception(e, None, parameters, None, None)
+            raise
         return self.__execute_context(context)
 
     def _execute_text(self, statement, multiparams, params):
+        """Execute a string SQL statement."""
+        
         parameters = self.__distill_params(multiparams, params)
-        context = self.__create_execution_context(
-                                statement=statement, 
-                                parameters=parameters)
+        try:
+            dialect = self.engine.dialect
+            context = dialect.execution_ctx_cls.\
+                            _init_statement(dialect, self, 
+                                            statement, parameters)
+        except Exception, e:
+            self._handle_dbapi_exception(e, statement, parameters, 
+                                            None, None)
+            raise
         return self.__execute_context(context)
 
     def __execute_context(self, context):
@@ -1386,19 +1423,6 @@ class Connection(Connectable):
             
         finally:
             del self._reentrant_error
-
-    def __create_execution_context(self, **kwargs):
-        try:
-            dialect = self.engine.dialect
-            return dialect.execution_ctx_cls(
-                                dialect, 
-                                connection=self, **kwargs)
-        except Exception, e:
-            self._handle_dbapi_exception(e, 
-                                            kwargs.get('statement', None), 
-                                            kwargs.get('parameters', None), 
-                                            None, None)
-            raise
 
     def _cursor_execute(self, cursor, statement, parameters, context=None):
         if self._echo:
