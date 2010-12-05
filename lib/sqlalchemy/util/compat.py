@@ -24,6 +24,7 @@ else:
     # 2.6 deprecates sets.Set, but we still need to be able to detect them
     # in user code and as return values from DB-APIs
     ignore = ('ignore', None, DeprecationWarning, None, 0)
+    import warnings
     try:
         warnings.filters.insert(0, ignore)
     except Exception:
