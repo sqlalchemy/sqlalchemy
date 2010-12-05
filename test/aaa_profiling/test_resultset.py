@@ -37,7 +37,8 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     # sqlite3 returns native unicode.  so shouldn't be an increase here.
 
     @profiling.function_call_count(14396, versions={'2.4': 13214,
-                                   '2.6+cextension': 409, '2.7+cextension':409})
+                                   '2.6+cextension': 409, 
+                                   '2.7+cextension':409})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
@@ -51,7 +52,9 @@ class ExecutionTest(TestBase):
         # ensure initial connect activities complete
         c.execute("select 1")
         
-        @profiling.function_call_count(36, variance=.01)
+        @profiling.function_call_count(36, versions={'2.6':35, '2.5':35, 
+                                                    '2.4':21}, 
+                                            variance=.01)
         def go():
             c.execute("select 1")
         go()
@@ -62,7 +65,9 @@ class ExecutionTest(TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(59, variance=.01)
+        @profiling.function_call_count(59, versions={'2.4':41, '2.5':58, 
+                                                    '2.6':58}, 
+                                            variance=.01)
         def go():
             e.execute("select 1")
         go()
