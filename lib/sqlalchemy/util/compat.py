@@ -42,11 +42,11 @@ else:
     except ImportError:
         import pickle
 
-# Py2K
 # a controversial feature, required by MySQLdb currently
 def buffer(x):
     return x 
     
+# Py2K
 buffer = getattr(__builtin__, 'buffer', buffer)
 # end Py2K
 
