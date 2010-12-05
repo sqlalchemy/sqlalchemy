@@ -1319,6 +1319,23 @@ class Connection(Connectable):
             self.close()
         
         return r
+    
+    def _safe_close_cursor(self, cursor):
+        """Close the given cursor, catching exceptions
+        and turning into log warnings.
+        
+        """
+        try:
+            cursor.close()
+        except Exception, e:
+            try:
+                ex_text = str(e)
+            except TypeError:
+                ex_text = repr(e)
+            self.connection._logger.warn("Error closing cursor: %s", ex_text)
+
+            if isinstance(e, (SystemExit, KeyboardInterrupt)):
+                raise
         
     def _handle_dbapi_exception(self, 
                                     e, 
@@ -1347,7 +1364,7 @@ class Connection(Connectable):
                 self.engine.dispose()
             else:
                 if cursor:
-                    cursor.close()
+                    self._safe_close_cursor(cursor)
                 self._autorollback()
                 if self.should_close_with_result:
                     self.close()
@@ -2163,7 +2180,6 @@ class ResultMetaData(object):
         # saved attribute lookup self._processors)
         self._keymap = keymap = {}
         self.keys = []
-        self._echo = parent._echo
         context = parent.context
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
@@ -2171,14 +2187,6 @@ class ResultMetaData(object):
         for i, (colname, coltype) in enumerate(m[0:2] for m in metadata):
             if dialect.description_encoding:
                 colname = colname.decode(dialect.description_encoding)
-
-            if '.' in colname:
-                # sqlite will in some circumstances prepend table name to
-                # colnames, so strip
-                origname = colname
-                colname = colname.split('.')[-1]
-            else:
-                origname = None
 
             if context.result_map:
                 try:
@@ -2208,11 +2216,6 @@ class ResultMetaData(object):
                 # or the more precise ColumnElement)
                 keymap[name.lower()] = (processor, None)
 
-            # store the "origname" if we truncated (sqlite only)
-            if origname and \
-                    keymap.setdefault(origname.lower(), rec) is not rec:
-                keymap[origname.lower()] = (processor, None)
-            
             if dialect.requires_name_normalize:
                 colname = dialect.normalize_name(colname)
                 
@@ -2221,11 +2224,22 @@ class ResultMetaData(object):
                 for o in obj:
                     keymap[o] = rec
 
-        if self._echo:
-            self.logger = context.engine.logger
-            self.logger.debug(
+        if parent._echo:
+            context.engine.logger.debug(
                 "Col %r", tuple(x[0] for x in metadata))
-
+    
+    def _set_keymap_synonym(self, name, origname):
+        """Set a synonym for the given name.
+        
+        Some dialects (SQLite at the moment) may use this to 
+        adjust the column names that are significant within a
+        row.
+        
+        """
+        rec = (processor, i) = self._keymap[origname.lower()]
+        if self._keymap.setdefault(name, rec) is not rec:
+            self._keymap[name] = (processor, None)
+        
     def _key_fallback(self, key):
         map = self._keymap
         result = None
@@ -2413,7 +2427,7 @@ class ResultProxy(object):
 
         if not self.closed:
             self.closed = True
-            self.cursor.close()
+            self.connection._safe_close_cursor(self.cursor)
             if _autoclose_connection and \
                 self.connection.should_close_with_result:
                 self.connection.close()

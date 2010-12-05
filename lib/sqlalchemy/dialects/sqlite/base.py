@@ -56,8 +56,7 @@ import datetime, re, time
 
 from sqlalchemy import schema as sa_schema
 from sqlalchemy import sql, exc, pool, DefaultClause
-from sqlalchemy.engine import default
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.sql import compiler, functions as sql_functions
@@ -335,6 +334,20 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
             result = self.quote_schema(index.table.schema, index.table.quote_schema) + "." + result
         return result
 
+class SQLiteExecutionContext(default.DefaultExecutionContext):
+    def get_result_proxy(self):
+        rp = base.ResultProxy(self)
+        if rp._metadata:
+            # adjust for dotted column names.  SQLite
+            # in the case of UNION may store col names as 
+            # "tablename.colname"
+            # in cursor.description
+            for colname in rp._metadata.keys:
+                if "." in colname:
+                    trunc_col = colname.split(".")[1]
+                    rp._metadata._set_keymap_synonym(trunc_col, colname)
+        return rp
+    
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
     supports_alter = False
@@ -352,7 +365,8 @@ class SQLiteDialect(default.DefaultDialect):
     ischema_names = ischema_names
     colspecs = colspecs
     isolation_level = None
-
+    execution_ctx_cls = SQLiteExecutionContext
+    
     supports_cast = True
     supports_default_values = True
 

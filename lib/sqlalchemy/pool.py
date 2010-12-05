@@ -419,8 +419,7 @@ class _ConnectionFairy(object):
 
     def cursor(self, *args, **kwargs):
         try:
-            c = self.connection.cursor(*args, **kwargs)
-            return _CursorFairy(self, c)
+            return self.connection.cursor(*args, **kwargs)
         except Exception, e:
             self.invalidate(e=e)
             raise
@@ -486,42 +485,6 @@ class _ConnectionFairy(object):
         _finalize_fairy(self.connection, self._connection_record, self._pool)
         self.connection = None
         self._connection_record = None
-
-class _CursorFairy(object):
-    __slots__ = '_parent', 'cursor', 'execute'
-
-    def __init__(self, parent, cursor):
-        self._parent = parent
-        self.cursor = cursor
-        self.execute = cursor.execute
-        
-    def invalidate(self, e=None):
-        self._parent.invalidate(e=e)
-    
-    def __iter__(self):
-        return iter(self.cursor)
-        
-    def close(self):
-        try:
-            self.cursor.close()
-        except Exception, e:
-            try:
-                ex_text = str(e)
-            except TypeError:
-                ex_text = repr(e)
-            self._parent._logger.warn("Error closing cursor: %s", ex_text)
-
-            if isinstance(e, (SystemExit, KeyboardInterrupt)):
-                raise
-    
-    def __setattr__(self, key, value):
-        if key in self.__slots__:
-            object.__setattr__(self, key, value)
-        else:
-            setattr(self.cursor, key, value)
-            
-    def __getattr__(self, key):
-        return getattr(self.cursor, key)
 
 class SingletonThreadPool(Pool):
     """A Pool that maintains one connection per thread.
