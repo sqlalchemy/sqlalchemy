@@ -148,7 +148,8 @@ class ExpireTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_refresh_collection_exception(self):
-        """test graceful failure for currently unsupported immediate refresh of a collection"""
+        """test graceful failure for currently unsupported 
+        immediate refresh of a collection"""
         
         mapper(User, users, properties={
             'addresses':relationship(Address, order_by=addresses.c.email_address)
@@ -156,10 +157,13 @@ class ExpireTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         s = create_session(autoflush=True, autocommit=False)
         u = s.query(User).get(8)
-        assert_raises_message(sa_exc.InvalidRequestError, "properties specified for refresh", s.refresh, u, ['addresses'])
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        "properties specified for refresh", 
+                        s.refresh, u, ['addresses'])
         
         # in contrast to a regular query with no columns
-        assert_raises_message(sa_exc.InvalidRequestError, "no columns with which to SELECT", s.query().all)
+        assert_raises_message(sa_exc.InvalidRequestError, 
+                        "no columns with which to SELECT", s.query().all)
         
     @testing.resolve_artifact_names
     def test_refresh_cancels_expire(self):
@@ -732,7 +736,8 @@ class ExpireTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_expire_all(self):
         mapper(User, users, properties={
-            'addresses':relationship(Address, backref='user', lazy='joined'),
+            'addresses':relationship(Address, backref='user', lazy='joined', 
+                                    order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 

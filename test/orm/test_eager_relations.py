@@ -610,7 +610,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sel = sa.select([users, addresses.c.email_address],
                         users.c.id==addresses.c.user_id).alias('useralias')
         mapper(User, sel, properties={
-            'orders':relationship(Order, primaryjoin=sel.c.id==orders.c.user_id, lazy='joined')
+            'orders':relationship(Order, primaryjoin=sel.c.id==orders.c.user_id, 
+                                    lazy='joined', order_by=orders.c.id)
         })
         mapper(Order, orders)
 
