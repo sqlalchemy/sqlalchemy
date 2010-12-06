@@ -1073,8 +1073,8 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             
         self.assert_compile(
             select([t]).offset(10),
-            "SELECT t.col1, t.col2 FROM t  LIMIT %s, %s",
-            {'param_1':10, 'param_2':18446744073709551615}
+            "SELECT t.col1, t.col2 FROM t  LIMIT %s, 18446744073709551615",
+            {'param_1':10}
             )
     
     def test_varchar_raise(self):
