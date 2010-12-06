@@ -209,15 +209,18 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table_a', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
             Column('class_name', String(50))
         )
         Table('table_b', metadata,
-           Column('id', Integer, ForeignKey('table_a.id'), primary_key=True),
+           Column('id', Integer, ForeignKey('table_a.id'), 
+                                primary_key=True),
            Column('class_name', String(50))
         )
         Table('table_c', metadata,
-           Column('id', Integer, ForeignKey('table_b.id'),primary_key=True)
+           Column('id', Integer, ForeignKey('table_b.id'),
+                                primary_key=True)
         )
     
     @classmethod
@@ -280,22 +283,26 @@ class CascadeTest(_base.MappedTest):
     def define_tables(cls, metadata):
         global t1, t2, t3, t4
         t1= Table('t1', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                                    test_needs_autoincrement=True),
             Column('data', String(30))
             )
 
         t2 = Table('t2', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                                    test_needs_autoincrement=True),
             Column('t1id', Integer, ForeignKey('t1.id')),
             Column('type', String(30)),
             Column('data', String(30))
         )
         t3 = Table('t3', metadata,
-            Column('id', Integer, ForeignKey('t2.id'), primary_key=True),
+            Column('id', Integer, ForeignKey('t2.id'), 
+                                    primary_key=True),
             Column('moredata', String(30)))
 
         t4 = Table('t4', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                                    test_needs_autoincrement=True),
             Column('t3id', Integer, ForeignKey('t3.id')),
             Column('data', String(30)))
 

@@ -286,7 +286,7 @@ class EchoTest(TestBase):
         
         # do an initial execute to clear out 'first connect'
         # messages
-        e.execute("select 10")
+        e.execute(select([10]))
         self.buf.flush()
         
         return e
@@ -563,7 +563,7 @@ class EngineEventsTest(TestBase):
         
         event.listen(engine, "on_before_execute", on_execute, retval=True)
         event.listen(engine, "on_before_cursor_execute", on_cursor_execute, retval=True)
-        engine.execute("select 1")
+        engine.execute(select([1]))
         eq_(
             canary, ['execute', 'cursor_execute']
         )
