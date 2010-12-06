@@ -1,0 +1,17 @@
+This directory contains informal scripts used to stress test various
+library subsections over the years, including testing of memory usage,
+function call count, threading behavior.
+
+The scripts here are *not* part of the automated test suite, and instead
+were used at the time of development for particular features or
+performance enhancements in an ad-hoc fashion.  Ideally 
+the various functionality tested within would be brought under the 
+umbrella of controlled, automated tests.  Many of the scripts here
+are out of date and are possibly covered by formal performance tests
+elsewhere.
+
+Current automated stress and performance tests are in test/aaa_profiling/, 
+which test either for expected function call count, or flat growth in memory 
+usage over time.   These tests are part of the automated test suite
+and are maintained for 100% success rate along Python versions from 2.4 through
+current 3 versions.   
