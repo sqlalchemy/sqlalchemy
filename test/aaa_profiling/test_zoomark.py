@@ -358,7 +358,7 @@ class ZooMarkTest(TestBase):
         metadata = MetaData(engine)
         engine.connect()
 
-    @profiling.function_call_count(3012, {'2.4': 1827})
+    @profiling.function_call_count(3012, {'2.4': 1711})
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
@@ -370,7 +370,7 @@ class ZooMarkTest(TestBase):
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(3834, {'2.4': 2347})
+    @profiling.function_call_count(3834, {'2.4': 2158})
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
