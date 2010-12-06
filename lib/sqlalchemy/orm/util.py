@@ -21,7 +21,7 @@ all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
 
 _INSTRUMENTOR = ('mapper', 'instrumentor')
 
-class CascadeOptions(object):
+class CascadeOptions(dict):
     """Keeps track of the options sent to relationship().cascade"""
 
     def __init__(self, arg=""):
@@ -29,13 +29,17 @@ class CascadeOptions(object):
             values = set()
         else:
             values = set(c.strip() for c in arg.split(','))
+            
+        for name in ['save-update', 'delete', 'refresh-expire', 
+                            'merge', 'expunge']:
+            boolean = name in values or 'all' in values
+            setattr(self, name.replace('-', '_'), boolean)
+            if boolean:
+                self[name] = True
         self.delete_orphan = "delete-orphan" in values
-        self.delete = "delete" in values or "all" in values
-        self.save_update = "save-update" in values or "all" in values
-        self.merge = "merge" in values or "all" in values
-        self.expunge = "expunge" in values or "all" in values
-        self.refresh_expire = "refresh-expire" in values or "all" in values
-
+        if self.delete_orphan:
+            self['delete-orphan'] = True
+        
         if self.delete_orphan and not self.delete:
             util.warn("The 'delete-orphan' cascade option requires "
                         "'delete'.  This will raise an error in 0.6.")
@@ -43,9 +47,6 @@ class CascadeOptions(object):
         for x in values:
             if x not in all_cascades:
                 raise sa_exc.ArgumentError("Invalid cascade option '%s'" % x)
-
-    def __contains__(self, item):
-        return getattr(self, item.replace("-", "_"), False)
 
     def __repr__(self):
         return "CascadeOptions(%s)" % repr(",".join(

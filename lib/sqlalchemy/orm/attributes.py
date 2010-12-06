@@ -75,7 +75,7 @@ class QueryableAttribute(interfaces.PropComparator):
     def get_history(self, instance, **kwargs):
         return self.impl.get_history(instance_state(instance),
                                         instance_dict(instance), **kwargs)
-
+    
     def __selectable__(self):
         # TODO: conditionally attach this method based on clause_element ?
         return self
@@ -306,7 +306,10 @@ class AttributeImpl(object):
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         raise NotImplementedError()
-
+    
+    def get_all_pending(self, state, dict_):
+        raise NotImplementedError()
+        
     def _get_callable(self, state):
         if self.key in state.callables:
             return state.callables[self.key]
@@ -533,6 +536,20 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             else:
                 return History.from_attribute(self, state, current)
 
+    def get_all_pending(self, state, dict_):
+        if self.key in dict_:
+            current = dict_[self.key]
+            
+            if self.key in state.committed_state:
+                original = state.committed_state[self.key]
+                if original not in (NEVER_SET, None) and \
+                    original is not current:
+                    return [current, original]
+                    
+            return [current]
+        else:
+            return []
+
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         """Set a value on the given InstanceState.
 
@@ -622,6 +639,34 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             return History.from_attribute(self, state, current)
 
+    def get_all_pending(self, state, dict_):
+        # this is basically an inline 
+        # of self.get_history().sum()
+        
+        if self.key not in dict_:
+            return []
+        else:
+            current = dict_[self.key]
+            
+        current = self.get_collection(state, dict_, current)
+
+        if self.key not in state.committed_state:
+            return list(current)
+
+        original = state.committed_state[self.key]
+        
+        if original is NO_VALUE:
+            return list(current)
+        else:
+            current_set = util.IdentitySet(current)
+            original_set = util.IdentitySet(original)
+
+            # ensure ordering is maintained
+            return \
+                [x for x in current if x not in original_set] + \
+                [x for x in current if x in original_set] + \
+                [x for x in original if x not in current_set]
+        
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.on_append:
             value = fn(state, value, initiator or self)
@@ -995,6 +1040,22 @@ def get_history(obj, key, **kwargs):
 def get_state_history(state, key, **kwargs):
     return state.get_history(key, **kwargs)
 
+def get_all_pending(state, dict_, key):
+    """Return a list of all objects currently in memory 
+    involving the given key on the given state.
+    
+    This should be equivalent to::
+    
+        get_state_history(
+                    state, 
+                    key, 
+                    passive=PASSIVE_NO_INITIALIZE).sum()
+    
+    """
+    
+    return state.manager.get_impl(key).get_all_pending(state, dict_)
+    
+    
 def has_parent(cls, obj, key, optimistic=False):
     """TODO"""
     manager = manager_of_class(cls)

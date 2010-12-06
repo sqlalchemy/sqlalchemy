@@ -125,7 +125,7 @@ class InstanceState(object):
             self.pending[key] = PendingCollection()
         return self.pending[key]
 
-    def value_as_iterable(self, key, passive=PASSIVE_OFF):
+    def value_as_iterable(self, dict_, key, passive=PASSIVE_OFF):
         """return an InstanceState attribute as a list,
         regardless of it being a scalar or collection-based
         attribute.
@@ -135,7 +135,6 @@ class InstanceState(object):
         """
 
         impl = self.get_impl(key)
-        dict_ = self.dict
         x = impl.get(self, dict_, passive=passive)
         if x is PASSIVE_NO_RESULT:
             return None

@@ -1369,10 +1369,10 @@ class Mapper(object):
         visited_instances = util.IdentitySet()
         prp, mpp = object(), object()
 
-        visitables = [(deque(self._props.values()), prp, state)]
+        visitables = [(deque(self._props.values()), prp, state, state.dict)]
 
         while visitables:
-            iterator, item_type, parent_state = visitables[-1]
+            iterator, item_type, parent_state, parent_dict = visitables[-1]
             if not iterator:
                 visitables.pop()
                 continue
@@ -1382,15 +1382,15 @@ class Mapper(object):
                 if type_ not in prop.cascade:
                     continue
                 queue = deque(prop.cascade_iterator(type_, parent_state, 
-                            visited_instances, halt_on))
+                            parent_dict, visited_instances, halt_on))
                 if queue:
-                    visitables.append((queue,mpp, None))
+                    visitables.append((queue,mpp, None, None))
             elif item_type is mpp:
-                instance, instance_mapper, corresponding_state  = \
-                                iterator.popleft()
+                instance, instance_mapper, corresponding_state, \
+                                corresponding_dict = iterator.popleft()
                 yield (instance, instance_mapper)
                 visitables.append((deque(instance_mapper._props.values()), 
-                                        prp, corresponding_state))
+                                        prp, corresponding_state, corresponding_dict))
 
     @_memoized_configured_property
     def _compiled_cache(self):

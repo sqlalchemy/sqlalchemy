@@ -834,7 +834,7 @@ class RelationshipProperty(StrategizedProperty):
                 dest_state.get_impl(self.key).set(dest_state,
                         dest_dict, obj, None)
 
-    def cascade_iterator(self, type_, state, visited_instances, halt_on=None):
+    def cascade_iterator(self, type_, state, dict_, visited_instances, halt_on=None):
         if not type_ in self.cascade:
             return
 
@@ -845,10 +845,10 @@ class RelationshipProperty(StrategizedProperty):
             passive = attributes.PASSIVE_OFF
 
         if type_ == 'save-update':
-            instances = attributes.get_state_history(state, self.key,
-                    passive=passive).sum()
+            instances = attributes.get_all_pending(state, dict_, self.key)
+            
         else:
-            instances = state.value_as_iterable(self.key,
+            instances = state.value_as_iterable(dict_, self.key,
                     passive=passive)
         skip_pending = type_ == 'refresh-expire' and 'delete-orphan' \
             not in self.cascade
@@ -857,28 +857,33 @@ class RelationshipProperty(StrategizedProperty):
             for c in instances:
                 if c is not None and \
                     c is not attributes.PASSIVE_NO_RESULT and \
-                    c not in visited_instances and \
-                    (halt_on is None or not halt_on(c)):
+                    c not in visited_instances:
                     
-                    if not isinstance(c, self.mapper.class_):
+                    instance_state = attributes.instance_state(c)
+                    instance_dict = attributes.instance_dict(c)
+                    
+                    if halt_on and halt_on(instance_state):
+                        continue
+                    
+                    if skip_pending and not instance_state.key:
+                        continue
+                    
+                    instance_mapper = instance_state.manager.mapper
+                    
+                    if not instance_mapper.isa(self.mapper.class_manager.mapper):
                         raise AssertionError("Attribute '%s' on class '%s' "
                                             "doesn't handle objects "
                                             "of type '%s'" % (
                                                 self.key, 
-                                                str(self.parent.class_), 
-                                                str(c.__class__)
+                                                self.parent.class_, 
+                                                c.__class__
                                             ))
-                    instance_state = attributes.instance_state(c)
-                    
-                    if skip_pending and not instance_state.key:
-                        continue
-                        
+
                     visited_instances.add(c)
 
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located
-                    instance_mapper = instance_state.manager.mapper
-                    yield c, instance_mapper, instance_state
+                    yield c, instance_mapper, instance_state, instance_dict
             
 
     def _add_reverse_property(self, key):
