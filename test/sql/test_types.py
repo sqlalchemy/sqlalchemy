@@ -1416,8 +1416,8 @@ class NumericRawSQLTest(TestBase):
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, float)
         
-        # some DBs have unusual float handling
-        if testing.against('oracle+cx_oracle'):
+        # some DBAPIs have unusual float handling
+        if testing.against('oracle+cx_oracle', 'mysql+oursql'):
             eq_(round_decimal(val, 3), 46.583)
         else:
             eq_(val, 46.583)
