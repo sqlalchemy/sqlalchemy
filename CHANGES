@@ -77,6 +77,10 @@ CHANGES
     "collections.Sequence" registration for RowProxy.
     [ticket:1871]
 
+  - Threadlocal engine methods rollback(), commit(),
+    prepare() won't raise if no transaction is in progress;
+    this was a regression introduced in 0.6.  [ticket:1998]
+    
 - postgresql
   - Single element tuple expressions inside an IN clause
     parenthesize correctly, also from [ticket:1984]
