@@ -1375,7 +1375,55 @@ class NumericTest(TestBase):
             numbers
         )
         
+class NumericRawSQLTest(TestBase):
+    """Test what DBAPIs and dialects return without any typing
+    information supplied at the SQLA level.
+    
+    """
+    def _fixture(self, metadata, type, data):
+        t = Table('t', metadata,
+            Column("val", type)
+        )
+        metadata.create_all()
+        t.insert().execute(val=data)
+    
+    @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
+    @testing.provide_metadata
+    def test_decimal_fp(self):
+        t = self._fixture(metadata, Numeric(10, 5), Decimal("45.5"))
+        val = testing.db.execute("select val from t").scalar()
+        assert isinstance(val, Decimal)
+        eq_(val, Decimal("45.5"))
 
+    @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
+    @testing.provide_metadata
+    def test_decimal_int(self):
+        t = self._fixture(metadata, Numeric(10, 5), Decimal("45"))
+        val = testing.db.execute("select val from t").scalar()
+        assert isinstance(val, Decimal)
+        eq_(val, Decimal("45"))
+
+    @testing.provide_metadata
+    def test_ints(self):
+        t = self._fixture(metadata, Integer, 45)
+        val = testing.db.execute("select val from t").scalar()
+        assert isinstance(val, (int, long))
+        eq_(val, 45)
+
+    @testing.provide_metadata
+    def test_float(self):
+        t = self._fixture(metadata, Float, 46.583)
+        val = testing.db.execute("select val from t").scalar()
+        assert isinstance(val, float)
+        
+        # some DBs have unusual float handling
+        if testing.against('oracle+cx_oracle'):
+            eq_(round_decimal(val, 3), 46.583)
+        else:
+            eq_(val, 46.583)
+            
+        
+    
             
 class IntervalTest(TestBase, AssertsExecutionResults):
     @classmethod
