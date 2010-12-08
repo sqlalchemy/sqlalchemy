@@ -541,7 +541,19 @@ class TLTransactionTest(TestBase):
         # ensure tests start with engine closed
 
         tlengine.close()
+    
+    def test_rollback_no_trans(self):
+        # shouldn't fail
+        tlengine.rollback()
 
+    def test_commit_no_trans(self):
+        # shouldn't fail
+        tlengine.commit()
+
+    def test_prepare_no_trans(self):
+        # shouldn't fail
+        tlengine.prepare()
+        
     def test_connection_close(self):
         """test that when connections are closed for real, transactions
         are rolled back and disposed."""

@@ -77,16 +77,22 @@ class TLEngine(base.Engine):
         self._connections.trans.append(self.contextual_connect().begin())
         
     def prepare(self):
+        if not self._connections.trans:
+            return
         self._connections.trans[-1].prepare()
         
     def commit(self):
+        if not self._connections.trans:
+            return
         trans = self._connections.trans.pop(-1)
         trans.commit()
         
     def rollback(self):
+        if not self._connections.trans:
+            return
         trans = self._connections.trans.pop(-1)
         trans.rollback()
-    
+        
     def dispose(self):
         self._connections = util.threading.local()
         super(TLEngine, self).dispose()
