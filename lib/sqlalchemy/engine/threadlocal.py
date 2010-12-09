@@ -77,18 +77,21 @@ class TLEngine(base.Engine):
         self._connections.trans.append(self.contextual_connect().begin())
         
     def prepare(self):
-        if not self._connections.trans:
+        if not hasattr(self._connections, 'trans') or \
+            not self._connections.trans:
             return
         self._connections.trans[-1].prepare()
         
     def commit(self):
-        if not self._connections.trans:
+        if not hasattr(self._connections, 'trans') or \
+            not self._connections.trans:
             return
         trans = self._connections.trans.pop(-1)
         trans.commit()
         
     def rollback(self):
-        if not self._connections.trans:
+        if not hasattr(self._connections, 'trans') or \
+            not self._connections.trans:
             return
         trans = self._connections.trans.pop(-1)
         trans.rollback()

@@ -543,14 +543,38 @@ class TLTransactionTest(TestBase):
         tlengine.close()
     
     def test_rollback_no_trans(self):
+        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+
+        # shouldn't fail
+        tlengine.rollback()
+        
+        tlengine.begin()
+        tlengine.rollback()
+
         # shouldn't fail
         tlengine.rollback()
 
     def test_commit_no_trans(self):
+        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+
+        # shouldn't fail
+        tlengine.commit()
+
+        tlengine.begin()
+        tlengine.rollback()
+
         # shouldn't fail
         tlengine.commit()
 
     def test_prepare_no_trans(self):
+        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+
+        # shouldn't fail
+        tlengine.prepare()
+
+        tlengine.begin()
+        tlengine.rollback()
+
         # shouldn't fail
         tlengine.prepare()
         
