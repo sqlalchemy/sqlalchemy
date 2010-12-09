@@ -1695,6 +1695,8 @@ class _CompareMixin(ColumnOperators):
         return o[0](self, op, other, reverse=True, *o[1:], **kwargs)
 
     def in_(self, other):
+        """Compare this element to the given element or collection using IN."""
+        
         return self._in_impl(operators.in_op, operators.notin_op, other)
 
     def _in_impl(self, op, negate_op, seq_or_selectable):
@@ -1793,6 +1795,8 @@ class _CompareMixin(ColumnOperators):
 
     def label(self, name):
         """Produce a column label, i.e. ``<columnname> AS <name>``.
+        
+        This is a shortcut to the :func:`~.expression.label` function.
 
         if 'name' is None, an anonymous label name will be generated.
 

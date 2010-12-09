@@ -1596,8 +1596,6 @@ class Query(object):
         or a ``text()`` construct, and should return the set of columns
         appropriate to the entity class represented by this ``Query``.
 
-        Also see the ``instances()`` method.
-
         """
         if isinstance(statement, basestring):
             statement = sql.text(statement)
