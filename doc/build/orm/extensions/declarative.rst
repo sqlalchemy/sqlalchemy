@@ -1,3 +1,5 @@
+.. _declarative_toplevel:
+
 Declarative
 ===========
 
