@@ -204,7 +204,9 @@ class _ListenerCollection(object):
     def __call__(self, *args, **kw):
         """Execute this event."""
 
-        for fn in self.parent_listeners + self.listeners:
+        for fn in self.parent_listeners:
+            fn(*args, **kw)
+        for fn in self.listeners:
             fn(*args, **kw)
     
     # I'm not entirely thrilled about the overhead here,

@@ -1327,17 +1327,23 @@ class OptimizedLoadTest(_base.MappedTest):
                     [{'data':'s1','type':'sub'}]
                 ),
                 CompiledSQL(
-                    "SELECT sub.counter AS sub_counter, base.counter AS "
-                    "base_counter FROM base JOIN sub ON base.id = "
-                    "sub.id WHERE base.id = :param_1",
-                    lambda ctx:{'param_1':s1.id}
-                ),
-                CompiledSQL(
                     "INSERT INTO sub (id, sub) VALUES (:id, :sub)",
                     lambda ctx:{'id':s1.id, 'sub':None}
                 ),
         )
-
+        def go():
+            eq_( s1.counter2, 1 )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT sub.counter AS sub_counter, base.counter AS base_counter, "
+                "sub.counter2 AS sub_counter2 FROM base JOIN sub ON "
+                "base.id = sub.id WHERE base.id = :param_1",
+                lambda ctx:{u'param_1': s1.id}
+            ),
+        )
+        
     @testing.resolve_artifact_names
     def test_dont_generate_on_none(self):
         class Base(_base.ComparableEntity):
@@ -1394,18 +1400,25 @@ class OptimizedLoadTest(_base.MappedTest):
                     lambda ctx:[{'counter': 1, 'sub': None, 'id': s1.id}]
                 ),
                 CompiledSQL(
-                    "SELECT subsub.counter2 AS subsub_counter2, sub.counter2 AS "
-                    "sub_counter2 FROM base JOIN sub ON base.id = sub.id JOIN "
-                    "subsub ON sub.id = subsub.id WHERE base.id = :param_1",
-                    lambda ctx:{u'param_1': s1.id}
-                ),
-                CompiledSQL(
                     "INSERT INTO subsub (id) VALUES (:id)",
                     lambda ctx:{'id':s1.id}
                 ),
         )
-        
-        
+
+        def go():
+            eq_(
+                s1.counter2, 1
+            )
+        self.assert_sql_execution(
+            testing.db,
+            go,
+            CompiledSQL(
+                "SELECT subsub.counter2 AS subsub_counter2, "
+                "sub.counter2 AS sub_counter2 FROM subsub, sub "
+                "WHERE :param_1 = sub.id AND sub.id = subsub.id",
+                lambda ctx:{u'param_1': s1.id}
+            ),
+        )
         
 class PKDiscriminatorTest(_base.MappedTest):
     @classmethod

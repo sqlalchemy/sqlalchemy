@@ -7,11 +7,13 @@
 
 """
 
-Semi-private module containing various base classes used throughout the ORM.
+Contains various base classes used throughout the ORM.
 
-Defines the extension classes :class:`MapperExtension`,
-:class:`SessionExtension`, and :class:`AttributeExtension` as
-well as other user-subclassable extension objects.
+Defines the now deprecated ORM extension classes as well
+as ORM internals.
+
+Other than the deprecated extensions, this module and the
+classes within should be considered mostly private.
 
 """
 
@@ -64,6 +66,19 @@ class MapperProperty(object):
     """The set of 'cascade' attribute names.
     
     This collection is checked before the 'cascade_iterator' method is called.
+    
+    """
+
+    get_col_value = None
+    """Optional method which converts an attribute value into a per-column
+    value::
+    
+        def get_col_value(self, column, value):
+            ...
+            
+    Basically used by CompositeProperty.
+    
+    The mapper checks this attribute for non-None to reduce callcounts.
     
     """
 

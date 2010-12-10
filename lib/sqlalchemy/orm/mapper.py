@@ -1262,9 +1262,12 @@ class Mapper(object):
         return [self._get_state_attr_by_column(state, dict_, column) for
                 column in self.primary_key]
 
-    # TODO: improve names?
     def _get_state_attr_by_column(self, state, dict_, column, passive=False):
-        return self._columntoproperty[column]._getattr(state, dict_, column, passive=passive)
+        prop = self._columntoproperty[column]
+        value = state.manager[prop.key].impl.get(state, dict_, passive=passive)
+        if prop.get_col_value:
+            value = prop.get_col_value(column, value)
+        return value
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         return self._columntoproperty[column]._setattr(state, dict_, value, column)
@@ -1499,9 +1502,10 @@ class Mapper(object):
                         history = attributes.get_state_history(
                                         state, prop.key, passive=True)
                         if history.added:
-                            params[col.key] = \
-                                prop.get_col_value(col,
-                                                    history.added[0])
+                            value = history.added[0]
+                            if prop.get_col_value:
+                                value = prop.get_col_value(col, value)
+                            params[col.key] = value
                             hasdata = True
                 if hasdata:
                     update.append((state, state_dict, params, mapper, 
@@ -1636,8 +1640,7 @@ class Mapper(object):
                     
                 pks = mapper._pks_by_table[table]
                 
-                isinsert = not has_identity and \
-                                not row_switch
+                isinsert = not has_identity and not row_switch
                 
                 params = {}
                 value_params = {}
@@ -1648,23 +1651,25 @@ class Mapper(object):
                         if col is mapper.version_id_col:
                             params[col.key] = \
                               mapper.version_id_generator(None)
-                        elif col in pks:
-                            value = \
-                             mapper._get_state_attr_by_column(
-                                                state, state_dict, col)
-                            if value is not None:
-                                params[col.key] = value
                         else:
-                            value = \
-                              mapper._get_state_attr_by_column(
-                                                state, state_dict, col)
-                            if ((col.default is None and
-                                 col.server_default is None) or
-                                value is not None):
-                                if isinstance(value, sql.ClauseElement):
-                                    value_params[col] = value
-                                else:
-                                    params[col.key] = value
+                            # inline of _get_state_attr_by_column
+                            prop = mapper._columntoproperty[col]
+                            value = state_dict.get(prop.key, None)
+                                    
+                            if prop.get_col_value:
+                                value = prop.get_col_value(col, value)
+
+                            if value is None:
+                                if col.default is None and \
+                                     col.server_default is None and \
+                                     col not in pks:
+                                     
+                                     params[col.key] = value
+                            elif isinstance(value, sql.ClauseElement):
+                                value_params[col] = value
+                            else:
+                                params[col.key] = value
+
                     insert.append((state, state_dict, params, mapper, 
                                     connection, value_params))
                 else:
@@ -1709,9 +1714,10 @@ class Mapper(object):
                                                 sql.ClauseElement):
                                     value_params[col] = history.added[0]
                                 else:
-                                    params[col.key] = \
-                                        prop.get_col_value(col,
-                                                            history.added[0])
+                                    value = history.added[0]
+                                    if prop.get_col_value:
+                                        value = prop.get_col_value(col, value)
+                                    params[col.key] = value
 
                                 if col in pks:
                                     if history.deleted:
@@ -1722,15 +1728,17 @@ class Mapper(object):
                                         if ("pk_cascaded", state, col) in \
                                                         uowtransaction.\
                                                         attributes:
-                                            params[col._label] = \
-                                                    prop.get_col_value(col,
-                                                        history.added[0])
+                                            value = history.added[0]
+                                            if prop.get_col_value:
+                                                value = prop.get_col_value(col, value)
+                                            params[col._label] = value
                                         else:
                                             # use the old value to 
                                             # locate the row
-                                            params[col._label] = \
-                                                    prop.get_col_value(col,
-                                                        history.deleted[0])
+                                            value = history.deleted[0]
+                                            if prop.get_col_value:
+                                                value = prop.get_col_value(col, value)
+                                            params[col._label] = value
                                         hasdata = True
                                     else:
                                         # row switch logic can reach us here
@@ -1739,16 +1747,17 @@ class Mapper(object):
                                         # attempt to include the pk in the
                                         # update statement
                                         del params[col.key]
-                                        params[col._label] = \
-                                                    prop.get_col_value(col,
-                                                      history.added[0])
+                                        value = history.added[0]
+                                        if prop.get_col_value:
+                                            value = prop.get_col_value(col, value)
+                                        params[col._label] = value
                                 else:
                                     hasdata = True
                             elif col in pks:
-                                params[col._label] = \
-                                        mapper._get_state_attr_by_column(
-                                                        state,
-                                                        state_dict, col)
+                                value = state.manager[prop.key].impl.get(state, state_dict)
+                                if prop.get_col_value:
+                                    value = prop.get_col_value(col, value)
+                                params[col._label] = value
                     if hasdata:
                         update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
@@ -1840,13 +1849,12 @@ class Mapper(object):
         for state, state_dict, mapper, connection, has_identity, \
                         instance_key, row_switch in tups:
 
-            # expire readonly attributes
-            readonly = state.unmodified.intersection(
-                p.key for p in mapper._readonly_props
-            )
-            
-            if readonly:
-                sessionlib._expire_state(state, state.dict, readonly)
+            if mapper._readonly_props:
+                readonly = state.unmodified_intersection(
+                    [p.key for p in mapper._readonly_props]
+                )
+                if readonly:
+                    sessionlib._expire_state(state, state.dict, readonly)
 
             # if eager_defaults option is enabled,
             # refresh whatever has been expired.

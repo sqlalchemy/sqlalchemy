@@ -118,7 +118,7 @@ class InstanceState(object):
         return self.manager.get_impl(key).get_history(self, self.dict, **kwargs)
 
     def get_impl(self, key):
-        return self.manager.get_impl(key)
+        return self.manager[key].impl
 
     def get_pending(self, key):
         if key not in self.pending:
@@ -298,6 +298,13 @@ class InstanceState(object):
         
         return set(self.manager).difference(self.committed_state)
 
+    def unmodified_intersection(self, keys):
+        """Return self.unmodified.intersection(keys)."""
+
+        return set(keys).intersection(self.manager).\
+                    difference(self.committed_state)
+
+
     @property
     def unloaded(self):
         """Return the set of keys which do not have a loaded value.
@@ -457,7 +464,19 @@ class MutableAttrInstanceState(InstanceState):
             if (key not in self.committed_state or
                 (key in self.manager.mutable_attributes and
                  not self.manager[key].impl.check_mutable_modified(self, dict_)))])
+    
+    def unmodified_intersection(self, keys):
+        """Return self.unmodified.intersection(keys)."""
 
+        dict_ = self.dict
+        
+        return set([
+            key for key in keys
+            if (key not in self.committed_state or
+                (key in self.manager.mutable_attributes and
+                 not self.manager[key].impl.check_mutable_modified(self, dict_)))])
+        
+        
     def _is_really_none(self):
         """do a check modified/resurrect.
         

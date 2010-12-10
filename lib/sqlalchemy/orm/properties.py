@@ -119,9 +119,6 @@ class ColumnProperty(StrategizedProperty):
                         active_history=self.active_history,
                         *self.columns)
 
-    def _getattr(self, state, dict_, column, passive=False):
-        return state.get_impl(self.key).get(state, dict_, passive=passive)
-
     def _getcommitted(self, state, dict_, column, passive=False):
         return state.get_impl(self.key).\
                     get_committed_value(state, dict_, passive=passive)
@@ -143,9 +140,6 @@ class ColumnProperty(StrategizedProperty):
             if dest_state.has_identity and self.key not in dest_dict:
                 dest_state.expire_attributes(dest_dict, [self.key])
                 
-    def get_col_value(self, column, value):
-        return value
-
     class Comparator(PropComparator):
         @util.memoized_instancemethod
         def __clause_element__(self):
@@ -194,10 +188,6 @@ class CompositeProperty(ColumnProperty):
         # skip over ColumnProperty's do_init(),
         # which issues assertions that do not apply to CompositeColumnProperty
         super(ColumnProperty, self).do_init()
-
-    def _getattr(self, state, dict_, column, passive=False):
-        obj = state.get_impl(self.key).get(state, dict_, passive=passive)
-        return self.get_col_value(column, obj)
 
     def _getcommitted(self, state, dict_, column, passive=False):
         # TODO: no coverage here
