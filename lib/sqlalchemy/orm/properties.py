@@ -124,7 +124,7 @@ class ColumnProperty(StrategizedProperty):
                     get_committed_value(state, dict_, passive=passive)
 
     def _setattr(self, state, dict_, value, column):
-        state.get_impl(self.key).set(state, dict_, value, None)
+        state.manager[self.key].impl.set(state, dict_, value, None)
 
     def merge(self, session, source_state, source_dict, dest_state, 
                                 dest_dict, load, _recursive):

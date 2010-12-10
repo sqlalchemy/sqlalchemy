@@ -1833,13 +1833,15 @@ class Mapper(object):
 
                     if primary_key is not None:
                         # set primary key attributes
-                        for i, col in enumerate(mapper._pks_by_table[table]):
-                            if mapper._get_state_attr_by_column(
-                                        state, state_dict, col) \
-                                        is None and len(primary_key) > i:
-                                mapper._set_state_attr_by_column(
-                                        state, state_dict, col,
-                                        primary_key[i])
+                        for pk, col in zip(primary_key, mapper._pks_by_table[table]):
+                            # TODO: make sure this inlined code is OK
+                            # with composites
+                            prop = mapper._columntoproperty[col]
+                            if state_dict.get(prop.key) is None:
+                                # TODO: would rather say:
+                                # state_dict[prop.key] = pk
+                                # here, one test fails
+                                prop._setattr(state, state_dict, pk, col)
                                 
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c,
