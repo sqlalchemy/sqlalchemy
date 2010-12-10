@@ -331,7 +331,7 @@ class ZooMarkTest(TestBase):
         session = sessionmaker()()
         engine.connect()
 
-    @profiling.function_call_count(4898)
+    @profiling.function_call_count(4592)
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
