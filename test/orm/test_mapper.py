@@ -2280,7 +2280,8 @@ class CompositeTypesTest(_base.MappedTest):
                 return (self.id, self.version)
             __hash__ = None
             def __eq__(self, other):
-                return other.id == self.id and other.version == self.version
+                return isinstance(other, Version) and other.id == self.id and \
+                                other.version == self.version
             def __ne__(self, other):
                 return not self.__eq__(other)
 

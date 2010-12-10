@@ -123,9 +123,6 @@ class ColumnProperty(StrategizedProperty):
         return state.get_impl(self.key).\
                     get_committed_value(state, dict_, passive=passive)
 
-    def _setattr(self, state, dict_, value, column):
-        state.manager[self.key].impl.set(state, dict_, value, None)
-
     def merge(self, session, source_state, source_dict, dest_state, 
                                 dest_dict, load, _recursive):
         if self.key in source_dict:
@@ -194,9 +191,8 @@ class CompositeProperty(ColumnProperty):
         obj = state.get_impl(self.key).\
                         get_committed_value(state, dict_, passive=passive)
         return self.get_col_value(column, obj)
-
-    def _setattr(self, state, dict_, value, column):
-
+    
+    def set_col_value(self, state, dict_, value, column):
         obj = state.get_impl(self.key).get(state, dict_)
         if obj is None:
             obj = self.composite_class(*[None for c in self.columns])

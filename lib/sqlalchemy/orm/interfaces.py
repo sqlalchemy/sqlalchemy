@@ -82,6 +82,8 @@ class MapperProperty(object):
     
     """
 
+    set_col_value = None
+    
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 

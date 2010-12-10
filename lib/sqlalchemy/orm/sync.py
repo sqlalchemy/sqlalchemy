@@ -28,8 +28,9 @@ def populate(source, source_mapper, dest, dest_mapper,
         # how often this logic is invoked for memory/performance
         # reasons, since we only need this info for a primary key
         # destination.
-        if l.primary_key and r.primary_key and \
-                    r.references(l) and flag_cascaded_pks:
+        if flag_cascaded_pks and l.primary_key and \
+                    r.primary_key and \
+                    r.references(l):
             uowcommit.attributes[("pk_cascaded", dest, r)] = True
 
 def clear(dest, dest_mapper, synchronize_pairs):

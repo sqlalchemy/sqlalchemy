@@ -146,27 +146,35 @@ class UOWTransaction(object):
         
     def get_attribute_history(self, state, key, passive=True):
         """facade to attributes.get_state_history(), including caching of results."""
-        
+
         hashkey = ("history", state, key)
 
         # cache the objects, not the states; the strong reference here
         # prevents newly loaded objects from being dereferenced during the
         # flush process
+        
         if hashkey in self.attributes:
-            (history, cached_passive) = self.attributes[hashkey]
-            # if the cached lookup was "passive" and now we want non-passive, do a non-passive
-            # lookup and re-cache
+            history, state_history, cached_passive = self.attributes[hashkey]
+            # if the cached lookup was "passive" and now 
+            # we want non-passive, do a non-passive lookup and re-cache
             if cached_passive and not passive:
-                history = state.get_history(key, passive=False)
-                self.attributes[hashkey] = (history, passive)
+                impl = state.manager[key].impl
+                history = impl.get_history(state, state.dict, passive=False)
+                if history and impl.uses_objects:
+                    state_history = history.as_state()
+                else:
+                    state_history = history
+                self.attributes[hashkey] = (history, state_history, passive)
         else:
-            history = state.get_history(key, passive=passive)
-            self.attributes[hashkey] = (history, passive)
-
-        if not history or not state.get_impl(key).uses_objects:
-            return history
-        else:
-            return history.as_state()
+            impl = state.manager[key].impl
+            history = impl.get_history(state, state.dict, passive=passive)
+            if history and impl.uses_objects:
+                state_history = history.as_state()
+            else:
+                state_history = history
+            self.attributes[hashkey] = (history, state_history, passive)
+        
+        return state_history
     
     def has_dep(self, processor):
         return (processor, True) in self.presort_actions

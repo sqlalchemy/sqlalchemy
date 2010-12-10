@@ -115,7 +115,7 @@ class InstanceState(object):
             raise
 
     def get_history(self, key, **kwargs):
-        return self.manager.get_impl(key).get_history(self, self.dict, **kwargs)
+        return self.manager[key].impl.get_history(self, self.dict, **kwargs)
 
     def get_impl(self, key):
         return self.manager[key].impl

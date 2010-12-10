@@ -1186,6 +1186,7 @@ class HistoryTest(_base.ORMTest):
                 assert False
 
         instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True)
 
         hi = Bar(name='hi')
@@ -1238,6 +1239,7 @@ class HistoryTest(_base.ORMTest):
         from sqlalchemy.orm.collections import attribute_mapped_collection
 
         instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True, typecallable=attribute_mapped_collection('name'))
 
         hi = Bar(name='hi')
@@ -1266,6 +1268,7 @@ class HistoryTest(_base.ORMTest):
         instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'someattr', uselist=True, useobject=True)
         attributes.register_attribute(Foo, 'id', uselist=False, useobject=False)
+        instrumentation.register_class(Bar)
 
         hi = Bar(name='hi')
         there = Bar(name='there')

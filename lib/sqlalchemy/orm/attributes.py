@@ -408,7 +408,7 @@ class ScalarAttributeImpl(AttributeImpl):
         del dict_[self.key]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
-        return History.from_attribute(
+        return History.from_scalar_attribute(
             self, state, dict_.get(self.key, NO_VALUE))
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
@@ -470,8 +470,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         else:
             v = dict_.get(self.key, NO_VALUE)
             
-        return History.from_attribute(
-            self, state, v)
+        return History.from_scalar_attribute(self, state, v)
 
     def check_mutable_modified(self, state, dict_):
         a, u, d = self.get_history(state, dict_)
@@ -509,17 +508,14 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def __init__(self, class_, key, callable_, dispatch,
                     trackparent=False, extension=None, copy_function=None,
-                    compare_function=None, **kwargs):
+                    **kwargs):
         super(ScalarObjectAttributeImpl, self).__init__(
                                             class_, 
                                             key,
                                             callable_, dispatch, 
                                             trackparent=trackparent, 
                                             extension=extension,
-                                            compare_function=compare_function, 
                                             **kwargs)
-        if compare_function is None:
-            self.is_equal = mapperutil.identity_equal
 
     def delete(self, state, dict_):
         old = self.get(state, dict_)
@@ -528,13 +524,13 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
-            return History.from_attribute(self, state, dict_[self.key])
+            return History.from_object_attribute(self, state, dict_[self.key])
         else:
             current = self.get(state, dict_, passive=passive)
             if current is PASSIVE_NO_RESULT:
                 return HISTORY_BLANK
             else:
-                return History.from_attribute(self, state, current)
+                return History.from_object_attribute(self, state, current)
 
     def get_all_pending(self, state, dict_):
         if self.key in dict_:
@@ -637,7 +633,7 @@ class CollectionAttributeImpl(AttributeImpl):
         if current is PASSIVE_NO_RESULT:
             return HISTORY_BLANK
         else:
-            return History.from_attribute(self, state, current)
+            return History.from_collection(self, state, current)
 
     def get_all_pending(self, state, dict_):
         # this is basically an inline 
@@ -974,48 +970,76 @@ class History(tuple):
              and instance_state(c) or None
              for c in self.deleted],
             )
-        
+
     @classmethod
-    def from_attribute(cls, attribute, state, current):
+    def from_scalar_attribute(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
-
-        if hasattr(attribute, 'get_collection'):
-            current = attribute.get_collection(state, state.dict, current)
-            if original is NO_VALUE:
-                return cls(list(current), (), ())
-            elif original is NEVER_SET:
-                return cls((), list(current), ())
+        if current is NO_VALUE:
+            if (original is not None and
+                original is not NEVER_SET and
+                original is not NO_VALUE):
+                deleted = [original]
             else:
-                current_set = util.IdentitySet(current)
-                original_set = util.IdentitySet(original)
-
-                # ensure duplicates are maintained
-                return cls(
-                    [x for x in current if x not in original_set],
-                    [x for x in current if x in original_set],
-                    [x for x in original if x not in current_set]
-                )
+                deleted = ()
+            return cls((), (), deleted)
+        elif original is NO_VALUE:
+            return cls([current], (), ())
+        elif (original is NEVER_SET or
+              attribute.is_equal(current, original) is True):
+            # dont let ClauseElement expressions here trip things up
+            return cls((), [current], ())
         else:
-            if current is NO_VALUE:
-                if (original is not None and
-                    original is not NEVER_SET and
-                    original is not NO_VALUE):
-                    deleted = [original]
-                else:
-                    deleted = ()
-                return cls((), (), deleted)
-            elif original is NO_VALUE:
-                return cls([current], (), ())
-            elif (original is NEVER_SET or
-                  attribute.is_equal(current, original) is True):
-                # dont let ClauseElement expressions here trip things up
-                return cls((), [current], ())
+            if original is not None:
+                deleted = [original]
             else:
-                if original is not None:
-                    deleted = [original]
-                else:
-                    deleted = ()
-                return cls([current], (), deleted)
+                deleted = ()
+            return cls([current], (), deleted)
+
+    @classmethod
+    def from_object_attribute(cls, attribute, state, current):
+        original = state.committed_state.get(attribute.key, NEVER_SET)
+        
+        if current is NO_VALUE:
+            if (original is not None and
+                original is not NEVER_SET and
+                original is not NO_VALUE):
+                deleted = [original]
+            else:
+                deleted = ()
+            return cls((), (), deleted)
+        elif original is NO_VALUE:
+            return cls([current], (), ())
+        elif (original is NEVER_SET or
+                current is original):
+            return cls((), [current], ())
+        else:
+            if original is not None:
+                deleted = [original]
+            else:
+                deleted = ()
+            return cls([current], (), deleted)
+
+    @classmethod
+    def from_collection(cls, attribute, state, current):
+        original = state.committed_state.get(attribute.key, NEVER_SET)
+        current = attribute.get_collection(state, state.dict, current)
+        
+        if original is NO_VALUE:
+            return cls(list(current), (), ())
+        elif original is NEVER_SET:
+            return cls((), list(current), ())
+        else:
+            current_states = [(instance_state(c), c) for c in current]
+            original_states = [(instance_state(c), c) for c in original]
+            
+            current_set = dict(current_states)
+            original_set = dict(original_states)
+            
+            return cls(
+                [o for s, o in current_states if s not in original_set],
+                [o for s, o in current_states if s in original_set],
+                [o for s, o in original_states if s not in current_set]
+            )
 
 HISTORY_BLANK = History(None, None, None)
 

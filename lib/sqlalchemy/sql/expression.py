@@ -2013,11 +2013,12 @@ class ColumnCollection(util.OrderedProperties):
 
     def __init__(self, *cols):
         super(ColumnCollection, self).__init__()
-        self.update((c.key, c) for c in cols)
-
+        self._data.update((c.key, c) for c in cols)
+        self.__dict__['_all_cols'] = util.column_set(self)
+        
     def __str__(self):
         return repr([str(c) for c in self])
-
+    
     def replace(self, column):
         """add the given column to this collection, removing unaliased
            versions of this column  as well as existing columns with the
@@ -2037,8 +2038,12 @@ class ColumnCollection(util.OrderedProperties):
         if column.name in self and column.key != column.name:
             other = self[column.name]
             if other.name == other.key:
-                del self[other.name]
-        util.OrderedProperties.__setitem__(self, column.key, column)
+                del self._data[other.name]
+                self._all_cols.remove(other)
+        if column.key in self._data:
+            self._all_cols.remove(self._data[column.key])
+        self._all_cols.add(column)
+        self._data[column.key] = column
 
     def add(self, column):
         """Add a column to this collection.
@@ -2048,7 +2053,13 @@ class ColumnCollection(util.OrderedProperties):
 
         """
         self[column.key] = column
+    
+    def __delitem__(self, key):
+        raise NotImplementedError()
 
+    def __setattr__(self, key, object):
+        raise NotImplementedError()
+        
     def __setitem__(self, key, value):
         if key in self:
 
@@ -2062,14 +2073,25 @@ class ColumnCollection(util.OrderedProperties):
                           'another column with the same key.  Consider '
                           'use_labels for select() statements.' % (key,
                           getattr(existing, 'table', None)))
-        util.OrderedProperties.__setitem__(self, key, value)
+            self._all_cols.remove(existing)
+        self._all_cols.add(value)
+        self._data[key] = value
 
+    def clear(self):
+        self._data.clear()
+        self._all_cols.clear()
+        
     def remove(self, column):
-        del self[column.key]
+        del self._data[column.key]
+        self._all_cols.remove(column)
 
+    def update(self, value):
+        self._data.update(value)
+        self._all_cols.clear()
+        self._all_cols.update(self._data.values())
+        
     def extend(self, iter):
-        for c in iter:
-            self.add(c)
+        self.update((c.key, c) for c in iter)
 
     __hash__ = None
     
@@ -2086,20 +2108,21 @@ class ColumnCollection(util.OrderedProperties):
             raise exc.ArgumentError("__contains__ requires a string argument")
         return util.OrderedProperties.__contains__(self, other)
 
+    def __setstate__(self, state):
+        self.__dict__['_data'] = state['_data']
+        self.__dict__['_all_cols'] = util.column_set(self._data.values())
+
     def contains_column(self, col):
-
-        # have to use a Set here, because it will compare the identity
-        # of the column, not just using "==" for comparison which will
-        # always return a "True" value (i.e. a BinaryClause...)
-
-        return col in util.column_set(self)
+        # this has to be done via set() membership
+        return col in self._all_cols
     
     def as_immutable(self):
-        return ImmutableColumnCollection(self._data)
+        return ImmutableColumnCollection(self._data, self._all_cols)
         
 class ImmutableColumnCollection(util.ImmutableProperties, ColumnCollection):
-    def __init__(self, data):
+    def __init__(self, data, colset):
         util.ImmutableProperties.__init__(self, data)
+        self.__dict__['_all_cols'] = colset
     
     extend = remove = util.ImmutableProperties._immutable
 

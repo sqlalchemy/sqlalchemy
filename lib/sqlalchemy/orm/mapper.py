@@ -1246,9 +1246,13 @@ class Mapper(object):
                         self.primary_key_from_instance(instance))
 
     def _identity_key_from_state(self, state):
-        return self.identity_key_from_primary_key(
-                        self._primary_key_from_state(state))
-
+        dict_ = state.dict
+        
+        return self._identity_class, tuple([
+            self._get_state_attr_by_column(state, dict_, col)
+            for col in self.primary_key
+        ])    
+        
     def primary_key_from_instance(self, instance):
         """Return the list of primary key values for the given
         instance.
@@ -1270,7 +1274,11 @@ class Mapper(object):
         return value
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
-        return self._columntoproperty[column]._setattr(state, dict_, value, column)
+        prop = self._columntoproperty[column]
+        if prop.set_col_value:
+            prop.set_col_value(state, dict_, value, column)
+        else:
+            state.manager[prop.key].impl.set(state, dict_, value, None)
 
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
@@ -1833,15 +1841,17 @@ class Mapper(object):
 
                     if primary_key is not None:
                         # set primary key attributes
-                        for pk, col in zip(primary_key, mapper._pks_by_table[table]):
+                        for pk, col in zip(primary_key, 
+                                        mapper._pks_by_table[table]):
                             # TODO: make sure this inlined code is OK
                             # with composites
                             prop = mapper._columntoproperty[col]
                             if state_dict.get(prop.key) is None:
                                 # TODO: would rather say:
-                                # state_dict[prop.key] = pk
-                                # here, one test fails
-                                prop._setattr(state, state_dict, pk, col)
+                                #state_dict[prop.key] = pk
+                                mapper._set_state_attr_by_column(state, 
+                                                                state_dict, 
+                                                                col, pk)
                                 
                     mapper._postfetch(uowtransaction, table, 
                                         state, state_dict, c,
