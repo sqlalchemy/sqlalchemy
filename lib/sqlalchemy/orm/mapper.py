@@ -1653,7 +1653,8 @@ class Mapper(object):
                 params = {}
                 value_params = {}
                 hasdata = False
-
+                has_all_pks = True
+                
                 if isinsert:
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
@@ -1673,13 +1674,15 @@ class Mapper(object):
                                      col not in pks:
                                      
                                      params[col.key] = value
+                                elif col in pks:
+                                    has_all_pks = False
                             elif isinstance(value, sql.ClauseElement):
                                 value_params[col] = value
                             else:
                                 params[col.key] = value
 
                     insert.append((state, state_dict, params, mapper, 
-                                    connection, value_params))
+                                    connection, value_params, has_all_pks))
                 else:
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
@@ -1793,6 +1796,7 @@ class Mapper(object):
                 statement = self._memo(('update', table), update_stmt)
                 
                 rows = 0
+                postfetch = []
                 for state, state_dict, params, mapper, \
                             connection, value_params in update:
                     
@@ -1803,12 +1807,17 @@ class Mapper(object):
                     else:
                         c = cached_connections[connection].\
                                             execute(statement, params)
-                        
-                    mapper._postfetch(uowtransaction, table, 
-                                        state, state_dict, c, 
-                                        c.last_updated_params(), value_params)
-
+                    
+                    postfetch.append((mapper, state, state_dict,
+                            c.prefetch_cols(), c.postfetch_cols(),
+                            c.last_updated_params(), value_params))
                     rows += c.rowcount
+
+                for mapper, pf in groupby(
+                    postfetch, lambda rec: rec[0]
+                ):
+                    mapper._postfetch(uowtransaction, table, pf)
+
 
                 if connection.dialect.supports_sane_rowcount:
                     if rows != len(update):
@@ -1825,38 +1834,61 @@ class Mapper(object):
                     
             if insert:
                 statement = self._memo(('insert', table), table.insert)
+                postfetch = []
 
-                for state, state_dict, params, mapper, \
-                            connection, value_params in insert:
-
-                    if value_params:
-                        c = connection.execute(
-                                            statement.values(value_params),
-                                            params)
-                    else:
+                for (connection, pkeys, hasvalue, has_all_pks), records in groupby(
+                    insert, lambda rec: (rec[4], rec[2].keys(), bool(rec[5]), rec[6])
+                ):
+                    if has_all_pks and not hasvalue:
+                        records = list(records)
+                        multiparams = [params for state, state_dict, 
+                                            params, mapper, conn, value_params, 
+                                            has_all_pks in records]
                         c = cached_connections[connection].\
-                                            execute(statement, params)
-                    
-                    primary_key = c.inserted_primary_key
+                                            execute(statement, multiparams)
+                        
+                        for (state, state_dict, params, mapper, conn, value_params, has_all_pks), \
+                                last_inserted_params in zip(records, c.context.compiled_parameters):
+                            postfetch.append((mapper, state, state_dict,
+                                    c.prefetch_cols(), c.postfetch_cols(),
+                                    last_inserted_params, {}))
+                            
+                    else:
+                        for state, state_dict, params, mapper, \
+                                    connection, value_params, has_all_pks in records:
 
-                    if primary_key is not None:
-                        # set primary key attributes
-                        for pk, col in zip(primary_key, 
-                                        mapper._pks_by_table[table]):
-                            # TODO: make sure this inlined code is OK
-                            # with composites
-                            prop = mapper._columntoproperty[col]
-                            if state_dict.get(prop.key) is None:
-                                # TODO: would rather say:
-                                #state_dict[prop.key] = pk
-                                mapper._set_state_attr_by_column(state, 
-                                                                state_dict, 
-                                                                col, pk)
-                                
-                    mapper._postfetch(uowtransaction, table, 
-                                        state, state_dict, c,
-                                        c.last_inserted_params(),
-                                        value_params)
+                            if value_params:
+                                c = connection.execute(
+                                                    statement.values(value_params),
+                                                    params)
+                            else:
+                                c = cached_connections[connection].\
+                                                    execute(statement, params)
+                    
+                            primary_key = c.inserted_primary_key
+
+                            if primary_key is not None:
+                                # set primary key attributes
+                                for pk, col in zip(primary_key, 
+                                                mapper._pks_by_table[table]):
+                                    # TODO: make sure this inlined code is OK
+                                    # with composites
+                                    prop = mapper._columntoproperty[col]
+                                    if state_dict.get(prop.key) is None:
+                                        # TODO: would rather say:
+                                        #state_dict[prop.key] = pk
+                                        mapper._set_state_attr_by_column(state, 
+                                                                        state_dict, 
+                                                                        col, pk)
+
+                            postfetch.append((mapper, state, state_dict,
+                                    c.prefetch_cols(), c.postfetch_cols(),
+                                    c.last_inserted_params(), value_params))
+
+                for mapper, pf in groupby(
+                    postfetch, lambda rec: rec[0]
+                ):
+                    mapper._postfetch(uowtransaction, table, pf)
 
         for state, state_dict, mapper, connection, has_identity, \
                         instance_key, row_switch in tups:
@@ -1883,35 +1915,36 @@ class Mapper(object):
                 mapper.dispatch.on_after_update(mapper, connection, state)
 
     def _postfetch(self, uowtransaction, table, 
-                        state, dict_, resultproxy, 
-                        params, value_params):
+                        recs):
         """During a flush, expire attributes in need of newly 
         persisted database state."""
 
-        postfetch_cols = resultproxy.postfetch_cols()
-        generated_cols = list(resultproxy.prefetch_cols())
+        for m, state, dict_, prefetch_cols, postfetch_cols, \
+                params, value_params in recs:
+            postfetch_cols = postfetch_cols
+            generated_cols = list(prefetch_cols)
 
-        if self.version_id_col is not None:
-            generated_cols.append(self.version_id_col)
+            if self.version_id_col is not None:
+                generated_cols.append(self.version_id_col)
 
-        for c in generated_cols:
-            if c.key in params and c in self._columntoproperty:
-                self._set_state_attr_by_column(state, dict_, c, params[c.key])
+            for c in generated_cols:
+                if c.key in params and c in self._columntoproperty:
+                    self._set_state_attr_by_column(state, dict_, c, params[c.key])
 
-        if postfetch_cols:
-            sessionlib._expire_state(state, state.dict, 
-                                [self._columntoproperty[c].key 
-                                for c in postfetch_cols]
-                            )
+            if postfetch_cols:
+                sessionlib._expire_state(state, state.dict, 
+                                    [self._columntoproperty[c].key 
+                                    for c in postfetch_cols]
+                                )
 
-        # synchronize newly inserted ids from one table to the next
-        # TODO: this still goes a little too often.  would be nice to
-        # have definitive list of "columns that changed" here
-        for m, equated_pairs in self._table_to_equated[table]:
-            sync.populate(state, m, state, m, 
-                                            equated_pairs, 
-                                            uowtransaction,
-                                            self.passive_updates)
+            # synchronize newly inserted ids from one table to the next
+            # TODO: this still goes a little too often.  would be nice to
+            # have definitive list of "columns that changed" here
+            for m, equated_pairs in self._table_to_equated[table]:
+                sync.populate(state, m, state, m, 
+                                                equated_pairs, 
+                                                uowtransaction,
+                                                self.passive_updates)
             
     @util.memoized_property
     def _table_to_equated(self):

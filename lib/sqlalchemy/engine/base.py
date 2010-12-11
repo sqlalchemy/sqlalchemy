@@ -629,24 +629,6 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
-    def last_inserted_params(self):
-        """Return a dictionary of the full parameter dictionary for the last
-        compiled INSERT statement.
-
-        Includes any ColumnDefaults or Sequences that were pre-executed.
-        """
-
-        raise NotImplementedError()
-
-    def last_updated_params(self):
-        """Return a dictionary of the full parameter dictionary for the last
-        compiled UPDATE statement.
-
-        Includes any ColumnDefaults that were pre-executed.
-        """
-
-        raise NotImplementedError()
-
     def lastrow_has_defaults(self):
         """Return True if the last INSERT or UPDATE row contained
         inlined or database-side defaults.
@@ -2466,13 +2448,6 @@ class ResultProxy(object):
         did not explicitly specify returning().
 
         """
-        if not self.context.isinsert:
-            raise exc.InvalidRequestError(
-                        "Statement is not an insert() expression construct.")
-        elif self.context._is_explicit_returning:
-            raise exc.InvalidRequestError(
-                        "Can't call inserted_primary_key when returning() "
-                        "is used.")
             
         return self.context._inserted_primary_key
 
@@ -2481,15 +2456,15 @@ class ResultProxy(object):
         """Return the primary key for the row just inserted."""
         
         return self.inserted_primary_key
-        
+    
     def last_updated_params(self):
         """Return ``last_updated_params()`` from the underlying
         ExecutionContext.
 
         See ExecutionContext for details.
         """
-
-        return self.context.last_updated_params()
+        
+        return self.context.last_updated_params
 
     def last_inserted_params(self):
         """Return ``last_inserted_params()`` from the underlying
@@ -2498,7 +2473,7 @@ class ResultProxy(object):
         See ExecutionContext for details.
         """
 
-        return self.context.last_inserted_params()
+        return self.context.last_inserted_params
 
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying
