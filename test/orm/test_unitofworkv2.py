@@ -4,7 +4,8 @@ from test.lib.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, func
 from test.orm import _fixtures, _base
 from sqlalchemy.orm import mapper, relationship, backref, \
-                            create_session, unitofwork, attributes
+                            create_session, unitofwork, attributes,\
+                            Session
 from test.lib.assertsql import AllOf, CompiledSQL
 
 from test.orm._fixtures import keywords, addresses, Base, Keyword,  \
@@ -776,5 +777,72 @@ class RowswitchAccountingTest(_base.MappedTest):
 
         sess.flush()
 
+class BatchInsertsTest(_base.MappedTest, testing.AssertsExecutionResults):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('t', metadata,
+            Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+            Column('data', String(50)),
+            Column('def_', String(50), server_default='def1')
+        )
 
+    @testing.resolve_artifact_names
+    def test_batch_interaction(self):
+        """test batching groups same-structured, primary 
+        key present statements together.
+        
+        """
+        class T(Base):
+            pass
+        mapper(T, t)
+        sess = Session()
+        sess.add_all([
+            T(data='t1'),
+            T(data='t2'),
+            T(id=3, data='t3'),
+            T(id=4, data='t4'),
+            T(id=5, data='t5'),
+            T(id=6, data=func.lower('t6')),
+            T(id=7, data='t7'),
+            T(id=8, data='t8'),
+            T(id=9, data='t9', def_='def2'),
+            T(id=10, data='t10', def_='def3'),
+            T(id=11, data='t11'),
+        ])
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "INSERT INTO t (data) VALUES (:data)",
+                {'data': 't1'}
+            ),
+            CompiledSQL(
+                "INSERT INTO t (data) VALUES (:data)",
+                {'data': 't2'}
+            ),
+            CompiledSQL(
+                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                [{'data': 't3', 'id': 3}, 
+                    {'data': 't4', 'id': 4}, 
+                    {'data': 't5', 'id': 5}]
+            ),
+            CompiledSQL(
+                "INSERT INTO t (id, data) VALUES (:id, lower(:lower_1))",
+                {'lower_1': 't6', 'id': 6}
+            ),
+            CompiledSQL(
+                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                [{'data': 't7', 'id': 7}, {'data': 't8', 'id': 8}]
+            ),
+            CompiledSQL(
+                "INSERT INTO t (id, data, def_) VALUES (:id, :data, :def_)",
+                [{'data': 't9', 'id': 9, 'def_':'def2'}, 
+                {'data': 't10', 'id': 10, 'def_':'def3'}]
+            ),
+            CompiledSQL(
+                "INSERT INTO t (id, data) VALUES (:id, :data)",
+                {'data': 't11', 'id': 11}
+            ),
+        )
 

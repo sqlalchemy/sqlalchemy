@@ -76,7 +76,6 @@ class UOWEventHandler(interfaces.AttributeExtension):
 class UOWTransaction(object):
     def __init__(self, session):
         self.session = session
-        self.mapper_flush_opts = session._mapper_flush_opts
 
         # dictionary used by external actors to 
         # store arbitrary state information.
@@ -316,7 +315,7 @@ class UOWTransaction(object):
                                     postsort_actions):
                 rec.execute(self)
             
-
+            
     def finalize_flush_changes(self):
         """mark processed objects as clean / deleted after a successful flush().
 
