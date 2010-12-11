@@ -1433,7 +1433,8 @@ class Connection(Connectable):
                                 e, 
                                 statement, 
                                 parameters, 
-                                cursor)
+                                cursor,
+                                None)
             raise
 
     def _safe_close_cursor(self, cursor):
