@@ -1013,37 +1013,37 @@ class Numeric(_DateAffinity, TypeEngine):
     ``decimal.Decimal`` objects by default, applying
     conversion as needed.
 
-    Note that the `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library 
-    is a high performing alternative
-    to Python's built-in ``decimal.Decimal`` type, which performs very poorly
-    in high volume situations.   SQLAlchemy 0.7 is tested against ``cdecimal``
-    and supports it fully.  The type is not necessarily supported by 
-    DBAPI implementations however, most of which contain an import
-    for plain ``decimal`` in their source code, even though
-    some such as psycopg2 provide hooks for alternate adapters.   
-    SQLAlchemy imports ``decimal`` globally as well.  While the 
-    alternate ``Decimal`` class can be patched into SQLA's ``decimal`` module,
-    overall the most straightforward and foolproof way to use 
-    "cdecimal" given current DBAPI and Python support is to patch it directly 
-    into sys.modules before anything else is imported::
+    .. note:: The `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library
+       is a high performing alternative to Python's built-in
+       ``decimal.Decimal`` type, which performs very poorly in high volume
+       situations. SQLAlchemy 0.7 is tested against ``cdecimal`` and supports
+       it fully. The type is not necessarily supported by DBAPI
+       implementations however, most of which contain an import for plain
+       ``decimal`` in their source code, even though some such as psycopg2
+       provide hooks for alternate adapters. SQLAlchemy imports ``decimal``
+       globally as well. While the alternate ``Decimal`` class can be patched
+       into SQLA's ``decimal`` module, overall the most straightforward and
+       foolproof way to use "cdecimal" given current DBAPI and Python support
+       is to patch it directly into sys.modules before anything else is
+       imported::
     
-        import sys
-        import cdecimal
-        sys.modules["decimal"] = cdecimal
+           import sys
+           import cdecimal
+           sys.modules["decimal"] = cdecimal
     
-    While the global patch is a little ugly, it's particularly 
-    important to use just one decimal library at a time since 
-    Python Decimal and cdecimal Decimal objects 
-    are not currently compatible *with each other*::
+       While the global patch is a little ugly, it's particularly 
+       important to use just one decimal library at a time since 
+       Python Decimal and cdecimal Decimal objects 
+       are not currently compatible *with each other*::
     
-        >>> import cdecimal
-        >>> import decimal
-        >>> decimal.Decimal("10") == cdecimal.Decimal("10")
-        False
+           >>> import cdecimal
+           >>> import decimal
+           >>> decimal.Decimal("10") == cdecimal.Decimal("10")
+           False
 
-    SQLAlchemy will provide more natural support of 
-    cdecimal if and when it becomes a standard part of Python
-    installations and is supported by all DBAPIs.
+       SQLAlchemy will provide more natural support of 
+       cdecimal if and when it becomes a standard part of Python
+       installations and is supported by all DBAPIs.
 
     """
 
