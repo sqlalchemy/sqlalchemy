@@ -1468,9 +1468,9 @@ class Mapper(object):
         # if session has a connection callable,
         # organize individual states with the connection 
         # to use for update
-        if 'connection_callable' in uowtransaction.mapper_flush_opts:
+        if uowtransaction.session.connection_callable:
             connection_callable = \
-                    uowtransaction.mapper_flush_opts['connection_callable']
+                    uowtransaction.session.connection_callable
         else:
             connection = uowtransaction.transaction.connection(self)
             connection_callable = None
@@ -1550,15 +1550,10 @@ class Mapper(object):
         of objects.
 
         This is called within the context of a UOWTransaction during a
-        flush operation.
+        flush operation, given a list of states to be flushed.  The
+        base mapper in an inheritance hierarchy handles the inserts/
+        updates for all descendant mappers.
 
-        `_save_obj` issues SQL statements not just for instances mapped
-        directly by this mapper, but for instances mapped by all
-        inheriting mappers as well.  This is to maintain proper insert
-        ordering among a polymorphic chain of instances. Therefore
-        _save_obj is typically called only on a *base mapper*, or a
-        mapper which does not inherit from any other mapper.
-        
         """
             
         # if batch=false, call _save_obj separately for each object
@@ -1572,9 +1567,9 @@ class Mapper(object):
         # if session has a connection callable,
         # organize individual states with the connection 
         # to use for insert/update
-        if 'connection_callable' in uowtransaction.mapper_flush_opts:
+        if uowtransaction.session.connection_callable:
             connection_callable = \
-                    uowtransaction.mapper_flush_opts['connection_callable']
+                    uowtransaction.session.connection_callable
         else:
             connection = uowtransaction.transaction.connection(self)
             connection_callable = None
@@ -1592,6 +1587,7 @@ class Mapper(object):
             instance_key = state.key or mapper._identity_key_from_state(state)
 
             row_switch = None
+            
             # call before_XXX extensions
             if not has_identity:
                 mapper.dispatch.on_before_insert(mapper, conn, state)
@@ -1652,10 +1648,9 @@ class Mapper(object):
                 
                 params = {}
                 value_params = {}
-                hasdata = False
-                has_all_pks = True
                 
                 if isinsert:
+                    has_all_pks = True
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col.key] = \
@@ -1669,13 +1664,12 @@ class Mapper(object):
                                 value = prop.get_col_value(col, value)
 
                             if value is None:
-                                if col.default is None and \
-                                     col.server_default is None and \
-                                     col not in pks:
-                                     
-                                     params[col.key] = value
-                                elif col in pks:
+                                if col in pks:
                                     has_all_pks = False
+                                elif col.default is None and \
+                                     col.server_default is None:
+                                     params[col.key] = value
+
                             elif isinstance(value, sql.ClauseElement):
                                 value_params[col] = value
                             else:
@@ -1684,6 +1678,7 @@ class Mapper(object):
                     insert.append((state, state_dict, params, mapper, 
                                     connection, value_params, has_all_pks))
                 else:
+                    hasdata = False
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col._label] = \
@@ -1765,7 +1760,8 @@ class Mapper(object):
                                 else:
                                     hasdata = True
                             elif col in pks:
-                                value = state.manager[prop.key].impl.get(state, state_dict)
+                                value = state.manager[prop.key].\
+                                            impl.get(state, state_dict)
                                 if prop.get_col_value:
                                     value = prop.get_col_value(col, value)
                                 params[col._label] = value
@@ -1796,7 +1792,6 @@ class Mapper(object):
                 statement = self._memo(('update', table), update_stmt)
                 
                 rows = 0
-                postfetch = []
                 for state, state_dict, params, mapper, \
                             connection, value_params in update:
                     
@@ -1808,16 +1803,16 @@ class Mapper(object):
                         c = cached_connections[connection].\
                                             execute(statement, params)
                     
-                    postfetch.append((mapper, state, state_dict,
-                            c.prefetch_cols(), c.postfetch_cols(),
-                            c.last_updated_params(), value_params))
+                    mapper._postfetch(
+                            uowtransaction, 
+                            table, 
+                            state, 
+                            state_dict, 
+                            c.context.prefetch_cols, 
+                            c.context.postfetch_cols,
+                            c.context.compiled_parameters[0], 
+                            value_params)
                     rows += c.rowcount
-
-                for mapper, pf in groupby(
-                    postfetch, lambda rec: rec[0]
-                ):
-                    mapper._postfetch(uowtransaction, table, pf)
-
 
                 if connection.dialect.supports_sane_rowcount:
                     if rows != len(update):
@@ -1834,61 +1829,72 @@ class Mapper(object):
                     
             if insert:
                 statement = self._memo(('insert', table), table.insert)
-                postfetch = []
 
-                for (connection, pkeys, hasvalue, has_all_pks), records in groupby(
-                    insert, lambda rec: (rec[4], rec[2].keys(), bool(rec[5]), rec[6])
+                for (connection, pkeys, hasvalue, has_all_pks), \
+                    records in groupby(insert, 
+                                        lambda rec: (rec[4], 
+                                                rec[2].keys(), 
+                                                bool(rec[5]), 
+                                                rec[6])
                 ):
                     if has_all_pks and not hasvalue:
                         records = list(records)
-                        multiparams = [params for state, state_dict, 
-                                            params, mapper, conn, value_params, 
-                                            has_all_pks in records]
+                        multiparams = [rec[2] for rec in records]
                         c = cached_connections[connection].\
                                             execute(statement, multiparams)
                         
-                        for (state, state_dict, params, mapper, conn, value_params, has_all_pks), \
-                                last_inserted_params in zip(records, c.context.compiled_parameters):
-                            postfetch.append((mapper, state, state_dict,
-                                    c.prefetch_cols(), c.postfetch_cols(),
-                                    last_inserted_params, {}))
+                        for (state, state_dict, params, mapper, 
+                                conn, value_params, has_all_pks), \
+                                last_inserted_params in \
+                                zip(records, c.context.compiled_parameters):
+                            mapper._postfetch(
+                                    uowtransaction, 
+                                    table,
+                                    state, 
+                                    state_dict,
+                                    c.context.prefetch_cols,
+                                    c.context.postfetch_cols,
+                                    last_inserted_params, 
+                                    value_params)
                             
                     else:
                         for state, state_dict, params, mapper, \
-                                    connection, value_params, has_all_pks in records:
+                                    connection, value_params, \
+                                    has_all_pks in records:
 
                             if value_params:
-                                c = connection.execute(
-                                                    statement.values(value_params),
-                                                    params)
+                                result = connection.execute(
+                                            statement.values(value_params),
+                                            params)
                             else:
-                                c = cached_connections[connection].\
+                                result = cached_connections[connection].\
                                                     execute(statement, params)
                     
-                            primary_key = c.inserted_primary_key
+                            primary_key = result.context.inserted_primary_key
 
                             if primary_key is not None:
                                 # set primary key attributes
                                 for pk, col in zip(primary_key, 
                                                 mapper._pks_by_table[table]):
-                                    # TODO: make sure this inlined code is OK
-                                    # with composites
                                     prop = mapper._columntoproperty[col]
                                     if state_dict.get(prop.key) is None:
                                         # TODO: would rather say:
                                         #state_dict[prop.key] = pk
-                                        mapper._set_state_attr_by_column(state, 
-                                                                        state_dict, 
-                                                                        col, pk)
+                                        mapper._set_state_attr_by_column(
+                                                    state, 
+                                                    state_dict, 
+                                                    col, pk)
 
-                            postfetch.append((mapper, state, state_dict,
-                                    c.prefetch_cols(), c.postfetch_cols(),
-                                    c.last_inserted_params(), value_params))
+                            mapper._postfetch(
+                                    uowtransaction, 
+                                    table, 
+                                    state, 
+                                    state_dict,
+                                    result.context.prefetch_cols, 
+                                    result.context.postfetch_cols,
+                                    result.context.compiled_parameters[0], 
+                                    value_params)
 
-                for mapper, pf in groupby(
-                    postfetch, lambda rec: rec[0]
-                ):
-                    mapper._postfetch(uowtransaction, table, pf)
 
         for state, state_dict, mapper, connection, has_identity, \
                         instance_key, row_switch in tups:
@@ -1915,36 +1921,32 @@ class Mapper(object):
                 mapper.dispatch.on_after_update(mapper, connection, state)
 
     def _postfetch(self, uowtransaction, table, 
-                        recs):
+                    state, dict_, prefetch_cols, postfetch_cols,
+                                params, value_params):
         """During a flush, expire attributes in need of newly 
         persisted database state."""
 
-        for m, state, dict_, prefetch_cols, postfetch_cols, \
-                params, value_params in recs:
-            postfetch_cols = postfetch_cols
-            generated_cols = list(prefetch_cols)
+        if self.version_id_col is not None:
+            prefetch_cols = list(prefetch_cols) + [self.version_id_col]
 
-            if self.version_id_col is not None:
-                generated_cols.append(self.version_id_col)
+        for c in prefetch_cols:
+            if c.key in params and c in self._columntoproperty:
+                self._set_state_attr_by_column(state, dict_, c, params[c.key])
 
-            for c in generated_cols:
-                if c.key in params and c in self._columntoproperty:
-                    self._set_state_attr_by_column(state, dict_, c, params[c.key])
+        if postfetch_cols:
+            sessionlib._expire_state(state, state.dict, 
+                                [self._columntoproperty[c].key 
+                                for c in postfetch_cols]
+                            )
 
-            if postfetch_cols:
-                sessionlib._expire_state(state, state.dict, 
-                                    [self._columntoproperty[c].key 
-                                    for c in postfetch_cols]
-                                )
-
-            # synchronize newly inserted ids from one table to the next
-            # TODO: this still goes a little too often.  would be nice to
-            # have definitive list of "columns that changed" here
-            for m, equated_pairs in self._table_to_equated[table]:
-                sync.populate(state, m, state, m, 
-                                                equated_pairs, 
-                                                uowtransaction,
-                                                self.passive_updates)
+        # synchronize newly inserted ids from one table to the next
+        # TODO: this still goes a little too often.  would be nice to
+        # have definitive list of "columns that changed" here
+        for m, equated_pairs in self._table_to_equated[table]:
+            sync.populate(state, m, state, m, 
+                                            equated_pairs, 
+                                            uowtransaction,
+                                            self.passive_updates)
             
     @util.memoized_property
     def _table_to_equated(self):
@@ -1970,9 +1972,9 @@ class Mapper(object):
         flush operation.
 
         """
-        if 'connection_callable' in uowtransaction.mapper_flush_opts:
+        if uowtransaction.session.connection_callable:
             connection_callable = \
-                    uowtransaction.mapper_flush_opts['connection_callable']
+                    uowtransaction.session.connection_callable
         else:
             connection = uowtransaction.transaction.connection(self)
             connection_callable = None

@@ -511,7 +511,6 @@ class Session(object):
         self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
         self._query_cls = query_cls
-        self._mapper_flush_opts = {}
         
         if extension:
             for ext in util.to_list(extension):
@@ -530,6 +529,8 @@ class Session(object):
 
     dispatch = event.dispatcher(SessionEvents)
 
+    connection_callable = None
+    
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this Session.
 

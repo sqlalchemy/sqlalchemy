@@ -2448,8 +2448,16 @@ class ResultProxy(object):
         did not explicitly specify returning().
 
         """
+
+        if not self.context.isinsert:
+            raise exc.InvalidRequestError(
+                        "Statement is not an insert() expression construct.")
+        elif self.context._is_explicit_returning:
+            raise exc.InvalidRequestError(
+                        "Can't call inserted_primary_key when returning() "
+                        "is used.")
             
-        return self.context._inserted_primary_key
+        return self.context.inserted_primary_key
 
     @util.deprecated("0.6", "Use :attr:`.ResultProxy.inserted_primary_key`")
     def last_inserted_ids(self):
@@ -2458,22 +2466,24 @@ class ResultProxy(object):
         return self.inserted_primary_key
     
     def last_updated_params(self):
-        """Return ``last_updated_params()`` from the underlying
-        ExecutionContext.
-
-        See ExecutionContext for details.
-        """
+        """Return the collection of updated parameters from this
+        execution.
         
-        return self.context.last_updated_params
+        """
+        if self.context.executemany:
+            return self.context.compiled_parameters
+        else:
+            return self.context.compiled_parameters[0]
 
     def last_inserted_params(self):
-        """Return ``last_inserted_params()`` from the underlying
-        ExecutionContext.
-
-        See ExecutionContext for details.
+        """Return the collection of inserted parameters from this
+        execution.
+        
         """
-
-        return self.context.last_inserted_params
+        if self.context.executemany:
+            return self.context.compiled_parameters
+        else:
+            return self.context.compiled_parameters[0]
 
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying

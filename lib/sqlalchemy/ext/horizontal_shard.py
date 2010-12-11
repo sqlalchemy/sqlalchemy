@@ -50,12 +50,12 @@ class ShardedSession(Session):
         self.id_chooser = id_chooser
         self.query_chooser = query_chooser
         self.__binds = {}
-        self._mapper_flush_opts = {'connection_callable':self.connection}
+        self.connection_callable = self.connection
         self._query_cls = ShardedQuery
         if shards is not None:
             for k in shards:
                 self.bind_shard(k, shards[k])
-        
+    
     def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
         if shard_id is None:
             shard_id = self.shard_chooser(mapper, instance)

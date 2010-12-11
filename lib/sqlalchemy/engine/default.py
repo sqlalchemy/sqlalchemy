@@ -400,7 +400,9 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.cursor = self.create_cursor()
         if self.isinsert or self.isupdate:
             self.__process_defaults()
-            
+            self.postfetch_cols = self.compiled.postfetch
+            self.prefetch_cols = self.compiled.prefetch
+                    
         processors = dict(
             (key, value) for key, value in
             ( (compiled.bind_names[bindparam],
@@ -541,7 +543,8 @@ class DefaultExecutionContext(base.ExecutionContext):
         """
 
         conn = self._connection
-        if isinstance(stmt, unicode) and not self.dialect.supports_unicode_statements:
+        if isinstance(stmt, unicode) and \
+            not self.dialect.supports_unicode_statements:
             stmt = stmt.encode(self.dialect.encoding)
 
         if self.dialect.positional:
@@ -614,13 +617,14 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def post_insert(self):
         if self.dialect.postfetch_lastrowid and \
-            (not len(self._inserted_primary_key) or \
-                        None in self._inserted_primary_key):
+            (not len(self.inserted_primary_key) or \
+                        None in self.inserted_primary_key):
             
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
-            self._inserted_primary_key = [c is table._autoincrement_column and lastrowid or v
-                for c, v in zip(table.primary_key, self._inserted_primary_key)
+            self.inserted_primary_key = [
+                c is table._autoincrement_column and lastrowid or v
+                for c, v in zip(table.primary_key, self.inserted_primary_key)
             ]
             
     def _fetch_implicit_returning(self, resultproxy):
@@ -628,16 +632,17 @@ class DefaultExecutionContext(base.ExecutionContext):
         row = resultproxy.fetchone()
 
         ipk = []
-        for c, v in zip(table.primary_key, self._inserted_primary_key):
+        for c, v in zip(table.primary_key, self.inserted_primary_key):
             if v is not None:
                 ipk.append(v)
             else:
                 ipk.append(row[c])
         
-        self._inserted_primary_key = ipk
+        self.inserted_primary_key = ipk
     
     def lastrow_has_defaults(self):
-        return hasattr(self, 'postfetch_cols') and len(self.postfetch_cols)
+        return (self.isinsert or self.isupdate) and \
+            bool(self.postfetch_cols)
 
     def set_input_sizes(self, translate=None, exclude_types=None):
         """Given a cursor and ClauseParameters, call the appropriate
@@ -709,31 +714,6 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             return self._exec_default(column.onupdate)
     
-    @util.memoized_property
-    def _inserted_primary_key(self):
-
-        if not self.isinsert:
-            raise exc.InvalidRequestError(
-                        "Statement is not an insert() expression construct.")
-        elif self._is_explicit_returning:
-            raise exc.InvalidRequestError(
-                        "Can't call inserted_primary_key when returning() "
-                        "is used.")
-        
-        
-        # lazyily evaluate inserted_primary_key for executemany.
-        # for execute(), its already in __dict__.
-        if self.executemany:
-            return [
-                    [compiled_parameters.get(c.key, None) 
-                            for c in self.compiled.\
-                                                statement.table.primary_key
-                    ] for compiled_parameters in self.compiled_parameters
-            ]
-        else:
-            # _inserted_primary_key should be calced here
-            assert False
-    
     def __process_defaults(self):
         """Generate default values for compiled insert/update statements,
         and generate inserted_primary_key collection.
@@ -764,12 +744,6 @@ class DefaultExecutionContext(base.ExecutionContext):
                         if val is not None:
                             param[c.key] = val
                 del self.current_parameters
-
-            if self.isinsert:
-                self.last_inserted_params = self.compiled_parameters
-            else:
-                self.last_updated_params = self.compiled_parameters
-
         else:
             self.current_parameters = compiled_parameters = \
                                         self.compiled_parameters[0]
@@ -784,19 +758,12 @@ class DefaultExecutionContext(base.ExecutionContext):
                     compiled_parameters[c.key] = val
             del self.current_parameters
             
-            if self.isinsert and not self._is_explicit_returning:
-                self._inserted_primary_key = [
+            if self.isinsert:
+                self.inserted_primary_key = [
                                 self.compiled_parameters[0].get(c.key, None) 
                                         for c in self.compiled.\
                                                 statement.table.primary_key
                                 ]
 
-            if self.isinsert:
-                self.last_inserted_params = compiled_parameters
-            else:
-                self.last_updated_params = compiled_parameters
-
-        self.postfetch_cols = self.compiled.postfetch
-        self.prefetch_cols = self.compiled.prefetch
             
 DefaultDialect.execution_ctx_cls = DefaultExecutionContext
