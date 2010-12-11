@@ -14,6 +14,7 @@ from sqlalchemy.engine import url
 from test.lib import *
 from test.lib.testing import eq_, emits_warning_on, \
     assert_raises_message
+from sqlalchemy.util.compat import decimal
 
 class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -1043,7 +1044,6 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
     @testing.fails_on_everything_except('mssql+pyodbc',
             'this is some pyodbc-specific feature')
     def test_decimal_notation(self):
-        import decimal
         numeric_table = Table('numeric_table', metadata, Column('id',
                               Integer, Sequence('numeric_id_seq',
                               optional=True), primary_key=True),

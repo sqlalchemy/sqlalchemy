@@ -22,14 +22,14 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
 
 import inspect
 import datetime as dt
-from decimal import Decimal as _python_Decimal
 import codecs
 
 from sqlalchemy import exc, schema
 from sqlalchemy.sql import expression, operators
 import sys
-schema.types = expression.sqltypes =sys.modules['sqlalchemy.types']
+schema.types = expression.sqltypes = sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
+from sqlalchemy.util.compat import decimal
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
 from sqlalchemy import processors
@@ -1047,7 +1047,38 @@ class Numeric(_DateAffinity, TypeEngine):
         overhead, and is still subject to floating point data loss - in 
         which case ``asdecimal=False`` will at least remove the extra
         conversion overhead.
+        
+        Note that the "cdecimal" library is a high performing alternative
+        to Python's built-in "decimal" type, which performs very poorly
+        in high volume situations.   SQLAlchemy 0.7 is tested against "cdecimal"
+        as well and supports it fully.  The type is not necessarily supported by 
+        DBAPI implementations however, most of which contain an import
+        for plain "decimal" in their source code, even though
+        some such as psycopg2 provide hooks for alternate adapters.   
+        SQLAlchemy imports "decimal" globally as well.  While the 
+        alternate "Decimal" class can be patched into SQLA's "decimal" module,
+        overall the most straightforward and foolproof way to use 
+        "cdecimal" given current support is to patch it directly 
+        into sys.modules before anything else is imported::
+        
+            import sys
+            import cdecimal
+            sys.modules["decimal"] = cdecimal
+        
+        While the global patch is a little ugly, it's particularly 
+        important to use just one decimal library at a time since 
+        Python Decimal and cdecimal Decimal objects 
+        are not currently compatible *with each other*::
+        
+            >>> import cdecimal
+            >>> import decimal
+            >>> decimal.Decimal("10") == cdecimal.Decimal("10")
+            False
 
+        SQLAlchemy will provide more automatic support of 
+        cdecimal if and when it becomes a standard part of Python
+        installations and is supported by all DBAPIs.
+        
         """
         self.precision = precision
         self.scale = scale
@@ -1085,10 +1116,10 @@ class Numeric(_DateAffinity, TypeEngine):
                 # we're a "numeric", DBAPI returns floats, convert.
                 if self.scale is not None:
                     return processors.to_decimal_processor_factory(
-                                _python_Decimal, self.scale)
+                                decimal.Decimal, self.scale)
                 else:
                     return processors.to_decimal_processor_factory(
-                                _python_Decimal)
+                                decimal.Decimal)
         else:
             if dialect.supports_native_decimal:
                 return processors.to_float
@@ -1153,7 +1184,7 @@ class Float(Numeric):
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
-            return processors.to_decimal_processor_factory(_python_Decimal)
+            return processors.to_decimal_processor_factory(decimal.Decimal)
         else:
             return None
 
@@ -1928,9 +1959,6 @@ NULLTYPE = NullType()
 BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 
-# using VARCHAR/NCHAR so that we dont get the genericized "String"
-# type which usually resolves to TEXT/CLOB
-
 _type_map = {
     str: String(),
     # Py3K
@@ -1941,7 +1969,7 @@ _type_map = {
     int : Integer(),
     float : Numeric(),
     bool: BOOLEANTYPE,
-    _python_Decimal : Numeric(),
+    decimal.Decimal : Numeric(),
     dt.date : Date(),
     dt.datetime : DateTime(),
     dt.time : Time(),

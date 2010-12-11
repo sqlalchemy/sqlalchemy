@@ -86,10 +86,10 @@ The following per-statement execution options are respected:
 
 import random
 import re
-import decimal
 import logging
 
 from sqlalchemy import util, exc
+from sqlalchemy.util.compat import decimal
 from sqlalchemy import processors
 from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression

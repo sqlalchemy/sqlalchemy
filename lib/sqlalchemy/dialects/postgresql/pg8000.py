@@ -21,10 +21,9 @@ Passing data from/to the Interval type is not supported as of
 yet.
 
 """
-import decimal
-
 from sqlalchemy.engine import default
 from sqlalchemy import util, exc
+from sqlalchemy.util.compat import decimal
 from sqlalchemy import processors
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, \

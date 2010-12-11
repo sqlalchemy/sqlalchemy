@@ -10,7 +10,7 @@ from test.lib.engines import testing_engine
 from sqlalchemy.dialects.oracle import cx_oracle, base as oracle
 from sqlalchemy.engine import default
 from sqlalchemy.util import jython
-from decimal import Decimal
+from sqlalchemy.util.compat import decimal
 import datetime
 import os
 
@@ -774,12 +774,12 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             ):
                 for i, (val, type_) in enumerate((
                     (1, int),
-                    (Decimal("5.2"), Decimal),
+                    (decimal.Decimal("5.2"), decimal.Decimal),
                     (6.5, float),
                     (8.5, float),
                     (9.5, float),
                     (12, int),
-                    (Decimal("14.85"), Decimal),
+                    (decimal.Decimal("14.85"), decimal.Decimal),
                     (15.76, float),
                 )):
                     eq_(row[i], val)
@@ -809,8 +809,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         foo.create()
         
         foo.insert().execute(
-            {'idata':5, 'ndata':Decimal("45.6"), 'ndata2':Decimal("45.0"), 
-                    'nidata':Decimal('53'), 'fdata':45.68392},
+            {'idata':5, 'ndata':decimal.Decimal("45.6"), 'ndata2':decimal.Decimal("45.0"), 
+                    'nidata':decimal.Decimal('53'), 'fdata':45.68392},
         )
 
         stmt = """
@@ -825,10 +825,10 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         
         
         row = testing.db.execute(stmt).fetchall()[0]
-        eq_([type(x) for x in row], [int, Decimal, Decimal, int, float])
+        eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, int, float])
         eq_(
             row, 
-            (5, Decimal('45.6'), Decimal('45'), 53, 45.683920000000001)
+            (5, decimal.Decimal('45.6'), decimal.Decimal('45'), 53, 45.683920000000001)
         )
 
         # with a nested subquery, 
@@ -852,10 +852,10 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         FROM dual
         """
         row = testing.db.execute(stmt).fetchall()[0]
-        eq_([type(x) for x in row], [int, Decimal, int, int, Decimal])
+        eq_([type(x) for x in row], [int, decimal.Decimal, int, int, decimal.Decimal])
         eq_(
             row, 
-            (5, Decimal('45.6'), 45, 53, Decimal('45.68392'))
+            (5, decimal.Decimal('45.6'), 45, 53, decimal.Decimal('45.68392'))
         )
         
         row = testing.db.execute(text(stmt, 
@@ -866,9 +866,9 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                                         'nidata':Numeric(5, 0),
                                         'fdata':Float()
                                 })).fetchall()[0]
-        eq_([type(x) for x in row], [int, Decimal, Decimal, Decimal, float])
+        eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float])
         eq_(row, 
-            (5, Decimal('45.6'), Decimal('45'), Decimal('53'), 45.683920000000001)
+            (5, decimal.Decimal('45.6'), decimal.Decimal('45'), decimal.Decimal('53'), 45.683920000000001)
         )
         
         stmt = """
@@ -895,8 +895,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         WHERE ROWNUM >= 0) anon_1
         """
         row =testing.db.execute(stmt).fetchall()[0]
-        eq_([type(x) for x in row], [int, Decimal, int, int, Decimal])
-        eq_(row, (5, Decimal('45.6'), 45, 53, Decimal('45.68392')))
+        eq_([type(x) for x in row], [int, decimal.Decimal, int, int, decimal.Decimal])
+        eq_(row, (5, decimal.Decimal('45.6'), 45, 53, decimal.Decimal('45.68392')))
 
         row = testing.db.execute(text(stmt, 
                                 typemap={
@@ -906,9 +906,9 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                                         'anon_1_nidata':Numeric(5, 0), 
                                         'anon_1_fdata':Float()
                                 })).fetchall()[0]
-        eq_([type(x) for x in row], [int, Decimal, Decimal, Decimal, float])
+        eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, decimal.Decimal, float])
         eq_(row, 
-            (5, Decimal('45.6'), Decimal('45'), Decimal('53'), 45.683920000000001)
+            (5, decimal.Decimal('45.6'), decimal.Decimal('45'), decimal.Decimal('53'), 45.683920000000001)
         )
 
         row = testing.db.execute(text(stmt, 
@@ -919,9 +919,9 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                                         'anon_1_nidata':Numeric(5, 0, asdecimal=False), 
                                         'anon_1_fdata':Float(asdecimal=True)
                                 })).fetchall()[0]
-        eq_([type(x) for x in row], [int, float, float, float, Decimal])
+        eq_([type(x) for x in row], [int, float, float, float, decimal.Decimal])
         eq_(row, 
-            (5, 45.6, 45, 53, Decimal('45.68392'))
+            (5, 45.6, 45, 53, decimal.Decimal('45.68392'))
         )
 
         
@@ -1064,11 +1064,11 @@ class EuroNumericTest(TestBase):
     @testing.provide_metadata
     def test_output_type_handler(self):
         for stmt, exp, kw in [
-            ("SELECT 0.1 FROM DUAL", Decimal("0.1"), {}),
+            ("SELECT 0.1 FROM DUAL", decimal.Decimal("0.1"), {}),
             ("SELECT 15 FROM DUAL", 15, {}),
-            ("SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL", Decimal("15"), {}),
-            ("SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL", Decimal("0.1"), {}),
-            ("SELECT :num FROM DUAL", Decimal("2.5"), {'num':Decimal("2.5")})
+            ("SELECT CAST(15 AS NUMERIC(3, 1)) FROM DUAL", decimal.Decimal("15"), {}),
+            ("SELECT CAST(0.1 AS NUMERIC(5, 2)) FROM DUAL", decimal.Decimal("0.1"), {}),
+            ("SELECT :num FROM DUAL", decimal.Decimal("2.5"), {'num':decimal.Decimal("2.5")})
         ]:
             test_exp = self.engine.scalar(stmt, **kw)
             eq_(

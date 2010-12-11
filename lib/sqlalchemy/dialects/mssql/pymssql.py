@@ -35,7 +35,6 @@ Please consult the pymssql documentation for further information.
 from sqlalchemy.dialects.mssql.base import MSDialect
 from sqlalchemy import types as sqltypes, util, processors
 import re
-import decimal
 
 class _MSNumeric_pymssql(sqltypes.Numeric):
     def result_processor(self, dialect, type_):

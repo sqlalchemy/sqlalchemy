@@ -171,7 +171,6 @@ if win32 or jython:
 else:
     time_func = time.time 
 
-
 if sys.version_info >= (2, 5):
     def decode_slice(slc):
         """decode a slice object as sent to __getitem__.
@@ -188,3 +187,7 @@ if sys.version_info >= (2, 5):
 else:
     def decode_slice(slc):
         return (slc.start, slc.stop, slc.step)
+
+
+import decimal
+

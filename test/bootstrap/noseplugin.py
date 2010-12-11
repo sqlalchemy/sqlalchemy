@@ -15,7 +15,9 @@ from test.bootstrap import config
 from test.bootstrap.config import (
     _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
     _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
-    _set_table_options, base_config, db, db_label, db_url, file_config, post_configure)
+    _monkeypatch_cdecimal,
+    _set_table_options, base_config, db, db_label, db_url, file_config, post_configure, 
+    pre_configure)
 
 log = logging.getLogger('nose.plugins.sqlalchemy')
 
@@ -56,6 +58,8 @@ class NoseSQLAlchemy(Plugin):
         opt("--reversetop", action="store_true", dest="reversetop", default=False,
             help="Use a random-ordering set implementation in the ORM (helps "
                   "reveal dependency issues)")
+        opt("--with-cdecimal", action="store_true", dest="cdecimal", default=False,
+            help="Monkeypatch the cdecimal library into Python 'decimal' for all tests")
         opt("--unhashable", action="store_true", dest="unhashable", default=False,
             help="Disallow SQLAlchemy from performing a hash() on mapped test objects.")
         opt("--noncomparable", action="store_true", dest="noncomparable", default=False,
@@ -79,7 +83,9 @@ class NoseSQLAlchemy(Plugin):
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
         self.options = options
-        
+        for fn in pre_configure:
+            fn(self.options, file_config)
+            
     def begin(self):
         global testing, requires, util
         from test.lib import testing, requires

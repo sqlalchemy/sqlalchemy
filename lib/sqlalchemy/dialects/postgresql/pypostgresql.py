@@ -8,7 +8,6 @@ URLs are of the form ``postgresql+pypostgresql://user@password@host:port/dbname[
 
 """
 from sqlalchemy.engine import default
-import decimal
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext

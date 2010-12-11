@@ -4,7 +4,7 @@ from test.lib.testing import eq_
 import StringIO, sys
 from sqlalchemy import *
 from sqlalchemy import exc, sql
-from decimal import Decimal
+from sqlalchemy.util.compat import decimal
 from sqlalchemy.databases import maxdb
 from test.lib import *
 
@@ -40,7 +40,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
                 _t.create()
             t = Table('dectest', meta, autoload=True)
 
-            vals = [Decimal('2.2'), Decimal('23'), Decimal('2.4'), 25]
+            vals = [decimal.Decimal('2.2'), decimal.Decimal('23'), decimal.Decimal('2.4'), 25]
             cols = ['d1','d2','n1','i1']
             t.insert().execute(dict(zip(cols,vals)))
             roundtrip = list(t.select().execute())

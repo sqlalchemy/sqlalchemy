@@ -11,7 +11,7 @@ from sqlalchemy.databases import *
 from test.lib.schema import Table, Column
 from test.lib import *
 from test.lib.util import picklers
-from decimal import Decimal
+from sqlalchemy.util.compat import decimal
 from test.lib.util import round_decimal
 
 
@@ -1262,8 +1262,8 @@ class NumericTest(TestBase):
     def test_numeric_as_decimal(self):
         self._do_test(
             Numeric(precision=8, scale=4),
-            [15.7563, Decimal("15.7563"), None],
-            [Decimal("15.7563"), None], 
+            [15.7563, decimal.Decimal("15.7563"), None],
+            [decimal.Decimal("15.7563"), None], 
         )
 
     def test_numeric_as_float(self):
@@ -1274,7 +1274,7 @@ class NumericTest(TestBase):
 
         self._do_test(
             Numeric(precision=8, scale=4, asdecimal=False),
-            [15.7563, Decimal("15.7563"), None],
+            [15.7563, decimal.Decimal("15.7563"), None],
             [15.7563, None],
             filter_ = filter_
         )
@@ -1282,15 +1282,15 @@ class NumericTest(TestBase):
     def test_float_as_decimal(self):
         self._do_test(
             Float(precision=8, asdecimal=True),
-            [15.7563, Decimal("15.7563"), None],
-            [Decimal("15.7563"), None], 
+            [15.7563, decimal.Decimal("15.7563"), None],
+            [decimal.Decimal("15.7563"), None], 
             filter_ = lambda n:n is not None and round(n, 5) or None
         )
 
     def test_float_as_float(self):
         self._do_test(
             Float(precision=8),
-            [15.7563, Decimal("15.7563")],
+            [15.7563, decimal.Decimal("15.7563")],
             [15.7563],
             filter_ = lambda n:n is not None and round(n, 5) or None
         )
@@ -1390,18 +1390,18 @@ class NumericRawSQLTest(TestBase):
     @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
     @testing.provide_metadata
     def test_decimal_fp(self):
-        t = self._fixture(metadata, Numeric(10, 5), Decimal("45.5"))
+        t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
         val = testing.db.execute("select val from t").scalar()
-        assert isinstance(val, Decimal)
-        eq_(val, Decimal("45.5"))
+        assert isinstance(val, decimal.Decimal)
+        eq_(val, decimal.Decimal("45.5"))
 
     @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
     @testing.provide_metadata
     def test_decimal_int(self):
-        t = self._fixture(metadata, Numeric(10, 5), Decimal("45"))
+        t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
         val = testing.db.execute("select val from t").scalar()
-        assert isinstance(val, Decimal)
-        eq_(val, Decimal("45"))
+        assert isinstance(val, decimal.Decimal)
+        eq_(val, decimal.Decimal("45"))
 
     @testing.provide_metadata
     def test_ints(self):

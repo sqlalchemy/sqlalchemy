@@ -1,4 +1,5 @@
 from sqlalchemy.util import jython, defaultdict, decorator
+from sqlalchemy.util.compat import decimal
 
 import gc
 import time
@@ -44,8 +45,6 @@ def round_decimal(value, prec):
     if isinstance(value, float):
         return round(value, prec)
     
-    import decimal
-
     # can also use shift() here but that is 2.6 only
     return (value * decimal.Decimal("1" + "0" * prec)).to_integral(decimal.ROUND_FLOOR) / \
                         pow(10, prec)

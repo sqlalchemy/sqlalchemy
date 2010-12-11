@@ -2,12 +2,12 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 from test.lib import  engines
 import datetime
-import decimal
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exc, schema, types
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.engine.strategies import MockEngineStrategy
+from sqlalchemy.util.compat import decimal
 from test.lib import *
 from test.lib.util import round_decimal
 from sqlalchemy.sql import table, column
@@ -480,7 +480,7 @@ class NumericInterpretationTest(TestBase):
     
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
-        from decimal import Decimal
+        from sqlalchemy.util.compat import decimal
         
         for dialect in (pg8000.dialect(), psycopg2.dialect()):
             
@@ -491,7 +491,7 @@ class NumericInterpretationTest(TestBase):
                 val = 23.7
                 if proc is not None:
                     val = proc(val)
-                assert val in (23.7, Decimal("23.7"))
+                assert val in (23.7, decimal.Decimal("23.7"))
     
 class InsertTest(TestBase, AssertsExecutionResults):
 

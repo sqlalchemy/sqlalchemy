@@ -48,6 +48,7 @@ def _list_dbs(*args):
         print "%20s\t%s" % (macro, file_config.get('db', macro))
     sys.exit(0)
 
+
 def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
 
@@ -55,23 +56,15 @@ def _engine_strategy(options, opt_str, value, parser):
     if value:
         db_opts['strategy'] = value
 
-class _ordered_map(object):
-    def __init__(self):
-        self._keys = list()
-        self._data = dict()
+pre_configure = []
+post_configure = []
 
-    def __setitem__(self, key, value):
-        if key not in self._keys:
-            self._keys.append(key)
-        self._data[key] = value
-
-    def __iter__(self):
-        for key in self._keys:
-            yield self._data[key]
-
-# at one point in refactoring, modules were injecting into the config
-# process.  this could probably just become a list now.
-post_configure = _ordered_map()
+def _monkeypatch_cdecimal(options, file_config):
+    if options.cdecimal:
+        import sys
+        import cdecimal
+        sys.modules['decimal'] = cdecimal
+pre_configure.append(_monkeypatch_cdecimal)
 
 def _engine_uri(options, file_config):
     global db_label, db_url
@@ -88,7 +81,7 @@ def _engine_uri(options, file_config):
             raise RuntimeError(
                 "Unknown engine.  Specify --dbs for known engines.")
         db_url = file_config.get('db', db_label)
-post_configure['engine_uri'] = _engine_uri
+post_configure.append(_engine_uri)
 
 def _require(options, file_config):
     if not(options.require or
@@ -114,20 +107,20 @@ def _require(options, file_config):
             if seen:
                 continue
             pkg_resources.require(requirement)
-post_configure['require'] = _require
+post_configure.append(_require)
 
 def _engine_pool(options, file_config):
     if options.mockpool:
         from sqlalchemy import pool
         db_opts['poolclass'] = pool.AssertionPool
-post_configure['engine_pool'] = _engine_pool
+post_configure.append(_engine_pool)
 
 def _create_testing_engine(options, file_config):
     from test.lib import engines, testing
     global db
     db = engines.testing_engine(db_url, db_opts)
     testing.db = db
-post_configure['create_engine'] = _create_testing_engine
+post_configure.append(_create_testing_engine)
 
 def _prep_testing_database(options, file_config):
     from test.lib import engines
@@ -149,7 +142,7 @@ def _prep_testing_database(options, file_config):
             md.drop_all()
         e.dispose()
 
-post_configure['prep_db'] = _prep_testing_database
+post_configure.append(_prep_testing_database)
 
 def _set_table_options(options, file_config):
     from test.lib import schema
@@ -161,7 +154,7 @@ def _set_table_options(options, file_config):
 
     if options.mysql_engine:
         table_options['mysql_engine'] = options.mysql_engine
-post_configure['table_options'] = _set_table_options
+post_configure.append(_set_table_options)
 
 def _reverse_topological(options, file_config):
     if options.reversetop:
@@ -169,5 +162,5 @@ def _reverse_topological(options, file_config):
         from sqlalchemy import topological
         from test.lib.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = dependency.set = RandomSet
-post_configure['topological'] = _reverse_topological
+post_configure.append(_reverse_topological)
 

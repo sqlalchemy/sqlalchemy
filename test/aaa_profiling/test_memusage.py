@@ -14,7 +14,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.processors import to_decimal_processor_factory, \
     to_unicode_processor_factory
 from test.lib.util import gc_collect
-from decimal import Decimal as _python_Decimal
+from sqlalchemy.util.compat import decimal
 import gc
 import weakref
 from test.orm import _base
@@ -580,7 +580,7 @@ class MemUsageTest(EnsureZeroed):
     def test_DecimalResultProcessor_process(self):
         @profile_memory
         def go():
-            to_decimal_processor_factory(_python_Decimal, 10)(1.2)
+            to_decimal_processor_factory(decimal.Decimal, 10)(1.2)
         go()
 
     @testing.requires.cextensions

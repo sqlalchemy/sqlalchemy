@@ -1,6 +1,6 @@
 # -*- encoding: utf8 -*-
 from datetime import *
-from decimal import Decimal
+from sqlalchemy.util.compat import decimal
 #from fastdec import mpd as Decimal
 from cPickle import dumps, loads
 
