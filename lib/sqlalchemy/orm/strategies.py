@@ -12,12 +12,14 @@ from sqlalchemy import sql, util, log
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
 from sqlalchemy.orm import mapper, attributes, interfaces, exc as orm_exc
+from sqlalchemy.orm.mapper import _none_set
 from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     serialize_path, deserialize_path, StrategizedProperty
     )
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
+from sqlalchemy.orm.query import Query
 import itertools
 
 def _register_attribute(strategy, mapper, useobject,
@@ -282,13 +284,6 @@ class LoadDeferredColumns(object):
         # narrow the keys down to just those which have no history
         group = [k for k in toload if k in state.unmodified]
 
-        if strategy._should_log_debug():
-            strategy.logger.debug(
-                    "deferred load %s group %s",
-                    (mapperutil.state_attribute_str(state, self.key), 
-                    group and ','.join(group) or 'None')
-            )
-
         session = sessionlib._state_session(state)
         if session is None:
             raise orm_exc.DetachedInstanceError(
@@ -298,8 +293,7 @@ class LoadDeferredColumns(object):
                 )
 
         query = session.query(localparent)
-        ident = state.key[1]
-        query._get(None, ident=ident, 
+        query._load_on_ident(state.key, 
                     only_load_props=group, refresh_state=state)
         return attributes.ATTR_WAS_SET
 
@@ -588,11 +582,6 @@ class LoadLazyAttribute(object):
             ):
             return attributes.PASSIVE_NO_RESULT
             
-        if strategy._should_log_debug():
-            strategy.logger.debug("loading %s", 
-                                    mapperutil.state_attribute_str(
-                                            state, self.key))
-        
         session = sessionlib._state_session(state)
         if session is None:
             raise orm_exc.DetachedInstanceError(
@@ -600,52 +589,50 @@ class LoadLazyAttribute(object):
                 "lazy load operation of attribute '%s' cannot proceed" % 
                 (mapperutil.state_str(state), self.key)
             )
-        
+
+        # if we have a simple primary key load, check the 
+        # identity map without generating a Query at all
+        if strategy.use_get:
+            if session._flushing:
+                get_attr = instance_mapper._get_committed_state_attr_by_column
+            else:
+                get_attr = instance_mapper._get_state_attr_by_column
+            
+            ident = [
+                get_attr(
+                        state,
+                        state.dict,
+                        strategy._equated_columns[pk],
+                        passive=passive)
+                for pk in prop.mapper.primary_key
+            ]
+            if attributes.PASSIVE_NO_RESULT in ident:
+                return attributes.PASSIVE_NO_RESULT
+                
+            if _none_set.issuperset(ident):
+                return None
+                
+            key = prop.mapper.identity_key_from_primary_key(ident)
+            instance = Query._get_from_identity(session, key, passive)
+            if instance is not None:
+                return instance
+            elif passive is attributes.PASSIVE_NO_FETCH:
+                return attributes.PASSIVE_NO_RESULT
+                
         q = session.query(prop.mapper)._adapt_all_clauses()
         
         # don't autoflush on pending
-        # this would be something that's prominent in the 
-        # docs and such
         if pending:
             q = q.autoflush(False)
             
         if state.load_path:
             q = q._with_current_path(state.load_path + (self.key,))
 
-        # if we have a simple primary key load, use mapper.get()
-        # to possibly save a DB round trip
+        if state.load_options:
+            q = q._conditional_options(*state.load_options)
+
         if strategy.use_get:
-            ident = []
-            allnulls = True
-            if session._flushing:
-                get_attr = instance_mapper._get_committed_state_attr_by_column
-            else:
-                get_attr = instance_mapper._get_state_attr_by_column
-
-            # The many-to-one get is intended to be very fast.  Note
-            # that we don't want to autoflush() if the get() doesn't
-            # actually have to hit the DB.  It is now not necessary
-            # now that we use the pending attribute state.
-            for primary_key in prop.mapper.primary_key: 
-                val = get_attr(
-                                    state,
-                                    state.dict,
-                                    strategy._equated_columns[primary_key],
-                                    passive=passive)
-                if val is attributes.PASSIVE_NO_RESULT:
-                    return val
-                allnulls = allnulls and val is None
-                ident.append(val)
-                
-            if allnulls:
-                return None
-                
-            if state.load_options:
-                q = q._conditional_options(*state.load_options)
-
-            key = prop.mapper.identity_key_from_primary_key(ident)
-            return q._get(key, ident, passive=passive)
-            
+            return q._load_on_ident(key)
 
         if prop.order_by:
             q = q.order_by(*util.to_list(prop.order_by))
@@ -658,9 +645,6 @@ class LoadLazyAttribute(object):
                         not isinstance(rev.strategy, LazyLoader):
                 q = q.options(EagerLazyOption((rev.key,), lazy='select'))
 
-        if state.load_options:
-            q = q._conditional_options(*state.load_options)
-        
         lazy_clause = strategy.lazy_clause(state)
         
         if pending:

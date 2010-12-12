@@ -906,7 +906,7 @@ class Session(object):
 
         self._expire_state(state, attribute_names)
 
-        if self.query(_object_mapper(instance))._get(
+        if self.query(_object_mapper(instance))._load_on_ident(
                 state.key, refresh_state=state,
                 lockmode=lockmode,
                 only_load_props=attribute_names) is None:

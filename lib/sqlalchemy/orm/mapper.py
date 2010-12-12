@@ -1232,7 +1232,7 @@ class Mapper(object):
           A list of values indicating the identifier.
 
         """
-        return self._identity_class, tuple(util.to_list(primary_key))
+        return self._identity_class, tuple(primary_key)
 
     def identity_key_from_instance(self, instance):
         """Return the identity key for the given instance, based on
@@ -1910,7 +1910,7 @@ class Mapper(object):
             # refresh whatever has been expired.
             if self.eager_defaults and state.unloaded:
                 state.key = self._identity_key_from_state(state)
-                uowtransaction.session.query(self)._get(
+                uowtransaction.session.query(self)._load_on_ident(
                     state.key, refresh_state=state,
                     only_load_props=state.unloaded)
 
@@ -2511,7 +2511,7 @@ def _load_scalar_attributes(state, attribute_names):
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
             result = session.query(mapper).from_statement(statement).\
-                                    _get(None, 
+                                    _load_on_ident(None, 
                                         only_load_props=attribute_names, 
                                         refresh_state=state)
 
@@ -2539,7 +2539,7 @@ def _load_scalar_attributes(state, attribute_names):
                         % state_str(state))
             return
         
-        result = session.query(mapper)._get(
+        result = session.query(mapper)._load_on_ident(
                                             identity_key, 
                                             refresh_state=state, 
                                             only_load_props=attribute_names)

@@ -612,18 +612,43 @@ class Query(object):
         given identifier, or None if not found.
 
         The `ident` argument is a scalar or tuple of primary key column values
-        in the order of the table def's primary key columns.
+        in the order of the mapper's "priamry key" setting, which
+        defaults to the list of primary key columns for the 
+        mapped :class:`.Table`.
 
         """
 
         # convert composite types to individual args
         if hasattr(ident, '__composite_values__'):
             ident = ident.__composite_values__()
-
-        key = self._only_mapper_zero(
+        
+        ident = util.to_list(ident)
+        
+        mapper = self._only_mapper_zero(
                     "get() can only be used against a single mapped class."
-                ).identity_key_from_primary_key(ident)
-        return self._get(key, ident)
+                )
+
+        if len(ident) != len(mapper.primary_key):
+            raise sa_exc.InvalidRequestError(
+            "Incorrect number of values in identifier to formulate "
+            "primary key for query.get(); primary key columns are %s" %
+            ','.join("'%s'" % c for c in mapper.primary_key))
+        
+        key = mapper.identity_key_from_primary_key(ident)
+
+        if not self._populate_existing and \
+                not mapper.always_refresh and \
+                self._lockmode is None:
+            
+            instance = self._get_from_identity(self.session, key, False)
+            if instance is not None:
+                # reject calls for id in identity map but class
+                # mismatch.
+                if not issubclass(instance.__class__, mapper.class_):
+                    return None
+                return instance
+
+        return self._load_on_ident(key)
 
     @_generative()
     def correlate(self, *args):
@@ -1880,43 +1905,42 @@ class Query(object):
         finally:
             session.autoflush = autoflush
         
+    @classmethod
+    def _get_from_identity(cls, session, key, passive):
+        """Look up the given key in the given session's identity map, 
+        check the object for expired state if found.
         
-    def _get(self, key=None, ident=None, refresh_state=None, lockmode=None,
-                                        only_load_props=None, passive=None):
-        lockmode = lockmode or self._lockmode
-        
-        mapper = self._mapper_zero()
-        if not self._populate_existing and \
-                not refresh_state and \
-                not mapper.always_refresh and \
-                lockmode is None:
-            instance = self.session.identity_map.get(key)
-            if instance:
-                # item present in identity map with a different class
-                if not issubclass(instance.__class__, mapper.class_):
+        """
+        instance = session.identity_map.get(key)
+        if instance:
+            
+            state = attributes.instance_state(instance)
+            
+            # expired - ensure it still exists
+            if state.expired:
+                if passive is attributes.PASSIVE_NO_FETCH:
+                    # TODO: no coverage here
+                    return attributes.PASSIVE_NO_RESULT
+                try:
+                    state()
+                except orm_exc.ObjectDeletedError:
+                    session._remove_newly_deleted(state)
                     return None
-                    
-                state = attributes.instance_state(instance)
-                
-                # expired - ensure it still exists
-                if state.expired:
-                    if passive is attributes.PASSIVE_NO_FETCH:
-                        return attributes.PASSIVE_NO_RESULT
-                    try:
-                        state()
-                    except orm_exc.ObjectDeletedError:
-                        self.session._remove_newly_deleted(state)
-                        return None
-                return instance
-            elif passive is attributes.PASSIVE_NO_FETCH:
-                return attributes.PASSIVE_NO_RESULT
-
-        if ident is None:
-            if key is not None:
-                ident = key[1]
+            return instance
         else:
-            ident = util.to_list(ident)
+            return None
+        
+    def _load_on_ident(self, key, refresh_state=None, lockmode=None,
+                                        only_load_props=None):
+        """Load the given identity key from the database."""
+        
+        lockmode = lockmode or self._lockmode
 
+        if key is not None:
+            ident = key[1]
+        else:
+            ident = None
+        
         if refresh_state is None:
             q = self._clone()
             q._get_condition()
@@ -1924,11 +1948,7 @@ class Query(object):
             q = self._clone()
 
         if ident is not None:
-            if len(ident) != len(mapper.primary_key):
-                raise sa_exc.InvalidRequestError(
-                "Incorrect number of values in identifier to formulate "
-                "primary key for query.get(); primary key columns are %s" %
-                ','.join("'%s'" % c for c in mapper.primary_key))
+            mapper = self._mapper_zero()
 
             (_get_clause, _get_params) = mapper._get_clause
             

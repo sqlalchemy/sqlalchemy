@@ -193,9 +193,9 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_1(self):
         mapper(User, users)
 
-        key = util.identity_key(User, 1)
+        key = util.identity_key(User, [1])
         eq_(key, (User, (1,)))
-        key = util.identity_key(User, ident=1)
+        key = util.identity_key(User, ident=[1])
         eq_(key, (User, (1,)))
 
     @testing.resolve_artifact_names

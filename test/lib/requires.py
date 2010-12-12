@@ -303,7 +303,7 @@ def python25(fn):
             "Python version 2.5 or greater is required"
         )
     )
-    
+
 def _has_cextensions():
     try:
         from sqlalchemy import cresultproxy, cprocessors

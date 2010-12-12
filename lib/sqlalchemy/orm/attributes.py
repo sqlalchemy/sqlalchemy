@@ -844,7 +844,7 @@ def backref_listeners(attribute, key, uselist):
             # present when updating via a backref.
             old_state, old_dict = instance_state(oldchild),\
                                     instance_dict(oldchild)
-            impl = old_state.get_impl(key)
+            impl = old_state.manager[key].impl
             try:
                 impl.remove(old_state, 
                             old_dict, 
@@ -856,7 +856,7 @@ def backref_listeners(attribute, key, uselist):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.get_impl(key).append(
+            child_state.manager[key].impl.append(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
@@ -867,7 +867,7 @@ def backref_listeners(attribute, key, uselist):
     def append(state, child, initiator):
         child_state, child_dict = instance_state(child), \
                                     instance_dict(child)
-        child_state.get_impl(key).append(
+        child_state.manager[key].impl.append(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
@@ -879,7 +879,7 @@ def backref_listeners(attribute, key, uselist):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.get_impl(key).remove(
+            child_state.manager[key].impl.remove(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 
@@ -1077,7 +1077,7 @@ def get_all_pending(state, dict_, key):
     
     """
     
-    return state.manager.get_impl(key).get_all_pending(state, dict_)
+    return state.manager[key].impl.get_all_pending(state, dict_)
     
     
 def has_parent(cls, obj, key, optimistic=False):
@@ -1172,7 +1172,7 @@ def init_collection(obj, key):
 def init_state_collection(state, dict_, key):
     """Initialize a collection attribute and return the collection adapter."""
     
-    attr = state.get_impl(key)
+    attr = state.manager[key].impl
     user_data = attr.initialize(state, dict_)
     return attr.get_collection(state, dict_, user_data)
 
@@ -1192,7 +1192,7 @@ def set_committed_value(instance, key, value):
     
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    state.get_impl(key).set_committed_value(state, dict_, value)
+    state.manager[key].impl.set_committed_value(state, dict_, value)
     
 def set_attribute(instance, key, value):
     """Set the value of an attribute, firing history events.
@@ -1205,7 +1205,7 @@ def set_attribute(instance, key, value):
     
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    state.get_impl(key).set(state, dict_, value, None)
+    state.manager[key].impl.set(state, dict_, value, None)
 
 def get_attribute(instance, key):
     """Get the value of an attribute, firing any callables required.
@@ -1218,7 +1218,7 @@ def get_attribute(instance, key):
     
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    return state.get_impl(key).get(state, dict_)
+    return state.manager[key].impl.get(state, dict_)
 
 def del_attribute(instance, key):
     """Delete the value of an attribute, firing history events.
@@ -1231,5 +1231,5 @@ def del_attribute(instance, key):
     
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
-    state.get_impl(key).delete(state, dict_)
+    state.manager[key].impl.delete(state, dict_)
 

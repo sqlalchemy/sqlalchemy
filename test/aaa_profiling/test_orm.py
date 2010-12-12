@@ -2,11 +2,11 @@ from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
 from sqlalchemy.orm import exc as orm_exc, mapper, relationship, \
-    sessionmaker
+    sessionmaker, Session
 from test.lib import testing, profiling
 from test.orm import _base
 from test.lib.schema import Table, Column
-
+import sys
 
 class MergeTest(_base.MappedTest):
 
@@ -80,7 +80,9 @@ class MergeTest(_base.MappedTest):
         # (py2.6)
 
         @profiling.function_call_count(1257, 
-                                versions={'2.6+cextension':1194, '2.4': 807}
+                                versions={'2.5':1191, '2.6':1191,
+                                        '2.6+cextension':1194, 
+                                        '2.4': 807}
                             )
         def go():
             p2 = sess2.merge(p1)
@@ -90,3 +92,86 @@ class MergeTest(_base.MappedTest):
 
         sess2 = sessionmaker()()
         self.assert_sql_count(testing.db, go, 2)
+
+class LoadManyToOneFromIdentityTest(_base.MappedTest):
+    """test overhead associated with many-to-one fetches.
+    
+    Prior to the refactor of LoadLazyAttribute and 
+    query._get(), the load from identity map took 2x
+    as many calls (65K calls here instead of around 33K)
+    to load 1000 related objects from the identity map.
+    
+    """
+    
+    # 2.4's profiler has different callcounts
+    __skip_if__ = lambda : sys.version_info < (2, 5),
+    
+    @classmethod
+    def define_tables(cls, metadata):
+        parent = Table('parent', metadata, 
+                        Column('id', Integer, primary_key=True), 
+                       Column('data', String(20)),
+                       Column('child_id', Integer, ForeignKey('child.id'))
+                       )
+                       
+        child = Table('child', metadata, 
+                    Column('id', Integer,primary_key=True),
+                  Column('data', String(20))
+                 )
+
+    @classmethod
+    def setup_classes(cls):
+        class Parent(_base.BasicEntity):
+            pass
+
+        class Child(_base.BasicEntity):
+            pass
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(Parent, parent, properties={
+            'child': relationship(Child)})
+        mapper(Child, child)
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
+        child.insert().execute([
+            {'id':i, 'data':'c%d' % i}
+            for i in xrange(1, 251)
+        ])
+        parent.insert().execute([
+            {
+                'id':i, 
+                'data':'p%dc%d' % (i, (i % 250) + 1), 
+                'child_id':(i % 250) + 1
+            } 
+            for i in xrange(1, 1000)
+        ])
+    
+    @testing.resolve_artifact_names
+    def test_many_to_one_load_no_identity(self):
+        sess = Session()
+        parents = sess.query(Parent).all()
+        
+        
+        @profiling.function_call_count(138289, variance=.2)
+        def go():
+            for p in parents:
+                p.child
+        go()
+
+    @testing.resolve_artifact_names
+    def test_many_to_one_load_identity(self):
+        sess = Session()
+        parents = sess.query(Parent).all()
+        children = sess.query(Child).all()
+        
+        @profiling.function_call_count(33977)
+        def go():
+            for p in parents:
+                p.child
+        go()
+        
+        
