@@ -23,7 +23,8 @@ import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import log, util, event
 from sqlalchemy.sql import expression
 
-class_mapper = None
+mapperutil = util.importlater('sqlalchemy.orm', 'util')
+
 collections = None
 
 __all__ = (
@@ -366,11 +367,7 @@ def deserialize_path(path):
     if path is None:
         return None
 
-    global class_mapper
-    if class_mapper is None:
-        from sqlalchemy.orm import class_mapper
-    
-    p = tuple(chain(*[(class_mapper(cls), key) for cls, key in path]))
+    p = tuple(chain(*[(mapperutil.class_mapper(cls), key) for cls, key in path]))
     if p and p[-1] is None:
         p = p[0:-1]
     return p
@@ -439,13 +436,11 @@ class PropertyOption(MapperOption):
         self.__dict__ = state
 
     def _find_entity( self, query, mapper, raiseerr):
-        from sqlalchemy.orm.util import _class_to_mapper, \
-            _is_aliased_class
-        if _is_aliased_class(mapper):
+        if mapperutil._is_aliased_class(mapper):
             searchfor = mapper
             isa = False
         else:
-            searchfor = _class_to_mapper(mapper)
+            searchfor = mapperutil._class_to_mapper(mapper)
             isa = True
         for ent in query._mapper_entities:
             if searchfor is ent.path_entity or isa \
@@ -469,6 +464,7 @@ class PropertyOption(MapperOption):
         # existing path
 
         current_path = list(query._current_path)
+        
         tokens = []
         for key in util.to_list(self.key):
             if isinstance(key, basestring):
