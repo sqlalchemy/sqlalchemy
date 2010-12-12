@@ -62,7 +62,7 @@ class MergeTest(_base.MappedTest):
         # third call, merge object already present. almost no calls.
 
         @profiling.function_call_count(11, variance=0.05,
-                versions={'2.4': 8, '2.5':15, '3': 13})
+                versions={'2.4': 8, '2.5':15, '3': 12})
         def go():
             return sess2.merge(p2, load=False)
         p3 = go()
@@ -172,7 +172,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
         
-        @profiling.function_call_count(23979, {'2.5':28974})
+        @profiling.function_call_count(23979, {'2.5':28974, '3':25978})
         def go():
             for p in parents:
                 p.child
