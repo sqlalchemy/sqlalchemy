@@ -22,6 +22,7 @@ from itertools import chain
 import sqlalchemy.exceptions as sa_exc
 from sqlalchemy import log, util, event
 from sqlalchemy.sql import expression
+deque = util.importlater('collections').deque
 
 mapperutil = util.importlater('sqlalchemy.orm', 'util')
 
@@ -453,7 +454,7 @@ class PropertyOption(MapperOption):
                         [str(m.path_entity) for m in query._entities]))
             else:
                 return None
-
+    
     def _get_paths(self, query, raiseerr):
         path = None
         entity = None
@@ -465,14 +466,14 @@ class PropertyOption(MapperOption):
 
         current_path = list(query._current_path)
         
-        tokens = []
-        for key in util.to_list(self.key):
-            if isinstance(key, basestring):
-                tokens += key.split('.')
-            else:
-                tokens += [key]
-        for token in tokens:
+        tokens = deque(self.key)
+        while tokens:
+            token = tokens.popleft()
             if isinstance(token, basestring):
+                sub_tokens = token.split(".", 1)
+                token = sub_tokens[0]
+                tokens.extendleft(sub_tokens[1:])
+        
                 if not entity:
                     if current_path:
                         if current_path[1] == token:

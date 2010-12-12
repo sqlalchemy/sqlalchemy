@@ -656,7 +656,7 @@ class LoadLazyAttribute(object):
             if rev.direction is interfaces.MANYTOONE and \
                         rev._use_get and \
                         not isinstance(rev.strategy, LazyLoader):
-                q = q.options(EagerLazyOption(rev.key, lazy='select'))
+                q = q.options(EagerLazyOption((rev.key,), lazy='select'))
 
         if state.load_options:
             q = q._conditional_options(*state.load_options)

@@ -2106,5 +2106,3 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(Address.user, User.addresses)
         self._assert_path_result(opt, q, [], [])
         
-        
-
