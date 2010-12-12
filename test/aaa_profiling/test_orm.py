@@ -53,16 +53,16 @@ class MergeTest(_base.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(91, variance=0.05,
-                versions={'2.4': 68, '3': 89})
+        @profiling.function_call_count(86, variance=0.05,
+                versions={'2.4': 68, '2.5':94, '3': 89})
         def go():
             return sess2.merge(p1, load=False)
         p2 = go()
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(12, variance=0.05,
-                versions={'2.4': 8, '3': 13})
+        @profiling.function_call_count(11, variance=0.05,
+                versions={'2.4': 8, '2.5':15, '3': 13})
         def go():
             return sess2.merge(p2, load=False)
         p3 = go()
@@ -79,7 +79,7 @@ class MergeTest(_base.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(1257, 
+        @profiling.function_call_count(1194, 
                                 versions={'2.5':1191, '2.6':1191,
                                         '2.6+cextension':1194, 
                                         '2.4': 807}
@@ -103,8 +103,12 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
     
     """
     
-    # 2.4's profiler has different callcounts
-    __skip_if__ = lambda : sys.version_info < (2, 5),
+    # only need to test for unexpected variance in a large call 
+    # count here,
+    # so remove some platforms that have wildly divergent
+    # callcounts.
+    __requires__ = 'python25',
+    __unsupported_on__ = 'postgresql+pg8000',
     
     @classmethod
     def define_tables(cls, metadata):
@@ -168,7 +172,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
         
-        @profiling.function_call_count(33977)
+        @profiling.function_call_count(23979, {'2.5':28974})
         def go():
             for p in parents:
                 p.child

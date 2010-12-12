@@ -12,6 +12,7 @@ from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
                                 PropComparator, MapperProperty,\
                                 AttributeExtension
 from sqlalchemy.orm import attributes, exc
+import operator
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
@@ -514,8 +515,7 @@ def _attr_as_key(attr):
 def _is_aliased_class(entity):
     return isinstance(entity, AliasedClass)
 
-def _state_mapper(state):
-    return state.manager.mapper
+_state_mapper = util.dottedgetter('manager.mapper')
 
 def object_mapper(instance):
     """Given an object, return the primary Mapper associated with the object

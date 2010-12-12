@@ -375,10 +375,14 @@ class InstanceState(object):
 
         """
         class_manager = self.manager
-        for key in keys:
-            if key in dict_ and key in class_manager.mutable_attributes:
-                self.committed_state[key] = self.manager[key].impl.copy(dict_[key])
-            else:
+        if class_manager.mutable_attributes:
+            for key in keys:
+                if key in dict_ and key in class_manager.mutable_attributes:
+                    self.committed_state[key] = self.manager[key].impl.copy(dict_[key])
+                else:
+                    self.committed_state.pop(key, None)
+        else:
+            for key in keys:
                 self.committed_state.pop(key, None)
         
         self.expired = False

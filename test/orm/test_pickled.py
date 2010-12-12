@@ -8,7 +8,8 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\
-                            configure_mappers
+                            configure_mappers, Session, lazyload_all,\
+                            lazyload
 from test.orm import _base, _fixtures
 
 
@@ -127,6 +128,33 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2.name, 'ed')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
+    @testing.resolve_artifact_names
+    def test_instance_lazy_relation_loaders(self):
+        mapper(User, users, properties={
+            'addresses':relationship(Address, lazy='noload')
+        })
+        mapper(Address, addresses)
+        
+        sess = Session()
+        u1 = User(name='ed', addresses=[
+                        Address(
+                            email_address='ed@bar.com', 
+                        )
+                ])
+
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+        
+        u1 = sess.query(User).options(
+                                lazyload(User.addresses)
+                            ).first()
+        u2 = pickle.loads(pickle.dumps(u1))
+        
+        sess = Session()
+        sess.add(u2)
+        assert u2.addresses
+        
     @testing.resolve_artifact_names
     def test_instance_deferred_cols(self):
         mapper(User, users, properties={

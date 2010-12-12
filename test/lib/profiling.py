@@ -14,6 +14,9 @@ __all__ = 'profiled', 'function_call_count', 'conditional_call_count'
 all_targets = set()
 profile_config = { 'targets': set(),
                    'report': True,
+                   'print_callers':False,
+                   'print_callees':False,
+                   'graphic':False,
                    'sort': ('time', 'calls'),
                    'limit': None }
 profiler = None
@@ -47,21 +50,35 @@ def profiled(target=None, **target_opts):
 
         elapsed, load_stats, result = _profile(
             filename, fn, *args, **kw)
+        
+        graphic = target_opts.get('graphic', profile_config['graphic'])
+        if graphic:
+            os.system("runsnake %s" % filename)
+        else:
+            report = target_opts.get('report', profile_config['report'])
+            if report:
+                sort_ = target_opts.get('sort', profile_config['sort'])
+                limit = target_opts.get('limit', profile_config['limit'])
+                print "Profile report for target '%s' (%s)" % (
+                    target, filename)
 
-        report = target_opts.get('report', profile_config['report'])
-        if report:
-            sort_ = target_opts.get('sort', profile_config['sort'])
-            limit = target_opts.get('limit', profile_config['limit'])
-            print "Profile report for target '%s' (%s)" % (
-                target, filename)
-
-            stats = load_stats()
-            stats.sort_stats(*sort_)
-            if limit:
-                stats.print_stats(limit)
-            else:
-                stats.print_stats()
-            #stats.print_callers()
+                stats = load_stats()
+                stats.sort_stats(*sort_)
+                if limit:
+                    stats.print_stats(limit)
+                else:
+                    stats.print_stats()
+            
+                print_callers = target_opts.get('print_callers', 
+                                                profile_config['print_callers'])
+                if print_callers:
+                    stats.print_callers()
+            
+                print_callees = target_opts.get('print_callees', 
+                                                profile_config['print_callees'])
+                if print_callees:
+                    stats.print_callees()
+                
         os.unlink(filename)
         return result
     return decorate

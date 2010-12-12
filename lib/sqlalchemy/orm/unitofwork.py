@@ -35,7 +35,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state).get_property(self.key)
+            prop = _state_mapper(state)._props[self.key]
             if prop.cascade.save_update and \
                 (prop.cascade_backrefs or self.key == initiator.key) and \
                 item not in sess:
@@ -45,7 +45,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def remove(self, state, item, initiator):
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state).get_property(self.key)
+            prop = _state_mapper(state)._props[self.key]
             # expunge pending orphans
             if prop.cascade.delete_orphan and \
                 item in sess.new and \
@@ -60,7 +60,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state).get_property(self.key)
+            prop = _state_mapper(state)._props[self.key]
             if newvalue is not None and \
                 prop.cascade.save_update and \
                 (prop.cascade_backrefs or self.key == initiator.key) and \

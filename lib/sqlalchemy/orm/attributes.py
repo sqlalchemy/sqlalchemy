@@ -109,7 +109,7 @@ class QueryableAttribute(interfaces.PropComparator):
     def __str__(self):
         return repr(self.parententity) + "." + self.property.key
 
-    @property
+    @util.memoized_property
     def property(self):
         return self.comparator.property
 
@@ -310,14 +310,6 @@ class AttributeImpl(object):
     def get_all_pending(self, state, dict_):
         raise NotImplementedError()
         
-    def _get_callable(self, state):
-        if self.key in state.callables:
-            return state.callables[self.key]
-        elif self.callable_ is not None:
-            return self.callable_(state)
-        else:
-            return None
-
     def initialize(self, state, dict_):
         """Initialize the given state's attribute with an empty value."""
 
@@ -340,7 +332,13 @@ class AttributeImpl(object):
                 if passive is PASSIVE_NO_INITIALIZE:
                     return PASSIVE_NO_RESULT
                     
-                callable_ = self._get_callable(state)
+                if self.key in state.callables:
+                    callable_ = state.callables[self.key]
+                elif self.callable_ is not None:
+                    callable_ = self.callable_(state)
+                else:
+                    callable_ = None
+
                 if callable_ is not None:
                     #if passive is not PASSIVE_OFF:
                     #    return PASSIVE_NO_RESULT
@@ -370,21 +368,19 @@ class AttributeImpl(object):
         """return the unchanged value of this attribute"""
 
         if self.key in state.committed_state:
-            if state.committed_state[self.key] is NO_VALUE:
+            value = state.committed_state[self.key]
+            if value is NO_VALUE:
                 return None
             else:
-                return state.committed_state.get(self.key)
+                return value
         else:
             return self.get(state, dict_, passive=passive)
 
     def set_committed_value(self, state, dict_, value):
         """set an attribute value on the given instance and 'commit' it."""
 
+        dict_[self.key] = value
         state.commit(dict_, [self.key])
-
-        state.callables.pop(self.key, None)
-        state.dict[self.key] = value
-
         return value
 
 class ScalarAttributeImpl(AttributeImpl):

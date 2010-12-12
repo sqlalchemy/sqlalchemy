@@ -199,7 +199,7 @@ class AppenderMixin(object):
         self.attr = attr
 
         mapper = object_mapper(instance)
-        prop = mapper.get_property(self.attr.key)
+        prop = mapper._props[self.attr.key]
         self._criterion = prop.compare(
                             operators.eq, 
                             instance, 

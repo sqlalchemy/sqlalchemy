@@ -245,7 +245,7 @@ class DeferredColumnLoader(LoaderStrategy):
                                         path, adapter, **kwargs)
     
     def _class_level_loader(self, state):
-        if not state.has_identity:
+        if not state.key:
             return None
             
         return LoadDeferredColumns(state, self.key)
@@ -255,19 +255,28 @@ log.class_logger(DeferredColumnLoader)
 
 class LoadDeferredColumns(object):
     """serializable loader object used by DeferredColumnLoader"""
+
+    __slots__ = 'state', 'key'
     
     def __init__(self, state, key):
-        self.state, self.key = state, key
-
+        self.state = state
+        self.key = key
+    
+    def __getstate__(self):
+        return self.state, self.key
+    
+    def __setstate__(self, state):
+        self.state, self.key = state
+            
     def __call__(self, passive=False):
+        state, key = self.state, self.key
+        
         if passive is attributes.PASSIVE_NO_FETCH:
             return attributes.PASSIVE_NO_RESULT
 
-        state = self.state
-        
         localparent = mapper._state_mapper(state)
         
-        prop = localparent.get_property(self.key)
+        prop = localparent._props[key]
         strategy = prop._get_strategy(DeferredColumnLoader)
 
         if strategy.group:
@@ -279,7 +288,7 @@ class LoadDeferredColumns(object):
                       p.group==strategy.group
                     ]
         else:
-            toload = [self.key]
+            toload = [key]
 
         # narrow the keys down to just those which have no history
         group = [k for k in toload if k in state.unmodified]
@@ -289,7 +298,7 @@ class LoadDeferredColumns(object):
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "deferred load operation of attribute '%s' cannot proceed" % 
-                (mapperutil.state_str(state), self.key)
+                (mapperutil.state_str(state), key)
                 )
 
         query = session.query(localparent)
@@ -475,7 +484,7 @@ class LazyLoader(AbstractRelationshipLoader):
         return criterion
         
     def _class_level_loader(self, state):
-        if not state.has_identity and \
+        if not state.key and \
             (not self.parent_property.load_on_pending or not state.session_id):
             return None
 
@@ -556,20 +565,23 @@ log.class_logger(LazyLoader)
 
 class LoadLazyAttribute(object):
     """serializable loader object used by LazyLoader"""
-
+    
+    __slots__ = 'state', 'key'
+    
     def __init__(self, state, key):
-        self.state, self.key = state, key
-        
+        self.state = state
+        self.key = key
+    
     def __getstate__(self):
-        return (self.state, self.key)
-
+        return self.state, self.key
+    
     def __setstate__(self, state):
         self.state, self.key = state
-        
+            
     def __call__(self, passive=False):
-        state = self.state
+        state, key = self.state, self.key
         instance_mapper = mapper._state_mapper(state)
-        prop = instance_mapper.get_property(self.key)
+        prop = instance_mapper._props[key]
         strategy = prop._get_strategy(LazyLoader)
         pending = not state.key
         
@@ -587,7 +599,7 @@ class LoadLazyAttribute(object):
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "lazy load operation of attribute '%s' cannot proceed" % 
-                (mapperutil.state_str(state), self.key)
+                (mapperutil.state_str(state), key)
             )
 
         # if we have a simple primary key load, check the 
@@ -612,8 +624,8 @@ class LoadLazyAttribute(object):
             if _none_set.issuperset(ident):
                 return None
                 
-            key = prop.mapper.identity_key_from_primary_key(ident)
-            instance = Query._get_from_identity(session, key, passive)
+            ident_key = prop.mapper.identity_key_from_primary_key(ident)
+            instance = Query._get_from_identity(session, ident_key, passive)
             if instance is not None:
                 return instance
             elif passive is attributes.PASSIVE_NO_FETCH:
@@ -626,13 +638,13 @@ class LoadLazyAttribute(object):
             q = q.autoflush(False)
             
         if state.load_path:
-            q = q._with_current_path(state.load_path + (self.key,))
+            q = q._with_current_path(state.load_path + (key,))
 
         if state.load_options:
             q = q._conditional_options(*state.load_options)
 
         if strategy.use_get:
-            return q._load_on_ident(key)
+            return q._load_on_ident(ident_key)
 
         if prop.order_by:
             q = q.order_by(*util.to_list(prop.order_by))
@@ -736,7 +748,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         else:
             leftmost_mapper, leftmost_prop = \
                                     subq_mapper, \
-                                    subq_mapper.get_property(subq_path[1])
+                                    subq_mapper._props[subq_path[1]]
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
         
         leftmost_attr = [
@@ -1272,7 +1284,7 @@ class LoadEagerFromAliasOption(PropertyOption):
             if isinstance(self.alias, basestring):
                 mapper = mappers[-1]
                 (root_mapper, propname) = paths[-1][-2:]
-                prop = mapper.get_property(propname)
+                prop = mapper._props[propname]
                 self.alias = prop.target.alias(self.alias)
             query._attributes[
                         ("user_defined_eager_row_processor", 
@@ -1281,7 +1293,7 @@ class LoadEagerFromAliasOption(PropertyOption):
         else:
             (root_mapper, propname) = paths[-1][-2:]
             mapper = mappers[-1]
-            prop = mapper.get_property(propname)
+            prop = mapper._props[propname]
             adapter = query._polymorphic_adapters.get(prop.mapper, None)
             query._attributes[
                         ("user_defined_eager_row_processor", 

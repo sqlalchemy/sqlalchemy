@@ -1018,7 +1018,7 @@ def clear_mappers():
 
 def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
-    name into an joined eager load.
+    name or series of mapped attributes into an joined eager load.
 
     .. note:: This function is known as :func:`eagerload` in all versions
           of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
@@ -1065,7 +1065,8 @@ def joinedload(*keys, **kw):
 
 def joinedload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
-    given dot-separated path into an joined eager load.
+    given dot-separated path or series of mapped attributes 
+    into an joined eager load.
 
     .. note:: This function is known as :func:`eagerload_all` in all versions
         of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
@@ -1111,7 +1112,8 @@ def eagerload_all(*args, **kwargs):
     
 def subqueryload(*keys):
     """Return a ``MapperOption`` that will convert the property 
-    of the given name into an subquery eager load.
+    of the given name or series of mapped attributes 
+    into an subquery eager load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1135,7 +1137,8 @@ def subqueryload(*keys):
 
 def subqueryload_all(*keys):
     """Return a ``MapperOption`` that will convert all properties along the
-    given dot-separated path into a subquery eager load.
+    given dot-separated path or series of mapped attributes 
+    into a subquery eager load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1158,7 +1161,7 @@ def subqueryload_all(*keys):
     
 def lazyload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given
-    name into a lazy load.
+    name or series of mapped attributes into a lazy load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1167,9 +1170,21 @@ def lazyload(*keys):
     """
     return strategies.EagerLazyOption(keys, lazy=True)
 
+def lazyload_all(*keys):
+    """Return a ``MapperOption`` that will convert all the properties
+    along the given dot-separated path or series of mapped attributes 
+    into a lazy load.
+
+    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+
+    See also:  :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
+
+    """
+    return strategies.EagerLazyOption(keys, lazy=True, chained=True)
+
 def noload(*keys):
     """Return a ``MapperOption`` that will convert the property of the
-    given name into a non-load.
+    given name or series of mapped attributes into a non-load.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1180,7 +1195,7 @@ def noload(*keys):
 
 def immediateload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given 
-    name into an immediate load.
+    name or series of mapped attributes into an immediate load.
     
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 

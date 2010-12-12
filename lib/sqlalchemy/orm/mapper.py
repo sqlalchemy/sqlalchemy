@@ -872,7 +872,7 @@ class Mapper(object):
         for mapper in self.iterate_to_root():
             for (key, cls) in mapper.delete_orphans:
                 if attributes.manager_of_class(cls).has_parent(
-                    state, key, optimistic=state.has_identity):
+                    state, key, optimistic=bool(state.key)):
                     return False
             o = o or bool(mapper.delete_orphans)
         return o
@@ -1582,7 +1582,7 @@ class Mapper(object):
             else:
                 conn = connection
                 
-            has_identity = state.has_identity
+            has_identity = bool(state.key)
             mapper = _state_mapper(state)
             instance_key = state.key or mapper._identity_key_from_state(state)
 
@@ -1998,7 +1998,7 @@ class Mapper(object):
             tups.append((state, 
                     state.dict,
                     _state_mapper(state), 
-                    state.has_identity,
+                    bool(state.key),
                     conn))
 
         table_to_mapper = self._sorted_tables
@@ -2503,7 +2503,7 @@ def _load_scalar_attributes(state, attribute_names):
                     "attribute refresh operation cannot proceed" %
                     (state_str(state)))
 
-    has_key = state.has_identity
+    has_key = bool(state.key)
     
     result = False
 

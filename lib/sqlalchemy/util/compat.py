@@ -188,6 +188,16 @@ else:
     def decode_slice(slc):
         return (slc.start, slc.stop, slc.step)
 
+if sys.version_info >= (2, 6):
+    from operator import attrgetter as dottedgetter
+else:
+    def dottedgetter(attr):
+        def g(obj):
+            for name in attr.split("."):
+                obj = getattr(obj, name)
+            return obj
+        return g
+
 
 import decimal
 
