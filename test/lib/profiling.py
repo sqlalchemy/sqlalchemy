@@ -203,7 +203,7 @@ def _profile(filename, fn, *args, **kw):
         return _profile_hotshot(filename, fn, *args, **kw)
 
 def _profile_cProfile(filename, fn, *args, **kw):
-    import cProfile, gc, pstats, time
+    import cProfile, pstats, time
 
     load_stats = lambda: pstats.Stats(filename)
     gc_collect()
@@ -216,7 +216,7 @@ def _profile_cProfile(filename, fn, *args, **kw):
     return ended - began, load_stats, locals()['result']
 
 def _profile_hotshot(filename, fn, *args, **kw):
-    import gc, hotshot, hotshot.stats, time
+    import hotshot, hotshot.stats, time
     load_stats = lambda: hotshot.stats.load(filename)
 
     gc_collect()
