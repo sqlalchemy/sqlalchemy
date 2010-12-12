@@ -250,7 +250,26 @@ class SQLCompiler(engine.Compiled):
         # a map which tracks "truncated" names based on dialect.label_length
         # or dialect.max_identifier_length
         self.truncated_names = {}
+        
+        # other memoized things
+        self._memos ={}
 
+    def _get_bind_processors(self, dialect):
+        key = 'bind_processors', dialect.__class__, \
+                    dialect.server_version_info
+        
+        if key not in self._memos:
+            self._memos[key] = processors = dict(
+                (key, value) for key, value in
+                ( (self.bind_names[bindparam],
+                   bindparam.bind_processor(dialect))
+                  for bindparam in self.bind_names )
+                 if value is not None
+            )
+            return processors
+        else:
+            return self._memos[key]
+        
     def is_subquery(self):
         return len(self.stack) > 1
 

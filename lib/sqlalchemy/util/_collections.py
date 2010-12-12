@@ -54,9 +54,9 @@ class frozendict(ImmutableContainer, dict):
         if not self:
             return frozendict(d)
         else:
-            d2 = self.copy()
-            d2.update(d)
-            return frozendict(d2)
+            d2 = frozendict(self)
+            dict.update(d2, d)
+            return d2
             
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)

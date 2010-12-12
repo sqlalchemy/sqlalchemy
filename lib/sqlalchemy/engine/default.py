@@ -402,13 +402,8 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.__process_defaults()
             self.postfetch_cols = self.compiled.postfetch
             self.prefetch_cols = self.compiled.prefetch
-                    
-        processors = dict(
-            (key, value) for key, value in
-            ( (compiled.bind_names[bindparam],
-               bindparam.bind_processor(dialect))
-              for bindparam in compiled.bind_names )
-            if value is not None)
+        
+        processors = compiled._get_bind_processors(dialect)
 
         # Convert the dictionary of bind parameter values 
         # into a dict or list to be sent to the DBAPI's 

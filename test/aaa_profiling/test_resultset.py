@@ -30,7 +30,7 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
         metadata.drop_all()
 
     @profiling.function_call_count(14416, versions={'2.4': 13214,
-                                   '2.6+cextension': 409, '2.7+cextension':438})
+                                   '2.6+cextension': 390, '2.7+cextension':401})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
