@@ -149,22 +149,36 @@ class TypeEngine(AbstractType):
                     dialect.type_descriptor(self))
     
     def _cached_bind_processor(self, dialect):
-        key = "bind", dialect.__class__, dialect.server_version_info
-        try:
-            return self._impl_dict[key]
-        except KeyError:
-            self._impl_dict[key] = bp = \
-                        self.dialect_impl(dialect).bind_processor(dialect)
-            return bp
+        return self.dialect_impl(dialect).bind_processor(dialect)
+        
+        # TODO: can't do this until we find a way to link with the
+        # specific attributes of the dialect, i.e. convert_unicode,
+        # etc.  might need to do a weakmap again.  needs tests
+        # to ensure two dialects with different flags.  use a mock
+        # dialect.
+        #key = "bind", dialect.__class__, dialect.server_version_info
+        #try:
+        #    return self._impl_dict[key]
+        #except KeyError:
+        #    self._impl_dict[key] = bp = \
+        #                self.dialect_impl(dialect).bind_processor(dialect)
+        #    return bp
 
     def _cached_result_processor(self, dialect, coltype):
-        key = "result", dialect.__class__, dialect.server_version_info, coltype
-        try:
-            return self._impl_dict[key]
-        except KeyError:
-            self._impl_dict[key] = rp = self.dialect_impl(dialect).\
-                        result_processor(dialect, coltype)
-            return rp
+        return self.dialect_impl(dialect).result_processor(dialect, coltype)
+        
+        # TODO: can't do this until we find a way to link with the
+        # specific attributes of the dialect, i.e. convert_unicode,
+        # etc.  might need to do a weakmap again.   needs tests
+        # to ensure two dialects with different flags.  use a mock
+        # dialect.
+        #key = "result", dialect.__class__, dialect.server_version_info, coltype
+        #try:
+        #    return self._impl_dict[key]
+        #except KeyError:
+        #    self._impl_dict[key] = rp = self.dialect_impl(dialect).\
+        #                result_processor(dialect, coltype)
+        #    return rp
 
     def adapt(self, cls):
         return cls()
