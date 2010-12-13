@@ -2063,7 +2063,7 @@ class Mapper(object):
                         util.warn(
                             "Dialect %s does not support deleted rowcount "
                             "- versioning cannot be verified." % 
-                            c.dialect.dialect_description,
+                            connection.dialect.dialect_description,
                             stacklevel=12)
                         connection.execute(statement, del_objects)
                 else:
