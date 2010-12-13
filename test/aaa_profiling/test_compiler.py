@@ -43,7 +43,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
     def test_update_whereclause(self):
         t1.update().where(t1.c.c2==12).compile()
 
-    @profiling.function_call_count(195, versions={'2.4':118, 
+    @profiling.function_call_count(195, versions={'2.4':112, 
                                                 '3.0':208, '3.1':208})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)

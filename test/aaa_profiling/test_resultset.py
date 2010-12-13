@@ -30,7 +30,7 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
         metadata.drop_all()
 
     @profiling.function_call_count(14416, versions={'2.4': 13214,
-                                   '2.6+cextension': 390, '2.7+cextension':401})
+                                   '2.6+cextension': 410, '2.7+cextension':401})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
@@ -54,7 +54,7 @@ class ExecutionTest(TestBase):
         
         @profiling.function_call_count(36, versions={'2.6':35, '2.5':35, 
                                                     '2.4':21, '3':34}, 
-                                            variance=.05)
+                                            variance=.10)
         def go():
             c.execute("select 1")
         go()
