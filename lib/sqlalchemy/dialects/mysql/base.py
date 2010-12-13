@@ -237,6 +237,12 @@ class _NumericType(object):
         self.unsigned = kw.pop('unsigned', False)
         self.zerofill = kw.pop('zerofill', False)
         super(_NumericType, self).__init__(**kw)
+    
+    def adapt(self, typeimpl, **kw):
+        return super(_NumericType, self).adapt(
+                        typeimpl, 
+                        unsigned=self.unsigned, 
+                        zerofill=self.zerofill)
         
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
@@ -257,6 +263,11 @@ class _IntegerType(_NumericType, sqltypes.Integer):
         self.display_width = display_width
         super(_IntegerType, self).__init__(**kw)
 
+    def adapt(self, typeimpl, **kw):
+        return super(_IntegerType, self).adapt(
+                        typeimpl, 
+                        display_width=self.display_width)
+
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
 
@@ -276,6 +287,17 @@ class _StringType(sqltypes.String):
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)
+    
+    def adapt(self, typeimpl, **kw):
+        return super(_StringType, self).adapt(
+            typeimpl,
+            charset=self.charset,
+            collation=self.collation,
+            ascii=self.ascii,
+            binary=self.binary,
+            national=self.national,
+            **kw
+        )
         
     def __repr__(self):
         attributes = inspect.getargspec(self.__init__)[0][1:]
@@ -990,8 +1012,8 @@ class SET(_StringType):
             strip_values.append(a)
 
         self.values = strip_values
-        length = max([len(v) for v in strip_values] + [0])
-        super(SET, self).__init__(length=length, **kw)
+        kw.setdefault('length', max([len(v) for v in strip_values] + [0]))
+        super(SET, self).__init__(**kw)
 
     def result_processor(self, dialect, coltype):
         def process(value):

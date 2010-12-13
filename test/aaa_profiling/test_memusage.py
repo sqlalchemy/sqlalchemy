@@ -210,7 +210,33 @@ class MemUsageTest(EnsureZeroed):
         metadata.drop_all()
         del m1, m2, m3
         assert_no_mappers()
-
+    
+    def test_ad_hoc_types(self):
+        """test storage of bind processors, result processors
+        in dialect-wide registry."""
+        
+        from sqlalchemy.dialects import mysql, postgresql, sqlite
+        from sqlalchemy import types
+        
+        for args in (
+            (types.Integer, ),
+            (types.String, ),
+            (types.PickleType, ),
+            (types.Enum, 'a', 'b', 'c'),
+            (sqlite.DATETIME, ),
+            (postgresql.ENUM, 'a', 'b', 'c'),
+            (types.Interval, ),
+            (postgresql.INTERVAL, ),
+            (mysql.VARCHAR, ),
+        ):
+            @profile_memory
+            def go():
+                type_ = args[0](*args[1:])
+                bp = type_._cached_bind_processor(testing.db.dialect)
+                rp = type_._cached_result_processor(testing.db.dialect, 0)
+            go()
+            
+            
     def test_many_updates(self):
         metadata = MetaData(testing.db)
         
