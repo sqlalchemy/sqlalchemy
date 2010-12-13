@@ -186,7 +186,7 @@ class OrderedDict(dict):
         return [self[key] for key in self._list]
 
     def itervalues(self):
-        return iter(self.values())
+        return iter([self[key] for key in self._list])
 
     def keys(self):
         return list(self._list)

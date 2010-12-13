@@ -2470,9 +2470,6 @@ class _BindParamClause(ColumnElement):
             self.key = _generated_label('%%(%d %s)s' % (id(self),
                     self._orig_key or 'param'))
 
-    def bind_processor(self, dialect):
-        return self.type.dialect_impl(dialect).bind_processor(dialect)
-
     def compare(self, other, **kw):
         """Compare this :class:`_BindParamClause` to the given
         clause."""

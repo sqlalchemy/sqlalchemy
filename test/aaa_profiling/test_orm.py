@@ -82,7 +82,7 @@ class MergeTest(_base.MappedTest):
         @profiling.function_call_count(1194, 
                                 versions={'2.5':1191, '2.6':1191,
                                         '2.6+cextension':1194, 
-                                        '2.4': 807}
+                                        '2.4': 763}
                             )
         def go():
             p2 = sess2.merge(p1)

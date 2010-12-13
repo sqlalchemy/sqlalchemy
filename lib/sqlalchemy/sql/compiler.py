@@ -262,7 +262,7 @@ class SQLCompiler(engine.Compiled):
             self._memos[key] = processors = dict(
                 (key, value) for key, value in
                 ( (self.bind_names[bindparam],
-                   bindparam.bind_processor(dialect))
+                   bindparam.type._cached_bind_processor(dialect))
                   for bindparam in self.bind_names )
                  if value is not None
             )
@@ -596,7 +596,7 @@ class SQLCompiler(engine.Compiled):
     
     def render_literal_bindparam(self, bindparam, **kw):
         value = bindparam.value
-        processor = bindparam.bind_processor(self.dialect)
+        processor = bindparam.type._cached_bind_processor(self.dialect)
         if processor:
             value = processor(value)
         return self.render_literal_value(value, bindparam.type)

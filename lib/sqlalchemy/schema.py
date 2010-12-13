@@ -504,7 +504,7 @@ class Column(SchemaItem, expression.ColumnClause):
           usage within the :mod:`~sqlalchemy.ext.declarative` extension.
           
         :param type\_: The column's type, indicated using an instance which 
-          subclasses :class:`~sqlalchemy.types.AbstractType`.  If no arguments
+          subclasses :class:`~sqlalchemy.types.TypeEngine`.  If no arguments
           are required for the type, the class of the type can be sent
           as well, e.g.::
           
@@ -684,9 +684,9 @@ class Column(SchemaItem, expression.ColumnClause):
         if args:
             coltype = args[0]
             
-            if (isinstance(coltype, types.AbstractType) or
+            if (isinstance(coltype, types.TypeEngine) or
                 (isinstance(coltype, type) and
-                 issubclass(coltype, types.AbstractType))):
+                 issubclass(coltype, types.TypeEngine))):
                 if type_ is not None:
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword.")

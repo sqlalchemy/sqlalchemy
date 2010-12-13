@@ -701,7 +701,7 @@ class Compiled(object):
         """Return the string text of the generated SQL or DDL."""
 
         return self.string or ''
-
+    
     def construct_params(self, params=None):
         """Return the bind params for this compiled object.
 
@@ -2221,8 +2221,7 @@ class ResultMetaData(object):
                 name, obj, type_ = \
                         colname, None, typemap.get(coltype, types.NULLTYPE)
 
-            processor = type_.dialect_impl(dialect).\
-                            result_processor(dialect, coltype)
+            processor = type_._cached_result_processor(dialect, coltype)
             
             processors.append(processor)
             rec = (processor, i)

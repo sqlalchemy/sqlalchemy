@@ -307,7 +307,6 @@ class DefaultDialect(base.Dialect):
 
 
 class DefaultExecutionContext(base.ExecutionContext):
-    execution_options = util.frozendict()
     isinsert = False
     isupdate = False
     isdelete = False
@@ -329,12 +328,10 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.compiled = compiled = compiled_ddl
         self.isddl = True
 
-        if compiled.statement._execution_options:
-            self.execution_options = compiled.statement._execution_options
+        self.execution_options = compiled.statement._execution_options
         if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                                                connection._execution_options
-                                                )
+            self.execution_options = dict(self.execution_options)
+            self.execution_options.update(connection._execution_options)
 
         if not dialect.supports_unicode_statements:
             self.unicode_statement = unicode(compiled)
@@ -366,12 +363,10 @@ class DefaultExecutionContext(base.ExecutionContext):
         if not compiled.can_execute:
             raise exc.ArgumentError("Not an executable clause: %s" % compiled)
 
-        if compiled.statement._execution_options:
-            self.execution_options = compiled.statement._execution_options
+        self.execution_options = compiled.statement._execution_options
         if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                                                    connection._execution_options
-                                                    )
+            self.execution_options = dict(self.execution_options)
+            self.execution_options.update(connection._execution_options)
 
         # compiled clauseelement.  process bind params, process table defaults,
         # track collections used by ResultProxy to target and process results
@@ -451,9 +446,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.engine = connection.engine
 
         # plain text statement
-        if connection._execution_options:
-            self.execution_options = self.execution_options.\
-                                        union(connection._execution_options)
+        self.execution_options = connection._execution_options
 
         if not parameters:
             if self.dialect.positional:
@@ -493,9 +486,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.dialect = dialect
         self._connection = self.root_connection = connection
         self.engine = connection.engine
-        if connection._execution_options:
-            self.execution_options = self.execution_options.\
-                                        union(connection._execution_options)
+        self.execution_options = connection._execution_options
         self.cursor = self.create_cursor()
         return self
         

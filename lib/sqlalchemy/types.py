@@ -41,28 +41,43 @@ if util.jython:
     import array
 
 class AbstractType(Visitable):
+    """Base for all types - not needed except for backwards 
+    compatibility."""
+
+class TypeEngine(AbstractType):
+    """Base for built-in types."""
     
     def copy_value(self, value):
         return value
 
     def bind_processor(self, dialect):
-        """Defines a bind parameter processing function.
-        
+        """Return a conversion function for processing bind values.
+
+        Returns a callable which will receive a bind parameter value
+        as the sole positional argument and will return a value to
+        send to the DB-API.
+
+        If processing is not necessary, the method should return ``None``.
+
         :param dialect: Dialect instance in use.
 
         """
-
         return None
 
     def result_processor(self, dialect, coltype):
-        """Defines a result-column processing function.
-        
+        """Return a conversion function for processing result row values.
+
+        Returns a callable which will receive a result row column
+        value as the sole positional argument and will return a value
+        to return to the user.
+
+        If processing is not necessary, the method should return ``None``.
+
         :param dialect: Dialect instance in use.
 
         :param coltype: DBAPI coltype argument received in cursor.description.
-        
-        """
 
+        """
         return None
 
     def compare_values(self, x, y):
@@ -115,6 +130,44 @@ class AbstractType(Visitable):
                 typ = t
         else:
             return self.__class__
+
+    @util.memoized_property
+    def _impl_dict(self):
+        return {}
+
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d.pop('_impl_dict', None)
+        return d
+
+    def dialect_impl(self, dialect, **kwargs):
+        key = dialect.__class__, dialect.server_version_info
+        try:
+            return self._impl_dict[key]
+        except KeyError:
+            return self._impl_dict.setdefault(key,
+                    dialect.type_descriptor(self))
+    
+    def _cached_bind_processor(self, dialect):
+        key = "bind", dialect.__class__, dialect.server_version_info
+        try:
+            return self._impl_dict[key]
+        except KeyError:
+            self._impl_dict[key] = bp = \
+                        self.dialect_impl(dialect).bind_processor(dialect)
+            return bp
+
+    def _cached_result_processor(self, dialect, coltype):
+        key = "result", dialect.__class__, dialect.server_version_info, coltype
+        try:
+            return self._impl_dict[key]
+        except KeyError:
+            self._impl_dict[key] = rp = self.dialect_impl(dialect).\
+                        result_processor(dialect, coltype)
+            return rp
+
+    def adapt(self, cls):
+        return cls()
     
     def _coerce_compared_value(self, op, value):
         _coerced_type = _type_map.get(type(value), NULLTYPE)
@@ -164,52 +217,6 @@ class AbstractType(Visitable):
             ", ".join("%s=%r" % (k, getattr(self, k, None))
                       for k in inspect.getargspec(self.__init__)[0][1:]))
 
-class TypeEngine(AbstractType):
-    """Base for built-in types."""
-
-    @util.memoized_property
-    def _impl_dict(self):
-        return {}
-
-    def dialect_impl(self, dialect, **kwargs):
-        key = dialect.__class__, dialect.server_version_info
-        try:
-            return self._impl_dict[key]
-        except KeyError:
-            return self._impl_dict.setdefault(key,
-                    dialect.type_descriptor(self))
-
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        d.pop('_impl_dict', None)
-        return d
-
-    def bind_processor(self, dialect):
-        """Return a conversion function for processing bind values.
-
-        Returns a callable which will receive a bind parameter value
-        as the sole positional argument and will return a value to
-        send to the DB-API.
-
-        If processing is not necessary, the method should return ``None``.
-
-        """
-        return None
-
-    def result_processor(self, dialect, coltype):
-        """Return a conversion function for processing result row values.
-
-        Returns a callable which will receive a result row column
-        value as the sole positional argument and will return a value
-        to return to the user.
-
-        If processing is not necessary, the method should return ``None``.
-
-        """
-        return None
-
-    def adapt(self, cls):
-        return cls()
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.
@@ -264,7 +271,7 @@ class UserDefinedType(TypeEngine):
         """
         return op
 
-class TypeDecorator(AbstractType):
+class TypeDecorator(TypeEngine):
     """Allows the creation of types which add additional functionality
     to an existing type.
     
@@ -355,9 +362,6 @@ class TypeDecorator(AbstractType):
                                  "type being decorated")
         self.impl = to_instance(self.__class__.impl, *args, **kwargs)
     
-    def adapt(self, cls):
-        return cls()
-        
     def dialect_impl(self, dialect):
         key = (dialect.__class__, dialect.server_version_info)
 
@@ -384,10 +388,6 @@ class TypeDecorator(AbstractType):
         tt.impl = typedesc
         self._impl_dict[key] = tt
         return tt
-
-    @util.memoized_property
-    def _impl_dict(self):
-        return {}
 
     @util.memoized_property
     def _type_affinity(self):
@@ -1320,6 +1320,7 @@ class _Binary(TypeEngine):
     def bind_processor(self, dialect):
         DBAPIBinary = dialect.dbapi.Binary
         def process(value):
+            x = self
             if value is not None:
                 return DBAPIBinary(value)
             else:
@@ -1618,7 +1619,13 @@ class PickleType(MutableType, TypeDecorator):
         self.mutable = mutable
         self.comparator = comparator
         super(PickleType, self).__init__()
-
+    
+    def __reduce__(self):
+        return PickleType, (self.protocol, 
+                            None, 
+                            self.mutable, 
+                            self.comparator)
+        
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)
         dumps = self.pickler.dumps
