@@ -771,7 +771,7 @@ class CHAR(_StringType, sqltypes.CHAR):
 
     __visit_name__ = 'CHAR'
 
-    def __init__(self, length, **kwargs):
+    def __init__(self, length=None, **kwargs):
         """Construct a CHAR.
 
         :param length: Maximum data length, in characters.

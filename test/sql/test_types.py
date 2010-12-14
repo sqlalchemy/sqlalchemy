@@ -3,19 +3,44 @@ from test.lib.testing import eq_, assert_raises, assert_raises_message
 import decimal
 import datetime, os, re
 from sqlalchemy import *
-from sqlalchemy import exc, types, util, schema
+from sqlalchemy import exc, types, util, schema, dialects
+for name in dialects.__all__:
+    __import__("sqlalchemy.dialects.%s" % name)
 from sqlalchemy.sql import operators, column, table
 from test.lib.testing import eq_
 import sqlalchemy.engine.url as url
-from sqlalchemy.databases import *
 from test.lib.schema import Table, Column
 from test.lib import *
 from test.lib.util import picklers
 from sqlalchemy.util.compat import decimal
 from test.lib.util import round_decimal
 
-
 class AdaptTest(TestBase):
+    def _all_dialect_modules(self):
+        return [
+            getattr(dialects, d)
+            for d in dialects.__all__
+            if not d.startswith('_')
+        ]
+        
+    def _all_dialects(self):
+        return [d.base.dialect() for d in 
+                self._all_dialect_modules()]
+    
+    def _all_types(self):
+        def types_for_mod(mod):
+            for key in dir(mod):
+                typ = getattr(mod, key)
+                if not isinstance(typ, type) or not issubclass(typ, types.TypeEngine):
+                    continue
+                yield typ
+        
+        for typ in types_for_mod(types):
+            yield typ
+        for dialect in self._all_dialect_modules():
+            for typ in types_for_mod(dialect):
+                yield typ
+        
     def test_uppercase_rendering(self):
         """Test that uppercase types from types.py always render as their
         type.
@@ -27,12 +52,7 @@ class AdaptTest(TestBase):
         
         """
         
-        for dialect in [
-                oracle.dialect(), 
-                mysql.dialect(), 
-                postgresql.dialect(), 
-                sqlite.dialect(), 
-                mssql.dialect()]: 
+        for dialect in self._all_dialects():
             for type_, expected in (
                 (FLOAT, "FLOAT"),
                 (NUMERIC, "NUMERIC"),
@@ -49,7 +69,7 @@ class AdaptTest(TestBase):
                                     "NVARCHAR2(10)")),
                 (CHAR, "CHAR"),
                 (NCHAR, ("NCHAR", "NATIONAL CHAR")),
-                (BLOB, "BLOB"),
+                (BLOB, ("BLOB", "BLOB SUB_TYPE 0")),
                 (BOOLEAN, ("BOOLEAN", "BOOL"))
             ):
                 if isinstance(expected, str):
@@ -65,7 +85,40 @@ class AdaptTest(TestBase):
                 assert str(types.to_instance(type_)) in expected, \
                     "default str() of type %r not expected, %r" % \
                     (type_, expected)
-                
+    
+    @testing.uses_deprecated()
+    def test_adapt_method(self):
+        """ensure all types have a working adapt() method,
+        which creates a distinct copy.   
+        
+        The distinct copy ensures that when we cache
+        the adapted() form of a type against the original
+        in a weak key dictionary, a cycle is not formed.
+        
+        This test doesn't test type-specific arguments of
+        adapt() beyond their defaults.
+        
+        """
+        
+        for typ in self._all_types():
+            if typ in (types.TypeDecorator, types.TypeEngine):
+                continue
+            elif typ is dialects.postgresql.ARRAY:
+                t1 = typ(String)
+            else:
+                t1 = typ()
+            for cls in [typ] + typ.__subclasses__():
+                if not issubclass(typ, types.Enum) and \
+                    issubclass(cls, types.Enum):
+                    continue
+                t2 = t1.adapt(cls)
+                assert t1 is not t2
+                for k in t1.__dict__:
+                    if k == 'impl':
+                        continue
+                    eq_(getattr(t2, k), t1.__dict__[k])
+        
+        
 class TypeAffinityTest(TestBase):
     def test_type_affinity(self):
         for type_, affin in [
@@ -155,7 +208,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             (Float(2), "FLOAT(2)", {'precision':4}),
             (Numeric(19, 2), "NUMERIC(19, 2)", {}),
         ]:
-            for dialect_ in (postgresql, mssql, mysql):
+            for dialect_ in (dialects.postgresql, dialects.mssql, dialects.mysql):
                 dialect_ = dialect_.dialect()
                 
                 raw_impl = types.to_instance(impl_, **kw)
@@ -188,8 +241,8 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
                 else:
                     return super(MyType, self).load_dialect_impl(dialect)
         
-        sl = sqlite.dialect()
-        pg = postgresql.dialect()
+        sl = dialects.sqlite.dialect()
+        pg = dialects.postgresql.dialect()
         t = MyType()
         self.assert_compile(t, "VARCHAR(50)", dialect=sl)
         self.assert_compile(t, "FLOAT", dialect=pg)
@@ -1082,12 +1135,12 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         for type_, expected in (
             (String(), "VARCHAR"),
             (Integer(), "INTEGER"),
-            (postgresql.INET(), "INET"),
-            (postgresql.FLOAT(), "FLOAT"),
-            (mysql.REAL(precision=8, scale=2), "REAL(8, 2)"),
-            (postgresql.REAL(), "REAL"),
+            (dialects.postgresql.INET(), "INET"),
+            (dialects.postgresql.FLOAT(), "FLOAT"),
+            (dialects.mysql.REAL(precision=8, scale=2), "REAL(8, 2)"),
+            (dialects.postgresql.REAL(), "REAL"),
             (INTEGER(), "INTEGER"),
-            (mysql.INTEGER(display_width=5), "INTEGER(5)")
+            (dialects.mysql.INTEGER(display_width=5), "INTEGER(5)")
         ):
             self.assert_compile(type_, expected)
 

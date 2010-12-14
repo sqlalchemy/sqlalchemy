@@ -131,7 +131,7 @@ class TypeEngine(AbstractType):
         else:
             return self.__class__
 
-    def dialect_impl(self, dialect, **kwargs):
+    def dialect_impl(self, dialect):
         """Return a dialect-specific implementation for this type."""
         
         try:
@@ -149,22 +149,6 @@ class TypeEngine(AbstractType):
             d['bind'] = bp = d['impl'].bind_processor(dialect)
             return bp
     
-    def _dialect_info(self, dialect):
-        """Return a dialect-specific registry containing bind/result processors."""
-        
-        if self in dialect._type_memos:
-            return dialect._type_memos[self]
-        else:
-            impl = self._gen_dialect_impl(dialect)
-            # the impl we put in here
-            # must not have any references to self.
-            if impl is self:
-                impl = self.adapt(type(self))
-            dialect._type_memos[self] = d = {
-                'impl':impl,
-            }
-            return d
-        
     def _cached_result_processor(self, dialect, coltype):
         """Return a dialect-specific result processor for this type."""
 
@@ -172,10 +156,27 @@ class TypeEngine(AbstractType):
             return dialect._type_memos[self][coltype]
         except KeyError:
             d = self._dialect_info(dialect)
-            # another key assumption.  DBAPI type codes are
-            # constants.   
+            # key assumption: DBAPI type codes are
+            # constants.  Else this dictionary would
+            # grow unbounded.
             d[coltype] = rp = d['impl'].result_processor(dialect, coltype)
             return rp
+
+    def _dialect_info(self, dialect):
+        """Return a dialect-specific registry which 
+        caches a dialect-specific implementation, bind processing
+        function, and one or more result processing functions."""
+        
+        if self in dialect._type_memos:
+            return dialect._type_memos[self]
+        else:
+            impl = self._gen_dialect_impl(dialect)
+            if impl is self:
+                impl = self.adapt(type(self))
+            # this can't be self, else we create a cycle
+            assert impl is not self
+            dialect._type_memos[self] = d = {'impl':impl}
+            return d
 
     def _gen_dialect_impl(self, dialect):
         return dialect.type_descriptor(self)
@@ -792,7 +793,7 @@ class String(Concatenable, TypeEngine):
                     length=self.length,
                     convert_unicode=self.convert_unicode,
                     unicode_error=self.unicode_error,
-                    _warn_on_bytestring=True,
+                    _warn_on_bytestring=self._warn_on_bytestring,
                     **kw
                     )
 
@@ -1171,7 +1172,9 @@ class Float(Numeric):
     """
 
     __visit_name__ = 'float'
-
+    
+    scale = None
+    
     def __init__(self, precision=None, asdecimal=False, **kwargs):
         """
         Construct a Float.
@@ -1787,7 +1790,7 @@ class Interval(_DateAffinity, TypeDecorator):
         self.day_precision = day_precision
 
     def adapt(self, cls, **kw):
-        if self.native:
+        if self.native and hasattr(cls, '_adapt_from_generic_interval'):
             return cls._adapt_from_generic_interval(self, **kw)
         else:
             return cls(**kw)

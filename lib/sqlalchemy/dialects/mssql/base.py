@@ -175,8 +175,9 @@ class REAL(sqltypes.Float):
 
     __visit_name__ = 'REAL'
 
-    def __init__(self):
-        super(REAL, self).__init__(precision=24)
+    def __init__(self, **kw):
+        kw.setdefault('precision', 24)
+        super(REAL, self).__init__(**kw)
 
 class TINYINT(sqltypes.Integer):
     __visit_name__ = 'TINYINT'
@@ -258,7 +259,8 @@ class SMALLDATETIME(_DateTimeBase, sqltypes.DateTime):
 class DATETIME2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'DATETIME2'
     
-    def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kw):
+        super(DATETIME2, self).__init__(**kw)
         self.precision = precision
 
 
