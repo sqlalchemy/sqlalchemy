@@ -514,13 +514,12 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         
         s = String()
         uni = s.dialect_impl(unicode_engine.dialect).bind_processor(unicode_engine.dialect)
-        # Py3K
         # this is not the unicode type - no warning
+        # Py3K
         #uni(b'x')
         #assert_raises(exc.SAWarning, uni, b'x')
         #assert isinstance(uni(unicodedata), bytes)
         # Py2K
-        # this is not the unicode type - no warning
         uni('x')
         assert isinstance(uni(unicodedata), str)
         # end Py2K
