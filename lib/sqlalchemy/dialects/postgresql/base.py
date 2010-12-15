@@ -132,11 +132,23 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
     def __init__(self, timezone=False, precision=None):
         super(TIMESTAMP, self).__init__(timezone=timezone)
         self.precision = precision
+
+    def adapt(self, impltype, **kw):
+        return impltype(
+                precision=self.precision, 
+                timezone=self.timezone, 
+                **kw)
         
 class TIME(sqltypes.TIME):
     def __init__(self, timezone=False, precision=None):
         super(TIME, self).__init__(timezone=timezone)
         self.precision = precision
+
+    def adapt(self, impltype, **kw):
+        return impltype(
+                precision=self.precision, 
+                timezone=self.timezone, 
+                **kw)
     
 class INTERVAL(sqltypes.TypeEngine):
     """Postgresql INTERVAL type.
@@ -213,7 +225,10 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
-            
+    
+    def adapt(self, impltype, **kw):
+        return impltype(as_uuid=self.as_uuid, **kw)
+        
 PGUuid = UUID
 
 class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
@@ -285,14 +300,6 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     def is_mutable(self):
         return self.mutable
 
-    def dialect_impl(self, dialect, **kwargs):
-        impl = super(ARRAY, self).dialect_impl(dialect, **kwargs)
-        if impl is self:
-            impl = self.__class__.__new__(self.__class__)
-            impl.__dict__.update(self.__dict__)
-        impl.item_type = self.item_type.dialect_impl(dialect)
-        return impl
-    
     def adapt(self, impltype):
         return impltype(
             self.item_type,
@@ -301,7 +308,7 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         )
         
     def bind_processor(self, dialect):
-        item_proc = self.item_type.bind_processor(dialect)
+        item_proc = self.item_type.dialect_impl(dialect).bind_processor(dialect)
         if item_proc:
             def convert_item(item):
                 if isinstance(item, (list, tuple)):
@@ -321,7 +328,7 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 
     def result_processor(self, dialect, coltype):
-        item_proc = self.item_type.result_processor(dialect, coltype)
+        item_proc = self.item_type.dialect_impl(dialect).result_processor(dialect, coltype)
         if item_proc:
             def convert_item(item):
                 if isinstance(item, list):
