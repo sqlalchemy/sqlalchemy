@@ -223,6 +223,74 @@ class RudimentaryFlushTest(UOWTest):
                     {'id':u1.id}
                 ),
         )
+
+    def test_many_to_one_delete_unloaded(self):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'parent':relationship(User)
+        })
+
+        parent = User(name='p1')
+        c1, c2 = Address(email_address='c1', parent=parent), \
+                    Address(email_address='c2', parent=parent)
+        
+        session = Session()
+        session.add_all([c1, c2])
+        session.add(parent)
+
+        session.flush()
+       
+        pid = parent.id
+        c1id = c1.id
+        c2id = c2.id
+        
+        session.expire(parent)
+        session.expire(c1)
+        session.expire(c2)
+        
+        session.delete(c1)
+        session.delete(c2)
+        session.delete(parent)
+        
+        # testing that relationships 
+        # are loaded even if all ids/references are 
+        # expired
+        self.assert_sql_execution(
+            testing.db,
+            session.flush,
+            AllOf(
+                # ensure all three m2os are loaded.
+                # the selects here are in fact unexpiring
+                # each row - the m2o comes from the identity map.
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c1id}
+                ),
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c2id}
+                ),
+                CompiledSQL(
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users WHERE users.id = :param_1",
+                    lambda ctx: {'param_1': pid}
+                ),
+            ),
+            CompiledSQL(
+                "DELETE FROM addresses WHERE addresses.id = :id",
+                lambda ctx: [{'id': c1id}, {'id': c2id}]
+            ),
+            CompiledSQL(
+                "DELETE FROM users WHERE users.id = :id",
+                lambda ctx: {'id': pid}
+            ),
+        )
     
     def test_many_to_many(self):
         mapper(Item, items, properties={
@@ -502,17 +570,52 @@ class SingleCycleTest(UOWTest):
         sess = create_session()
         n1 = Node(data='n1')
         n1.children.append(Node(data='n11'))
-        n1.children.append(Node(data='n12'))
+        n12 = Node(data='n12')
+        n1.children.append(n12)
         n1.children.append(Node(data='n13'))
         n1.children[1].children.append(Node(data='n121'))
         n1.children[1].children.append(Node(data='n122'))
         n1.children[1].children.append(Node(data='n123'))
         sess.add(n1)
-        sess.flush()
-#        self.assert_sql_execution(
-#                testing.db,
- #               sess.flush,
- #       )
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':None, 'data':'n1'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n1.id, 'data':'n11'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n1.id, 'data':'n12'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n1.id, 'data':'n13'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n12.id, 'data':'n121'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n12.id, 'data':'n122'}
+            ),
+            CompiledSQL(
+                "INSERT INTO nodes (parent_id, data) VALUES "
+                "(:parent_id, :data)", 
+                lambda ctx:{'parent_id':n12.id, 'data':'n123'}
+            ),
+        )
 
     def test_singlecycle_flush_size(self):
         mapper(Node, nodes, properties={
@@ -548,6 +651,76 @@ class SingleCycleTest(UOWTest):
         n1.children
         self._assert_uow_size(sess, 2)
 
+    def test_delete_unloaded_m2o(self):
+        mapper(Node, nodes, properties={
+            'parent':relationship(Node, remote_side=nodes.c.id)
+        })
+
+        parent = Node()
+        c1, c2 = Node(parent=parent), Node(parent=parent)
+        
+        session = Session()
+        session.add_all([c1, c2])
+        session.add(parent)
+
+        session.flush()
+       
+        pid = parent.id
+        c1id = c1.id
+        c2id = c2.id
+        
+        session.expire(parent)
+        session.expire(c1)
+        session.expire(c2)
+        
+        session.delete(c1)
+        session.delete(c2)
+        session.delete(parent)
+        
+        # testing that relationships 
+        # are loaded even if all ids/references are 
+        # expired
+        self.assert_sql_execution(
+            testing.db,
+            session.flush,
+            AllOf(
+                # ensure all three m2os are loaded.
+                # the selects here are in fact unexpiring
+                # each row - the m2o comes from the identity map.
+                CompiledSQL(
+                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
+                    "nodes_parent_id, "
+                    "nodes.data AS nodes_data FROM nodes "
+                    "WHERE nodes.id = :param_1",
+                    lambda ctx: {'param_1': pid}
+                ),
+                CompiledSQL(
+                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
+                    "nodes_parent_id, "
+                    "nodes.data AS nodes_data FROM nodes "
+                    "WHERE nodes.id = :param_1",
+                    lambda ctx: {'param_1': c1id}
+                ),
+                CompiledSQL(
+                    "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
+                    "nodes_parent_id, "
+                    "nodes.data AS nodes_data FROM nodes "
+                    "WHERE nodes.id = :param_1",
+                    lambda ctx: {'param_1': c2id}
+                ),
+            ),
+            CompiledSQL(
+                "DELETE FROM nodes WHERE nodes.id = :id",
+                lambda ctx: [{'id': c1id}, {'id': c2id}]
+            ),
+            CompiledSQL(
+                "DELETE FROM nodes WHERE nodes.id = :id",
+                lambda ctx: {'id': pid}
+            ),
+        )
+        
+        
+        
 class SingleCyclePlusAttributeTest(_base.MappedTest,
                     testing.AssertsExecutionResults, AssertsUOW):
     @classmethod
