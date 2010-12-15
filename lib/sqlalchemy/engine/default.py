@@ -135,14 +135,16 @@ class DefaultDialect(base.Dialect):
                     (label_length, self.max_identifier_length))
         self.label_length = label_length
         
-        self._type_memos = weakref.WeakKeyDictionary()
-        
         if not hasattr(self, 'description_encoding'):
             self.description_encoding = getattr(
                                             self, 
                                             'description_encoding', 
                                             encoding)
     
+    @util.memoized_property
+    def _type_memos(self):
+        return weakref.WeakKeyDictionary()
+        
     @property
     def dialect_description(self):
         return self.name + "+" + self.driver

@@ -965,6 +965,10 @@ class ENUM(sqltypes.Enum, _StringType):
             else:
                 return value
         return process
+    
+    def adapt(self, impltype, **kw):
+        kw['strict'] = self.strict
+        return sqltypes.Enum.adapt(self, impltype, **kw)
 
 class SET(_StringType):
     """MySQL SET type."""
