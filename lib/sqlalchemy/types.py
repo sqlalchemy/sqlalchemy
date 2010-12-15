@@ -823,10 +823,11 @@ class String(Concatenable, TypeEngine):
                     return None
             else:
                 encoder = codecs.getencoder(dialect.encoding)
+                warn_on_bytestring = self._warn_on_bytestring
                 def process(value):
                     if isinstance(value, unicode):
                         return encoder(value, self.unicode_error)[0]
-                    elif value is not None:
+                    elif warn_on_bytestring and value is not None:
                         util.warn("Unicode type received non-unicode bind "
                                   "param value")
                     return value

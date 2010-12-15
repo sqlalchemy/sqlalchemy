@@ -1148,8 +1148,10 @@ class MSDialect(default.DefaultDialect):
                 "and sch.name=:schname "
                 "and ind.is_primary_key=0", 
                 bindparams=[
-                    sql.bindparam('tabname', tablename, sqltypes.Unicode),
-                    sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                    sql.bindparam('tabname', tablename, 
+                                    sqltypes.String(convert_unicode=True)),
+                    sql.bindparam('schname', current_schema, 
+                                    sqltypes.String(convert_unicode=True))
                 ]
             )
         )
@@ -1161,16 +1163,21 @@ class MSDialect(default.DefaultDialect):
                 'column_names':[]
             }
         rp = connection.execute(
-            sql.text("select ind_col.index_id, col.name from sys.columns as col "
-                        "join sys.index_columns as ind_col on "
-                        "ind_col.column_id=col.column_id "
-                        "join sys.tables as tab on tab.object_id=col.object_id "
-                        "join sys.schemas as sch on sch.schema_id=tab.schema_id "
-                        "where tab.name=:tabname "
-                        "and sch.name=:schname",
+            sql.text(
+                "select ind_col.index_id, ind_col.object_id, col.name "
+                "from sys.columns as col "
+                "join sys.tables as tab on tab.object_id=col.object_id "
+                "join sys.index_columns as ind_col on "
+                "(ind_col.column_id=col.column_id and "
+                "ind_col.object_id=tab.object_id) "
+                "join sys.schemas as sch on sch.schema_id=tab.schema_id "
+                "where tab.name=:tabname "
+                "and sch.name=:schname",
                         bindparams=[
-                            sql.bindparam('tabname', tablename, sqltypes.Unicode),
-                            sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                            sql.bindparam('tabname', tablename, 
+                                    sqltypes.String(convert_unicode=True)),
+                            sql.bindparam('schname', current_schema, 
+                                    sqltypes.String(convert_unicode=True))
                         ]),
             )
         for row in rp:
