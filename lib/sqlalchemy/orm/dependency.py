@@ -221,6 +221,8 @@ class DependencyProcessor(object):
         pass
 
     def prop_has_changes(self, uowcommit, states, isdelete):
+        passive = not isdelete or self.passive_deletes
+        
         for s in states:
             # TODO: add a high speed method 
             # to InstanceState which returns:  attribute
@@ -228,7 +230,7 @@ class DependencyProcessor(object):
             history = uowcommit.get_attribute_history(
                                             s, 
                                             self.key, 
-                                            passive=True)
+                                            passive=passive)
             if history and not history.empty():
                 return True
         else:

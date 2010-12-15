@@ -14,6 +14,12 @@ CHANGES
     that weren't previously saved in the "mutable changes"
     dictionary.
 
+  - Fixed uow bug whereby expired objects passed to 
+    Session.delete() would not have unloaded references 
+    or collections taken into account when deleting
+    objects, despite passive_deletes remaining at 
+    its default of False.  [ticket:2002]
+    
   - "innerjoin" flag doesn't take effect along the chain
     of joinedload() joins if a previous join in that chain
     is an outer join, thus allowing primary rows without
