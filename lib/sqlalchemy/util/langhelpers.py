@@ -516,6 +516,19 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
         else:
             kw[key] = type_(kw[key])
 
+
+def constructor_copy(obj, cls, **kw):
+    """Instantiate cls using the __dict__ of obj as constructor arguments.
+    
+    Uses inspect to match the named arguments of ``cls``.
+    
+    """
+    
+    names = get_cls_kwargs(cls)
+    kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
+    return cls(**kw)
+
+
 def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__

@@ -182,7 +182,7 @@ class TypeEngine(AbstractType):
         return dialect.type_descriptor(self)
         
     def adapt(self, cls, **kw):
-        return cls(**kw)
+        return util.constructor_copy(self, cls, **kw)
     
     def _coerce_compared_value(self, op, value):
         _coerced_type = _type_map.get(type(value), NULLTYPE)
@@ -221,7 +221,7 @@ class TypeEngine(AbstractType):
                         encode('ascii', 'backslashreplace')
         # end Py2K
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         # supports getargspec of the __init__ method
         # used by generic __repr__
         pass
@@ -642,6 +642,9 @@ def adapt_type(typeobj, colspecs):
         return typeobj
     return typeobj.adapt(impltype)
 
+
+
+
 class NullType(TypeEngine):
     """An unknown type.
 
@@ -788,15 +791,6 @@ class String(Concatenable, TypeEngine):
         self.unicode_error = unicode_error
         self._warn_on_bytestring = _warn_on_bytestring
         
-    def adapt(self, impltype, **kw):
-        return impltype(
-                    length=self.length,
-                    convert_unicode=self.convert_unicode,
-                    unicode_error=self.unicode_error,
-                    _warn_on_bytestring=self._warn_on_bytestring,
-                    **kw
-                    )
-
     def bind_processor(self, dialect):
         if self.convert_unicode or dialect.convert_unicode:
             if dialect.supports_unicode_binds and \
@@ -816,10 +810,11 @@ class String(Concatenable, TypeEngine):
                     return None
             else:
                 encoder = codecs.getencoder(dialect.encoding)
+                warn_on_bytestring = self._warn_on_bytestring
                 def process(value):
                     if isinstance(value, unicode):
                         return encoder(value, self.unicode_error)[0]
-                    elif value is not None:
+                    elif warn_on_bytestring and value is not None:
                         util.warn("Unicode type received non-unicode bind "
                                   "param value")
                     return value
@@ -1092,13 +1087,6 @@ class Numeric(_DateAffinity, TypeEngine):
         self.scale = scale
         self.asdecimal = asdecimal
 
-    def adapt(self, impltype, **kw):
-        return impltype(
-                precision=self.precision, 
-                scale=self.scale, 
-                asdecimal=self.asdecimal,
-                **kw)
-
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
@@ -1190,10 +1178,6 @@ class Float(Numeric):
         self.precision = precision
         self.asdecimal = asdecimal
 
-    def adapt(self, impltype, **kw):
-        return impltype(precision=self.precision, 
-                        asdecimal=self.asdecimal, **kw)
-
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             return processors.to_decimal_processor_factory(decimal.Decimal)
@@ -1239,9 +1223,6 @@ class DateTime(_DateAffinity, TypeEngine):
 
     def __init__(self, timezone=False):
         self.timezone = timezone
-
-    def adapt(self, impltype, **kw):
-        return impltype(timezone=self.timezone, **kw)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
@@ -1299,9 +1280,6 @@ class Time(_DateAffinity,TypeEngine):
 
     def __init__(self, timezone=False):
         self.timezone = timezone
-
-    def adapt(self, impltype, **kw):
-        return impltype(timezone=self.timezone, **kw)
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
@@ -1362,9 +1340,6 @@ class _Binary(TypeEngine):
         else:
             return super(_Binary, self)._coerce_compared_value(op, value)
     
-    def adapt(self, impltype, **kw):
-        return impltype(length=self.length, **kw)
-
     def get_dbapi_type(self, dbapi):
         return dbapi.BINARY
     

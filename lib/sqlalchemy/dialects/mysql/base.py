@@ -233,17 +233,11 @@ SET_RE = re.compile(
 class _NumericType(object):
     """Base for MySQL numeric types."""
 
-    def __init__(self, **kw):
-        self.unsigned = kw.pop('unsigned', False)
-        self.zerofill = kw.pop('zerofill', False)
+    def __init__(self, unsigned=False, zerofill=False, **kw):
+        self.unsigned = unsigned
+        self.zerofill = zerofill
         super(_NumericType, self).__init__(**kw)
     
-    def adapt(self, typeimpl, **kw):
-        return super(_NumericType, self).adapt(
-                        typeimpl, 
-                        unsigned=self.unsigned, 
-                        zerofill=self.zerofill)
-        
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         if isinstance(self, (REAL, DOUBLE)) and \
@@ -262,11 +256,6 @@ class _IntegerType(_NumericType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
         super(_IntegerType, self).__init__(**kw)
-
-    def adapt(self, typeimpl, **kw):
-        return super(_IntegerType, self).adapt(
-                        typeimpl, 
-                        display_width=self.display_width)
 
 class _StringType(sqltypes.String):
     """Base for MySQL string types."""
@@ -288,17 +277,6 @@ class _StringType(sqltypes.String):
         self.national = national
         super(_StringType, self).__init__(**kw)
     
-    def adapt(self, typeimpl, **kw):
-        return super(_StringType, self).adapt(
-            typeimpl,
-            charset=self.charset,
-            collation=self.collation,
-            ascii=self.ascii,
-            binary=self.binary,
-            national=self.national,
-            **kw
-        )
-        
     def __repr__(self):
         attributes = inspect.getargspec(self.__init__)[0][1:]
         attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])

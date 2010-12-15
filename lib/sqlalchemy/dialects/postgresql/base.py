@@ -133,23 +133,12 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
         super(TIMESTAMP, self).__init__(timezone=timezone)
         self.precision = precision
 
-    def adapt(self, impltype, **kw):
-        return impltype(
-                precision=self.precision, 
-                timezone=self.timezone, 
-                **kw)
         
 class TIME(sqltypes.TIME):
     def __init__(self, timezone=False, precision=None):
         super(TIME, self).__init__(timezone=timezone)
         self.precision = precision
 
-    def adapt(self, impltype, **kw):
-        return impltype(
-                precision=self.precision, 
-                timezone=self.timezone, 
-                **kw)
-    
 class INTERVAL(sqltypes.TypeEngine):
     """Postgresql INTERVAL type.
     
@@ -161,9 +150,6 @@ class INTERVAL(sqltypes.TypeEngine):
     def __init__(self, precision=None):
         self.precision = precision
     
-    def adapt(self, impltype):
-        return impltype(self.precision)
-
     @classmethod
     def _adapt_from_generic_interval(cls, interval):
         return INTERVAL(precision=interval.second_precision)
@@ -176,6 +162,9 @@ PGInterval = INTERVAL
 
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
+    def __init__(self, length=1):
+        self.length= length
+        
 PGBit = BIT
 
 class UUID(sqltypes.TypeEngine):
@@ -226,9 +215,6 @@ class UUID(sqltypes.TypeEngine):
         else:
             return None
     
-    def adapt(self, impltype, **kw):
-        return impltype(as_uuid=self.as_uuid, **kw)
-        
 PGUuid = UUID
 
 class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
@@ -300,13 +286,6 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     def is_mutable(self):
         return self.mutable
 
-    def adapt(self, impltype):
-        return impltype(
-            self.item_type,
-            mutable=self.mutable,
-            as_tuple=self.as_tuple
-        )
-        
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(dialect)
         if item_proc:
@@ -647,7 +626,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             return "INTERVAL"
 
     def visit_BIT(self, type_):
-        return "BIT"
+        return "BIT(%d)" % type_.length
 
     def visit_UUID(self, type_):
         return "UUID"
@@ -1102,7 +1081,7 @@ class PGDialect(default.DefaultDialect):
             elif attype == 'double precision':
                 args = (53, )
             elif attype == 'integer':
-                args = (32, 0)
+                args = ()
             elif attype in ('timestamp with time zone', 
                             'time with time zone'):
                 kwargs['timezone'] = True

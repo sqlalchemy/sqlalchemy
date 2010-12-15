@@ -116,15 +116,13 @@ class _StringType(sqltypes.String):
 class MaxString(_StringType):
     _type = 'VARCHAR'
 
-    def __init__(self, *a, **kw):
-        super(MaxString, self).__init__(*a, **kw)
-
 
 class MaxUnicode(_StringType):
     _type = 'VARCHAR'
 
     def __init__(self, length=None, **kw):
-        super(MaxUnicode, self).__init__(length=length, encoding='unicode')
+        kw['encoding'] = 'unicode'
+        super(MaxUnicode, self).__init__(length=length, **kw)
 
 
 class MaxChar(_StringType):
@@ -134,8 +132,8 @@ class MaxChar(_StringType):
 class MaxText(_StringType):
     _type = 'LONG'
 
-    def __init__(self, *a, **kw):
-        super(MaxText, self).__init__(*a, **kw)
+    def __init__(self, length=None, **kw):
+        super(MaxText, self).__init__(length, **kw)
 
     def get_col_spec(self):
         spec = 'LONG'

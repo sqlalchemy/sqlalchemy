@@ -280,16 +280,15 @@ class _StringType(object):
 class TEXT(_StringType, sqltypes.TEXT):
     """MSSQL TEXT type, for variable-length text up to 2^31 characters."""
 
-    def __init__(self, *args, **kw):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct a TEXT.
 
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.Text.__init__(self, *args, **kw)
+        sqltypes.Text.__init__(self, length, **kw)
 
 class NTEXT(_StringType, sqltypes.UnicodeText):
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
@@ -297,24 +296,22 @@ class NTEXT(_StringType, sqltypes.UnicodeText):
 
     __visit_name__ = 'NTEXT'
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct a NTEXT.
 
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kwargs.pop('collation', None)
         _StringType.__init__(self, collation)
-        length = kwargs.pop('length', None)
-        sqltypes.UnicodeText.__init__(self, length, **kwargs)
+        sqltypes.UnicodeText.__init__(self, length, **kw)
 
 
 class VARCHAR(_StringType, sqltypes.VARCHAR):
     """MSSQL VARCHAR type, for variable-length non-Unicode data with a maximum
     of 8,000 characters."""
 
-    def __init__(self, *args, **kw):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct a VARCHAR.
 
         :param length: Optinal, maximum data length, in characters.
@@ -335,16 +332,15 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.VARCHAR.__init__(self, *args, **kw)
+        sqltypes.VARCHAR.__init__(self, length, **kw)
 
 class NVARCHAR(_StringType, sqltypes.NVARCHAR):
     """MSSQL NVARCHAR type.
 
     For variable-length unicode character data up to 4,000 characters."""
 
-    def __init__(self, *args, **kw):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct a NVARCHAR.
 
         :param length: Optional, Maximum data length, in characters.
@@ -353,15 +349,14 @@ class NVARCHAR(_StringType, sqltypes.NVARCHAR):
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.NVARCHAR.__init__(self, *args, **kw)
+        sqltypes.NVARCHAR.__init__(self, length, **kw)
 
 class CHAR(_StringType, sqltypes.CHAR):
     """MSSQL CHAR type, for fixed-length non-Unicode data with a maximum
     of 8,000 characters."""
 
-    def __init__(self, *args, **kw):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct a CHAR.
 
         :param length: Optinal, maximum data length, in characters.
@@ -382,16 +377,15 @@ class CHAR(_StringType, sqltypes.CHAR):
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.CHAR.__init__(self, *args, **kw)
+        sqltypes.CHAR.__init__(self, length, **kw)
 
 class NCHAR(_StringType, sqltypes.NCHAR):
     """MSSQL NCHAR type.
 
     For fixed-length unicode character data up to 4,000 characters."""
 
-    def __init__(self, *args, **kw):
+    def __init__(self, length=None, collation=None, **kw):
         """Construct an NCHAR.
 
         :param length: Optional, Maximum data length, in characters.
@@ -400,9 +394,8 @@ class NCHAR(_StringType, sqltypes.NCHAR):
           value. Accepts a Windows Collation Name or a SQL Collation Name.
 
         """
-        collation = kw.pop('collation', None)
         _StringType.__init__(self, collation)
-        sqltypes.NCHAR.__init__(self, *args, **kw)
+        sqltypes.NCHAR.__init__(self, length, **kw)
 
 class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
@@ -1150,8 +1143,8 @@ class MSDialect(default.DefaultDialect):
                 "and sch.name=:schname "
                 "and ind.is_primary_key=0", 
                 bindparams=[
-                    sql.bindparam('tabname', tablename, sqltypes.Unicode),
-                    sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                    sql.bindparam('tabname', tablename, sqltypes.String(convert_unicode=True)),
+                    sql.bindparam('schname', current_schema, sqltypes.String(convert_unicode=True))
                 ]
             )
         )
@@ -1163,16 +1156,19 @@ class MSDialect(default.DefaultDialect):
                 'column_names':[]
             }
         rp = connection.execute(
-            sql.text("select ind_col.index_id, col.name from sys.columns as col "
-                        "join sys.index_columns as ind_col on "
-                        "ind_col.column_id=col.column_id "
-                        "join sys.tables as tab on tab.object_id=col.object_id "
-                        "join sys.schemas as sch on sch.schema_id=tab.schema_id "
-                        "where tab.name=:tabname "
-                        "and sch.name=:schname",
+            sql.text(
+                "select ind_col.index_id, ind_col.object_id, col.name "
+                "from sys.columns as col "
+                "join sys.tables as tab on tab.object_id=col.object_id "
+                "join sys.index_columns as ind_col on "
+                "(ind_col.column_id=col.column_id and "
+                "ind_col.object_id=tab.object_id) "
+                "join sys.schemas as sch on sch.schema_id=tab.schema_id "
+                "where tab.name=:tabname "
+                "and sch.name=:schname",
                         bindparams=[
-                            sql.bindparam('tabname', tablename, sqltypes.Unicode),
-                            sql.bindparam('schname', current_schema, sqltypes.Unicode)
+                            sql.bindparam('tabname', tablename, sqltypes.String(convert_unicode=True)),
+                            sql.bindparam('schname', current_schema, sqltypes.String(convert_unicode=True))
                         ]),
             )
         for row in rp:
