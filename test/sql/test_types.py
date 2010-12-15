@@ -517,7 +517,6 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         # this is not the unicode type - no warning
         # Py3K
         #uni(b'x')
-        #assert_raises(exc.SAWarning, uni, b'x')
         #assert isinstance(uni(unicodedata), bytes)
         # Py2K
         uni('x')
