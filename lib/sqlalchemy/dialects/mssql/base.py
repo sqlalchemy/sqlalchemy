@@ -1143,8 +1143,10 @@ class MSDialect(default.DefaultDialect):
                 "and sch.name=:schname "
                 "and ind.is_primary_key=0", 
                 bindparams=[
-                    sql.bindparam('tabname', tablename, sqltypes.String(convert_unicode=True)),
-                    sql.bindparam('schname', current_schema, sqltypes.String(convert_unicode=True))
+                    sql.bindparam('tabname', tablename, 
+                                    sqltypes.String(convert_unicode=True)),
+                    sql.bindparam('schname', current_schema, 
+                                    sqltypes.String(convert_unicode=True))
                 ]
             )
         )
@@ -1167,8 +1169,10 @@ class MSDialect(default.DefaultDialect):
                 "where tab.name=:tabname "
                 "and sch.name=:schname",
                         bindparams=[
-                            sql.bindparam('tabname', tablename, sqltypes.String(convert_unicode=True)),
-                            sql.bindparam('schname', current_schema, sqltypes.String(convert_unicode=True))
+                            sql.bindparam('tabname', tablename, 
+                                    sqltypes.String(convert_unicode=True)),
+                            sql.bindparam('schname', current_schema, 
+                                    sqltypes.String(convert_unicode=True))
                         ]),
             )
         for row in rp:

@@ -69,6 +69,12 @@ CHANGES
     str() on values.
     
 - engine
+  - The "unicode warning" against non-unicode bind data
+    is now raised only when the
+    Unicode type is used explictly; not when 
+    convert_unicode=True is used on the engine 
+    or String type.
+    
   - Fixed memory leak in C version of Decimal result
     processor.  [ticket:1978]
     
@@ -114,6 +120,11 @@ CHANGES
     that includes a remote schema to a *different* schema
     than that of the parent table doesn't render at all,
     as cross-schema references do not appear to be supported.
+
+- mssql
+   - The rewrite of index reflection in [ticket:1770] was
+     unfortunately not tested correctly, and returned incorrect
+     results.   This regression is now fixed.
 
 - oracle
   - The cx_oracle "decimal detection" logic, which takes place

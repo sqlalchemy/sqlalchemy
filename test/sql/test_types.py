@@ -527,12 +527,16 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         assert select([unicode_table.c.unicode_varchar]).scalar() == u''
 
     def test_unicode_warnings(self):
-        """test the warnings raised when SQLA must coerce unicode binds."""
+        """test the warnings raised when SQLA must coerce unicode binds,
+        *and* is using the Unicode type.
+        
+        """
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
                         u"une drôle de petit voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-
+        
+        # using Unicode explicly - warning should be emitted
         u = Unicode()
         uni = u.dialect_impl(testing.db.dialect).bind_processor(testing.db.dialect)
         if testing.db.dialect.supports_unicode_binds:
@@ -556,16 +560,21 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         
             eq_(uni(unicodedata), unicodedata.encode('utf-8'))
         
+        # using convert unicode at engine level - 
+        # this should not be raising a warning
         unicode_engine = engines.utf8_engine(options={'convert_unicode':True,})
         unicode_engine.dialect.supports_unicode_binds = False
         
         s = String()
         uni = s.dialect_impl(unicode_engine.dialect).bind_processor(unicode_engine.dialect)
         # Py3K
+        # this is not the unicode type - no warning
+        #uni(b'x')
         #assert_raises(exc.SAWarning, uni, b'x')
         #assert isinstance(uni(unicodedata), bytes)
         # Py2K
-        assert_raises(exc.SAWarning, uni, 'x')
+        # this is not the unicode type - no warning
+        uni('x')
         assert isinstance(uni(unicodedata), str)
         # end Py2K
         
