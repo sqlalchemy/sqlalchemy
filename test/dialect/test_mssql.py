@@ -764,19 +764,19 @@ class SchemaTest(TestBase):
         return self.ddl_compiler.get_column_specification(self.column)
         
     def test_that_mssql_default_nullability_emits_null(self):
-        eq_("test_column VARCHAR NULL", self._column_spec())
+        eq_("test_column VARCHAR(max) NULL", self._column_spec())
 
     def test_that_mssql_none_nullability_does_not_emit_nullability(self):
         self.column.nullable = None
-        eq_("test_column VARCHAR", self._column_spec())
+        eq_("test_column VARCHAR(max)", self._column_spec())
 
     def test_that_mssql_specified_nullable_emits_null(self):
         self.column.nullable = True
-        eq_("test_column VARCHAR NULL", self._column_spec())
+        eq_("test_column VARCHAR(max) NULL", self._column_spec())
 
     def test_that_mssql_specified_not_nullable_emits_not_null(self):
         self.column.nullable = False
-        eq_("test_column VARCHAR NOT NULL", self._column_spec())
+        eq_("test_column VARCHAR(max) NOT NULL", self._column_spec())
 
 
 def full_text_search_missing():
@@ -1424,16 +1424,16 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
              'NCHAR(1)'),
             (mssql.MSNChar, [1], {'collation': 'Latin1_General_CI_AS'},
              'NCHAR(1) COLLATE Latin1_General_CI_AS'),
-
+             
             (mssql.MSString, [], {},
-             'VARCHAR'),
+             'VARCHAR(max)'),
             (mssql.MSString, [1], {},
              'VARCHAR(1)'),
             (mssql.MSString, [1], {'collation': 'Latin1_General_CI_AS'},
              'VARCHAR(1) COLLATE Latin1_General_CI_AS'),
 
             (mssql.MSNVarchar, [], {},
-             'NVARCHAR'),
+             'NVARCHAR(max)'),
             (mssql.MSNVarchar, [1], {},
              'NVARCHAR(1)'),
             (mssql.MSNVarchar, [1], {'collation': 'Latin1_General_CI_AS'},

@@ -479,7 +479,7 @@ ischema_names = {
 
 
 class MSTypeCompiler(compiler.GenericTypeCompiler):
-    def _extend(self, spec, type_):
+    def _extend(self, spec, type_, length=None):
         """Extend a string-type declaration with standard SQL
         COLLATE annotations.
 
@@ -489,9 +489,12 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
             collation = 'COLLATE %s' % type_.collation
         else:
             collation = None
-
-        if type_.length:
-            spec = spec + "(%d)" % type_.length
+        
+        if not length:
+            length = type_.length
+            
+        if length:
+            spec = spec + "(%s)" % length
         
         return ' '.join([c for c in (spec, collation)
             if c is not None])
@@ -545,7 +548,8 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend("TEXT", type_)
 
     def visit_VARCHAR(self, type_):
-        return self._extend("VARCHAR", type_)
+        return self._extend("VARCHAR", type_, 
+                    length = type_.length or 'max')
 
     def visit_CHAR(self, type_):
         return self._extend("CHAR", type_)
@@ -554,7 +558,8 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend("NCHAR", type_)
 
     def visit_NVARCHAR(self, type_):
-        return self._extend("NVARCHAR", type_)
+        return self._extend("NVARCHAR", type_, 
+                    length = type_.length or 'max')
 
     def visit_date(self, type_):
         if self.dialect.server_version_info < MS_2008_VERSION:
