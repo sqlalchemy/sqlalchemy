@@ -580,9 +580,10 @@ class LoadLazyAttribute(object):
             
     def __call__(self, passive=False):
         state, key = self.state, self.key
-        instance_mapper = mapper._state_mapper(state)
+        instance_mapper = state.manager.mapper
         prop = instance_mapper._props[key]
-        strategy = prop._get_strategy(LazyLoader)
+        prop_mapper = prop.mapper
+        strategy = prop._strategies[LazyLoader]
         pending = not state.key
         
         if (
@@ -595,7 +596,7 @@ class LoadLazyAttribute(object):
             return attributes.PASSIVE_NO_RESULT
             
         session = sessionlib._state_session(state)
-        if session is None:
+        if not session:
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "lazy load operation of attribute '%s' cannot proceed" % 
@@ -610,13 +611,14 @@ class LoadLazyAttribute(object):
             else:
                 get_attr = instance_mapper._get_state_attr_by_column
             
+            dict_ = state.dict
             ident = [
                 get_attr(
                         state,
                         state.dict,
                         strategy._equated_columns[pk],
                         passive=passive)
-                for pk in prop.mapper.primary_key
+                for pk in prop_mapper.primary_key
             ]
             if attributes.PASSIVE_NO_RESULT in ident:
                 return attributes.PASSIVE_NO_RESULT
@@ -624,14 +626,14 @@ class LoadLazyAttribute(object):
             if _none_set.issuperset(ident):
                 return None
                 
-            ident_key = prop.mapper.identity_key_from_primary_key(ident)
+            ident_key = prop_mapper.identity_key_from_primary_key(ident)
             instance = Query._get_from_identity(session, ident_key, passive)
             if instance is not None:
                 return instance
             elif passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
                 
-        q = session.query(prop.mapper)._adapt_all_clauses()
+        q = session.query(prop_mapper)._adapt_all_clauses()
         
         # don't autoflush on pending
         if pending:

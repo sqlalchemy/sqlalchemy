@@ -104,7 +104,7 @@ class ColumnProperty(StrategizedProperty):
     def do_init(self):
         super(ColumnProperty, self).do_init()
         if len(self.columns) > 1 and \
-                self.parent.primary_key.issuperset(self.columns):
+                set(self.parent.primary_key).issuperset(self.columns):
             util.warn(
                 ("On mapper %s, primary key column '%s' is being combined "
                  "with distinct primary key column '%s' in attribute '%s'.  "

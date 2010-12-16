@@ -340,8 +340,6 @@ class AttributeImpl(object):
                     callable_ = None
 
                 if callable_ is not None:
-                    #if passive is not PASSIVE_OFF:
-                    #    return PASSIVE_NO_RESULT
                     value = callable_(passive=passive)
                     if value is PASSIVE_NO_RESULT:
                         return value
@@ -790,10 +788,8 @@ class CollectionAttributeImpl(AttributeImpl):
         collection, user_data = self._initialize_collection(state)
 
         if value:
-            for item in value:
-                collection.append_without_event(item)
+            collection.append_multiple_without_event(value)
 
-        state.callables.pop(self.key, None)
         state.dict[self.key] = user_data
 
         state.commit(dict_, [self.key])
