@@ -1922,7 +1922,7 @@ class Query(object):
                     # TODO: no coverage here
                     return attributes.PASSIVE_NO_RESULT
                 try:
-                    state()
+                    state(passive)
                 except orm_exc.ObjectDeletedError:
                     session._remove_newly_deleted(state)
                     return None

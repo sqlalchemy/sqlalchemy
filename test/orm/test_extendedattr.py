@@ -197,18 +197,21 @@ class UserDefinedExtensionTest(_base.ORMTest):
             instrumentation.register_class(Foo)
             instrumentation.register_class(Bar)
 
-            def func1(**kw):
-                print "func1"
+            def func1(state, passive):
                 return "this is the foo attr"
-            def func2(**kw):
-                print "func2"
+            def func2(state, passive):
                 return "this is the bar attr"
-            def func3(**kw):
-                print "func3"
+            def func3(state, passive):
                 return "this is the shared attr"
-            attributes.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1, useobject=True)
-            attributes.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3, useobject=True)
-            attributes.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2, useobject=True)
+            attributes.register_attribute(Foo, 'element',
+                    uselist=False, callable_=func1,
+                    useobject=True)
+            attributes.register_attribute(Foo, 'element2',
+                    uselist=False, callable_=func3,
+                    useobject=True)
+            attributes.register_attribute(Bar, 'element',
+                    uselist=False, callable_=func2,
+                    useobject=True)
 
             x = Foo()
             y = Bar()
@@ -224,8 +227,10 @@ class UserDefinedExtensionTest(_base.ORMTest):
 
             instrumentation.register_class(Post)
             instrumentation.register_class(Blog)
-            attributes.register_attribute(Post, 'blog', uselist=False, backref='posts', trackparent=True, useobject=True)
-            attributes.register_attribute(Blog, 'posts', uselist=True, backref='blog', trackparent=True, useobject=True)
+            attributes.register_attribute(Post, 'blog', uselist=False,
+                    backref='posts', trackparent=True, useobject=True)
+            attributes.register_attribute(Blog, 'posts', uselist=True,
+                    backref='blog', trackparent=True, useobject=True)
             b = Blog()
             (p1, p2, p3) = (Post(), Post(), Post())
             b.posts.append(p1)

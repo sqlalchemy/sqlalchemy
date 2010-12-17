@@ -315,7 +315,7 @@ class StrategizedProperty(MapperProperty):
                 _reduce_path(path)), None)
         if cls:
             try:
-                return self.__all_strategies[cls]
+                return self._strategies[cls]
             except KeyError:
                 return self.__init_strategy(cls)
         else:
@@ -323,12 +323,12 @@ class StrategizedProperty(MapperProperty):
 
     def _get_strategy(self, cls):
         try:
-            return self.__all_strategies[cls]
+            return self._strategies[cls]
         except KeyError:
             return self.__init_strategy(cls)
 
     def __init_strategy(self, cls):
-        self.__all_strategies[cls] = strategy = cls(self)
+        self._strategies[cls] = strategy = cls(self)
         strategy.init()
         return strategy
 
@@ -341,7 +341,7 @@ class StrategizedProperty(MapperProperty):
                     create_row_processor(context, path, mapper, row, adapter)
 
     def do_init(self):
-        self.__all_strategies = {}
+        self._strategies = {}
         self.strategy = self.__init_strategy(self.strategy_class)
 
     def post_instrument_class(self, mapper):

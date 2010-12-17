@@ -49,16 +49,28 @@ class AttributesTest(_base.ORMTest):
     def test_pickleness(self):
         instrumentation.register_class(MyTest)
         instrumentation.register_class(MyTest2)
-        attributes.register_attribute(MyTest, 'user_id', uselist=False, useobject=False)
-        attributes.register_attribute(MyTest, 'user_name', uselist=False, useobject=False)
-        attributes.register_attribute(MyTest, 'email_address', uselist=False, useobject=False)
-        attributes.register_attribute(MyTest, 'some_mutable_data', mutable_scalars=True, copy_function=list, compare_function=cmp, uselist=False, useobject=False)
-        attributes.register_attribute(MyTest2, 'a', uselist=False, useobject=False)
-        attributes.register_attribute(MyTest2, 'b', uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'user_id', uselist=False,
+                useobject=False)
+        attributes.register_attribute(MyTest, 'user_name',
+                uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'email_address',
+                uselist=False, useobject=False)
+        attributes.register_attribute(MyTest, 'some_mutable_data',
+                mutable_scalars=True, copy_function=list,
+                compare_function=cmp, uselist=False, useobject=False)
+        attributes.register_attribute(MyTest2, 'a', uselist=False,
+                useobject=False)
+        attributes.register_attribute(MyTest2, 'b', uselist=False,
+                useobject=False)
+
         # shouldnt be pickling callables at the class level
-        def somecallable(*args, **kw):
+
+        def somecallable(state, passive):
             return None
-        attributes.register_attribute(MyTest, "mt2", uselist = True, trackparent=True, callable_=somecallable, useobject=True)
+
+        attributes.register_attribute(MyTest, 'mt2', uselist=True,
+                trackparent=True, callable_=somecallable,
+                useobject=True)
 
         o = MyTest()
         o.mt2.append(MyTest2())
@@ -259,26 +271,26 @@ class AttributesTest(_base.ORMTest):
 
         b1, b2, b3, b4 = Bar(id='b1'), Bar(id='b2'), Bar(id='b3'), Bar(id='b4')
         
-        def loadcollection(**kw):
-            if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+        def loadcollection(state, passive):
+            if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
             return [b1, b2]
         
-        def loadscalar(**kw):
-            if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+        def loadscalar(state, passive):
+            if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
             return b2
             
         attributes.register_attribute(Foo, 'bars', 
                                uselist=True, 
                                useobject=True, 
-                               callable_=lambda o:loadcollection,
+                               callable_=loadcollection,
                                extension=[ReceiveEvents('bars')])
                                
         attributes.register_attribute(Foo, 'bar', 
                               uselist=False, 
                               useobject=True, 
-                              callable_=lambda o:loadscalar,
+                              callable_=loadscalar,
                               extension=[ReceiveEvents('bar')])
                               
         attributes.register_attribute(Foo, 'scalar', 
@@ -341,14 +353,17 @@ class AttributesTest(_base.ORMTest):
         instrumentation.register_class(Bar)
 
         bar1, bar2, bar3 = [Bar(id=1), Bar(id=2), Bar(id=3)]
-        def func1(**kw):
-            if kw.get('passive') is attributes.PASSIVE_NO_FETCH:
+        def func1(state, passive):
+            if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
             
             return [bar1, bar2, bar3]
 
-        attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lambda o:func1, useobject=True, extension=[ReceiveEvents()])
-        attributes.register_attribute(Bar, 'foos', uselist=True, useobject=True, backref="bars")
+        attributes.register_attribute(Foo, 'bars', uselist=True,
+                callable_=func1, useobject=True,
+                extension=[ReceiveEvents()])
+        attributes.register_attribute(Bar, 'foos', uselist=True,
+                useobject=True, backref='bars')
 
         x = Foo()
         assert_raises(AssertionError, Bar(id=4).foos.append, x)
@@ -423,9 +438,9 @@ class AttributesTest(_base.ORMTest):
         b = Blog()
         p1 = Post()
         attributes.instance_state(b).set_callable(attributes.instance_dict(b), 
-                                                    'posts', lambda **kw:[p1])
+                                                    'posts', lambda passive:[p1])
         attributes.instance_state(p1).set_callable(attributes.instance_dict(p1), 
-                                                    'blog', lambda **kw:b)
+                                                    'blog', lambda passive:b)
         p1, attributes.instance_state(b).commit_all(attributes.instance_dict(b))
 
         # no orphans (called before the lazy loaders fire off)
@@ -452,18 +467,18 @@ class AttributesTest(_base.ORMTest):
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
 
-        def func1(**kw):
+        def func1(state, passive):
             return "this is the foo attr"
-        def func2(**kw):
+        def func2(state, passive):
             return "this is the bar attr"
-        def func3(**kw):
+        def func3(state, passive):
             return "this is the shared attr"
         attributes.register_attribute(Foo, 'element', uselist=False, 
-                                            callable_=lambda o:func1, useobject=True)
+                                            callable_=func1, useobject=True)
         attributes.register_attribute(Foo, 'element2', uselist=False, 
-                                            callable_=lambda o:func3, useobject=True)
+                                            callable_=func3, useobject=True)
         attributes.register_attribute(Bar, 'element', uselist=False, 
-                                            callable_=lambda o:func2, useobject=True)
+                                            callable_=func2, useobject=True)
 
         x = Foo()
         y = Bar()
@@ -525,14 +540,17 @@ class AttributesTest(_base.ORMTest):
         instrumentation.register_class(Bar)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
-        def func1(**kw):
+        def func1(state, passive):
             return "this is func 1"
-        def func2(**kw):
+        def func2(state, passive):
             return [bar1, bar2, bar3]
 
-        attributes.register_attribute(Foo, 'col1', uselist=False, callable_=lambda o:func1, useobject=True)
-        attributes.register_attribute(Foo, 'col2', uselist=True, callable_=lambda o:func2, useobject=True)
-        attributes.register_attribute(Bar, 'id', uselist=False, useobject=True)
+        attributes.register_attribute(Foo, 'col1', uselist=False,
+                callable_=func1, useobject=True)
+        attributes.register_attribute(Foo, 'col2', uselist=True,
+                callable_=func2, useobject=True)
+        attributes.register_attribute(Bar, 'id', uselist=False,
+                useobject=True)
 
         x = Foo()
         attributes.instance_state(x).commit_all(attributes.instance_dict(x))
@@ -864,9 +882,6 @@ class BackrefTest(_base.ORMTest):
         # and this condition changes.
         assert c1 in p1.children
         
-        
-        
-        
 class PendingBackrefTest(_base.ORMTest):
     def setup(self):
         global Post, Blog, called, lazy_load
@@ -888,19 +903,20 @@ class PendingBackrefTest(_base.ORMTest):
         called = [0]
 
         lazy_load = []
-        def lazy_posts(instance):
-            def load(**kw):
-                if kw['passive'] is not attributes.PASSIVE_NO_FETCH:
-                    called[0] += 1
-                    return lazy_load
-                else:
-                    return attributes.PASSIVE_NO_RESULT
-            return load
+        def lazy_posts(state, passive):
+            if passive is not attributes.PASSIVE_NO_FETCH:
+                called[0] += 1
+                return lazy_load
+            else:
+                return attributes.PASSIVE_NO_RESULT
 
         instrumentation.register_class(Post)
         instrumentation.register_class(Blog)
-        attributes.register_attribute(Post, 'blog', uselist=False, backref='posts', trackparent=True, useobject=True)
-        attributes.register_attribute(Blog, 'posts', uselist=True, backref='blog', callable_=lazy_posts, trackparent=True, useobject=True)
+        attributes.register_attribute(Post, 'blog', uselist=False,
+                backref='posts', trackparent=True, useobject=True)
+        attributes.register_attribute(Blog, 'posts', uselist=True,
+                backref='blog', callable_=lazy_posts, trackparent=True,
+                useobject=True)
 
     def test_lazy_add(self):
         global lazy_load
@@ -1384,15 +1400,16 @@ class HistoryTest(_base.ORMTest):
             pass
 
         lazy_load = []
-        def lazyload(instance):
-            def load(**kw):
-                return lazy_load
-            return load
+        def lazyload(state, passive):
+            return lazy_load
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'bars', uselist=True, backref='foo', trackparent=True, callable_=lazyload, useobject=True)
-        attributes.register_attribute(Bar, 'foo', uselist=False, backref='bars', trackparent=True, useobject=True)
+        attributes.register_attribute(Foo, 'bars', uselist=True,
+                backref='foo', trackparent=True, callable_=lazyload,
+                useobject=True)
+        attributes.register_attribute(Bar, 'foo', uselist=False,
+                backref='bars', trackparent=True, useobject=True)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
         lazy_load = [bar1, bar2, bar3]
@@ -1419,14 +1436,13 @@ class HistoryTest(_base.ORMTest):
             pass
 
         lazy_load = []
-        def lazyload(instance):
-            def load(**kw):
-                return lazy_load
-            return load
+        def lazyload(state, passive):
+            return lazy_load
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'bars', uselist=True, callable_=lazyload, trackparent=True, useobject=True)
+        attributes.register_attribute(Foo, 'bars', uselist=True,
+                callable_=lazyload, trackparent=True, useobject=True)
 
         bar1, bar2, bar3, bar4 = [Bar(id=1), Bar(id=2), Bar(id=3), Bar(id=4)]
         lazy_load = [bar1, bar2, bar3]
@@ -1459,14 +1475,13 @@ class HistoryTest(_base.ORMTest):
             pass
 
         lazy_load = None
-        def lazyload(instance):
-            def load(**kw):
-                return lazy_load
-            return load
+        def lazyload(state, passive):
+            return lazy_load
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False)
-        lazy_load = "hi"
+        attributes.register_attribute(Foo, 'bar', uselist=False,
+                callable_=lazyload, useobject=False)
+        lazy_load = 'hi'
 
         # with scalar non-object and active_history=False, the lazy callable is only executed on gets, not history
         # operations
@@ -1497,14 +1512,14 @@ class HistoryTest(_base.ORMTest):
             pass
 
         lazy_load = None
-        def lazyload(instance):
-            def load(**kw):
-                return lazy_load
-            return load
+        def lazyload(state, passive):
+            return lazy_load
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, useobject=False, active_history=True)
-        lazy_load = "hi"
+        attributes.register_attribute(Foo, 'bar', uselist=False,
+                callable_=lazyload, useobject=False,
+                active_history=True)
+        lazy_load = 'hi'
 
         # active_history=True means the lazy callable is executed on set as well as get,
         # causing the old value to appear in the history
@@ -1537,14 +1552,13 @@ class HistoryTest(_base.ORMTest):
             pass
 
         lazy_load = None
-        def lazyload(instance):
-            def load(**kw):
-                return lazy_load
-            return load
+        def lazyload(state, passive):
+            return lazy_load
 
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
-        attributes.register_attribute(Foo, 'bar', uselist=False, callable_=lazyload, trackparent=True, useobject=True)
+        attributes.register_attribute(Foo, 'bar', uselist=False,
+                callable_=lazyload, trackparent=True, useobject=True)
         bar1, bar2 = [Bar(id=1), Bar(id=2)]
         lazy_load = bar1
 

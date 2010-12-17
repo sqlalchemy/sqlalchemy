@@ -121,17 +121,28 @@ class WeakInstanceDict(IdentityMap):
                 
         dict.__setitem__(self, state.key, state)
         self._manage_incoming_state(state)
-                 
+
     def add(self, state):
-        if state.key in self:
-            if dict.__getitem__(self, state.key) is not state:
-                raise AssertionError("A conflicting state is already "
-                                    "present in the identity map for key %r" 
-                                    % (state.key, ))
-        else:
-            dict.__setitem__(self, state.key, state)
-            self._manage_incoming_state(state)
-    
+        key = state.key
+        # inline of self.__contains__
+        if dict.__contains__(self, key):
+            try:
+                existing_state = dict.__getitem__(self, key)
+                if existing_state is not state:
+                    o = existing_state.obj()
+                    if o is None:
+                        o = existing_state._is_really_none()
+                    if o is not None:
+                        raise AssertionError("A conflicting state is already "
+                                        "present in the identity map for key %r" 
+                                        % (key, ))
+                else:
+                    return
+            except KeyError:
+                pass
+        dict.__setitem__(self, key, state)
+        self._manage_incoming_state(state)
+
     def remove_key(self, key):
         state = dict.__getitem__(self, key)
         self.remove(state)
@@ -152,16 +163,15 @@ class WeakInstanceDict(IdentityMap):
             self._manage_removed_state(state)
         
     def get(self, key, default=None):
-        state = dict.get(self, key, default)
-        if state is default:
+        if not dict.__contains__(self, key):
             return default
+        state = dict.__getitem__(self, key)
         o = state.obj()
         if o is None:
             o = state._is_really_none()
-        if o is None:
-            return default
+            if o is None:
+                return default
         return o
-
 
     def items(self):
     # Py2K

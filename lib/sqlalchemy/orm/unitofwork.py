@@ -166,6 +166,8 @@ class UOWTransaction(object):
                 self.attributes[hashkey] = (history, state_history, passive)
         else:
             impl = state.manager[key].impl
+            # TODO: store the history as (state, object) tuples
+            # so we don't have to keep converting here
             history = impl.get_history(state, state.dict, passive=passive)
             if history and impl.uses_objects:
                 state_history = history.as_state()

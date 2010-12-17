@@ -152,10 +152,8 @@ class DependencyProcessor(object):
             # detect if there's anything changed or loaded
             # by a preprocessor on this state/attribute.  if not,
             # we should be able to skip it entirely.
-            sum_ = uow.get_attribute_history(
-                                            state, 
-                                            self.key, 
-                                            passive=True).sum()
+            sum_ = attributes.get_all_pending(state, state.dict, self.key)
+            
             if not sum_:
                 continue
 
@@ -177,9 +175,10 @@ class DependencyProcessor(object):
                 
             if child_in_cycles:
                 child_actions = []
-                for child_state in sum_:
-                    if child_state is None:
+                for child in sum_:
+                    if child is None:
                         continue
+                    child_state = attributes.instance_state(child)
                     if child_state not in uow.states:
                         child_action = (None, None)
                     else:
@@ -221,6 +220,8 @@ class DependencyProcessor(object):
         pass
 
     def prop_has_changes(self, uowcommit, states, isdelete):
+        passive = not isdelete or self.passive_deletes
+        
         for s in states:
             # TODO: add a high speed method 
             # to InstanceState which returns:  attribute
@@ -228,7 +229,7 @@ class DependencyProcessor(object):
             history = uowcommit.get_attribute_history(
                                             s, 
                                             self.key, 
-                                            passive=True)
+                                            passive=passive)
             if history and not history.empty():
                 return True
         else:

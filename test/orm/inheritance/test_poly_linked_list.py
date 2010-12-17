@@ -113,7 +113,7 @@ class PolymorphicCircularTest(_base.MappedTest):
         table3_mapper = mapper(Table3, table3, inherits=table1_mapper, polymorphic_identity='table3')
 
         configure_mappers()
-        assert table1_mapper.primary_key == [table1.c.id], table1_mapper.primary_key
+        assert table1_mapper.primary_key == (table1.c.id,), table1_mapper.primary_key
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def testone(self):

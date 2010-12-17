@@ -519,7 +519,7 @@ class Mapper(object):
                     "key columns for mapped table '%s'" % 
                     (self, self.mapped_table.description))
 
-            self.primary_key = primary_key
+            self.primary_key = tuple(primary_key)
             self._log("Identified primary key columns: %s", primary_key)
 
     def _configure_properties(self):
@@ -1287,8 +1287,13 @@ class Mapper(object):
 
     def _get_committed_state_attr_by_column(self, state, dict_, column,
                                                     passive=False):
-        return self._columntoproperty[column]._getcommitted(
-            state, dict_, column, passive=passive)
+                                                    
+        prop = self._columntoproperty[column]
+        value = state.manager[prop.key].impl.\
+                    get_committed_value(state, dict_, passive=passive)
+        if prop.get_col_value:
+            value = prop.get_col_value(column, value)
+        return value
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary

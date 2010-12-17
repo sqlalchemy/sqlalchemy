@@ -471,6 +471,9 @@ class CollectionAdapter(object):
     The ORM uses an CollectionAdapter exclusively for interaction with
     entity collections.
 
+    The usage of getattr()/setattr() is currently to allow injection
+    of custom methods, such as to unwrap Zope security proxies.
+    
     """
     def __init__(self, attr, owner_state, data):
         self._key = attr.key
@@ -553,6 +556,12 @@ class CollectionAdapter(object):
         """Add or restore an entity to the collection, firing no events."""
         getattr(self._data(), '_sa_appender')(item, _sa_initiator=False)
 
+    def append_multiple_without_event(self, items):
+        """Add or restore an entity to the collection, firing no events."""
+        appender = getattr(self._data(), '_sa_appender')
+        for item in items:
+            appender(item, _sa_initiator=False)
+
     def remove_with_event(self, item, initiator=None):
         """Remove an entity from the collection, firing mutation events."""
         getattr(self._data(), '_sa_remover')(item, _sa_initiator=initiator)
@@ -563,13 +572,17 @@ class CollectionAdapter(object):
 
     def clear_with_event(self, initiator=None):
         """Empty the collection, firing a mutation event for each entity."""
+        
+        remover = getattr(self._data(), '_sa_remover')
         for item in list(self):
-            self.remove_with_event(item, initiator)
+            remover(item, _sa_initiator=initiator)
 
     def clear_without_event(self):
         """Empty the collection, firing no events."""
+
+        remover = getattr(self._data(), '_sa_remover')
         for item in list(self):
-            self.remove_without_event(item)
+            remover(item, _sa_initiator=False)
 
     def __iter__(self):
         """Iterate over entities in the collection."""

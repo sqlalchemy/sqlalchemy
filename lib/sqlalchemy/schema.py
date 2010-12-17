@@ -1591,7 +1591,11 @@ class ColumnCollectionConstraint(Constraint):
         return self.columns.contains_column(col)
 
     def __iter__(self):
-        return iter(self.columns)
+        # inlining of 
+        # return iter(self.columns)
+        # ColumnCollection->OrderedProperties->OrderedDict
+        ordered_dict = self.columns._data
+        return (ordered_dict[key] for key in ordered_dict._list)
 
     def __len__(self):
         return len(self.columns)

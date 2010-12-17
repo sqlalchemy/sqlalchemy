@@ -54,7 +54,7 @@ class MergeTest(_base.MappedTest):
         # bigger operation so using a small variance
 
         @profiling.function_call_count(86, variance=0.05,
-                versions={'2.4': 68, '2.5':94, '3': 89})
+                versions={'2.4': 64, '2.5':94, '3': 89})
         def go():
             return sess2.merge(p1, load=False)
         p2 = go()
@@ -172,7 +172,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
         
-        @profiling.function_call_count(23979, {'2.5':28974, '3':25978})
+        @profiling.function_call_count(17987, {'3':18987})
         def go():
             for p in parents:
                 p.child

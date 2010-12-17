@@ -3,6 +3,16 @@
 =======
 CHANGES
 =======
+0.7.0b1
+=======
+
+- mssql
+  - the String/Unicode types, and their counterparts VARCHAR/
+    NVARCHAR, emit "max" as the length when no length is 
+    specified.   This makes it more compatible with Postgresql's
+    VARCHAR type which is similarly unbounded when no length
+    specified.
+    
 0.6.6
 =====
 - orm
@@ -14,6 +24,12 @@ CHANGES
     that weren't previously saved in the "mutable changes"
     dictionary.
 
+  - Fixed uow bug whereby expired objects passed to 
+    Session.delete() would not have unloaded references 
+    or collections taken into account when deleting
+    objects, despite passive_deletes remaining at 
+    its default of False.  [ticket:2002]
+    
   - "innerjoin" flag doesn't take effect along the chain
     of joinedload() joins if a previous join in that chain
     is an outer join, thus allowing primary rows without
