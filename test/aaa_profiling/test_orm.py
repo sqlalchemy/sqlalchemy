@@ -172,7 +172,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
         
-        @profiling.function_call_count(23979, {'2.5':28974, '3':25978})
+        @profiling.function_call_count(17987, {'3':20978})
         def go():
             for p in parents:
                 p.child

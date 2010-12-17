@@ -36,10 +36,8 @@ class InstanceState(object):
         self.class_ = obj.__class__
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
-
-    @util.memoized_property
-    def committed_state(self):
-        return {}
+        self.callables = {}
+        self.committed_state = {}
     
     @util.memoized_property
     def parents(self):
@@ -47,10 +45,6 @@ class InstanceState(object):
 
     @util.memoized_property
     def pending(self):
-        return {}
-
-    @util.memoized_property
-    def callables(self):
         return {}
 
     @property
@@ -75,10 +69,18 @@ class InstanceState(object):
                 instance_dict.remove(self)
             except AssertionError:
                 pass
+                
         # remove possible cycles
-        self.__dict__.pop('callables', None)
-        self.dispose()
-    
+        self.callables.clear()
+        
+        # inlining of self.dispose()
+        if self.session_id:
+            try:
+                del self.session_id
+            except AttributeError:
+                pass
+        del self.obj
+        
     def obj(self):
         return None
     
@@ -251,11 +253,8 @@ class InstanceState(object):
         else:
             filter_deferred = False
 
-        to_clear = (
-            self.__dict__.get('pending', None),
-            self.__dict__.get('committed_state', None),
-            self.mutable_dict
-        )
+        pending = self.__dict__.get('pending', None)
+        mutable_dict = self.mutable_dict
         
         for key in attribute_names:
             impl = self.manager[key].impl
@@ -264,18 +263,20 @@ class InstanceState(object):
                 self.callables[key] = self
             dict_.pop(key, None)
             
-            for d in to_clear:
-                if d is not None:
-                    d.pop(key, None)
+            self.committed_state.pop(key, None)
+            if mutable_dict:
+                mutable_dict.pop(key, None)
+            if pending:
+                pending.pop(key, None)
 
-    def __call__(self, **kw):
+    def __call__(self, passive):
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also
         serializable (picklable).
 
         """
 
-        if kw.get('passive') is PASSIVE_NO_FETCH:
+        if passive is PASSIVE_NO_FETCH:
             return PASSIVE_NO_RESULT
         
         toload = self.expired_attributes.\
@@ -407,16 +408,15 @@ class InstanceState(object):
         if a value was not populated in state.dict.
 
         """
-        
-        self.__dict__.pop('committed_state', None)
+
+        self.committed_state.clear()
         self.__dict__.pop('pending', None)
 
-        if 'callables' in self.__dict__:
-            callables = self.callables
-            for key in list(callables):
-                if key in dict_ and callables[key] is self:
-                    del callables[key]
-
+        callables = self.callables
+        for key in list(callables):
+            if key in dict_ and callables[key] is self:
+                del callables[key]
+            
         for key in self.manager.mutable_attributes:
             if key in dict_:
                 self.committed_state[key] = self.manager[key].impl.copy(dict_[key])

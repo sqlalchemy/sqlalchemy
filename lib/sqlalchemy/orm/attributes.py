@@ -23,6 +23,7 @@ mapperutil = util.importlater("sqlalchemy.orm", "util")
 
 PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT')
 ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
+ATTR_EMPTY = util.symbol('ATTR_EMPTY')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
@@ -59,7 +60,7 @@ class QueryableAttribute(interfaces.PropComparator):
         self.impl = impl
         self.comparator = comparator
         self.parententity = parententity
-        
+
         manager = manager_of_class(class_)
         # manager is None in the case of AliasedClass
         if manager:
@@ -72,6 +73,10 @@ class QueryableAttribute(interfaces.PropComparator):
     dispatch = event.dispatcher(events.AttributeEvents)
     dispatch.dispatch_cls.active_history = False
     
+    @util.memoized_property
+    def _supports_population(self):
+        return self.impl.supports_population
+        
     def get_history(self, instance, **kwargs):
         return self.impl.get_history(instance_state(instance),
                                         instance_dict(instance), **kwargs)
@@ -127,8 +132,12 @@ class InstrumentedAttribute(QueryableAttribute):
     def __get__(self, instance, owner):
         if instance is None:
             return self
-        return self.impl.get(instance_state(instance),
-                                instance_dict(instance))
+
+        dict_ = instance_dict(instance)
+        if self._supports_population and self.key in dict_:
+            return dict_[self.key]
+        else:
+            return self.impl.get(instance_state(instance),dict_)
 
 def create_proxied_attribute(descriptor):
     """Create an QueryableAttribute / user descriptor hybrid.
@@ -324,31 +333,37 @@ class AttributeImpl(object):
         resulting value will be set as the new value for this attribute.
         """
 
-        try:
+        if self.key in dict_:
             return dict_[self.key]
-        except KeyError:
-            # if no history, check for lazy callables, etc.
-            if state.committed_state.get(self.key, NEVER_SET) is NEVER_SET:
+        else:
+            # if history present, don't load
+            key = self.key
+            if key not in state.committed_state or \
+                state.committed_state[key] is NEVER_SET:
                 if passive is PASSIVE_NO_INITIALIZE:
                     return PASSIVE_NO_RESULT
                     
-                if self.key in state.callables:
-                    callable_ = state.callables[self.key]
-                elif self.callable_ is not None:
-                    callable_ = self.callable_(state)
+                if key in state.callables:
+                    callable_ = state.callables[key]
+                    value = callable_(passive)
+                elif self.callable_:
+                    value = self.callable_(state, passive)
                 else:
-                    callable_ = None
+                    value = ATTR_EMPTY
 
-                if callable_ is not None:
-                    value = callable_(passive=passive)
-                    if value is PASSIVE_NO_RESULT:
-                        return value
-                    elif value is not ATTR_WAS_SET:
-                        return self.set_committed_value(state, dict_, value)
-                    else:
-                        if self.key not in dict_:
-                            return self.get(state, dict_, passive=passive)
-                        return dict_[self.key]
+                if value is PASSIVE_NO_RESULT:
+                    return value
+                elif value is ATTR_WAS_SET:
+                    try:
+                        return dict_[key]
+                    except KeyError:
+                        # TODO: no test coverage here.
+                        raise KeyError(
+                                "Deferred loader for attribute "
+                                "%r failed to populate "
+                                "correctly" % key)
+                elif value is not ATTR_EMPTY:
+                    return self.set_committed_value(state, dict_, value)
 
             # Return a new, empty value
             return self.initialize(state, dict_)
