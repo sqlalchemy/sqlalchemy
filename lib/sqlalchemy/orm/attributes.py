@@ -663,6 +663,7 @@ class CollectionAttributeImpl(AttributeImpl):
         if original is NO_VALUE:
             return list(current)
         else:
+            # TODO: use the dict() of state, obj here
             current_set = util.IdentitySet(current)
             original_set = util.IdentitySet(original)
 
@@ -1081,6 +1082,10 @@ def get_all_pending(state, dict_, key):
                     state, 
                     key, 
                     passive=PASSIVE_NO_INITIALIZE).sum()
+                    
+    TODO: we'd like to more closely merge the "history" tuple
+    generation with "get_all_pending()", making the presence
+    of the "History" object optional.
     
     """
     
