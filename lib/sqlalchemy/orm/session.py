@@ -1136,6 +1136,7 @@ class Session(object):
 
         # grab the cascades before adding the item to the deleted list
         # so that autoflush does not delete the item
+        # the strong reference to the instance itself is significant here
         cascade_states = list(_cascade_state_iterator('delete', state))
 
         self._deleted[state] = state.obj()

@@ -16,7 +16,6 @@ from sqlalchemy import util
 from sqlalchemy.util import topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.util import _state_mapper
 session = util.importlater("sqlalchemy.orm", "session")
 
 class UOWEventHandler(interfaces.AttributeExtension):
@@ -37,7 +36,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state)._props[self.key]
+            prop = state.manager.mapper._props[self.key]
             item_state = attributes.instance_state(item)
             if prop.cascade.save_update and \
                 (prop.cascade_backrefs or self.key == initiator.key) and \
@@ -48,7 +47,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
     def remove(self, state, item, initiator):
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state)._props[self.key]
+            prop = state.manager.mapper._props[self.key]
             # expunge pending orphans
             item_state = attributes.instance_state(item)
             if prop.cascade.delete_orphan and \
@@ -64,7 +63,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
         sess = session._state_session(state)
         if sess:
-            prop = _state_mapper(state)._props[self.key]
+            prop = state.manager.mapper._props[self.key]
             if newvalue is not None:
                 newvalue_state = attributes.instance_state(newvalue)
                 if prop.cascade.save_update and \
@@ -204,7 +203,7 @@ class UOWTransaction(object):
             return False
 
         if state not in self.states:
-            mapper = _state_mapper(state)
+            mapper = state.manager.mapper
             
             if mapper not in self.mappers:
                 mapper._per_mapper_flush_actions(self)

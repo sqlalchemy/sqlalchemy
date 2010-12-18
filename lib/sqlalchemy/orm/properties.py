@@ -821,8 +821,7 @@ class RelationshipProperty(StrategizedProperty):
                         dest_dict, obj, None)
 
     def cascade_iterator(self, type_, state, dict_, visited_states, halt_on=None):
-        if not type_ in self.cascade:
-            return
+        #assert type_ in self.cascade
 
         # only actively lazy load on the 'delete' cascade
         if type_ != 'delete' or self.passive_deletes:
