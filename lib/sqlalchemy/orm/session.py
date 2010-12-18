@@ -1105,13 +1105,10 @@ class Session(object):
 
     def _save_or_update_state(self, state):
         self._save_or_update_impl(state)
-        self._cascade_save_or_update(state)
 
-    def _cascade_save_or_update(self, state):
-        for state, mapper in _cascade_unknown_state_iterator(
-                                    'save-update', state, 
-                                    halt_on=self._contains_state):
-            self._save_or_update_impl(state)
+        mapper = _state_mapper(state)
+        for o, m, st_, dct_ in mapper.cascade_iterator('save-update', state, halt_on=self._contains_state):
+            self._save_or_update_impl(st_)
 
     def delete(self, instance):
         """Mark an instance as deleted.
@@ -1603,13 +1600,8 @@ def _cascade_state_iterator(cascade, state, **kwargs):
     # yield the state, object, mapper.  yielding the object
     # allows the iterator's results to be held in a list without
     # states being garbage collected
-    for (o, m) in mapper.cascade_iterator(cascade, state, **kwargs):
-        yield attributes.instance_state(o), o, m
-
-def _cascade_unknown_state_iterator(cascade, state, **kwargs):
-    mapper = _state_mapper(state)
-    for (o, m) in mapper.cascade_iterator(cascade, state, **kwargs):
-        yield _state_for_unknown_persistence_instance(o), m
+    for o, m, st_, dct_ in mapper.cascade_iterator(cascade, state, **kwargs):
+        yield st_, o, m
 
 def _state_for_unsaved_instance(instance, create=False):
     try:

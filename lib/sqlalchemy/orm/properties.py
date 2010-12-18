@@ -820,7 +820,7 @@ class RelationshipProperty(StrategizedProperty):
                 dest_state.get_impl(self.key).set(dest_state,
                         dest_dict, obj, None)
 
-    def cascade_iterator(self, type_, state, dict_, visited_instances, halt_on=None):
+    def cascade_iterator(self, type_, state, dict_, visited_states, halt_on=None):
         if not type_ in self.cascade:
             return
 
@@ -831,7 +831,7 @@ class RelationshipProperty(StrategizedProperty):
             passive = attributes.PASSIVE_OFF
 
         if type_ == 'save-update':
-            instances = attributes.get_all_pending(state, dict_, self.key)
+            instances = state.manager[self.key].impl.get_all_pending(state, dict_)
             
         else:
             instances = state.value_as_iterable(dict_, self.key,
@@ -842,10 +842,12 @@ class RelationshipProperty(StrategizedProperty):
         if instances:
             for c in instances:
                 if c is not None and \
-                    c is not attributes.PASSIVE_NO_RESULT and \
-                    c not in visited_instances:
-                    
+                    c is not attributes.PASSIVE_NO_RESULT:
+
                     instance_state = attributes.instance_state(c)
+                    if instance_state in visited_states:
+                        continue
+                        
                     instance_dict = attributes.instance_dict(c)
                     
                     if halt_on and halt_on(instance_state):
@@ -865,7 +867,7 @@ class RelationshipProperty(StrategizedProperty):
                                                 c.__class__
                                             ))
 
-                    visited_instances.add(c)
+                    visited_states.add(instance_state)
 
                     # cascade using the mapper local to this 
                     # object, so that its individual properties are located

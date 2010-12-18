@@ -28,7 +28,9 @@ class UOWEventHandler(interfaces.AttributeExtension):
     
     def __init__(self, key):
         self.key = key
-
+        
+    # TODO: migrate these to unwrapped events
+    
     def append(self, state, item, initiator):
         # process "save_update" cascade rules for when 
         # an instance is appended to the list of another instance
@@ -36,10 +38,11 @@ class UOWEventHandler(interfaces.AttributeExtension):
         sess = session._state_session(state)
         if sess:
             prop = _state_mapper(state)._props[self.key]
+            item_state = attributes.instance_state(item)
             if prop.cascade.save_update and \
                 (prop.cascade_backrefs or self.key == initiator.key) and \
-                item not in sess:
-                sess.add(item)
+                not sess._contains_state(item_state):
+                sess._save_or_update_state(item_state)
         return item
         
     def remove(self, state, item, initiator):
@@ -47,9 +50,10 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess:
             prop = _state_mapper(state)._props[self.key]
             # expunge pending orphans
+            item_state = attributes.instance_state(item)
             if prop.cascade.delete_orphan and \
-                item in sess.new and \
-                prop.mapper._is_orphan(attributes.instance_state(item)):
+                item_state in sess._new and \
+                prop.mapper._is_orphan(item_state):
                     sess.expunge(item)
 
     def set(self, state, newvalue, oldvalue, initiator):
@@ -61,15 +65,19 @@ class UOWEventHandler(interfaces.AttributeExtension):
         sess = session._state_session(state)
         if sess:
             prop = _state_mapper(state)._props[self.key]
-            if newvalue is not None and \
-                prop.cascade.save_update and \
-                (prop.cascade_backrefs or self.key == initiator.key) and \
-                newvalue not in sess:
-                sess.add(newvalue)
-            if prop.cascade.delete_orphan and \
-                oldvalue in sess.new and \
-                prop.mapper._is_orphan(attributes.instance_state(oldvalue)):
-                sess.expunge(oldvalue)
+            if newvalue is not None:
+                newvalue_state = attributes.instance_state(newvalue)
+                if prop.cascade.save_update and \
+                    (prop.cascade_backrefs or self.key == initiator.key) and \
+                    not sess._contains_state(newvalue_state):
+                    sess._save_or_update_state(newvalue_state)
+            
+            if oldvalue is not None and prop.cascade.delete_orphan:
+                oldvalue_state = attributes.instance_state(oldvalue)
+                
+                if oldvalue_state in sess._new and \
+                    prop.mapper._is_orphan(oldvalue_state):
+                    sess.expunge(oldvalue)
         return newvalue
 
 
