@@ -439,10 +439,10 @@ class SQLiteDialect(default.DefaultDialect):
         qtable = quote(table_name)
         cursor = _pragma_cursor(connection.execute("%stable_info(%s)" % (pragma, qtable)))
         row = cursor.fetchone()
-
+        
         # consume remaining rows, to work around
         # http://www.sqlite.org/cvstrac/tktview?tn=1884
-        while cursor.fetchone() is not None:
+        while not cursor.closed and cursor.fetchone() is not None:
             pass
 
         return (row is not None)
