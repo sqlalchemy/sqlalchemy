@@ -403,7 +403,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.postfetch_cols = self.compiled.postfetch
             self.prefetch_cols = self.compiled.prefetch
         
-        processors = compiled._get_bind_processors(dialect)
+        processors = compiled._bind_processors
 
         # Convert the dictionary of bind parameter values 
         # into a dict or list to be sent to the DBAPI's 
