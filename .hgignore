@@ -5,6 +5,7 @@ syntax:regexp
 .orig$
 .egg-info
 .*,cover
+.un~
 \.coverage
 \.DS_Store
 test.cfg
