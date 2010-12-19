@@ -25,7 +25,11 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
         t2.insert().execute([dict(('field%d' % fnum, u'value%d' % fnum)
                             for fnum in range(NUM_FIELDS)) for r_num in
                             range(NUM_RECORDS)])
-
+        
+        # warm up type caches
+        t.select().execute().fetchall()
+        t2.select().execute().fetchall()
+        
     def teardown(self):
         metadata.drop_all()
 
