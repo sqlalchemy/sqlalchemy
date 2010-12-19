@@ -54,6 +54,9 @@ def get_cls_kwargs(cls):
     pass along unrecognized keywords to it's base classes, and the collection
     process is repeated recursively on each of the bases.
     
+    Uses a subset of inspect.getargspec() to cut down on method overhead. 
+    No anonymous tuple arguments please !
+    
     """
 
     for c in cls.__mro__:
@@ -70,15 +73,39 @@ def get_cls_kwargs(cls):
         if not ctr or not isinstance(ctr, types.FunctionType):
             stack.update(class_.__bases__)
             continue
-        names, _, has_kw, _ = inspect.getargspec(ctr)
+        
+        # this is shorthand for
+        # names, _, has_kw, _ = inspect.getargspec(ctr)
+        
+        names, has_kw = inspect_func_args(ctr)
         args.update(names)
         if has_kw:
             stack.update(class_.__bases__)
     args.discard('self')
     return args
 
+try:
+    from inspect import CO_VARKEYWORDS
+    def inspect_func_args(fn):
+        co = fn.func_code
+        nargs = co.co_argcount
+        names = co.co_varnames
+        args = list(names[:nargs])
+        has_kw = bool(co.co_flags & CO_VARKEYWORDS)
+        return args, has_kw
+except ImportError:
+    def inspect_func_args(fn):
+        names, _, has_kw, _ = inspect.getargspec(fn)
+        return names, bool(has_kw)
+
 def get_func_kwargs(func):
-    """Return the full set of legal kwargs for the given `func`."""
+    """Return the set of legal kwargs for the given `func`.
+    
+    Uses getargspec so is safe to call for methods, functions,
+    etc.
+    
+    """
+    
     return inspect.getargspec(func)[0]
 
 def format_argspec_plus(fn, grouped=True):
