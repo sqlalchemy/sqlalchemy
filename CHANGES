@@ -6,6 +6,11 @@ CHANGES
 0.7.0b1
 =======
 
+- sql
+  - Added NULLS FIRST and NULLS LAST support. It's implemented
+    as an extension to the asc() and desc() operators, called
+    nullsfirst() and nullslast().  [ticket:723]
+
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/
     NVARCHAR, emit "max" as the length when no length is 

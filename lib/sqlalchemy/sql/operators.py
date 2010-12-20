@@ -83,6 +83,12 @@ def desc_op(a):
 def asc_op(a):
     return a.asc()
 
+def nullsfirst_op(a):
+    return a.nullsfirst()
+
+def nullslast_op(a):
+    return a.nullslast()
+
 _commutative = set([eq, ne, add, mul])
 
 def is_commutative(op):
