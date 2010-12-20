@@ -12,42 +12,37 @@ organizes them in order of dependency, and executes.
 
 """
 
-from sqlalchemy import util
+from sqlalchemy import util, event
 from sqlalchemy.util import topological
 from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 session = util.importlater("sqlalchemy.orm", "session")
 
-class UOWEventHandler(interfaces.AttributeExtension):
-    """An event handler added to all relationship attributes which handles
-    session cascade operations.
+def track_cascade_events(descriptor, prop):
+    """Establish event listeners on object attributes which handle
+    cascade-on-set/append.
+    
     """
+    key = prop.key
     
-    active_history = False
-    
-    def __init__(self, key):
-        self.key = key
-        
-    # TODO: migrate these to unwrapped events
-    
-    def append(self, state, item, initiator):
+    def append(state, item, initiator):
         # process "save_update" cascade rules for when 
         # an instance is appended to the list of another instance
 
         sess = session._state_session(state)
         if sess:
-            prop = state.manager.mapper._props[self.key]
+            prop = state.manager.mapper._props[key]
             item_state = attributes.instance_state(item)
             if prop.cascade.save_update and \
-                (prop.cascade_backrefs or self.key == initiator.key) and \
+                (prop.cascade_backrefs or key == initiator.key) and \
                 not sess._contains_state(item_state):
                 sess._save_or_update_state(item_state)
         return item
         
-    def remove(self, state, item, initiator):
+    def remove(state, item, initiator):
         sess = session._state_session(state)
         if sess:
-            prop = state.manager.mapper._props[self.key]
+            prop = state.manager.mapper._props[key]
             # expunge pending orphans
             item_state = attributes.instance_state(item)
             if prop.cascade.delete_orphan and \
@@ -55,7 +50,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
                 prop.mapper._is_orphan(item_state):
                     sess.expunge(item)
 
-    def set(self, state, newvalue, oldvalue, initiator):
+    def set_(state, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance 
         # is attached to another instance
         if oldvalue is newvalue:
@@ -63,11 +58,11 @@ class UOWEventHandler(interfaces.AttributeExtension):
 
         sess = session._state_session(state)
         if sess:
-            prop = state.manager.mapper._props[self.key]
+            prop = state.manager.mapper._props[key]
             if newvalue is not None:
                 newvalue_state = attributes.instance_state(newvalue)
                 if prop.cascade.save_update and \
-                    (prop.cascade_backrefs or self.key == initiator.key) and \
+                    (prop.cascade_backrefs or key == initiator.key) and \
                     not sess._contains_state(newvalue_state):
                     sess._save_or_update_state(newvalue_state)
             
@@ -78,6 +73,10 @@ class UOWEventHandler(interfaces.AttributeExtension):
                     prop.mapper._is_orphan(oldvalue_state):
                     sess.expunge(oldvalue)
         return newvalue
+        
+    event.listen(descriptor, 'on_append', append, raw=True, retval=True)
+    event.listen(descriptor, 'on_remove', remove, raw=True, retval=True)
+    event.listen(descriptor, 'on_set', set_, raw=True, retval=True)
 
 
 class UOWTransaction(object):

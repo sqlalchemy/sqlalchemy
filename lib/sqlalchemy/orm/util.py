@@ -6,11 +6,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sqlalchemy.exceptions as sa_exc
-from sqlalchemy import sql, util
+from sqlalchemy import sql, util, event
 from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
-                                PropComparator, MapperProperty,\
-                                AttributeExtension
+                                PropComparator, MapperProperty
 from sqlalchemy.orm import attributes, exc
 import operator
 
@@ -55,37 +54,18 @@ class CascadeOptions(dict):
                          'delete_orphan', 'refresh-expire']
              if getattr(self, x, False) is True]))
 
+def _validator_events(desc, key, validator):
+    """Runs a validation method on an attribute value to be set or appended."""
 
-class Validator(AttributeExtension):
-    """Runs a validation method on an attribute value to be set or appended.
+    def append(state, value, initiator):
+        return validator(state.obj(), key, value)
 
-    The Validator class is used by the :func:`~sqlalchemy.orm.validates`
-    decorator, and direct access is usually not needed.
-
-    """
-
-    def __init__(self, key, validator):
-        """Construct a new Validator.
-
-            key - name of the attribute to be validated;
-            will be passed as the second argument to
-            the validation method (the first is the object instance itself).
-
-            validator - an function or instance method which accepts
-            three arguments; an instance (usually just 'self' for a method),
-            the key name of the attribute, and the value.  The function should
-            return the same value given, unless it wishes to modify it.
-
-        """
-        self.key = key
-        self.validator = validator
-
-    def append(self, state, value, initiator):
-        return self.validator(state.obj(), self.key, value)
-
-    def set(self, state, value, oldvalue, initiator):
-        return self.validator(state.obj(), self.key, value)
-
+    def set_(state, value, oldvalue, initiator):
+        return validator(state.obj(), key, value)
+    
+    event.listen(desc, 'on_append', append, raw=True, retval=True)
+    event.listen(desc, 'on_set', set_, raw=True, retval=True)
+    
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 

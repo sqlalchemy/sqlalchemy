@@ -1147,7 +1147,7 @@ def register_attribute_impl(class_, key,
         backref_listeners(manager[key], backref, uselist)
 
     manager.post_configure_attribute(key)
-
+    return manager[key]
     
 def register_descriptor(class_, key, comparator=None, 
                                 parententity=None, property_=None, doc=None):

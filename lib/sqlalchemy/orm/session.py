@@ -1605,8 +1605,6 @@ class Session(object):
 
 _expire_state = state.InstanceState.expire_attributes
     
-UOWEventHandler = unitofwork.UOWEventHandler
-
 _sessions = weakref.WeakValueDictionary()
 
 def make_transient(instance):

@@ -8,7 +8,7 @@
    implementations, and related MapperOptions."""
 
 from sqlalchemy import exc as sa_exc
-from sqlalchemy import sql, util, log
+from sqlalchemy import sql, util, log, event
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors, expression, operators
 from sqlalchemy.orm import mapper, attributes, interfaces, exc as orm_exc
@@ -17,7 +17,7 @@ from sqlalchemy.orm.interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     serialize_path, deserialize_path, StrategizedProperty
     )
-from sqlalchemy.orm import session as sessionlib
+from sqlalchemy.orm import session as sessionlib, unitofwork
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.query import Query
 import itertools
@@ -38,22 +38,36 @@ def _register_attribute(strategy, mapper, useobject,
     prop = strategy.parent_property
 
     attribute_ext = list(util.to_list(prop.extension, default=[]))
-        
+    
+    listen_hooks = []
+    
     if useobject and prop.single_parent:
-        attribute_ext.insert(0, _SingleParentValidator(prop))
+        listen_hooks.append(single_parent_validator)
 
     if prop.key in prop.parent._validators:
-        attribute_ext.insert(0, 
-            mapperutil.Validator(prop.key, prop.parent._validators[prop.key])
+        listen_hooks.append(
+            lambda desc, prop: mapperutil._validator_events(desc, 
+                                prop.key, 
+                                prop.parent._validators[prop.key])
         )
     
     if useobject:
-        attribute_ext.append(sessionlib.UOWEventHandler(prop.key))
+        listen_hooks.append(unitofwork.track_cascade_events)
     
+    # need to assemble backref listeners
+    # after the singleparentvalidator, mapper validator
+    backref = kw.pop('backref', None)
+    if backref:
+        listen_hooks.append(
+            lambda desc, prop: attributes.backref_listeners(desc, 
+                                backref, 
+                                uselist)
+        )
+        
     for m in mapper.self_and_descendants:
         if prop is m._props.get(prop.key):
             
-            attributes.register_attribute_impl(
+            desc = attributes.register_attribute_impl(
                 m.class_, 
                 prop.key, 
                 parent_token=prop,
@@ -71,6 +85,9 @@ def _register_attribute(strategy, mapper, useobject,
                 doc=prop.doc,
                 **kw
                 )
+            
+            for hook in listen_hooks:
+                hook(desc, prop)
 
 class UninstrumentedColumnLoader(LoaderStrategy):
     """Represent the a non-instrumented MapperProperty.
@@ -1237,11 +1254,8 @@ class LoadEagerFromAliasOption(PropertyOption):
                         ("user_defined_eager_row_processor", 
                         interfaces._reduce_path(paths[-1]))] = adapter
 
-class _SingleParentValidator(interfaces.AttributeExtension):
-    def __init__(self, prop):
-        self.prop = prop
-
-    def _do_check(self, state, value, oldvalue, initiator):
+def single_parent_validator(desc, prop):
+    def _do_check(state, value, oldvalue, initiator):
         if value is not None:
             hasparent = initiator.hasparent(attributes.instance_state(value))
             if hasparent and oldvalue is not value: 
@@ -1249,14 +1263,16 @@ class _SingleParentValidator(interfaces.AttributeExtension):
                     "Instance %s is already associated with an instance "
                     "of %s via its %s attribute, and is only allowed a "
                     "single parent." % 
-                    (mapperutil.instance_str(value), state.class_, self.prop)
+                    (mapperutil.instance_str(value), state.class_, prop)
                 )
         return value
         
-    def append(self, state, value, initiator):
-        return self._do_check(state, value, None, initiator)
+    def append(state, value, initiator):
+        return _do_check(state, value, None, initiator)
 
-    def set(self, state, value, oldvalue, initiator):
-        return self._do_check(state, value, oldvalue, initiator)
-
-
+    def set_(state, value, oldvalue, initiator):
+        return _do_check(state, value, oldvalue, initiator)
+    
+    event.listen(desc, 'on_append', append, raw=True, retval=True, active_history=True)
+    event.listen(desc, 'on_set', set_, raw=True, retval=True, active_history=True)
+    

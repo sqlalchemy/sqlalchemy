@@ -31,7 +31,6 @@ from sqlalchemy.orm.interfaces import (
      )
 from sqlalchemy.orm.util import (
      AliasedClass as aliased,
-     Validator,
      join,
      object_mapper,
      outerjoin,
@@ -63,7 +62,6 @@ __all__ = (
     'InstrumentationManager',
     'MapperExtension',
     'AttributeExtension',
-    'Validator',
     'PropComparator',
     'Query',
     'Session',
