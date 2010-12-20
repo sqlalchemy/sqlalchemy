@@ -269,6 +269,16 @@ class AttributeImpl(object):
 
         self.expire_missing = expire_missing
         
+    def _get_active_history(self):
+        """Backwards compat for impl.active_history"""
+        
+        return self.dispatch.active_history
+    
+    def _set_active_history(self, value):
+        self.dispatch.active_history = value
+    
+    active_history = property(_get_active_history, _set_active_history)
+    
         
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to 

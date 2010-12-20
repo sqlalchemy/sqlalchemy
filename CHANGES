@@ -171,6 +171,10 @@ CHANGES
     internal "cache" dictionary.  Particularly since the
     join() and select() objects are created in the method
     itself this was pretty much a pure memory leaking behavior.
+
+- examples
+  - The versioning example now supports detection of changes
+    in an associated relationship().
     
 0.6.5
 =====

@@ -1,9 +1,9 @@
 from sqlalchemy.ext.declarative import declarative_base
 from history_meta import VersionedMeta, VersionedListener
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import clear_mappers, sessionmaker, deferred
-from sqlalchemy.test.testing import TestBase, eq_
-from sqlalchemy.test.entities import ComparableEntity
+from sqlalchemy.orm import clear_mappers, sessionmaker, deferred, relationship
+from test.lib.testing import TestBase, eq_
+from test.lib.entities import ComparableEntity
 
 def setup():
     global engine
@@ -11,8 +11,11 @@ def setup():
     
 class TestVersioning(TestBase):
     def setup(self):
-        global Base, Session
-        Base = declarative_base(metaclass=VersionedMeta, bind=engine)
+        global Base, Session, Versioned
+        Base = declarative_base(bind=engine)
+        class Versioned(object):
+            __metaclass__ = VersionedMeta
+            _decl_class_registry = Base._decl_class_registry
         Session = sessionmaker(extension=VersionedListener())
         
     def teardown(self):
@@ -23,7 +26,7 @@ class TestVersioning(TestBase):
         Base.metadata.create_all()
         
     def test_plain(self):
-        class SomeClass(Base, ComparableEntity):
+        class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
             
             id = Column(Integer, primary_key=True)
@@ -87,7 +90,7 @@ class TestVersioning(TestBase):
         )
 
     def test_from_null(self):
-        class SomeClass(Base, ComparableEntity):
+        class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
             
             id = Column(Integer, primary_key=True)
@@ -107,7 +110,7 @@ class TestVersioning(TestBase):
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""
         
-        class SomeClass(Base, ComparableEntity):
+        class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
@@ -138,7 +141,7 @@ class TestVersioning(TestBase):
         
         
     def test_joined_inheritance(self):
-        class BaseClass(Base, ComparableEntity):
+        class BaseClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'basetable'
 
             id = Column(Integer, primary_key=True)
@@ -215,7 +218,7 @@ class TestVersioning(TestBase):
         )
 
     def test_single_inheritance(self):
-        class BaseClass(Base, ComparableEntity):
+        class BaseClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'basetable'
 
             id = Column(Integer, primary_key=True)
@@ -261,7 +264,7 @@ class TestVersioning(TestBase):
         )
     
     def test_unique(self):
-        class SomeClass(Base, ComparableEntity):
+        class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
             
             id = Column(Integer, primary_key=True)
@@ -284,3 +287,51 @@ class TestVersioning(TestBase):
         
         assert sc.version == 3
 
+    def test_relationship(self):
+
+        class SomeRelated(Base, ComparableEntity):
+            __tablename__ = 'somerelated'
+            
+            id = Column(Integer, primary_key=True)
+
+        class SomeClass(Versioned, Base, ComparableEntity):
+            __tablename__ = 'sometable'
+            
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            related_id = Column(Integer, ForeignKey('somerelated.id'))
+            related = relationship("SomeRelated")
+            
+        SomeClassHistory = SomeClass.__history_mapper__.class_
+            
+        self.create_tables()
+        sess = Session()
+        sc = SomeClass(name='sc1')
+        sess.add(sc)
+        sess.commit()
+
+        assert sc.version == 1
+        
+        sr1 = SomeRelated()
+        sc.related = sr1
+        sess.commit()
+        
+        assert sc.version == 2
+        
+        eq_(
+            sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
+            [SomeClassHistory(version=1, name='sc1', related_id=None)]
+        )
+
+        sc.related = None
+
+        eq_(
+            sess.query(SomeClassHistory).order_by(SomeClassHistory.version).all(),
+            [
+                SomeClassHistory(version=1, name='sc1', related_id=None),
+                SomeClassHistory(version=2, name='sc1', related_id=sr1.id)
+            ]
+        )
+
+        assert sc.version == 3
+        
