@@ -218,6 +218,7 @@ class MemUsageTest(EnsureZeroed):
         from sqlalchemy.dialects import mysql, postgresql, sqlite
         from sqlalchemy import types
         
+        eng = engines.testing_engine()
         for args in (
             (types.Integer, ),
             (types.String, ),
@@ -232,9 +233,11 @@ class MemUsageTest(EnsureZeroed):
             @profile_memory
             def go():
                 type_ = args[0](*args[1:])
-                bp = type_._cached_bind_processor(testing.db.dialect)
-                rp = type_._cached_result_processor(testing.db.dialect, 0)
+                bp = type_._cached_bind_processor(eng.dialect)
+                rp = type_._cached_result_processor(eng.dialect, 0)
             go()
+        
+        assert not eng.dialect._type_memos
             
             
     def test_many_updates(self):
