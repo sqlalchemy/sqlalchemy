@@ -889,16 +889,19 @@ class Connection(Connectable):
         try:
             return self.__connection
         except AttributeError:
-            if self.__invalid:
-                if self.__transaction is not None:
-                    raise exc.InvalidRequestError(
-                                    "Can't reconnect until invalid "
-                                    "transaction is rolled back")
-                self.__connection = self.engine.raw_connection()
-                self.__invalid = False
-                return self.__connection
-            raise exc.ResourceClosedError("This Connection is closed")
-
+            return self._revalidate_connection()
+        
+    def _revalidate_connection(self):
+        if self.__invalid:
+            if self.__transaction is not None:
+                raise exc.InvalidRequestError(
+                                "Can't reconnect until invalid "
+                                "transaction is rolled back")
+            self.__connection = self.engine.raw_connection()
+            self.__invalid = False
+            return self.__connection
+        raise exc.ResourceClosedError("This Connection is closed")
+        
     @property
     def _connection_is_valid(self):
         # use getattr() for is_valid to support exceptions raised in
@@ -1214,9 +1217,14 @@ class Connection(Connectable):
         """Execute a schema.ColumnDefault object."""
         
         try:
+            try:
+                conn = self.__connection
+            except AttributeError:
+                conn = self._revalidate_connection()
+            
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
-                                dialect, self)
+                                dialect, self, conn)
         except Exception, e:
             self._handle_dbapi_exception(e, None, None, None, None)
             raise
@@ -1306,7 +1314,12 @@ class Connection(Connectable):
         a :class:`.ResultProxy`."""
         
         try:
-            context = constructor(dialect, self, *args)
+            try:
+                conn = self.__connection
+            except AttributeError:
+                conn = self._revalidate_connection()
+            
+            context = constructor(dialect, self, conn, *args)
         except Exception, e:
             self._handle_dbapi_exception(e, 
                         statement, parameters, 

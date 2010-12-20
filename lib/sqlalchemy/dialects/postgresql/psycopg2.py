@@ -171,9 +171,9 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             ident = "c_%s_%s" % (hex(id(self))[2:], hex(random.randint(0, 65535))[2:])
-            return self._connection.connection.cursor(ident)
+            return self._dbapi_connection.cursor(ident)
         else:
-            return self._connection.connection.cursor()
+            return self._dbapi_connection.cursor()
 
     def get_result_proxy(self):
         # TODO: ouch

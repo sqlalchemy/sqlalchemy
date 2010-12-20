@@ -322,14 +322,17 @@ class DefaultExecutionContext(base.ExecutionContext):
     result_map = None
     compiled = None
     statement = None
+    _is_implicit_returning = False
+    _is_explicit_returning = False
     
     @classmethod
-    def _init_ddl(cls, dialect, connection, compiled_ddl):
+    def _init_ddl(cls, dialect, connection, dbapi_connection, compiled_ddl):
         """Initialize execution context for a DDLElement construct."""
         
         self = cls.__new__(cls)
         self.dialect = dialect
-        self._connection = self.root_connection = connection
+        self.root_connection = connection
+        self._dbapi_connection = dbapi_connection
         self.engine = connection.engine
 
         self.compiled = compiled = compiled_ddl
@@ -357,12 +360,13 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self
         
     @classmethod
-    def _init_compiled(cls, dialect, connection, compiled, parameters):
+    def _init_compiled(cls, dialect, connection, dbapi_connection, compiled, parameters):
         """Initialize execution context for a Compiled construct."""
 
         self = cls.__new__(cls)
         self.dialect = dialect
-        self._connection = self.root_connection = connection
+        self.root_connection = connection
+        self._dbapi_connection = dbapi_connection
         self.engine = connection.engine
 
         self.compiled = compiled
@@ -389,6 +393,11 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
+        
+        if self.isinsert or self.isupdate or self.isdelete:
+            self._is_explicit_returning = compiled.statement._returning
+            self._is_implicit_returning = compiled.returning and \
+                                            not compiled.statement._returning
 
         if not parameters:
             self.compiled_parameters = [compiled.construct_params()]
@@ -444,12 +453,13 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self
     
     @classmethod
-    def _init_statement(cls, dialect, connection, statement, parameters):
+    def _init_statement(cls, dialect, connection, dbapi_connection, statement, parameters):
         """Initialize execution context for a string SQL statement."""
 
         self = cls.__new__(cls)
         self.dialect = dialect
-        self._connection = self.root_connection = connection
+        self.root_connection = connection
+        self._dbapi_connection = dbapi_connection
         self.engine = connection.engine
 
         # plain text statement
@@ -486,12 +496,13 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self
     
     @classmethod
-    def _init_default(cls, dialect, connection):
+    def _init_default(cls, dialect, connection, dbapi_connection):
         """Initialize execution context for a ColumnDefault construct."""
 
         self = cls.__new__(cls)
         self.dialect = dialect
-        self._connection = self.root_connection = connection
+        self.root_connection = connection
+        self._dbapi_connection = dbapi_connection
         self.engine = connection.engine
         self.execution_options = connection._execution_options
         self.cursor = self.create_cursor()
@@ -514,17 +525,6 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             return autocommit
             
-    @util.memoized_property
-    def _is_explicit_returning(self):
-        return self.compiled and \
-            getattr(self.compiled.statement, '_returning', False)
-    
-    @util.memoized_property
-    def _is_implicit_returning(self):
-        return self.compiled and \
-            bool(self.compiled.returning) and \
-            not self.compiled.statement._returning
-    
     def _execute_scalar(self, stmt):
         """Execute a string statement on the current cursor, returning a
         scalar result.
@@ -535,7 +535,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
         """
 
-        conn = self._connection
+        conn = self.root_connection
         if isinstance(stmt, unicode) and \
             not self.dialect.supports_unicode_statements:
             stmt = stmt.encode(self.dialect.encoding)
@@ -550,13 +550,13 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     @property
     def connection(self):
-        return self._connection._branch()
+        return self.root_connection._branch()
 
     def should_autocommit_text(self, statement):
         return AUTOCOMMIT_REGEXP.match(statement)
 
     def create_cursor(self):
-        return self._connection.connection.cursor()
+        return self._dbapi_connection.cursor()
 
     def pre_exec(self):
         pass
@@ -610,7 +610,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     
     def post_insert(self):
         if self.dialect.postfetch_lastrowid and \
-            (not len(self.inserted_primary_key) or \
+            (not self.inserted_primary_key or \
                         None in self.inserted_primary_key):
             
             table = self.compiled.statement.table
@@ -664,7 +664,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             try:
                 self.cursor.setinputsizes(*inputsizes)
             except Exception, e:
-                self._connection._handle_dbapi_exception(e, None, None, None, self)
+                self.root_connection._handle_dbapi_exception(e, None, None, None, self)
                 raise
         else:
             inputsizes = {}
@@ -678,7 +678,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             try:
                 self.cursor.setinputsizes(**inputsizes)
             except Exception, e:
-                self._connection._handle_dbapi_exception(e, None, None, None, self)
+                self.root_connection._handle_dbapi_exception(e, None, None, None, self)
                 raise
 
     def _exec_default(self, default):

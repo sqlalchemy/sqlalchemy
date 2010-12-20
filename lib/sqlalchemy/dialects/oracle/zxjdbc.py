@@ -109,7 +109,7 @@ class OracleExecutionContext_zxjdbc(OracleExecutionContext):
         return base.ResultProxy(self)
 
     def create_cursor(self):
-        cursor = self._connection.connection.cursor()
+        cursor = self._dbapi_connection.cursor()
         cursor.datahandler = self.dialect.DataHandler(cursor.datahandler)
         return cursor
 
