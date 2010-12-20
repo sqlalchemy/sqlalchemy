@@ -559,23 +559,20 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     def get_all_pending(self, state, dict_):
         if self.key in dict_:
             current = dict_[self.key]
-            
+            if current is not None:
+                ret = [(instance_state(current), current)]
+            else:
+                ret = []
+                
             if self.key in state.committed_state:
                 original = state.committed_state[self.key]
                 if original not in (NEVER_SET, PASSIVE_NO_RESULT, None) and \
                     original is not current:
                     
-                    if current is not None:
-                        return [
-                            (instance_state(current), current), 
-                            (instance_state(original), original)
-                        ]
-                    else:
-                        return [(instance_state(original), original)]
-            
-            if current is not None:
-                return [(instance_state(current), current)]
-        return []
+                    ret.append((instance_state(original), original))
+            return ret
+        else:
+            return []
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         """Set a value on the given InstanceState.
@@ -669,29 +666,26 @@ class CollectionAttributeImpl(AttributeImpl):
     def get_all_pending(self, state, dict_):
         if self.key not in dict_:
             return []
-        else:
-            current = dict_[self.key]
-            
-        current = self.get_collection(state, dict_, current)
 
-        if self.key not in state.committed_state:
-            return [(instance_state(o), o) for o in current]
-
-        original = state.committed_state[self.key]
+        current = dict_[self.key]
+        current = getattr(current, '_sa_adapter')
         
-        if original is NO_VALUE:
-            return [(instance_state(o), o) for o in current]
-        else:
-            current_states = [(instance_state(c), c) for c in current]
-            original_states = [(instance_state(c), c) for c in original]
+        if self.key in state.committed_state:
+            original = state.committed_state[self.key]
+            if original is not NO_VALUE:
+                current_states = [(instance_state(c), c) for c in current]
+                original_states = [(instance_state(c), c) for c in original]
             
-            current_set = dict(current_states)
-            original_set = dict(original_states)
+                current_set = dict(current_states)
+                original_set = dict(original_states)
             
-            return \
-                [(s, o) for s, o in current_states if s not in original_set] + \
-                [(s, o) for s, o in current_states if s in original_set] + \
-                [(s, o) for s, o in original_states if s not in current_set]
+                return \
+                    [(s, o) for s, o in current_states if s not in original_set] + \
+                    [(s, o) for s, o in current_states if s in original_set] + \
+                    [(s, o) for s, o in original_states if s not in current_set]
+            
+        return [(instance_state(o), o) for o in current]
+
         
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.on_append:
@@ -810,7 +804,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         state.modified_event(dict_, self, True, old)
         
-        old_collection = self.get_collection(state, dict_, old)
+        old_collection = getattr(old, '_sa_adapter')
 
         dict_[self.key] = user_data
 
@@ -1050,7 +1044,7 @@ class History(tuple):
     @classmethod
     def from_collection(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
-        current = attribute.get_collection(state, state.dict, current)
+        current = getattr(current, '_sa_adapter')
         
         if original is NO_VALUE:
             return cls(list(current), (), ())
