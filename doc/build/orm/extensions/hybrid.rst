@@ -1,3 +1,5 @@
+.. _hybrids_toplevel:
+
 Hybrid Attributes
 =================
 

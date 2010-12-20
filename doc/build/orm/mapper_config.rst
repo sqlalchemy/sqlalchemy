@@ -488,8 +488,15 @@ or aliasing that has been applied in the context of the generated SQL statement.
 Composite Column Types
 -----------------------
 
-Sets of columns can be associated with a single user-defined datatype.  The ORM provides a single attribute which represents the group of columns 
-using the class you provide.
+Sets of columns can be associated with a single user-defined datatype. The ORM
+provides a single attribute which represents the group of columns using the
+class you provide.
+
+.. note::
+    As of SQLAlchemy 0.7, composites are implemented as a simple wrapper using
+    the :ref:`hybrids_toplevel` feature.   Note that composites no longer
+    "conceal" the underlying colunm based attributes, or support in-place 
+    mutation.  
 
 A simple example represents pairs of columns as a "Point" object.  
 Starting with a table that represents two points as x1/y1 and x2/y2::
@@ -513,9 +520,6 @@ pair::
             self.y = y
         def __composite_values__(self):
             return self.x, self.y
-        def __set_composite_values__(self, x, y):
-            self.x = x
-            self.y = y
         def __eq__(self, other):
             return other is not None and \
                     other.x == self.x and \
@@ -529,10 +533,6 @@ format, and also provides a method ``__composite_values__()`` which
 returns the state of the object as a list or tuple, in order of its
 column-based attributes. It also should supply adequate ``__eq__()`` and
 ``__ne__()`` methods which test the equality of two instances.
-
-The ``__set_composite_values__()`` method is optional. If it's not
-provided, the names of the mapped columns are taken as the names of
-attributes on the object, and ``setattr()`` is used to set data.
 
 The :func:`.composite` function is then used in the mapping::
 

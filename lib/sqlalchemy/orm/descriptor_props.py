@@ -104,23 +104,33 @@ class CompositeProperty(DescriptorProperty):
         self.deferred = kwargs.get('deferred', False)
         self.group = kwargs.get('group', None)
         
-        prop = self
         def fget(instance):
-            return prop.composite_class(
-                *[getattr(instance, prop.parent._columntoproperty[col].key) 
-                for col in prop.columns]
+            # this could be optimized to store the value in __dict__,
+            # but more complexity and tests would be needed to pick 
+            # up on changes to the mapped columns made independently
+            # of those on the composite.
+            return self.composite_class(
+                    *[getattr(instance, key) for key in self._attribute_keys]
             )
+                
         def fset(instance, value):
             if value is None:
                 fdel(instance)
             else:
-                for col, value in zip(prop.columns, value.__composite_values__()):
-                    setattr(instance, prop.parent._columntoproperty[col].key, value)
+                for key, value in zip(self._attribute_keys, value.__composite_values__()):
+                    setattr(instance, key, value)
         
         def fdel(instance):
-            for col in prop.columns:
-                setattr(instance, prop.parent._columntoproperty[col].key, None)
+            for key in self._attribute_keys:
+                setattr(instance, key, None)
         self.descriptor = property(fget, fset, fdel)
+    
+    @util.memoized_property
+    def _attribute_keys(self):
+        return [
+            self.parent._columntoproperty[col].key
+            for col in self.columns
+        ]
         
     def get_history(self, state, dict_, **kw):
         """Provided for userland code that uses attributes.get_history()."""
