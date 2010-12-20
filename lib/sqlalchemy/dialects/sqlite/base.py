@@ -52,15 +52,13 @@ connection.   Valid values for this parameter are ``SERIALIZABLE`` and
 
 """
 
-import datetime, re, time
+import datetime, re
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import sql, exc, pool, DefaultClause
+from sqlalchemy import sql, exc
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
-from sqlalchemy.sql import compiler, functions as sql_functions
-from sqlalchemy.util import NoneType
+from sqlalchemy.sql import compiler
 from sqlalchemy import processors
 
 from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\

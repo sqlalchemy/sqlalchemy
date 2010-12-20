@@ -118,19 +118,18 @@ Known Issues
   SQL Server 2005
 
 """
-import datetime, decimal, inspect, operator, sys, re
-import itertools
+import datetime, operator, re
 
 from sqlalchemy import sql, schema as sa_schema, exc, util
 from sqlalchemy.sql import select, compiler, expression, \
                             operators as sql_operators, \
-                            functions as sql_functions, util as sql_util
+                            util as sql_util
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
-from sqlalchemy import processors
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
                                 FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
                                 VARBINARY, BLOB
+
 
 from sqlalchemy.dialects.mssql import information_schema as ischema
 

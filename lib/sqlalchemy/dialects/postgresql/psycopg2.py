@@ -91,9 +91,8 @@ import logging
 from sqlalchemy import util, exc
 from sqlalchemy.util.compat import decimal
 from sqlalchemy import processors
-from sqlalchemy.engine import base, default
+from sqlalchemy.engine import base
 from sqlalchemy.sql import expression
-from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
                                 PGIdentifierPreparer, PGExecutionContext, \

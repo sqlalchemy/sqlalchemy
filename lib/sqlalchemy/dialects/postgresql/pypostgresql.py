@@ -7,7 +7,6 @@ URLs are of the form ``postgresql+pypostgresql://user@password@host:port/dbname[
 
 
 """
-from sqlalchemy.engine import default
 from sqlalchemy import util
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext

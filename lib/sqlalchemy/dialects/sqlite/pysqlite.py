@@ -133,8 +133,7 @@ always represented by an actual database result string.
 """
 
 from sqlalchemy.dialects.sqlite.base import SQLiteDialect, DATETIME, DATE
-from sqlalchemy import schema, exc, pool
-from sqlalchemy.engine import default
+from sqlalchemy import exc, pool
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 

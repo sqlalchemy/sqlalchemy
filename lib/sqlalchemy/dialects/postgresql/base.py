@@ -87,11 +87,9 @@ option to the Index constructor::
 
 import re
 
-from sqlalchemy import schema as sa_schema
 from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.engine import base, default, reflection
+from sqlalchemy.engine import default, reflection
 from sqlalchemy.sql import compiler, expression, util as sql_util
-from sqlalchemy.sql import operators as sql_operators
 from sqlalchemy import types as sqltypes
 
 try:

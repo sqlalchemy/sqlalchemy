@@ -15,11 +15,8 @@ For more info on mxODBC, see http://www.egenix.com/
 import sys
 import re
 import warnings
-from sqlalchemy.util.compat import decimal
 
 from sqlalchemy.connectors import Connector
-from sqlalchemy import types as sqltypes
-import sqlalchemy.processors as processors
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
