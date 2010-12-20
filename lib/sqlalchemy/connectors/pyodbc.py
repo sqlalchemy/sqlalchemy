@@ -4,7 +4,6 @@ from sqlalchemy.util import asbool
 import sys
 import re
 import urllib
-import decimal
 
 class PyODBCConnector(Connector):
     driver='pyodbc'

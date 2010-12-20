@@ -2,6 +2,7 @@
 The adodbapi dialect is not implemented for 0.6 at this time.
 
 """
+import datetime
 from sqlalchemy import types as sqltypes, util
 from sqlalchemy.dialects.mssql.base import MSDateTime, MSDialect
 import sys
