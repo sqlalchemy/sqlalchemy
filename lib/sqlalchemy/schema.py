@@ -1598,7 +1598,7 @@ class ColumnCollectionConstraint(Constraint):
         return (ordered_dict[key] for key in ordered_dict._list)
 
     def __len__(self):
-        return len(self.columns)
+        return len(self.columns._data)
 
 
 class CheckConstraint(Constraint):
