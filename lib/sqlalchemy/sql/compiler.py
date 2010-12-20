@@ -277,25 +277,24 @@ class SQLCompiler(engine.Compiled):
         if params:
             pd = {}
             for bindparam, name in self.bind_names.iteritems():
-                for paramname in (bindparam.key, name):
-                    if paramname in params:
-                        pd[name] = params[paramname]
-                        break
-                else:
-                    if bindparam.required:
-                        if _group_number:
-                            raise exc.InvalidRequestError(
-                                            "A value is required for bind parameter %r, "
-                                            "in parameter group %d" % 
-                                            (bindparam.key, _group_number))
-                        else:
-                            raise exc.InvalidRequestError(
-                                            "A value is required for bind parameter %r" 
-                                            % bindparam.key)
-                    elif bindparam.callable:
-                        pd[name] = bindparam.callable()
+                if bindparam.key in params:
+                    pd[name] = params[bindparam.key]
+                elif name in params:
+                    pd[name] = params[name]
+                elif bindparam.required:
+                    if _group_number:
+                        raise exc.InvalidRequestError(
+                                        "A value is required for bind parameter %r, "
+                                        "in parameter group %d" % 
+                                        (bindparam.key, _group_number))
                     else:
-                        pd[name] = bindparam.value
+                        raise exc.InvalidRequestError(
+                                        "A value is required for bind parameter %r" 
+                                        % bindparam.key)
+                elif bindparam.callable:
+                    pd[name] = bindparam.callable()
+                else:
+                    pd[name] = bindparam.value
             return pd
         else:
             pd = {}

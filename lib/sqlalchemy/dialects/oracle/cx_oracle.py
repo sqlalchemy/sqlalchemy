@@ -327,7 +327,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                                         self.out_parameters[name]
         
     def create_cursor(self):
-        c = self._connection.connection.cursor()
+        c = self._dbapi_connection.cursor()
         if self.dialect.arraysize:
             c.arraysize = self.dialect.arraysize
 
