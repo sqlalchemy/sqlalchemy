@@ -72,7 +72,8 @@ class _DateTimeMixin(object):
     _reg = None
     _storage_format = None
     
-    def __init__(self, storage_format=None, regexp=None, **kwargs):
+    def __init__(self, storage_format=None, regexp=None, **kw):
+        super(_DateTimeMixin, self).__init__(**kw)
         if regexp is not None:
             self._reg = re.compile(regexp)
         if storage_format is not None:

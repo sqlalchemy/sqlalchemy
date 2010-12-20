@@ -50,15 +50,10 @@ class AcSmallInteger(types.SmallInteger):
         return "SMALLINT"
 
 class AcDateTime(types.DateTime):
-    def __init__(self, *a, **kw):
-        super(AcDateTime, self).__init__(False)
-
     def get_col_spec(self):
         return "DATETIME"
 
 class AcDate(types.Date):
-    def __init__(self, *a, **kw):
-        super(AcDate, self).__init__(False)
 
     def get_col_spec(self):
         return "DATETIME"

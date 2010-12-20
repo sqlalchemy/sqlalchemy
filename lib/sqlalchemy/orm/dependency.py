@@ -152,7 +152,7 @@ class DependencyProcessor(object):
             # detect if there's anything changed or loaded
             # by a preprocessor on this state/attribute.  if not,
             # we should be able to skip it entirely.
-            sum_ = attributes.get_all_pending(state, state.dict, self.key)
+            sum_ = state.manager[self.key].impl.get_all_pending(state, state.dict)
             
             if not sum_:
                 continue
@@ -439,10 +439,10 @@ class OneToManyDP(DependencyProcessor):
                     elif self.hasparent(child) is False:
                         uowcommit.register_object(child, isdelete=True, 
                                             operation="delete", prop=self.prop)
-                        for c, m in self.mapper.cascade_iterator(
+                        for c, m, st_, dct_ in self.mapper.cascade_iterator(
                                                     'delete', child):
                             uowcommit.register_object(
-                                attributes.instance_state(c),
+                                st_,
                                 isdelete=True)
 
             if pks_changed:
@@ -661,10 +661,10 @@ class ManyToOneDP(DependencyProcessor):
                             continue
                         uowcommit.register_object(child, isdelete=True, 
                                         operation="delete", prop=self.prop)
-                        for c, m in self.mapper.cascade_iterator(
+                        for c, m, st_, dct_ in self.mapper.cascade_iterator(
                                                             'delete', child):
                             uowcommit.register_object(
-                                attributes.instance_state(c), isdelete=True)
+                                st_, isdelete=True)
         
     def presort_saves(self, uowcommit, states):
         for state in states:
@@ -681,10 +681,10 @@ class ManyToOneDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True, 
                                         operation="delete", prop=self.prop)
                                             
-                            for c, m in self.mapper.cascade_iterator(
+                            for c, m, st_, dct_ in self.mapper.cascade_iterator(
                                                             'delete', child):
                                 uowcommit.register_object(
-                                    attributes.instance_state(c),
+                                    st_,
                                     isdelete=True)
 
     def process_deletes(self, uowcommit, states):
@@ -939,11 +939,11 @@ class ManyToManyDP(DependencyProcessor):
                     if self.hasparent(child) is False:
                         uowcommit.register_object(child, isdelete=True, 
                                             operation="delete", prop=self.prop)
-                        for c, m in self.mapper.cascade_iterator(
+                        for c, m, st_, dct_ in self.mapper.cascade_iterator(
                                                     'delete', 
                                                     child):
                             uowcommit.register_object(
-                                attributes.instance_state(c), isdelete=True)
+                                st_, isdelete=True)
     
     def process_deletes(self, uowcommit, states):
         secondary_delete = []

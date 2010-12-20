@@ -16,6 +16,7 @@ import re, random
 from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
 from sqlalchemy import exc, types as sqltypes, util, pool
+import weakref
 
 AUTOCOMMIT_REGEXP = re.compile(
             r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)',
@@ -133,13 +134,17 @@ class DefaultDialect(base.Dialect):
                     " maximum identifier length of %d" %
                     (label_length, self.max_identifier_length))
         self.label_length = label_length
-
+        
         if not hasattr(self, 'description_encoding'):
             self.description_encoding = getattr(
                                             self, 
                                             'description_encoding', 
                                             encoding)
     
+    @util.memoized_property
+    def _type_memos(self):
+        return weakref.WeakKeyDictionary()
+        
     @property
     def dialect_description(self):
         return self.name + "+" + self.driver
@@ -398,7 +403,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.postfetch_cols = self.compiled.postfetch
             self.prefetch_cols = self.compiled.prefetch
         
-        processors = compiled._get_bind_processors(dialect)
+        processors = compiled._bind_processors
 
         # Convert the dictionary of bind parameter values 
         # into a dict or list to be sent to the DBAPI's 

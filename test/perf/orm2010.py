@@ -151,6 +151,7 @@ counts_by_methname = dict((key[2], stats.stats[key][0]) for key in stats.stats)
 
 print "SQLA Version: %s" % __version__
 print "Total calls %d" % stats.total_calls
+print "Total cpu seconds: %.2f" % stats.total_tt
 print 'Total execute calls: %d' \
     % counts_by_methname["<method 'execute' of 'sqlite3.Cursor' "
                          "objects>"]

@@ -233,11 +233,11 @@ SET_RE = re.compile(
 class _NumericType(object):
     """Base for MySQL numeric types."""
 
-    def __init__(self, **kw):
-        self.unsigned = kw.pop('unsigned', False)
-        self.zerofill = kw.pop('zerofill', False)
+    def __init__(self, unsigned=False, zerofill=False, **kw):
+        self.unsigned = unsigned
+        self.zerofill = zerofill
         super(_NumericType, self).__init__(**kw)
-        
+    
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         if isinstance(self, (REAL, DOUBLE)) and \
@@ -276,7 +276,7 @@ class _StringType(sqltypes.String):
         self.binary = binary
         self.national = national
         super(_StringType, self).__init__(**kw)
-        
+    
     def __repr__(self):
         attributes = inspect.getargspec(self.__init__)[0][1:]
         attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
@@ -749,7 +749,7 @@ class CHAR(_StringType, sqltypes.CHAR):
 
     __visit_name__ = 'CHAR'
 
-    def __init__(self, length, **kwargs):
+    def __init__(self, length=None, **kwargs):
         """Construct a CHAR.
 
         :param length: Maximum data length, in characters.
@@ -943,6 +943,10 @@ class ENUM(sqltypes.Enum, _StringType):
             else:
                 return value
         return process
+    
+    def adapt(self, impltype, **kw):
+        kw['strict'] = self.strict
+        return sqltypes.Enum.adapt(self, impltype, **kw)
 
 class SET(_StringType):
     """MySQL SET type."""
@@ -990,8 +994,8 @@ class SET(_StringType):
             strip_values.append(a)
 
         self.values = strip_values
-        length = max([len(v) for v in strip_values] + [0])
-        super(SET, self).__init__(length=length, **kw)
+        kw.setdefault('length', max([len(v) for v in strip_values] + [0]))
+        super(SET, self).__init__(**kw)
 
     def result_processor(self, dialect, coltype):
         def process(value):

@@ -1382,10 +1382,10 @@ class Mapper(object):
         reference so that they don't fall out of scope immediately.
 
         """
-        visited_instances = util.IdentitySet()
+        visited_states = set()
         prp, mpp = object(), object()
 
-        visitables = [(deque(self._props.values()), prp, state, state.dict)]
+        visitables = deque([(deque(self._props.values()), prp, state, state.dict)])
 
         while visitables:
             iterator, item_type, parent_state, parent_dict = visitables[-1]
@@ -1398,13 +1398,13 @@ class Mapper(object):
                 if type_ not in prop.cascade:
                     continue
                 queue = deque(prop.cascade_iterator(type_, parent_state, 
-                            parent_dict, visited_instances, halt_on))
+                            parent_dict, visited_states, halt_on))
                 if queue:
                     visitables.append((queue,mpp, None, None))
             elif item_type is mpp:
                 instance, instance_mapper, corresponding_state, \
                                 corresponding_dict = iterator.popleft()
-                yield (instance, instance_mapper)
+                yield instance, instance_mapper, corresponding_state, corresponding_dict
                 visitables.append((deque(instance_mapper._props.values()), 
                                         prp, corresponding_state, corresponding_dict))
 

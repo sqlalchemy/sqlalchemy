@@ -875,7 +875,6 @@ class ThreadLocalRegistry(ScopedRegistry):
         except AttributeError:
             pass
 
-
 def _iter_id(iterable):
     """Generator: ((id(o), o) for o in iterable)."""
 
