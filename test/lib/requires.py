@@ -270,6 +270,13 @@ def sane_multi_rowcount(fn):
         skip_if(lambda: not testing.db.dialect.supports_sane_multi_rowcount)
     )
 
+def nullsordering(fn):
+    """Target backends that support nulls ordering."""
+    return _chain_decorators_on(
+        fn,
+        fails_on_everything_except('postgresql', 'oracle', 'firebird')
+    )
+ 
 def reflects_pk_names(fn):
     """Target driver reflects the name of primary key constraints."""
     return _chain_decorators_on(

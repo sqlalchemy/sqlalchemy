@@ -921,6 +921,37 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "OR mytable.myid = :myid_2 OR mytable.myid = :myid_3"
         )
 
+    def test_order_by_nulls(self):
+        self.assert_compile(
+            table2.select(order_by = [table2.c.otherid, table2.c.othername.desc().nullsfirst()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM "
+            "myothertable ORDER BY myothertable.otherid, myothertable.othername DESC NULLS FIRST"
+        )
+
+        self.assert_compile(
+            table2.select(order_by = [table2.c.otherid, table2.c.othername.desc().nullslast()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM "
+            "myothertable ORDER BY myothertable.otherid, myothertable.othername DESC NULLS LAST"
+        )
+
+        self.assert_compile(
+            table2.select(order_by = [table2.c.otherid.nullslast(), table2.c.othername.desc().nullsfirst()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM "
+            "myothertable ORDER BY myothertable.otherid NULLS LAST, myothertable.othername DESC NULLS FIRST"
+        )
+
+        self.assert_compile(
+            table2.select(order_by = [table2.c.otherid.nullsfirst(), table2.c.othername.desc()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM "
+            "myothertable ORDER BY myothertable.otherid NULLS FIRST, myothertable.othername DESC"
+        )
+
+        self.assert_compile(
+            table2.select(order_by = [table2.c.otherid.nullsfirst(), table2.c.othername.desc().nullslast()]),
+            "SELECT myothertable.otherid, myothertable.othername FROM "
+            "myothertable ORDER BY myothertable.otherid NULLS FIRST, myothertable.othername DESC NULLS LAST"
+        )
+
     def test_orderby_groupby(self):
         self.assert_compile(
             table2.select(order_by = [table2.c.otherid, asc(table2.c.othername)]),

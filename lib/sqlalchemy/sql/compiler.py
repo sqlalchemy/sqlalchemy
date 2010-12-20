@@ -101,6 +101,8 @@ OPERATORS =  {
     # modifiers
     operators.desc_op : ' DESC',
     operators.asc_op : ' ASC',
+    operators.nullsfirst_op : ' NULLS FIRST',
+    operators.nullslast_op : ' NULLS LAST',
 }
 
 FUNCTIONS = {

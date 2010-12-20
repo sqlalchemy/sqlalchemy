@@ -46,11 +46,31 @@ __all__ = [
     'bindparam', 'case', 'cast', 'column', 'delete', 'desc', 'distinct',
     'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
     'collate', 'insert', 'intersect', 'intersect_all', 'join', 'label',
-    'literal', 'literal_column', 'not_', 'null', 'or_', 'outparam',
-    'outerjoin', 'select', 'subquery', 'table', 'text', 'tuple_', 'type_coerce',
-    'union', 'union_all', 'update', ]
+    'literal', 'literal_column', 'not_', 'null', 'nullsfirst', 'nullslast',
+    'or_', 'outparam', 'outerjoin', 'select', 'subquery', 'table', 'text',
+    'tuple_', 'type_coerce', 'union', 'union_all', 'update', ]
 
 PARSE_AUTOCOMMIT = util.symbol('PARSE_AUTOCOMMIT')
+
+def nullsfirst(column):
+    """Return a NULLS FIRST ``ORDER BY`` clause element.
+
+    e.g.::
+
+      order_by = [desc(table1.mycol).nullsfirst()]
+
+    """
+    return _UnaryExpression(column, modifier=operators.nullsfirst_op)
+
+def nullslast(column):
+    """Return a NULLS LAST ``ORDER BY`` clause element.
+
+    e.g.::
+
+      order_by = [desc(table1.mycol).nullslast()]
+
+    """
+    return _UnaryExpression(column, modifier=operators.nullslast_op)
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.
@@ -1570,6 +1590,12 @@ class ColumnOperators(Operators):
     def asc(self):
         return self.operate(operators.asc_op)
 
+    def nullsfirst(self):
+        return self.operate(operators.nullsfirst_op)
+
+    def nullslast(self):
+        return self.operate(operators.nullslast_op)
+
     def collate(self, collation):
         return self.operate(operators.collate, collation)
 
@@ -1812,6 +1838,16 @@ class _CompareMixin(ColumnOperators):
         """Produce a ASC clause, i.e. ``<columnname> ASC``"""
 
         return asc(self)
+
+    def nullsfirst(self):
+        """Produce a NULLS FIRST clause, i.e. ``NULLS FIRST``"""
+
+        return nullsfirst(self)
+
+    def nullslast(self):
+        """Produce a NULLS LAST clause, i.e. ``NULLS LAST``"""
+
+        return nullslast(self)
 
     def distinct(self):
         """Produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""

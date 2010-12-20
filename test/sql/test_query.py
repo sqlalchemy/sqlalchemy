@@ -576,7 +576,63 @@ class QueryTest(TestBase):
                         use_labels=labels,
                         order_by=[users.c.user_id.desc()]),
                  [(3,), (2,), (1,)])
-    
+
+    @testing.requires.nullsordering
+    def test_order_by_nulls(self):
+        """Exercises ORDER BY clause generation.
+
+        Tests simple, compound, aliased and DESC clauses.
+        """
+
+        users.insert().execute(user_id=1)
+        users.insert().execute(user_id=2, user_name='b')
+        users.insert().execute(user_id=3, user_name='a')
+
+        def a_eq(executable, wanted):
+            got = list(executable.execute())
+            eq_(got, wanted)
+
+        for labels in False, True:
+            a_eq(users.select(order_by=[users.c.user_name.nullsfirst()],
+                              use_labels=labels),
+                 [(1, None), (3, 'a'), (2, 'b')])
+
+            a_eq(users.select(order_by=[users.c.user_name.nullslast()],
+                              use_labels=labels),
+                 [(3, 'a'), (2, 'b'), (1, None)])
+
+            a_eq(users.select(order_by=[asc(users.c.user_name).nullsfirst()],
+                              use_labels=labels),
+                 [(1, None), (3, 'a'), (2, 'b')])
+
+            a_eq(users.select(order_by=[asc(users.c.user_name).nullslast()],
+                              use_labels=labels),
+                 [(3, 'a'), (2, 'b'), (1, None)])
+
+            a_eq(users.select(order_by=[users.c.user_name.desc().nullsfirst()],
+                              use_labels=labels),
+                 [(1, None), (2, 'b'), (3, 'a')])
+
+            a_eq(users.select(order_by=[users.c.user_name.desc().nullslast()],
+                              use_labels=labels),
+                 [(2, 'b'), (3, 'a'), (1, None)])
+
+            a_eq(users.select(order_by=[desc(users.c.user_name).nullsfirst()],
+                              use_labels=labels),
+                 [(1, None), (2, 'b'), (3, 'a')])
+
+            a_eq(users.select(order_by=[desc(users.c.user_name).nullslast()],
+                              use_labels=labels),
+                 [(2, 'b'), (3, 'a'), (1, None)])
+
+            a_eq(users.select(order_by=[users.c.user_name.nullsfirst(), users.c.user_id],
+                              use_labels=labels),
+                 [(1, None), (3, 'a'), (2, 'b')])
+
+            a_eq(users.select(order_by=[users.c.user_name.nullslast(), users.c.user_id],
+                              use_labels=labels),
+                 [(3, 'a'), (2, 'b'), (1, None)])
+
     @testing.fails_on("+pyodbc", "pyodbc row doesn't seem to accept slices")
     def test_column_slices(self):
         users.insert().execute(user_id=1, user_name='john')
