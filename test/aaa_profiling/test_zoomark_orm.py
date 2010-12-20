@@ -356,7 +356,7 @@ class ZooMarkTest(TestBase):
 
     # and this number go down slightly when using the C extensions
 
-    @profiling.function_call_count(22510, {'2.6': 24055, '2.7': 22921})
+    @profiling.function_call_count(22510, {'2.6': 22775, '2.7': 22921})
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
