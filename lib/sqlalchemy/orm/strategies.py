@@ -138,59 +138,6 @@ class ColumnLoader(LoaderStrategy):
 
 log.class_logger(ColumnLoader)
 
-class CompositeColumnLoader(ColumnLoader):
-    """Strategize the loading of a composite column-based MapperProperty."""
-
-    def init_class_attribute(self, mapper):
-        self.is_class_level = True
-        self.logger.info("%s register managed composite attribute", self)
-
-        def copy(obj):
-            if obj is None:
-                return None
-            return self.parent_property.\
-                        composite_class(*obj.__composite_values__())
-            
-        def compare(a, b):
-            if a is None or b is None:
-                return a is b
-                
-            for col, aprop, bprop in zip(self.columns,
-                                         a.__composite_values__(),
-                                         b.__composite_values__()):
-                if not col.type.compare_values(aprop, bprop):
-                    return False
-            else:
-                return True
-
-        _register_attribute(self, mapper, useobject=False,
-            compare_function=compare,
-            copy_function=copy,
-            mutable_scalars=True,
-            active_history=self.parent_property.active_history,
-        )
-
-    def create_row_processor(self, selectcontext, path, mapper, 
-                                                    row, adapter):
-        key = self.key
-        columns = self.columns
-        composite_class = self.parent_property.composite_class
-        if adapter:
-            columns = [adapter.columns[c] for c in columns]
-            
-        for c in columns:
-            if c not in row:
-                def new_execute(state, dict_, row):
-                    state.expire_attribute_pre_commit(dict_, key)
-                break
-        else:
-            def new_execute(state, dict_, row):
-                dict_[key] = composite_class(*[row[c] for c in columns])
-
-        return new_execute, None, None
-
-log.class_logger(CompositeColumnLoader)
-    
 class DeferredColumnLoader(LoaderStrategy):
     """Strategize the loading of a deferred column-based MapperProperty."""
 

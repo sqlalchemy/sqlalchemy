@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     validates, aliased, Mapper
 from sqlalchemy.orm import defer, deferred, synonym, attributes, \
     column_property, composite, relationship, dynamic_loader, \
-    comparable_property, AttributeExtension
+    comparable_property, AttributeExtension, Session
 from sqlalchemy.orm.instrumentation import ClassManager
 from test.lib.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
@@ -2213,39 +2213,34 @@ class CompositeTypesTest(_base.MappedTest):
             'end': sa.orm.composite(Point, edges.c.x2, edges.c.y2)
         })
 
-        sess = create_session()
+        sess = Session()
         g = Graph()
         g.id = 1
         g.version_id=1
         g.edges.append(Edge(Point(3, 4), Point(5, 6)))
         g.edges.append(Edge(Point(14, 5), Point(2, 7)))
         sess.add(g)
-        sess.flush()
+        sess.commit()
 
-        sess.expunge_all()
         g2 = sess.query(Graph).get([g.id, g.version_id])
         for e1, e2 in zip(g.edges, g2.edges):
             eq_(e1.start, e2.start)
             eq_(e1.end, e2.end)
 
         g2.edges[1].end = Point(18, 4)
-        sess.flush()
-        sess.expunge_all()
+        sess.commit()
+
         e = sess.query(Edge).get(g2.edges[1].id)
         eq_(e.end, Point(18, 4))
-
-        e.end.x = 19
-        e.end.y = 5
-        sess.flush()
+        
+        e.end = Point(19, 5)
+        sess.commit()
+        g.id, g.version_id, g.edges
         sess.expunge_all()
-        eq_(sess.query(Edge).get(g2.edges[1].id).end, Point(19, 5))
-
-        g.edges[1].end = Point(19, 5)
-
-        sess.expunge_all()
+        
         def go():
-            g2 = (sess.query(Graph).
-                  options(sa.orm.joinedload('edges'))).get([g.id, g.version_id])
+            g2 = sess.query(Graph).\
+                  options(sa.orm.joinedload('edges')).get([g.id, g.version_id])
             for e1, e2 in zip(g.edges, g2.edges):
                 eq_(e1.start, e2.start)
                 eq_(e1.end, e2.end)
@@ -2261,9 +2256,9 @@ class CompositeTypesTest(_base.MappedTest):
 
         # query by columns
         eq_(sess.query(Edge.start, Edge.end).all(), [(3, 4, 5, 6), (14, 5, 19, 5)])
-
+        
         e = g.edges[1]
-        e.end.x = e.end.y = None
+        del e.end
         sess.flush()
         eq_(sess.query(Edge.start, Edge.end).all(), [(3, 4, 5, 6), (14, 5, None, None)])
 
