@@ -53,11 +53,13 @@ class DefaultDialect(base.Dialect):
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True
+    #returns_unicode_strings = True
     # Py2K
     supports_unicode_statements = False
     supports_unicode_binds = False
     returns_unicode_strings = False
     # end Py2K
+
 
     name = 'default'
     
