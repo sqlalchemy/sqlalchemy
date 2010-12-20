@@ -3,6 +3,7 @@ from sqlalchemy.orm import mapper, class_mapper, attributes, object_mapper
 from sqlalchemy.orm.exc import UnmappedClassError, UnmappedColumnError
 from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer
 from sqlalchemy.orm.interfaces import SessionExtension
+from sqlalchemy.orm.properties import RelationshipProperty
 
 def col_references_table(col, table):
     for fk in col.foreign_keys:
@@ -147,7 +148,16 @@ def create_version(obj, session, deleted = False):
                 # if the attribute had no value.
                 attr[hist_col.key] = a[0]
                 obj_changed = True
-                
+    
+    if not obj_changed:
+        # not changed, but we have relationships.  OK
+        # check those too
+        for prop in obj_mapper.iterate_properties:
+            if isinstance(prop, RelationshipProperty) and \
+                attributes.get_history(obj, prop.key).has_changes():
+                obj_changed = True
+                break
+        
     if not obj_changed and not deleted:            
         return
 
