@@ -317,6 +317,21 @@ class AttributeImpl(object):
         raise NotImplementedError()
     
     def get_all_pending(self, state, dict_):
+        """Return a list of tuples of (state, obj) 
+        for all objects in this attribute's current state 
+        + history.
+        
+        Only applies to object-based attributes.
+
+        This is an inlining of existing functionality
+        which roughly correponds to:
+    
+            get_state_history(
+                        state, 
+                        key, 
+                        passive=PASSIVE_NO_INITIALIZE).sum()
+
+        """
         raise NotImplementedError()
         
     def initialize(self, state, dict_):
@@ -547,13 +562,20 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             
             if self.key in state.committed_state:
                 original = state.committed_state[self.key]
-                if original not in (NEVER_SET, None) and \
+                if original not in (NEVER_SET, PASSIVE_NO_RESULT, None) and \
                     original is not current:
-                    return [current, original]
                     
-            return [current]
-        else:
-            return []
+                    if current is not None:
+                        return [
+                            (instance_state(current), current), 
+                            (instance_state(original), original)
+                        ]
+                    else:
+                        return [(instance_state(original), original)]
+            
+            if current is not None:
+                return [(instance_state(current), current)]
+        return []
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         """Set a value on the given InstanceState.
@@ -645,9 +667,6 @@ class CollectionAttributeImpl(AttributeImpl):
             return History.from_collection(self, state, current)
 
     def get_all_pending(self, state, dict_):
-        # this is basically an inline 
-        # of self.get_history().sum()
-        
         if self.key not in dict_:
             return []
         else:
@@ -656,22 +675,23 @@ class CollectionAttributeImpl(AttributeImpl):
         current = self.get_collection(state, dict_, current)
 
         if self.key not in state.committed_state:
-            return list(current)
+            return [(instance_state(o), o) for o in current]
 
         original = state.committed_state[self.key]
         
         if original is NO_VALUE:
-            return list(current)
+            return [(instance_state(o), o) for o in current]
         else:
-            # TODO: use the dict() of state, obj here
-            current_set = util.IdentitySet(current)
-            original_set = util.IdentitySet(original)
-
-            # ensure ordering is maintained
+            current_states = [(instance_state(c), c) for c in current]
+            original_states = [(instance_state(c), c) for c in original]
+            
+            current_set = dict(current_states)
+            original_set = dict(original_states)
+            
             return \
-                [x for x in current if x not in original_set] + \
-                [x for x in current if x in original_set] + \
-                [x for x in original if x not in current_set]
+                [(s, o) for s, o in current_states if s not in original_set] + \
+                [(s, o) for s, o in current_states if s in original_set] + \
+                [(s, o) for s, o in original_states if s not in current_set]
         
     def fire_append_event(self, state, dict_, value, initiator):
         for fn in self.dispatch.on_append:
@@ -1072,25 +1092,6 @@ def get_history(obj, key, **kwargs):
 def get_state_history(state, key, **kwargs):
     return state.get_history(key, **kwargs)
 
-def get_all_pending(state, dict_, key):
-    """Return a list of all objects currently in memory 
-    involving the given key on the given state.
-    
-    This should be equivalent to::
-    
-        get_state_history(
-                    state, 
-                    key, 
-                    passive=PASSIVE_NO_INITIALIZE).sum()
-                    
-    TODO: we'd like to more closely merge the "history" tuple
-    generation with "get_all_pending()", making the presence
-    of the "History" object optional.
-    
-    """
-    
-    return state.manager[key].impl.get_all_pending(state, dict_)
-    
     
 def has_parent(cls, obj, key, optimistic=False):
     """TODO"""

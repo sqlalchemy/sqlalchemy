@@ -128,22 +128,23 @@ class InstanceState(object):
         return self.pending[key]
 
     def value_as_iterable(self, dict_, key, passive=PASSIVE_OFF):
-        """return an InstanceState attribute as a list,
-        regardless of it being a scalar or collection-based
-        attribute.
+        """Return a list of tuples (state, obj) for the given
+        key.
 
-        returns None if passive is not PASSIVE_OFF and the getter returns
-        PASSIVE_NO_RESULT.
+        returns an empty list if the value is None/empty/PASSIVE_NO_RESULT
         """
 
-        impl = self.get_impl(key)
+        impl = self.manager[key].impl
         x = impl.get(self, dict_, passive=passive)
-        if x is PASSIVE_NO_RESULT:
-            return None
+        if x is PASSIVE_NO_RESULT or x is None:
+            return []
         elif hasattr(impl, 'get_collection'):
-            return impl.get_collection(self, dict_, x, passive=passive)
+            return [
+                (attributes.instance_state(o), o) for o in 
+                impl.get_collection(self, dict_, x, passive=passive)
+            ]
         else:
-            return [x]
+            return [(attributes.instance_state(x), x)]
 
     def __getstate__(self):
         d = {'instance':self.obj()}

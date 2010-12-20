@@ -144,9 +144,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     
     def get_all_pending(self, state, dict_):
         c = self._get_collection_history(state, True)
-        return (c.added_items or []) +\
-                (c.unchanged_items or []) +\
-                (c.deleted_items or [])
+        return [
+                (attributes.instance_state(x), x) 
+                for x in 
+                c.added_items + c.unchanged_items + c.deleted_items
+            ]
         
     def _get_collection_history(self, state, passive=False):
         if self.key in state.committed_state:

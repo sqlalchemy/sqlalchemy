@@ -175,10 +175,7 @@ class DependencyProcessor(object):
                 
             if child_in_cycles:
                 child_actions = []
-                for child in sum_:
-                    if child is None:
-                        continue
-                    child_state = attributes.instance_state(child)
+                for child_state, child in sum_:
                     if child_state not in uow.states:
                         child_action = (None, None)
                     else:
