@@ -1247,11 +1247,12 @@ class Mapper(object):
 
     def _identity_key_from_state(self, state):
         dict_ = state.dict
-        
+        manager = state.manager
         return self._identity_class, tuple([
-            self._get_state_attr_by_column(state, dict_, col)
+            manager[self._columntoproperty[col].key].\
+                impl.get(state, dict_, False)
             for col in self.primary_key
-        ])    
+        ])
         
     def primary_key_from_instance(self, instance):
         """Return the list of primary key values for the given
@@ -1263,22 +1264,20 @@ class Mapper(object):
 
     def _primary_key_from_state(self, state):
         dict_ = state.dict
-        return [self._get_state_attr_by_column(state, dict_, column) for
-                column in self.primary_key]
+        manager = state.manager
+        return [
+            manager[self._columntoproperty[col].key].\
+                impl.get(state, dict_, False)
+            for col in self.primary_key
+        ]
 
     def _get_state_attr_by_column(self, state, dict_, column, passive=False):
         prop = self._columntoproperty[column]
-        value = state.manager[prop.key].impl.get(state, dict_, passive=passive)
-        if prop.get_col_value:
-            value = prop.get_col_value(column, value)
-        return value
+        return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
     def _set_state_attr_by_column(self, state, dict_, column, value):
         prop = self._columntoproperty[column]
-        if prop.set_col_value:
-            prop.set_col_value(state, dict_, value, column)
-        else:
-            state.manager[prop.key].impl.set(state, dict_, value, None)
+        state.manager[prop.key].impl.set(state, dict_, value, None)
 
     def _get_committed_attr_by_column(self, obj, column):
         state = attributes.instance_state(obj)
@@ -1289,11 +1288,8 @@ class Mapper(object):
                                                     passive=False):
                                                     
         prop = self._columntoproperty[column]
-        value = state.manager[prop.key].impl.\
+        return state.manager[prop.key].impl.\
                     get_committed_value(state, dict_, passive=passive)
-        if prop.get_col_value:
-            value = prop.get_col_value(column, value)
-        return value
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary
@@ -1516,8 +1512,6 @@ class Mapper(object):
                                         state, prop.key, passive=True)
                         if history.added:
                             value = history.added[0]
-                            if prop.get_col_value:
-                                value = prop.get_col_value(col, value)
                             params[col.key] = value
                             hasdata = True
                 if hasdata:
@@ -1661,13 +1655,11 @@ class Mapper(object):
                             params[col.key] = \
                               mapper.version_id_generator(None)
                         else:
-                            # inline of _get_state_attr_by_column
+                            # pull straight from the dict for 
+                            # pending objects
                             prop = mapper._columntoproperty[col]
                             value = state_dict.get(prop.key, None)
                                     
-                            if prop.get_col_value:
-                                value = prop.get_col_value(col, value)
-
                             if value is None:
                                 if col in pks:
                                     has_all_pks = False
@@ -1726,8 +1718,6 @@ class Mapper(object):
                                     value_params[col] = history.added[0]
                                 else:
                                     value = history.added[0]
-                                    if prop.get_col_value:
-                                        value = prop.get_col_value(col, value)
                                     params[col.key] = value
 
                                 if col in pks:
@@ -1740,15 +1730,11 @@ class Mapper(object):
                                                         uowtransaction.\
                                                         attributes:
                                             value = history.added[0]
-                                            if prop.get_col_value:
-                                                value = prop.get_col_value(col, value)
                                             params[col._label] = value
                                         else:
                                             # use the old value to 
                                             # locate the row
                                             value = history.deleted[0]
-                                            if prop.get_col_value:
-                                                value = prop.get_col_value(col, value)
                                             params[col._label] = value
                                         hasdata = True
                                     else:
@@ -1759,16 +1745,12 @@ class Mapper(object):
                                         # update statement
                                         del params[col.key]
                                         value = history.added[0]
-                                        if prop.get_col_value:
-                                            value = prop.get_col_value(col, value)
                                         params[col._label] = value
                                 else:
                                     hasdata = True
                             elif col in pks:
                                 value = state.manager[prop.key].\
                                             impl.get(state, state_dict)
-                                if prop.get_col_value:
-                                    value = prop.get_col_value(col, value)
                                 params[col._label] = value
                     if hasdata:
                         update.append((state, state_dict, params, mapper, 

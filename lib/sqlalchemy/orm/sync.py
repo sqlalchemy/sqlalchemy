@@ -12,14 +12,21 @@ from sqlalchemy.orm import exc, util as mapperutil
 
 def populate(source, source_mapper, dest, dest_mapper, 
                         synchronize_pairs, uowcommit, flag_cascaded_pks):
+    source_dict = source.dict
+    dest_dict = dest.dict
+    
     for l, r in synchronize_pairs:
         try:
-            value = source_mapper._get_state_attr_by_column(source, source.dict, l)
+            # inline of source_mapper._get_state_attr_by_column
+            prop = source_mapper._columntoproperty[l]
+            value = source.manager[prop.key].impl.get(source, source_dict, False)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, dest_mapper, r)
 
         try:
-            dest_mapper._set_state_attr_by_column(dest, dest.dict, r, value)
+            # inline of dest_mapper._set_state_attr_by_column
+            prop = dest_mapper._columntoproperty[r]
+            dest.manager[prop.key].impl.set(dest, dest_dict, value, None)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, source_mapper, l, dest_mapper, r)
         

@@ -71,21 +71,6 @@ class MapperProperty(object):
     
     """
 
-    get_col_value = None
-    """Optional method which converts an attribute value into a per-column
-    value::
-    
-        def get_col_value(self, column, value):
-            ...
-            
-    Basically used by CompositeProperty.
-    
-    The mapper checks this attribute for non-None to reduce callcounts.
-    
-    """
-
-    set_col_value = None
-    
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 
