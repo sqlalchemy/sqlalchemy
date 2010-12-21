@@ -222,7 +222,7 @@ class CompositeProperty(ColumnProperty):
         if value is None:
             return None
         for a, b in zip(self.columns, value.__composite_values__()):
-            if a is column:
+            if a.shares_lineage(column): 
                 return b
 
     class Comparator(PropComparator):
