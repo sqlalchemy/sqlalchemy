@@ -528,7 +528,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
 
     def delete(self, state, dict_):
         ScalarAttributeImpl.delete(self, state, dict_)
-        state.mutable_dict.pop(self.key)
+        state.mutable_dict.pop(self.key, None)
 
     def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         if initiator and initiator.parent_token is self.parent_token:
