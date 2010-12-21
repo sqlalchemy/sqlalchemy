@@ -2100,8 +2100,6 @@ class Mapper(object):
                 version_id_col = adapter.columns[version_id_col]
 
         identity_class = self._identity_class
-        def identity_key(row):
-            return identity_class, tuple([row[column] for column in pk_cols])
 
         new_populators = []
         existing_populators = []
@@ -2119,18 +2117,19 @@ class Mapper(object):
                                 new_populators,
                                 existing_populators
                 )
-                
+            
             if isnew:
                 populators = new_populators
             else:
                 populators = existing_populators
 
             if only_load_props:
-                populators = [p for p in populators 
-                                if p[0] in only_load_props]
-
-            for key, populator in populators:
-                populator(state, dict_, row)
+                for key, populator in populators:
+                    if key in only_load_props:
+                        populator(state, dict_, row)
+            else:
+                for key, populator in populators:
+                    populator(state, dict_, row)
 
         session_identity_map = context.session.identity_map
 
@@ -2170,7 +2169,7 @@ class Mapper(object):
                     # occur within a flush()
                     identitykey = self._identity_key_from_state(refresh_state)
             else:
-                identitykey = identity_key(row)
+                identitykey = identity_class, tuple([row[column] for column in pk_cols])
 
             instance = session_identity_map.get(identitykey)
             if instance is not None:
