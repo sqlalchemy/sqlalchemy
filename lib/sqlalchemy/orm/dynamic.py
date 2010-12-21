@@ -35,9 +35,6 @@ class DynaLoader(strategies.AbstractRelationshipLoader):
             query_class=self.parent_property.query_class
         )
 
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return None, None, None
-
 log.class_logger(DynaLoader)
 
 class DynamicAttributeImpl(attributes.AttributeImpl):

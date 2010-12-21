@@ -85,15 +85,6 @@ class DescriptorProperty(MapperProperty):
         descriptor.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, descriptor)
     
-    def setup(self, context, entity, path, adapter, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
-        return None, None, None
-
-    def merge(self, session, source_state, source_dict, 
-                dest_state, dest_dict, load, _recursive):
-        pass
 
 class CompositeProperty(DescriptorProperty):
     

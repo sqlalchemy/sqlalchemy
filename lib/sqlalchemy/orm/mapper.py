@@ -2068,7 +2068,7 @@ class Mapper(object):
         for state, state_dict, mapper, has_identity, connection in tups:
             mapper.dispatch.on_after_delete(mapper, connection, state)
 
-    def _instance_processor(self, context, path, adapter, 
+    def _instance_processor(self, context, path, reduced_path, adapter, 
                                 polymorphic_from=None, 
                                 only_load_props=None, refresh_state=None,
                                 polymorphic_discriminator=None):
@@ -2087,7 +2087,7 @@ class Mapper(object):
                 polymorphic_on = self.polymorphic_on
             polymorphic_instances = util.PopulateDict(
                                         self._configure_subclass_mapper(
-                                                context, path, adapter)
+                                                context, path, reduced_path, adapter)
                                         )
 
         version_id_col = self.version_id_col
@@ -2115,7 +2115,7 @@ class Mapper(object):
                     state.load_path = load_path
 
             if not new_populators:
-                self._populators(context, path, row, adapter,
+                self._populators(context, path, reduced_path, row, adapter,
                                 new_populators,
                                 existing_populators
                 )
@@ -2307,7 +2307,7 @@ class Mapper(object):
             return instance
         return _instance
 
-    def _populators(self, context, path, row, adapter,
+    def _populators(self, context, path, reduced_path, row, adapter,
             new_populators, existing_populators):
         """Produce a collection of attribute level row processor callables."""
         
@@ -2315,6 +2315,7 @@ class Mapper(object):
         for prop in self._props.itervalues():
             newpop, existingpop, delayedpop = prop.create_row_processor(
                                                     context, path, 
+                                                    reduced_path,
                                                     self, row, adapter)
             if newpop:
                 new_populators.append((prop.key, newpop))
@@ -2325,7 +2326,7 @@ class Mapper(object):
         if delayed_populators:
             new_populators.extend(delayed_populators)
             
-    def _configure_subclass_mapper(self, context, path, adapter):
+    def _configure_subclass_mapper(self, context, path, reduced_path, adapter):
         """Produce a mapper level row processor callable factory for mappers
         inheriting this one."""
         
@@ -2349,6 +2350,7 @@ class Mapper(object):
             #assert mapper.isa(_class_to_mapper(path[-1]))
             
             return mapper._instance_processor(context, path[0:-1] + (mapper,), 
+                                                    reduced_path[0:-1] + (mapper.base_mapper,),
                                                     adapter,
                                                     polymorphic_from=self)
         return configure_subclass_mapper

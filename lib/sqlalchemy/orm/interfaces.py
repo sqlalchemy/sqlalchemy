@@ -71,7 +71,7 @@ class MapperProperty(object):
     
     """
 
-    def setup(self, context, entity, path, adapter, **kwargs):
+    def setup(self, context, entity, path, reduced_path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 
         Each MapperProperty associated with the target mapper processes the
@@ -81,12 +81,12 @@ class MapperProperty(object):
 
         pass
 
-    def create_row_processor(self, selectcontext, path, mapper, row, adapter):
+    def create_row_processor(self, selectcontext, path, reduced_path, 
+                                            mapper, row, adapter):
         """Return a 3-tuple consisting of three row processing functions.
         
         """
-
-        raise NotImplementedError()
+        return None, None, None
 
     def cascade_iterator(self, type_, state, visited_instances=None,
                             halt_on=None):
@@ -166,7 +166,7 @@ class MapperProperty(object):
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object"""
 
-        raise NotImplementedError()
+        pass
 
     def compare(self, operator, value):
         """Return a compare operation for the columns represented by
@@ -295,8 +295,8 @@ class StrategizedProperty(MapperProperty):
     
     """
     
-    def _get_context_strategy(self, context, path):
-        key = ('loaderstrategy', _reduce_path(path))
+    def _get_context_strategy(self, context, reduced_path):
+        key = ('loaderstrategy', reduced_path)
         if key in context.attributes:
             cls = context.attributes[key]
             try:
@@ -317,13 +317,15 @@ class StrategizedProperty(MapperProperty):
         strategy.init()
         return strategy
 
-    def setup(self, context, entity, path, adapter, **kwargs):
-        self._get_context_strategy(context, path + (self.key,)).\
-                    setup_query(context, entity, path, adapter, **kwargs)
+    def setup(self, context, entity, path, reduced_path, adapter, **kwargs):
+        self._get_context_strategy(context, reduced_path + (self.key,)).\
+                    setup_query(context, entity, path, 
+                                    reduced_path, adapter, **kwargs)
 
-    def create_row_processor(self, context, path, mapper, row, adapter):
-        return self._get_context_strategy(context, path + (self.key,)).\
-                    create_row_processor(context, path, mapper, row, adapter)
+    def create_row_processor(self, context, path, reduced_path, mapper, row, adapter):
+        return self._get_context_strategy(context, reduced_path + (self.key,)).\
+                    create_row_processor(context, path, 
+                                    reduced_path, mapper, row, adapter)
 
     def do_init(self):
         self._strategies = {}
@@ -587,10 +589,10 @@ class LoaderStrategy(object):
     def init_class_attribute(self, mapper):
         pass
 
-    def setup_query(self, context, entity, path, adapter, **kwargs):
+    def setup_query(self, context, entity, path, reduced_path, adapter, **kwargs):
         pass
 
-    def create_row_processor(self, selectcontext, path, mapper, 
+    def create_row_processor(self, selectcontext, path, reduced_path, mapper, 
                                 row, adapter):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.
@@ -598,7 +600,7 @@ class LoaderStrategy(object):
         StrategizedProperty delegates its create_row_processor method
         directly to this method. """
 
-        raise NotImplementedError()
+        return None, None, None
 
     def __str__(self):
         return str(self.parent_property)

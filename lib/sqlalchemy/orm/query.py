@@ -2567,12 +2567,17 @@ class _MapperEntity(_QueryEntity):
         self._polymorphic_discriminator = None
         self.is_aliased_class = is_aliased_class
         if is_aliased_class:
-            self.path_entity = self.entity = self.entity_zero = entity
-            self._label_name = self.entity._sa_label_name
+            self.path_entity = self.entity_zero = entity
+            self._path = (entity,)
+            self._label_name = self.entity_zero._sa_label_name
+            self._reduced_path = (self.path_entity, )
         else:
             self.path_entity = mapper
-            self.entity = self.entity_zero = mapper
+            self._path = (mapper,)
+            self._reduced_path = (mapper.base_mapper, )
+            self.entity_zero = mapper
             self._label_name = self.mapper.class_.__name__
+            
             
     def set_with_polymorphic(self, query, cls_or_mappers, 
                                 selectable, discriminator):
@@ -2642,7 +2647,8 @@ class _MapperEntity(_QueryEntity):
         if self.primary_entity:
             _instance = self.mapper._instance_processor(
                                 context, 
-                                (self.path_entity,), 
+                                self._path,
+                                self._reduced_path,
                                 adapter,
                                 only_load_props=query._only_load_props,
                                 refresh_state=context.refresh_state,
@@ -2652,7 +2658,8 @@ class _MapperEntity(_QueryEntity):
         else:
             _instance = self.mapper._instance_processor(
                                 context, 
-                                (self.path_entity,), 
+                                self._path,
+                                self._reduced_path,
                                 adapter,
                                 polymorphic_discriminator=
                                     self._polymorphic_discriminator)
@@ -2680,6 +2687,7 @@ class _MapperEntity(_QueryEntity):
                 self._with_polymorphic)
         else:
             poly_properties = self.mapper._polymorphic_properties
+            
         for value in poly_properties:
             if query._only_load_props and \
                     value.key not in query._only_load_props:
@@ -2687,7 +2695,8 @@ class _MapperEntity(_QueryEntity):
             value.setup(
                 context,
                 self,
-                (self.path_entity,),
+                self._path,
+                self._reduced_path,
                 adapter,
                 only_load_props=query._only_load_props,
                 column_collection=context.primary_columns
