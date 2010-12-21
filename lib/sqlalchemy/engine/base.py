@@ -675,14 +675,17 @@ class Compiled(object):
         """
 
         self.dialect = dialect
-        self.statement = statement
         self.bind = bind
-        self.can_execute = statement.supports_execution
+        if statement is not None:
+            self.statement = statement
+            self.can_execute = statement.supports_execution
+            self.string = self.process(self.statement)
 
+    @util.deprecated("0.7", ":class:`.Compiled` objects now compile "
+                        "within the constructor.")
     def compile(self):
         """Produce the internal string representation of this element."""
-
-        self.string = self.process(self.statement)
+        pass
 
     @property
     def sql_compiler(self):

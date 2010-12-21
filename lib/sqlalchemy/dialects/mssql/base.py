@@ -677,8 +677,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
     })
 
     def __init__(self, *args, **kwargs):
-        super(MSSQLCompiler, self).__init__(*args, **kwargs)
         self.tablealiases = {}
+        super(MSSQLCompiler, self).__init__(*args, **kwargs)
 
     def visit_now_func(self, fn, **kw):
         return "CURRENT_TIMESTAMP"

@@ -1451,10 +1451,10 @@ class ClauseElement(Visitable):
                 bind = self.bind
             else:
                 dialect = default.DefaultDialect()
-        compiler = self._compiler(dialect, bind=bind, **kw)
-        compiler.compile()
-        return compiler
-    
+        c= self._compiler(dialect, bind=bind, **kw)
+        #c.string = c.process(c.statement)
+        return c
+        
     def _compiler(self, dialect, **kw):
         """Return a compiler appropriate for this ClauseElement, given a
         Dialect."""

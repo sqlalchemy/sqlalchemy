@@ -188,8 +188,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         numeric_table = Table(*table_args)
-        gen = testing.db.dialect.ddl_compiler(
-                testing.db.dialect, numeric_table)
+        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, None)
 
         for col in numeric_table.c:
             index = int(col.name[1:])
@@ -277,8 +276,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
 
         charset_table = Table(*table_args)
-        gen = testing.db.dialect.ddl_compiler(testing.db.dialect,
-                charset_table)
+        gen = testing.db.dialect.ddl_compiler(testing.db.dialect, None)
 
         for col in charset_table.c:
             index = int(col.name[1:])
@@ -1471,5 +1469,6 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
 
 def colspec(c):
-    return testing.db.dialect.ddl_compiler(testing.db.dialect, c.table).get_column_specification(c)
+    return testing.db.dialect.ddl_compiler(
+                    testing.db.dialect, None).get_column_specification(c)
 

@@ -408,7 +408,7 @@ class DDLExecutionTest(TestBase):
         """test the escaping of % characters in the DDL construct."""
         
         default_from = testing.db.dialect.statement_compiler(
-                            testing.db.dialect, DDL("")).default_from()
+                            testing.db.dialect, None).default_from()
         
         eq_(
             testing.db.execute(
