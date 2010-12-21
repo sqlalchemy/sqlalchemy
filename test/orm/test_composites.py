@@ -1,7 +1,8 @@
 from test.lib.testing import assert_raises, assert_raises_message
 import sqlalchemy as sa
 from test.lib import testing
-from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
+from sqlalchemy import MetaData, Integer, String, ForeignKey, func, \
+    util, select
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, \
     class_mapper,  \
@@ -335,3 +336,79 @@ class DefaultsTest(_base.MappedTest):
         
         assert f1.foob == FBComposite(2, 5, 15, None)
     
+class MappedSelectTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('descriptions', metadata,
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+            Column('d1', String(20)),
+            Column('d2', String(20)),
+        )
+
+        Table('values', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('description_id', Integer, ForeignKey('descriptions.id'),
+                   nullable=False),
+            Column('v1', String(20)),
+            Column('v2', String(20)),
+        )
+    
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        class Descriptions(_base.BasicEntity):
+            pass
+
+        class Values(_base.BasicEntity):
+            pass
+
+        class CustomValues(_base.BasicEntity, list):
+            def __init__(self, *args):
+                self.extend(args)
+
+            def __composite_values__(self):
+                return self
+
+        desc_values = select(
+            [values, descriptions.c.d1, descriptions.c.d2],
+            descriptions.c.id == values.c.description_id
+        ).alias('descriptions_values') 
+
+        mapper(Descriptions, descriptions, properties={
+            'values': relationship(Values, lazy='dynamic'),
+            'custom_descriptions': composite(
+                                CustomValues,
+                                        descriptions.c.d1,
+                                        descriptions.c.d2),
+
+        })
+
+        mapper(Values, desc_values, properties={
+            'custom_values': composite(CustomValues, 
+                                            desc_values.c.v1,
+                                            desc_values.c.v2),
+
+        })
+        
+    @testing.resolve_artifact_names
+    def test_set_composite_attrs_via_selectable(self):
+        session = Session()
+        d = Descriptions(
+            custom_descriptions = CustomValues('Color', 'Number'),
+            values =[
+                Values(custom_values = CustomValues('Red', '5')),
+                Values(custom_values=CustomValues('Blue', '1'))
+            ]
+        )
+
+        session.add(d)
+        session.commit()
+        eq_(
+            testing.db.execute(descriptions.select()).fetchall(),
+            [(1, u'Color', u'Number')]
+        )
+        eq_(
+            testing.db.execute(values.select()).fetchall(),
+            [(1, 1, u'Red', u'5'), (2, 1, u'Blue', u'1')]
+        )
