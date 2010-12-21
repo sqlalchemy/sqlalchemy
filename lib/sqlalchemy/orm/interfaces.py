@@ -296,9 +296,9 @@ class StrategizedProperty(MapperProperty):
     """
     
     def _get_context_strategy(self, context, path):
-        cls = context.attributes.get(('loaderstrategy',
-                _reduce_path(path)), None)
-        if cls:
+        key = ('loaderstrategy', _reduce_path(path))
+        if key in context.attributes:
+            cls = context.attributes[key]
             try:
                 return self._strategies[cls]
             except KeyError:
@@ -546,9 +546,9 @@ def _reduce_path(path):
     
     """
     return tuple([i % 2 != 0 and 
-                    path[i] or 
-                    getattr(path[i], 'base_mapper', path[i]) 
-                    for i in xrange(len(path))])
+                    element or 
+                    getattr(element, 'base_mapper', element) 
+                    for i, element in enumerate(path)])
 
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.

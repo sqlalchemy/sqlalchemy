@@ -270,9 +270,10 @@ class OrderedSet(set):
     __str__ = __repr__
 
     def update(self, iterable):
-        add = self.add
-        for i in iterable:
-            add(i)
+        for e in iterable:
+            if e not in self:
+                self._list.append(e)
+                set.add(self, e)
         return self
 
     __ior__ = update

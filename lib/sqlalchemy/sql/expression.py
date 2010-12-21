@@ -1090,12 +1090,12 @@ def _clause_element_as_expr(element):
         return element
         
 def _literal_as_column(element):
-    if hasattr(element, '__clause_element__'):
-        return element.__clause_element__()
-    elif not isinstance(element, Visitable):
-        return literal_column(str(element))
-    else:
+    if isinstance(element, Visitable):
         return element
+    elif hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    else:
+        return literal_column(str(element))
 
 def _literal_as_binds(element, name=None, type_=None):
     if hasattr(element, '__clause_element__'):
@@ -3557,7 +3557,14 @@ class ColumnClause(_Immutable, ColumnElement):
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
         self.is_literal = is_literal
-
+    
+    @util.memoized_property
+    def _from_objects(self):
+        if self.table is not None:
+            return [self.table]
+        else:
+            return []
+        
     @util.memoized_property
     def description(self):
         # Py3K
@@ -3601,12 +3608,6 @@ class ColumnClause(_Immutable, ColumnElement):
         else:
             return super(ColumnClause, self).label(name)
 
-    @property
-    def _from_objects(self):
-        if self.table is not None:
-            return [self.table]
-        else:
-            return []
 
     def _bind_param(self, operator, obj):
         return _BindParamClause(self.name, obj,
@@ -3712,6 +3713,9 @@ class TableClause(_Immutable, FromClause):
 class _SelectBase(Executable, FromClause):
     """Base class for :class:`Select` and ``CompoundSelects``."""
 
+    _order_by_clause = ClauseList()
+    _group_by_clause = ClauseList()
+    
     def __init__(self,
             use_labels=False,
             for_update=False,
@@ -3733,9 +3737,11 @@ class _SelectBase(Executable, FromClause):
         self._limit = limit
         self._offset = offset
         self._bind = bind
-
-        self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
-        self._group_by_clause = ClauseList(*util.to_list(group_by) or [])
+        
+        if order_by is not None:
+            self._order_by_clause = ClauseList(*util.to_list(order_by))
+        if group_by is not None:
+            self._group_by_clause = ClauseList(*util.to_list(group_by))
     
     def as_scalar(self):
         """return a 'scalar' representation of this selectable, which can be
