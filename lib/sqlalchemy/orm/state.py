@@ -224,43 +224,35 @@ class InstanceState(object):
         dict_.pop(key, None)
         self.callables[key] = callable_
     
-    def expire_attributes(self, dict_, attribute_names, instance_dict=None):
-        """Expire all or a group of attributes.
-        
-        If all attributes are expired, the "expired" flag is set to True.
-        
-        """
-        # we would like to assert that 'self.key is not None' here, 
-        # but there are many cases where the mapper will expire
-        # a newly persisted instance within the flush, before the
-        # key is assigned, and even cases where the attribute refresh
-        # occurs fully, within the flush(), before this key is assigned.
-        # the key is assigned late within the flush() to assist in
-        # "key switch" bookkeeping scenarios.
-        
-        if attribute_names is None:
-            attribute_names = self.manager.keys()
-            self.expired = True
-            if self.modified:
-                if not instance_dict:
-                    instance_dict = self._instance_dict()
-                    if instance_dict:
-                        instance_dict._modified.discard(self)
-                else:
-                    instance_dict._modified.discard(self)
+    def expire(self, dict_, modified_set):
+        self.expired = True
+        if self.modified:
+            modified_set.discard(self)
 
-            self.modified = False
-            filter_deferred = True
-        else:
-            filter_deferred = False
+        self.modified = False
 
+        pending = self.__dict__.get('pending', None)
+        mutable_dict = self.mutable_dict
+        self.committed_state.clear()
+        if mutable_dict:
+            mutable_dict.clear()
+        if pending:
+            pending.clear()
+        
+        for key in self.manager:
+            impl = self.manager[key].impl
+            if impl.accepts_scalar_loader and \
+                (impl.expire_missing or key in dict_):
+                self.callables[key] = self
+            dict_.pop(key, None)
+        
+    def expire_attributes(self, dict_, attribute_names):
         pending = self.__dict__.get('pending', None)
         mutable_dict = self.mutable_dict
         
         for key in attribute_names:
             impl = self.manager[key].impl
-            if impl.accepts_scalar_loader and \
-                (not filter_deferred or impl.expire_missing or key in dict_):
+            if impl.accepts_scalar_loader:
                 self.callables[key] = self
             dict_.pop(key, None)
             

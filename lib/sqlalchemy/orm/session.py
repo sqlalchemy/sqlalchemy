@@ -307,16 +307,14 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            _expire_state(s, s.dict, None,
-                          instance_dict=self.session.identity_map)
+            s.expire(s.dict, self.session.identity_map._modified)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
 
         if not self.nested and self.session.expire_on_commit:
             for s in self.session.identity_map.all_states():
-                _expire_state(s, s.dict, None,
-                              instance_dict=self.session.identity_map)
+                s.expire(s.dict, self.session.identity_map._modified)
 
     def _connection_for_bind(self, bind):
         self._assert_is_active()
@@ -937,7 +935,7 @@ class Session(object):
 
         """
         for state in self.identity_map.all_states():
-            _expire_state(state, state.dict, None, instance_dict=self.identity_map)
+            state.expire(state.dict, self.identity_map._modified)
 
     def expire(self, instance, attribute_names=None):
         """Expire the attributes on an instance.
@@ -975,9 +973,7 @@ class Session(object):
     def _expire_state(self, state, attribute_names):
         self._validate_persistent(state)
         if attribute_names:
-            _expire_state(state, state.dict, 
-                                attribute_names=attribute_names, 
-                                instance_dict=self.identity_map)
+            state.expire_attributes(state.dict, attribute_names)
         else:
             # pre-fetch the full cascade since the expire is going to
             # remove associations
@@ -991,8 +987,7 @@ class Session(object):
         """Expire a state if persistent, else expunge if pending"""
         
         if state.key:
-            _expire_state(state, state.dict, None, 
-                                instance_dict=self.identity_map)
+            state.expire(state.dict, self.identity_map._modified)
         elif state in self._new:
             self._new.pop(state)
             state.detach()
@@ -1603,8 +1598,6 @@ class Session(object):
 
         return util.IdentitySet(self._new.values())
 
-_expire_state = state.InstanceState.expire_attributes
-    
 _sessions = weakref.WeakValueDictionary()
 
 def make_transient(instance):

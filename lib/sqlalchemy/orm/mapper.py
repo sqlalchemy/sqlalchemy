@@ -1891,7 +1891,7 @@ class Mapper(object):
                     [p.key for p in mapper._readonly_props]
                 )
                 if readonly:
-                    sessionlib._expire_state(state, state.dict, readonly)
+                    state.expire_attributes(state.dict, readonly)
 
             # if eager_defaults option is enabled,
             # refresh whatever has been expired.
@@ -1921,7 +1921,7 @@ class Mapper(object):
                 self._set_state_attr_by_column(state, dict_, c, params[c.key])
 
         if postfetch_cols:
-            sessionlib._expire_state(state, state.dict, 
+            state.expire_attributes(state.dict, 
                                 [self._columntoproperty[c].key 
                                 for c in postfetch_cols]
                             )
