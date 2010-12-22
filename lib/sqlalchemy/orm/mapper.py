@@ -400,6 +400,7 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
+        event.listen(manager, 'on_first_init', _event_on_first_init, raw=True)
         event.listen(manager, 'on_init', _event_on_init, raw=True)
         event.listen(manager, 'on_resurrect', _event_on_resurrect, raw=True)
         
@@ -2455,17 +2456,22 @@ def _event_on_load(state):
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     if instrumenting_mapper._reconstructor:
         instrumenting_mapper._reconstructor(state.obj())
-        
-def _event_on_init(state, args, kwargs):
-    """Trigger mapper compilation and run init_instance hooks."""
 
-    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+def _event_on_first_init(manager, cls):
+    """Trigger mapper compilation."""
+
+    instrumenting_mapper = manager.info.get(_INSTRUMENTOR)
     if instrumenting_mapper:
         if _new_mappers:
             configure_mappers()
-        
-        if instrumenting_mapper._set_polymorphic_identity:
-            instrumenting_mapper._set_polymorphic_identity(state)
+    
+def _event_on_init(state, args, kwargs):
+    """Run init_instance hooks."""
+
+    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    if instrumenting_mapper and \
+        instrumenting_mapper._set_polymorphic_identity:
+        instrumenting_mapper._set_polymorphic_identity(state)
 
 def _event_on_resurrect(state):
     # re-populate the primary key elements

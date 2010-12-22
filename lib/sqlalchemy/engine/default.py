@@ -15,7 +15,8 @@ as the base class for their own corresponding classes.
 import re, random
 from sqlalchemy.engine import base, reflection
 from sqlalchemy.sql import compiler, expression
-from sqlalchemy import exc, types as sqltypes, util, pool
+from sqlalchemy import exc, types as sqltypes, util, pool, processors
+import codecs
 import weakref
 
 AUTOCOMMIT_REGEXP = re.compile(
@@ -142,6 +143,12 @@ class DefaultDialect(base.Dialect):
                                             self, 
                                             'description_encoding', 
                                             encoding)
+        
+        self._description_decoder = processors.to_unicode_processor_factory(
+                                            self.description_encoding
+                                    )
+        self._encoder = codecs.getencoder(self.encoding)
+        self._decoder = processors.to_unicode_processor_factory(self.encoding)
     
     @util.memoized_property
     def _type_memos(self):
@@ -345,7 +352,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         if not dialect.supports_unicode_statements:
             self.unicode_statement = unicode(compiled)
-            self.statement = self.unicode_statement.encode(self.dialect.encoding)
+            self.statement = dialect._encoder(self.unicode_statement)[0]
         else:
             self.statement = self.unicode_statement = unicode(compiled)
             
@@ -434,13 +441,12 @@ class DefaultExecutionContext(base.ExecutionContext):
             for compiled_params in self.compiled_parameters:
                 param = {}
                 if encode:
-                    encoding = dialect.encoding
                     for key in compiled_params:
                         if key in processors:
-                            param[key.encode(encoding)] = \
+                            param[dialect._encoder(key)[0]] = \
                                         processors[key](compiled_params[key])
                         else:
-                            param[key.encode(encoding)] = compiled_params[key]
+                            param[dialect._encoder(key)[0]] = compiled_params[key]
                 else:
                     for key in compiled_params:
                         if key in processors:
@@ -477,7 +483,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.parameters = parameters
             else:
                 self.parameters= [
-                            dict((k.encode(dialect.encoding), d[k]) for k in d)
+                            dict((dialect._encoder(k)[0], d[k]) for k in d)
                             for d in parameters
                         ] or [{}]
         else:
@@ -488,7 +494,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
         if not dialect.supports_unicode_statements and isinstance(statement, unicode):
             self.unicode_statement = statement
-            self.statement = statement.encode(self.dialect.encoding)
+            self.statement = dialect._encoder(statement)[0]
         else:
             self.statement = self.unicode_statement = statement
             
@@ -538,7 +544,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         conn = self.root_connection
         if isinstance(stmt, unicode) and \
             not self.dialect.supports_unicode_statements:
-            stmt = stmt.encode(self.dialect.encoding)
+            stmt = self.dialect._encoder(stmt)[0]
 
         if self.dialect.positional:
             default_params = self.dialect.execute_sequence_format()
@@ -674,7 +680,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 if dbtype is not None and (not exclude_types or dbtype not in exclude_types):
                     if translate:
                         key = translate.get(key, key)
-                    inputsizes[key.encode(self.dialect.encoding)] = dbtype
+                    inputsizes[self.dialect._encoder(key)[0]] = dbtype
             try:
                 self.cursor.setinputsizes(**inputsizes)
             except Exception, e:

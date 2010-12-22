@@ -324,7 +324,7 @@ class SQLCompiler(engine.Compiled):
         return ""
 
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
-        return "(" + self.process(grouping.element, **kwargs) + ")"
+        return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
     def visit_label(self, label, result_map=None, 
                             within_label_clause=False, 
@@ -343,14 +343,14 @@ class SQLCompiler(engine.Compiled):
                         (label.name, (label, label.element, labelname),\
                         label.type)
 
-            return self.process(label.element, 
+            return label.element._compiler_dispatch(self, 
                                     within_columns_clause=True,
                                     within_label_clause=True, 
                                     **kw) + \
                         OPERATORS[operators.as_] + \
                         self.preparer.format_label(label, labelname)
         else:
-            return self.process(label.element, 
+            return label.element._compiler_dispatch(self, 
                                     within_columns_clause=False, 
                                     **kw)
     
@@ -359,33 +359,35 @@ class SQLCompiler(engine.Compiled):
         if name is None:
             raise exc.CompileError("Cannot compile Column object until "
                                    "it's 'name' is assigned.")
-            
-        if not column.is_literal and isinstance(name, sql._generated_label):
+        
+        is_literal = column.is_literal
+        if not is_literal and isinstance(name, sql._generated_label):
             name = self._truncated_identifier("colident", name)
 
         if result_map is not None:
             result_map[name.lower()] = (name, (column, ), column.type)
         
-        if column.is_literal:
+        if is_literal:
             name = self.escape_literal_column(name)
         else:
             name = self.preparer.quote(name, column.quote)
-
-        if column.table is None or not column.table.named_with_column:
+        
+        table = column.table
+        if table is None or not table.named_with_column:
             return name
         else:
-            if column.table.schema:
+            if table.schema:
                 schema_prefix = self.preparer.quote_schema(
-                                    column.table.schema, 
-                                    column.table.quote_schema) + '.'
+                                    table.schema, 
+                                    table.quote_schema) + '.'
             else:
                 schema_prefix = ''
-            tablename = column.table.name
+            tablename = table.name
             if isinstance(tablename, sql._generated_label):
                 tablename = self._truncated_identifier("alias", tablename)
             
             return schema_prefix + \
-                    self.preparer.quote(tablename, column.table.quote) + \
+                    self.preparer.quote(tablename, table.quote) + \
                     "." + name
 
     def escape_literal_column(self, text):
@@ -435,31 +437,33 @@ class SQLCompiler(engine.Compiled):
             sep = OPERATORS[clauselist.operator]
         return sep.join(
                     s for s in 
-                    (self.process(c, **kwargs) 
+                    (c._compiler_dispatch(self, **kwargs) 
                     for c in clauselist.clauses)
                     if s is not None)
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "
         if clause.value is not None:
-            x += self.process(clause.value, **kwargs) + " "
+            x += clause.value._compiler_dispatch(self, **kwargs) + " "
         for cond, result in clause.whens:
-            x += "WHEN " + self.process(cond, **kwargs) + \
-                            " THEN " + self.process(result, **kwargs) + " "
+            x += "WHEN " + cond._compiler_dispatch(self, **kwargs) + \
+                            " THEN " + \
+                            result._compiler_dispatch(self, **kwargs) + " "
         if clause.else_ is not None:
-            x += "ELSE " + self.process(clause.else_, **kwargs) + " "
+            x += "ELSE " + clause.else_._compiler_dispatch(self, **kwargs) + \
+                                        " "
         x += "END"
         return x
 
     def visit_cast(self, cast, **kwargs):
         return "CAST(%s AS %s)" % \
-                    (self.process(cast.clause, **kwargs),
-                    self.process(cast.typeclause, **kwargs))
+                    (cast.clause._compiler_dispatch(self, **kwargs),
+                    cast.typeclause._compiler_dispatch(self, **kwargs))
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)
         return "EXTRACT(%s FROM %s)" % (field, 
-                            self.process(extract.expr, **kwargs))
+                            extract.expr._compiler_dispatch(self, **kwargs))
 
     def visit_function(self, func, result_map=None, **kwargs):
         if result_map is not None:
@@ -474,7 +478,7 @@ class SQLCompiler(engine.Compiled):
                             {'expr':self.function_argspec(func, **kwargs)}
 
     def function_argspec(self, func, **kwargs):
-        return self.process(func.clause_expr, **kwargs)
+        return func.clause_expr._compiler_dispatch(self, **kwargs)
 
     def visit_compound_select(self, cs, asfrom=False, 
                             parens=True, compound_index=1, **kwargs):
@@ -484,12 +488,14 @@ class SQLCompiler(engine.Compiled):
         keyword = self.compound_keywords.get(cs.keyword)
         
         text = (" " + keyword + " ").join(
-                            (self.process(c, asfrom=asfrom, parens=False, 
+                            (c._compiler_dispatch(self, 
+                                            asfrom=asfrom, parens=False, 
                                             compound_index=i, **kwargs)
                             for i, c in enumerate(cs.selects))
                         )
                         
-        group_by = self.process(cs._group_by_clause, asfrom=asfrom, **kwargs)
+        group_by = cs._group_by_clause._compiler_dispatch(
+                                self, asfrom=asfrom, **kwargs)
         if group_by:
             text += " GROUP BY " + group_by
 
@@ -504,7 +510,7 @@ class SQLCompiler(engine.Compiled):
             return text
 
     def visit_unary(self, unary, **kw):
-        s = self.process(unary.element, **kw)
+        s = unary.element._compiler_dispatch(self, **kw)
         if unary.operator:
             s = OPERATORS[unary.operator] + s
         if unary.modifier:
@@ -520,17 +526,18 @@ class SQLCompiler(engine.Compiled):
             
         return self._operator_dispatch(binary.operator,
                     binary,
-                    lambda opstr: self.process(binary.left, **kw) + 
+                    lambda opstr: binary.left._compiler_dispatch(self, **kw) + 
                                         opstr + 
-                                    self.process(binary.right, **kw),
+                                    binary.right._compiler_dispatch(
+                                            self, **kw),
                     **kw
         )
 
     def visit_like_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s LIKE %s' % (
-                                    self.process(binary.left, **kw), 
-                                    self.process(binary.right, **kw)) \
+                            binary.left._compiler_dispatch(self, **kw), 
+                            binary.right._compiler_dispatch(self, **kw)) \
             + (escape and 
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
@@ -538,8 +545,8 @@ class SQLCompiler(engine.Compiled):
     def visit_notlike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return '%s NOT LIKE %s' % (
-                                    self.process(binary.left, **kw), 
-                                    self.process(binary.right, **kw)) \
+                            binary.left._compiler_dispatch(self, **kw), 
+                            binary.right._compiler_dispatch(self, **kw)) \
             + (escape and 
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
@@ -547,8 +554,8 @@ class SQLCompiler(engine.Compiled):
     def visit_ilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) LIKE lower(%s)' % (
-                                        self.process(binary.left, **kw), 
-                                        self.process(binary.right, **kw)) \
+                            binary.left._compiler_dispatch(self, **kw), 
+                            binary.right._compiler_dispatch(self, **kw)) \
             + (escape and 
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
@@ -556,8 +563,8 @@ class SQLCompiler(engine.Compiled):
     def visit_notilike_op(self, binary, **kw):
         escape = binary.modifiers.get("escape", None)
         return 'lower(%s) NOT LIKE lower(%s)' % (
-                                    self.process(binary.left, **kw), 
-                                    self.process(binary.right, **kw)) \
+                            binary.left._compiler_dispatch(self, **kw), 
+                            binary.right._compiler_dispatch(self, **kw)) \
             + (escape and 
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
@@ -678,7 +685,8 @@ class SQLCompiler(engine.Compiled):
     def bindparam_string(self, name):
         if self.positional:
             self.positiontup.append(name)
-            return self.bindtemplate % {'name':name, 'position':len(self.positiontup)}
+            return self.bindtemplate % {
+                        'name':name, 'position':len(self.positiontup)}
         else:
             return self.bindtemplate % {'name':name}
 
@@ -693,7 +701,8 @@ class SQLCompiler(engine.Compiled):
         if ashint:
             return self.preparer.format_alias(alias, alias_name)
         elif asfrom:
-            ret = self.process(alias.original, asfrom=True, **kwargs) + \
+            ret = alias.original._compiler_dispatch(self, 
+                                asfrom=True, **kwargs) + \
                                 " AS " + \
                     self.preparer.format_alias(alias, alias_name)
                     
@@ -704,7 +713,7 @@ class SQLCompiler(engine.Compiled):
             
             return ret
         else:
-            return self.process(alias.original, **kwargs)
+            return alias.original._compiler_dispatch(self, **kwargs)
 
     def label_select_column(self, select, column, asfrom):
         """label columns present in a select()."""
@@ -712,10 +721,10 @@ class SQLCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
 
-        if select is not None and select.use_labels and column._label:
+        elif select is not None and select.use_labels and column._label:
             return _CompileLabel(column, column._label)
 
-        if \
+        elif \
             asfrom and \
             isinstance(column, sql.ColumnClause) and \
             not column.is_literal and \
@@ -765,10 +774,10 @@ class SQLCompiler(engine.Compiled):
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
             c for c in [
-                self.process(
-                    self.label_select_column(select, co, asfrom=asfrom), 
-                    within_columns_clause=True,
-                    **column_clause_args) 
+                self.label_select_column(select, co, asfrom=asfrom).\
+                    _compiler_dispatch(self,
+                        within_columns_clause=True,
+                        **column_clause_args) 
                 for co in util.unique_list(select.inner_columns)
             ]
             if c is not None
@@ -779,7 +788,9 @@ class SQLCompiler(engine.Compiled):
         if select._hints:
             byfrom = dict([
                             (from_, hinttext % {
-                                'name':self.process(from_, ashint=True)}) 
+                                'name':from_._compiler_dispatch(
+                                    self, ashint=True)
+                            }) 
                             for (from_, dialect), hinttext in 
                             select._hints.iteritems() 
                             if dialect in ('*', self.dialect.name)
@@ -790,7 +801,7 @@ class SQLCompiler(engine.Compiled):
                 
         if select._prefixes:
             text += " ".join(
-                            self.process(x, **kwargs) 
+                            x._compiler_dispatch(self, **kwargs) 
                             for x in select._prefixes) + " "
         text += self.get_select_precolumns(select)
         text += ', '.join(inner_columns)
@@ -799,29 +810,30 @@ class SQLCompiler(engine.Compiled):
             text += " \nFROM "
             
             if select._hints:
-                text += ', '.join([self.process(f, 
+                text += ', '.join([f._compiler_dispatch(self, 
                                     asfrom=True, fromhints=byfrom, 
                                     **kwargs) 
                                 for f in froms])
             else:
-                text += ', '.join([self.process(f, 
+                text += ', '.join([f._compiler_dispatch(self, 
                                     asfrom=True, **kwargs) 
                                 for f in froms])
         else:
             text += self.default_from()
 
         if select._whereclause is not None:
-            t = self.process(select._whereclause, **kwargs)
+            t = select._whereclause._compiler_dispatch(self, **kwargs)
             if t:
                 text += " \nWHERE " + t
 
         if select._group_by_clause.clauses:
-            group_by = self.process(select._group_by_clause, **kwargs)
+            group_by = select._group_by_clause._compiler_dispatch(
+                                        self, **kwargs)
             if group_by:
                 text += " GROUP BY " + group_by
 
         if select._having is not None:
-            t = self.process(select._having, **kwargs)
+            t = select._having._compiler_dispatch(self, **kwargs)
             if t:
                 text += " \nHAVING " + t
 
@@ -847,7 +859,7 @@ class SQLCompiler(engine.Compiled):
         return select._distinct and "DISTINCT " or ""
 
     def order_by_clause(self, select, **kw):
-        order_by = self.process(select._order_by_clause, **kw)
+        order_by = select._order_by_clause._compiler_dispatch(self, **kw)
         if order_by:
             return " ORDER BY " + order_by
         else:
@@ -888,10 +900,13 @@ class SQLCompiler(engine.Compiled):
             return ""
 
     def visit_join(self, join, asfrom=False, **kwargs):
-        return (self.process(join.left, asfrom=True, **kwargs) + \
-                (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + \
-            self.process(join.right, asfrom=True, **kwargs) + " ON " + \
-            self.process(join.onclause, **kwargs))
+        return (
+            join.left._compiler_dispatch(self, asfrom=True, **kwargs) + 
+            (join.isouter and " LEFT OUTER JOIN " or " JOIN ") + 
+            join.right._compiler_dispatch(self, asfrom=True, **kwargs) + 
+            " ON " + 
+            join.onclause._compiler_dispatch(self, **kwargs)
+        )
 
     def visit_sequence(self, seq):
         return None

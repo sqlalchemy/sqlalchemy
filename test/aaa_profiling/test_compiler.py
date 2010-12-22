@@ -1,6 +1,6 @@
 from sqlalchemy import *
 from test.lib import *
-
+from sqlalchemy.engine import default
 
 class CompileTest(TestBase, AssertsExecutionResults):
     @classmethod
@@ -29,23 +29,25 @@ class CompileTest(TestBase, AssertsExecutionResults):
         from sqlalchemy import types
         for t in types._type_map.values():
             t._type_affinity
-            
-    @profiling.function_call_count(69, {'2.4': 44, 
+        
+        cls.dialect = default.DefaultDialect()
+        
+    @profiling.function_call_count(58, {'2.4': 44, 
                                             '3.0':77, '3.1':77})
     def test_insert(self):
-        t1.insert().compile()
+        t1.insert().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(69, {'2.4': 45})
+    @profiling.function_call_count(49, {'2.4': 45})
     def test_update(self):
-        t1.update().compile()
+        t1.update().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(129, {'2.4': 81, '3':132})
+    @profiling.function_call_count(110, {'2.4': 81, '3':132})
     def test_update_whereclause(self):
-        t1.update().where(t1.c.c2==12).compile()
+        t1.update().where(t1.c.c2==12).compile(dialect=self.dialect)
 
-    @profiling.function_call_count(178, versions={'2.4':105, 
+    @profiling.function_call_count(148, versions={'2.4':105, 
                                                 '3.0':208, '3.1':208})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
-        s.compile()
+        s.compile(dialect=self.dialect)
 

@@ -96,6 +96,11 @@ class InstanceEvents(event.Events):
     @classmethod
     def remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instance events not yet implemented")
+
+    def on_first_init(self, manager, cls):
+        """Called when the first instance of a particular mapping is called.
+
+        """
         
     def on_init(self, target, args, kwargs):
         """Receive an instance when it's constructor is called.

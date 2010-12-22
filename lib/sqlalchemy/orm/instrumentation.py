@@ -166,11 +166,13 @@ class ClassManager(dict):
             self.uninstall_member('__init__')
             self.new_init = None
     
-    def _create_instance_state(self, instance):
+    @util.memoized_property
+    def _state_constructor(self):
+        self.dispatch.on_first_init(self, self.class_)
         if self.mutable_attributes:
-            return state.MutableAttrInstanceState(instance, self)
+            return state.MutableAttrInstanceState
         else:
-            return state.InstanceState(instance, self)
+            return state.InstanceState
         
     def manage(self):
         """Mark this instance as the manager for its class."""
@@ -290,12 +292,12 @@ class ClassManager(dict):
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
         setattr(instance, self.STATE_ATTR, 
-                    state or self._create_instance_state(instance))
+                    state or self._state_constructor(instance, self))
         return instance
 
     def setup_instance(self, instance, state=None):
         setattr(instance, self.STATE_ATTR, 
-                    state or self._create_instance_state(instance))
+                    state or self._state_constructor(instance, self))
     
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)
@@ -318,7 +320,7 @@ class ClassManager(dict):
             return self._subclass_manager(instance.__class__).\
                         _new_state_if_none(instance)
         else:
-            state = self._create_instance_state(instance)
+            state = self._state_constructor(instance, self)
             setattr(instance, self.STATE_ATTR, state)
             return state
     
@@ -421,7 +423,7 @@ class _ClassInstrumentationAdapter(ClassManager):
         self._adapted.initialize_instance_dict(self.class_, instance)
         
         if state is None:
-            state = self._create_instance_state(instance)
+            state = self._state_constructor(instance, self)
             
         # the given instance is assumed to have no state
         self._adapted.install_state(self.class_, instance, state)

@@ -52,11 +52,7 @@ class InstanceState(object):
         return bool(self.key)
         
     def detach(self):
-        if self.session_id:
-            try:
-                del self.session_id
-            except AttributeError:
-                pass
+        self.session_id = None
 
     def dispose(self):
         self.detach()
@@ -70,15 +66,8 @@ class InstanceState(object):
             except AssertionError:
                 pass
                 
-        # remove possible cycles
-        self.callables.clear()
-        
-        # inlining of self.dispose()
-        if self.session_id:
-            try:
-                del self.session_id
-            except AttributeError:
-                pass
+        self.callables = {}
+        self.session_id = None
         del self.obj
         
     def obj(self):
@@ -102,14 +91,9 @@ class InstanceState(object):
 
         manager.dispatch.on_init(self, args, kwargs)
             
-        # LESSTHANIDEAL:
-        # adjust for the case where the InstanceState was created before
-        # mapper compilation, and this actually needs to be a MutableAttrInstanceState
-        if manager.mutable_attributes and self.__class__ is not MutableAttrInstanceState:
-            self.__class__ = MutableAttrInstanceState
-            self.obj = weakref.ref(self.obj(), self._cleanup)
-            self.mutable_dict = {}
-            
+        #if manager.mutable_attributes:
+        #    assert self.__class__ is MutableAttrInstanceState
+
         try:
             return manager.original_init(*mixed[1:], **kwargs)
         except:

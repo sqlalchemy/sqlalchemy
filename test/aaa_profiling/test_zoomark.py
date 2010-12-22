@@ -361,7 +361,7 @@ class ZooMarkTest(TestBase):
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
-    @profiling.function_call_count(5045, {'2.6':5371, '2.4': 3650})
+    @profiling.function_call_count(5045, {'2.6':5099, '2.4': 3650})
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
@@ -369,29 +369,31 @@ class ZooMarkTest(TestBase):
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(3886, {'2.4': 2158})
+    @profiling.function_call_count(3596, {'2.4': 2158})
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 
-    @profiling.function_call_count(13341, {'2.4': 7963, '2.6+cextension'
+    @profiling.function_call_count(11624, {'2.4': 7963, '2.6+cextension'
                                    : 12447, '2.7+cextension': 12447},
                                    variance=0.10)
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1311, {'2.4': 904, '2.6+cextension'
-                                   : 1226, '2.7+cextension': 1226},
+    @profiling.function_call_count(1059, {'2.4': 904, '2.6+cextension'
+                                   : 1027, '2.7+cextension': 1027},
                                    variance=0.10)
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 
-    @profiling.function_call_count(1904, {'2.4': 1118})
+    @profiling.function_call_count(1788, {'2.4': 1118})
     def test_profile_6_editing(self):
         self.test_baseline_6_editing()
 
-    @profiling.function_call_count(2598, {'2.4': 1673, 
-                                            '2.7+cextension':2431, 
-                                            '2.6+cextension': 2502})
+    @profiling.function_call_count(2252, {'2.4': 1673, 
+                                            '2.6':2412,
+                                            '2.7':2412,
+                                            '2.7+cextension':2252, 
+                                            '2.6+cextension': 2252})
     def test_profile_7_multiview(self):
         self.test_baseline_7_multiview()
 

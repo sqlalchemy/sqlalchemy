@@ -635,7 +635,8 @@ class Session(object):
 
         self.transaction.prepare()
 
-    def connection(self, mapper=None, clause=None):
+    def connection(self, mapper=None, clause=None, 
+                        close_with_result=False, **kw):
         """Return the active Connection.
 
         Retrieves the ``Connection`` managing the current transaction.  Any
@@ -657,7 +658,8 @@ class Session(object):
           Optional, any ``ClauseElement``
 
         """
-        return self._connection_for_bind(self.get_bind(mapper, clause))
+        return self._connection_for_bind(self.get_bind(mapper, clause, **kw), 
+                                        close_with_result=close_with_result)
 
     def _connection_for_bind(self, engine, **kwargs):
         if self.transaction is not None:

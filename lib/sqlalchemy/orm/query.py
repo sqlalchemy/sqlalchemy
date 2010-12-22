@@ -1721,9 +1721,10 @@ class Query(object):
         return self._execute_and_instances(context)
 
     def _execute_and_instances(self, querycontext):
-        result = self.session.execute(
-                        querycontext.statement, params=self._params,
-                        mapper=self._mapper_zero_or_none())
+        result = self.session.connection(
+                        mapper = self._mapper_zero_or_none(),
+                        clause = querycontext.statement,
+                        close_with_result=True).execute(querycontext.statement, self._params)
         return self.instances(result, querycontext)
     
     @property
@@ -1795,7 +1796,7 @@ class Query(object):
 
         if filtered:
             if single_entity:
-                filter = lambda x: util.unique_list(x, util.IdentitySet)
+                filter = lambda x: util.unique_list(x, id)
             else:
                 filter = util.unique_list
         else:

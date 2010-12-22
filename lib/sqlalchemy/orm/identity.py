@@ -151,7 +151,9 @@ class WeakInstanceDict(IdentityMap):
         self._remove_mutex.acquire()
         try:
             if dict.pop(self, state.key) is not state:
-                raise AssertionError("State %s is not present in this identity map" % state)
+                raise AssertionError(
+                        "State %s is not present in this "
+                        "identity map" % state)
         finally:
             self._remove_mutex.release()
             
@@ -245,15 +247,20 @@ class StrongInstanceDict(IdentityMap):
 
     def add(self, state):
         if state.key in self:
-            if attributes.instance_state(dict.__getitem__(self, state.key)) is not state:
-                raise AssertionError("A conflicting state is already present in the identity map for key %r" % (state.key, ))
+            if attributes.instance_state(dict.__getitem__(self,
+                    state.key)) is not state:
+                raise AssertionError('A conflicting state is already '
+                        'present in the identity map for key %r'
+                        % (state.key, ))
         else:
             dict.__setitem__(self, state.key, state.obj())
             self._manage_incoming_state(state)
         
     def remove(self, state):
-        if attributes.instance_state(dict.pop(self, state.key)) is not state:
-            raise AssertionError("State %s is not present in this identity map" % state)
+        if attributes.instance_state(dict.pop(self, state.key)) \
+            is not state:
+            raise AssertionError('State %s is not present in this '
+                                 'identity map' % state)
         self._manage_removed_state(state)
     
     def discard(self, state):

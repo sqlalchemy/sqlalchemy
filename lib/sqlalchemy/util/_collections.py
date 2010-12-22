@@ -583,9 +583,16 @@ column_dict = dict
 ordered_column_set = OrderedSet
 populate_column_dict = PopulateDict
 
-def unique_list(seq, compare_with=set):
-    seen = compare_with()
-    return [x for x in seq if x not in seen and not seen.add(x)]    
+def unique_list(seq, hashfunc=None):
+    seen = {}
+    if not hashfunc:
+        return [x for x in seq 
+                if x not in seen 
+                and not seen.__setitem__(x, True)]
+    else:
+        return [x for x in seq 
+                if hashfunc(x) not in seen 
+                and not seen.__setitem__(hashfunc(x), True)]
 
 class UniqueAppender(object):
     """Appends items to a collection ensuring uniqueness.
@@ -596,19 +603,19 @@ class UniqueAppender(object):
 
     def __init__(self, data, via=None):
         self.data = data
-        self._unique = IdentitySet()
+        self._unique = {}
         if via:
             self._data_appender = getattr(data, via)
         elif hasattr(data, 'append'):
             self._data_appender = data.append
         elif hasattr(data, 'add'):
-            # TODO: we think its a set here.  bypass unneeded uniquing logic ?
             self._data_appender = data.add
 
     def append(self, item):
-        if item not in self._unique:
+        id_ = id(item)
+        if id_ not in self._unique:
             self._data_appender(item)
-            self._unique.add(item)
+            self._unique[id_] = True
 
     def __iter__(self):
         return iter(self.data)

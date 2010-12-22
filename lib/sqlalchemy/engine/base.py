@@ -25,6 +25,7 @@ from itertools import izip
 from sqlalchemy import exc, schema, util, types, log, interfaces, \
     event, events
 from sqlalchemy.sql import expression
+from sqlalchemy import processors
 
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
@@ -2225,7 +2226,7 @@ class ResultMetaData(object):
             coltype = rec[1]
             
             if dialect.description_encoding:
-                colname = colname.decode(dialect.description_encoding)
+                colname = dialect._description_decoder(colname)
 
             if context.result_map:
                 try:
