@@ -118,12 +118,14 @@ def _get_cache_parameters(query):
     region, namespace, cache_key = query._cache_parameters
     
     namespace = _namespace_from_query(namespace, query)
-
+    
     if cache_key is None:
         # cache key - the value arguments from this query's parameters.
         args = _params_from_query(query)
         cache_key = " ".join([str(x) for x in args])
-
+    
+    assert cache_key is not None, "Cache key was None !"
+    
     # get cache
     cache = query.cache_manager.get_cache_region(namespace, region)
 
@@ -253,14 +255,17 @@ def _params_from_query(query):
     """
     v = []
     def visit_bindparam(bind):
-        value = query._params.get(bind.key, bind.value)
         
-        # lazyloader may dig a callable in here, intended
-        # to late-evaluate params after autoflush is called.
-        # convert to a scalar value.
-        if callable(value):
-            value = value()
-            
+        if bind.key in query._params:
+            value = query._params[bind.key]    
+        elif bind.callable:
+            # lazyloader may dig a callable in here, intended
+            # to late-evaluate params after autoflush is called.
+            # convert to a scalar value.
+            value = bind.callable()
+        else:
+            value = bind.value
+        
         v.append(value)
     if query._criterion is not None:
         visitors.traverse(query._criterion, {}, {'bindparam':visit_bindparam})
