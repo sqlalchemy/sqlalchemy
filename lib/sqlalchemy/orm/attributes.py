@@ -1247,3 +1247,15 @@ def del_attribute(instance, key):
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.manager[key].impl.delete(state, dict_)
 
+def flag_modified(instance, key):
+    """Mark an attribute on an instance as 'modified'.
+    
+    This sets the 'modified' flag on the instance and 
+    establishes an unconditional change event for the given attribute.
+    
+    """
+    state, dict_ = instance_state(instance), instance_dict(instance)
+    impl = state.manager[key].impl
+    state.modified_event(dict_, impl, NO_VALUE)
+    
+    

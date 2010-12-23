@@ -1123,7 +1123,40 @@ class HistoryTest(_base.ORMTest):
         attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [{'foo':'old'}], ()))
 
+    def test_flag_modified(self):
+        class Foo(_base.BasicEntity):
+            pass
 
+        instrumentation.register_class(Foo)
+        attributes.register_attribute(Foo, 'someattr', uselist=False, useobject=False)
+
+        f = Foo()
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), (), ()))
+
+        f.someattr = {'a':'b'}
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([{'a':'b'},], (), ()))
+
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [{'a':'b'},], ()))
+        
+        f.someattr['a'] = 'c'
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [{'a':'c'},], ()))
+        attributes.flag_modified(f, 'someattr')
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([{'a':'c'},], (), ()))
+        
+        f.someattr = ['a']
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([['a']], (), ()))
+        attributes.instance_state(f).commit_all(attributes.instance_dict(f))
+
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [['a']], ()))
+        f.someattr[0] = 'b'
+        f.someattr.append('c')
+
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [['b', 'c']], ()))
+        attributes.flag_modified(f, 'someattr')
+
+        eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([['b', 'c']], (), ()))
+        
     def test_use_object(self):
         class Foo(_base.BasicEntity):
             pass
