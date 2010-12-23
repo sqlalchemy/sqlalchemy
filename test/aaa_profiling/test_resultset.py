@@ -33,7 +33,10 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
 
-    @profiling.function_call_count(14416, versions={'2.4': 13214,
+    @profiling.function_call_count(versions={
+                                    '2.4': 13214,
+                                    '2.6':14416,
+                                    '2.7':14416,
                                    '2.6+cextension': 345,
                                    '2.7+cextension':345})
     def test_string(self):
@@ -41,7 +44,9 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
 
     # sqlite3 returns native unicode.  so shouldn't be an increase here.
 
-    @profiling.function_call_count(14396, versions={'2.4': 13214,
+    @profiling.function_call_count(versions={
+                                    '2.7':14396,
+                                    '2.6':14396,
                                    '2.6+cextension': 345, 
                                    '2.7+cextension':345})
     def test_unicode(self):
@@ -57,7 +62,7 @@ class ExecutionTest(TestBase):
         # ensure initial connect activities complete
         c.execute("select 1")
         
-        @profiling.function_call_count(36, versions={'2.6':35, '2.5':35, 
+        @profiling.function_call_count(versions={'2.7':36, '2.6':35, '2.5':35, 
                                                     '2.4':21, '3':34}, 
                                             variance=.10)
         def go():
@@ -70,8 +75,9 @@ class ExecutionTest(TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(56, versions={'2.4':41, '2.5':58, 
+        @profiling.function_call_count(versions={'2.4':41, '2.5':58, 
                                                     '2.6':58, '3':57,
+                                                    '2.7':56,
                                                     '2.6+cextension':56}, 
                                             variance=.05)
         def go():

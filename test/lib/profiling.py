@@ -113,14 +113,17 @@ def function_call_count(count=None, versions={}, variance=0.05):
         cextension = True
     except ImportError:
         cextension = False
-        
+    
     while version_info:
         version = '.'.join([str(v) for v in version_info])
-        if cextension:
+        if cextension and (version + "+cextension") in versions:
             version += "+cextension"
-        if version in versions:
             count = versions[version]
             break
+        elif version in versions:
+            count = versions[version]
+            break
+
         version_info.pop()
 
     if count is None:

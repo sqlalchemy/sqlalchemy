@@ -32,20 +32,20 @@ class CompileTest(TestBase, AssertsExecutionResults):
         
         cls.dialect = default.DefaultDialect()
         
-    @profiling.function_call_count(58, {'2.4': 44, 
+    @profiling.function_call_count(versions={'2.7':58, '2.6':58,
                                             '3.0':77, '3.1':77})
     def test_insert(self):
         t1.insert().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(49, {'2.4': 45})
+    @profiling.function_call_count(versions={'2.6':49, '2.7':49})
     def test_update(self):
         t1.update().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(110, {'2.4': 81, '3':132})
+    @profiling.function_call_count(versions={'2.6':110, '2.7':110, '2.4': 81, '3':132})
     def test_update_whereclause(self):
         t1.update().where(t1.c.c2==12).compile(dialect=self.dialect)
 
-    @profiling.function_call_count(148, versions={'2.4':105, 
+    @profiling.function_call_count(versions={'2.4':105, '2.7':148, '2.6':148,
                                                 '3.0':208, '3.1':208})
     def test_select(self):
         s = select([t1], t1.c.c2==t2.c.c1)
