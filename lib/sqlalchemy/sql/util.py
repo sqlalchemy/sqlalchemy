@@ -217,7 +217,9 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
     for left in (a_subset, a):
         if left is None:
             continue
-        for fk in b.foreign_keys:
+        for fk in sorted(
+                    b.foreign_keys, 
+                    key=lambda fk:fk.parent._creation_order):
             try:
                 col = fk.get_referent(left)
             except exc.NoReferencedTableError:
@@ -230,7 +232,9 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
                 crit.append(col == fk.parent)
                 constraints.add(fk.constraint)
         if left is not b:
-            for fk in left.foreign_keys:
+            for fk in sorted(
+                        left.foreign_keys, 
+                        key=lambda fk:fk.parent._creation_order):
                 try:
                     col = fk.get_referent(b)
                 except exc.NoReferencedTableError:
@@ -247,7 +251,8 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
             
     if len(crit) == 0:
         if isinstance(b, expression._FromGrouping):
-            hint = " Perhaps you meant to convert the right side to a subquery using alias()?"
+            hint = " Perhaps you meant to convert the right side to a "\
+                                "subquery using alias()?"
         else:
             hint = ""
         raise exc.ArgumentError(

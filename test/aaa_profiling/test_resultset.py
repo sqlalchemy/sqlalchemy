@@ -34,16 +34,16 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
         metadata.drop_all()
 
     @profiling.function_call_count(14416, versions={'2.4': 13214,
-                                   '2.6+cextension': 385,
-                                   '2.7+cextension':401})
+                                   '2.6+cextension': 345,
+                                   '2.7+cextension':345})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
     # sqlite3 returns native unicode.  so shouldn't be an increase here.
 
     @profiling.function_call_count(14396, versions={'2.4': 13214,
-                                   '2.6+cextension': 385, 
-                                   '2.7+cextension':385})
+                                   '2.6+cextension': 345, 
+                                   '2.7+cextension':345})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
@@ -70,8 +70,9 @@ class ExecutionTest(TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(59, versions={'2.4':41, '2.5':58, 
-                                                    '2.6':58, '3':57}, 
+        @profiling.function_call_count(56, versions={'2.4':41, '2.5':58, 
+                                                    '2.6':58, '3':57,
+                                                    '2.6+cextension':56}, 
                                             variance=.05)
         def go():
             e.execute("select 1")

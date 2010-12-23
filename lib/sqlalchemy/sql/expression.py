@@ -2401,14 +2401,6 @@ class FromClause(Selectable):
         self.primary_key = ColumnSet()
         self.foreign_keys = set()
          
-    def _export_columns(self):
-        """Initialize column collections."""
-
-        self._columns = ColumnCollection()
-        self._primary_key = ColumnSet()
-        self._foreign_keys = set()
-        self._populate_column_collection()
-
     def _populate_column_collection(self):
         pass
 
@@ -3655,9 +3647,6 @@ class TableClause(_Immutable, FromClause):
     def _init_collections(self):
         pass
         
-    def _export_columns(self):
-        raise NotImplementedError()
-
     @util.memoized_property
     def description(self):
         # Py3K

@@ -349,7 +349,7 @@ class ZooMarkTest(TestBase):
         '2.6': 6058,
         '2.7': 5922,
         '2.7+cextension': 5714,
-        '2.6+cextension': 6058,
+        '2.6+cextension': 5714,
         })
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()

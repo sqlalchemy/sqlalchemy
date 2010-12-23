@@ -229,7 +229,7 @@ class Table(SchemaItem, expression.TableClause):
         self.constraints = set()
         self._columns = expression.ColumnCollection()
         self._set_primary_key(PrimaryKeyConstraint())
-        self.foreign_keys = util.OrderedSet()
+        self.foreign_keys = set()
         self._extra_dependencies = set()
         self.kwargs = {}
         if self.schema is not None:
@@ -708,7 +708,7 @@ class Column(SchemaItem, expression.ColumnClause):
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = set()
-        self.foreign_keys = util.OrderedSet()
+        self.foreign_keys = set()
         self._table_events = set()
 
         # check if this Column is proxying another column
@@ -815,7 +815,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.key in table._columns:
             col = table._columns.get(self.key)
-            for fk in col.foreign_keys:
+            for fk in list(col.foreign_keys):
                 col.foreign_keys.remove(fk)
                 table.foreign_keys.remove(fk)
                 if fk.constraint in table.constraints:
