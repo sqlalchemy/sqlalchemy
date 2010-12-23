@@ -98,10 +98,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             state.committed_state[self.key] = CollectionHistory(self, state)
 
         state.modified_event(dict_, 
-                                self, 
-                                False, 
-                                attributes.NEVER_SET, 
-                                passive=attributes.PASSIVE_NO_INITIALIZE)
+                                self,
+                                attributes.NEVER_SET)
 
         # this is a hack to allow the _base.ComparableEntity fixture
         # to work

@@ -438,7 +438,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         if self.dispatch.on_remove:
             self.fire_remove_event(state, dict_, old, None)
-        state.modified_event(dict_, self, False, old)
+        state.modified_event(dict_, self, old)
         del dict_[self.key]
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
@@ -457,7 +457,7 @@ class ScalarAttributeImpl(AttributeImpl):
         if self.dispatch.on_set:
             value = self.fire_replace_event(state, dict_, 
                                                 value, old, initiator)
-        state.modified_event(dict_, self, False, old)
+        state.modified_event(dict_, self, old)
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
@@ -610,7 +610,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         for fn in self.dispatch.on_remove:
             fn(state, value, initiator or self)
 
-        state.modified_event(dict_, self, False, value)
+        state.modified_event(dict_, self, value)
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
         if self.trackparent:
@@ -622,7 +622,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         for fn in self.dispatch.on_set:
             value = fn(state, value, previous, initiator or self)
 
-        state.modified_event(dict_, self, False, previous)
+        state.modified_event(dict_, self, previous)
 
         if self.trackparent:
             if value is not None:
@@ -701,8 +701,7 @@ class CollectionAttributeImpl(AttributeImpl):
         for fn in self.dispatch.on_append:
             value = fn(state, value, initiator or self)
 
-        state.modified_event(dict_, self, True, 
-                                NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
+        state.modified_event(dict_, self, NEVER_SET, True)
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), True)
@@ -710,8 +709,7 @@ class CollectionAttributeImpl(AttributeImpl):
         return value
 
     def fire_pre_remove_event(self, state, dict_, initiator):
-        state.modified_event(dict_, self, True, 
-                                NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
+        state.modified_event(dict_, self, NEVER_SET, True)
 
     def fire_remove_event(self, state, dict_, value, initiator):
         if self.trackparent and value is not None:
@@ -720,14 +718,13 @@ class CollectionAttributeImpl(AttributeImpl):
         for fn in self.dispatch.on_remove:
             fn(state, value, initiator or self)
 
-        state.modified_event(dict_, self, True, 
-                                NEVER_SET, passive=PASSIVE_NO_INITIALIZE)
+        state.modified_event(dict_, self, NEVER_SET, True)
 
     def delete(self, state, dict_):
         if self.key not in dict_:
             return
 
-        state.modified_event(dict_, self, True, NEVER_SET)
+        state.modified_event(dict_, self, NEVER_SET, True)
 
         collection = self.get_collection(state, state.dict)
         collection.clear_with_event()
@@ -812,15 +809,15 @@ class CollectionAttributeImpl(AttributeImpl):
             # implicitly with in-place operators (foo.collection |= other)
             return
 
-        state.modified_event(dict_, self, True, old)
-        
+        # place a copy of "old" in state.committed_state
+        state.modified_event(dict_, self, old, True)
+
         old_collection = getattr(old, '_sa_adapter')
 
         dict_[self.key] = user_data
 
         collections.bulk_replace(new_values, old_collection, new_collection)
         old_collection.unlink(old)
-
 
     def set_committed_value(self, state, dict_, value):
         """Set an attribute value on the given instance and 'commit' it."""
@@ -838,7 +835,7 @@ class CollectionAttributeImpl(AttributeImpl):
             
             # pending items exist.  issue a modified event,
             # add/remove new items.
-            state.modified_event(dict_, self, True, user_data)
+            state.modified_event(dict_, self, user_data, True)
 
             pending = state.pending.pop(self.key)
             added = pending.added_items

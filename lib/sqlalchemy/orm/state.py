@@ -312,21 +312,18 @@ class InstanceState(object):
 
     def _is_really_none(self):
         return self.obj()
-        
-    def modified_event(self, dict_, attr, should_copy, previous, passive=PASSIVE_OFF):
+    
+    def modified_event(self, dict_, attr, previous, collection=False):
         if attr.key not in self.committed_state:
-            if previous is NEVER_SET:
-                if passive:
+            if collection:
+                if previous is NEVER_SET:
                     if attr.key in dict_:
                         previous = dict_[attr.key]
-                else:
-                    previous = attr.get(self, dict_)
                 
-            if should_copy and previous not in (None, NO_VALUE, NEVER_SET):
-                previous = attr.copy(previous)
+                if previous not in (None, NO_VALUE, NEVER_SET):
+                    previous = attr.copy(previous)
 
             self.committed_state[attr.key] = previous
-        
         
         # the "or not self.modified" is defensive at 
         # this point.  The assertion below is expected
@@ -341,7 +338,7 @@ class InstanceState(object):
             self._strong_obj = self.obj()
 
             self.modified = True
-
+        
     def commit(self, dict_, keys):
         """Commit attributes.
 
