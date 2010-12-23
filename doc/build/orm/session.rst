@@ -1472,6 +1472,8 @@ those described in :ref:`events_orm_toplevel`.
 
 .. autofunction:: init_collection
 
+.. autofunction:: flag_modified
+
 .. function:: instance_state
 
     Return the :class:`InstanceState` for a given object.

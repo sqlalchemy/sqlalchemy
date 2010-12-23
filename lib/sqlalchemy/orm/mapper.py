@@ -2291,6 +2291,8 @@ class Mapper(object):
 
             if loaded_instance:
                 state.manager.dispatch.on_load(state)
+            elif isnew:
+                state.manager.dispatch.on_refresh(state)
                 
             if result is not None:
                 if append_result:

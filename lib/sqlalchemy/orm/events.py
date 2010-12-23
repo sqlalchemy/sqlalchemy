@@ -136,7 +136,15 @@ class InstanceEvents(event.Events):
         initialized, depending on what's present in the result rows.
 
         """
-    
+
+    def on_refresh(self, target):
+        """Receive an object instance after one or more attributes have 
+        been refreshed.
+        
+        This hook is called after expired attributes have been reloaded.
+        
+        """
+        
     def on_resurrect(self, target):
         """Receive an object instance as it is 'resurrected' from 
         garbage collection, which occurs when a "dirty" state falls

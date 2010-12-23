@@ -928,7 +928,7 @@ from sqlalchemy.schema import Table, Column, MetaData, _get_table_key
 from sqlalchemy.orm import synonym as _orm_synonym, mapper,\
                                 comparable_property, class_mapper
 from sqlalchemy.orm.interfaces import MapperProperty
-from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
+from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty, CompositeProperty
 from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy import util, exceptions
 from sqlalchemy.sql import util as sql_util, expression
@@ -1083,7 +1083,7 @@ def _as_declarative(cls, classname, dict_):
     # extract columns from the class dict
     cols = []
     for key, c in our_stuff.iteritems():
-        if isinstance(c, ColumnProperty):
+        if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
                 if isinstance(col, Column) and col.table is None:
                     _undefer_column_name(key, col)

@@ -149,7 +149,8 @@ def create_proxied_attribute(descriptor):
     class Proxy(QueryableAttribute):
         """A combination of InsturmentedAttribute and a regular descriptor."""
 
-        def __init__(self, key, descriptor, comparator, adapter=None):
+        def __init__(self, class_, key, descriptor, comparator, adapter=None):
+            self.class_ = class_
             self.key = key
             self.descriptor = descriptor
             self._comparator = comparator

@@ -75,6 +75,7 @@ class DescriptorProperty(MapperProperty):
         proxy_attr = attributes.\
                     create_proxied_attribute(self.descriptor or descriptor)\
                     (
+                        self.parent.class_,
                         self.key, 
                         self.descriptor or descriptor,
                         lambda: self._comparator_factory(mapper)
@@ -94,6 +95,7 @@ class CompositeProperty(DescriptorProperty):
         self.active_history = kwargs.get('active_history', False)
         self.deferred = kwargs.get('deferred', False)
         self.group = kwargs.get('group', None)
+        util.set_creation_order(self)
         
         def fget(instance):
             # this could be optimized to store the value in __dict__,

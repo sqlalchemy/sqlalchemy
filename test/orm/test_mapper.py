@@ -2322,6 +2322,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
             'on_append_result',
             'on_populate_instance',
             'on_load',
+            'on_refresh',
             'on_before_insert',
             'on_after_insert',
             'on_before_update',
@@ -2352,6 +2353,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
         eq_(canary,
             ['on_init', 'on_before_insert',
              'on_after_insert', 'on_translate_row', 'on_populate_instance',
+             'on_refresh',
              'on_append_result', 'on_translate_row', 'on_create_instance',
              'on_populate_instance', 'on_load', 'on_append_result',
              'on_before_update', 'on_after_update', 'on_before_delete', 'on_after_delete'])
@@ -2380,14 +2382,14 @@ class MapperEventsTest(_fixtures.FixtureTest):
         sess.delete(am)
         sess.flush()
         eq_(canary1, ['on_init', 'on_before_insert', 'on_after_insert',
-            'on_translate_row', 'on_populate_instance',
+            'on_translate_row', 'on_populate_instance','on_refresh',
             'on_append_result', 'on_translate_row', 'on_create_instance'
             , 'on_populate_instance', 'on_load', 'on_append_result',
             'on_before_update', 'on_after_update', 'on_before_delete',
             'on_after_delete'])
         eq_(canary2, [])
         eq_(canary3, ['on_init', 'on_before_insert', 'on_after_insert',
-            'on_translate_row', 'on_populate_instance',
+            'on_translate_row', 'on_populate_instance','on_refresh',
             'on_append_result', 'on_translate_row', 'on_create_instance'
             , 'on_populate_instance', 'on_load', 'on_append_result',
             'on_before_update', 'on_after_update', 'on_before_delete',
