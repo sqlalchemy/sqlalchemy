@@ -165,7 +165,7 @@ def create_proxied_attribute(descriptor):
             return self._comparator
         
         def adapted(self, adapter):
-            return self.__class__(self.key, self.descriptor,
+            return self.__class__(self.class_, self.key, self.descriptor,
                                        self._comparator,
                                        adapter)
 

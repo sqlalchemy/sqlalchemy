@@ -71,7 +71,7 @@ class DescriptorProperty(MapperProperty):
                 fset=self.descriptor.__set__,
                 fdel=self.descriptor.__delete__,
             )
-
+        
         proxy_attr = attributes.\
                     create_proxied_attribute(self.descriptor or descriptor)\
                     (
