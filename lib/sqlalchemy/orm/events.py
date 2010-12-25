@@ -267,8 +267,11 @@ class MapperEvents(event.Events):
             event.Events.listen(target, identifier, fn)
         
     def on_instrument_class(self, mapper, class_):
-        """Receive a class when the mapper is first constructed, and has
-        applied instrumentation to the mapped class.
+        """Receive a class when the mapper is first constructed, 
+        before instrumentation is applied to the mapped class.
+        
+        This event is the earliest phase of mapper construction.
+        Most attributes of the mapper are not yet initialized.
         
         This listener can generally only be applied to the :class:`.Mapper`
         class overall.
@@ -278,7 +281,20 @@ class MapperEvents(event.Events):
         :param class\_: the mapped class.
         
         """
+    
+    def on_mapper_configured(self, mapper, class_):
+        """Called when the mapper for the class is fully configured.
 
+        This event is the latest phase of mapper construction.
+        The mapper should be in its final state.
+        
+        :param mapper: the :class:`.Mapper` which is the target
+         of this event.
+        :param class\_: the mapped class.
+        
+        """
+        # TODO: need coverage for this event
+        
     def on_translate_row(self, mapper, context, row):
         """Perform pre-processing on the given result row and return a
         new row instance.
@@ -818,6 +834,15 @@ class AttributeEvents(event.Events):
       or "append" event.   
     
     """
+
+    @classmethod
+    def accept_with(cls, target):
+        from sqlalchemy.orm import interfaces
+        # TODO: coverage
+        if isinstance(target, interfaces.MapperProperty):
+            return getattr(target.parent.class_, target.key)
+        else:
+            return target
     
     @classmethod
     def listen(cls, target, identifier, fn, active_history=False, 

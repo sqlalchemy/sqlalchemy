@@ -2401,6 +2401,7 @@ def configure_mappers():
                     try:
                         mapper._post_configure_properties()
                         mapper._expire_memoizations()
+                        mapper.dispatch.on_mapper_configured(mapper, mapper.class_)
                     except:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):

@@ -26,6 +26,14 @@ Subclassing ``dict`` to provide "mutation tracking" looks like::
         id = Column(Integer, primary_key=True)
         data = Column(JSONEncodedDict)
 
-    MutationDict.listen(Foo.data)
+    MutationDict.associate_with_attribute(Foo.data)
+
+The explicit step of associating ``MutationDict`` with ``Foo.data`` can be 
+automated across a class of columns using ``associate_with_type()``::
+
+    MutationDict.associate_with_type(JSONEncodedDict)
+    
+All subsequent mappings will have the ``MutationDict`` wrapper applied to
+all attributes with ``JSONEncodedDict`` as their type.
 
 """
