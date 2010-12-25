@@ -15,7 +15,7 @@ build on the "hybrid" extension to produce class descriptors.
 from sqlalchemy.orm.interfaces import \
     MapperProperty, PropComparator, StrategizedProperty
 from sqlalchemy.orm import attributes
-from sqlalchemy import util, sql, exc as sa_exc
+from sqlalchemy import util, sql, exc as sa_exc, event
 from sqlalchemy.sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')
 
@@ -96,28 +96,94 @@ class CompositeProperty(DescriptorProperty):
         self.deferred = kwargs.get('deferred', False)
         self.group = kwargs.get('group', None)
         util.set_creation_order(self)
+        self._create_descriptor()
         
+    def do_init(self):
+        """Initialization which occurs after the :class:`.CompositeProperty` 
+        has been associated with its parent mapper.
+        
+        """
+        self._setup_arguments_on_columns()
+        self._setup_event_handlers()
+    
+    def _create_descriptor(self):
+        """Create the actual Python descriptor that will serve as 
+        the access point on the mapped class.
+        
+        """
+
         def fget(instance):
-            # this could be optimized to store the value in __dict__,
-            # but more complexity and tests would be needed to pick 
-            # up on changes to the mapped columns made independently
-            # of those on the composite.
-            return self.composite_class(
+            dict_ = attributes.instance_dict(instance)
+            if self.key in dict_:
+                return dict_[self.key]
+            else:
+                dict_[self.key] = composite = self.composite_class(
                     *[getattr(instance, key) for key in self._attribute_keys]
             )
+                return composite
                 
         def fset(instance, value):
             if value is None:
                 fdel(instance)
             else:
-                for key, value in zip(self._attribute_keys, value.__composite_values__()):
+                dict_ = attributes.instance_dict(instance)
+                dict_[self.key] = value
+                for key, value in zip(
+                        self._attribute_keys, 
+                        value.__composite_values__()):
                     setattr(instance, key, value)
         
         def fdel(instance):
             for key in self._attribute_keys:
                 setattr(instance, key, None)
+        
         self.descriptor = property(fget, fset, fdel)
-    
+        
+    def _setup_arguments_on_columns(self):
+        """Propigate configuration arguments made on this composite
+        to the target columns, for those that apply.
+        
+        """
+        for col in self.columns:
+            prop = self.parent._columntoproperty[col]
+            prop.active_history = self.active_history
+            if self.deferred:
+                prop.deferred = self.deferred
+                prop.strategy_class = strategies.DeferredColumnLoader
+            prop.group = self.group
+
+    def _setup_event_handlers(self):
+        """Establish events that will clear out the composite value
+        whenever changes in state occur on the target columns.
+        
+        """
+        def load_handler(state):
+            state.dict.pop(self.key, None)
+            
+        def expire_handler(state, keys):
+            if keys is None or set(self._attribute_keys).intersection(keys):
+                state.dict.pop(self.key, None)
+        
+        def insert_update_handler(mapper, connection, state):
+            state.dict.pop(self.key, None)
+            
+        event.listen(self.parent, 'on_after_insert', 
+                                    insert_update_handler, raw=True)
+        event.listen(self.parent, 'on_after_update', 
+                                    insert_update_handler, raw=True)
+        event.listen(self.parent, 'on_load', load_handler, raw=True)
+        event.listen(self.parent, 'on_refresh', load_handler, raw=True)
+        event.listen(self.parent, "on_expire", expire_handler, raw=True)
+        
+        # TODO:  add listeners to the column attributes, which 
+        # refresh the composite based on userland settings.
+        
+        # TODO: add a callable to the composite of the form
+        # _on_change(self, attrname) which will send up a corresponding
+        # refresh to the column attribute on all parents.  Basically
+        # a specialization of the scalars.py example.
+        
+        
     @util.memoized_property
     def _attribute_keys(self):
         return [
@@ -154,16 +220,6 @@ class CompositeProperty(DescriptorProperty):
             return attributes.History(
                 (),[self.composite_class(*added)], ()
             )
-
-    def do_init(self):
-        for col in self.columns:
-            prop = self.parent._columntoproperty[col]
-            prop.active_history = self.active_history
-            if self.deferred:
-                prop.deferred = self.deferred
-                prop.strategy_class = strategies.DeferredColumnLoader
-            prop.group = self.group
-        # strategies ...
 
     def _comparator_factory(self, mapper):
         return CompositeProperty.Comparator(self)

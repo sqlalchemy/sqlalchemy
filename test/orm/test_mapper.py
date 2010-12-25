@@ -2323,6 +2323,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
             'on_populate_instance',
             'on_load',
             'on_refresh',
+            'on_expire',
             'on_before_insert',
             'on_after_insert',
             'on_before_update',
@@ -2343,7 +2344,8 @@ class MapperEventsTest(_fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        u = sess.query(User).populate_existing().get(u.id)
+        sess.expire(u)
+        u = sess.query(User).get(u.id)
         sess.expunge_all()
         u = sess.query(User).get(u.id)
         u.name = 'u1 changed'
@@ -2352,7 +2354,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(canary,
             ['on_init', 'on_before_insert',
-             'on_after_insert', 'on_translate_row', 'on_populate_instance',
+             'on_after_insert', 'on_expire', 'on_translate_row', 'on_populate_instance',
              'on_refresh',
              'on_append_result', 'on_translate_row', 'on_create_instance',
              'on_populate_instance', 'on_load', 'on_append_result',

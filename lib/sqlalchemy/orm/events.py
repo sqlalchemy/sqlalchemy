@@ -144,6 +144,15 @@ class InstanceEvents(event.Events):
         This hook is called after expired attributes have been reloaded.
         
         """
+    
+    def on_expire(self, target, keys):
+        """Receive an object instance after its attributes or some subset
+        have been expired.
+        
+        'keys' is a list of attribute names.  If None, the entire
+        state was expired.
+        
+        """
         
     def on_resurrect(self, target):
         """Receive an object instance as it is 'resurrected' from 

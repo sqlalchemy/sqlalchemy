@@ -230,6 +230,8 @@ class InstanceState(object):
                 self.callables[key] = self
             dict_.pop(key, None)
         
+        self.manager.dispatch.on_expire(self, None)
+
     def expire_attributes(self, dict_, attribute_names):
         pending = self.__dict__.get('pending', None)
         mutable_dict = self.mutable_dict
@@ -245,6 +247,8 @@ class InstanceState(object):
                 mutable_dict.pop(key, None)
             if pending:
                 pending.pop(key, None)
+
+        self.manager.dispatch.on_expire(self, attribute_names)
 
     def __call__(self, passive):
         """__call__ allows the InstanceState to act as a deferred
