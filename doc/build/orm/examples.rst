@@ -87,6 +87,13 @@ Location: /examples/large_collection/
 
 .. automodule:: large_collection
 
+Mutable Data Types
+------------------
+
+Location: /examples/mutable_events/
+
+.. automodule:: mutable_events
+
 Nested Sets
 -----------
 
