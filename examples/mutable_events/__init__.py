@@ -62,4 +62,8 @@ automated across a class of columns using ``associate_with_type()``::
 All subsequent mappings will have the ``MutationDict`` wrapper applied to
 all attributes with ``JSONEncodedDict`` as their type.
 
+The example illustrates the usage of several events, including
+:meth:`.on_load`, :meth:`.on_refresh`, :meth:`.on_set`, and 
+:meth:`.on_mapper_configured`.
+
 """
