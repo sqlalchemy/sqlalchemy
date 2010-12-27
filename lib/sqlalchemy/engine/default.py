@@ -144,7 +144,8 @@ class DefaultDialect(base.Dialect):
                                             'description_encoding', 
                                             encoding)
         
-        self._description_decoder = processors.to_unicode_processor_factory(
+        if self.description_encoding:
+            self._description_decoder = processors.to_unicode_processor_factory(
                                             self.description_encoding
                                     )
         self._encoder = codecs.getencoder(self.encoding)

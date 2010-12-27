@@ -54,7 +54,7 @@ class MergeTest(_base.MappedTest):
         # bigger operation so using a small variance
 
         @profiling.function_call_count(80, variance=0.05,
-                versions={'2.4': 64, '2.5':94, '3': 89})
+                versions={'2.4': 64, '2.5':94, '3': 83})
         def go():
             return sess2.merge(p1, load=False)
         p2 = go()
