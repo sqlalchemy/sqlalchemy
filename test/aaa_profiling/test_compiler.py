@@ -41,7 +41,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
     def test_update(self):
         t1.update().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(versions={'2.6':110, '2.7':110, '2.4': 81, '3':115})
+    @profiling.function_call_count(versions={'2.6':110, '2.7':110, '3':115})
     def test_update_whereclause(self):
         t1.update().where(t1.c.c2==12).compile(dialect=self.dialect)
 

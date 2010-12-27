@@ -53,16 +53,16 @@ class MergeTest(_base.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(80, variance=0.05,
-                versions={'2.4': 64, '2.5':94, '3': 83})
+        @profiling.function_call_count(variance=0.05,
+                versions={'2.7':80, '2.6':80, '2.5':94, '3': 83})
         def go():
             return sess2.merge(p1, load=False)
         p2 = go()
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(11, variance=0.05,
-                versions={'2.4': 8, '2.5':15, '3': 12})
+        @profiling.function_call_count(variance=0.05,
+                versions={'2.7':11, '2.6':11, '2.5':15, '3': 12})
         def go():
             return sess2.merge(p2, load=False)
         p3 = go()
@@ -79,10 +79,11 @@ class MergeTest(_base.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(1005, 
+        @profiling.function_call_count(
                                 versions={'2.5':1050, '2.6':1050,
                                         '2.6+cextension':1041, 
-                                        '2.4': 763}
+                                        '2.7':1005,
+                                        '3':1005}
                             )
         def go():
             p2 = sess2.merge(p1)

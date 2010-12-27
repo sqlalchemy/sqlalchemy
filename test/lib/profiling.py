@@ -127,6 +127,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
         version_info.pop()
 
     if count is None:
+        print "Warning: no function call count specified for version: '%s'" % py_version
         return lambda fn: fn
     
     @decorator
