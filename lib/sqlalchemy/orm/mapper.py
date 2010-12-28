@@ -279,6 +279,17 @@ class Mapper(object):
             if self.version_id_col is None:
                 self.version_id_col = self.inherits.version_id_col
                 self.version_id_generator = self.inherits.version_id_generator
+            elif self.inherits.version_id_col is not None and \
+                self.version_id_col is not self.inherits.version_id_col:
+                util.warn(
+                    "Inheriting version_id_col '%s' does not match inherited "
+                    "version_id_col '%s' and will not automatically populate "
+                    "the inherited versioning column. "
+                    "version_id_col should only be specified on "
+                    "the base-most mapper that includes versioning." %
+                    (self.version_id_col.description, 
+                    self.inherits.version_id_col.description)
+                )
 
             if self.order_by is False and \
                         not self.concrete and \

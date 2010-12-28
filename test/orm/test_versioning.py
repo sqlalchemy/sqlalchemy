@@ -1,8 +1,10 @@
 import sqlalchemy as sa
 from test.lib import engines, testing
-from sqlalchemy import Integer, String, ForeignKey, literal_column, orm, exc
+from sqlalchemy import Integer, String, ForeignKey, literal_column, \
+    orm, exc, select
 from test.lib.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session, column_property, sessionmaker
+from sqlalchemy.orm import mapper, relationship, Session, \
+    create_session, column_property, sessionmaker
 from test.lib.testing import eq_, ne_, assert_raises, assert_raises_message
 from test.orm import _base, _fixtures
 from test.engine import _base as engine_base
@@ -396,7 +398,93 @@ class AlternateGeneratorTest(_base.MappedTest):
             sess2.commit
         )
         
+
+class InheritanceTwoVersionIdsTest(_base.MappedTest):
+    """Test versioning where both parent/child table have a
+    versioning column.
+    
+    """
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('base', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('version_id', Integer, nullable=True),
+            Column('data', String(50))
+        )
+        Table('sub', metadata,
+            Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+            Column('version_id', Integer, nullable=False),
+            Column('sub_data', String(50))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Base(_base.ComparableEntity):
+            pass
+        class Sub(Base):
+            pass
+
+    @testing.resolve_artifact_names
+    def test_base_both(self):
+        mapper(Base, base, 
+                version_id_col=base.c.version_id)
+        mapper(Sub, sub, inherits=Base)
+
+        session = Session()
+        b1 = Base(data='b1')
+        session.add(b1)
+        session.commit()
+        eq_(b1.version_id, 1)
+        # base is populated
+        eq_(select([base.c.version_id]).scalar(), 1)
+
+    @testing.resolve_artifact_names
+    def test_sub_both(self):
+        mapper(Base, base, 
+                version_id_col=base.c.version_id)
+        mapper(Sub, sub, inherits=Base)
+
+        session = Session()
+        s1 = Sub(data='s1', sub_data='s1')
+        session.add(s1)
+        session.commit()
+
+        # table is populated
+        eq_(select([sub.c.version_id]).scalar(), 1)
+
+        # base is populated
+        eq_(select([base.c.version_id]).scalar(), 1)
+    
+    @testing.resolve_artifact_names
+    def test_sub_only(self):
+        mapper(Base, base)
+        mapper(Sub, sub, inherits=Base, 
+                version_id_col=sub.c.version_id)
+
+        session = Session()
+        s1 = Sub(data='s1', sub_data='s1')
+        session.add(s1)
+        session.commit()
+
+        # table is populated
+        eq_(select([sub.c.version_id]).scalar(), 1)
+
+        # base is not
+        eq_(select([base.c.version_id]).scalar(), None)
         
+    @testing.resolve_artifact_names
+    def test_mismatch_version_col_warning(self):
+        mapper(Base, base, 
+                version_id_col=base.c.version_id)
         
-        
+        assert_raises_message(
+            exc.SAWarning,
+            "Inheriting version_id_col 'version_id' does not "
+            "match inherited version_id_col 'version_id' and will not "
+            "automatically populate the inherited versioning column. "
+            "version_id_col should only be specified on "
+            "the base-most mapper that includes versioning.",
+            mapper,
+            Sub, sub, inherits=Base, 
+                version_id_col=sub.c.version_id)
         

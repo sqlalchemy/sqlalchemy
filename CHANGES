@@ -46,6 +46,11 @@ CHANGES
     objects, despite passive_deletes remaining at 
     its default of False.  [ticket:2002]
     
+  - A warning is emitted when version_id_col is specified
+    on an inheriting mapper when the inherited mapper
+    already has one, if those column expressions are not
+    the same.  [ticket:1987]
+    
   - "innerjoin" flag doesn't take effect along the chain
     of joinedload() joins if a previous join in that chain
     is an outer join, thus allowing primary rows without
