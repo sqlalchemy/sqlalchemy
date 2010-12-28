@@ -247,13 +247,12 @@ class AliasedClass(object):
                         'parentmapper':self.__mapper}
                     )
 
-    def __adapt_prop(self, prop):
-        existing = getattr(self.__target, prop.key)
+    def __adapt_prop(self, existing, key):
         comparator = existing.comparator.adapted(self.__adapt_element)
 
-        queryattr = attributes.QueryableAttribute(self, prop.key,
+        queryattr = attributes.QueryableAttribute(self, key,
             impl=existing.impl, parententity=self, comparator=comparator)
-        setattr(self, prop.key, queryattr)
+        setattr(self, key, queryattr)
         return queryattr
 
     def __getattr__(self, key):
@@ -268,7 +267,7 @@ class AliasedClass(object):
             raise AttributeError(key)
         
         if isinstance(attr, attributes.QueryableAttribute):
-            return self.__adapt_prop(attr.property)
+            return self.__adapt_prop(attr, key)
         elif hasattr(attr, 'func_code'):
             is_method = getattr(self.__target, key, None)
             if is_method and is_method.im_self is not None:

@@ -1,7 +1,8 @@
-from sqlalchemy.orm import descriptor_props
+from sqlalchemy.orm import descriptor_props, aliased
 from sqlalchemy.orm.interfaces import PropComparator
+from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.sql import column
-from sqlalchemy import Column, Integer, func
+from sqlalchemy import Column, Integer, func, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.util import partial
 from test.orm import _base
@@ -104,3 +105,29 @@ class DescriptorInstrumentationTest(_base.ORMTest):
             "foo = upper(:upper_1)"
         )
         
+
+    def test_aliased_comparator(self):
+        class Comparator(ColumnProperty.Comparator):
+            __hash__ = None
+            def __eq__(self, other):
+                return func.foobar(self.__clause_element__()) ==\
+                            func.foobar(other)
+
+        Foo = self._fixture()
+        Foo._name = Column('name', String)
+        
+        def comparator_factory(self, mapper):
+            prop = mapper._props['_name']
+            return Comparator(prop, mapper)
+        
+        d = TestDescriptor(Foo, 'foo', comparator_factory=comparator_factory)
+        d.instrument_class(Foo.__mapper__)
+        
+        eq_(
+            str(Foo.foo == 'ed'),
+           "foobar(foo.name) = foobar(:foobar_1)"
+        )
+        eq_(
+            str(aliased(Foo).foo == 'ed'),
+            "foobar(foo_1.name) = foobar(:foobar_1)"
+        )

@@ -145,16 +145,25 @@ def create_proxied_attribute(descriptor):
     Returns a new QueryableAttribute type that delegates descriptor
     behavior and getattr() to the given descriptor.
     """
-
+    
+    # TODO: can move this to descriptor_props if the need for this
+    # function is removed from ext/hybrid.py
+    
     class Proxy(QueryableAttribute):
-        """A combination of InsturmentedAttribute and a regular descriptor."""
+        """Presents the :class:`.QueryableAttribute` interface as a
+        proxy on top of a Python descriptor / :class:`.PropComparator` 
+        combination.
+        
+        """
 
-        def __init__(self, class_, key, descriptor, comparator, adapter=None):
+        def __init__(self, class_, key, descriptor, comparator, 
+                                adapter=None, doc=None):
             self.class_ = class_
             self.key = key
             self.descriptor = descriptor
             self._comparator = comparator
             self.adapter = adapter
+            self.__doc__ = doc
             
         @util.memoized_property
         def comparator(self):
@@ -164,11 +173,12 @@ def create_proxied_attribute(descriptor):
                 self._comparator = self._comparator.adapted(self.adapter)
             return self._comparator
         
-        def adapted(self, adapter):
-            return self.__class__(self.class_, self.key, self.descriptor,
-                                       self._comparator,
-                                       adapter)
-
+        def __get__(self, instance, owner):
+            if instance is None:
+                return self
+            else:
+                return self.descriptor.__get__(instance, owner)
+                
         def __str__(self):
             return self.key
         

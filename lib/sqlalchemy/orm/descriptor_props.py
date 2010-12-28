@@ -7,8 +7,7 @@
 
 """Descriptor proprerties are more "auxilliary" properties
 that exist as configurational elements, but don't participate
-as actively in the load/persist ORM loop.   They all
-build on the "hybrid" extension to produce class descriptors.
+as actively in the load/persist ORM loop.   
 
 """
 
@@ -22,13 +21,12 @@ properties = util.importlater('sqlalchemy.orm', 'properties')
 class DescriptorProperty(MapperProperty):
     """:class:`MapperProperty` which proxies access to a 
         user-defined descriptor."""
-
-    def instrument_class(self, mapper):
-        from sqlalchemy.ext import hybrid
         
+    doc = None
+    
+    def instrument_class(self, mapper):
         prop = self
         
-        # hackety hack hack
         class _ProxyImpl(object):
             accepts_scalar_loader = False
             expire_missing = True
@@ -52,39 +50,25 @@ class DescriptorProperty(MapperProperty):
                 delattr(obj, self.name)
             def fget(obj):
                 return getattr(obj, self.name)
-            fget.__doc__ = self.doc
 
-            descriptor = hybrid.property_(
+            self.descriptor = property(
                 fget=fget,
                 fset=fset,
                 fdel=fdel,
             )
-        elif isinstance(self.descriptor, property):
-            descriptor = hybrid.property_(
-                fget=self.descriptor.fget,
-                fset=self.descriptor.fset,
-                fdel=self.descriptor.fdel,
-            )
-        else:
-            descriptor = hybrid.property_(
-                fget=self.descriptor.__get__,
-                fset=self.descriptor.__set__,
-                fdel=self.descriptor.__delete__,
-            )
         
         proxy_attr = attributes.\
-                    create_proxied_attribute(self.descriptor or descriptor)\
+                    create_proxied_attribute(self.descriptor)\
                     (
                         self.parent.class_,
                         self.key, 
-                        self.descriptor or descriptor,
-                        lambda: self._comparator_factory(mapper)
+                        self.descriptor,
+                        lambda: self._comparator_factory(mapper),
+                        doc=self.doc
                     )
-        def get_comparator(owner):
-            return util.update_wrapper(proxy_attr, descriptor)
-        descriptor.expr = get_comparator
-        descriptor.impl = _ProxyImpl(self.key)
-        mapper.class_manager.instrument_attribute(self.key, descriptor)
+
+        proxy_attr.impl = _ProxyImpl(self.key)
+        mapper.class_manager.instrument_attribute(self.key, proxy_attr)
     
 
 class CompositeProperty(DescriptorProperty):
