@@ -168,7 +168,7 @@ class MapperProperty(object):
 
         pass
 
-    def compare(self, operator, value):
+    def compare(self, operator, value, **kw):
         """Return a compare operation for the columns represented by
         this ``MapperProperty`` to the given value, which may be a
         column value or an instance.  'operator' is an operator from

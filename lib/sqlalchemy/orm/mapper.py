@@ -894,18 +894,14 @@ class Mapper(object):
 
     def get_property(self, key, _compile_mappers=True):
         """return a MapperProperty associated with the given key.
-        
-        Calls getattr() against the mapped class itself, so that class-level 
-        proxies will be resolved to the underlying property, if any.
-        
         """
 
         if _compile_mappers and _new_mappers:
             configure_mappers()
 
         try:
-            return getattr(self.class_, key).property
-        except AttributeError:
+            return self._props[key]
+        except KeyError:
             raise sa_exc.InvalidRequestError(
                     "Mapper '%s' has no property '%s'" % (self, key))
             

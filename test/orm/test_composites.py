@@ -50,9 +50,9 @@ class PointTest(_base.MappedTest):
         class Graph(_base.BasicEntity):
             pass
         class Edge(_base.BasicEntity):
-            def __init__(self, start, end):
-                self.start = start
-                self.end = end
+            def __init__(self, *args):
+                if args:
+                    self.start, self.end = args
 
         mapper(Graph, graphs, properties={
             'edges':relationship(Edge)
@@ -183,6 +183,20 @@ class PointTest(_base.MappedTest):
         assert g2.edges[-1].start.x is None
         assert g2.edges[-1].start.y is None
 
+    @testing.resolve_artifact_names
+    def test_expire(self):
+        sess = self._fixture()
+        g = sess.query(Graph).first()
+        e = g.edges[0]
+        sess.expire(e)
+        assert 'start' not in e.__dict__
+        assert e.start == Point(3, 4)
+    
+    @testing.resolve_artifact_names
+    def test_default_value(self):
+        e = Edge()
+        eq_(e.start, None)
+        
 class PrimaryKeyTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
