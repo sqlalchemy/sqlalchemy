@@ -94,6 +94,10 @@ class TypeEngine(AbstractType):
         are serialized into strings are examples of "mutable" 
         column structures.
         
+        .. note:: This functionality is now superceded by the
+          ``sqlalchemy.ext.mutable`` extension described in 
+          :ref:`mutable_toplevel`.
+        
         When this method is overridden, :meth:`copy_value` should
         also be supplied.   The :class:`.MutableType` mixin
         is recommended as a helper.
@@ -511,10 +515,10 @@ class TypeDecorator(TypeEngine):
         objects alone.  Values such as dicts, lists which
         are serialized into strings are examples of "mutable" 
         column structures.
-        
-        When this method is overridden, :meth:`copy_value` should
-        also be supplied.   The :class:`.MutableType` mixin
-        is recommended as a helper.
+
+        .. note:: This functionality is now superceded by the
+          ``sqlalchemy.ext.mutable`` extension described in 
+          :ref:`mutable_toplevel`.
         
         """
         return self.impl.is_mutable()
@@ -528,8 +532,16 @@ class TypeDecorator(TypeEngine):
 
 class MutableType(object):
     """A mixin that marks a :class:`TypeEngine` as representing
-    a mutable Python object type.
-
+    a mutable Python object type.   This functionality is used
+    only by the ORM.
+    
+    .. note:: :class:`.MutableType` is superceded as of SQLAlchemy 0.7
+       by the ``sqlalchemy.ext.mutable`` extension described in
+       :ref:`mutable_toplevel`.   This extension provides an event
+       driven approach to in-place mutation detection that does not
+       incur the severe performance penalty of the :class:`.MutableType`
+       approach.
+       
     "mutable" means that changes can occur in place to a value 
     of this type.   Examples includes Python lists, dictionaries,
     and sets, as well as user-defined objects.  The primary
@@ -550,49 +562,28 @@ class MutableType(object):
     represent a copy and compare function for values of this
     type - implementing subclasses should override these
     appropriately.
-
-    The usage of mutable types has significant performance
-    implications when using the ORM. In order to detect changes, the
-    ORM must create a copy of the value when it is first
-    accessed, so that changes to the current value can be compared
-    against the "clean" database-loaded value. Additionally, when the
-    ORM checks to see if any data requires flushing, it must scan
-    through all instances in the session which are known to have
-    "mutable" attributes and compare the current value of each
-    one to its "clean"
-    value. So for example, if the Session contains 6000 objects (a
-    fairly large amount) and autoflush is enabled, every individual
-    execution of :class:`Query` will require a full scan of that subset of
-    the 6000 objects that have mutable attributes, possibly resulting
-    in tens of thousands of additional method calls for every query.
     
-    Note that for small numbers (< 100 in the Session at a time)
-    of objects with "mutable" values, the performance degradation is 
-    negligible.  
+    .. warning:: The usage of mutable types has significant performance
+        implications when using the ORM. In order to detect changes, the
+        ORM must create a copy of the value when it is first
+        accessed, so that changes to the current value can be compared
+        against the "clean" database-loaded value. Additionally, when the
+        ORM checks to see if any data requires flushing, it must scan
+        through all instances in the session which are known to have
+        "mutable" attributes and compare the current value of each
+        one to its "clean"
+        value. So for example, if the Session contains 6000 objects (a
+        fairly large amount) and autoflush is enabled, every individual
+        execution of :class:`Query` will require a full scan of that subset of
+        the 6000 objects that have mutable attributes, possibly resulting
+        in tens of thousands of additional method calls for every query.
     
-    It is perfectly fine to represent "mutable" data types with the
-    "mutable" flag set to False, which eliminates any performance
-    issues. It means that the ORM will only reliably detect changes
-    for values of this type if a newly modified value is of a different 
-    identity (i.e., ``id(value)``) than what was present before - 
-    i.e., instead of operations like these::
+        As of SQLAlchemy 0.7, the ``sqlalchemy.ext.mutable`` is provided which
+        allows an event driven approach to in-place mutation detection. This
+        approach should now be favored over the usage of :class:`.MutableType`
+        with ``mutable=True``. ``sqlalchemy.ext.mutable`` is described in
+        :ref:`mutable_toplevel`.
     
-        myobject.somedict['foo'] = 'bar'
-        myobject.someset.add('bar')
-        myobject.somelist.append('bar')
-        
-    You'd instead say::
-    
-        myobject.somevalue = {'foo':'bar'}
-        myobject.someset = myobject.someset.union(['bar'])
-        myobject.somelist = myobject.somelist + ['bar']
-        
-    A future release of SQLAlchemy will include instrumented
-    collection support for mutable types, such that at least usage of
-    plain Python datastructures will be able to emit events for
-    in-place changes, removing the need for pessimistic scanning for
-    changes.
-
     """
 
     def is_mutable(self):
@@ -1594,7 +1585,11 @@ class PickleType(MutableType, TypeDecorator):
           ``comparator`` argument is present.   See
           :class:`.MutableType` for details on "mutable" type
           behavior. (default changed from ``True`` in 
-          0.7.0).   
+          0.7.0).
+
+          .. note:: This functionality is now superceded by the
+             ``sqlalchemy.ext.mutable`` extension described in 
+             :ref:`mutable_toplevel`.
 
         :param comparator: a 2-arg callable predicate used
           to compare values of this type.  If left as ``None``, 

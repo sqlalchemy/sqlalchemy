@@ -191,6 +191,7 @@ class CompositeProperty(DescriptorProperty):
         event.listen(self.parent, 'on_refresh', load_handler, raw=True)
         event.listen(self.parent, "on_expire", expire_handler, raw=True)
         
+        # TODO: need a deserialize hook here
         
     @util.memoized_property
     def _attribute_keys(self):

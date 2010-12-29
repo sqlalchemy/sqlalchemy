@@ -175,7 +175,9 @@ class InstanceState(object):
 
         if 'load_path' in state:
             self.load_path = interfaces.deserialize_path(state['load_path'])
-
+        
+        # TODO: need an event here, link to composite, mutable
+        
     def initialize(self, key):
         """Set this attribute to an empty value or collection, 
            based on the AttributeImpl in use."""

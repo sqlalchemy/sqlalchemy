@@ -247,7 +247,11 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           "mutable types" mode in the ORM.  Be sure to read the 
           notes for :class:`.MutableType` regarding ORM 
           performance implications (default changed from ``True`` in 
-          0.7.0).   
+          0.7.0).
+          
+          .. note:: This functionality is now superceded by the
+             ``sqlalchemy.ext.mutable`` extension described in 
+             :ref:`mutable_toplevel`.
         
         :param as_tuple=False: Specify whether return results
           should be converted to tuples from lists. DBAPIs such

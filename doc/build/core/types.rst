@@ -340,14 +340,8 @@ Marshal JSON Strings
 ^^^^^^^^^^^^^^^^^^^^^
 
 This type uses ``simplejson`` to marshal Python data structures
-to/from JSON.   Can be modified to use Python's builtin json encoder.
+to/from JSON.   Can be modified to use Python's builtin json encoder::
 
-Note that the base type is not "mutable", meaning in-place changes to 
-the value will not be detected by the ORM - you instead would need to 
-replace the existing value with a new one to detect changes.  
-The subtype ``MutableJSONEncodedDict``
-adds "mutability" to allow this, but note that "mutable" types add
-a significant performance penalty to the ORM's flush process::
 
     from sqlalchemy.types import TypeDecorator, MutableType, VARCHAR
     import simplejson
@@ -373,14 +367,57 @@ a significant performance penalty to the ORM's flush process::
             if value is not None:
                 value = simplejson.loads(value, use_decimal=True)
             return value
+
+
+Note that the base type is not "mutable", meaning in-place changes to 
+the value will not be detected by the ORM - you instead would need to 
+replace the existing value with a new one to detect changes.  To add
+support for mutability, we need to build a dictionary that detects
+changes, and combine this using the ``sqlalchemy.ext.mutable`` extension
+described in :ref:`mutable_toplevel`::
+
+    from sqlalchemy.ext.mutable import Mutable
     
-    class MutableJSONEncodedDict(MutableType, JSONEncodedDict):
-        """Adds mutability to JSONEncodedDict."""
+    class MutationDict(Mutable, dict):
+        @classmethod
+        def coerce(cls, key, value):
+            """Convert plain dictionaries to MutationDict."""
+            if not isinstance(value, MutationDict):
+                if isinstance(value, dict):
+                    return MutationDict(value)
+                    
+                # this call will raise ValueError
+                return Mutable.coerce(key, value)
+            else:
+                return value
+    
+        def __setitem__(self, key, value):
+            """Detect dictionary set events and emit change events."""
+            
+            dict.__setitem__(self, key, value)
+            self.on_change()
+
+        def __delitem__(self, key):
+            """Detect dictionary del events and emit change events."""
+
+            dict.__delitem__(self, key)
+            self.on_change()
         
-        def copy_value(self, value):
-            return simplejson.loads(
-                        simplejson.dumps(value, use_decimal=True), 
-                        use_decimal=True)
+        # additional dict methods would be overridden here
+
+The new dictionary type can be associated with JSONEncodedDict using
+an event listener established by the :meth:`.Mutable.associate_with`
+method::
+
+    MutationDict.associate_with(JSONEncodedDict)
+
+Alternatively, specific usages of ``JSONEncodedDict`` can be associated
+with ``MutationDict`` via :meth:`.Mutable.as_mutable`::
+
+    Table('mytable', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', MutationDict.as_mutable(JSONEncodedDict))
+    )
 
 Creating New Types
 ~~~~~~~~~~~~~~~~~~

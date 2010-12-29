@@ -23,7 +23,6 @@ class TransactionTest(FixtureTest):
             })
         mapper(Address, addresses)
 
-
     
 class FixtureDataTest(TransactionTest):
     run_inserts = 'each'
