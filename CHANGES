@@ -83,6 +83,13 @@ CHANGES
     improves the generation of joined-inheritance
     "load expired row" behavior.  [ticket:1992]
 
+  - A little more verbiage to the "primaryjoin" error,
+    in an unusual condition that the join condition
+    "works" for viewonly but doesn't work for non-viewonly,
+    and foreign_keys wasn't used - adds "foreign_keys" to
+    the suggestion.  Also add "foreign_keys" to the 
+    suggestion for the generic "direction" error.
+    
 - sql
   - Fixed operator precedence rules for multiple
     chains of a single non-associative operator.

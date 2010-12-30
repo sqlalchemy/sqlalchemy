@@ -1949,8 +1949,43 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Could not locate any equated, locally mapped column pairs "
-            "for primaryjoin condition", sa.orm.configure_mappers)
+            "Could not locate any foreign-key-equated, "
+            "locally mapped column pairs for primaryjoin "
+            "condition 'foos.id > bars.fid' on relationship "
+            "Foo.bars.  For more relaxed rules on join "
+            "conditions, the relationship may be marked as viewonly=True.",
+            sa.orm.configure_mappers)
+
+    @testing.resolve_artifact_names
+    def test_no_equated_wo_fks_works_on_relaxed(self):
+        # very unique - the join between parent/child 
+        # has no fks, but there is an fk join between two other
+        # tables in the join condition, for those users that try creating
+        # these big-long-string-of-joining-many-tables primaryjoins.
+        # in this case we don't get eq_pairs, but we hit the "works if viewonly"
+        # rule.  so here we add another clause regarding "try foreign keys".
+        mapper(Foo, foos, properties={
+            'bars':relationship(Bar,
+                            primaryjoin=and_(
+                                        bars_with_fks.c.fid==foos_with_fks.c.id,
+                                        foos_with_fks.c.id==foos.c.id,
+                                    )
+                            )})
+        mapper(Bar, bars_with_fks)
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Could not locate any foreign-key-equated, locally mapped "
+             "column pairs for primaryjoin condition "
+             "'bars_with_fks.fid = foos_with_fks.id AND "
+             "foos_with_fks.id = foos.id' on relationship Foo.bars.  "
+             "Ensure that the referencing Column objects have a "
+             "ForeignKey present, or are otherwise part of a "
+             "ForeignKeyConstraint on their parent Table, or specify "
+             "the foreign_keys parameter to this relationship.  For "
+             "more relaxed rules on join conditions, the relationship "
+             "may be marked as viewonly=True.", 
+            sa.orm.configure_mappers)
 
     @testing.resolve_artifact_names
     def test_ambiguous_fks(self):
@@ -2031,8 +2066,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Could not locate any equated, locally mapped column pairs "
-            "for primaryjoin condition", sa.orm.configure_mappers)
+            "Could not locate any foreign-key-equated, "
+            "locally mapped column pairs for primaryjoin "
+            "condition 'foos.id > foos.fid' on relationship "
+            "Foo.foos.  For more relaxed rules on join "
+            "conditions, the relationship may be marked as viewonly=True.",
+            sa.orm.configure_mappers)
 
     @testing.resolve_artifact_names
     def test_no_equated_viewonly(self):
@@ -2301,8 +2340,15 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
         mapper(Bar, bars)
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Could not locate any equated, locally mapped column pairs for "
-            "primaryjoin condition ",
+            r"Could not locate any foreign-key-equated, locally mapped "
+             "column pairs for primaryjoin condition 'foos.id > "
+             "foobars_with_fks.fid' on relationship Foo.bars.  Ensure "
+             "that the referencing Column objects have a ForeignKey "
+             "present, or are otherwise part of a ForeignKeyConstraint "
+             "on their parent Table, or specify the foreign_keys "
+             "parameter to this relationship.  For more relaxed "
+             "rules on join conditions, the relationship may be marked "
+             "as viewonly=True.", 
             configure_mappers)
 
         sa.orm.clear_mappers()
@@ -2352,7 +2398,7 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Could not locate any equated, locally mapped column pairs for "
+            "Could not locate any foreign-key-equated, locally mapped column pairs for "
             "secondaryjoin condition", sa.orm.configure_mappers)
 
 class ActiveHistoryFlagTest(_fixtures.FixtureTest):

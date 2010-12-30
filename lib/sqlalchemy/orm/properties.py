@@ -828,16 +828,29 @@ class RelationshipProperty(StrategizedProperty):
             if not self.viewonly and criterion_as_pairs(join_condition,
                     consider_as_foreign_keys=self._user_defined_foreign_keys,
                     any_operator=True):
-                raise sa_exc.ArgumentError("Could not locate any "
-                        "equated, locally mapped column pairs for %s "
-                        "condition '%s' on relationship %s. For more "
-                        "relaxed rules on join conditions, the "
-                        "relationship may be marked as viewonly=True."
-                        % (
+                
+                err = "Could not locate any "\
+                        "foreign-key-equated, locally mapped column "\
+                        "pairs for %s "\
+                        "condition '%s' on relationship %s." % (
                             primary and 'primaryjoin' or 'secondaryjoin', 
                             join_condition, 
                             self
-                        ))
+                        )
+                
+                if not self._user_defined_foreign_keys:
+                    err += "  Ensure that the "\
+                            "referencing Column objects have a "\
+                            "ForeignKey present, or are otherwise part "\
+                            "of a ForeignKeyConstraint on their parent "\
+                            "Table, or specify the foreign_keys parameter "\
+                            "to this relationship."
+                            
+                err += "  For more "\
+                        "relaxed rules on join conditions, the "\
+                        "relationship may be marked as viewonly=True."
+
+                raise sa_exc.ArgumentError(err)
             else:
                 if self._user_defined_foreign_keys:
                     raise sa_exc.ArgumentError("Could not determine "
@@ -864,7 +877,8 @@ class RelationshipProperty(StrategizedProperty):
                             "referencing Column objects have a "
                             "ForeignKey present, or are otherwise part "
                             "of a ForeignKeyConstraint on their parent "
-                            "Table." 
+                            "Table, or specify the foreign_keys parameter " 
+                            "to this relationship."
                             % (
                                 primary and 'primaryjoin' or 'secondaryjoin', 
                                 join_condition, 
