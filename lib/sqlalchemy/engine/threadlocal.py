@@ -29,12 +29,12 @@ class TLConnection(base.Connection):
 
 class TLEvents(events.EngineEvents):
     @classmethod
-    def listen(cls, target, identifier, fn):
+    def _listen(cls, target, identifier, fn):
         if target.TLConnection is TLConnection:
             target.TLConnection = base._listener_connection_cls(
                                         TLConnection, 
                                         target.dispatch)
-        events.EngineEvents.listen(target, identifier, fn)
+        events.EngineEvents._listen(target, identifier, fn)
 
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""

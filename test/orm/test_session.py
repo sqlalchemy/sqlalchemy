@@ -1482,7 +1482,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
     def teardown(self):
         # TODO: need to get remove() functionality
         # going
-        Session.dispatch.clear()
+        Session.dispatch._clear()
         super(SessionEventsTest, self).teardown()
         
 

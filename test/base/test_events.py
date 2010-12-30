@@ -148,7 +148,7 @@ class TestCustomTargets(TestBase):
         
         class TargetEvents(event.Events):
             @classmethod
-            def accept_with(cls, target):
+            def _accept_with(cls, target):
                 if target == 'one':
                     return Target
                 else:
@@ -188,14 +188,14 @@ class TestListenOverride(TestBase):
         
         class TargetEvents(event.Events):
             @classmethod
-            def listen(cls, target, identifier, fn, add=False):
+            def _listen(cls, target, identifier, fn, add=False):
                 if add:
                     def adapt(x, y):
                         fn(x + y)
                 else:
                     adapt = fn
                     
-                event.Events.listen(target, identifier, adapt)
+                event.Events._listen(target, identifier, adapt)
                     
             def on_event_one(self, x, y):
                 pass

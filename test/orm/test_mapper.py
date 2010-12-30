@@ -2304,8 +2304,8 @@ class MapperEventsTest(_fixtures.FixtureTest):
     def teardown(self):
         # TODO: need to get remove() functionality
         # going
-        Mapper.dispatch.clear()
-        ClassManager.dispatch.clear()
+        Mapper.dispatch._clear()
+        ClassManager.dispatch._clear()
         super(MapperEventsTest, self).teardown()
         
     def listen_all(self, mapper, **kw):

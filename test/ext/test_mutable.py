@@ -51,8 +51,8 @@ class _MutableDictTestBase(object):
 
     def teardown(self):
         # clear out mapper events
-        Mapper.dispatch.clear()
-        ClassManager.dispatch.clear()
+        Mapper.dispatch._clear()
+        ClassManager.dispatch._clear()
         super(_MutableDictTestBase, self).teardown()
         
     @testing.resolve_artifact_names
@@ -180,8 +180,8 @@ class MutableCompositesTest(_base.MappedTest):
 
     def teardown(self):
         # clear out mapper events
-        Mapper.dispatch.clear()
-        ClassManager.dispatch.clear()
+        Mapper.dispatch._clear()
+        ClassManager.dispatch._clear()
         super(MutableCompositesTest, self).teardown()
 
     @classmethod

@@ -11,9 +11,9 @@ def listen(target, identifier, fn, *args, **kw):
     """
     
     for evt_cls in _registrars[identifier]:
-        tgt = evt_cls.accept_with(target)
+        tgt = evt_cls._accept_with(target)
         if tgt is not None:
-            tgt.dispatch.listen(tgt, identifier, fn, *args, **kw)
+            tgt.dispatch._listen(tgt, identifier, fn, *args, **kw)
             return
     raise exc.InvalidRequestError("No such event %s for target %s" %
                                 (identifier,target))
@@ -27,8 +27,8 @@ def remove(target, identifier, fn):
     
     """
     for evt_cls in _registrars[identifier]:
-        for tgt in evt_cls.accept_with(target):
-            tgt.dispatch.remove(identifier, tgt, fn, *args, **kw)
+        for tgt in evt_cls._accept_with(target):
+            tgt.dispatch._remove(identifier, tgt, fn, *args, **kw)
             return
 
 _registrars = util.defaultdict(list)
@@ -93,13 +93,13 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     :class:`.Events` class."""
     
     # there's all kinds of ways to do this,
-    # i.e. make a Dispatch class that shares the 'listen' method
+    # i.e. make a Dispatch class that shares the '_listen' method
     # of the Event class, this is the straight monkeypatch.
     dispatch_base = getattr(cls, 'dispatch', _Dispatch)
     cls.dispatch = dispatch_cls = type("%sDispatch" % classname, 
                                         (dispatch_base, ), {})
-    dispatch_cls.listen = cls.listen
-    dispatch_cls.clear = cls.clear
+    dispatch_cls._listen = cls._listen
+    dispatch_cls._clear = cls._clear
     
     for k in dict_:
         if k.startswith('on_'):
@@ -120,7 +120,7 @@ class Events(object):
     __metaclass__ = _EventMeta
     
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         # Mapper, ClassManager, Session override this to
         # also accept classes, scoped_sessions, sessionmakers, etc.
         if hasattr(target, 'dispatch') and (
@@ -133,15 +133,15 @@ class Events(object):
             return None
 
     @classmethod
-    def listen(cls, target, identifier, fn, propagate=False):
+    def _listen(cls, target, identifier, fn, propagate=False):
         getattr(target.dispatch, identifier).append(fn, target, propagate)
     
     @classmethod
-    def remove(cls, target, identifier, fn):
+    def _remove(cls, target, identifier, fn):
         getattr(target.dispatch, identifier).remove(fn, target)
     
     @classmethod
-    def clear(cls):
+    def _clear(cls):
         for attr in dir(cls.dispatch):
             if attr.startswith("on_"):
                 getattr(cls.dispatch, attr).clear()

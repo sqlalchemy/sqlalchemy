@@ -404,7 +404,7 @@ class PoolEventsTest(PoolTestBase):
     def teardown(self):
         # TODO: need to get remove() functionality
         # going
-        pool.Pool.dispatch.clear()
+        pool.Pool.dispatch._clear()
         
 class DeprecatedPoolListenerTest(PoolTestBase):
     @testing.uses_deprecated(r".*Use event.listen")

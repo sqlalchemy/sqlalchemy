@@ -142,7 +142,7 @@ class PoolEvents(event.Events):
     """
     
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.engine import Engine
         from sqlalchemy.pool import Pool
         
@@ -241,7 +241,7 @@ class EngineEvents(event.Events):
     """
     
     @classmethod
-    def listen(cls, target, identifier, fn, retval=False):
+    def _listen(cls, target, identifier, fn, retval=False):
         from sqlalchemy.engine.base import Connection, \
             _listener_connection_cls
         if target.Connection is Connection:
@@ -271,7 +271,7 @@ class EngineEvents(event.Events):
                     "'on_before_cursor_execute' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
-        event.Events.listen(target, identifier, fn)
+        event.Events._listen(target, identifier, fn)
 
     def on_before_execute(self, conn, clauseelement, multiparams, params):
         """Intercept high level execute() events."""

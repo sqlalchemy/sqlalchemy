@@ -17,7 +17,7 @@ class InstrumentationEvents(event.Events):
     """
     
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.orm.instrumentation import instrumentation_registry
         
         if isinstance(target, type):
@@ -26,11 +26,11 @@ class InstrumentationEvents(event.Events):
             return None
 
     @classmethod
-    def listen(cls, target, identifier, fn, propagate=False):
-        event.Events.listen(target, identifier, fn, propagate=propagate)
+    def _listen(cls, target, identifier, fn, propagate=False):
+        event.Events._listen(target, identifier, fn, propagate=propagate)
 
     @classmethod
-    def remove(cls, identifier, target, fn):
+    def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instrumentation events not yet implemented")
 
     def on_class_instrument(self, cls):
@@ -61,7 +61,7 @@ class InstanceEvents(event.Events):
     
     """
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.orm.instrumentation import ClassManager, manager_of_class
         from sqlalchemy.orm import Mapper, mapper
         
@@ -81,20 +81,20 @@ class InstanceEvents(event.Events):
         return None
     
     @classmethod
-    def listen(cls, target, identifier, fn, raw=False, propagate=False):
+    def _listen(cls, target, identifier, fn, raw=False, propagate=False):
         if not raw:
             orig_fn = fn
             def wrap(state, *arg, **kw):
                 return orig_fn(state.obj(), *arg, **kw)
             fn = wrap
 
-        event.Events.listen(target, identifier, fn, propagate=propagate)
+        event.Events._listen(target, identifier, fn, propagate=propagate)
         if propagate:
             for mgr in target.subclass_managers(True):
-                event.Events.listen(mgr, identifier, fn, True)
+                event.Events._listen(mgr, identifier, fn, True)
             
     @classmethod
-    def remove(cls, identifier, target, fn):
+    def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of instance events not yet implemented")
 
     def on_first_init(self, manager, cls):
@@ -232,7 +232,7 @@ class MapperEvents(event.Events):
     """
 
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.orm import mapper, class_mapper, Mapper
         if target is mapper:
             return Mapper
@@ -245,7 +245,7 @@ class MapperEvents(event.Events):
             return target
         
     @classmethod
-    def listen(cls, target, identifier, fn, 
+    def _listen(cls, target, identifier, fn, 
                             raw=False, retval=False, propagate=False):
         from sqlalchemy.orm.interfaces import EXT_CONTINUE
 
@@ -271,9 +271,9 @@ class MapperEvents(event.Events):
         
         if propagate:
             for mapper in target.self_and_descendants:
-                event.Events.listen(mapper, identifier, fn, propagate=True)
+                event.Events._listen(mapper, identifier, fn, propagate=True)
         else:
-            event.Events.listen(target, identifier, fn)
+            event.Events._listen(target, identifier, fn)
         
     def on_instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, 
@@ -661,7 +661,7 @@ class MapperEvents(event.Events):
         """
 
     @classmethod
-    def remove(cls, identifier, target, fn):
+    def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of mapper events not yet implemented")
     
 class SessionEvents(event.Events):
@@ -690,7 +690,7 @@ class SessionEvents(event.Events):
     """
 
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.orm import ScopedSession, Session
         if isinstance(target, ScopedSession):
             if not isinstance(target.session_factory, type) or \
@@ -711,7 +711,7 @@ class SessionEvents(event.Events):
             return None
         
     @classmethod
-    def remove(cls, identifier, target, fn):
+    def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of session events not yet implemented")
 
     def on_before_commit(self, session):
@@ -845,7 +845,7 @@ class AttributeEvents(event.Events):
     """
 
     @classmethod
-    def accept_with(cls, target):
+    def _accept_with(cls, target):
         from sqlalchemy.orm import interfaces
         # TODO: coverage
         if isinstance(target, interfaces.MapperProperty):
@@ -854,7 +854,7 @@ class AttributeEvents(event.Events):
             return target
     
     @classmethod
-    def listen(cls, target, identifier, fn, active_history=False, 
+    def _listen(cls, target, identifier, fn, active_history=False, 
                                         raw=False, retval=False,
                                         propagate=False):
         if active_history:
@@ -875,7 +875,7 @@ class AttributeEvents(event.Events):
                     return orig_fn(target, value, *arg)
             fn = wrap
             
-        event.Events.listen(target, identifier, fn, propagate)
+        event.Events._listen(target, identifier, fn, propagate)
         
         if propagate:
             from sqlalchemy.orm.instrumentation import manager_of_class
@@ -883,10 +883,10 @@ class AttributeEvents(event.Events):
             manager = manager_of_class(target.class_)
             
             for mgr in manager.subclass_managers(True):
-                event.Events.listen(mgr[target.key], identifier, fn, True)
+                event.Events._listen(mgr[target.key], identifier, fn, True)
         
     @classmethod
-    def remove(cls, identifier, target, fn):
+    def _remove(cls, identifier, target, fn):
         raise NotImplementedError("Removal of attribute events not yet implemented")
         
     def on_append(self, target, value, initiator):
