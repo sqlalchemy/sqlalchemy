@@ -82,7 +82,7 @@ collections (new feature as of 0.6.4)::
 
 It should be noted that insert and update defaults configured on individal
 :class:`.Column` objects, such as those configured by the "default",
-"on_update", "server_default" and "server_onupdate" arguments, will continue
+"update", "server_default" and "server_onupdate" arguments, will continue
 to function normally even if those :class:`.Column` objects are not mapped.
 This functionality is part of the SQL expression and execution system and
 occurs below the level of the ORM.

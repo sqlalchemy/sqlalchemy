@@ -447,7 +447,7 @@ class ScalarAttributeImpl(AttributeImpl):
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        if self.dispatch.on_remove:
+        if self.dispatch.remove:
             self.fire_remove_event(state, dict_, old, None)
         state.modified_event(dict_, self, old)
         del dict_[self.key]
@@ -465,19 +465,19 @@ class ScalarAttributeImpl(AttributeImpl):
         else:
             old = dict_.get(self.key, NO_VALUE)
 
-        if self.dispatch.on_set:
+        if self.dispatch.set:
             value = self.fire_replace_event(state, dict_, 
                                                 value, old, initiator)
         state.modified_event(dict_, self, old)
         dict_[self.key] = value
 
     def fire_replace_event(self, state, dict_, value, previous, initiator):
-        for fn in self.dispatch.on_set:
+        for fn in self.dispatch.set:
             value = fn(state, value, previous, initiator or self)
         return value
 
     def fire_remove_event(self, state, dict_, value, initiator):
-        for fn in self.dispatch.on_remove:
+        for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
 
     @property
@@ -618,7 +618,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
         
-        for fn in self.dispatch.on_remove:
+        for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, value)
@@ -630,7 +630,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
         
-        for fn in self.dispatch.on_set:
+        for fn in self.dispatch.set:
             value = fn(state, value, previous, initiator or self)
 
         state.modified_event(dict_, self, previous)
@@ -709,7 +709,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         
     def fire_append_event(self, state, dict_, value, initiator):
-        for fn in self.dispatch.on_append:
+        for fn in self.dispatch.append:
             value = fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, NEVER_SET, True)
@@ -726,7 +726,7 @@ class CollectionAttributeImpl(AttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), False)
 
-        for fn in self.dispatch.on_remove:
+        for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
 
         state.modified_event(dict_, self, NEVER_SET, True)
@@ -927,11 +927,11 @@ def backref_listeners(attribute, key, uselist):
                                             passive=PASSIVE_NO_FETCH)
     
     if uselist:
-        event.listen(attribute, "on_append", append, retval=True, raw=True)
+        event.listen(attribute, "append", append, retval=True, raw=True)
     else:
-        event.listen(attribute, "on_set", set_, retval=True, raw=True)
+        event.listen(attribute, "set", set_, retval=True, raw=True)
     # TODO: need coverage in test/orm/ of remove event
-    event.listen(attribute, "on_remove", remove, retval=True, raw=True)
+    event.listen(attribute, "remove", remove, retval=True, raw=True)
         
 class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,

@@ -49,7 +49,7 @@ class DDLEventTest(TestBase):
     def test_table_create_before(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        event.listen(table, 'on_before_create', canary.before_create)
+        event.listen(table, 'before_create', canary.before_create)
 
         table.create(bind)
         assert canary.state == 'before-create'
@@ -59,7 +59,7 @@ class DDLEventTest(TestBase):
     def test_table_create_after(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        event.listen(table, 'on_after_create', canary.after_create)
+        event.listen(table, 'after_create', canary.after_create)
 
         canary.state = 'skipped'
         table.create(bind)
@@ -70,8 +70,8 @@ class DDLEventTest(TestBase):
     def test_table_create_both(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        event.listen(table, 'on_before_create', canary.before_create)
-        event.listen(table, 'on_after_create', canary.after_create)
+        event.listen(table, 'before_create', canary.before_create)
+        event.listen(table, 'after_create', canary.after_create)
         
         table.create(bind)
         assert canary.state == 'after-create'
@@ -81,7 +81,7 @@ class DDLEventTest(TestBase):
     def test_table_drop_before(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        event.listen(table, 'on_before_drop', canary.before_drop)
+        event.listen(table, 'before_drop', canary.before_drop)
 
         table.create(bind)
         assert canary.state is None
@@ -91,7 +91,7 @@ class DDLEventTest(TestBase):
     def test_table_drop_after(self):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
-        event.listen(table, 'on_after_drop', canary.after_drop)
+        event.listen(table, 'after_drop', canary.after_drop)
 
         table.create(bind)
         assert canary.state is None
@@ -103,8 +103,8 @@ class DDLEventTest(TestBase):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
 
-        event.listen(table, 'on_before_drop', canary.before_drop)
-        event.listen(table, 'on_after_drop', canary.after_drop)
+        event.listen(table, 'before_drop', canary.before_drop)
+        event.listen(table, 'after_drop', canary.after_drop)
 
         table.create(bind)
         assert canary.state is None
@@ -115,10 +115,10 @@ class DDLEventTest(TestBase):
         table, bind = self.table, self.bind
         canary = self.Canary(table, bind)
 
-        event.listen(table, 'on_before_create', canary.before_create)
-        event.listen(table, 'on_after_create', canary.after_create)
-        event.listen(table, 'on_before_drop', canary.before_drop)
-        event.listen(table, 'on_after_drop', canary.after_drop)
+        event.listen(table, 'before_create', canary.before_create)
+        event.listen(table, 'after_create', canary.after_create)
+        event.listen(table, 'before_drop', canary.before_drop)
+        event.listen(table, 'after_drop', canary.after_drop)
 
         assert canary.state is None
         table.create(bind)
@@ -130,7 +130,7 @@ class DDLEventTest(TestBase):
     def test_table_create_before(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-        event.listen(metadata, 'on_before_create', canary.before_create)
+        event.listen(metadata, 'before_create', canary.before_create)
 
         metadata.create_all(bind)
         assert canary.state == 'before-create'
@@ -140,7 +140,7 @@ class DDLEventTest(TestBase):
     def test_metadata_create_after(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-        event.listen(metadata, 'on_after_create', canary.after_create)
+        event.listen(metadata, 'after_create', canary.after_create)
 
         canary.state = 'skipped'
         metadata.create_all(bind)
@@ -152,8 +152,8 @@ class DDLEventTest(TestBase):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
             
-        event.listen(metadata, 'on_before_create', canary.before_create)
-        event.listen(metadata, 'on_after_create', canary.after_create)
+        event.listen(metadata, 'before_create', canary.before_create)
+        event.listen(metadata, 'after_create', canary.after_create)
 
         metadata.create_all(bind)
         assert canary.state == 'after-create'
@@ -164,10 +164,10 @@ class DDLEventTest(TestBase):
         metadata, table, bind = self.metadata, self.table, self.bind
         table_canary = self.Canary(table, bind)
 
-        event.listen(table, 'on_before_create', table_canary.before_create)
+        event.listen(table, 'before_create', table_canary.before_create)
 
         metadata_canary = self.Canary(metadata, bind)
-        event.listen(metadata, 'on_before_create', metadata_canary.before_create)
+        event.listen(metadata, 'before_create', metadata_canary.before_create)
         self.table.create(self.bind)
         assert metadata_canary.state == None
 
@@ -196,10 +196,10 @@ class DDLExecutionTest(TestBase):
 
     def test_table_standalone(self):
         users, engine = self.users, self.engine
-        event.listen(users, 'on_before_create', DDL('mxyzptlk'))
-        event.listen(users, 'on_after_create', DDL('klptzyxm'))
-        event.listen(users, 'on_before_drop', DDL('xyzzy'))
-        event.listen(users, 'on_after_drop', DDL('fnord'))
+        event.listen(users, 'before_create', DDL('mxyzptlk'))
+        event.listen(users, 'after_create', DDL('klptzyxm'))
+        event.listen(users, 'before_drop', DDL('xyzzy'))
+        event.listen(users, 'after_drop', DDL('fnord'))
 
         users.create()
         strings = [str(x) for x in engine.mock]
@@ -218,10 +218,10 @@ class DDLExecutionTest(TestBase):
     def test_table_by_metadata(self):
         metadata, users, engine = self.metadata, self.users, self.engine
 
-        event.listen(users, 'on_before_create', DDL('mxyzptlk'))
-        event.listen(users, 'on_after_create', DDL('klptzyxm'))
-        event.listen(users, 'on_before_drop', DDL('xyzzy'))
-        event.listen(users, 'on_after_drop', DDL('fnord'))
+        event.listen(users, 'before_create', DDL('mxyzptlk'))
+        event.listen(users, 'after_create', DDL('klptzyxm'))
+        event.listen(users, 'before_drop', DDL('xyzzy'))
+        event.listen(users, 'after_drop', DDL('fnord'))
 
         metadata.create_all()
         strings = [str(x) for x in engine.mock]
@@ -263,10 +263,10 @@ class DDLExecutionTest(TestBase):
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
 
-        event.listen(metadata, 'on_before_create', DDL('mxyzptlk'))
-        event.listen(metadata, 'on_after_create', DDL('klptzyxm'))
-        event.listen(metadata, 'on_before_drop', DDL('xyzzy'))
-        event.listen(metadata, 'on_after_drop', DDL('fnord'))
+        event.listen(metadata, 'before_create', DDL('mxyzptlk'))
+        event.listen(metadata, 'after_create', DDL('klptzyxm'))
+        event.listen(metadata, 'before_drop', DDL('xyzzy'))
+        event.listen(metadata, 'after_drop', DDL('fnord'))
 
         metadata.create_all()
         strings = [str(x) for x in engine.mock]
@@ -317,13 +317,13 @@ class DDLExecutionTest(TestBase):
 
         event.listen(
             users,
-            'on_after_create',
+            'after_create',
             AddConstraint(constraint).execute_if(dialect='postgresql'),
         )
         
         event.listen(
             users,
-            'on_before_drop',
+            'before_drop',
             DropConstraint(constraint).execute_if(dialect='postgresql'),
         )
         

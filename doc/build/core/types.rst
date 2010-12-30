@@ -395,13 +395,13 @@ described in :ref:`mutable_toplevel`::
             """Detect dictionary set events and emit change events."""
             
             dict.__setitem__(self, key, value)
-            self.on_change()
+            self.change()
 
         def __delitem__(self, key):
             """Detect dictionary del events and emit change events."""
 
             dict.__delitem__(self, key)
-            self.on_change()
+            self.change()
         
         # additional dict methods would be overridden here
 

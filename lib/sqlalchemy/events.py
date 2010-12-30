@@ -17,11 +17,11 @@ class DDLEvents(event.Events):
         m = MetaData()
         some_table = Table('some_table', m, Column('data', Integer))
         
-        def on_after_create(target, connection, **kw):
+        def after_create(target, connection, **kw):
             connection.execute("ALTER TABLE %s SET name=foo_%s" % 
                                     (target.name, target.name))
                                     
-        event.listen(some_table, "on_after_create", on_after_create)
+        event.listen(some_table, "after_create", after_create)
     
     DDL events integrate closely with the 
     :class:`.DDL` class and the :class:`.DDLElement` hierarchy
@@ -31,7 +31,7 @@ class DDLEvents(event.Events):
         from sqlalchemy import DDL
         event.listen(
             some_table,
-            "on_after_create",
+            "after_create",
             DDL("ALTER TABLE %(table)s SET name=foo_%(table)s")
         )
     
@@ -51,7 +51,7 @@ class DDLEvents(event.Events):
     
     """
     
-    def on_before_create(self, target, connection, **kw):
+    def before_create(self, target, connection, **kw):
         """Called before CREATE statments are emitted.
         
         :param target: the :class:`.MetaData` or :class:`.Table`
@@ -66,7 +66,7 @@ class DDLEvents(event.Events):
            
         """
 
-    def on_after_create(self, target, connection, **kw):
+    def after_create(self, target, connection, **kw):
         """Called after CREATE statments are emitted.
         
         :param target: the :class:`.MetaData` or :class:`.Table`
@@ -81,7 +81,7 @@ class DDLEvents(event.Events):
            
         """
 
-    def on_before_drop(self, target, connection, **kw):
+    def before_drop(self, target, connection, **kw):
         """Called before DROP statments are emitted.
         
         :param target: the :class:`.MetaData` or :class:`.Table`
@@ -96,7 +96,7 @@ class DDLEvents(event.Events):
            
         """
     
-    def on_after_drop(self, target, connection, **kw):
+    def after_drop(self, target, connection, **kw):
         """Called after DROP statments are emitted.
         
         :param target: the :class:`.MetaData` or :class:`.Table`
@@ -126,7 +126,7 @@ class PoolEvents(event.Events):
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
             
-        events.listen(Pool, 'on_checkout', my_on_checkout)
+        events.listen(Pool, 'checkout', my_on_checkout)
 
     In addition to accepting the :class:`.Pool` class and :class:`.Pool` instances,
     :class:`.PoolEvents` also accepts :class:`.Engine` objects and
@@ -137,7 +137,7 @@ class PoolEvents(event.Events):
         engine = create_engine("postgresql://scott:tiger@localhost/test")
         
         # will associate with engine.pool
-        events.listen(engine, 'on_checkout', my_on_checkout)
+        events.listen(engine, 'checkout', my_on_checkout)
 
     """
     
@@ -156,7 +156,7 @@ class PoolEvents(event.Events):
         else:
             return target
     
-    def on_connect(self, dbapi_connection, connection_record):
+    def connect(self, dbapi_connection, connection_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
         :param dbapi_con:
@@ -168,7 +168,7 @@ class PoolEvents(event.Events):
 
         """
 
-    def on_first_connect(self, dbapi_connection, connection_record):
+    def first_connect(self, dbapi_connection, connection_record):
         """Called exactly once for the first DB-API connection.
 
         :param dbapi_con:
@@ -180,7 +180,7 @@ class PoolEvents(event.Events):
 
         """
 
-    def on_checkout(self, dbapi_connection, connection_record, connection_proxy):
+    def checkout(self, dbapi_connection, connection_record, connection_proxy):
         """Called when a connection is retrieved from the Pool.
 
         :param dbapi_con:
@@ -199,7 +199,7 @@ class PoolEvents(event.Events):
         using the new connection.
         """
 
-    def on_checkin(self, dbapi_connection, connection_record):
+    def checkin(self, dbapi_connection, connection_record):
         """Called when a connection returns to the pool.
 
         Note that the connection may be closed, and may be None if the
@@ -223,16 +223,16 @@ class EngineEvents(event.Events):
     
         from sqlalchemy import event, create_engine
         
-        def on_before_execute(conn, clauseelement, multiparams, params):
+        def before_execute(conn, clauseelement, multiparams, params):
             log.info("Received statement: %s" % clauseelement)
         
         engine = create_engine('postgresql://scott:tiger@localhost/test')
-        event.listen(engine, "on_before_execute", on_before_execute)
+        event.listen(engine, "before_execute", before_execute)
     
     Some events allow modifiers to the listen() function.
     
-    :param retval=False: Applies to the :meth:`.on_before_execute` and 
-      :meth:`.on_before_cursor_execute` events only.  When True, the
+    :param retval=False: Applies to the :meth:`.before_execute` and 
+      :meth:`.before_cursor_execute` events only.  When True, the
       user-defined event function must have a return value, which
       is a tuple of parameters that replace the given statement 
       and parameters.  See those methods for a description of
@@ -250,13 +250,13 @@ class EngineEvents(event.Events):
                                         target.dispatch)
         
         if not retval:
-            if identifier == 'on_before_execute':
+            if identifier == 'before_execute':
                 orig_fn = fn
                 def wrap(conn, clauseelement, multiparams, params):
                     orig_fn(conn, clauseelement, multiparams, params)
                     return clauseelement, multiparams, params
                 fn = wrap
-            elif identifier == 'on_before_cursor_execute':
+            elif identifier == 'before_cursor_execute':
                 orig_fn = fn
                 def wrap(conn, cursor, statement, 
                         parameters, context, executemany):
@@ -265,55 +265,55 @@ class EngineEvents(event.Events):
                     return statement, parameters
                 fn = wrap
                     
-        elif retval and identifier not in ('on_before_execute', 'on_before_cursor_execute'):
+        elif retval and identifier not in ('before_execute', 'before_cursor_execute'):
             raise exc.ArgumentError(
-                    "Only the 'on_before_execute' and "
-                    "'on_before_cursor_execute' engine "
+                    "Only the 'before_execute' and "
+                    "'before_cursor_execute' engine "
                     "event listeners accept the 'retval=True' "
                     "argument.")
         event.Events._listen(target, identifier, fn)
 
-    def on_before_execute(self, conn, clauseelement, multiparams, params):
+    def before_execute(self, conn, clauseelement, multiparams, params):
         """Intercept high level execute() events."""
 
-    def on_after_execute(self, conn, clauseelement, multiparams, params, result):
+    def after_execute(self, conn, clauseelement, multiparams, params, result):
         """Intercept high level execute() events."""
         
-    def on_before_cursor_execute(self, conn, cursor, statement, 
+    def before_cursor_execute(self, conn, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
-    def on_after_cursor_execute(self, conn, cursor, statement, 
+    def after_cursor_execute(self, conn, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
-    def on_begin(self, conn):
+    def begin(self, conn):
         """Intercept begin() events."""
         
-    def on_rollback(self, conn):
+    def rollback(self, conn):
         """Intercept rollback() events."""
         
-    def on_commit(self, conn):
+    def commit(self, conn):
         """Intercept commit() events."""
         
-    def on_savepoint(self, conn, name=None):
+    def savepoint(self, conn, name=None):
         """Intercept savepoint() events."""
         
-    def on_rollback_savepoint(self, conn, name, context):
+    def rollback_savepoint(self, conn, name, context):
         """Intercept rollback_savepoint() events."""
         
-    def on_release_savepoint(self, conn, name, context):
+    def release_savepoint(self, conn, name, context):
         """Intercept release_savepoint() events."""
         
-    def on_begin_twophase(self, conn, xid):
+    def begin_twophase(self, conn, xid):
         """Intercept begin_twophase() events."""
         
-    def on_prepare_twophase(self, conn, xid):
+    def prepare_twophase(self, conn, xid):
         """Intercept prepare_twophase() events."""
         
-    def on_rollback_twophase(self, conn, xid, is_prepared):
+    def rollback_twophase(self, conn, xid, is_prepared):
         """Intercept rollback_twophase() events."""
         
-    def on_commit_twophase(self, conn, xid, is_prepared):
+    def commit_twophase(self, conn, xid, is_prepared):
         """Intercept commit_twophase() events."""
 

@@ -132,9 +132,9 @@ def testing_engine(url=None, options=None):
     options = options or config.db_opts
 
     engine = create_engine(url, **options)
-    event.listen(engine, 'on_after_execute', asserter.execute)
-    event.listen(engine, 'on_after_cursor_execute', asserter.cursor_execute)
-    event.listen(engine.pool, 'on_checkout', testing_reaper.checkout)
+    event.listen(engine, 'after_execute', asserter.execute)
+    event.listen(engine, 'after_cursor_execute', asserter.cursor_execute)
+    event.listen(engine.pool, 'checkout', testing_reaper.checkout)
     
     # may want to call this, results
     # in first-connect initializers

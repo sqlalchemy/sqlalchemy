@@ -196,37 +196,37 @@ class PoolEventsTest(PoolTestBase):
     def _first_connect_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
-        def on_first_connect(*arg, **kw):
+        def first_connect(*arg, **kw):
             canary.append('first_connect')
         
-        event.listen(p, 'on_first_connect', on_first_connect)
+        event.listen(p, 'first_connect', first_connect)
         
         return p, canary
 
     def _connect_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
-        def on_connect(*arg, **kw):
+        def connect(*arg, **kw):
             canary.append('connect')
-        event.listen(p, 'on_connect', on_connect)
+        event.listen(p, 'connect', connect)
         
         return p, canary
 
     def _checkout_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
-        def on_checkout(*arg, **kw):
+        def checkout(*arg, **kw):
             canary.append('checkout')
-        event.listen(p, 'on_checkout', on_checkout)
+        event.listen(p, 'checkout', checkout)
         
         return p, canary
 
     def _checkin_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
-        def on_checkin(*arg, **kw):
+        def checkin(*arg, **kw):
             canary.append('checkin')
-        event.listen(p, 'on_checkin', on_checkin)
+        event.listen(p, 'checkin', checkin)
         
         return p, canary
         
@@ -361,10 +361,10 @@ class PoolEventsTest(PoolTestBase):
             canary.append("listen_four")
             
         engine = create_engine(testing.db.url)
-        event.listen(pool.Pool, 'on_connect', listen_one)
-        event.listen(engine.pool, 'on_connect', listen_two)
-        event.listen(engine, 'on_connect', listen_three)
-        event.listen(engine.__class__, 'on_connect', listen_four)
+        event.listen(pool.Pool, 'connect', listen_one)
+        event.listen(engine.pool, 'connect', listen_two)
+        event.listen(engine, 'connect', listen_three)
+        event.listen(engine.__class__, 'connect', listen_four)
 
         engine.execute(select([1])).close()
         eq_(
@@ -382,19 +382,19 @@ class PoolEventsTest(PoolTestBase):
         def listen_three(*args):
             canary.append("listen_three")
         
-        event.listen(pool.Pool, 'on_connect', listen_one)
-        event.listen(pool.QueuePool, 'on_connect', listen_two)
-        event.listen(pool.SingletonThreadPool, 'on_connect', listen_three)
+        event.listen(pool.Pool, 'connect', listen_one)
+        event.listen(pool.QueuePool, 'connect', listen_two)
+        event.listen(pool.SingletonThreadPool, 'connect', listen_three)
         
         p1 = pool.QueuePool(creator=MockDBAPI().connect)
         p2 = pool.SingletonThreadPool(creator=MockDBAPI().connect)
         
-        assert listen_one in p1.dispatch.on_connect
-        assert listen_two in p1.dispatch.on_connect
-        assert listen_three not in p1.dispatch.on_connect
-        assert listen_one in p2.dispatch.on_connect
-        assert listen_two not in p2.dispatch.on_connect
-        assert listen_three in p2.dispatch.on_connect
+        assert listen_one in p1.dispatch.connect
+        assert listen_two in p1.dispatch.connect
+        assert listen_three not in p1.dispatch.connect
+        assert listen_one in p2.dispatch.connect
+        assert listen_two not in p2.dispatch.connect
+        assert listen_three in p2.dispatch.connect
 
         p1.connect()
         eq_(canary, ["listen_one", "listen_two"])
@@ -475,10 +475,10 @@ class DeprecatedPoolListenerTest(PoolTestBase):
 
         def assert_listeners(p, total, conn, fconn, cout, cin):
             for instance in (p, p.recreate()):
-                self.assert_(len(instance.dispatch.on_connect) == conn)
-                self.assert_(len(instance.dispatch.on_first_connect) == fconn)
-                self.assert_(len(instance.dispatch.on_checkout) == cout)
-                self.assert_(len(instance.dispatch.on_checkin) == cin)
+                self.assert_(len(instance.dispatch.connect) == conn)
+                self.assert_(len(instance.dispatch.first_connect) == fconn)
+                self.assert_(len(instance.dispatch.checkout) == cout)
+                self.assert_(len(instance.dispatch.checkin) == cin)
 
         p = self._queuepool_fixture()
         assert_listeners(p, 0, 0, 0, 0, 0)
@@ -601,9 +601,9 @@ class DeprecatedPoolListenerTest(PoolTestBase):
 
             def assert_listeners(p, total, conn, cout, cin):
                 for instance in (p, p.recreate()):
-                    eq_(len(instance.dispatch.on_connect), conn)
-                    eq_(len(instance.dispatch.on_checkout), cout)
-                    eq_(len(instance.dispatch.on_checkin), cin)
+                    eq_(len(instance.dispatch.connect), conn)
+                    eq_(len(instance.dispatch.checkout), cout)
+                    eq_(len(instance.dispatch.checkin), cin)
 
             p = self._queuepool_fixture()
             assert_listeners(p, 0, 0, 0, 0)

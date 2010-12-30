@@ -43,9 +43,9 @@ class InitTest(_base.ORMTest):
         instrumentation.register_class(cls)
         ne_(cls.__init__, original_init)
         manager = instrumentation.manager_of_class(cls)
-        def on_init(state, args, kwargs):
-            canary.append((cls, 'on_init', state.class_))
-        event.listen(manager, 'on_init', on_init, raw=True)
+        def init(state, args, kwargs):
+            canary.append((cls, 'init', state.class_))
+        event.listen(manager, 'init', init, raw=True)
 
     def test_ai(self):
         inits = []
@@ -64,7 +64,7 @@ class InitTest(_base.ORMTest):
         self.register(A, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A)])
+        eq_(inits, [(A, 'init', A)])
 
     def test_Ai(self):
         inits = []
@@ -75,7 +75,7 @@ class InitTest(_base.ORMTest):
         self.register(A, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
     def test_ai_B(self):
         inits = []
@@ -93,7 +93,7 @@ class InitTest(_base.ORMTest):
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (A, '__init__')])
 
     def test_ai_Bi(self):
         inits = []
@@ -114,7 +114,7 @@ class InitTest(_base.ORMTest):
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (B, '__init__'), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (B, '__init__'), (A, '__init__')])
 
     def test_Ai_bi(self):
         inits = []
@@ -130,12 +130,12 @@ class InitTest(_base.ORMTest):
                 super(B, self).__init__()
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, '__init__'), (A, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, '__init__'), (A, 'init', B), (A, '__init__')])
 
     def test_Ai_Bi(self):
         inits = []
@@ -152,12 +152,12 @@ class InitTest(_base.ORMTest):
         self.register(B, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (B, '__init__'), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (B, '__init__'), (A, '__init__')])
 
     def test_Ai_B(self):
         inits = []
@@ -171,12 +171,12 @@ class InitTest(_base.ORMTest):
         self.register(B, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (A, '__init__')])
 
     def test_Ai_Bi_Ci(self):
         inits = []
@@ -199,16 +199,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (B, '__init__'), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (B, '__init__'), (A, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (C, '__init__'), (B, '__init__'),
+        eq_(inits, [(C, 'init', C), (C, '__init__'), (B, '__init__'),
                    (A, '__init__')])
 
     def test_Ai_bi_Ci(self):
@@ -231,16 +231,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, '__init__'), (A, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, '__init__'), (A, 'init', B), (A, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (C, '__init__'),  (B, '__init__'),
+        eq_(inits, [(C, 'init', C), (C, '__init__'),  (B, '__init__'),
                    (A, '__init__')])
 
     def test_Ai_b_Ci(self):
@@ -260,16 +260,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(A, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(A, 'init', B), (A, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (C, '__init__'), (A, '__init__')])
+        eq_(inits, [(C, 'init', C), (C, '__init__'), (A, '__init__')])
 
     def test_Ai_B_Ci(self):
         inits = []
@@ -289,16 +289,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (A, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (C, '__init__'), (A, '__init__')])
+        eq_(inits, [(C, 'init', C), (C, '__init__'), (A, '__init__')])
 
     def test_Ai_B_C(self):
         inits = []
@@ -315,16 +315,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A), (A, '__init__')])
+        eq_(inits, [(A, 'init', A), (A, '__init__')])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (A, '__init__')])
+        eq_(inits, [(B, 'init', B), (A, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (A, '__init__')])
+        eq_(inits, [(C, 'init', C), (A, '__init__')])
 
     def test_A_Bi_C(self):
         inits = []
@@ -341,16 +341,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A)])
+        eq_(inits, [(A, 'init', A)])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B), (B, '__init__')])
+        eq_(inits, [(B, 'init', B), (B, '__init__')])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (B, '__init__')])
+        eq_(inits, [(C, 'init', C), (B, '__init__')])
 
     def test_A_B_Ci(self):
         inits = []
@@ -367,16 +367,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A)])
+        eq_(inits, [(A, 'init', A)])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B)])
+        eq_(inits, [(B, 'init', B)])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C), (C, '__init__')])
+        eq_(inits, [(C, 'init', C), (C, '__init__')])
 
     def test_A_B_C(self):
         inits = []
@@ -391,16 +391,16 @@ class InitTest(_base.ORMTest):
         self.register(C, inits)
 
         obj = A()
-        eq_(inits, [(A, 'on_init', A)])
+        eq_(inits, [(A, 'init', A)])
 
         del inits[:]
 
         obj = B()
-        eq_(inits, [(B, 'on_init', B)])
+        eq_(inits, [(B, 'init', B)])
 
         del inits[:]
         obj = C()
-        eq_(inits, [(C, 'on_init', C)])
+        eq_(inits, [(C, 'init', C)])
 
     def test_defaulted_init(self):
         class X(object):
@@ -537,7 +537,7 @@ class InstrumentationCollisionTest(_base.ORMTest):
         assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B1)
 
 class OnLoadTest(_base.ORMTest):
-    """Check that Events.on_load is not hit in regular attributes operations."""
+    """Check that Events.load is not hit in regular attributes operations."""
 
     def test_basic(self):
         import pickle
@@ -551,7 +551,7 @@ class OnLoadTest(_base.ORMTest):
         try:
             instrumentation.register_class(A)
             manager = instrumentation.manager_of_class(A)
-            event.listen(manager, 'on_load', canary)
+            event.listen(manager, 'load', canary)
 
             a = A()
             p_a = pickle.dumps(a)

@@ -76,7 +76,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         collection_history = self._modified_event(state, dict_)
         collection_history.added_items.append(value)
 
-        for fn in self.dispatch.on_append:
+        for fn in self.dispatch.append:
             value = fn(state, value, initiator or self)
 
         if self.trackparent and value is not None:
@@ -89,7 +89,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.trackparent and value is not None:
             self.sethasparent(attributes.instance_state(value), False)
 
-        for fn in self.dispatch.on_remove:
+        for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
 
     def _modified_event(self, state, dict_):

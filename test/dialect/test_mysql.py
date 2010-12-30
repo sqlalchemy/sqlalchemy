@@ -1281,8 +1281,8 @@ class SQLModeDetectionTest(TestBase):
             cursor.execute("set sql_mode='%s'" % (",".join(modes)))
         e = engines.testing_engine(options={
             'pool_events':[
-                (connect, 'on_first_connect'),
-                (connect, 'on_connect')
+                (connect, 'first_connect'),
+                (connect, 'connect')
             ]
         })
         return e

@@ -168,7 +168,7 @@ class ClassManager(dict):
     
     @util.memoized_property
     def _state_constructor(self):
-        self.dispatch.on_first_init(self, self.class_)
+        self.dispatch.first_init(self, self.class_)
         if self.mutable_attributes:
             return state.MutableAttrInstanceState
         else:
@@ -211,7 +211,7 @@ class ClassManager(dict):
         
     def post_configure_attribute(self, key):
         instrumentation_registry.dispatch.\
-                on_attribute_instrument(self.class_, key, self[key])
+                attribute_instrument(self.class_, key, self[key])
         
     def uninstrument_attribute(self, key, propagated=False):
         if key not in self:
@@ -527,7 +527,7 @@ class InstrumentationRegistry(object):
         self._state_finders[class_] = manager.state_getter()
         self._dict_finders[class_] = manager.dict_getter()
         
-        self.dispatch.on_class_instrument(class_)
+        self.dispatch.class_instrument(class_)
         
         return manager
 
@@ -595,7 +595,7 @@ class InstrumentationRegistry(object):
     def unregister(self, class_):
         if class_ in self._manager_finders:
             manager = self.manager_of_class(class_)
-            self.dispatch.on_class_uninstrument(class_)
+            self.dispatch.class_uninstrument(class_)
             manager.unregister()
             manager.dispose()
             del self._manager_finders[class_]

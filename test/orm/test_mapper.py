@@ -2271,35 +2271,35 @@ class MapperEventsTest(_fixtures.FixtureTest):
         mapper(A, users)
         mapper(B, addresses, inherits=A)
         
-        def on_init_a(target, args, kwargs):
-            canary.append(('on_init_a', target))
+        def init_a(target, args, kwargs):
+            canary.append(('init_a', target))
             
-        def on_init_b(target, args, kwargs):
-            canary.append(('on_init_b', target))
+        def init_b(target, args, kwargs):
+            canary.append(('init_b', target))
 
-        def on_init_c(target, args, kwargs):
-            canary.append(('on_init_c', target))
+        def init_c(target, args, kwargs):
+            canary.append(('init_c', target))
 
-        def on_init_d(target, args, kwargs):
-            canary.append(('on_init_d', target))
+        def init_d(target, args, kwargs):
+            canary.append(('init_d', target))
 
-        def on_init_e(target, args, kwargs):
-            canary.append(('on_init_e', target))
+        def init_e(target, args, kwargs):
+            canary.append(('init_e', target))
         
-        event.listen(mapper, 'on_init', on_init_a)
-        event.listen(Mapper, 'on_init', on_init_b)
-        event.listen(class_mapper(A), 'on_init', on_init_c)
-        event.listen(A, 'on_init', on_init_d)
-        event.listen(A, 'on_init', on_init_e, propagate=True)
+        event.listen(mapper, 'init', init_a)
+        event.listen(Mapper, 'init', init_b)
+        event.listen(class_mapper(A), 'init', init_c)
+        event.listen(A, 'init', init_d)
+        event.listen(A, 'init', init_e, propagate=True)
         
         a = A()
-        eq_(canary, [('on_init_a', a),('on_init_b', a),
-                        ('on_init_c', a),('on_init_d', a),('on_init_e', a)])
+        eq_(canary, [('init_a', a),('init_b', a),
+                        ('init_c', a),('init_d', a),('init_e', a)])
         
         # test propagate flag
         canary[:] = []
         b = B()
-        eq_(canary, [('on_init_a', b), ('on_init_b', b),('on_init_e', b)])
+        eq_(canary, [('init_a', b), ('init_b', b),('init_e', b)])
     
     def teardown(self):
         # TODO: need to get remove() functionality
@@ -2316,21 +2316,21 @@ class MapperEventsTest(_fixtures.FixtureTest):
             return go
             
         for meth in [
-            'on_init',
-            'on_init_failure',
-            'on_translate_row',
-            'on_create_instance',
-            'on_append_result',
-            'on_populate_instance',
-            'on_load',
-            'on_refresh',
-            'on_expire',
-            'on_before_insert',
-            'on_after_insert',
-            'on_before_update',
-            'on_after_update',
-            'on_before_delete',
-            'on_after_delete'
+            'init',
+            'init_failure',
+            'translate_row',
+            'create_instance',
+            'append_result',
+            'populate_instance',
+            'load',
+            'refresh',
+            'expire',
+            'before_insert',
+            'after_insert',
+            'before_update',
+            'after_update',
+            'before_delete',
+            'after_delete'
         ]:
             event.listen(mapper, meth, evt(meth), **kw)
         return canary
@@ -2354,12 +2354,12 @@ class MapperEventsTest(_fixtures.FixtureTest):
         sess.delete(u)
         sess.flush()
         eq_(canary,
-            ['on_init', 'on_before_insert',
-             'on_after_insert', 'on_expire', 'on_translate_row', 'on_populate_instance',
-             'on_refresh',
-             'on_append_result', 'on_translate_row', 'on_create_instance',
-             'on_populate_instance', 'on_load', 'on_append_result',
-             'on_before_update', 'on_after_update', 'on_before_delete', 'on_after_delete'])
+            ['init', 'before_insert',
+             'after_insert', 'expire', 'translate_row', 'populate_instance',
+             'refresh',
+             'append_result', 'translate_row', 'create_instance',
+             'populate_instance', 'load', 'append_result',
+             'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
     def test_inheritance(self):
@@ -2384,24 +2384,24 @@ class MapperEventsTest(_fixtures.FixtureTest):
         sess.flush()
         sess.delete(am)
         sess.flush()
-        eq_(canary1, ['on_init', 'on_before_insert', 'on_after_insert',
-            'on_translate_row', 'on_populate_instance','on_refresh',
-            'on_append_result', 'on_translate_row', 'on_create_instance'
-            , 'on_populate_instance', 'on_load', 'on_append_result',
-            'on_before_update', 'on_after_update', 'on_before_delete',
-            'on_after_delete'])
+        eq_(canary1, ['init', 'before_insert', 'after_insert',
+            'translate_row', 'populate_instance','refresh',
+            'append_result', 'translate_row', 'create_instance'
+            , 'populate_instance', 'load', 'append_result',
+            'before_update', 'after_update', 'before_delete',
+            'after_delete'])
         eq_(canary2, [])
-        eq_(canary3, ['on_init', 'on_before_insert', 'on_after_insert',
-            'on_translate_row', 'on_populate_instance','on_refresh',
-            'on_append_result', 'on_translate_row', 'on_create_instance'
-            , 'on_populate_instance', 'on_load', 'on_append_result',
-            'on_before_update', 'on_after_update', 'on_before_delete',
-            'on_after_delete'])
+        eq_(canary3, ['init', 'before_insert', 'after_insert',
+            'translate_row', 'populate_instance','refresh',
+            'append_result', 'translate_row', 'create_instance'
+            , 'populate_instance', 'load', 'append_result',
+            'before_update', 'after_update', 'before_delete',
+            'after_delete'])
 
     @testing.resolve_artifact_names
     def test_before_after_only_collection(self):
-        """on_before_update is called on parent for collection modifications,
-        on_after_update is called even if no columns were updated.
+        """before_update is called on parent for collection modifications,
+        after_update is called even if no columns were updated.
         
         """
 
@@ -2419,18 +2419,18 @@ class MapperEventsTest(_fixtures.FixtureTest):
         sess.add(k1)
         sess.flush()
         eq_(canary1,
-            ['on_init', 
-            'on_before_insert', 'on_after_insert'])
+            ['init', 
+            'before_insert', 'after_insert'])
         eq_(canary2,
-            ['on_init', 
-            'on_before_insert', 'on_after_insert'])
+            ['init', 
+            'before_insert', 'after_insert'])
 
         canary1[:]= []
         canary2[:]= []
 
         i1.keywords.append(k1)
         sess.flush()
-        eq_(canary1, ['on_before_update', 'on_after_update'])
+        eq_(canary1, ['before_update', 'after_update'])
         eq_(canary2, [])
 
         
@@ -2442,7 +2442,7 @@ class MapperEventsTest(_fixtures.FixtureTest):
             return u
             
         mapper(User, users)
-        event.listen(User, 'on_create_instance', create_instance, retval=True)
+        event.listen(User, 'create_instance', create_instance, retval=True)
         sess = create_session()
         u1 = User()
         u1.name = 'ed'
@@ -2455,10 +2455,10 @@ class MapperEventsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_instrument_event(self):
         canary = []
-        def on_instrument_class(mapper, cls):
+        def instrument_class(mapper, cls):
             canary.append(cls)
             
-        event.listen(Mapper, 'on_instrument_class', on_instrument_class)
+        event.listen(Mapper, 'instrument_class', instrument_class)
         
         mapper(User, users)
         eq_(canary, [User])

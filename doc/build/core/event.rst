@@ -19,7 +19,7 @@ instructions regarding secondary event targets based on the given target.
 
 The name of an event and the argument signature of a corresponding listener function is derived from 
 a class bound specification method, which exists bound to a marker class that's described in the documentation.
-For example, the documentation for :meth:`.PoolEvents.on_connect` indicates that the event name is ``"on_connect"``
+For example, the documentation for :meth:`.PoolEvents.connect` indicates that the event name is ``"connect"``
 and that a user-defined listener function should receive two positional arguments::
 
     from sqlalchemy.event import listen
@@ -28,14 +28,14 @@ and that a user-defined listener function should receive two positional argument
     def my_on_connect(dbapi_con, connection_record):
         print "New DBAPI connection:", dbapi_con
         
-    listen(Pool, 'on_connect', my_on_connect)
+    listen(Pool, 'connect', my_on_connect)
 
 Targets
 -------
 
 The :func:`.listen` function is very flexible regarding targets.  It generally accepts classes, instances of those
 classes, and related classes or objects from which the appropriate target can be derived.  For example,
-the above mentioned ``"on_connect"`` event accepts :class:`.Engine` classes and objects as well as :class:`.Pool`
+the above mentioned ``"connect"`` event accepts :class:`.Engine` classes and objects as well as :class:`.Pool`
 classes and objects::
 
     from sqlalchemy.event import listen
@@ -51,17 +51,17 @@ classes and objects::
     my_engine = create_engine('postgresql://ed@localhost/test')
     
     # associate listener with all instances of Pool
-    listen(Pool, 'on_connect', my_on_connect)
+    listen(Pool, 'connect', my_on_connect)
 
     # associate listener with all instances of Pool
     # via the Engine class
-    listen(Engine, 'on_connect', my_on_connect)
+    listen(Engine, 'connect', my_on_connect)
 
     # associate listener with my_pool
-    listen(my_pool, 'on_connect', my_on_connect)
+    listen(my_pool, 'connect', my_on_connect)
 
     # associate listener with my_engine.pool
-    listen(my_engine, 'on_connect', my_on_connect)
+    listen(my_engine, 'connect', my_on_connect)
 
 Modifiers
 ----------
@@ -78,7 +78,7 @@ which modifies the subsequent handling.   By default, no listener ever requires 
         
     # setup listener on UserContact.phone attribute, instructing
     # it to use the return value
-    listen(UserContact.phone, 'on_set', validate_phone, retval=True)
+    listen(UserContact.phone, 'set', validate_phone, retval=True)
 
 Event Reference
 ----------------

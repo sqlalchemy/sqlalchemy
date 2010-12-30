@@ -507,7 +507,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def on_connect(self):
+    def connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable accepts a single argument "conn" which is the 
@@ -1967,14 +1967,14 @@ def _listener_connection_cls(cls, dispatch):
     """
     class EventListenerConnection(cls):
         def execute(self, clauseelement, *multiparams, **params):
-            for fn in dispatch.on_before_execute:
+            for fn in dispatch.before_execute:
                 clauseelement, multiparams, params = \
                     fn(self, clauseelement, multiparams, params)
             
             ret = super(EventListenerConnection, self).\
                     execute(clauseelement, *multiparams, **params)
 
-            for fn in dispatch.on_after_execute:
+            for fn in dispatch.after_execute:
                 fn(self, clauseelement, multiparams, params, ret)
             
             return ret
@@ -1987,7 +1987,7 @@ def _listener_connection_cls(cls, dispatch):
 
         def _before_cursor_execute(self, context, cursor, 
                                             statement, parameters):
-            for fn in dispatch.on_before_cursor_execute:
+            for fn in dispatch.before_cursor_execute:
                 statement, parameters = \
                             fn(self, cursor, statement, parameters, 
                                         context, context.executemany)
@@ -1995,59 +1995,59 @@ def _listener_connection_cls(cls, dispatch):
         
         def _after_cursor_execute(self, context, cursor, 
                                             statement, parameters):
-            dispatch.on_after_cursor_execute(self, cursor, 
+            dispatch.after_cursor_execute(self, cursor, 
                                                 statement, 
                                                 parameters, 
                                                 context, 
                                                 context.executemany)
             
         def _begin_impl(self):
-            dispatch.on_begin(self)
+            dispatch.begin(self)
             return super(EventListenerConnection, self).\
                         _begin_impl()
             
         def _rollback_impl(self):
-            dispatch.on_rollback(self)
+            dispatch.rollback(self)
             return super(EventListenerConnection, self).\
                         _rollback_impl()
 
         def _commit_impl(self):
-            dispatch.on_commit(self)
+            dispatch.commit(self)
             return super(EventListenerConnection, self).\
                         _commit_impl()
 
         def _savepoint_impl(self, name=None):
-            dispatch.on_savepoint(self, name)
+            dispatch.savepoint(self, name)
             return super(EventListenerConnection, self).\
                         _savepoint_impl(name=name)
                 
         def _rollback_to_savepoint_impl(self, name, context):
-            dispatch.on_rollback_savepoint(self, name, context)
+            dispatch.rollback_savepoint(self, name, context)
             return super(EventListenerConnection, self).\
                         _rollback_to_savepoint_impl(name, context)
             
         def _release_savepoint_impl(self, name, context):
-            dispatch.on_release_savepoint(self, name, context)
+            dispatch.release_savepoint(self, name, context)
             return super(EventListenerConnection, self).\
                         _release_savepoint_impl(name, context)
             
         def _begin_twophase_impl(self, xid):
-            dispatch.on_begin_twophase(self, xid)
+            dispatch.begin_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _begin_twophase_impl(xid)
 
         def _prepare_twophase_impl(self, xid):
-            dispatch.on_prepare_twophase(self, xid)
+            dispatch.prepare_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _prepare_twophase_impl(xid)
 
         def _rollback_twophase_impl(self, xid, is_prepared):
-            dispatch.on_rollback_twophase(self, xid)
+            dispatch.rollback_twophase(self, xid)
             return super(EventListenerConnection, self).\
                         _rollback_twophase_impl(xid, is_prepared)
 
         def _commit_twophase_impl(self, xid, is_prepared):
-            dispatch.on_commit_twophase(self, xid, is_prepared)
+            dispatch.commit_twophase(self, xid, is_prepared)
             return super(EventListenerConnection, self).\
                         _commit_twophase_impl(xid, is_prepared)
 

@@ -18,13 +18,13 @@ class MergeTest(_fixtures.FixtureTest):
 
     run_inserts = None
 
-    def on_load_tracker(self, cls, canary=None):
+    def load_tracker(self, cls, canary=None):
         if canary is None:
             def canary(instance):
                 canary.called += 1
             canary.called = 0
 
-        event.listen(cls, 'on_load', canary)
+        event.listen(cls, 'load', canary)
 
         return canary
 
@@ -32,12 +32,12 @@ class MergeTest(_fixtures.FixtureTest):
     def test_transient_to_pending(self):
         mapper(User, users)
         sess = create_session()
-        on_load = self.on_load_tracker(User)
+        load = self.load_tracker(User)
 
         u = User(id=7, name='fred')
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
         u2 = sess.merge(u)
-        eq_(on_load.called, 1)
+        eq_(load.called, 1)
         assert u2 in sess
         eq_(u2, User(id=7, name='fred'))
         sess.flush()
@@ -60,18 +60,18 @@ class MergeTest(_fixtures.FixtureTest):
             'addresses': relationship(Address, backref='user',
                                   collection_class=OrderedSet)})
         mapper(Address, addresses)
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
 
         u = User(id=7, name='fred', addresses=OrderedSet([
             Address(id=1, email_address='fred1'),
             Address(id=2, email_address='fred2'),
             ]))
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         sess = create_session()
         sess.merge(u)
-        eq_(on_load.called, 3)
+        eq_(load.called, 3)
 
         merged_users = [e for e in sess if isinstance(e, User)]
         eq_(len(merged_users), 1)
@@ -90,7 +90,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_transient_to_persistent(self):
         mapper(User, users)
-        on_load = self.on_load_tracker(User)
+        load = self.load_tracker(User)
 
         sess = create_session()
         u = User(id=7, name='fred')
@@ -98,17 +98,17 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         _u2 = u2 = User(id=7, name='fred jones')
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
         u2 = sess.merge(u2)
         assert u2 is not _u2
-        eq_(on_load.called, 1)
+        eq_(load.called, 1)
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).first(), User(id=7, name='fred jones'))
-        eq_(on_load.called, 2)
+        eq_(load.called, 2)
 
     @testing.resolve_artifact_names
     def test_transient_to_persistent_collection(self):
@@ -121,8 +121,8 @@ class MergeTest(_fixtures.FixtureTest):
         })
         mapper(Address, addresses)
 
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
 
         u = User(id=7, name='fred', addresses=OrderedSet([
             Address(id=1, email_address='fred1'),
@@ -133,7 +133,7 @@ class MergeTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         u = User(id=7, name='fred', addresses=OrderedSet([
             Address(id=3, email_address='fred3'),
@@ -146,7 +146,7 @@ class MergeTest(_fixtures.FixtureTest):
         # 2.,3. merges Address ids 3 & 4, saves into session.
         # 4.,5. loads pre-existing elements in "addresses" collection,
         # marks as deleted, Address ids 1 and 2.
-        eq_(on_load.called, 5)
+        eq_(load.called, 5)
 
         eq_(u,
             User(id=7, name='fred', addresses=OrderedSet([
@@ -171,8 +171,8 @@ class MergeTest(_fixtures.FixtureTest):
                                  order_by=addresses.c.id,
                                  collection_class=OrderedSet)})
         mapper(Address, addresses)
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
 
         a = Address(id=1, email_address='fred1')
         u = User(id=7, name='fred', addresses=OrderedSet([
@@ -188,9 +188,9 @@ class MergeTest(_fixtures.FixtureTest):
         u.addresses.add(Address(id=3, email_address='fred3'))
         u.addresses.remove(a)
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
         u = sess.merge(u)
-        eq_(on_load.called, 4)
+        eq_(load.called, 4)
         sess.flush()
         sess.expunge_all()
 
@@ -207,8 +207,8 @@ class MergeTest(_fixtures.FixtureTest):
             'addresses':relationship(mapper(Address, addresses),
                                  cascade="all", backref="user")
         })
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
         sess = create_session()
 
         u = User(id=7, name='fred')
@@ -218,7 +218,7 @@ class MergeTest(_fixtures.FixtureTest):
         u.addresses.append(a2)
 
         u2 = sess.merge(u)
-        eq_(on_load.called, 3)
+        eq_(load.called, 3)
 
         eq_(u,
             User(id=7, name='fred', addresses=[
@@ -236,7 +236,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(u2, User(id=7, name='fred', addresses=[
             Address(email_address='foo@bar.com'),
             Address(email_address='hoho@bar.com')]))
-        eq_(on_load.called, 6)
+        eq_(load.called, 6)
 
     @testing.resolve_artifact_names
     def test_merge_empty_attributes(self):
@@ -324,8 +324,8 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), backref='user')
         })
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
 
         sess = create_session()
 
@@ -348,12 +348,12 @@ class MergeTest(_fixtures.FixtureTest):
         u.name = 'fred2'
         u.addresses[1].email_address = 'hoho@lalala.com'
 
-        eq_(on_load.called, 3)
+        eq_(load.called, 3)
 
         # new session, merge modified data into session
         sess3 = create_session()
         u3 = sess3.merge(u)
-        eq_(on_load.called, 6)
+        eq_(load.called, 6)
 
         # ensure local changes are pending
         eq_(u3, User(id=7, name='fred2', addresses=[
@@ -369,7 +369,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(u, User(id=7, name='fred2', addresses=[
             Address(email_address='foo@bar.com'),
             Address(email_address='hoho@lalala.com')]))
-        eq_(on_load.called, 9)
+        eq_(load.called, 9)
 
         # merge persistent object into another session
         sess4 = create_session()
@@ -381,7 +381,7 @@ class MergeTest(_fixtures.FixtureTest):
             sess4.flush()
         # no changes; therefore flush should do nothing
         self.assert_sql_count(testing.db, go, 0)
-        eq_(on_load.called, 12)
+        eq_(load.called, 12)
 
         # test with "dontload" merge
         sess5 = create_session()
@@ -395,7 +395,7 @@ class MergeTest(_fixtures.FixtureTest):
         # but also, load=False wipes out any difference in committed state,
         # so no flush at all
         self.assert_sql_count(testing.db, go, 0)
-        eq_(on_load.called, 15)
+        eq_(load.called, 15)
 
         sess4 = create_session()
         u = sess4.merge(u, load=False)
@@ -405,13 +405,13 @@ class MergeTest(_fixtures.FixtureTest):
             sess4.flush()
         # afafds change flushes
         self.assert_sql_count(testing.db, go, 1)
-        eq_(on_load.called, 18)
+        eq_(load.called, 18)
 
         sess5 = create_session()
         u2 = sess5.query(User).get(u.id)
         eq_(u2.name, 'fred2')
         eq_(u2.addresses[1].email_address, 'afafds')
-        eq_(on_load.called, 21)
+        eq_(load.called, 21)
 
     @testing.resolve_artifact_names
     def test_no_relationship_cascade(self):
@@ -454,8 +454,8 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses))})
 
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
 
         sess = create_session()
         u = User(name='fred')
@@ -466,24 +466,24 @@ class MergeTest(_fixtures.FixtureTest):
         sess.add(u)
         sess.flush()
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         sess2 = create_session()
         u2 = sess2.query(User).get(u.id)
-        eq_(on_load.called, 1)
+        eq_(load.called, 1)
 
         u.addresses[1].email_address = 'addr 2 modified'
         sess2.merge(u)
         eq_(u2.addresses[1].email_address, 'addr 2 modified')
-        eq_(on_load.called, 3)
+        eq_(load.called, 3)
 
         sess3 = create_session()
         u3 = sess3.query(User).get(u.id)
-        eq_(on_load.called, 4)
+        eq_(load.called, 4)
 
         u.name = 'also fred'
         sess3.merge(u)
-        eq_(on_load.called, 6)
+        eq_(load.called, 6)
         eq_(u3.name, 'also fred')
 
     @testing.resolve_artifact_names
@@ -527,8 +527,8 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(Order, orders, properties={
             'items':relationship(mapper(Item, items), secondary=order_items)})
 
-        on_load = self.on_load_tracker(Order)
-        self.on_load_tracker(Item, on_load)
+        load = self.load_tracker(Order)
+        self.load_tracker(Item, load)
 
         sess = create_session()
 
@@ -546,24 +546,24 @@ class MergeTest(_fixtures.FixtureTest):
         sess.add(o)
         sess.flush()
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         sess2 = create_session()
         o2 = sess2.query(Order).get(o.id)
-        eq_(on_load.called, 1)
+        eq_(load.called, 1)
 
         o.items[1].description = 'item 2 modified'
         sess2.merge(o)
         eq_(o2.items[1].description, 'item 2 modified')
-        eq_(on_load.called,  3)
+        eq_(load.called,  3)
 
         sess3 = create_session()
         o3 = sess3.query(Order).get(o.id)
-        eq_( on_load.called, 4)
+        eq_( load.called, 4)
 
         o.description = 'desc modified'
         sess3.merge(o)
-        eq_(on_load.called, 6)
+        eq_(load.called, 6)
         eq_(o3.description, 'desc modified')
 
     @testing.resolve_artifact_names
@@ -572,8 +572,8 @@ class MergeTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'address':relationship(mapper(Address, addresses),uselist = False)
         })
-        on_load = self.on_load_tracker(User)
-        self.on_load_tracker(Address, on_load)
+        load = self.load_tracker(User)
+        self.load_tracker(Address, load)
         sess = create_session()
 
         u = User()
@@ -586,17 +586,17 @@ class MergeTest(_fixtures.FixtureTest):
         sess.add(u)
         sess.flush()
 
-        eq_(on_load.called, 0)
+        eq_(load.called, 0)
 
         sess2 = create_session()
         u2 = sess2.query(User).get(7)
-        eq_(on_load.called, 1)
+        eq_(load.called, 1)
         u2.name = 'fred2'
         u2.address.email_address = 'hoho@lalala.com'
-        eq_(on_load.called, 2)
+        eq_(load.called, 2)
 
         u3 = sess.merge(u2)
-        eq_(on_load.called, 2)
+        eq_(load.called, 2)
         assert u3 is u
 
     @testing.resolve_artifact_names

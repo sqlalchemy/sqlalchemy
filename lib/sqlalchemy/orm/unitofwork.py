@@ -74,9 +74,9 @@ def track_cascade_events(descriptor, prop):
                     sess.expunge(oldvalue)
         return newvalue
         
-    event.listen(descriptor, 'on_append', append, raw=True, retval=True)
-    event.listen(descriptor, 'on_remove', remove, raw=True, retval=True)
-    event.listen(descriptor, 'on_set', set_, raw=True, retval=True)
+    event.listen(descriptor, 'append', append, raw=True, retval=True)
+    event.listen(descriptor, 'remove', remove, raw=True, retval=True)
+    event.listen(descriptor, 'set', set_, raw=True, retval=True)
 
 
 class UOWTransaction(object):

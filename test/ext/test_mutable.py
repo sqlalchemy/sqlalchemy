@@ -35,11 +35,11 @@ class _MutableDictTestBase(object):
             
             def __setitem__(self, key, value):
                 dict.__setitem__(self, key, value)
-                self.on_change()
+                self.change()
     
             def __delitem__(self, key):
                 dict.__delitem__(self, key)
-                self.on_change()
+                self.change()
         return MutationDict
     
     @testing.resolve_artifact_names
@@ -199,7 +199,7 @@ class MutableCompositesTest(_base.MappedTest):
 
             def __setattr__(self, key, value):
                 object.__setattr__(self, key, value)
-                self.on_change()
+                self.change()
         
             def __composite_values__(self):
                 return self.x, self.y

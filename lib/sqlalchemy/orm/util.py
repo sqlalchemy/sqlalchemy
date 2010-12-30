@@ -63,8 +63,8 @@ def _validator_events(desc, key, validator):
     def set_(state, value, oldvalue, initiator):
         return validator(state.obj(), key, value)
     
-    event.listen(desc, 'on_append', append, raw=True, retval=True)
-    event.listen(desc, 'on_set', set_, raw=True, retval=True)
+    event.listen(desc, 'append', append, raw=True, retval=True)
+    event.listen(desc, 'set', set_, raw=True, retval=True)
     
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     """Create a ``UNION`` statement used by a polymorphic mapper.

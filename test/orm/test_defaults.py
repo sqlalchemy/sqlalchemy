@@ -46,9 +46,9 @@ class TriggerDefaultsTest(_base.MappedTest):
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                 ),
             ):
-            event.listen(dt, 'on_after_create', ins)
+            event.listen(dt, 'after_create', ins)
         
-        event.listen(dt, 'on_before_drop', sa.DDL("DROP TRIGGER dt_ins"))
+        event.listen(dt, 'before_drop', sa.DDL("DROP TRIGGER dt_ins"))
 
         for up in (
             sa.DDL("CREATE TRIGGER dt_up AFTER UPDATE ON dt "
@@ -71,9 +71,9 @@ class TriggerDefaultsTest(_base.MappedTest):
                                 bind.engine.name not in ('oracle', 'mssql', 'sqlite')
                     ),
             ):
-            event.listen(dt, 'on_after_create', up)
+            event.listen(dt, 'after_create', up)
 
-        event.listen(dt, 'on_before_drop', sa.DDL("DROP TRIGGER dt_up"))
+        event.listen(dt, 'before_drop', sa.DDL("DROP TRIGGER dt_up"))
 
 
     @classmethod

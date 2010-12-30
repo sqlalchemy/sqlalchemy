@@ -345,7 +345,7 @@ class SessionTransaction(object):
 
         self._connections[conn] = self._connections[conn.engine] = \
           (conn, transaction, conn is not bind)
-        self.session.dispatch.on_after_begin(self.session, self, conn)
+        self.session.dispatch.after_begin(self.session, self, conn)
         return conn
 
     def prepare(self):
@@ -357,7 +357,7 @@ class SessionTransaction(object):
     def _prepare_impl(self):
         self._assert_is_active()
         if self._parent is None or self.nested:
-            self.session.dispatch.on_before_commit(self.session)
+            self.session.dispatch.before_commit(self.session)
 
         stx = self.session.transaction
         if stx is not self:
@@ -387,7 +387,7 @@ class SessionTransaction(object):
             for t in set(self._connections.values()):
                 t[1].commit()
 
-            self.session.dispatch.on_after_commit(self.session)
+            self.session.dispatch.after_commit(self.session)
 
             if self.session._enable_transaction_accounting:
                 self._remove_snapshot()
@@ -424,7 +424,7 @@ class SessionTransaction(object):
         if self.session._enable_transaction_accounting:
             self._restore_snapshot()
 
-        self.session.dispatch.on_after_rollback(self.session)
+        self.session.dispatch.after_rollback(self.session)
 
     def _deactivate(self):
         self._active = False
@@ -1255,7 +1255,7 @@ class Session(object):
             merged_state.commit_all(merged_dict, self.identity_map)  
 
         if new_instance:
-            merged_state.manager.dispatch.on_load(merged_state)
+            merged_state.manager.dispatch.load(merged_state)
         return merged
 
     @classmethod
@@ -1339,8 +1339,8 @@ class Session(object):
                                     
         if state.session_id != self.hash_key:
             state.session_id = self.hash_key
-            if self.dispatch.on_after_attach:
-                self.dispatch.on_after_attach(self, state.obj())
+            if self.dispatch.after_attach:
+                self.dispatch.after_attach(self, state.obj())
 
     def __contains__(self, instance):
         """Return True if the instance is associated with this session.
@@ -1415,8 +1415,8 @@ class Session(object):
 
         flush_context = UOWTransaction(self)
         
-        if self.dispatch.on_before_flush:
-            self.dispatch.on_before_flush(self, flush_context, objects)
+        if self.dispatch.before_flush:
+            self.dispatch.before_flush(self, flush_context, objects)
             # re-establish "dirty states" in case the listeners
             # added
             dirty = self._dirty_states
@@ -1470,7 +1470,7 @@ class Session(object):
         try:
             flush_context.execute()
 
-            self.dispatch.on_after_flush(self, flush_context)
+            self.dispatch.after_flush(self, flush_context)
             transaction.commit()
         except:
             transaction.rollback(_capture_exception=True)
@@ -1486,7 +1486,7 @@ class Session(object):
         #            self.identity_map._modified.difference(objects)
         #self.identity_map._modified.clear()
         
-        self.dispatch.on_after_flush_postexec(self, flush_context)
+        self.dispatch.after_flush_postexec(self, flush_context)
 
     def is_modified(self, instance, include_collections=True, passive=False):
         """Return ``True`` if instance has modified attributes.

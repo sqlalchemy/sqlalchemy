@@ -1218,10 +1218,10 @@ class SessionEventsTest(_fixtures.FixtureTest):
         def my_listener(*arg, **kw):
             pass
         
-        event.listen(Session, 'on_before_flush', my_listener)
+        event.listen(Session, 'before_flush', my_listener)
         
         s = Session()
-        assert my_listener in s.dispatch.on_before_flush
+        assert my_listener in s.dispatch.before_flush
     
     def test_sessionmaker_listen(self):
         """test that listen can be applied to individual scoped_session() classes."""
@@ -1234,16 +1234,16 @@ class SessionEventsTest(_fixtures.FixtureTest):
         S1 = sessionmaker()
         S2 = sessionmaker()
         
-        event.listen(Session, 'on_before_flush', my_listener_one)
-        event.listen(S1, 'on_before_flush', my_listener_two)
+        event.listen(Session, 'before_flush', my_listener_one)
+        event.listen(S1, 'before_flush', my_listener_two)
         
         s1 = S1()
-        assert my_listener_one in s1.dispatch.on_before_flush
-        assert my_listener_two in s1.dispatch.on_before_flush
+        assert my_listener_one in s1.dispatch.before_flush
+        assert my_listener_two in s1.dispatch.before_flush
         
         s2 = S2()
-        assert my_listener_one in s2.dispatch.on_before_flush
-        assert my_listener_two not in s2.dispatch.on_before_flush
+        assert my_listener_one in s2.dispatch.before_flush
+        assert my_listener_two not in s2.dispatch.before_flush
     
     def test_scoped_session_invalid_callable(self):
         from sqlalchemy.orm import scoped_session
@@ -1257,7 +1257,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
             "requries that its creation callable is a Session subclass.",
-            event.listen, scope, "on_before_flush", my_listener_one
+            event.listen, scope, "before_flush", my_listener_one
         )
 
     def test_scoped_session_invalid_class(self):
@@ -1276,7 +1276,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
             "requries that its creation callable is a Session subclass.",
-            event.listen, scope, "on_before_flush", my_listener_one
+            event.listen, scope, "before_flush", my_listener_one
         )
     
     def test_scoped_session_listen(self):
@@ -1286,9 +1286,9 @@ class SessionEventsTest(_fixtures.FixtureTest):
             pass
         
         scope = scoped_session(sessionmaker())
-        event.listen(scope, "on_before_flush", my_listener_one)
+        event.listen(scope, "before_flush", my_listener_one)
         
-        assert my_listener_one in scope().dispatch.on_before_flush
+        assert my_listener_one in scope().dispatch.before_flush
     
     def _listener_fixture(self, **kw):
         canary = []
@@ -1300,16 +1300,16 @@ class SessionEventsTest(_fixtures.FixtureTest):
         sess = Session(**kw)
 
         for evt in [
-            'on_before_commit',
-            'on_after_commit',
-            'on_after_rollback',
-            'on_before_flush',
-            'on_after_flush',
-            'on_after_flush_postexec',
-            'on_after_begin',
-            'on_after_attach',
-            'on_after_bulk_update',
-            'on_after_bulk_delete'
+            'before_commit',
+            'after_commit',
+            'after_rollback',
+            'before_flush',
+            'after_flush',
+            'after_flush_postexec',
+            'after_begin',
+            'after_attach',
+            'after_bulk_update',
+            'after_bulk_delete'
         ]:
             event.listen(sess, evt, listener(evt))
         
@@ -1327,9 +1327,9 @@ class SessionEventsTest(_fixtures.FixtureTest):
         sess.flush()
         eq_(
             canary, 
-            [ 'on_after_attach', 'on_before_flush', 'on_after_begin',
-            'on_after_flush', 'on_before_commit', 'on_after_commit',
-            'on_after_flush_postexec', ]
+            [ 'after_attach', 'before_flush', 'after_begin',
+            'after_flush', 'before_commit', 'after_commit',
+            'after_flush_postexec', ]
         )
 
     @testing.resolve_artifact_names
@@ -1341,8 +1341,8 @@ class SessionEventsTest(_fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        eq_(canary, ['on_after_attach', 'on_before_flush', 'on_after_begin',
-                       'on_after_flush', 'on_after_flush_postexec'])
+        eq_(canary, ['after_attach', 'before_flush', 'after_begin',
+                       'after_flush', 'after_flush_postexec'])
     
     @testing.resolve_artifact_names
     def test_flush_in_commit_hook(self):
@@ -1356,32 +1356,32 @@ class SessionEventsTest(_fixtures.FixtureTest):
         
         u.name = 'ed'
         sess.commit()
-        eq_(canary, ['on_before_commit', 'on_before_flush', 'on_after_flush',
-                       'on_after_flush_postexec', 'on_after_commit'])
+        eq_(canary, ['before_commit', 'before_flush', 'after_flush',
+                       'after_flush_postexec', 'after_commit'])
     
     def test_standalone_on_commit_hook(self):
         sess, canary = self._listener_fixture()
         sess.commit()
-        eq_(canary, ['on_before_commit', 'on_after_commit'])
+        eq_(canary, ['before_commit', 'after_commit'])
         
     @testing.resolve_artifact_names
     def test_on_bulk_update_hook(self):
         sess, canary = self._listener_fixture()
         mapper(User, users)
         sess.query(User).update({'name': 'foo'})
-        eq_(canary, ['on_after_begin', 'on_after_bulk_update'])
+        eq_(canary, ['after_begin', 'after_bulk_update'])
 
     @testing.resolve_artifact_names
     def test_on_bulk_delete_hook(self):
         sess, canary = self._listener_fixture()
         mapper(User, users)
         sess.query(User).delete()
-        eq_(canary, ['on_after_begin', 'on_after_bulk_delete'])
+        eq_(canary, ['after_begin', 'after_bulk_delete'])
     
     def test_connection_emits_after_begin(self):
         sess, canary = self._listener_fixture(bind=testing.db)
         conn = sess.connection()
-        eq_(canary, ['on_after_begin'])
+        eq_(canary, ['after_begin'])
 
     @testing.resolve_artifact_names
     def test_reentrant_flush(self):
@@ -1392,7 +1392,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
             session.flush()
         
         sess = Session()
-        event.listen(sess, 'on_before_flush', before_flush)
+        event.listen(sess, 'before_flush', before_flush)
         sess.add(User(name='foo'))
         assert_raises_message(sa.exc.InvalidRequestError,
                               'already flushing', sess.flush)
@@ -1413,7 +1413,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
                     session.delete(x)
                     
         sess = Session()
-        event.listen(sess, 'on_before_flush', before_flush)
+        event.listen(sess, 'before_flush', before_flush)
 
         u = User(name='u1')
         sess.add(u)
@@ -1460,7 +1460,7 @@ class SessionEventsTest(_fixtures.FixtureTest):
                 obj.name += " modified"
                     
         sess = Session(autoflush=True)
-        event.listen(sess, 'on_before_flush', before_flush)
+        event.listen(sess, 'before_flush', before_flush)
         
         u = User(name='u1')
         sess.add(u)

@@ -25,7 +25,7 @@ class Mutable(object):
         
         return weakref.WeakKeyDictionary()
         
-    def on_change(self):
+    def change(self):
         """Subclasses should call this method whenever change events occur."""
         
         for parent, key in self._parents.items():
@@ -51,7 +51,7 @@ class Mutable(object):
         key = attribute.key
         parent_cls = attribute.class_
         
-        def on_load(state):
+        def load(state):
             """Listen for objects loaded or refreshed.   
             
             Wrap the target data member's value with 
@@ -64,7 +64,7 @@ class Mutable(object):
                 state.dict[key] = val
                 val._parents[state.obj()] = key
 
-        def on_set(target, value, oldvalue, initiator):
+        def set(target, value, oldvalue, initiator):
             """Listen for set/replace events on the target
             data member.
             
@@ -81,9 +81,9 @@ class Mutable(object):
                 oldvalue._parents.pop(state.obj(), None)
             return value
         
-        event.listen(parent_cls, 'on_load', on_load, raw=True)
-        event.listen(parent_cls, 'on_refresh', on_load, raw=True)
-        event.listen(attribute, 'on_set', on_set, raw=True, retval=True)
+        event.listen(parent_cls, 'load', load, raw=True)
+        event.listen(parent_cls, 'refresh', load, raw=True)
+        event.listen(attribute, 'set', set, raw=True, retval=True)
 
         # TODO: need a deserialize hook here
 
@@ -109,7 +109,7 @@ class Mutable(object):
                         cls.associate_with_attribute(getattr(class_, prop.key))
                         break
                     
-        event.listen(mapper, 'on_mapper_configured', listen_for_type)
+        event.listen(mapper, 'mapper_configured', listen_for_type)
     
     @classmethod
     def as_mutable(cls, sqltype):
@@ -151,7 +151,7 @@ class Mutable(object):
                         cls.associate_with_attribute(getattr(class_, prop.key))
                         break
                 
-        event.listen(mapper, 'on_mapper_configured', listen_for_type)
+        event.listen(mapper, 'mapper_configured', listen_for_type)
         
         return sqltype
 
@@ -168,7 +168,7 @@ class MutableComposite(object):
     
     Composite classes, in addition to meeting the usage contract
     defined in :ref:`mapper_composite`, also define some system
-    of relaying change events to the given :meth:`.on_change` 
+    of relaying change events to the given :meth:`.change` 
     method, which will notify all parents of the change.  Below
     the special Python method ``__setattr__`` is used to intercept
     all changes::
@@ -180,7 +180,7 @@ class MutableComposite(object):
 
             def __setattr__(self, key, value):
                 object.__setattr__(self, key, value)
-                self.on_change()
+                self.change()
         
             def __composite_values__(self):
                 return self.x, self.y
@@ -210,7 +210,7 @@ class MutableComposite(object):
         
         return weakref.WeakKeyDictionary()
 
-    def on_change(self):
+    def change(self):
         """Subclasses should call this method whenever change events occur."""
         
         for parent, key in self._parents.items():
@@ -230,7 +230,7 @@ class MutableComposite(object):
         key = attribute.key
         parent_cls = attribute.class_
         
-        def on_load(state):
+        def load(state):
             """Listen for objects loaded or refreshed.   
             
             Wrap the target data member's value with 
@@ -242,7 +242,7 @@ class MutableComposite(object):
             if val is not None:
                 val._parents[state.obj()] = key
 
-        def on_set(target, value, oldvalue, initiator):
+        def set(target, value, oldvalue, initiator):
             """Listen for set/replace events on the target
             data member.
             
@@ -257,9 +257,9 @@ class MutableComposite(object):
                 oldvalue._parents.pop(state.obj(), None)
             return value
         
-        event.listen(parent_cls, 'on_load', on_load, raw=True)
-        event.listen(parent_cls, 'on_refresh', on_load, raw=True)
-        event.listen(attribute, 'on_set', on_set, raw=True, retval=True)
+        event.listen(parent_cls, 'load', load, raw=True)
+        event.listen(parent_cls, 'refresh', load, raw=True)
+        event.listen(attribute, 'set', set, raw=True, retval=True)
 
         # TODO: need a deserialize hook here
     
@@ -277,5 +277,5 @@ class MutableComposite(object):
                 if hasattr(prop, 'composite_class') and issubclass(prop.composite_class, cls):
                     cls._listen_on_attribute(getattr(class_, prop.key))
                     
-        event.listen(mapper, 'on_mapper_configured', listen_for_type)
+        event.listen(mapper, 'mapper_configured', listen_for_type)
 

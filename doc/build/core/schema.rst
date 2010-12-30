@@ -1222,12 +1222,12 @@ constraint will be added via ALTER:
     
     event.listen(
         users,
-        "on_after_create", 
+        "after_create", 
         AddConstraint(constraint)
     )
     event.listen(
         users,
-        "on_before_drop",
+        "before_drop",
         DropConstraint(constraint)
     )
 
@@ -1258,12 +1258,12 @@ Postgresql and not other databases, we could limit its usage to just that dialec
 
     event.listen(
         users,
-        'on_after_create',
+        'after_create',
         AddConstraint(constraint).execute_if(dialect='postgresql')
     )
     event.listen(
         users,
-        'on_before_drop',
+        'before_drop',
         DropConstraint(constraint).execute_if(dialect='postgresql')
     )
 
@@ -1271,12 +1271,12 @@ Or to any set of dialects::
     
     event.listen(
         users,
-        "on_after_create",
+        "after_create",
         AddConstraint(constraint).execute_if(dialect=('postgresql', 'mysql'))
     )
     event.listen(
         users,
-        "on_before_drop",
+        "before_drop",
         DropConstraint(constraint).execute_if(dialect=('postgresql', 'mysql'))
     )
 
@@ -1300,12 +1300,12 @@ that check for the presence of our named constraint:
 
     event.listen(
         users,
-        "on_after_create",
+        "after_create",
         AddConstraint(constraint).execute_if(callable_=should_create)
     )
     event.listen(
         users,
-        "on_before_drop",
+        "before_drop",
         DropConstraint(constraint).execute_if(callable_=should_drop)
     )
 
@@ -1335,7 +1335,7 @@ other DDL elements except it accepts a string which is the text to be emitted:
     
     event.listen(
         metadata,
-        "on_after_create",
+        "after_create",
         DDL("ALTER TABLE users ADD CONSTRAINT "
             "cst_user_name_length "
             " CHECK (length(user_name) >= 8)")

@@ -137,13 +137,13 @@ class DefaultEngineStrategy(EngineStrategy):
                         return
                     do_on_connect(conn)
                 
-                event.listen(pool, 'on_first_connect', on_connect)
-                event.listen(pool, 'on_connect', on_connect)
+                event.listen(pool, 'first_connect', on_connect)
+                event.listen(pool, 'connect', on_connect)
                     
             def first_connect(dbapi_connection, connection_record):
                 c = base.Connection(engine, connection=dbapi_connection)
                 dialect.initialize(c)
-            event.listen(pool, 'on_first_connect', first_connect)
+            event.listen(pool, 'first_connect', first_connect)
 
         return engine
 

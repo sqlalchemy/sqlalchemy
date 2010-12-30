@@ -86,7 +86,7 @@ class MapperExtension(object):
                         def reconstruct(instance):
                             ls_meth(self, instance)
                         return reconstruct
-                    event.listen(self.class_manager, 'on_load', 
+                    event.listen(self.class_manager, 'load', 
                                         go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_instance':
                     def go(ls_meth):
@@ -95,7 +95,7 @@ class MapperExtension(object):
                                         self.class_manager.original_init, 
                                         instance, args, kwargs)
                         return init_instance
-                    event.listen(self.class_manager, 'on_init', 
+                    event.listen(self.class_manager, 'init', 
                                         go(ls_meth), raw=False, propagate=True)
                 elif meth == 'init_failed':
                     def go(ls_meth):
@@ -105,10 +105,10 @@ class MapperExtension(object):
                                             instance, args, kwargs)
                             
                         return init_failed
-                    event.listen(self.class_manager, 'on_init_failure', 
+                    event.listen(self.class_manager, 'init_failure', 
                                         go(ls_meth), raw=False, propagate=True)
                 else:
-                    event.listen(self, "on_%s" % meth, ls_meth, 
+                    event.listen(self, "%s" % meth, ls_meth, 
                                         raw=False, retval=True, propagate=True)
 
 
@@ -395,16 +395,16 @@ class SessionExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(self, 'on_before_commit', listener.before_commit)
-        event.listen(self, 'on_after_commit', listener.after_commit)
-        event.listen(self, 'on_after_rollback', listener.after_rollback)
-        event.listen(self, 'on_before_flush', listener.before_flush)
-        event.listen(self, 'on_after_flush', listener.after_flush)
-        event.listen(self, 'on_after_flush_postexec', listener.after_flush_postexec)
-        event.listen(self, 'on_after_begin', listener.after_begin)
-        event.listen(self, 'on_after_attach', listener.after_attach)
-        event.listen(self, 'on_after_bulk_update', listener.after_bulk_update)
-        event.listen(self, 'on_after_bulk_delete', listener.after_bulk_delete)
+        event.listen(self, 'before_commit', listener.before_commit)
+        event.listen(self, 'after_commit', listener.after_commit)
+        event.listen(self, 'after_rollback', listener.after_rollback)
+        event.listen(self, 'before_flush', listener.before_flush)
+        event.listen(self, 'after_flush', listener.after_flush)
+        event.listen(self, 'after_flush_postexec', listener.after_flush_postexec)
+        event.listen(self, 'after_begin', listener.after_begin)
+        event.listen(self, 'after_attach', listener.after_attach)
+        event.listen(self, 'after_bulk_update', listener.after_bulk_update)
+        event.listen(self, 'after_bulk_delete', listener.after_bulk_delete)
 
     def before_commit(self, session):
         """Execute right before commit is called.
@@ -534,13 +534,13 @@ class AttributeExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(self, 'on_append', listener.append,
+        event.listen(self, 'append', listener.append,
                             active_history=listener.active_history,
                             raw=True, retval=True)
-        event.listen(self, 'on_remove', listener.remove,
+        event.listen(self, 'remove', listener.remove,
                             active_history=listener.active_history, 
                             raw=True, retval=True)
-        event.listen(self, 'on_set', listener.set,
+        event.listen(self, 'set', listener.set,
                             active_history=listener.active_history, 
                             raw=True, retval=True)
     

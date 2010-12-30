@@ -35,20 +35,20 @@ class SchemaGenerator(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
         
-        metadata.dispatch.on_before_create(metadata, self.connection,
+        metadata.dispatch.before_create(metadata, self.connection,
                                     tables=collection)
         
         for table in collection:
             self.traverse_single(table, create_ok=True)
             
-        metadata.dispatch.on_after_create(metadata, self.connection,
+        metadata.dispatch.after_create(metadata, self.connection,
                                     tables=collection)
 
     def visit_table(self, table, create_ok=False):
         if not create_ok and not self._can_create(table):
             return
         
-        table.dispatch.on_before_create(table, self.connection)
+        table.dispatch.before_create(table, self.connection)
 
         for column in table.columns:
             if column.default is not None:
@@ -60,7 +60,7 @@ class SchemaGenerator(DDLBase):
             for index in table.indexes:
                 self.traverse_single(index)
 
-        table.dispatch.on_after_create(table, self.connection)
+        table.dispatch.after_create(table, self.connection)
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:
@@ -89,13 +89,13 @@ class SchemaDropper(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
         
-        metadata.dispatch.on_before_drop(metadata, self.connection,
+        metadata.dispatch.before_drop(metadata, self.connection,
                                             tables=collection)
         
         for table in collection:
             self.traverse_single(table, drop_ok=True)
 
-        metadata.dispatch.on_after_drop(metadata, self.connection,
+        metadata.dispatch.after_drop(metadata, self.connection,
                                             tables=collection)
 
     def _can_drop(self, table):
@@ -111,7 +111,7 @@ class SchemaDropper(DDLBase):
         if not drop_ok and not self._can_drop(table):
             return
 
-        table.dispatch.on_before_drop(table, self.connection)
+        table.dispatch.before_drop(table, self.connection)
 
         for column in table.columns:
             if column.default is not None:
@@ -119,7 +119,7 @@ class SchemaDropper(DDLBase):
 
         self.connection.execute(schema.DropTable(table))
         
-        table.dispatch.on_after_drop(table, self.connection)
+        table.dispatch.after_drop(table, self.connection)
 
     def visit_sequence(self, sequence):
         if self.dialect.supports_sequences:

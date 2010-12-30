@@ -9,14 +9,14 @@ class TestEvents(TestBase):
     def setUp(self):
         global Target
         
-        assert 'on_event_one' not in event._registrars
-        assert 'on_event_two' not in event._registrars
+        assert 'event_one' not in event._registrars
+        assert 'event_two' not in event._registrars
         
         class TargetEvents(event.Events):
-            def on_event_one(self, x, y):
+            def event_one(self, x, y):
                 pass
             
-            def on_event_two(self, x):
+            def event_two(self, x):
                 pass
                 
         class Target(object):
@@ -29,22 +29,22 @@ class TestEvents(TestBase):
         def listen(x, y):
             pass
         
-        event.listen(Target, "on_event_one", listen)
+        event.listen(Target, "event_one", listen)
         
-        eq_(len(Target().dispatch.on_event_one), 1)
-        eq_(len(Target().dispatch.on_event_two), 0)
+        eq_(len(Target().dispatch.event_one), 1)
+        eq_(len(Target().dispatch.event_two), 0)
 
     def test_register_instance(self):
         def listen(x, y):
             pass
         
         t1 = Target()
-        event.listen(t1, "on_event_one", listen)
+        event.listen(t1, "event_one", listen)
 
-        eq_(len(Target().dispatch.on_event_one), 0)
-        eq_(len(t1.dispatch.on_event_one), 1)
-        eq_(len(Target().dispatch.on_event_two), 0)
-        eq_(len(t1.dispatch.on_event_two), 0)
+        eq_(len(Target().dispatch.event_one), 0)
+        eq_(len(t1.dispatch.event_one), 1)
+        eq_(len(Target().dispatch.event_two), 0)
+        eq_(len(t1.dispatch.event_two), 0)
     
     def test_register_class_instance(self):
         def listen_one(x, y):
@@ -53,22 +53,22 @@ class TestEvents(TestBase):
         def listen_two(x, y):
             pass
 
-        event.listen(Target, "on_event_one", listen_one)
+        event.listen(Target, "event_one", listen_one)
         
         t1 = Target()
-        event.listen(t1, "on_event_one", listen_two)
+        event.listen(t1, "event_one", listen_two)
 
-        eq_(len(Target().dispatch.on_event_one), 1)
-        eq_(len(t1.dispatch.on_event_one), 2)
-        eq_(len(Target().dispatch.on_event_two), 0)
-        eq_(len(t1.dispatch.on_event_two), 0)
+        eq_(len(Target().dispatch.event_one), 1)
+        eq_(len(t1.dispatch.event_one), 2)
+        eq_(len(Target().dispatch.event_two), 0)
+        eq_(len(t1.dispatch.event_two), 0)
         
         def listen_three(x, y):
             pass
         
-        event.listen(Target, "on_event_one", listen_three)
-        eq_(len(Target().dispatch.on_event_one), 2)
-        eq_(len(t1.dispatch.on_event_one), 3)
+        event.listen(Target, "event_one", listen_three)
+        eq_(len(Target().dispatch.event_one), 2)
+        eq_(len(t1.dispatch.event_one), 3)
         
 class TestAcceptTargets(TestBase):
     """Test default target acceptance."""
@@ -77,11 +77,11 @@ class TestAcceptTargets(TestBase):
         global TargetOne, TargetTwo
         
         class TargetEventsOne(event.Events):
-            def on_event_one(self, x, y):
+            def event_one(self, x, y):
                 pass
 
         class TargetEventsTwo(event.Events):
-            def on_event_one(self, x, y):
+            def event_one(self, x, y):
                 pass
                 
         class TargetOne(object):
@@ -111,32 +111,32 @@ class TestAcceptTargets(TestBase):
         def listen_four(x, y):
             pass
             
-        event.listen(TargetOne, "on_event_one", listen_one)
-        event.listen(TargetTwo, "on_event_one", listen_two)
+        event.listen(TargetOne, "event_one", listen_one)
+        event.listen(TargetTwo, "event_one", listen_two)
         
         eq_(
-            list(TargetOne().dispatch.on_event_one),
+            list(TargetOne().dispatch.event_one),
             [listen_one]
         )
 
         eq_(
-            list(TargetTwo().dispatch.on_event_one),
+            list(TargetTwo().dispatch.event_one),
             [listen_two]
         )
 
         t1 = TargetOne()
         t2 = TargetTwo()
 
-        event.listen(t1, "on_event_one", listen_three)
-        event.listen(t2, "on_event_one", listen_four)
+        event.listen(t1, "event_one", listen_three)
+        event.listen(t2, "event_one", listen_four)
         
         eq_(
-            list(t1.dispatch.on_event_one),
+            list(t1.dispatch.event_one),
             [listen_one, listen_three]
         )
 
         eq_(
-            list(t2.dispatch.on_event_one),
+            list(t2.dispatch.event_one),
             [listen_two, listen_four]
         )
         
@@ -154,7 +154,7 @@ class TestCustomTargets(TestBase):
                 else:
                     return None
                     
-            def on_event_one(self, x, y):
+            def event_one(self, x, y):
                 pass
 
         class Target(object):
@@ -167,17 +167,17 @@ class TestCustomTargets(TestBase):
         def listen(x, y):
             pass
         
-        event.listen("one", "on_event_one", listen)
+        event.listen("one", "event_one", listen)
 
         eq_(
-            list(Target().dispatch.on_event_one),
+            list(Target().dispatch.event_one),
             [listen]
         )
         
         assert_raises(
             exc.InvalidRequestError, 
             event.listen,
-            listen, "on_event_one", Target
+            listen, "event_one", Target
         )
         
 class TestListenOverride(TestBase):
@@ -197,7 +197,7 @@ class TestListenOverride(TestBase):
                     
                 event.Events._listen(target, identifier, adapt)
                     
-            def on_event_one(self, x, y):
+            def event_one(self, x, y):
                 pass
 
         class Target(object):
@@ -214,12 +214,12 @@ class TestListenOverride(TestBase):
         def listen_two(x, y):
             result.append((x, y))
         
-        event.listen(Target, "on_event_one", listen_one, add=True)
-        event.listen(Target, "on_event_one", listen_two)
+        event.listen(Target, "event_one", listen_one, add=True)
+        event.listen(Target, "event_one", listen_two)
 
         t1 = Target()
-        t1.dispatch.on_event_one(5, 7)
-        t1.dispatch.on_event_one(10, 5)
+        t1.dispatch.event_one(5, 7)
+        t1.dispatch.event_one(10, 5)
         
         eq_(result,
             [
@@ -232,10 +232,10 @@ class TestPropagate(TestBase):
         global Target
         
         class TargetEvents(event.Events):
-            def on_event_one(self, arg):
+            def event_one(self, arg):
                 pass
             
-            def on_event_two(self, arg):
+            def event_two(self, arg):
                 pass
                 
         class Target(object):
@@ -252,13 +252,13 @@ class TestPropagate(TestBase):
         
         t1 = Target()
         
-        event.listen(t1, "on_event_one", listen_one, propagate=True)
-        event.listen(t1, "on_event_two", listen_two)
+        event.listen(t1, "event_one", listen_one, propagate=True)
+        event.listen(t1, "event_two", listen_two)
 
         t2 = Target()
         
         t2.dispatch._update(t1.dispatch)
         
-        t2.dispatch.on_event_one(t2, 1)
-        t2.dispatch.on_event_two(t2, 2)
+        t2.dispatch.event_one(t2, 1)
+        t2.dispatch.event_two(t2, 2)
         eq_(result, [(t2, 1)])

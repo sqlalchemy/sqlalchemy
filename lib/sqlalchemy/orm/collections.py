@@ -180,7 +180,7 @@ class collection(object):
     The decorators fall into two groups: annotations and interception recipes.
 
     The annotating decorators (appender, remover, iterator,
-    internally_instrumented, on_link) indicate the method's purpose and take no
+    internally_instrumented, link) indicate the method's purpose and take no
     arguments.  They are not written with parens::
 
         @collection.appender
@@ -309,7 +309,7 @@ class collection(object):
         return fn
 
     @staticmethod
-    def on_link(fn):
+    def link(fn):
         """Tag the method as a the "linked to attribute" event handler.
 
         This optional event handler will be called when the collection class
@@ -319,7 +319,7 @@ class collection(object):
         that has been linked, or None if unlinking.
 
         """
-        setattr(fn, '_sa_instrument_role', 'on_link')
+        setattr(fn, '_sa_instrument_role', 'link')
         return fn
 
     @staticmethod
@@ -795,7 +795,7 @@ def _instrument_class(cls):
         if hasattr(method, '_sa_instrument_role'):
             role = method._sa_instrument_role
             assert role in ('appender', 'remover', 'iterator',
-                            'on_link', 'converter')
+                            'link', 'converter')
             roles[role] = name
 
         # transfer instrumentation requests from decorated function

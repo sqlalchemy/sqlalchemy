@@ -1825,7 +1825,7 @@ CHANGES
     hex identifier string.  [ticket:1555]
     
   - The visit_pool() method of Dialect is removed, and replaced with
-    on_connect().  This method returns a callable which receives
+    connect().  This method returns a callable which receives
     the raw DBAPI connection after each one is created.   The callable
     is assembled into a first_connect/connect pool listener by the 
     connection strategy if non-None.   Provides a simpler interface 
@@ -4678,8 +4678,8 @@ CHANGES
       joined-table inheritance subclasses, using explicit join
       criteria (i.e. not on a relation).
 
-    - @orm.attributes.on_reconstitute and
-      MapperExtension.on_reconstitute have been renamed to
+    - @orm.attributes.reconstitute and
+      MapperExtension.reconstitute have been renamed to
       @orm.reconstructor and MapperExtension.reconstruct_instance
 
     - Fixed @reconstructor hook for subclasses which inherit from a

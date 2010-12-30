@@ -468,8 +468,8 @@ class EngineEventsTest(TestBase):
             engines.testing_engine(options=dict(implicit_returning=False,
                                    strategy='threadlocal'))
             ]:
-            event.listen(engine, 'on_before_execute', execute)
-            event.listen(engine, 'on_before_cursor_execute', cursor_execute)
+            event.listen(engine, 'before_execute', execute)
+            event.listen(engine, 'before_cursor_execute', cursor_execute)
             
             m = MetaData(engine)
             t1 = Table('t1', m, 
@@ -521,15 +521,15 @@ class EngineEventsTest(TestBase):
 
     def test_options(self):
         canary = []
-        def on_execute(conn, *args, **kw):
+        def execute(conn, *args, **kw):
             canary.append('execute')
             
-        def on_cursor_execute(conn, *args, **kw):
+        def cursor_execute(conn, *args, **kw):
             canary.append('cursor_execute')
             
         engine = engines.testing_engine()
-        event.listen(engine, 'on_before_execute', on_execute)
-        event.listen(engine, 'on_before_cursor_execute', on_cursor_execute)
+        event.listen(engine, 'before_execute', execute)
+        event.listen(engine, 'before_cursor_execute', cursor_execute)
         conn = engine.connect()
         c2 = conn.execution_options(foo='bar')
         eq_(c2._execution_options, {'foo':'bar'})
@@ -545,11 +545,11 @@ class EngineEventsTest(TestBase):
                 canary.append(name)
             return go
 
-        def on_execute(conn, clauseelement, multiparams, params):
+        def execute(conn, clauseelement, multiparams, params):
             canary.append('execute')
             return clauseelement, multiparams, params
             
-        def on_cursor_execute(conn, cursor, statement, 
+        def cursor_execute(conn, cursor, statement, 
                         parameters, context, executemany):
             canary.append('cursor_execute')
             return statement, parameters
@@ -558,11 +558,11 @@ class EngineEventsTest(TestBase):
         
         assert_raises(
             tsa.exc.ArgumentError,
-            event.listen, engine, "on_begin", tracker("on_begin"), retval=True
+            event.listen, engine, "begin", tracker("begin"), retval=True
         )
         
-        event.listen(engine, "on_before_execute", on_execute, retval=True)
-        event.listen(engine, "on_before_cursor_execute", on_cursor_execute, retval=True)
+        event.listen(engine, "before_execute", execute, retval=True)
+        event.listen(engine, "before_cursor_execute", cursor_execute, retval=True)
         engine.execute(select([1]))
         eq_(
             canary, ['execute', 'cursor_execute']
@@ -578,11 +578,11 @@ class EngineEventsTest(TestBase):
             return go
             
         engine = engines.testing_engine()
-        event.listen(engine, 'on_before_execute', tracker('execute'))
-        event.listen(engine, 'on_before_cursor_execute', tracker('cursor_execute'))
-        event.listen(engine, 'on_begin', tracker('begin'))
-        event.listen(engine, 'on_commit', tracker('commit'))
-        event.listen(engine, 'on_rollback', tracker('rollback'))
+        event.listen(engine, 'before_execute', tracker('execute'))
+        event.listen(engine, 'before_cursor_execute', tracker('cursor_execute'))
+        event.listen(engine, 'begin', tracker('begin'))
+        event.listen(engine, 'commit', tracker('commit'))
+        event.listen(engine, 'rollback', tracker('rollback'))
         
         conn = engine.connect()
         trans = conn.begin()
@@ -611,7 +611,7 @@ class EngineEventsTest(TestBase):
                     'rollback_savepoint', 'release_savepoint',
                     'rollback', 'begin_twophase', 
                        'prepare_twophase', 'commit_twophase']:
-            event.listen(engine, 'on_%s' % name, tracker(name))
+            event.listen(engine, '%s' % name, tracker(name))
 
         conn = engine.connect()
 

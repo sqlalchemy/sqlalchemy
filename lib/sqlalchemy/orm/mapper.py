@@ -395,7 +395,7 @@ class Mapper(object):
                 
         _mapper_registry[self] = True
 
-        self.dispatch.on_instrument_class(self, self.class_)
+        self.dispatch.instrument_class(self, self.class_)
 
         if manager is None:
             manager = instrumentation.register_class(self.class_, 
@@ -411,15 +411,15 @@ class Mapper(object):
         if manager.info.get(_INSTRUMENTOR, False):
             return
 
-        event.listen(manager, 'on_first_init', _event_on_first_init, raw=True)
-        event.listen(manager, 'on_init', _event_on_init, raw=True)
-        event.listen(manager, 'on_resurrect', _event_on_resurrect, raw=True)
+        event.listen(manager, 'first_init', _event_on_first_init, raw=True)
+        event.listen(manager, 'init', _event_on_init, raw=True)
+        event.listen(manager, 'resurrect', _event_on_resurrect, raw=True)
         
         for key, method in util.iterate_attributes(self.class_):
             if isinstance(method, types.FunctionType):
                 if hasattr(method, '__sa_reconstructor__'):
                     self._reconstructor = method
-                    event.listen(manager, 'on_load', _event_on_load, raw=True)
+                    event.listen(manager, 'load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
                         self._validators[name] = method
@@ -1597,9 +1597,9 @@ class Mapper(object):
             
             # call before_XXX extensions
             if not has_identity:
-                mapper.dispatch.on_before_insert(mapper, conn, state)
+                mapper.dispatch.before_insert(mapper, conn, state)
             else:
-                mapper.dispatch.on_before_update(mapper, conn, state)
+                mapper.dispatch.before_update(mapper, conn, state)
 
             # detect if we have a "pending" instance (i.e. has 
             # no instance_key attached to it), and another instance 
@@ -1911,9 +1911,9 @@ class Mapper(object):
 
             # call after_XXX extensions
             if not has_identity:
-                mapper.dispatch.on_after_insert(mapper, connection, state)
+                mapper.dispatch.after_insert(mapper, connection, state)
             else:
-                mapper.dispatch.on_after_update(mapper, connection, state)
+                mapper.dispatch.after_update(mapper, connection, state)
 
     def _postfetch(self, uowtransaction, table, 
                     state, dict_, prefetch_cols, postfetch_cols,
@@ -1988,7 +1988,7 @@ class Mapper(object):
             else:
                 conn = connection
         
-            mapper.dispatch.on_before_delete(mapper, conn, state)
+            mapper.dispatch.before_delete(mapper, conn, state)
             
             tups.append((state, 
                     state.dict,
@@ -2074,7 +2074,7 @@ class Mapper(object):
                     )
 
         for state, state_dict, mapper, has_identity, connection in tups:
-            mapper.dispatch.on_after_delete(mapper, connection, state)
+            mapper.dispatch.after_delete(mapper, connection, state)
 
     def _instance_processor(self, context, path, reduced_path, adapter, 
                                 polymorphic_from=None, 
@@ -2143,10 +2143,10 @@ class Mapper(object):
 
         listeners = self.dispatch
         
-        translate_row = listeners.on_translate_row or None
-        create_instance = listeners.on_create_instance or None
-        populate_instance = listeners.on_populate_instance or None
-        append_result = listeners.on_append_result or None
+        translate_row = listeners.translate_row or None
+        create_instance = listeners.create_instance or None
+        populate_instance = listeners.populate_instance or None
+        append_result = listeners.append_result or None
         populate_existing = context.populate_existing or self.always_refresh
         if self.allow_partial_pks:
             is_not_primary_key = _none_set.issuperset
@@ -2297,9 +2297,9 @@ class Mapper(object):
                         populate_state(state, dict_, row, isnew, attrs)
 
             if loaded_instance:
-                state.manager.dispatch.on_load(state)
+                state.manager.dispatch.load(state)
             elif isnew:
-                state.manager.dispatch.on_refresh(state)
+                state.manager.dispatch.refresh(state)
                 
             if result is not None:
                 if append_result:
@@ -2408,7 +2408,7 @@ def configure_mappers():
                     try:
                         mapper._post_configure_properties()
                         mapper._expire_memoizations()
-                        mapper.dispatch.on_mapper_configured(mapper, mapper.class_)
+                        mapper.dispatch.mapper_configured(mapper, mapper.class_)
                     except:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):

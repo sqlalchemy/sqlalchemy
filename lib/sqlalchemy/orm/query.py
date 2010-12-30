@@ -1803,7 +1803,7 @@ class Query(object):
             filter = None
 
         custom_rows = single_entity and \
-                        self._entities[0].mapper.dispatch.on_append_result
+                        self._entities[0].mapper.dispatch.append_result
 
         (process, labels) = \
                     zip(*[
@@ -2193,7 +2193,7 @@ class Query(object):
                         )
                     )
 
-        session.dispatch.on_after_bulk_delete(session, self, context, result)
+        session.dispatch.after_bulk_delete(session, self, context, result)
 
         return result.rowcount
 
@@ -2343,7 +2343,7 @@ class Query(object):
                                 [_attr_as_key(k) for k in values]
                                 )
         
-        session.dispatch.on_after_bulk_update(session, self, context, result)
+        session.dispatch.after_bulk_update(session, self, context, result)
 
         return result.rowcount
 

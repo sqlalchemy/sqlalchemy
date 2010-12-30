@@ -116,7 +116,7 @@ class CompositeProperty(DescriptorProperty):
             state = attributes.instance_state(instance)
             attr = state.manager[self.key]
             previous = dict_.get(self.key, attributes.NO_VALUE)
-            for fn in attr.dispatch.on_set:
+            for fn in attr.dispatch.set:
                 value = fn(state, value, previous, attr.impl)
             dict_[self.key] = value
             if value is None:
@@ -133,7 +133,7 @@ class CompositeProperty(DescriptorProperty):
             dict_ = attributes.instance_dict(instance)
             previous = dict_.pop(self.key, attributes.NO_VALUE)
             attr = state.manager[self.key]
-            attr.dispatch.on_remove(state, previous, attr.impl)
+            attr.dispatch.remove(state, previous, attr.impl)
             for key in self._attribute_keys:
                 setattr(instance, key, None)
         
@@ -183,13 +183,13 @@ class CompositeProperty(DescriptorProperty):
                     self._attribute_keys]
                 )
             
-        event.listen(self.parent, 'on_after_insert', 
+        event.listen(self.parent, 'after_insert', 
                                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'on_after_update', 
+        event.listen(self.parent, 'after_update', 
                                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'on_load', load_handler, raw=True)
-        event.listen(self.parent, 'on_refresh', load_handler, raw=True)
-        event.listen(self.parent, "on_expire", expire_handler, raw=True)
+        event.listen(self.parent, 'load', load_handler, raw=True)
+        event.listen(self.parent, 'refresh', load_handler, raw=True)
+        event.listen(self.parent, "expire", expire_handler, raw=True)
         
         # TODO: need a deserialize hook here
         

@@ -1277,6 +1277,6 @@ def single_parent_validator(desc, prop):
     def set_(state, value, oldvalue, initiator):
         return _do_check(state, value, oldvalue, initiator)
     
-    event.listen(desc, 'on_append', append, raw=True, retval=True, active_history=True)
-    event.listen(desc, 'on_set', set_, raw=True, retval=True, active_history=True)
+    event.listen(desc, 'append', append, raw=True, retval=True, active_history=True)
+    event.listen(desc, 'set', set_, raw=True, retval=True, active_history=True)
     

@@ -255,8 +255,8 @@ class _ConnectionRecord(object):
         self.connection = self.__connect()
         self.info = {}
 
-        pool.dispatch.on_first_connect.exec_once(self.connection, self)
-        pool.dispatch.on_connect(self.connection, self)
+        pool.dispatch.first_connect.exec_once(self.connection, self)
+        pool.dispatch.connect(self.connection, self)
 
     def close(self):
         if self.connection is not None:
@@ -284,8 +284,8 @@ class _ConnectionRecord(object):
         if self.connection is None:
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool.dispatch.on_connect:
-                self.__pool.dispatch.on_connect(self.connection, self)
+            if self.__pool.dispatch.connect:
+                self.__pool.dispatch.connect(self.connection, self)
         elif self.__pool._recycle > -1 and \
                 time.time() - self.starttime > self.__pool._recycle:
             self.__pool.logger.info(
@@ -294,8 +294,8 @@ class _ConnectionRecord(object):
             self.__close()
             self.connection = self.__connect()
             self.info.clear()
-            if self.__pool.dispatch.on_connect:
-                self.__pool.dispatch.on_connect(self.connection, self)
+            if self.__pool.dispatch.connect:
+                self.__pool.dispatch.connect(self.connection, self)
         return self.connection
 
     def __close(self):
@@ -348,8 +348,8 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
         if echo:
             pool.logger.debug("Connection %r being returned to pool", 
                                     connection)
-        if pool.dispatch.on_checkin:
-            pool.dispatch.on_checkin(connection, connection_record)
+        if pool.dispatch.checkin:
+            pool.dispatch.checkin(connection, connection_record)
         pool._return_conn(connection_record)
 
 _refs = set()
@@ -435,14 +435,14 @@ class _ConnectionFairy(object):
             raise exc.InvalidRequestError("This connection is closed")
         self.__counter += 1
 
-        if not self._pool.dispatch.on_checkout or self.__counter != 1:
+        if not self._pool.dispatch.checkout or self.__counter != 1:
             return self
 
         # Pool listeners can trigger a reconnection on checkout
         attempts = 2
         while attempts > 0:
             try:
-                self._pool.dispatch.on_checkout(self.connection, 
+                self._pool.dispatch.checkout(self.connection, 
                                             self._connection_record,
                                             self)
                 return self

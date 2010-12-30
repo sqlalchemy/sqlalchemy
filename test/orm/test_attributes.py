@@ -1627,7 +1627,7 @@ class ListenerTest(_base.ORMTest):
         class Bar(object):
             pass
             
-        def on_append(state, child, initiator):
+        def append(state, child, initiator):
             b2 = Bar()
             b2.data = b1.data + " appended"
             return b2
@@ -1642,9 +1642,9 @@ class ListenerTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True)
         attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
         
-        event.listen(Foo.data, 'on_set', on_set, retval=True)
-        event.listen(Foo.barlist, 'on_append', on_append, retval=True)
-        event.listen(Foo.barset, 'on_append', on_append, retval=True)
+        event.listen(Foo.data, 'set', on_set, retval=True)
+        event.listen(Foo.barlist, 'append', append, retval=True)
+        event.listen(Foo.barset, 'append', append, retval=True)
         
         f1 = Foo()
         f1.data = "some data"
@@ -1694,11 +1694,11 @@ class ListenerTest(_base.ORMTest):
         def attr_c():
             attributes.register_attribute(classes[2], 'attrib', uselist=False, useobject=False)
         
-        def on_set(state, value, oldvalue, initiator):
+        def set(state, value, oldvalue, initiator):
             canary.append(value)
             
         def events_a():
-            event.listen(classes[0].attrib, 'on_set', on_set, propagate=True)
+            event.listen(classes[0].attrib, 'set', set, propagate=True)
         
         def teardown():
             classes[:] = [None, None, None]

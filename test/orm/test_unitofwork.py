@@ -1374,8 +1374,8 @@ class SaveTest(_fixtures.FixtureTest):
         mapper(User, users, batch=False)
         
         evt = Events()
-        event.listen(User, "on_before_insert", evt.before_insert)
-        event.listen(User, "on_after_insert", evt.after_insert)
+        event.listen(User, "before_insert", evt.before_insert)
+        event.listen(User, "after_insert", evt.after_insert)
         
         u1 = User(name='user1')
         u2 = User(name='user2')
@@ -1399,8 +1399,8 @@ class SaveTest(_fixtures.FixtureTest):
 
         m = mapper(User, users)
         evt = Events()
-        event.listen(User, "on_before_insert", evt.before_insert)
-        event.listen(User, "on_after_insert", evt.after_insert)
+        event.listen(User, "before_insert", evt.before_insert)
+        event.listen(User, "after_insert", evt.after_insert)
 
         u1 = User(name='user1')
         u2 = User(name='user2')

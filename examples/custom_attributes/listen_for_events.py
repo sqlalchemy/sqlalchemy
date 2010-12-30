@@ -16,9 +16,9 @@ def configure_listener(class_, key, inst):
     def set_(instance, value, oldvalue, initiator):
         instance.receive_change_event("set", key, value, oldvalue)
 
-    event.listen(inst, 'on_append', append)
-    event.listen(inst, 'on_remove', remove)
-    event.listen(inst, 'on_set', set_)
+    event.listen(inst, 'append', append)
+    event.listen(inst, 'remove', remove)
+    event.listen(inst, 'set', set_)
 
 
 if __name__ == '__main__':
@@ -38,7 +38,7 @@ if __name__ == '__main__':
             
     Base = declarative_base(cls=Base)
 
-    event.listen(Base, 'on_attribute_instrument', configure_listener)
+    event.listen(Base, 'attribute_instrument', configure_listener)
 
     class MyMappedClass(Base):
         __tablename__ = "mytable"

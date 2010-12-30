@@ -89,7 +89,7 @@ class InstanceState(object):
         self, instance, args = mixed[0], mixed[1], mixed[2:]
         manager = self.manager
 
-        manager.dispatch.on_init(self, args, kwargs)
+        manager.dispatch.init(self, args, kwargs)
             
         #if manager.mutable_attributes:
         #    assert self.__class__ is MutableAttrInstanceState
@@ -97,7 +97,7 @@ class InstanceState(object):
         try:
             return manager.original_init(*mixed[1:], **kwargs)
         except:
-            manager.dispatch.on_init_failure(self, args, kwargs)
+            manager.dispatch.init_failure(self, args, kwargs)
             raise
 
     def get_history(self, key, **kwargs):
@@ -232,7 +232,7 @@ class InstanceState(object):
                 self.callables[key] = self
             dict_.pop(key, None)
         
-        self.manager.dispatch.on_expire(self, None)
+        self.manager.dispatch.expire(self, None)
 
     def expire_attributes(self, dict_, attribute_names):
         pending = self.__dict__.get('pending', None)
@@ -250,7 +250,7 @@ class InstanceState(object):
             if pending:
                 pending.pop(key, None)
 
-        self.manager.dispatch.on_expire(self, attribute_names)
+        self.manager.dispatch.expire(self, attribute_names)
 
     def __call__(self, passive):
         """__call__ allows the InstanceState to act as a deferred
@@ -516,7 +516,7 @@ class MutableAttrInstanceState(InstanceState):
         obj.__dict__.update(self.mutable_dict)
 
         # re-establishes identity attributes from the key
-        self.manager.dispatch.on_resurrect(self)
+        self.manager.dispatch.resurrect(self)
         
         return obj
 
