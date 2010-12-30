@@ -581,7 +581,7 @@ class ExtendedEventsTest(_base.ORMTest):
 
         instrumentation.register_class(A)
         manager = instrumentation.manager_of_class(A)
-        assert issubclass(manager.dispatch.parent_cls.__dict__['dispatch'].events, MyEvents)
+        assert issubclass(manager.dispatch._parent_cls.__dict__['dispatch'].events, MyEvents)
 
 
 class NativeInstrumentationTest(_base.ORMTest):

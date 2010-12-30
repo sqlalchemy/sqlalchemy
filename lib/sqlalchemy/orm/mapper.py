@@ -331,7 +331,7 @@ class Mapper(object):
     def _configure_legacy_instrument_class(self):
 
         if self.inherits:
-            self.dispatch.update(self.inherits.dispatch)
+            self.dispatch._update(self.inherits.dispatch)
             super_extensions = set(chain(*[m._deprecated_extensions 
                                     for m in self.inherits.iterate_to_root()]))
         else:
@@ -353,7 +353,7 @@ class Mapper(object):
                 ext._adapt_listener(self, ext)
         
         if self.inherits:
-            self.class_manager.dispatch.update(
+            self.class_manager.dispatch._update(
                         self.inherits.class_manager.dispatch)
 
     def _configure_class_instrumentation(self):

@@ -68,10 +68,10 @@ class QueryableAttribute(interfaces.PropComparator):
             # immediate superclass
             for base in manager._bases:
                 if key in base:
-                    self.dispatch.update(base[key].dispatch)
+                    self.dispatch._update(base[key].dispatch)
 
     dispatch = event.dispatcher(events.AttributeEvents)
-    dispatch.dispatch_cls.active_history = False
+    dispatch.dispatch_cls._active_history = False
     
     @util.memoized_property
     def _supports_population(self):
@@ -276,17 +276,17 @@ class AttributeImpl(object):
             ext._adapt_listener(attr, ext)
             
         if active_history:
-            self.dispatch.active_history = True
+            self.dispatch._active_history = True
 
         self.expire_missing = expire_missing
         
     def _get_active_history(self):
         """Backwards compat for impl.active_history"""
         
-        return self.dispatch.active_history
+        return self.dispatch._active_history
     
     def _set_active_history(self, value):
-        self.dispatch.active_history = value
+        self.dispatch._active_history = value
     
     active_history = property(_get_active_history, _set_active_history)
     
@@ -442,7 +442,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def delete(self, state, dict_):
 
         # TODO: catch key errors, convert to attributeerror?
-        if self.dispatch.active_history:
+        if self.dispatch._active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -460,7 +460,7 @@ class ScalarAttributeImpl(AttributeImpl):
         if initiator and initiator.parent_token is self.parent_token:
             return
 
-        if self.dispatch.active_history:
+        if self.dispatch._active_history:
             old = self.get(state, dict_)
         else:
             old = dict_.get(self.key, NO_VALUE)
@@ -606,7 +606,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if initiator and initiator.parent_token is self.parent_token:
             return
 
-        if self.dispatch.active_history:
+        if self.dispatch._active_history:
             old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)

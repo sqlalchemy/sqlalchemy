@@ -33,13 +33,16 @@ def remove(target, identifier, fn):
 
 _registrars = util.defaultdict(list)
 
+def _is_event_name(name):
+    return not name.startswith('_') and name != 'dispatch'
+    
 class _UnpickleDispatch(object):
     """Serializable callable that re-generates an instance of :class:`_Dispatch`
     given a particular :class:`.Events` subclass.
     
     """
-    def __call__(self, parent_cls):
-        return parent_cls.__dict__['dispatch'].dispatch_cls(parent_cls)
+    def __call__(self, _parent_cls):
+        return _parent_cls.__dict__['dispatch'].dispatch_cls(_parent_cls)
         
 class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with 
@@ -61,23 +64,23 @@ class _Dispatch(object):
     
     """
     
-    def __init__(self, parent_cls):
-        self.parent_cls = parent_cls
+    def __init__(self, _parent_cls):
+        self._parent_cls = _parent_cls
     
     def __reduce__(self):
         
-        return _UnpickleDispatch(), (self.parent_cls, )
+        return _UnpickleDispatch(), (self._parent_cls, )
     
     @property
-    def descriptors(self):
-        return (getattr(self, k) for k in dir(self) if k.startswith("on_"))
+    def _descriptors(self):
+        return (getattr(self, k) for k in dir(self) if _is_event_name(k))
 
-    def update(self, other, only_propagate=True):
+    def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
 
-        for ls in other.descriptors:
-            getattr(self, ls.name).update(ls, only_propagate=only_propagate)
+        for ls in other._descriptors:
+            getattr(self, ls.name)._update(ls, only_propagate=only_propagate)
             
             
 class _EventMeta(type):
@@ -102,13 +105,13 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
     dispatch_cls._clear = cls._clear
     
     for k in dict_:
-        if k.startswith('on_'):
+        if _is_event_name(k):
             setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
             _registrars[k].append(cls)
 
 def _remove_dispatcher(cls):
     for k in dir(cls):
-        if k.startswith('on_'):
+        if _is_event_name(k):
             _registrars[k].remove(cls)
             if not _registrars[k]:
                 del _registrars[k]
@@ -143,7 +146,7 @@ class Events(object):
     @classmethod
     def _clear(cls):
         for attr in dir(cls.dispatch):
-            if attr.startswith("on_"):
+            if _is_event_name(attr):
                 getattr(cls.dispatch, attr).clear()
                 
 class _DispatchDescriptor(object):
@@ -175,7 +178,7 @@ class _DispatchDescriptor(object):
         if obj is None:
             return self
         obj.__dict__[self.__name__] = result = \
-                            _ListenerCollection(self, obj.parent_cls)
+                            _ListenerCollection(self, obj._parent_cls)
         return result
 
 class _ListenerCollection(object):
@@ -231,7 +234,7 @@ class _ListenerCollection(object):
     def __nonzero__(self):
         return bool(self.listeners or self.parent_listeners)
     
-    def update(self, other, only_propagate=True):
+    def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
         

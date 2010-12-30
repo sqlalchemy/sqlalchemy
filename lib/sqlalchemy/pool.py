@@ -135,7 +135,7 @@ class Pool(log.Identified):
         self._reset_on_return = reset_on_return
         self.echo = echo
         if _dispatch:
-            self.dispatch.update(_dispatch, only_propagate=False)
+            self.dispatch._update(_dispatch, only_propagate=False)
         if events:
             for fn, target in events:
                 event.listen(self, target, fn)

@@ -257,7 +257,7 @@ class TestPropagate(TestBase):
 
         t2 = Target()
         
-        t2.dispatch.update(t1.dispatch)
+        t2.dispatch._update(t1.dispatch)
         
         t2.dispatch.on_event_one(t2, 1)
         t2.dispatch.on_event_two(t2, 2)

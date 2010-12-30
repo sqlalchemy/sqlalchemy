@@ -858,7 +858,7 @@ class AttributeEvents(event.Events):
                                         raw=False, retval=False,
                                         propagate=False):
         if active_history:
-            target.dispatch.active_history = True
+            target.dispatch._active_history = True
         
         # TODO: for removal, need to package the identity
         # of the wrapper with the original function.
