@@ -104,7 +104,7 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, _base.MappedTest):
         import json
 
         class JSONEncodedDict(TypeDecorator):
-            impl = VARCHAR
+            impl = VARCHAR(50)
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -148,7 +148,7 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, _base.MappedTest):
         import json
 
         class JSONEncodedDict(TypeDecorator):
-            impl = VARCHAR
+            impl = VARCHAR(50)
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
