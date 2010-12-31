@@ -20,7 +20,7 @@ class MergeTest(_fixtures.FixtureTest):
 
     def load_tracker(self, cls, canary=None):
         if canary is None:
-            def canary(instance):
+            def canary(instance, *args):
                 canary.called += 1
             canary.called = 0
 

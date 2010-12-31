@@ -2269,37 +2269,40 @@ class Mapper(object):
                 else:
                     populate_state(state, dict_, row, isnew, only_load_props)
                     
-            else:
+                if loaded_instance:
+                    state.manager.dispatch.load(state, context)
+                elif isnew:
+                    state.manager.dispatch.refresh(state, context, only_load_props)
+
+            elif state in context.partials or state.unloaded:
                 # populate attributes on non-loading instances which have 
                 # been expired
                 # TODO: apply eager loads to un-lazy loaded collections ?
-                if state in context.partials or state.unloaded:
 
-                    if state in context.partials:
-                        isnew = False
-                        (d_, attrs) = context.partials[state]
-                    else:
-                        isnew = True
-                        attrs = state.unloaded
-                        # allow query.instances to commit the subset of attrs
-                        context.partials[state] = (dict_, attrs)  
-                    
-                    if populate_instance:
-                        for fn in populate_instance:
-                            ret = fn(self, context, row, state, 
-                                only_load_props=attrs, 
-                                instancekey=identitykey, isnew=isnew)
-                            if ret is not EXT_CONTINUE:
-                                break
-                        else:
-                            populate_state(state, dict_, row, isnew, attrs)
+                if state in context.partials:
+                    isnew = False
+                    (d_, attrs) = context.partials[state]
+                else:
+                    isnew = True
+                    attrs = state.unloaded
+                    # allow query.instances to commit the subset of attrs
+                    context.partials[state] = (dict_, attrs)  
+                
+                if populate_instance:
+                    for fn in populate_instance:
+                        ret = fn(self, context, row, state, 
+                            only_load_props=attrs, 
+                            instancekey=identitykey, isnew=isnew)
+                        if ret is not EXT_CONTINUE:
+                            break
                     else:
                         populate_state(state, dict_, row, isnew, attrs)
+                else:
+                    populate_state(state, dict_, row, isnew, attrs)
+                
+                if isnew:
+                    state.manager.dispatch.refresh(state, context, attrs)
 
-            if loaded_instance:
-                state.manager.dispatch.load(state)
-            elif isnew:
-                state.manager.dispatch.refresh(state)
                 
             if result is not None:
                 if append_result:
@@ -2462,7 +2465,7 @@ def validates(*names):
         return fn
     return wrap
 
-def _event_on_load(state):
+def _event_on_load(state, ctx):
     instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
     if instrumenting_mapper._reconstructor:
         instrumenting_mapper._reconstructor(state.obj())

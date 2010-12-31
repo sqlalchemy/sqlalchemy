@@ -83,7 +83,7 @@ class MapperExtension(object):
             if me_meth is not ls_meth:
                 if meth == 'reconstruct_instance':
                     def go(ls_meth):
-                        def reconstruct(instance):
+                        def reconstruct(instance, ctx):
                             ls_meth(self, instance)
                         return reconstruct
                     event.listen(self.class_manager, 'load', 

@@ -121,7 +121,7 @@ class InstanceEvents(event.Events):
 
         """
     
-    def load(self, target):
+    def load(self, target, context):
         """Receive an object instance after it has been created via
         ``__new__``, and after initial attribute population has
         occurred.
@@ -135,29 +135,59 @@ class InstanceEvents(event.Events):
         attributes and collections may or may not be loaded or even 
         initialized, depending on what's present in the result rows.
 
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param context: the :class:`.QueryContext` corresponding to the
+         current :class:`.Query` in progress.
+
         """
 
-    def refresh(self, target):
+    def refresh(self, target, context, attrs):
         """Receive an object instance after one or more attributes have 
-        been refreshed.
+        been refreshed from a query.
         
-        This hook is called after expired attributes have been reloaded.
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param context: the :class:`.QueryContext` corresponding to the
+         current :class:`.Query` in progress.
+        :param attrs: iterable collection of attribute names which 
+         were populated, or None if all column-mapped, non-deferred
+         attributes were populated.
         
         """
     
-    def expire(self, target, keys):
+    def expire(self, target, attrs):
         """Receive an object instance after its attributes or some subset
         have been expired.
         
         'keys' is a list of attribute names.  If None, the entire
         state was expired.
-        
+
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param attrs: iterable collection of attribute
+         names which were expired, or None if all attributes were 
+         expired.
+         
         """
         
     def resurrect(self, target):
         """Receive an object instance as it is 'resurrected' from 
         garbage collection, which occurs when a "dirty" state falls
-        out of scope."""
+        out of scope.
+        
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        
+        """
 
         
 class MapperEvents(event.Events):
@@ -412,7 +442,10 @@ class MapperEvents(event.Events):
         :param row: the result row being handled.  This may be 
          an actual :class:`.RowProxy` or may be a dictionary containing
          :class:`.Column` objects as keys.
-        :param class\_: the mapped class.
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
         :return: When configured with ``retval=True``, a return
          value of ``EXT_STOP`` will bypass instance population by
          the mapper. A value of ``EXT_CONTINUE`` indicates that

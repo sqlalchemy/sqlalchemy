@@ -12,7 +12,18 @@ from test.lib.testing import eq_
 from test.orm import _base, _fixtures
 from sqlalchemy import event
 
-class MapperEventsTest(_fixtures.FixtureTest):
+
+class _RemoveListeners(object):
+    def teardown(self):
+        # TODO: need to get remove() functionality
+        # going
+        Mapper.dispatch._clear()
+        ClassManager.dispatch._clear()
+        Session.dispatch._clear()
+        super(_RemoveListeners, self).teardown()
+    
+
+class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
     
     @testing.resolve_artifact_names
@@ -58,12 +69,6 @@ class MapperEventsTest(_fixtures.FixtureTest):
         b = B()
         eq_(canary, [('init_a', b), ('init_b', b),('init_e', b)])
     
-    def teardown(self):
-        # TODO: need to get remove() functionality
-        # going
-        Mapper.dispatch._clear()
-        ClassManager.dispatch._clear()
-        super(MapperEventsTest, self).teardown()
         
     def listen_all(self, mapper, **kw):
         canary = []
@@ -223,7 +228,171 @@ class MapperEventsTest(_fixtures.FixtureTest):
         eq_(canary, [User, Address])
     
 
-class SessionEventsTest(_fixtures.FixtureTest):
+class LoadTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(User, users)
+    
+    @testing.resolve_artifact_names
+    def _fixture(self):
+        canary = []
+        def load(target, ctx):
+            canary.append("load")
+        def refresh(target, ctx, attrs):
+            canary.append(("refresh", attrs))
+        
+        event.listen(User, "load", load)
+        event.listen(User, "refresh", refresh)
+        return canary
+
+    @testing.resolve_artifact_names
+    def test_just_loaded(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+        
+        sess.query(User).first()
+        eq_(canary, ['load'])
+
+    @testing.resolve_artifact_names
+    def test_repeated_rows(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+        
+        sess.query(User).union_all(sess.query(User)).all()
+        eq_(canary, ['load'])
+    
+    
+    
+class RefreshTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(User, users)
+    
+    @testing.resolve_artifact_names
+    def _fixture(self):
+        canary = []
+        def load(target, ctx):
+            canary.append("load")
+        def refresh(target, ctx, attrs):
+            canary.append(("refresh", attrs))
+        
+        event.listen(User, "load", load)
+        event.listen(User, "refresh", refresh)
+        return canary
+
+    @testing.resolve_artifact_names
+    def test_already_present(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        
+        sess.query(User).first()
+        eq_(canary, [])
+
+    @testing.resolve_artifact_names
+    def test_repeated_rows(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.query(User).union_all(sess.query(User)).all()
+        eq_(canary, [('refresh', set(['id','name']))])
+
+    @testing.resolve_artifact_names
+    def test_via_refresh_state(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        u1.name
+        eq_(canary, [('refresh', set(['id','name']))])
+
+    @testing.resolve_artifact_names
+    def test_was_expired(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        sess.expire(u1)
+        
+        sess.query(User).first()
+        eq_(canary, [('refresh', set(['id','name']))])
+
+    @testing.resolve_artifact_names
+    def test_was_expired_via_commit(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.query(User).first()
+        eq_(canary, [('refresh', set(['id','name']))])
+
+    @testing.resolve_artifact_names
+    def test_was_expired_attrs(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+        sess.expire(u1, ['name'])
+        
+        sess.query(User).first()
+        eq_(canary, [('refresh', set(['name']))])
+        
+    @testing.resolve_artifact_names
+    def test_populate_existing(self):
+        canary = self._fixture()
+        
+        sess = Session()
+        
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+        
+        sess.query(User).populate_existing().first()
+        eq_(canary, [('refresh', None)])
+    
+
+class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
 
     def test_class_listen(self):
@@ -491,12 +660,6 @@ class SessionEventsTest(_fixtures.FixtureTest):
             ]
         )
         
-    def teardown(self):
-        # TODO: need to get remove() functionality
-        # going
-        Session.dispatch._clear()
-        super(SessionEventsTest, self).teardown()
-
 
         
 class MapperExtensionTest(_fixtures.FixtureTest):

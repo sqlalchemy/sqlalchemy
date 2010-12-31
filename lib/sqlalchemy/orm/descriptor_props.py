@@ -155,7 +155,7 @@ class CompositeProperty(DescriptorProperty):
     def _setup_event_handlers(self):
         """Establish events that populate/expire the composite attribute."""
         
-        def load_handler(state):
+        def load_handler(state, *args):
             dict_ = state.dict
             
             if self.key in dict_:

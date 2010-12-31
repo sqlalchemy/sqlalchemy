@@ -51,7 +51,7 @@ class Mutable(object):
         key = attribute.key
         parent_cls = attribute.class_
         
-        def load(state):
+        def load(state, *args):
             """Listen for objects loaded or refreshed.   
             
             Wrap the target data member's value with 
@@ -230,7 +230,7 @@ class MutableComposite(object):
         key = attribute.key
         parent_cls = attribute.class_
         
-        def load(state):
+        def load(state, *args):
             """Listen for objects loaded or refreshed.   
             
             Wrap the target data member's value with 
