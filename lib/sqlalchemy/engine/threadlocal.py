@@ -1,3 +1,9 @@
+# engine/threadlocal.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 """Provides a thread-local transactional wrapper around the root Engine class.
 
 The ``threadlocal`` module is invoked when using the ``strategy="threadlocal"`` flag

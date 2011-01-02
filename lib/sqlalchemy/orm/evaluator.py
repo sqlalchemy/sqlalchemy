@@ -1,3 +1,9 @@
+# orm/evaluator.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 import operator
 from sqlalchemy.sql import operators, functions
 from sqlalchemy.sql import expression as sql

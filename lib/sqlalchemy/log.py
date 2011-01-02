@@ -1,5 +1,5 @@
-# log.py - adapt python logging module to SQLAlchemy
-# Copyright (C) 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
+# sqlalchemy/log.py
+# Copyright (C) 2006-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
 # This module is part of SQLAlchemy and is released under

@@ -1,3 +1,9 @@
+# sql/functions.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 from sqlalchemy import types as sqltypes
 from sqlalchemy.sql.expression import (
     ClauseList, Function, _literal_as_binds, text, _type_from_args

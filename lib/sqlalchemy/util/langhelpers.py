@@ -1,3 +1,9 @@
+# util/langhelpers.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 """Routines to help with the creation, loading and introspection of 
 modules, classes, hierarchies, attributes, functions, and methods.
 

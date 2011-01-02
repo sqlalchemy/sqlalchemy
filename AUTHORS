@@ -1,0 +1,17 @@
+SQLAlchemy was created by Michael Bayer.
+
+Major contributing authors include:
+
+- Michael Bayer <mike_mp@zzzcomputing.com>
+- Jason Kirtland <jek@discorporate.us>
+- Gaetan de Menten <gdementen@gmail.com>
+- Michael Trier <mtrier@gmail.com>
+- Philip Jenvey <pjenvey@underboss.org>
+- Ants Aasma <ants.aasma@gmail.com>
+- Paul Johnston <paj@pajhome.org.uk>
+- Jonathan Ellis <jbellis@gmail.com>
+
+For a larger list of SQLAlchemy contributors over time, see:
+
+http://www.sqlalchemy.org/trac/wiki/Contributors
+

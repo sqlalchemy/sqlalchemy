@@ -1,3 +1,9 @@
+# ext/compiler.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 """Provides an API for creation of custom ClauseElements and compilers.
 
 Synopsis
