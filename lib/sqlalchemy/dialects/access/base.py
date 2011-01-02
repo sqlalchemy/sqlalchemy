@@ -153,7 +153,7 @@ class AccessDialect(default.DefaultDialect):
     supports_sane_multi_rowcount = False
 
     ported_sqla_06 = False
-    
+
     def type_descriptor(self, typeobj):
         newobj = types.adapt_type(typeobj, self.colspecs)
         return newobj
@@ -341,7 +341,7 @@ class AccessCompiler(compiler.SQLCompiler):
             'dow': 'w',
             'week': 'ww'
     })
-        
+
     def visit_select_precolumns(self, select):
         """Access puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""

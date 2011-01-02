@@ -78,7 +78,7 @@ class SessionTest(_fixtures.FixtureTest):
             object_session, 
             User()
         )
-        
+
     @testing.requires.sequences
     def test_sequence_execute(self):
         seq = Sequence("some_sequence")
@@ -88,8 +88,8 @@ class SessionTest(_fixtures.FixtureTest):
             eq_(sess.execute(seq), 1)
         finally:
             seq.drop(testing.db)
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_expunge_cascade(self):
         mapper(Address, addresses)
@@ -152,7 +152,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         sess.execute(users_unbound.delete())
         eq_(sess.execute(users_unbound.select()).fetchall(), [])
-        
+
         sess.close()
 
     @engines.close_open_connections
@@ -256,7 +256,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess = create_session()
         sess.add(User(name='test'))
         sess.flush()
-        
+
         u1 = sess.query(User).first()
         make_transient(u1)
         assert u1 not in sess
@@ -268,7 +268,7 @@ class SessionTest(_fixtures.FixtureTest):
         make_transient(u1)
         sess.add(u1)
         assert u1 in sess.new
-        
+
         # test expired attributes 
         # get unexpired
         u1 = sess.query(User).first()
@@ -279,9 +279,9 @@ class SessionTest(_fixtures.FixtureTest):
 
         # works twice
         make_transient(u1)
-        
+
         sess.close()
-        
+
         u1.name = 'test2'
         sess.add(u1)
         sess.flush()
@@ -289,7 +289,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.delete(u1)
         sess.flush()
         assert u1 not in sess
-        
+
         assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
         make_transient(u1)
         sess.add(u1)
@@ -299,37 +299,37 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_deleted_flag(self):
         mapper(User, users)
-        
+
         sess = sessionmaker()()
-        
+
         u1 = User(name='u1')
         sess.add(u1)
         sess.commit()
-        
+
         sess.delete(u1)
         sess.flush()
         assert u1 not in sess
         assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
         sess.rollback()
         assert u1 in sess
-        
+
         sess.delete(u1)
         sess.commit()
         assert u1 not in sess
         assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
-        
+
         make_transient(u1)
         sess.add(u1)
         sess.commit()
-        
+
         eq_(sess.query(User).count(), 1)
-        
+
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
         """test that an expression which is dependent on object state is 
         evaluated after the session autoflushes.   This is the lambda
         inside of strategies.py lazy_clause.
-        
+
         """
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")})
@@ -419,7 +419,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert newad not in u.addresses
         # pending objects dont get expired
         assert newad.email_address == 'a new address'
-    
+
     @testing.resolve_artifact_names
     def test_autocommit_doesnt_raise_on_pending(self):
         mapper(User, users)
@@ -430,7 +430,7 @@ class SessionTest(_fixtures.FixtureTest):
         session.begin()
         session.flush()
         session.commit()
-    
+
     def test_active_flag(self):
         sess = create_session(bind=config.db, autocommit=True)
         assert not sess.is_active
@@ -438,7 +438,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert sess.is_active
         sess.rollback()
         assert not sess.is_active
-        
+
     @testing.resolve_artifact_names
     def test_textual_execute(self):
         """test that Session.execute() converts to text()"""
@@ -525,15 +525,15 @@ class SessionTest(_fixtures.FixtureTest):
     def test_transactions_isolated(self):
         mapper(User, users)
         users.delete().execute()
-        
+
         s1 = create_session(bind=testing.db, autocommit=False)
         s2 = create_session(bind=testing.db, autocommit=False)
         u1 = User(name='u1')
         s1.add(u1)
         s1.flush()
-        
+
         assert s2.query(User).all() == []
-        
+
     @testing.requires.two_phase_transactions
     @testing.resolve_artifact_names
     def test_twophase(self):
@@ -727,7 +727,7 @@ class SessionTest(_fixtures.FixtureTest):
             sa.exc.DBAPIError,
             sess.commit
         )
-        
+
         for i in range(5):
             assert_raises_message(sa.exc.InvalidRequestError,
                               "^This Session's transaction has been "
@@ -740,8 +740,8 @@ class SessionTest(_fixtures.FixtureTest):
         sess.rollback()
         sess.add(User(id=5, name='some name'))
         sess.commit()
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_no_autocommit_with_explicit_commit(self):
         mapper(User, users)
@@ -861,7 +861,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert user not in s
         s.delete(user)
         assert user in s
-        
+
         s.flush()
         assert user not in s
         assert s.query(User).count() == 0
@@ -959,17 +959,17 @@ class SessionTest(_fixtures.FixtureTest):
 
         del user
         s.add(u2)
-        
+
         del u2
         gc_collect()
-        
+
         assert len(s.identity_map) == 1
         assert len(s.dirty) == 1
         assert None not in s.dirty
         s.flush()
         gc_collect()
         assert not s.dirty
-        
+
         assert not s.identity_map
 
     @testing.resolve_artifact_names
@@ -990,8 +990,8 @@ class SessionTest(_fixtures.FixtureTest):
 
             assert_raises(AssertionError, s.identity_map.add,
                           sa.orm.attributes.instance_state(u2))
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2m(self):
         s = sessionmaker()()
@@ -1001,11 +1001,11 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
-        
+
         user = s.query(User).options(joinedload(User.addresses)).one()
         user.addresses[0].user # lazyload
         eq_(user, User(name="ed", addresses=[Address(email_address="ed1")]))
-        
+
         del user
         gc_collect()
         assert len(s.identity_map) == 0
@@ -1016,11 +1016,11 @@ class SessionTest(_fixtures.FixtureTest):
         del user
         gc_collect()
         assert len(s.identity_map) == 2
-        
+
         s.commit()
         user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
-        
+
     @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2o(self):
         s = sessionmaker()()
@@ -1046,11 +1046,11 @@ class SessionTest(_fixtures.FixtureTest):
         del user
         gc_collect()
         assert len(s.identity_map) == 2
-        
+
         s.commit()
         user = s.query(User).options(joinedload(User.address)).one()
         eq_(user, User(name="ed", address=Address(email_address="ed2")))
-    
+
     @testing.resolve_artifact_names
     def test_strong_ref(self):
         s = create_session(weak_identity_map=False)
@@ -1071,7 +1071,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert s.identity_map._modified
         s.flush()
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
-        
+
     @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
     @testing.resolve_artifact_names
     def test_prune(self):
@@ -1198,10 +1198,10 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         sess = Session()
-        
+
         sess.add_all([User(name='u1'), User(name='u2'), User(name='u3')])
         sess.commit()
-        
+
         u1, u2, u3 = sess.query(User).all()
         for i, (key, value) in enumerate(sess.identity_map.iteritems()):
             if i == 2:
@@ -1212,7 +1212,7 @@ class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
-    
+
     @classmethod
     def define_tables(cls, metadata):
         global t1
@@ -1227,25 +1227,25 @@ class DisposedStates(_base.MappedTest):
             def __init__(self, data):
                 self.data = data
         mapper(T, t1)
-    
+
     def teardown(self):
         from sqlalchemy.orm.session import _sessions
         _sessions.clear()
         super(DisposedStates, self).teardown()
-        
+
     def _set_imap_in_disposal(self, sess, *objs):
         """remove selected objects from the given session, as though
         they were dereferenced and removed from WeakIdentityMap.
-        
+
         Hardcodes the identity map's "all_states()" method to return the
         full list of states.  This simulates the all_states() method
         returning results, afterwhich some of the states get garbage
         collected (this normally only happens during asynchronous gc).
         The Session now has one or more InstanceState's which have been
         removed from the identity map and disposed.
-        
+
         Will the Session not trip over this ???  Stay tuned.
-        
+
         """
 
         all_states = sess.identity_map.all_states()
@@ -1254,7 +1254,7 @@ class DisposedStates(_base.MappedTest):
             state = attributes.instance_state(obj)
             sess.identity_map.remove(state)
             state.dispose()
-    
+
     def _test_session(self, **kwargs):
         global sess
         sess = create_session(**kwargs)
@@ -1268,32 +1268,32 @@ class DisposedStates(_base.MappedTest):
 
         o1.data = 't1modified'
         o5.data = 't5modified'
-        
+
         self._set_imap_in_disposal(sess, o2, o4, o5)
         return sess
-        
+
     def test_flush(self):
         self._test_session().flush()
-    
+
     def test_clear(self):
         self._test_session().expunge_all()
-    
+
     def test_close(self):
         self._test_session().close()
-        
+
     def test_expunge_all(self):
         self._test_session().expunge_all()
-        
+
     def test_expire_all(self):
         self._test_session().expire_all()
-    
+
     def test_rollback(self):
         sess = self._test_session(autocommit=False, expire_on_commit=True)
         sess.commit()
-        
+
         sess.rollback()
-        
-        
+
+
 class SessionInterface(testing.TestBase):
     """Bogus args to Session methods produce actionable exceptions."""
 

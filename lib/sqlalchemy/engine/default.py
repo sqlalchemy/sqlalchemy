@@ -34,23 +34,23 @@ class DefaultDialect(base.Dialect):
     supports_alter = True
 
     # most DBAPIs happy with this for execute().
-    # not cx_oracle.  
+    # not cx_oracle.
     execute_sequence_format = tuple
-    
+
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False
     postfetch_lastrowid = True
     implicit_returning = False
-    
+
     supports_native_enum = False
     supports_native_boolean = False
-    
+
     # if the NUMERIC type
     # returns decimal.Decimal.
     # *not* the FLOAT type however.
     supports_native_decimal = False
-    
+
     # Py3K
     #supports_unicode_statements = True
     #supports_unicode_binds = True
@@ -63,18 +63,18 @@ class DefaultDialect(base.Dialect):
 
 
     name = 'default'
-    
+
     # length at which to truncate
     # any identifier.
     max_identifier_length = 9999
-    
+
     # length at which to truncate
     # the name of an index.
     # Usually None to indicate
     # 'use max_identifier_length'.
     # thanks to MySQL, sigh
     max_index_name_length = None
-    
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
     dbapi_type_map = {}
@@ -82,28 +82,28 @@ class DefaultDialect(base.Dialect):
     default_paramstyle = 'named'
     supports_default_values = False
     supports_empty_insert = True
-    
+
     server_version_info = None
-    
+
     # indicates symbol names are 
     # UPPERCASEd if they are case insensitive
     # within the database.
     # if this is True, the methods normalize_name()
     # and denormalize_name() must be provided.
     requires_name_normalize = False
-    
+
     reflection_options = ()
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
                  label_length=None, **kwargs):
-                 
+
         if not getattr(self, 'ported_sqla_06', True):
             util.warn(
                 "The %s dialect is not yet ported to SQLAlchemy 0.6" %
                 self.name)
-        
+
         self.convert_unicode = convert_unicode
         if assert_unicode:
             util.warn_deprecated(
@@ -114,7 +114,7 @@ class DefaultDialect(base.Dialect):
                 "received. "
                 "This does *not* apply to DBAPIs that coerce Unicode "
                 "natively.")
-            
+
         self.encoding = encoding
         self.positional = False
         self._ischema = None
@@ -137,32 +137,32 @@ class DefaultDialect(base.Dialect):
                     " maximum identifier length of %d" %
                     (label_length, self.max_identifier_length))
         self.label_length = label_length
-        
+
         if not hasattr(self, 'description_encoding'):
             self.description_encoding = getattr(
                                             self, 
                                             'description_encoding', 
                                             encoding)
-        
+
         if self.description_encoding:
             self._description_decoder = processors.to_unicode_processor_factory(
                                             self.description_encoding
                                     )
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
-    
+
     @util.memoized_property
     def _type_memos(self):
         return weakref.WeakKeyDictionary()
-        
+
     @property
     def dialect_description(self):
         return self.name + "+" + self.driver
-    
+
     @classmethod
     def get_pool_class(cls, url):
         return getattr(cls, 'poolclass', pool.QueuePool)
-        
+
     def initialize(self, connection):
         try:
             self.server_version_info = \
@@ -176,23 +176,23 @@ class DefaultDialect(base.Dialect):
             self.default_schema_name = None
 
         self.returns_unicode_strings = self._check_unicode_returns(connection)
-   
+
         self.do_rollback(connection.connection)
  
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
-        
+
         This is used to set dialect-wide per-connection options such as
         isolation modes, unicode modes, etc.
-        
+
         If a callable is returned, it will be assembled into a pool listener
         that receives the direct DBAPI connection, with all wrappers removed.
-        
+
         If None is returned, no listener will be generated.
-        
+
         """
         return None
-        
+
     def _check_unicode_returns(self, connection):
         # Py2K
         if self.supports_unicode_statements:
@@ -215,22 +215,22 @@ class DefaultDialect(base.Dialect):
                     )
                 )
                 row = cursor.fetchone()
-                
+
                 return isinstance(row[0], unicode)
             finally:
                 cursor.close()
-                
+
         # detect plain VARCHAR
         unicode_for_varchar = check_unicode(sqltypes.VARCHAR(60))
-        
+
         # detect if there's an NVARCHAR type with different behavior available
         unicode_for_unicode = check_unicode(sqltypes.Unicode(60))
-        
+
         if unicode_for_unicode and not unicode_for_varchar:
             return "conditional"
         else:
             return unicode_for_varchar
-        
+
     def type_descriptor(self, typeobj):
         """Provide a database-specific ``TypeEngine`` object, given
         the generic object which comes from the types module.
@@ -249,14 +249,14 @@ class DefaultDialect(base.Dialect):
     def get_pk_constraint(self, conn, table_name, schema=None, **kw):
         """Compatiblity method, adapts the result of get_primary_keys()
         for those dialects which don't implement get_pk_constraint().
-        
+
         """
         return {
             'constrained_columns':
                         self.get_primary_keys(conn, table_name, 
                                                 schema=schema, **kw)
         }
-        
+
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError(
@@ -332,11 +332,11 @@ class DefaultExecutionContext(base.ExecutionContext):
     statement = None
     _is_implicit_returning = False
     _is_explicit_returning = False
-    
+
     @classmethod
     def _init_ddl(cls, dialect, connection, dbapi_connection, compiled_ddl):
         """Initialize execution context for a DDLElement construct."""
-        
+
         self = cls.__new__(cls)
         self.dialect = dialect
         self.root_connection = connection
@@ -356,7 +356,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.statement = dialect._encoder(self.unicode_statement)[0]
         else:
             self.statement = self.unicode_statement = unicode(compiled)
-            
+
         self.cursor = self.create_cursor()
         self.compiled_parameters = []
 
@@ -366,7 +366,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.parameters = [{}]
 
         return self
-        
+
     @classmethod
     def _init_compiled(cls, dialect, connection, dbapi_connection, compiled, parameters):
         """Initialize execution context for a Compiled construct."""
@@ -401,7 +401,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
-        
+
         if self.isinsert or self.isupdate or self.isdelete:
             self._is_explicit_returning = compiled.statement._returning
             self._is_implicit_returning = compiled.returning and \
@@ -413,7 +413,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.compiled_parameters = \
                         [compiled.construct_params(m, _group_number=grp) for
                                         grp,m in enumerate(parameters)]
-                                        
+
             self.executemany = len(parameters) > 1
 
         self.cursor = self.create_cursor()
@@ -421,7 +421,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.__process_defaults()
             self.postfetch_cols = self.compiled.postfetch
             self.prefetch_cols = self.compiled.prefetch
-        
+
         processors = compiled._bind_processors
 
         # Convert the dictionary of bind parameter values 
@@ -456,9 +456,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                             param[key] = compiled_params[key]
                 parameters.append(param)
         self.parameters = dialect.execute_sequence_format(parameters)
-                                
+
         return self
-    
+
     @classmethod
     def _init_statement(cls, dialect, connection, dbapi_connection, statement, parameters):
         """Initialize execution context for a string SQL statement."""
@@ -490,18 +490,18 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             self.parameters = [dialect.execute_sequence_format(p) 
                                     for p in parameters]
-        
+
         self.executemany = len(parameters) > 1
-        
+
         if not dialect.supports_unicode_statements and isinstance(statement, unicode):
             self.unicode_statement = statement
             self.statement = dialect._encoder(statement)[0]
         else:
             self.statement = self.unicode_statement = statement
-            
+
         self.cursor = self.create_cursor()
         return self
-    
+
     @classmethod
     def _init_default(cls, dialect, connection, dbapi_connection):
         """Initialize execution context for a ColumnDefault construct."""
@@ -514,11 +514,11 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.execution_options = connection._execution_options
         self.cursor = self.create_cursor()
         return self
-        
+
     @util.memoized_property
     def is_crud(self):
         return self.isinsert or self.isupdate or self.isdelete
-        
+
     @util.memoized_property
     def should_autocommit(self):
         autocommit = self.execution_options.get('autocommit', 
@@ -526,20 +526,20 @@ class DefaultExecutionContext(base.ExecutionContext):
                                                 self.statement and
                                                 expression.PARSE_AUTOCOMMIT 
                                                 or False)
-                                                
+
         if autocommit is expression.PARSE_AUTOCOMMIT:
             return self.should_autocommit_text(self.unicode_statement)
         else:
             return autocommit
-            
+
     def _execute_scalar(self, stmt):
         """Execute a string statement on the current cursor, returning a
         scalar result.
-        
+
         Used to fire off sequences, default phrases, and "select lastrowid"
         types of statements individually or in the context of a parent INSERT
         or UPDATE statement.
-        
+
         """
 
         conn = self.root_connection
@@ -551,10 +551,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             default_params = self.dialect.execute_sequence_format()
         else:
             default_params = {}
-            
+
         conn._cursor_execute(self.cursor, stmt, default_params)
         return self.cursor.fetchone()[0]
-    
+
     @property
     def connection(self):
         return self.root_connection._branch()
@@ -570,32 +570,32 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def post_exec(self):
         pass
-    
+
     def get_lastrowid(self):
         """return self.cursor.lastrowid, or equivalent, after an INSERT.
-        
+
         This may involve calling special cursor functions,
         issuing a new SELECT on the cursor (or a new one),
         or returning a stored value that was
         calculated within post_exec().
-        
+
         This function will only be called for dialects
         which support "implicit" primary key generation,
         keep preexecute_autoincrement_sequences set to False,
         and when no explicit id value was bound to the
         statement.
-        
+
         The function is called once, directly after 
         post_exec() and before the transaction is committed
         or ResultProxy is generated.   If the post_exec()
         method assigns a value to `self._lastrowid`, the
         value is used in place of calling get_lastrowid().
-        
+
         Note that this method is *not* equivalent to the
         ``lastrowid`` method on ``ResultProxy``, which is a
         direct proxy to the DBAPI ``lastrowid`` accessor
         in all cases.
-        
+
         """
         return self.cursor.lastrowid
 
@@ -604,7 +604,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def get_result_proxy(self):
         return base.ResultProxy(self)
-    
+
     @property
     def rowcount(self):
         return self.cursor.rowcount
@@ -614,19 +614,19 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     def supports_sane_multi_rowcount(self):
         return self.dialect.supports_sane_multi_rowcount
-    
+
     def post_insert(self):
         if self.dialect.postfetch_lastrowid and \
             (not self.inserted_primary_key or \
                         None in self.inserted_primary_key):
-            
+
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
             self.inserted_primary_key = [
                 c is table._autoincrement_column and lastrowid or v
                 for c, v in zip(table.primary_key, self.inserted_primary_key)
             ]
-            
+
     def _fetch_implicit_returning(self, resultproxy):
         table = self.compiled.statement.table
         row = resultproxy.fetchone()
@@ -637,9 +637,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                 ipk.append(v)
             else:
                 ipk.append(row[c])
-        
+
         self.inserted_primary_key = ipk
-    
+
     def lastrow_has_defaults(self):
         return (self.isinsert or self.isupdate) and \
             bool(self.postfetch_cols)
@@ -648,10 +648,10 @@ class DefaultExecutionContext(base.ExecutionContext):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
-        
+
         This method only called by those dialects which require it, 
         currently cx_oracle.
-        
+
         """
 
         if not hasattr(self.compiled, 'bind_names'):
@@ -696,12 +696,12 @@ class DefaultExecutionContext(base.ExecutionContext):
         elif default.is_clause_element:
             # TODO: expensive branching here should be 
             # pulled into _exec_scalar()
-            conn = self.connection  
+            conn = self.connection
             c = expression.select([default.arg]).compile(bind=conn)
             return conn._execute_compiled(c, (), {}).scalar()
         else:
             return default.arg
-        
+
     def get_insert_default(self, column):
         if column.default is None:
             return None
@@ -713,7 +713,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             return None
         else:
             return self._exec_default(column.onupdate)
-    
+
     def __process_defaults(self):
         """Generate default values for compiled insert/update statements,
         and generate inserted_primary_key collection.
@@ -722,7 +722,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         if self.executemany:
             if len(self.compiled.prefetch):
                 scalar_defaults = {}
-                
+
                 # pre-determine scalar Python-side defaults
                 # to avoid many calls of get_insert_default()/
                 # get_update_default()
@@ -731,7 +731,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                         scalar_defaults[c] = c.default.arg
                     elif self.isupdate and c.onupdate and c.onupdate.is_scalar:
                         scalar_defaults[c] = c.onupdate.arg
-                        
+
                 for param in self.compiled_parameters:
                     self.current_parameters = param
                     for c in self.compiled.prefetch:
@@ -757,7 +757,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 if val is not None:
                     compiled_parameters[c.key] = val
             del self.current_parameters
-            
+
             if self.isinsert:
                 self.inserted_primary_key = [
                                 self.compiled_parameters[0].get(c.key, None) 
@@ -765,5 +765,5 @@ class DefaultExecutionContext(base.ExecutionContext):
                                                 statement.table.primary_key
                                 ]
 
-            
+
 DefaultDialect.execution_ctx_cls = DefaultExecutionContext

@@ -36,20 +36,20 @@ The file specification for the SQLite database is taken as the "database" portio
 the URL.  Note that the format of a url is::
 
     driver://user:pass@host/database
-    
+
 This means that the actual filename to be used starts with the characters to the
 **right** of the third slash.   So connecting to a relative filepath looks like::
 
     # relative path
     e = create_engine('sqlite:///path/to/database.db')
-    
+
 An absolute path, which is denoted by starting with a slash, means you need **four**
 slashes::
 
     # absolute path
     e = create_engine('sqlite:////path/to/database.db')
 
-To use a Windows path, regular drive specifications and backslashes can be used.  
+To use a Windows path, regular drive specifications and backslashes can be used.
 Double backslashes are probably needed::
 
     # absolute path on Windows
@@ -117,7 +117,7 @@ implementation suitable:
   SQLite file-based connections have extermely low overhead, so pooling is not necessary.
   The scheme also prevents a connection from being used again in a different thread
   and works best with SQLite's coarse-grained file locking.
-   
+
   .. note:: The default selection of :class:`.NullPool` for SQLite file-based databases 
               is new in SQLAlchemy 0.7. Previous versions
               select :class:`.SingletonThreadPool` by
@@ -150,7 +150,7 @@ class _SQLite_pysqliteTimeStamp(DATETIME):
             return None
         else:
             return DATETIME.bind_processor(self, dialect)
-            
+
     def result_processor(self, dialect, coltype):
         if dialect.native_datetime:
             return None
@@ -163,7 +163,7 @@ class _SQLite_pysqliteDate(DATE):
             return None
         else:
             return DATE.bind_processor(self, dialect)
-            
+
     def result_processor(self, dialect, coltype):
         if dialect.native_datetime:
             return None
@@ -180,12 +180,12 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             sqltypes.TIMESTAMP:_SQLite_pysqliteTimeStamp,
         }
     )
-    
+
     # Py3K
     #description_encoding = None
-    
+
     driver = 'pysqlite'
-    
+
     def __init__(self, **kwargs):
         SQLiteDialect.__init__(self, **kwargs)
 

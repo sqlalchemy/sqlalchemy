@@ -215,5 +215,5 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         row = {users.c.id: 1, users.c.name: "Frank"}
         key = util.identity_key(User, row=row)
         eq_(key, (User, (1,)))
-    
+
 

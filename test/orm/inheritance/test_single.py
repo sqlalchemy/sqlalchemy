@@ -43,7 +43,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
-        
+
     @testing.resolve_artifact_names
     def test_single_inheritance(self):
 
@@ -59,7 +59,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         assert session.query(Engineer).all() == [e1, e2]
         assert session.query(Manager).all() == [m1]
         assert session.query(JuniorEngineer).all() == [e2]
-        
+
         m1 = session.query(Manager).one()
         session.expire(m1, ['manager_data'])
         eq_(m1.manager_data, "knows how to manage things")
@@ -71,11 +71,11 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
     @testing.resolve_artifact_names
     def test_multi_qualification(self):
         session = create_session()
-        
+
         m1 = Manager(name='Tom', manager_data='knows how to manage things')
         e1 = Engineer(name='Kurt', engineer_info='knows how to hack')
         e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
-        
+
         session.add_all([m1, e1, e2])
         session.flush()
 
@@ -84,7 +84,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
             session.query(Manager, ealias).all(), 
             [(m1, e1), (m1, e2)]
         )
-    
+
         eq_(
             session.query(Manager.name).all(),
             [("Tom",)]
@@ -104,12 +104,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
             session.query(Manager).add_entity(ealias).all(),
             [(m1, e1), (m1, e2)]
         )
-        
+
         eq_(
             session.query(Manager.name).add_column(ealias.name).all(),
             [("Tom", "Kurt"), ("Tom", "Ed")]
         )
-        
+
         # TODO: I think raise error on this for now
         # self.assertEquals(
         #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(), 
@@ -140,7 +140,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
                             'anon_1 WHERE anon_1.employees_type IN '
                             '(:type_1, :type_2)',
                             use_default_dialect=True)
-        
+
     @testing.resolve_artifact_names
     def test_select_from(self):
         sess = create_session()
@@ -150,12 +150,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         e2 = JuniorEngineer(name='Ed', engineer_info='oh that ed')
         sess.add_all([m1, m2, e1, e2])
         sess.flush()
-        
+
         eq_(
             sess.query(Manager).select_from(employees.select().limit(10)).all(), 
             [m1, m2]
         )
-        
+
     @testing.resolve_artifact_names
     def test_count(self):
         sess = create_session()
@@ -169,7 +169,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         eq_(sess.query(Manager).count(), 2)
         eq_(sess.query(Engineer).count(), 2)
         eq_(sess.query(Employee).count(), 4)
-        
+
         eq_(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
         eq_(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
 
@@ -216,13 +216,13 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
             Column('name', String(50)),
             Column('type', String(20)),
         )
-        
+
         Table('employee_stuff', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('employee_id', Integer, ForeignKey('employee.id')),
             Column('name', String(50)),
         )
-    
+
     @classmethod
     def setup_classes(cls):
         class Employee(ComparableEntity):
@@ -239,7 +239,7 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
             'stuff':relationship(Stuff)
         })
         mapper(Stuff, employee_stuff)
-        
+
         sess = create_session()
         context = sess.query(Manager).options(subqueryload('stuff'))._compile_context()
         subq = context.attributes[('subquery', (class_mapper(Employee), 'stuff'))]
@@ -270,17 +270,17 @@ class RelationshipToSingleTest(MappedTest):
             Column('type', String(20)),
             Column('company_id', Integer, ForeignKey('companies.company_id'))
         )
-        
+
         Table('companies', metadata,
             Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
         )
-    
+
     @classmethod
     def setup_classes(cls):
         class Company(ComparableEntity):
             pass
-            
+
         class Employee(ComparableEntity):
             pass
         class Manager(Employee):
@@ -300,10 +300,10 @@ class RelationshipToSingleTest(MappedTest):
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
         sess = sessionmaker()()
-        
+
         c1 = Company(name='c1')
         c2 = Company(name='c2')
-        
+
         m1 = Manager(name='Tom', manager_data='data1', company=c1)
         m2 = Manager(name='Tom2', manager_data='data2', company=c2)
         e1 = Engineer(name='Kurt', engineer_info='knows how to hack', company=c2)
@@ -338,10 +338,10 @@ class RelationshipToSingleTest(MappedTest):
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
         sess = sessionmaker()()
-        
+
         c1 = Company(name='c1')
         c2 = Company(name='c2')
-        
+
         m1 = Manager(name='Tom', manager_data='data1', company=c1)
         m2 = Manager(name='Tom2', manager_data='data2', company=c2)
         e1 = Engineer(name='Kurt', engineer_info='knows how to hack', company=c2)
@@ -351,7 +351,7 @@ class RelationshipToSingleTest(MappedTest):
 
         eq_(c1.engineers, [e2])
         eq_(c2.engineers, [e1])
-        
+
         sess.expunge_all()
         eq_(sess.query(Company).order_by(Company.name).all(), 
             [
@@ -377,7 +377,7 @@ class RelationshipToSingleTest(MappedTest):
                 (Company(name='c2'), Engineer(name='Kurt'))
             ]
         )
-        
+
         # join() to Company.engineers, Engineer as the requested entity.
         # this actually applies the IN criterion twice which is less than ideal.
         sess.expunge_all()
@@ -396,7 +396,7 @@ class RelationshipToSingleTest(MappedTest):
             ]
         )
 
-        # this however fails as it does not limit the subtypes to just "Engineer".  
+        # this however fails as it does not limit the subtypes to just "Engineer".
         # with joins constructed by filter(), we seem to be following a policy where
         # we don't try to make decisions on how to join to the target class, whereas when using join() we
         # seem to have a lot more capabilities.
@@ -412,12 +412,12 @@ class RelationshipToSingleTest(MappedTest):
                 ]
             )
         go()
-        
+
 class SingleOnJoinedTest(MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global persons_table, employees_table
-        
+
         persons_table = Table('persons', metadata,
            Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
@@ -429,7 +429,7 @@ class SingleOnJoinedTest(MappedTest):
            Column('employee_data', String(50)),
            Column('manager_data', String(50)),
         )
-    
+
     def test_single_on_joined(self):
         class Person(_fixtures.Base):
             pass
@@ -437,18 +437,18 @@ class SingleOnJoinedTest(MappedTest):
             pass
         class Manager(Employee):
             pass
-        
+
         mapper(Person, persons_table, polymorphic_on=persons_table.c.type, polymorphic_identity='person')
         mapper(Employee, employees_table, inherits=Person,polymorphic_identity='engineer')
         mapper(Manager, inherits=Employee,polymorphic_identity='manager')
-        
+
         sess = create_session()
         sess.add(Person(name='p1'))
         sess.add(Employee(name='e1', employee_data='ed1'))
         sess.add(Manager(name='m1', employee_data='ed2', manager_data='md1'))
         sess.flush()
         sess.expunge_all()
-        
+
         eq_(sess.query(Person).order_by(Person.person_id).all(), [
             Person(name='p1'),
             Employee(name='e1', employee_data='ed1'),
@@ -466,7 +466,7 @@ class SingleOnJoinedTest(MappedTest):
             Manager(name='m1', employee_data='ed2', manager_data='md1')
         ])
         sess.expunge_all()
-        
+
         def go():
             eq_(sess.query(Person).with_polymorphic('*').order_by(Person.person_id).all(), [
                 Person(name='p1'),
@@ -474,4 +474,4 @@ class SingleOnJoinedTest(MappedTest):
                 Manager(name='m1', employee_data='ed2', manager_data='md1')
             ])
         self.assert_sql_count(testing.db, go, 1)
-    
+

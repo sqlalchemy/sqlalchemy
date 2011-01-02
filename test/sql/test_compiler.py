@@ -85,15 +85,15 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             "SELECT mytable.myid, mytable.name, mytable.description, "
                             "myothertable.otherid, myothertable.othername FROM mytable, "
                             "myothertable")
-    
+
     def test_invalid_col_argument(self):
         assert_raises(exc.ArgumentError, select, table1)
         assert_raises(exc.ArgumentError, select, table1.c.myid)
-    
+
     def test_from_subquery(self):
         """tests placing select statements in the column clause of another select, for the
         purposes of selecting from the exported columns of that select."""
-        
+
         s = select([table1], table1.c.name == 'jack')
         self.assert_compile(
             select(
@@ -163,7 +163,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select([ClauseList(column('a'), column('b'))]).select_from('sometable'), 
             'SELECT a, b FROM sometable'
         )
-        
+
     def test_use_labels(self):
         self.assert_compile(
             select([table1.c.myid==5], use_labels=True),
@@ -184,15 +184,15 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select([cast("data", Integer)], use_labels=True),
             "SELECT CAST(:param_1 AS INTEGER) AS anon_1"
         )
-        
+
         self.assert_compile(
             select([func.sum(func.lala(table1.c.myid).label('foo')).label('bar')]),
             "SELECT sum(lala(mytable.myid)) AS bar FROM mytable"
         )
-    
+
     def test_paramstyles(self):
         stmt = text("select :foo, :bar, :bat from sometable")
-        
+
         self.assert_compile(
             stmt,
             "select ?, ?, ? from sometable"
@@ -218,10 +218,10 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "select %(foo)s, %(bar)s, %(bat)s from sometable"
             , dialect=default.DefaultDialect(paramstyle='pyformat')
         )
-        
+
     def test_dupe_columns(self):
         """test that deduping is performed against clause element identity, not rendered result."""
-        
+
         self.assert_compile(
             select([column('a'), column('a'), column('a')]),
             "SELECT a, a, a"
@@ -241,7 +241,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT a, b"
             , dialect=default.DefaultDialect()
         )
-        
+
         self.assert_compile(
             select([bindparam('a'), bindparam('b'), bindparam('c')]),
             "SELECT :a, :b, :c"
@@ -258,11 +258,11 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select(["a", "a", "a"]),
             "SELECT a, a, a"
         )
-        
+
         s = select([bindparam('a'), bindparam('b'), bindparam('c')])
         s = s.compile(dialect=default.DefaultDialect(paramstyle='qmark'))
         eq_(s.positiontup, ['a', 'b', 'c'])
-        
+
     def test_nested_uselabels(self):
         """test nested anonymous label generation.  this
         essentially tests the ANONYMOUS_LABEL regex.
@@ -285,7 +285,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             'mytable.name AS name, mytable.description '
                             'AS description FROM mytable) AS anon_2) '
                             'AS anon_1')
-        
+
     def test_dont_overcorrelate(self):
         self.assert_compile(select([table1], from_obj=[table1,
                             table1.select()]),
@@ -294,7 +294,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             "mytable.myid AS myid, mytable.name AS "
                             "name, mytable.description AS description "
                             "FROM mytable)")
-    
+
     def test_full_correlate(self):
         # intentional
         t = table('t', column('a'), column('b'))
@@ -302,7 +302,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         s2 = select([t.c.a, s])
         self.assert_compile(s2, """SELECT t.a, (SELECT t.a WHERE t.a = :a_1) AS anon_1 FROM t""")
-    
+
         # unintentional
         t2 = table('t2', column('c'), column('d'))
         s = select([t.c.a]).where(t.c.a==t2.c.d).as_scalar()
@@ -313,18 +313,18 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         s = s.correlate(t, t2)
         s2 =select([t, t2, s])
         self.assert_compile(s, "SELECT t.a WHERE t.a = t2.d")
-        
+
     def test_exists(self):
         s = select([table1.c.myid]).where(table1.c.myid==5)
-        
+
         self.assert_compile(exists(s), 
                     "EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)"
                 )
-        
+
         self.assert_compile(exists(s.as_scalar()), 
                     "EXISTS (SELECT mytable.myid FROM mytable WHERE mytable.myid = :myid_1)"
                 )
-        
+
         self.assert_compile(exists([table1.c.myid], table1.c.myid
                             == 5).select(),
                             'SELECT EXISTS (SELECT mytable.myid FROM '
@@ -375,7 +375,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             'WHERE EXISTS (SELECT * FROM myothertable '
                             'AS myothertable_1 WHERE '
                             'myothertable_1.otherid = mytable.myid)')
-        
+
         self.assert_compile(
             select([
                 or_(
@@ -388,7 +388,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "OR (EXISTS (SELECT * FROM myothertable WHERE "
             "myothertable.otherid = :otherid_2)) AS anon_1"
         )
-        
+
 
     def test_where_subquery(self):
         s = select([addresses.c.street], addresses.c.user_id
@@ -619,7 +619,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
                 label('bar', column('foo', type_=String))+ 'foo', 
                 'foo || :param_1')
-    
+
 
     def test_conjunctions(self):
         a, b, c = 'a', 'b', 'c'
@@ -630,7 +630,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select([x.label('foo')]),
             'SELECT a AND b AND c AS foo'
         )
-    
+
         self.assert_compile(
             and_(table1.c.myid == 12, table1.c.name=='asdf', 
                 table2.c.othername == 'foo', "sysdate() = today()"),
@@ -651,7 +651,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
              'today()', 
             checkparams = {'othername_1': 'asdf', 'othername_2':'foo', 'otherid_1': 9, 'myid_1': 12}
         )
-        
+
 
     def test_distinct(self):
         self.assert_compile(
@@ -678,7 +678,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             select([func.count(distinct(table1.c.myid))]), 
             "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable"
         )
-    
+
     def test_operators(self):
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
                                 (operator.sub, '-'), 
@@ -730,7 +730,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 self.assert_(compiled == fwd_sql or compiled == rev_sql,
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
-        
+
         for (py_op, op) in (
             (operator.neg, '-'),
             (operator.inv, 'NOT '),
@@ -739,11 +739,11 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 (table1.c.myid, "mytable.myid"),
                 (literal("foo"), ":param_1"),
             ):
-            
+
                 compiled = str(py_op(expr))
                 sql = "%s%s" % (op, sql)
                 eq_(compiled, sql)
-        
+
         self.assert_compile(
          table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')),
          "SELECT mytable.myid, mytable.name, mytable.description FROM "
@@ -837,7 +837,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 postgresql.PGDialect()),
         ]:
             self.assert_compile(expr, check, dialect=dialect)
-    
+
     def test_match(self):
         for expr, check, dialect in [
             (table1.c.myid.match('somstr'), 
@@ -853,7 +853,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                         postgresql.dialect()),
             (table1.c.myid.match('somstr'), 
                         "CONTAINS (mytable.myid, :myid_1)", 
-                        oracle.dialect()),            
+                        oracle.dialect()),
         ]:
             self.assert_compile(expr, check, dialect=dialect)
 
@@ -1160,7 +1160,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT column1 AS foobar, column2 AS hoho, myid FROM "
             "(SELECT column1 AS foobar, column2 AS hoho, mytable.myid AS myid FROM mytable)"
         )
-        
+
         self.assert_compile(
             select(['col1','col2'], from_obj='tablename').alias('myalias'),
             "SELECT col1, col2 FROM tablename"
@@ -1189,7 +1189,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 checkparams={'bar':4, 'whee': 7},
                 dialect=dialect
         )
-        
+
         # test escaping out text() params with a backslash
         self.assert_compile(
             text("select * from foo where clock='05:06:07' and mork='\:mindy'"),
@@ -1243,23 +1243,23 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                     "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)", 
                     checkparams={'y': None, 'x': None, 'z': None}
                 )
-        
+
         self.assert_compile(
                     s.params(x=5, y=6, z=7), 
                     "SELECT CURRENT_DATE + s.a AS dates FROM generate_series(:x, :y, :z) as s(a)", 
                     checkparams={'y': 6, 'x': 5, 'z': 7}
                 )
-        
+
     @testing.emits_warning('.*empty sequence.*')
     def test_render_binds_as_literal(self):
         """test a compiler that renders binds inline into 
         SQL in the columns clause."""
-        
+
         dialect = default.DefaultDialect()
         class Compiler(dialect.statement_compiler):
             ansi_bind_rules = True
         dialect.statement_compiler = Compiler
-        
+
         self.assert_compile(
             select([literal("someliteral")]),
             "SELECT 'someliteral'",
@@ -1283,23 +1283,23 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT mod(mytable.myid, 5) AS mod_1 FROM mytable",
             dialect=dialect
         )
-        
+
         self.assert_compile(
             select([literal("foo").in_([])]),
             "SELECT 'foo' != 'foo' AS anon_1",
             dialect=dialect
         )
-        
+
         assert_raises(
             exc.CompileError,
             bindparam("foo").in_([]).compile, dialect=dialect
         )
-        
-        
+
+
     def test_literal(self):
-        
+
         self.assert_compile(select([literal('foo')]), "SELECT :param_1")
-        
+
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
             "SELECT :param_1 || :param_2 AS anon_1 FROM mytable")
 
@@ -1334,7 +1334,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 expr, "SELECT mytable.name COLLATE latin1_german2_ci AS anon_1 FROM mytable")
 
         assert table1.c.name.collate('latin1_german2_ci').type is table1.c.name.type
-        
+
         expr = select([table1.c.name.collate('latin1_german2_ci').label('k1')]).order_by('k1')
         self.assert_compile(expr,"SELECT mytable.name COLLATE latin1_german2_ci AS k1 FROM mytable ORDER BY k1")
 
@@ -1384,8 +1384,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             '''"table%name"."spaces % more spaces" AS "table%name_spaces % '''\
             '''more spaces" FROM "table%name"'''
         )
-        
-        
+
+
     def test_joins(self):
         self.assert_compile(
             join(table2, table1, table1.c.myid == table2.c.otherid).select(),
@@ -1473,7 +1473,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "select #1 has 2 columns, select #2 has 3",
             union, table3.select(), table1.select()
         )
-    
+
         x = union(
               select([table1], table1.c.myid == 5),
               select([table1], table1.c.myid == 12),
@@ -1494,7 +1494,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                                 "FROM mytable UNION SELECT mytable.myid, mytable.name, " 
                                 "mytable.description FROM mytable) UNION SELECT mytable.myid,"
                                 " mytable.name, mytable.description FROM mytable")
-        
+
         u1 = union(
             select([table1.c.myid, table1.c.name]),
             select([table2]),
@@ -1507,7 +1507,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                                 "FROM thirdtable")
 
         assert u1.corresponding_column(table2.c.otherid) is u1.c.myid
-        
+
         self.assert_compile(
             union(
                 select([table1.c.myid, table1.c.name]),
@@ -1557,7 +1557,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT thirdtable.userid FROM thirdtable)"
         )
 
-        
+
         s = select([column('foo'), column('bar')])
 
         # ORDER BY's even though not supported by all DB's, are rendered if requested
@@ -1569,9 +1569,9 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             union(s.order_by("foo").self_group(), s.order_by("bar").limit(10).self_group()), 
             "(SELECT foo, bar ORDER BY foo) UNION (SELECT foo, bar ORDER BY bar LIMIT :param_1)",
             {'param_1':10}
-            
+
         )
-        
+
     def test_compound_grouping(self):
         s = select([column('foo'), column('bar')]).select_from('bat')
 
@@ -1580,19 +1580,19 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "((SELECT foo, bar FROM bat UNION SELECT foo, bar FROM bat) "
             "UNION SELECT foo, bar FROM bat) UNION SELECT foo, bar FROM bat"
         )
-        
+
         self.assert_compile(
             union(s, s, s, s),
             "SELECT foo, bar FROM bat UNION SELECT foo, bar "
             "FROM bat UNION SELECT foo, bar FROM bat UNION SELECT foo, bar FROM bat"
         )
-        
+
         self.assert_compile(
             union(s, union(s, union(s, s))),
             "SELECT foo, bar FROM bat UNION (SELECT foo, bar FROM bat "
             "UNION (SELECT foo, bar FROM bat UNION SELECT foo, bar FROM bat))"
         )
-        
+
         self.assert_compile(
             select([s.alias()]),
             'SELECT anon_1.foo, anon_1.bar FROM (SELECT foo, bar FROM bat) AS anon_1'
@@ -1654,8 +1654,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                                 "UNION SELECT foo, bar FROM bat) "
                                 "UNION (SELECT foo, bar FROM bat "
                                 "UNION SELECT foo, bar FROM bat)")
-        
-        
+
+
         self.assert_compile(
             union(
                 intersect(s, s),
@@ -1817,9 +1817,9 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
     def test_binds_no_hash_collision(self):
         """test that construct_params doesn't corrupt dict due to hash collisions"""
-        
+
         total_params = 100000
-        
+
         in_clause = [':in%d' % i for i in range(total_params)]
         params = dict(('in%d' % i, i) for i in range(total_params))
         sql = 'text clause %s' % ', '.join(in_clause)
@@ -1829,14 +1829,14 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         pp = c.construct_params(params)
         eq_(len(set(pp)), total_params, '%s %s' % (len(set(pp)), len(pp)))
         eq_(len(set(pp.values())), total_params)
-        
+
 
     def test_bind_as_col(self):
         t = table('foo', column('id'))
 
         s = select([t, literal('lala').label('hoho')])
         self.assert_compile(s, "SELECT foo.id, :param_1 AS hoho FROM foo")
-        
+
         assert [str(c) for c in s.c] == ["id", "hoho"]
 
     def test_bind_callable(self):
@@ -1846,8 +1846,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "x = :key",
             {'x':12}
         )
-        
-        
+
+
     @testing.emits_warning('.*empty sequence.*')
     def test_in(self):
         self.assert_compile(table1.c.myid.in_(['a']),
@@ -1969,7 +1969,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                     ),
             "(mytable.myid, mytable.name) IN ((myothertable.otherid, myothertable.othername))"
         )
-        
+
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_(
                         select([table2.c.otherid, table2.c.othername])
@@ -1977,8 +1977,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "(mytable.myid, mytable.name) IN (SELECT "
             "myothertable.otherid, myothertable.othername FROM myothertable)"
         )
-        
-        
+
+
     def test_cast(self):
         tbl = table('casttest',
                     column('id', Integer),
@@ -2039,7 +2039,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(cast(literal_column('NULL'), Integer),
                             'CAST(NULL AS INTEGER)',
                             dialect=sqlite.dialect())
-        
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,
@@ -2085,15 +2085,15 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
         self.assert_compile(table.select(between((table.c.field == table.c.field), False, True)),
             "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :param_1 AND :param_2")
-    
+
     def test_associativity(self):
         f = column('f')
         self.assert_compile( f - f, "f - f" )
         self.assert_compile( f - f - f, "(f - f) - f" )
-        
+
         self.assert_compile( (f - f) - f, "(f - f) - f" )
         self.assert_compile( (f - f).label('foo') - f, "(f - f) - f" )
-        
+
         self.assert_compile( f - (f - f), "f - (f - f)" )
         self.assert_compile( f - (f - f).label('foo'), "f - (f - f)" )
 
@@ -2104,54 +2104,54 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         self.assert_compile( f / f - f, "f / f - f" )
         self.assert_compile( (f / f) - f, "f / f - f" )
         self.assert_compile( (f / f).label('foo') - f, "f / f - f" )
-        
+
         # because / more precedent than -
         self.assert_compile( f - (f / f), "f - f / f" )
         self.assert_compile( f - (f / f).label('foo'), "f - f / f" )
         self.assert_compile( f - f / f, "f - f / f" )
         self.assert_compile( (f - f) / f, "(f - f) / f" )
-        
+
         self.assert_compile( ((f - f) / f) - f, "(f - f) / f - f")
         self.assert_compile( (f - f) / (f - f), "(f - f) / (f - f)")
-        
+
         # higher precedence
         self.assert_compile( (f / f) - (f / f), "f / f - f / f")
 
         self.assert_compile( (f / f) - (f - f), "f / f - (f - f)")
         self.assert_compile( (f / f) / (f - f), "(f / f) / (f - f)")
         self.assert_compile( f / (f / (f - f)), "f / (f / (f - f))")
-        
-    
+
+
     def test_delayed_col_naming(self):
         my_str = Column(String)
-        
+
         sel1 = select([my_str])
-        
+
         assert_raises_message(
             exc.InvalidRequestError,
             "Cannot initialize a sub-selectable with this Column",
             lambda: sel1.c
         )
-        
+
         # calling label or as_scalar doesn't compile
-        # anything.  
+        # anything.
         sel2 = select([func.substr(my_str, 2, 3)]).label('my_substr')
-        
+
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until it's 'name' is assigned.",
             str, sel2
         )
-        
+
         sel3 = select([my_str]).as_scalar()
         assert_raises_message(
             exc.CompileError,
             "Cannot compile Column object until it's 'name' is assigned.",
             str, sel3
         )
-        
+
         my_str.name = 'foo'
-        
+
         self.assert_compile(
             sel1,
             "SELECT foo",
@@ -2160,18 +2160,18 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             sel2,
             '(SELECT substr(foo, :substr_2, :substr_3) AS substr_1)',
         )
-        
+
         self.assert_compile(
             sel3,
             "(SELECT foo)"
         )
-        
+
     def test_naming(self):
         f1 = func.hoho(table1.c.name)
         s1 = select([table1.c.myid, table1.c.myid.label('foobar'),
                     f1,
                     func.lala(table1.c.name).label('gg')])
-        
+
         eq_(
             s1.c.keys(),
             ['myid', 'foobar', str(f1), 'gg']
@@ -2179,7 +2179,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         meta = MetaData()
         t1 = Table('mytable', meta, Column('col1', Integer))
-        
+
         exprs = (
             table1.c.myid==12,
             func.hoho(table1.c.myid),
@@ -2197,15 +2197,15 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 t = col.table
             else:
                 t = table1
-                
+
             s1 = select([col], from_obj=t)
             assert s1.c.keys() == [key], s1.c.keys()
-        
+
             if label:
                 self.assert_compile(s1, "SELECT %s AS %s FROM mytable" % (expr, label))
             else:
                 self.assert_compile(s1, "SELECT %s FROM mytable" % (expr,))
-            
+
             s1 = select([s1])
             if label:
                 self.assert_compile(s1, 
@@ -2220,7 +2220,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                 self.assert_compile(s1, 
                             "SELECT %s FROM (SELECT %s FROM mytable)" % 
                             (expr,expr))
-                
+
     def test_hints(self):
         s = select([table1.c.myid]).with_hint(table1, "test hint %(name)s")
 
@@ -2230,12 +2230,12 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         a1 = table1.alias()
         s3 = select([a1.c.myid]).with_hint(a1, "index(%(name)s hint)")
-        
+
         subs4 = select([
             table1, table2
         ]).select_from(table1.join(table2, table1.c.myid==table2.c.otherid)).\
             with_hint(table1, 'hint1')
-        
+
         s4 = select([table3]).select_from(
                         table3.join(
                                 subs4, 
@@ -2243,7 +2243,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             )
                     ).\
                     with_hint(table3, 'hint3')
-        
+
         subs5 = select([
             table1, table2
         ]).select_from(table1.join(table2, table1.c.myid==table2.c.otherid))
@@ -2255,12 +2255,12 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                     ).\
                     with_hint(table3, 'hint3').\
                     with_hint(table1, 'hint1')
-        
+
         t1 = table('QuotedName', column('col1'))
         s6 = select([t1.c.col1]).where(t1.c.col1>10).with_hint(t1, '%(name)s idx1')
         a2 = t1.alias('SomeName')
         s7 = select([a2.c.col1]).where(a2.c.col1>10).with_hint(a2, '%(name)s idx1')
-        
+
         mysql_d, oracle_d, sybase_d = \
                             mysql.dialect(), \
                             oracle.dialect(), \
@@ -2336,13 +2336,13 @@ class SelectTest(TestBase, AssertsCompiledSQL):
             and_("a", "b"),
             "a AND b"
         )
-        
+
     def test_literal_as_text_nonstring_raise(self):
         assert_raises(exc.ArgumentError,
             and_, ("a",), ("b",)
         )
-        
-        
+
+
 class CRUDTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):
         # generic insert, will create bind params for all columns
@@ -2514,7 +2514,7 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
                                         where(table1.c.name=='somename'), 
                         "DELETE FROM mytable WHERE mytable.myid = :myid_1 "
                         "AND mytable.name = :name_1")
-        
+
     def test_correlated_delete(self):
         # test a non-correlated WHERE clause
         s = select([table2.c.othername], table2.c.otherid == 7)
@@ -2529,26 +2529,26 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
                     "DELETE FROM mytable WHERE mytable.name = (SELECT "
                     "myothertable.othername FROM myothertable WHERE "
                     "myothertable.otherid = mytable.myid)")
-    
+
     def test_binds_that_match_columns(self):
         """test bind params named after column names 
         replace the normal SET/VALUES generation."""
-        
+
         t = table('foo', column('x'), column('y'))
 
         u = t.update().where(t.c.x==bindparam('x'))
-    
+
         assert_raises(exc.CompileError, u.compile)
-        
+
         self.assert_compile(u, "UPDATE foo SET  WHERE foo.x = :x", params={})
 
         assert_raises(exc.CompileError, u.values(x=7).compile)
-        
+
         self.assert_compile(u.values(y=7), "UPDATE foo SET y=:y WHERE foo.x = :x")
-        
+
         assert_raises(exc.CompileError, u.values(x=7).compile, column_keys=['x', 'y'])
         assert_raises(exc.CompileError, u.compile, column_keys=['x', 'y'])
-        
+
         self.assert_compile(u.values(x=3 + bindparam('x')), 
                             "UPDATE foo SET x=(:param_1 + :x) WHERE foo.x = :x")
 
@@ -2574,7 +2574,7 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
 
         i = t.insert().values(x=3 + bindparam('y'), y=5)
         assert_raises(exc.CompileError, i.compile)
-        
+
         i = t.insert().values(x=3 + bindparam('x2'))
         self.assert_compile(i, "INSERT INTO foo (x) VALUES ((:param_1 + :x2))")
         self.assert_compile(i, "INSERT INTO foo (x) VALUES ((:param_1 + :x2))", params={})
@@ -2582,11 +2582,11 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
                                     params={'x':1, 'y':2})
         self.assert_compile(i, "INSERT INTO foo (x, y) VALUES ((:param_1 + :x2), :y)",
                                     params={'x2':1, 'y':2})
-    
+
     def test_labels_no_collision(self):
-        
+
         t = table('foo', column('id'), column('foo_id'))
-        
+
         self.assert_compile(
             t.update().where(t.c.id==5),
             "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :id_1"
@@ -2596,7 +2596,7 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
             t.update().where(t.c.id==bindparam(key=t.c.id._label)),
             "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1"
         )
-        
+
 class InlineDefaultTest(TestBase, AssertsCompiledSQL):
     def test_insert(self):
         m = MetaData()
@@ -2634,7 +2634,7 @@ class SchemaTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(table4.select(), 
                 "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id,"
                 " remote_owner.remotetable.value FROM remote_owner.remotetable")
-                
+
         self.assert_compile(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')),
                 "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id,"
                 " remote_owner.remotetable.value FROM remote_owner.remotetable WHERE "
@@ -2664,7 +2664,7 @@ class SchemaTest(TestBase, AssertsCompiledSQL):
                 ' "dbo.remote_owner".remotetable.value AS dbo_remote_owner_remotetable_value FROM'
                 ' "dbo.remote_owner".remotetable'
         )
-        
+
     def test_alias(self):
         a = alias(table4, 'remtable')
         self.assert_compile(a.select(a.c.datatype_id==7), 

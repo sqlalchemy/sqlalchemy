@@ -85,7 +85,7 @@ class FrozenDictTest(TestBase):
         d = util.frozendict({1:2, 3:4})
         for loads, dumps in picklers():
             print loads(dumps(d))
-        
+
 
 class MemoizedAttrTest(TestBase):
     def test_memoized_property(self):
@@ -96,7 +96,7 @@ class MemoizedAttrTest(TestBase):
                 v = val[0]
                 val[0] += 1
                 return v
-                
+
         ne_(Foo.bar, None)
         f1 = Foo()
         assert 'bar' not in f1.__dict__
@@ -120,7 +120,7 @@ class MemoizedAttrTest(TestBase):
         eq_(f1.bar(), 20)
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
-        
+
 class ColumnCollectionTest(TestBase):
     def test_in(self):
         cc = sql.ColumnCollection()
@@ -151,7 +151,7 @@ class ColumnCollectionTest(TestBase):
 
 class LRUTest(TestBase):
 
-    def test_lru(self):                
+    def test_lru(self):
         class item(object):
             def __init__(self, id):
                 self.id = id
@@ -191,7 +191,7 @@ class LRUTest(TestBase):
         l[25] = i2
         assert 25 in l
         assert l[25] is i2
-        
+
 
 class ImmutableSubclass(str):
     pass
@@ -205,7 +205,7 @@ class FlattenIteratorTest(TestBase):
     def test_str_with_iter(self):
         """ensure that a str object with an __iter__ method (like in
         PyPy) is not interpreted as an iterable.
-        
+
         """
         class IterString(str):
             def __iter__(self):
@@ -214,7 +214,7 @@ class FlattenIteratorTest(TestBase):
         assert list(util.flatten_iterator([IterString('asdf'),
                     [IterString('x'), IterString('y')]])) == ['asdf',
                 'x', 'y']
-                
+
 class HashOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -235,7 +235,7 @@ class EqOverride(object):
             return self.value != other.value
         else:
             return True
-            
+
 class HashEqOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -371,7 +371,7 @@ class IdentitySetTest(TestBase):
         assert_raises(TypeError, lambda: s1 - [3, 4, 5])
 
 class OrderedIdentitySetTest(TestBase):
-    
+
     def assert_eq(self, identityset, expected_iterable):
         expected = [id(o) for o in expected_iterable]
         found = [id(o) for o in identityset]
@@ -386,10 +386,10 @@ class OrderedIdentitySetTest(TestBase):
     def test_intersection(self):
         elem = object
         eq_ = self.assert_eq
-        
+
         a, b, c, d, e, f, g = \
                 elem(), elem(), elem(), elem(), elem(), elem(), elem()
-        
+
         s1 = util.OrderedIdentitySet([a, b, c])
         s2 = util.OrderedIdentitySet([d, e, f])
         s3 = util.OrderedIdentitySet([a, d, f, g])
@@ -426,7 +426,7 @@ class DictlikeIteritemsTest(TestBase):
         d = UserDict.UserDict(a=1,b=2,c=3)
         self._ok(d)
     # end Py2K
-    
+
     def test_object(self):
         self._notok(object())
 
@@ -486,7 +486,7 @@ class DuckTypeCollectionTest(TestBase):
 
         class ForcedSet(list):
             __emulates__ = set
-        
+
         for type_ in (set,
                       # Py2K
                       sets.Set,
@@ -1043,7 +1043,7 @@ class TestClassHierarchy(TestBase):
 
         eq_(set(util.class_hierarchy(A)), set((A, B, C, object)))
         eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
-    
+
     # Py2K
     def test_oldstyle_mixin(self):
         class A(object):
@@ -1059,7 +1059,7 @@ class TestClassHierarchy(TestBase):
         eq_(set(util.class_hierarchy(Mixin)), set())
         eq_(set(util.class_hierarchy(A)), set((A, B, object)))
     # end Py2K
-        
+
 
 class TestClassProperty(TestBase):
 

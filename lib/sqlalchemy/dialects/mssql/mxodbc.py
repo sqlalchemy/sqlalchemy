@@ -20,7 +20,7 @@ Connecting
 Connection is via DSN::
 
     mssql+mxodbc://<username>:<password>@<dsnname>
-    
+
 Execution Modes
 ~~~~~~~~~~~~~~~
 
@@ -72,7 +72,7 @@ class MSExecutionContext_mxodbc(MSExecutionContext_pyodbc):
     #       won't work.
 
 class MSDialect_mxodbc(MxODBCConnector, MSDialect):
-    
+
     # TODO: may want to use this only if FreeTDS is not in use,
     # since FreeTDS doesn't seem to use native binds.
     statement_compiler = MSSQLStrictCompiler

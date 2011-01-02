@@ -13,9 +13,9 @@ NO_RETVAL = util.symbol('NO_RETVAL')
 
 def listen(target, identifier, fn, *args, **kw):
     """Register a listener function for the given target.
-    
+
     """
-    
+
     for evt_cls in _registrars[identifier]:
         tgt = evt_cls._accept_with(target)
         if tgt is not None:
@@ -26,11 +26,11 @@ def listen(target, identifier, fn, *args, **kw):
 
 def remove(target, identifier, fn):
     """Remove an event listener.
-    
+
     Note that some event removals, particularly for those event dispatchers
     which create wrapper functions and secondary even listeners, may not yet
     be supported.
-    
+
     """
     for evt_cls in _registrars[identifier]:
         for tgt in evt_cls._accept_with(target):
@@ -41,42 +41,42 @@ _registrars = util.defaultdict(list)
 
 def _is_event_name(name):
     return not name.startswith('_') and name != 'dispatch'
-    
+
 class _UnpickleDispatch(object):
     """Serializable callable that re-generates an instance of :class:`_Dispatch`
     given a particular :class:`.Events` subclass.
-    
+
     """
     def __call__(self, _parent_cls):
         return _parent_cls.__dict__['dispatch'].dispatch_cls(_parent_cls)
-        
+
 class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with 
     listener collections.
-    
+
     Classes which define a "dispatch" member will return a 
     non-instantiated :class:`._Dispatch` subclass when the member 
     is accessed at the class level.  When the "dispatch" member is 
     accessed at the instance level of its owner, an instance
     of the :class:`._Dispatch` class is returned.
-    
+
     A :class:`._Dispatch` class is generated for each :class:`.Events`
-    class defined, by the :func:`._create_dispatcher_class` function.  
-    The original :class:`.Events` classes remain untouched.   
+    class defined, by the :func:`._create_dispatcher_class` function.
+    The original :class:`.Events` classes remain untouched.
     This decouples the construction of :class:`.Events` subclasses from
     the implementation used by the event internals, and allows 
     inspecting tools like Sphinx to work in an unsurprising
     way against the public API.
-    
+
     """
-    
+
     def __init__(self, _parent_cls):
         self._parent_cls = _parent_cls
-    
+
     def __reduce__(self):
-        
+
         return _UnpickleDispatch(), (self._parent_cls, )
-    
+
     @property
     def _descriptors(self):
         return (getattr(self, k) for k in dir(self) if _is_event_name(k))
@@ -87,20 +87,20 @@ class _Dispatch(object):
 
         for ls in other._descriptors:
             getattr(self, ls.name)._update(ls, only_propagate=only_propagate)
-            
-            
+
+
 class _EventMeta(type):
     """Intercept new Event subclasses and create 
     associated _Dispatch classes."""
-    
+
     def __init__(cls, classname, bases, dict_):
         _create_dispatcher_class(cls, classname, bases, dict_)
         return type.__init__(cls, classname, bases, dict_)
-    
+
 def _create_dispatcher_class(cls, classname, bases, dict_):
     """Create a :class:`._Dispatch` class corresponding to an 
     :class:`.Events` class."""
-    
+
     # there's all kinds of ways to do this,
     # i.e. make a Dispatch class that shares the '_listen' method
     # of the Event class, this is the straight monkeypatch.
@@ -109,7 +109,7 @@ def _create_dispatcher_class(cls, classname, bases, dict_):
                                         (dispatch_base, ), {})
     dispatch_cls._listen = cls._listen
     dispatch_cls._clear = cls._clear
-    
+
     for k in dict_:
         if _is_event_name(k):
             setattr(dispatch_cls, k, _DispatchDescriptor(dict_[k]))
@@ -121,13 +121,13 @@ def _remove_dispatcher(cls):
             _registrars[k].remove(cls)
             if not _registrars[k]:
                 del _registrars[k]
-    
+
 class Events(object):
     """Define event listening functions for a particular target type."""
-    
-    
+
+
     __metaclass__ = _EventMeta
-    
+
     @classmethod
     def _accept_with(cls, target):
         # Mapper, ClassManager, Session override this to
@@ -144,42 +144,42 @@ class Events(object):
     @classmethod
     def _listen(cls, target, identifier, fn, propagate=False):
         getattr(target.dispatch, identifier).append(fn, target, propagate)
-    
+
     @classmethod
     def _remove(cls, target, identifier, fn):
         getattr(target.dispatch, identifier).remove(fn, target)
-    
+
     @classmethod
     def _clear(cls):
         for attr in dir(cls.dispatch):
             if _is_event_name(attr):
                 getattr(cls.dispatch, attr).clear()
-                
+
 class _DispatchDescriptor(object):
     """Class-level attributes on :class:`._Dispatch` classes."""
-    
+
     def __init__(self, fn):
         self.__name__ = fn.__name__
         self.__doc__ = fn.__doc__
         self._clslevel = util.defaultdict(list)
-    
+
     def append(self, obj, target, propagate):
         assert isinstance(target, type), \
                 "Class-level Event targets must be classes."
-                
+
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].append(obj)
-    
+
     def remove(self, obj, target):
         for cls in [target] + target.__subclasses__():
             self._clslevel[cls].remove(obj)
-    
+
     def clear(self):
         """Clear all class level listeners"""
-        
+
         for dispatcher in self._clslevel.values():
             dispatcher[:] = []
-            
+
     def __get__(self, obj, cls):
         if obj is None:
             return self
@@ -189,19 +189,19 @@ class _DispatchDescriptor(object):
 
 class _ListenerCollection(object):
     """Instance-level attributes on instances of :class:`._Dispatch`.
-    
+
     Represents a collection of listeners.
-    
+
     """
 
     _exec_once = False
-    
+
     def __init__(self, parent, target_cls):
         self.parent_listeners = parent._clslevel[target_cls]
         self.name = parent.__name__
         self.listeners = []
         self.propagate = set()
-        
+
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
         executed already for this collection."""
@@ -209,7 +209,7 @@ class _ListenerCollection(object):
         if not self._exec_once:
             self(*args, **kw)
             self._exec_once = True
-    
+
     def __call__(self, *args, **kw):
         """Execute this event."""
 
@@ -217,7 +217,7 @@ class _ListenerCollection(object):
             fn(*args, **kw)
         for fn in self.listeners:
             fn(*args, **kw)
-    
+
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
     # at any point.
@@ -227,23 +227,23 @@ class _ListenerCollection(object):
     # to a higher memory model, i.e.weakrefs to all _ListenerCollection
     # objects, the _DispatchDescriptor collection repeated
     # for all instances.
-    
+
     def __len__(self):
         return len(self.parent_listeners + self.listeners)
-        
+
     def __iter__(self):
         return iter(self.parent_listeners + self.listeners)
-    
+
     def __getitem__(self, index):
         return (self.parent_listeners + self.listeners)[index]
-        
+
     def __nonzero__(self):
         return bool(self.listeners or self.parent_listeners)
-    
+
     def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
-        
+
         existing_listeners = self.listeners
         existing_listener_set = set(existing_listeners)
         self.propagate.update(other.propagate)
@@ -258,27 +258,27 @@ class _ListenerCollection(object):
             self.listeners.append(obj)
             if propagate:
                 self.propagate.add(obj)
-    
+
     def remove(self, obj, target):
         if obj in self.listeners:
             self.listeners.remove(obj)
             self.propagate.discard(obj)
-    
+
     def clear(self):
         self.listeners[:] = []
         self.propagate.clear()
-        
+
 class dispatcher(object):
     """Descriptor used by target classes to 
     deliver the _Dispatch class at the class level
     and produce new _Dispatch instances for target
     instances.
-    
+
     """
     def __init__(self, events):
         self.dispatch_cls = events.dispatch
         self.events = events
-        
+
     def __get__(self, obj, cls):
         if obj is None:
             return self.dispatch_cls

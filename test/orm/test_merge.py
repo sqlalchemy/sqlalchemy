@@ -53,7 +53,7 @@ class MergeTest(_fixtures.FixtureTest):
         def go():
             sess.merge(u)
         self.assert_sql_count(testing.db, go, 0)
-        
+
     @testing.resolve_artifact_names
     def test_transient_to_pending_collection(self):
         mapper(User, users, properties={
@@ -241,9 +241,9 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_merge_empty_attributes(self):
         mapper(User, dingalings)
-        
+
         sess = create_session()
-        
+
         # merge empty stuff.  goes in as NULL.
         # not sure what this was originally trying to 
         # test.
@@ -255,17 +255,17 @@ class MergeTest(_fixtures.FixtureTest):
         u2 = User(id=2, data="foo")
         sess.add(u2)
         sess.flush()
-        
+
         # merge User on u2's pk with
         # no "data".
         # value isn't whacked from the destination
         # dict.
         u3 = sess.merge(User(id=2))
         eq_(u3.__dict__['data'], "foo")
-        
+
         # make a change.
         u3.data = 'bar'
-        
+
         # merge another no-"data" user.
         # attribute maintains modified state.
         # (usually autoflush would have happened
@@ -281,12 +281,12 @@ class MergeTest(_fixtures.FixtureTest):
         u5 = User(id=3, data="foo")
         sess.add(u5)
         sess.flush()
-        
+
         # blow it away from u5, but don't
         # mark as expired.  so it would just 
         # be blank.
         del u5.data
-        
+
         # the merge adds expiry to the
         # attribute so that it loads.
         # not sure if I like this - it currently is needed
@@ -300,8 +300,8 @@ class MergeTest(_fixtures.FixtureTest):
         u6.data = None
         u7 = sess.merge(User(id=3))
         assert u6.__dict__['data'] is None
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_merge_irregular_collection(self):
         mapper(User, users, properties={
@@ -427,27 +427,27 @@ class MergeTest(_fixtures.FixtureTest):
         a1 = Address(email_address="asdf", user=u1)
         sess.add(a1)
         sess.flush()
-        
+
         a2 = Address(id=a1.id, email_address="bar", user=User(name="hoho"))
         a2 = sess.merge(a2)
         sess.flush()
-        
+
         # no expire of the attribute
-        
+
         assert a2.__dict__['user'] is u1
-        
+
         # merge succeeded
         eq_(
             sess.query(Address).all(),
             [Address(id=a1.id, email_address="bar")]
         )
-        
+
         # didn't touch user
         eq_(
             sess.query(User).all(),
             [User(name="fred")]
         )
-        
+
     @testing.resolve_artifact_names
     def test_one_to_many_cascade(self):
 
@@ -492,17 +492,17 @@ class MergeTest(_fixtures.FixtureTest):
             'user':relationship(User)
         })
         mapper(User, users)
-        
+
         u1 = User(id=1, name="u1")
         a1 =Address(id=1, email_address="a1", user=u1)
         u2 = User(id=2, name="u2")
-        
+
         sess = create_session()
         sess.add_all([a1, u2])
         sess.flush()
-        
+
         a1.user = u2
-        
+
         sess2 = create_session()
         a2 = sess2.merge(a1)
         eq_(
@@ -510,9 +510,9 @@ class MergeTest(_fixtures.FixtureTest):
             ([u2], (), [attributes.PASSIVE_NO_RESULT])
         )
         assert a2 in sess2.dirty
-        
+
         sess.refresh(a1)
-        
+
         sess2 = create_session()
         a2 = sess2.merge(a1, load=False)
         eq_(
@@ -520,7 +520,7 @@ class MergeTest(_fixtures.FixtureTest):
             ((), [u1], ())
         )
         assert a2 not in sess2.dirty
-        
+
     @testing.resolve_artifact_names
     def test_many_to_many_cascade(self):
 
@@ -609,18 +609,18 @@ class MergeTest(_fixtures.FixtureTest):
         sess.add(u)
         sess.commit()
         sess.close()
-        
+
         u2 = User(id=7, name=None, address=None)
         u3 = sess.merge(u2)
         assert u3.name is None
         assert u3.address is None
-        
+
         sess.close()
-        
+
         a1 = Address(id=1, user=None)
         a2 = sess.merge(a1)
         assert a2.user is None
-        
+
     @testing.resolve_artifact_names
     def test_transient_no_load(self):
         mapper(User, users)
@@ -863,7 +863,7 @@ class MergeTest(_fixtures.FixtureTest):
             'uid':synonym('id'),
             'foobar':comparable_property(User.Comparator,User.value),
         })
-        
+
         sess = create_session()
         u = User()
         u.name = 'ed'
@@ -875,7 +875,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_cascade_doesnt_blowaway_manytoone(self):
         """a merge test that was fixed by [ticket:1202]"""
-        
+
         s = create_session(autoflush=True)
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses),backref='user')})
@@ -889,7 +889,7 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(after_id, other_id)
         eq_(before_id, after_id)
         eq_(a1.user, a2.user)
-            
+
     @testing.resolve_artifact_names
     def test_cascades_dont_autoflush(self):
         sess = create_session(autoflush=True)
@@ -930,7 +930,7 @@ class MergeTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_dont_expire_pending(self):
         """test that pending instances aren't expired during a merge."""
-        
+
         mapper(User, users)
         u = User(id=7)
         sess = create_session(autoflush=True, autocommit=False)
@@ -939,40 +939,40 @@ class MergeTest(_fixtures.FixtureTest):
         def go():
             eq_(u.name, None)
         self.assert_sql_count(testing.db, go, 0)
-    
+
     @testing.resolve_artifact_names
     def test_option_state(self):
         """test that the merged takes on the MapperOption characteristics
         of that which is merged.
-        
+
         """
         class Option(MapperOption):
             propagate_to_loaders = True
-            
+
         opt1, opt2 = Option(), Option()
 
         sess = sessionmaker()()
-        
+
         umapper = mapper(User, users)
-        
+
         sess.add_all([
             User(id=1, name='u1'),
             User(id=2, name='u2'),
         ])
         sess.commit()
-        
+
         sess2 = sessionmaker()()
         s2_users = sess2.query(User).options(opt2).all()
-        
+
         # test 1.  no options are replaced by merge options
         sess = sessionmaker()()
         s1_users = sess.query(User).all()
-        
+
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path, ())
             eq_(ustate.load_options, set())
-            
+
         for u in s2_users:
             sess.merge(u)
 
@@ -980,7 +980,7 @@ class MergeTest(_fixtures.FixtureTest):
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path, (umapper, ))
             eq_(ustate.load_options, set([opt2]))
-        
+
         # test 2.  present options are replaced by merge options
         sess = sessionmaker()()
         s1_users = sess.query(User).options(opt1).all()
@@ -991,12 +991,12 @@ class MergeTest(_fixtures.FixtureTest):
 
         for u in s2_users:
             sess.merge(u)
-            
+
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path, (umapper, ))
             eq_(ustate.load_options, set([opt2]))
-        
+
 
 class MutableMergeTest(_base.MappedTest):
     @classmethod
@@ -1005,27 +1005,27 @@ class MutableMergeTest(_base.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', PickleType(comparator=operator.eq))
         )
-    
+
     @classmethod
     def setup_classes(cls):
         class Data(_base.ComparableEntity):
             pass
-    
+
     @testing.resolve_artifact_names
     def test_list(self):
         mapper(Data, data)
         sess = sessionmaker()()
         d = Data(data=["this", "is", "a", "list"])
-        
+
         sess.add(d)
         sess.commit()
-        
+
         d2 = Data(id=d.id, data=["this", "is", "another", "list"])
         d3 = sess.merge(d2)
         eq_(d3.data, ["this", "is", "another", "list"])
-        
-        
-        
+
+
+
 class CompositeNullPksTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -1033,19 +1033,19 @@ class CompositeNullPksTest(_base.MappedTest):
             Column('pk1', String(10), primary_key=True),
             Column('pk2', String(10), primary_key=True),
         )
-    
+
     @classmethod
     def setup_classes(cls):
         class Data(_base.ComparableEntity):
             pass
-    
+
     @testing.resolve_artifact_names
     def test_merge_allow_partial(self):
         mapper(Data, data)
         sess = sessionmaker()()
-        
+
         d1 = Data(pk1="someval", pk2=None)
-        
+
         def go():
             return sess.merge(d1)
         self.assert_sql_count(testing.db, go, 1)
@@ -1060,5 +1060,5 @@ class CompositeNullPksTest(_base.MappedTest):
         def go():
             return sess.merge(d1)
         self.assert_sql_count(testing.db, go, 0)
-    
+
 

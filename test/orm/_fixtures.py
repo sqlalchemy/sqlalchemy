@@ -169,7 +169,7 @@ composite_pk_table = fixture_table(
     Table('composite_pk_table', fixture_metadata,
         Column('i', Integer, primary_key=True),
         Column('j', Integer, primary_key=True),
-        Column('k', Integer, nullable=False),                    
+        Column('k', Integer, nullable=False),
     ),
     ('i', 'j', 'k'),
     (1, 2, 3),
@@ -218,7 +218,7 @@ class Node(Base):
 
 class CompositePk(Base):
     pass
-    
+
 class FixtureTest(_base.MappedTest):
     """A MappedTest pre-configured for fixtures.
 
@@ -378,7 +378,7 @@ class CannedResults(object):
                  keywords=[]),
             Item(id=5,
                  keywords=[])]
-    
+
     @property
     def user_item_keyword_result(self):
         item1, item2, item3, item4, item5 = \
@@ -420,6 +420,6 @@ class CannedResults(object):
                            items=[item1, item5])]),
                 User(id=10, orders=[])]
         return user_result
-        
+
 FixtureTest.static = CannedResults()
 

@@ -53,12 +53,12 @@ def association(cls, table):
                     setattr(self, attr_name, GenericAssoc(table.name))
                 getattr(self, attr_name).targets = [value]
             setattr(cls, name, property(get, set))
-    
+
     @property
     def member(self):
         return getattr(self.association, 
                     '_backref_%s' % self.association.type)
-        
+
     setattr(cls, 'member', member)
 
     mapper(GenericAssoc, association_table, properties={

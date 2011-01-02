@@ -41,7 +41,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
     supports_population = False
-    
+
     def __init__(self, class_, key, typecallable,
                      dispatch,
                      target_mapper, order_by, query_class=None, **kw):
@@ -131,12 +131,12 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     def set_committed_value(self, state, dict_, value):
         raise NotImplementedError("Dynamic attributes don't support "
                                   "collection population.")
-    
+
     def get_history(self, state, dict_, passive=False):
         c = self._get_collection_history(state, passive)
         return attributes.History(c.added_items, c.unchanged_items,
                                   c.deleted_items)
-    
+
     def get_all_pending(self, state, dict_):
         c = self._get_collection_history(state, True)
         return [
@@ -144,7 +144,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
                 for x in 
                 c.added_items + c.unchanged_items + c.deleted_items
             ]
-        
+
     def _get_collection_history(self, state, passive=False):
         if self.key in state.committed_state:
             c = state.committed_state[self.key]
@@ -265,10 +265,10 @@ class AppenderMixin(object):
             query = self.query_class(self.attr.target_mapper, session=sess)
         else:
             query = sess.query(self.attr.target_mapper)
-        
+
         query._criterion = self._criterion
         query._order_by = self._order_by
-        
+
         return query
 
     def append(self, item):
@@ -307,4 +307,4 @@ class CollectionHistory(object):
             self.deleted_items = []
             self.added_items = []
             self.unchanged_items = []
-    
+

@@ -21,15 +21,15 @@ In order of complexity:
   the load in a non-recursive fashion and is much more efficient.
 
 E.g.::
-    
+
     # parse an XML file and persist in the database
     doc = ElementTree.parse("test.xml")
     session.add(Document(file, doc))
     session.commit()
-    
+
     # locate documents with a certain path/attribute structure 
     for document in find_document('/somefile/header/field2[@attr=foo]'):
         # dump the XML
         print document
-    
+
 """

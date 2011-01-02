@@ -72,7 +72,7 @@ class DDLEventTest(TestBase):
         canary = self.Canary(table, bind)
         event.listen(table, 'before_create', canary.before_create)
         event.listen(table, 'after_create', canary.after_create)
-        
+
         table.create(bind)
         assert canary.state == 'after-create'
         table.drop(bind)
@@ -151,7 +151,7 @@ class DDLEventTest(TestBase):
     def test_metadata_create_both(self):
         metadata, bind = self.metadata, self.bind
         canary = self.Canary(metadata, bind)
-            
+
         event.listen(metadata, 'before_create', canary.before_create)
         event.listen(metadata, 'after_create', canary.after_create)
 
@@ -259,7 +259,7 @@ class DDLExecutionTest(TestBase):
         assert 'xyzzy' in strings
         assert 'fnord' in strings
 
-        
+
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
 
@@ -320,13 +320,13 @@ class DDLExecutionTest(TestBase):
             'after_create',
             AddConstraint(constraint).execute_if(dialect='postgresql'),
         )
-        
+
         event.listen(
             users,
             'before_drop',
             DropConstraint(constraint).execute_if(dialect='postgresql'),
         )
-        
+
         metadata.create_all(bind=nonpg_mock)
         strings = ' '.join(str(x) for x in nonpg_mock.mock)
         assert 'my_test_constraint' not in strings
@@ -339,7 +339,7 @@ class DDLExecutionTest(TestBase):
         metadata.drop_all(bind=pg_mock)
         strings = ' '.join(str(x) for x in pg_mock.mock)
         assert 'my_test_constraint' in strings
-    
+
     @testing.uses_deprecated(r'See DDLEvents')
     def test_conditional_constraint_deprecated(self):
         metadata, users, engine = self.metadata, self.users, self.engine
@@ -406,27 +406,27 @@ class DDLExecutionTest(TestBase):
     @testing.fails_on('postgresql+pg8000', 'pg8000 requires explicit types')
     def test_platform_escape(self):
         """test the escaping of % characters in the DDL construct."""
-        
+
         default_from = testing.db.dialect.statement_compiler(
                             testing.db.dialect, None).default_from()
-        
+
         eq_(
             testing.db.execute(
                 text("select 'foo%something'" + default_from)
             ).scalar(),
             'foo%something'
         )
-    
+
         eq_(
             testing.db.execute(
                 DDL("select 'foo%%something'" + default_from)
             ).scalar(),
             'foo%something'
         )
-    
 
-        
-        
+
+
+
 class DDLTest(TestBase, AssertsCompiledSQL):
     def mock_engine(self):
         executor = lambda *a, **kw: None

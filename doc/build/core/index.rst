@@ -5,7 +5,7 @@ SQLAlchemy Core
 
 .. toctree::
     :maxdepth: 2
-    
+
     tutorial
     expression_api
     engines
@@ -19,5 +19,4 @@ SQLAlchemy Core
     compiler
     serializer
     interfaces
-    
-    
+

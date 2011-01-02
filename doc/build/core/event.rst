@@ -24,10 +24,10 @@ and that a user-defined listener function should receive two positional argument
 
     from sqlalchemy.event import listen
     from sqlalchemy.pool import Pool
-    
+
     def my_on_connect(dbapi_con, connection_record):
         print "New DBAPI connection:", dbapi_con
-        
+
     listen(Pool, 'connect', my_on_connect)
 
 Targets
@@ -43,13 +43,13 @@ classes and objects::
     from sqlalchemy import create_engine
     from sqlalchemy.engine import Engine
     import psycopg2
-    
+
     def connect():
         return psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
 
     my_pool = QueuePool(connect)
     my_engine = create_engine('postgresql://ed@localhost/test')
-    
+
     # associate listener with all instances of Pool
     listen(Pool, 'connect', my_on_connect)
 
@@ -73,9 +73,9 @@ which modifies the subsequent handling.   By default, no listener ever requires 
 
     def validate_phone(target, value, oldvalue, initiator):
         """Strip non-numeric characters from a phone number"""
-        
+
         return re.sub(r'(?![0-9])', '', value)
-        
+
     # setup listener on UserContact.phone attribute, instructing
     # it to use the return value
     listen(UserContact.phone, 'set', validate_phone, retval=True)
@@ -89,7 +89,7 @@ Both SQLAlchemy Core and SQLAlchemy ORM feature a wide variety of event hooks:
   :ref:`core_event_toplevel` and include event hooks specific to
   connection pool lifecycle, SQL statement execution,
   transaction lifecycle, and schema creation and teardown.
-  
+
 * **ORM Events** - these are described in
   :ref:`orm_event_toplevel`, and include event hooks specific to
   class and attribute instrumentation, object initialization

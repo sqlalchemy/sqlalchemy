@@ -26,8 +26,8 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction", dialect=dialect)
             else:
                 self.assert_compile(func.nosuchfunction(), "nosuchfunction()", dialect=dialect)
-            
-            # test generic function compile    
+
+            # test generic function compile
             class fake_func(GenericFunction):
                 __return_type__ = sqltypes.Integer
 
@@ -39,14 +39,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             "fake_func(%s)" % 
                             bindtemplate % {'name':'param_1', 'position':1}, 
                             dialect=dialect)
-            
+
     def test_use_labels(self):
         self.assert_compile(select([func.foo()], use_labels=True), 
             "SELECT foo() AS foo_1"
         )
     def test_underscores(self):
         self.assert_compile(func.if_(), "if()")
-        
+
     def test_generic_now(self):
         assert isinstance(func.now().type, sqltypes.DateTime)
 
@@ -69,10 +69,10 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             ('random', oracle.dialect())
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
-    
+
     def test_namespacing_conflicts(self):
         self.assert_compile(func.text('foo'), 'text(:text_1)')
-        
+
     def test_generic_count(self):
         assert isinstance(func.count().type, sqltypes.Integer)
 
@@ -101,7 +101,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             assert True
 
     def test_return_type_detection(self):
-        
+
         for fn in [func.coalesce, func.max, func.min, func.sum]:
             for args, type_ in [
                             ((datetime.date(2007, 10, 5), 
@@ -113,7 +113,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                                 datetime.datetime(2005, 10, 15, 14, 45, 33)), sqltypes.DateTime)
                         ]:
                 assert isinstance(fn(*args).type, type_), "%s / %s" % (fn(), type_)
-        
+
         assert isinstance(func.concat("foo", "bar").type, sqltypes.String)
 
 
@@ -193,7 +193,7 @@ class ExecuteTest(TestBase):
     @engines.close_first
     def tearDown(self):
         pass
-        
+
     def test_standalone_execute(self):
         x = testing.db.func.current_date().execute().scalar()
         y = testing.db.func.current_date().select().execute().scalar()
@@ -208,10 +208,10 @@ class ExecuteTest(TestBase):
     def test_conn_execute(self):
         from sqlalchemy.sql.expression import FunctionElement
         from sqlalchemy.ext.compiler import compiles
-        
+
         class myfunc(FunctionElement):
             type = Date()
-        
+
         @compiles(myfunc)
         def compile(elem, compiler, **kw):
             return compiler.process(func.current_date())
@@ -229,17 +229,17 @@ class ExecuteTest(TestBase):
     def test_exec_options(self):
         f = func.foo()
         eq_(f._execution_options, {})
-        
+
         f = f.execution_options(foo='bar')
         eq_(f._execution_options, {'foo':'bar'})
         s = f.select()
         eq_(s._execution_options, {'foo':'bar'})
-        
+
         ret = testing.db.execute(func.now().execution_options(foo='bar'))
         eq_(ret.context.execution_options, {'foo':'bar'})
         ret.close()
-        
-        
+
+
     @engines.close_first
     def test_update(self):
         """

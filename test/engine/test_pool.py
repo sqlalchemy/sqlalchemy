@@ -33,10 +33,10 @@ class MockCursor(object):
     def close(self):
         pass
 
-class PoolTestBase(TestBase):    
+class PoolTestBase(TestBase):
     def setup(self):
         pool.clear_managers()
-        
+
     @classmethod
     def teardown_class(cls):
        pool.clear_managers()
@@ -48,7 +48,7 @@ class PoolTestBase(TestBase):
     def _queuepool_dbapi_fixture(self, **kw):
         dbapi = MockDBAPI()
         return dbapi, pool.QueuePool(creator=lambda: dbapi.connect('foo.db'), **kw)
-     
+
 class PoolTest(PoolTestBase):
     def testmanager(self):
         manager = pool.manage(MockDBAPI(), use_threadlocal=True)
@@ -87,17 +87,17 @@ class PoolTest(PoolTestBase):
         expected = [(1, )]
         for row in cursor:
             eq_(row, expected.pop(0))
-    
+
     def test_no_connect_on_recreate(self):
         def creator():
             raise Exception("no creates allowed")
-        
+
         for cls in (pool.SingletonThreadPool, pool.StaticPool, 
                     pool.QueuePool, pool.NullPool, pool.AssertionPool):
             p = cls(creator=creator)
             p.dispose()
             p.recreate()
-        
+
             mock_dbapi = MockDBAPI()
             p = cls(creator=mock_dbapi.connect)
             conn = p.connect()
@@ -105,7 +105,7 @@ class PoolTest(PoolTestBase):
             mock_dbapi.throw_error = True
             p.dispose()
             p.recreate()
-            
+
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
@@ -198,9 +198,9 @@ class PoolEventsTest(PoolTestBase):
         canary = []
         def first_connect(*arg, **kw):
             canary.append('first_connect')
-        
+
         event.listen(p, 'first_connect', first_connect)
-        
+
         return p, canary
 
     def _connect_event_fixture(self):
@@ -209,7 +209,7 @@ class PoolEventsTest(PoolTestBase):
         def connect(*arg, **kw):
             canary.append('connect')
         event.listen(p, 'connect', connect)
-        
+
         return p, canary
 
     def _checkout_event_fixture(self):
@@ -218,7 +218,7 @@ class PoolEventsTest(PoolTestBase):
         def checkout(*arg, **kw):
             canary.append('checkout')
         event.listen(p, 'checkout', checkout)
-        
+
         return p, canary
 
     def _checkin_event_fixture(self):
@@ -227,18 +227,18 @@ class PoolEventsTest(PoolTestBase):
         def checkin(*arg, **kw):
             canary.append('checkin')
         event.listen(p, 'checkin', checkin)
-        
+
         return p, canary
-        
+
     def test_first_connect_event(self):
         p, canary = self._first_connect_event_fixture()
-        
+
         c1 = p.connect()
         eq_(canary, ['first_connect'])
 
     def test_first_connect_event_fires_once(self):
         p, canary = self._first_connect_event_fixture()
-        
+
         c1 = p.connect()
         c2 = p.connect()
 
@@ -264,13 +264,13 @@ class PoolEventsTest(PoolTestBase):
 
     def test_connect_event(self):
         p, canary = self._connect_event_fixture()
-        
+
         c1 = p.connect()
         eq_(canary, ['connect'])
 
     def test_connect_event_fires_subsequent(self):
         p, canary = self._connect_event_fixture()
-        
+
         c1 = p.connect()
         c2 = p.connect()
 
@@ -280,7 +280,7 @@ class PoolEventsTest(PoolTestBase):
         p, canary = self._connect_event_fixture()
 
         p2 = p.recreate()
-        
+
         c1 = p.connect()
         c2 = p2.connect()
 
@@ -294,40 +294,40 @@ class PoolEventsTest(PoolTestBase):
         c2 = p2.connect()
 
         eq_(canary, ['connect', 'connect'])
-    
+
     def test_checkout_event(self):
         p, canary = self._checkout_event_fixture()
-        
+
         c1 = p.connect()
         eq_(canary, ['checkout'])
 
     def test_checkout_event_fires_subsequent(self):
         p, canary = self._checkout_event_fixture()
-        
+
         c1 = p.connect()
         c2 = p.connect()
         eq_(canary, ['checkout', 'checkout'])
 
     def test_checkout_event_on_subsequently_recreated(self):
         p, canary = self._checkout_event_fixture()
-        
+
         c1 = p.connect()
         p2 = p.recreate()
         c2 = p2.connect()
-        
+
         eq_(canary, ['checkout', 'checkout'])
-        
+
     def test_checkin_event(self):
         p, canary = self._checkin_event_fixture()
-        
+
         c1 = p.connect()
         eq_(canary, [])
         c1.close()
         eq_(canary, ['checkin'])
-    
+
     def test_checkin_event_gc(self):
         p, canary = self._checkin_event_fixture()
-        
+
         c1 = p.connect()
         eq_(canary, [])
         del c1
@@ -336,19 +336,19 @@ class PoolEventsTest(PoolTestBase):
 
     def test_checkin_event_on_subsequently_recreated(self):
         p, canary = self._checkin_event_fixture()
-        
+
         c1 = p.connect()
         p2 = p.recreate()
         c2 = p2.connect()
-        
+
         eq_(canary, [])
-        
+
         c1.close()
         eq_(canary, ['checkin'])
-        
+
         c2.close()
         eq_(canary, ['checkin', 'checkin'])
-        
+
     def test_listen_targets_scope(self):
         canary = []
         def listen_one(*args):
@@ -359,7 +359,7 @@ class PoolEventsTest(PoolTestBase):
             canary.append("listen_three")
         def listen_four(*args):
             canary.append("listen_four")
-            
+
         engine = create_engine(testing.db.url)
         event.listen(pool.Pool, 'connect', listen_one)
         event.listen(engine.pool, 'connect', listen_two)
@@ -370,10 +370,10 @@ class PoolEventsTest(PoolTestBase):
         eq_(
             canary, ["listen_one","listen_four", "listen_two","listen_three"]
         )
-    
+
     def test_listen_targets_per_subclass(self):
         """test that listen() called on a subclass remains specific to that subclass."""
-        
+
         canary = []
         def listen_one(*args):
             canary.append("listen_one")
@@ -381,14 +381,14 @@ class PoolEventsTest(PoolTestBase):
             canary.append("listen_two")
         def listen_three(*args):
             canary.append("listen_three")
-        
+
         event.listen(pool.Pool, 'connect', listen_one)
         event.listen(pool.QueuePool, 'connect', listen_two)
         event.listen(pool.SingletonThreadPool, 'connect', listen_three)
-        
+
         p1 = pool.QueuePool(creator=MockDBAPI().connect)
         p2 = pool.SingletonThreadPool(creator=MockDBAPI().connect)
-        
+
         assert listen_one in p1.dispatch.connect
         assert listen_two in p1.dispatch.connect
         assert listen_three not in p1.dispatch.connect
@@ -400,12 +400,12 @@ class PoolEventsTest(PoolTestBase):
         eq_(canary, ["listen_one", "listen_two"])
         p2.connect()
         eq_(canary, ["listen_one", "listen_two", "listen_one", "listen_three"])
-        
+
     def teardown(self):
         # TODO: need to get remove() functionality
         # going
         pool.Pool.dispatch._clear()
-        
+
 class DeprecatedPoolListenerTest(PoolTestBase):
     @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners(self):
@@ -581,7 +581,7 @@ class DeprecatedPoolListenerTest(PoolTestBase):
         snoop.assert_total(1, 1, 2, 1)
         c.close()
         snoop.assert_total(1, 1, 2, 2)
-    
+
     @testing.uses_deprecated(r".*Use event.listen")
     def test_listeners_callables(self):
         def connect(dbapi_con, con_record):
@@ -694,7 +694,7 @@ class QueuePoolTest(PoolTestBase):
         c1.close()
         lazy_gc()
         assert not pool._refs
-       
+
     def test_timeout(self):
         p = self._queuepool_fixture(pool_size=3,
                            max_overflow=0, 
@@ -732,7 +732,7 @@ class QueuePoolTest(PoolTestBase):
                     timeouts.append(time.time() - now)
                     continue
                 time.sleep(4)
-                c1.close()  
+                c1.close()
 
         threads = []
         for i in xrange(10):
@@ -751,7 +751,7 @@ class QueuePoolTest(PoolTestBase):
 
     def _test_overflow(self, thread_count, max_overflow):
         gc_collect()
-        
+
         dbapi = MockDBAPI()
         def creator():
             time.sleep(.05)
@@ -780,7 +780,7 @@ class QueuePoolTest(PoolTestBase):
             th.join()
  
         self.assert_(max(peaks) <= max_overflow)
-        
+
         lazy_gc()
         assert not pool._refs
  
@@ -824,7 +824,7 @@ class QueuePoolTest(PoolTestBase):
         counter, you can fool the counter into giving you a
         ConnectionFairy with an ambiguous counter.  i.e. its not true
         reference counting."""
-        
+
         p = self._queuepool_fixture(pool_size=3,
                            max_overflow=-1, use_threadlocal=True)
         c1 = p.connect()
@@ -918,7 +918,7 @@ class SingletonThreadPoolTest(PoolTestBase):
     def test_cleanup(self):
         """test that the pool's connections are OK after cleanup() has
         been called."""
-        
+
         dbapi = MockDBAPI()
         p = pool.SingletonThreadPool(creator=dbapi.connect,
                 pool_size=3)

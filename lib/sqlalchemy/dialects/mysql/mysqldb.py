@@ -9,7 +9,7 @@
 MySQL-Python is available at:
 
     http://sourceforge.net/projects/mysql-python
-    
+
 At least version 1.2.1 or 1.2.2 should be used.
 
 Connecting
@@ -18,7 +18,7 @@ Connecting
 Connect string format::
 
     mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
-    
+
 Character Sets
 --------------
 
@@ -42,7 +42,7 @@ Known Issues
 -------------
 
 MySQL-python at least as of version 1.2.2 has a serious memory leak related
-to unicode conversion, a feature which is disabled via ``use_unicode=0``.   
+to unicode conversion, a feature which is disabled via ``use_unicode=0``.
 The recommended connection form with SQLAlchemy is::
 
     engine = create_engine('mysql://scott:tiger@localhost/test?charset=utf8&use_unicode=0', pool_recycle=3600)
@@ -60,25 +60,25 @@ from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
 from sqlalchemy import processors
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
-    
+
     @property
     def rowcount(self):
         if hasattr(self, '_rowcount'):
             return self._rowcount
         else:
             return self.cursor.rowcount
-        
-        
+
+
 class MySQLCompiler_mysqldb(MySQLCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
-    
+
     def post_process_text(self, text):
         return text.replace('%', '%%')
 
 
 class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
-    
+
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace("%", "%%")
@@ -95,13 +95,13 @@ class MySQLDialect_mysqldb(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
-    
+
     colspecs = util.update_copy(
         MySQLDialect.colspecs,
         {
         }
     )
-    
+
     @classmethod
     def dbapi(cls):
         return __import__('MySQLdb')
@@ -149,7 +149,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
                 pass
             opts['client_flag'] = client_flag
         return [[], opts]
-    
+
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []

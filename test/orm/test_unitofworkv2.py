@@ -25,7 +25,7 @@ class AssertsUOW(object):
         for d in deleted:
             uow.register_object(d, isdelete=True)
         return uow
-        
+
     def _assert_uow_size(self,
         session, 
         expected
@@ -51,7 +51,7 @@ class RudimentaryFlushTest(UOWTest):
         a1, a2 = Address(email_address='a1'), Address(email_address='a2')
         u1 = User(name='u1', addresses=[a1, a2])
         sess.add(u1)
-    
+
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
@@ -81,7 +81,7 @@ class RudimentaryFlushTest(UOWTest):
         u1 = User(name='u1', addresses=[a1, a2])
         sess.add(u1)
         sess.flush()
-        
+
         sess.delete(u1)
         sess.delete(a1)
         sess.delete(a2)
@@ -128,9 +128,9 @@ class RudimentaryFlushTest(UOWTest):
                     {'id':u1.id}
                 ),
         )
-        
+
     def test_many_to_one_save(self):
-        
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User)
@@ -141,7 +141,7 @@ class RudimentaryFlushTest(UOWTest):
         a1, a2 = Address(email_address='a1', user=u1), \
                     Address(email_address='a2', user=u1)
         sess.add_all([a1, a2])
-    
+
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
@@ -173,7 +173,7 @@ class RudimentaryFlushTest(UOWTest):
                     Address(email_address='a2', user=u1)
         sess.add_all([a1, a2])
         sess.flush()
-        
+
         sess.delete(u1)
         sess.delete(a1)
         sess.delete(a2)
@@ -233,25 +233,25 @@ class RudimentaryFlushTest(UOWTest):
         parent = User(name='p1')
         c1, c2 = Address(email_address='c1', parent=parent), \
                     Address(email_address='c2', parent=parent)
-        
+
         session = Session()
         session.add_all([c1, c2])
         session.add(parent)
 
         session.flush()
-       
+
         pid = parent.id
         c1id = c1.id
         c2id = c2.id
-        
+
         session.expire(parent)
         session.expire(c1)
         session.expire(c2)
-        
+
         session.delete(c1)
         session.delete(c2)
         session.delete(parent)
-        
+
         # testing that relationships 
         # are loaded even if all ids/references are 
         # expired
@@ -291,13 +291,13 @@ class RudimentaryFlushTest(UOWTest):
                 lambda ctx: {'id': pid}
             ),
         )
-    
+
     def test_many_to_many(self):
         mapper(Item, items, properties={
             'keywords':relationship(Keyword, secondary=item_keywords)
         })
         mapper(Keyword, keywords)
-        
+
         sess = create_session()
         k1 = Keyword(name='k1')
         i1 = Item(description='i1', keywords=[k1])
@@ -321,7 +321,7 @@ class RudimentaryFlushTest(UOWTest):
                     lambda ctx:{'item_id':i1.id, 'keyword_id':k1.id}
                 )
         )
-        
+
         # test that keywords collection isn't loaded
         sess.expire(i1, ['keywords'])
         i1.description = 'i2'
@@ -332,7 +332,7 @@ class RudimentaryFlushTest(UOWTest):
                             "WHERE items.id = :items_id", 
                             lambda ctx:{'description':'i2', 'items_id':i1.id})
         )
-        
+
     def test_m2o_flush_size(self):
         mapper(User, users)
         mapper(Address, addresses, properties={
@@ -389,13 +389,13 @@ class SingleCycleTest(UOWTest):
 
         n2, n3 = Node(data='n2'), Node(data='n3')
         n1 = Node(data='n1', children=[n2, n3])
-        
+
         sess.add(n1)
-    
+
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
-                
+
                 CompiledSQL(
                     "INSERT INTO nodes (parent_id, data) VALUES "
                     "(:parent_id, :data)",
@@ -426,7 +426,7 @@ class SingleCycleTest(UOWTest):
 
         sess.add(n1)
         sess.flush()
-        
+
         sess.delete(n1)
         sess.delete(n2)
         sess.delete(n3)
@@ -466,7 +466,7 @@ class SingleCycleTest(UOWTest):
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
                     lambda ctx:{'id':n1.id})
         )
-    
+
     def test_many_to_one_save(self):
         mapper(Node, nodes, properties={
             'parent':relationship(Node, remote_side=nodes.c.id)
@@ -512,7 +512,7 @@ class SingleCycleTest(UOWTest):
 
         sess.add_all([n2, n3])
         sess.flush()
-        
+
         sess.delete(n1)
         sess.delete(n2)
         sess.delete(n3)
@@ -524,7 +524,7 @@ class SingleCycleTest(UOWTest):
                 CompiledSQL("DELETE FROM nodes WHERE nodes.id = :id", 
                         lambda ctx: {'id':n1.id})
         )
-    
+
     def test_cycle_rowswitch(self):
         mapper(Node, nodes, properties={
             'children':relationship(Node)
@@ -540,7 +540,7 @@ class SingleCycleTest(UOWTest):
         n3.id = n2.id
         n1.children.append(n3)
         sess.flush()
-        
+
     def test_bidirectional_mutations_one(self):
         mapper(Node, nodes, properties={
             'children':relationship(Node, 
@@ -556,11 +556,11 @@ class SingleCycleTest(UOWTest):
         sess.delete(n2)
         n1.children.append(n3)
         sess.flush()
-        
+
         sess.delete(n1)
         sess.delete(n3)
         sess.flush()
-        
+
     def test_bidirectional_multilevel_save(self):
         mapper(Node, nodes, properties={
             'children':relationship(Node, 
@@ -627,27 +627,27 @@ class SingleCycleTest(UOWTest):
         self._assert_uow_size(sess, 2)
 
         sess.flush()
-    
+
         n1.data='jack'
 
         self._assert_uow_size(sess, 2)
         sess.flush()
-    
+
         n2 = Node(data='foo')
         sess.add(n2)
         sess.flush()
-    
+
         n1.children.append(n2)
 
         self._assert_uow_size(sess, 3)
-    
+
         sess.flush()
-    
+
         sess = create_session()
         n1 = sess.query(Node).first()
         n1.data='ed'
         self._assert_uow_size(sess, 2)
-    
+
         n1.children
         self._assert_uow_size(sess, 2)
 
@@ -658,25 +658,25 @@ class SingleCycleTest(UOWTest):
 
         parent = Node()
         c1, c2 = Node(parent=parent), Node(parent=parent)
-        
+
         session = Session()
         session.add_all([c1, c2])
         session.add(parent)
 
         session.flush()
-       
+
         pid = parent.id
         c1id = c1.id
         c2id = c2.id
-        
+
         session.expire(parent)
         session.expire(c1)
         session.expire(c2)
-        
+
         session.delete(c1)
         session.delete(c2)
         session.delete(parent)
-        
+
         # testing that relationships 
         # are loaded even if all ids/references are 
         # expired
@@ -718,9 +718,9 @@ class SingleCycleTest(UOWTest):
                 lambda ctx: {'id': pid}
             ),
         )
-        
-        
-        
+
+
+
 class SingleCyclePlusAttributeTest(_base.MappedTest,
                     testing.AssertsExecutionResults, AssertsUOW):
     @classmethod
@@ -731,7 +731,7 @@ class SingleCyclePlusAttributeTest(_base.MappedTest,
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30))
         )
-        
+
         Table('foobars', metadata,
             Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
@@ -758,13 +758,13 @@ class SingleCyclePlusAttributeTest(_base.MappedTest,
         sess.add(n1)
         # ensure "foobars" doesn't get yanked in here
         self._assert_uow_size(sess, 3)
-        
+
         n1.foobars.append(FooBar())
         # saveupdateall/deleteall for FooBar added here,
         # plus processstate node.foobars 
         # currently the "all" procs stay in pairs
         self._assert_uow_size(sess, 6)
-        
+
         sess.flush()
 
 class SingleCycleM2MTest(_base.MappedTest, 
@@ -779,19 +779,19 @@ class SingleCycleM2MTest(_base.MappedTest,
             Column('data', String(30)),
             Column('favorite_node_id', Integer, ForeignKey('nodes.id'))
         )
-        
+
         node_to_nodes =Table('node_to_nodes', metadata,
             Column('left_node_id', Integer, 
                             ForeignKey('nodes.id'),primary_key=True),
             Column('right_node_id', Integer, 
                             ForeignKey('nodes.id'),primary_key=True),
             )
-    
+
     @testing.resolve_artifact_names
     def test_many_to_many_one(self):
         class Node(Base):
             pass
-        
+
         mapper(Node, nodes, properties={
             'children':relationship(Node, secondary=node_to_nodes,
                 primaryjoin=nodes.c.id==node_to_nodes.c.left_node_id,
@@ -800,24 +800,24 @@ class SingleCycleM2MTest(_base.MappedTest,
             ),
             'favorite':relationship(Node, remote_side=nodes.c.id)
         })
-        
+
         sess = create_session()
         n1 = Node(data='n1')
         n2 = Node(data='n2')
         n3 = Node(data='n3')
         n4 = Node(data='n4')
         n5 = Node(data='n5')
-        
+
         n4.favorite = n3
         n1.favorite = n5
         n5.favorite = n2
-        
+
         n1.children = [n2, n3, n4]
         n2.children = [n3, n5]
         n3.children = [n5, n4]
-        
+
         sess.add_all([n1, n2, n3, n4, n5])
-        
+
         # can't really assert the SQL on this easily
         # since there's too many ways to insert the rows.
         # so check the end result
@@ -834,9 +834,9 @@ class SingleCycleM2MTest(_base.MappedTest,
                     (n3.id, n5.id), (n3.id, n4.id)
                 ])
         )
-        
+
         sess.delete(n1)
-        
+
         self.assert_sql_execution(
                 testing.db,
                 sess.flush,
@@ -849,7 +849,7 @@ class SingleCycleM2MTest(_base.MappedTest,
                     "node_to_nodes.right_node_id AND nodes.id = "
                     "node_to_nodes.left_node_id" ,
                     lambda ctx:{u'param_1': n1.id},
-                ),    
+                ),
                 CompiledSQL(
                     "DELETE FROM node_to_nodes WHERE "
                     "node_to_nodes.left_node_id = :left_node_id AND "
@@ -865,15 +865,15 @@ class SingleCycleM2MTest(_base.MappedTest,
                     lambda ctx:{'id': n1.id}
                 ),
         )
-        
+
         for n in [n2, n3, n4, n5]:
             sess.delete(n)
-        
+
         # load these collections
         # outside of the flush() below
         n4.children
         n5.children
-        
+
         self.assert_sql_execution(
             testing.db,
             sess.flush,
@@ -897,7 +897,7 @@ class SingleCycleM2MTest(_base.MappedTest,
                 lambda ctx:[{'id': n2.id}, {'id': n3.id}]
             ),
         )
-    
+
 class RowswitchAccountingTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -907,7 +907,7 @@ class RowswitchAccountingTest(_base.MappedTest):
         Table('child', metadata, 
             Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
         )
-    
+
     @testing.resolve_artifact_names
     def test_accounting_for_rowswitch(self):
         class Parent(object):
@@ -923,7 +923,7 @@ class RowswitchAccountingTest(_base.MappedTest):
                                     backref="parent")
         })
         mapper(Child, child)
-        
+
         sess = create_session(autocommit=False)
 
         p1 = Parent(1)
@@ -964,7 +964,7 @@ class BatchInsertsTest(_base.MappedTest, testing.AssertsExecutionResults):
     def test_batch_interaction(self):
         """test batching groups same-structured, primary 
         key present statements together.
-        
+
         """
         class T(Base):
             pass

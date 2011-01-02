@@ -81,7 +81,7 @@ another database, use the --dburi option with any standard SQLAlchemy URL:
 
     --dburi=postgresql://user:password@localhost/test
 
-Use an empty database and a database user with general DBA privileges.  
+Use an empty database and a database user with general DBA privileges.
 The test suite will be creating and dropping many tables and other DDL, and
 preexisting tables will interfere with the tests.
 
@@ -103,15 +103,15 @@ expect them to be present will fail.
 Additional steps specific to individual databases are as follows:
 
     ORACLE: a user named "test_schema" is created.
-    
+
     The primary database user needs to be able to create and drop tables,
     synonyms, and constraints within the "test_schema" user.   For this
     to work fully, including that the user has the "REFERENCES" role
     in a remote shcema for tables not yet defined (REFERENCES is per-table),
     it is required that the test the user be present in the "DBA" role:
-    
+
         grant dba to scott;
-    
+
     SYBASE: Similar to Oracle, "test_schema" is created as a user, and the
     primary test user needs to have the "sa_role". 
  
@@ -120,7 +120,7 @@ Additional steps specific to individual databases are as follows:
     the transaction log is full otherwise.
 
     A full series of setup assuming sa/master: 
-   
+
         disk init name="translog", physname="/opt/sybase/data/translog.dat", size="10M"
         create database sqlalchemy on default log on translog="10M"
         sp_dboption sqlalchemy, "trunc log on chkpt", true
@@ -142,9 +142,9 @@ Additional steps specific to individual databases are as follows:
     will occur with record locking isolation. This feature is only available
     with MSSQL 2005 and greater. You must enable snapshot isolation at the
     database level and set the default cursor isolation with two SQL commands:
-    
+
      ALTER DATABASE MyDatabase SET ALLOW_SNAPSHOT_ISOLATION ON
-    
+
      ALTER DATABASE MyDatabase SET READ_COMMITTED_SNAPSHOT ON
 
     MSSQL+zxJDBC: Trying to run the unit tests on Windows against SQL Server

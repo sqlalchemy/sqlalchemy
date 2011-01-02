@@ -13,7 +13,7 @@ Consider a table `interval` as below::
 
     from sqlalchemy import MetaData, Table, Column, Integer
     from sqlalchemy.orm import mapper, create_session
-    
+
     engine = create_engine('sqlite://')
     metadata = MetaData()
 
@@ -22,22 +22,22 @@ Consider a table `interval` as below::
         Column('start', Integer, nullable=False),
         Column('end', Integer, nullable=False))
     metadata.create_all(engine)
-    
+
 We can define higher level functions on mapped classes that produce SQL
 expressions at the class level, and Python expression evaluation at the
 instance level.  Below, each function decorated with :func:`hybrid.method`
 or :func:`hybrid.property` may receive ``self`` as an instance of the class,
 or as the class itself::
-    
+
     # A base class for intervals
 
     from sqlalchemy.orm import hybrid
-    
+
     class Interval(object):
         def __init__(self, start, end):
             self.start = start
             self.end = end
-        
+
         @hybrid.property
         def length(self):
             return self.end - self.start
@@ -45,13 +45,13 @@ or as the class itself::
         @hybrid.method
         def contains(self,point):
             return (self.start <= point) & (point < self.end)
-    
+
         @hybrid.method
         def intersects(self, other):
             return self.contains(other.start) | self.contains(other.end)
 
 
-        
+
 """
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, interfaces
@@ -60,7 +60,7 @@ class method(object):
     def __init__(self, func, expr=None):
         self.func = func
         self.expr = expr or func
-        
+
     def __get__(self, instance, owner):
         if instance is None:
             return new.instancemethod(self.expr, owner, owner.__class__)
@@ -84,13 +84,13 @@ class property_(object):
             return self.expr(owner)
         else:
             return self.fget(instance)
-            
+
     def __set__(self, instance, value):
         self.fset(instance, value)
-        
+
     def __delete__(self, instance):
         self.fdel(instance)
-    
+
     def setter(self, fset):
         self.fset = fset
         return self
@@ -98,11 +98,11 @@ class property_(object):
     def deleter(self, fdel):
         self.fdel = fdel
         return self
-    
+
     def expression(self, expr):
         self.expr = expr
         return self
-    
+
     def comparator(self, comparator):
         proxy_attr = attributes.\
                         create_proxied_attribute(self)
@@ -115,15 +115,15 @@ class property_(object):
 class Comparator(interfaces.PropComparator):
     def __init__(self, expression):
         self.expression = expression
-      
+
     def __clause_element__(self):
         expr = self.expression
         while hasattr(expr, '__clause_element__'):
             expr = expr.__clause_element__()
         return expr
-            
+
     def adapted(self, adapter):
         # interesting....
         return self
-        
+
 

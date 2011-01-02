@@ -15,7 +15,7 @@ from _collections import NamedTuple, ImmutableContainer, frozendict, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
     to_column_set, update_copy, flatten_iterator, WeakIdentityMapping, \
     LRUCache, ScopedRegistry, ThreadLocalRegistry
-    
+
 from langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \
     getargspec_init, format_argspec_init, format_argspec_plus, \

@@ -66,7 +66,7 @@ class RowTupleTest(QueryTest):
         mapper(User, users, properties={
             'uname':users.c.name
         })
-        
+
         row  = create_session().\
                     query(User.id, User.uname).\
                     filter(User.id==7).first()
@@ -125,7 +125,7 @@ class RowTupleTest(QueryTest):
                 q.column_descriptions,
                 asserted
             )
-        
+
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()
@@ -140,14 +140,14 @@ class GetTest(QueryTest):
     def test_get_composite_pk_no_result(self):
         s = Session()
         assert s.query(CompositePk).get((100,100)) is None
-        
+
     def test_get_composite_pk_result(self):
         s = Session()
         one_two = s.query(CompositePk).get((1,2))
         assert one_two.i == 1
         assert one_two.j == 2
         assert one_two.k == 3
-    
+
     def test_get_too_few_params(self):
         s = Session()
         q = s.query(CompositePk)
@@ -162,16 +162,16 @@ class GetTest(QueryTest):
         s = Session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
-    
+
     def test_get_null_pk(self):
         """test that a mapping which can have None in a 
         PK (i.e. map to an outerjoin) works with get()."""
-        
+
         s = users.outerjoin(addresses)
-        
+
         class UserThing(_base.ComparableEntity):
             pass
-            
+
         mapper(UserThing, s, properties={
             'id':(users.c.id, addresses.c.user_id),
             'address_id':addresses.c.id,
@@ -186,11 +186,11 @@ class GetTest(QueryTest):
         """test that get()/load() does not use preexisting filter/etc. criterion"""
 
         s = create_session()
-        
+
         q = s.query(User).join('addresses').filter(Address.user_id==8)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
         assert_raises(sa_exc.InvalidRequestError, s.query(User).filter(User.id==7).get, 19)
-        
+
         # order_by()/get() doesn't raise
         s.query(User).order_by(User.id).get(8)
 
@@ -244,7 +244,7 @@ class GetTest(QueryTest):
             # Py2K
             ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
             # end Py2K
-            
+
             table.insert().execute(id=ustring, data=ustring)
             class LocalFoo(Base):
                 pass
@@ -298,7 +298,7 @@ class GetTest(QueryTest):
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_no_limit_offset(self):
         s = create_session()
-        
+
         for q in (
             s.query(User).limit(2),
             s.query(User).offset(2),
@@ -315,31 +315,31 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             assert_raises(sa_exc.InvalidRequestError, q.group_by, 'foo')
 
             assert_raises(sa_exc.InvalidRequestError, q.having, 'foo')
-    
+
             q.enable_assertions(False).join("addresses")
             q.enable_assertions(False).filter(User.name=='ed')
             q.enable_assertions(False).order_by('foo')
             q.enable_assertions(False).group_by('foo')
-            
+
     def test_no_from(self):
         s = create_session()
-    
+
         q = s.query(User).select_from(users)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
 
         q = s.query(User).join('addresses')
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
-        
+
         q = s.query(User).order_by(User.id)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
 
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
-        
+
         q.enable_assertions(False).select_from(users)
-        
+
         # this is fine, however
         q.from_self()
-    
+
     def test_invalid_select_from(self):
         s = create_session()
         q = s.query(User)
@@ -351,15 +351,15 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         q = s.query(User)
         assert_raises(sa_exc.ArgumentError, q.from_statement, User.id==5)
         assert_raises(sa_exc.ArgumentError, q.from_statement, users.join(addresses))
-    
+
     def test_invalid_column(self):
         s = create_session()
         q = s.query(User)
         assert_raises(sa_exc.InvalidRequestError, q.add_column, object())
-    
+
     def test_distinct(self):
         """test that a distinct() call is not valid before 'clauseelement' conditions."""
-        
+
         s = create_session()
         q = s.query(User).distinct()
         assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
@@ -374,7 +374,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
         assert_raises(sa_exc.InvalidRequestError, q.from_statement, text("select * from table"))
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
-        
+
     def test_cancel_order_by(self):
         s = create_session()
 
@@ -399,16 +399,16 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         # after False was set, this should pass
         q._no_select_modifiers("foo")
-        
+
     def test_mapper_zero(self):
         s = create_session()
-        
+
         q = s.query(User, Address)
         assert_raises(sa_exc.InvalidRequestError, q.get, 5)
-        
+
     def test_from_statement(self):
         s = create_session()
-        
+
         q = s.query(User).filter(User.id==5)
         assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
 
@@ -423,7 +423,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         q = s.query(User).order_by(User.name)
         assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
-        
+
 class OperatorTest(QueryTest, AssertsCompiledSQL):
     """test sql.Comparator implementation for MapperProperties"""
 
@@ -455,7 +455,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_comparison(self):
         create_session().query(User)
         ualias = aliased(User)
-        
+
         for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
                                         (operator.gt, '>', '<'),
                                         (operator.eq, '=', '='),
@@ -486,7 +486,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
                 self.assert_(compiled == fwd_sql or compiled == rev_sql,
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
-    
+
     def test_negated_null(self):
         self._test(User.id == None, "users.id IS NULL")
         self._test(~(User.id==None), "users.id IS NOT NULL")
@@ -496,7 +496,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(~(Address.user==None), "addresses.user_id IS NOT NULL")
         self._test(None == Address.user, "addresses.user_id IS NULL")
         self._test(~(None == Address.user), "addresses.user_id IS NOT NULL")
-        
+
     def test_relationship(self):
         self._test(User.addresses.any(Address.id==17), 
                         "EXISTS (SELECT 1 "
@@ -506,7 +506,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         u7 = User(id=7)
         attributes.instance_state(u7).commit_all(attributes.instance_dict(u7))
-        
+
         self._test(Address.user == u7, ":param_1 = addresses.user_id")
 
         self._test(Address.user != u7, "addresses.user_id != :user_id_1 OR addresses.user_id IS NULL")
@@ -530,7 +530,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             Node.children==None, 
             "NOT (EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes.id = nodes_1.parent_id))"
         )
-        
+
         self._test(
             Node.parent==None,
             "nodes.parent_id IS NULL"
@@ -545,12 +545,12 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             nalias.children==None, 
             "NOT (EXISTS (SELECT 1 FROM nodes WHERE nodes_1.id = nodes.parent_id))"
         )
-        
+
         self._test(
                 nalias.children.any(Node.data=='some data'), 
                 "EXISTS (SELECT 1 FROM nodes WHERE "
                 "nodes_1.id = nodes.parent_id AND nodes.data = :data_1)")
-        
+
         # fails, but I think I want this to fail
         #self._test(
         #        Node.children.any(nalias.data=='some data'), 
@@ -567,7 +567,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             Node.parent.has(Node.data=='some data'), 
            "EXISTS (SELECT 1 FROM nodes AS nodes_1 WHERE nodes_1.id = nodes.parent_id AND nodes_1.data = :data_1)"
         )
-        
+
         self._test(
             Node.parent == Node(id=7), 
             ":param_1 = nodes.parent_id"
@@ -582,11 +582,11 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             nalias.parent != Node(id=7), 
             'nodes_1.parent_id != :parent_id_1 OR nodes_1.parent_id IS NULL'
         )
-        
+
         self._test(
             nalias.children.contains(Node(id=7)), "nodes_1.id = :param_1"
         )
-        
+
     def test_op(self):
         self._test(User.name.op('ilike')('17'), "users.name ilike :name_1")
 
@@ -596,11 +596,11 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
     def test_in_on_relationship_not_supported(self):
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
-    
+
     def test_neg(self):
         self._test(-User.id, "-users.id")
         self._test(User.id + -User.id, "users.id + -users.id")
-        
+
     def test_between(self):
         self._test(User.id.between('a', 'b'),
                    "users.id BETWEEN :id_1 AND :id_2")
@@ -623,7 +623,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
 
 class ExpressionTest(QueryTest, AssertsCompiledSQL):
-        
+
     def test_deferred_instances(self):
         session = create_session()
         s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).statement
@@ -633,13 +633,13 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_scalar_subquery(self):
         session = create_session()
-        
+
         q = session.query(User.id).filter(User.id==7).subquery()
-        
+
         q = session.query(User).filter(User.id==q)
-        
+
         eq_(User(id=7), q.one())
-    
+
     def test_label(self):
         session = create_session()
 
@@ -649,29 +649,29 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             "SELECT (SELECT users.id FROM users WHERE users.id = :id_1) AS foo", 
             use_default_dialect=True
         )
-    
+
     def test_as_scalar(self):
         session = create_session()
 
         q = session.query(User.id).filter(User.id==7).as_scalar()
-        
+
         self.assert_compile(session.query(User).filter(User.id.in_(q)),
                             'SELECT users.id AS users_id, users.name '
                             'AS users_name FROM users WHERE users.id '
                             'IN (SELECT users.id FROM users WHERE '
                             'users.id = :id_1)',
                             use_default_dialect=True)
-        
-        
+
+
     def test_param_transfer(self):
         session = create_session()
-        
+
         q = session.query(User.id).filter(User.id==bindparam('foo')).params(foo=7).subquery()
-        
+
         q = session.query(User).filter(User.id==q)
-        
+
         eq_(User(id=7), q.one())
-        
+
     def test_in(self):
         session = create_session()
         s = session.query(User.id).join(User.addresses).group_by(User.id).having(func.count(Address.id) > 2)
@@ -682,17 +682,17 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_union(self):
         s = create_session()
-        
+
         q1 = s.query(User).filter(User.name=='ed').with_labels()
         q2 = s.query(User).filter(User.name=='fred').with_labels()
         eq_(
             s.query(User).from_statement(union(q1, q2).order_by('users_name')).all(),
             [User(name='ed'), User(name='fred')]
         )
-    
+
     def test_select(self):
         s = create_session()
-        
+
         # this is actually not legal on most DBs since the subquery has no alias
         q1 = s.query(User).filter(User.name=='ed')
 
@@ -703,7 +703,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             "users.name AS users_name FROM users WHERE users.name = :name_1)",
             dialect=default.DefaultDialect()
         )
-        
+
     def test_join(self):
         s = create_session()
 
@@ -715,7 +715,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             s.query(User, adalias).join(adalias, User.id==adalias.user_id).all(),
             [(User(id=7,name=u'jack'), Address(email_address=u'jack@bean.com',user_id=7,id=1))]
         )
-        
+
 # more slice tests are available in test/orm/generative.py
 class SliceTest(QueryTest):
     def test_first(self):
@@ -726,15 +726,15 @@ class SliceTest(QueryTest):
     @testing.only_on('sqlite', 'testing execution but db-specific syntax')
     def test_limit_offset_applies(self):
         """Test that the expected LIMIT/OFFSET is applied for slices.
-        
+
         The LIMIT/OFFSET syntax differs slightly on all databases, and
         query[x:y] executes immediately, so we are asserting against
         SQL strings using sqlite's syntax.
-        
+
         """
         sess = create_session()
         q = sess.query(User)
-        
+
         self.assert_sql(testing.db, lambda: q[10:20], [
             ("SELECT users.id AS users_id, users.name AS users_name FROM users LIMIT :param_1 OFFSET :param_2", {'param_1':10, 'param_2':10})
         ])
@@ -764,7 +764,7 @@ class SliceTest(QueryTest):
         ])
 
 
-    
+
 class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
@@ -776,20 +776,20 @@ class FilterTest(QueryTest):
         assert [User(id=8), User(id=9)] == list(create_session().query(User).order_by(User.id)[1:3])
 
         assert User(id=8) == create_session().query(User).order_by(User.id)[1]
-    
+
         assert [] == create_session().query(User).order_by(User.id)[3:3]
         assert [] == create_session().query(User).order_by(User.id)[0:0]
-        
+
     @testing.requires.boolean_col_expressions
     def test_exists(self):
         sess = create_session(testing.db)
-        
+
         assert sess.query(exists().where(User.id==9)).scalar()
         assert not sess.query(exists().where(User.id==29)).scalar()
-        
+
     def test_one_filter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
-    
+
     def test_contains(self):
         """test comparing a collection to an object instance."""
 
@@ -824,15 +824,15 @@ class FilterTest(QueryTest):
             filter(User.addresses.any(id=4)).all()
 
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(email_address='fred@fred.com')).all()
-        
+
         # test that any() doesn't overcorrelate
         assert [User(id=7), User(id=8)] == sess.query(User).join("addresses").filter(~User.addresses.any(Address.email_address=='fred@fred.com')).all()
-        
+
         # test that the contents are not adapted by the aliased join
         assert [User(id=7), User(id=8)] == sess.query(User).join("addresses", aliased=True).filter(~User.addresses.any(Address.email_address=='fred@fred.com')).all()
 
         assert [User(id=10)] == sess.query(User).outerjoin("addresses", aliased=True).filter(~User.addresses.any()).all()
-        
+
     @testing.crashes('maxdb', 'can dump core')
     def test_has(self):
         sess = create_session()
@@ -851,10 +851,10 @@ class FilterTest(QueryTest):
         # test has() doesnt' get subquery contents adapted by aliased join
         assert [Address(id=2), Address(id=3), Address(id=4)] == \
             sess.query(Address).join("user", aliased=True).filter(Address.user.has(User.name.like('%ed%'), id=8)).order_by(Address.id).all()
-        
+
         dingaling = sess.query(Dingaling).get(2)
         assert [User(id=9)] == sess.query(User).filter(User.addresses.any(Address.dingaling==dingaling)).all()
-        
+
     def test_contains_m2m(self):
         sess = create_session()
         item = sess.query(Item).get(3)
@@ -864,7 +864,7 @@ class FilterTest(QueryTest):
 
         item2 = sess.query(Item).get(5)
         assert [Order(id=3)] == sess.query(Order).filter(Order.items.contains(item)).filter(Order.items.contains(item2)).all()
-        
+
 
     def test_comparison(self):
         """test scalar comparison to an object instance"""
@@ -888,7 +888,7 @@ class FilterTest(QueryTest):
         # m2m
         eq_(sess.query(Item).filter(Item.keywords==None).order_by(Item.id).all(), [Item(id=4), Item(id=5)])
         eq_(sess.query(Item).filter(Item.keywords!=None).order_by(Item.id).all(), [Item(id=1),Item(id=2), Item(id=3)])
-    
+
     def test_filter_by(self):
         sess = create_session()
         user = sess.query(User).get(8)
@@ -901,10 +901,10 @@ class FilterTest(QueryTest):
         # one to many generates WHERE NOT EXISTS
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = null()).all()
-    
+
     def test_none_comparison(self):
         sess = create_session()
-        
+
         # scalar
         eq_(
             [Order(description="order 5")],
@@ -914,7 +914,7 @@ class FilterTest(QueryTest):
             [Order(description="order 5")],
             sess.query(Order).filter(Order.address_id==null()).all()
         )
-        
+
         # o2o
         eq_([Address(id=1), Address(id=3), Address(id=4)], 
             sess.query(Address).filter(Address.dingaling==None).order_by(Address.id).all())
@@ -922,11 +922,11 @@ class FilterTest(QueryTest):
             sess.query(Address).filter(Address.dingaling==null()).order_by(Address.id).all())
         eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != None).order_by(Address.id).all())
         eq_([Address(id=2), Address(id=5)], sess.query(Address).filter(Address.dingaling != null()).order_by(Address.id).all())
-        
+
         # m2o
         eq_([Order(id=5)], sess.query(Order).filter(Order.address==None).all())
         eq_([Order(id=1), Order(id=2), Order(id=3), Order(id=4)], sess.query(Order).order_by(Order.id).filter(Order.address!=None).all())
-        
+
         # o2m
         eq_([User(id=10)], sess.query(User).filter(User.addresses==None).all())
         eq_([User(id=7),User(id=8),User(id=9)], sess.query(User).filter(User.addresses!=None).order_by(User.id).all())
@@ -942,16 +942,16 @@ class FilterTest(QueryTest):
         )
 
 
-    
+
 class SetOpsTest(QueryTest, AssertsCompiledSQL):
-    
+
     def test_union(self):
         s = create_session()
-        
+
         fred = s.query(User).filter(User.name=='fred')
         ed = s.query(User).filter(User.name=='ed')
         jack = s.query(User).filter(User.name=='jack')
-        
+
         eq_(fred.union(ed).order_by(User.name).all(), 
             [User(name='ed'), User(name='fred')]
         )
@@ -959,17 +959,17 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         eq_(fred.union(ed, jack).order_by(User.name).all(), 
             [User(name='ed'), User(name='fred'), User(name='jack')]
         )
-    
+
     def test_statement_labels(self):
         """test that label conflicts don't occur with joins etc."""
-        
+
         s = create_session()
         q1 = s.query(User, Address).join(User.addresses).\
                                     filter(Address.email_address=="ed@wood.com")
         q2 = s.query(User, Address).join(User.addresses).\
                                     filter(Address.email_address=="jack@bean.com")
         q3 = q1.union(q2).order_by(User.name)
-        
+
         eq_(
             q3.all(),
             [
@@ -977,11 +977,11 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
                 (User(name='jack'), Address(email_address="jack@bean.com")),
             ]
         )
-        
+
     def test_union_literal_expressions_compile(self):
         """test that column expressions translate during 
             the _from_statement() portion of union(), others"""
-        
+
         s = Session()
         q1 = s.query(User, literal("x"))
         q2 = s.query(User, literal_column("'y'"))
@@ -1011,7 +1011,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             [x['name'] for x in q6.column_descriptions],
             ['User', 'foo']
         )
-        
+
         for q in (q3.order_by(User.id, "anon_1_anon_2"), q6.order_by(User.id, "foo")):
             eq_(q.all(),
                 [
@@ -1025,15 +1025,15 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
                     (User(id=10, name=u'chuck'), u'y')
                 ]
             )
-    
+
     def test_union_labeled_anonymous_columns(self):
         s = Session()
-        
+
         c1, c2 = column('c1'), column('c2')
         q1 = s.query(User, c1.label('foo'), c1.label('bar'))
         q2 = s.query(User, c1.label('foo'), c2.label('bar'))
         q3 = q1.union(q2)
-        
+
         eq_(
             [x['name'] for x in q3.column_descriptions],
             ['User', 'foo', 'bar']
@@ -1050,12 +1050,12 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             "FROM users) AS anon_1",
             use_default_dialect=True
         )
-    
+
     def test_union_mapped_colnames_preserved_across_subquery(self):
         s = Session()
         q1 = s.query(User.name)
         q2 = s.query(User.name)
-        
+
         # the label names in the subquery are the typical anonymized ones
         self.assert_compile(
             q1.union(q2),
@@ -1064,15 +1064,15 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             "UNION SELECT users.name AS users_name FROM users) AS anon_1",
             use_default_dialect=True
         )
-        
+
         # but in the returned named tuples,
         # due to [ticket:1942], this should be 'name', not 'users_name'
         eq_(
             [x['name'] for x in q1.union(q2).column_descriptions],
             ['name']
         )
-        
-        
+
+
     @testing.fails_on('mysql', "mysql doesn't support intersect")
     def test_intersect(self):
         s = create_session()
@@ -1087,7 +1087,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         eq_(fred.union(ed).intersect(ed.union(jack)).all(), 
             [User(name='ed')]
         )
-    
+
     def test_eager_load(self):
         s = create_session()
 
@@ -1104,8 +1104,8 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
                 ]
             )
         self.assert_sql_count(testing.db, go, 1)
-        
-        
+
+
 class AggregateTest(QueryTest):
 
     def test_sum(self):
@@ -1127,7 +1127,7 @@ class AggregateTest(QueryTest):
 class CountTest(QueryTest):
     def test_basic(self):
         s = create_session()
-        
+
         eq_(s.query(User).count(), 4)
 
         eq_(s.query(User).filter(users.c.name.endswith('ed')).count(), 2)
@@ -1136,10 +1136,10 @@ class CountTest(QueryTest):
         s = create_session()
         q = s.query(User, Address)
         eq_(q.count(), 20)  # cartesian product
-        
+
         q = s.query(User, Address).join(User.addresses)
         eq_(q.count(), 5)
-    
+
     def test_nested(self):
         s = create_session()
         q = s.query(User, Address).limit(2)
@@ -1150,12 +1150,12 @@ class CountTest(QueryTest):
 
         q = s.query(User, Address).join(User.addresses).limit(100)
         eq_(q.count(), 5)
-    
+
     def test_cols(self):
         """test that column-based queries always nest."""
-        
+
         s = create_session()
-        
+
         q = s.query(func.count(distinct(User.name)))
         eq_(q.count(), 1)
 
@@ -1171,8 +1171,8 @@ class CountTest(QueryTest):
         q = s.query(Address.user_id)
         eq_(q.count(), 5)
         eq_(q.distinct().count(), 3)
-        
-        
+
+
 class DistinctTest(QueryTest):
     def test_basic(self):
         eq_(
@@ -1232,9 +1232,9 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
     def test_hints(self):
         from sqlalchemy.dialects import mysql
         dialect = mysql.dialect()
-        
+
         sess = create_session()
-        
+
         self.assert_compile(
             sess.query(User).with_hint(User, 'USE INDEX (col1_index,col2_index)'),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -1248,7 +1248,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
             "FROM users",
             dialect=dialect
         )
-        
+
         ualias = aliased(User)
         self.assert_compile(
             sess.query(User, ualias).with_hint(ualias, 'USE INDEX (col1_index,col2_index)').
@@ -1259,7 +1259,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
             "ON users.id < users_1.id",
             dialect=dialect
         )
-    
+
 
 class TextTest(QueryTest):
     def test_fulltext(self):
@@ -1304,7 +1304,7 @@ class ParentTest(QueryTest):
 
         o = sess.query(Order).filter(with_parent(u1, User.orders)).all()
         assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
-        
+
         # test generative criterion
         o = sess.query(Order).with_parent(u1).filter(orders.c.id>2).all()
         assert [Order(description="order 3"), Order(description="order 5")] == o
@@ -1335,7 +1335,7 @@ class ParentTest(QueryTest):
 
     def test_with_transient(self):
         sess = Session()
-        
+
         q = sess.query(User)
         u1 = q.filter_by(name='jack').one()
         utrans = User(id=u1.id)
@@ -1350,7 +1350,7 @@ class ParentTest(QueryTest):
             [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")],
             o.all()
         )
-        
+
     def test_with_pending_autoflush(self):
         sess = Session()
 
@@ -1376,9 +1376,9 @@ class ParentTest(QueryTest):
             sess.query(User).with_parent(opending, 'user').one(),
             User(id=o1.user_id)
         )
-        
 
-        
+
+
 
 class SynonymTest(QueryTest):
 
@@ -1499,7 +1499,7 @@ class ImmediateTest(_fixtures.FixtureTest):
                         filter(User.id.in_([8, 9])).
                         order_by(User.id).
                         one)
-                        
+
 
     @testing.future
     def test_getslice(self):
@@ -1514,10 +1514,10 @@ class ImmediateTest(_fixtures.FixtureTest):
         eq_(sess.query(User.id).filter_by(id=0).scalar(), None)
         eq_(sess.query(User).filter_by(id=7).scalar(),
             sess.query(User).filter_by(id=7).one())
-        
+
         assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User).scalar)
         assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User.id, User.name).scalar)
-        
+
     @testing.resolve_artifact_names
     def test_value(self):
         sess = create_session()
@@ -1580,7 +1580,7 @@ class UpdateDeleteTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_illegal_operations(self):
         s = create_session()
-        
+
         for q, mname in (
             (s.query(User).limit(2), "limit"),
             (s.query(User).offset(2), "offset"),
@@ -1591,17 +1591,17 @@ class UpdateDeleteTest(_base.MappedTest):
         ):
             assert_raises_message(sa_exc.InvalidRequestError, r"Can't call Query.update\(\) when %s\(\) has been called" % mname, q.update, {'name':'ed'})
             assert_raises_message(sa_exc.InvalidRequestError, r"Can't call Query.delete\(\) when %s\(\) has been called" % mname, q.delete)
-            
-        
+
+
     @testing.resolve_artifact_names
     def test_delete(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete()
-    
+
         assert john not in sess and jill not in sess
-    
+
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
     @testing.resolve_artifact_names
@@ -1631,53 +1631,53 @@ class UpdateDeleteTest(_base.MappedTest):
         assert john not in sess and jill not in sess
         sess.rollback()
         assert john in sess and jill in sess
-    
+
     @testing.resolve_artifact_names
     def test_delete_without_session_sync(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session=False)
-    
+
         assert john in sess and jill in sess
-    
+
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
     @testing.resolve_artifact_names
     def test_delete_with_fetch_strategy(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='fetch')
-    
+
         assert john not in sess and jill not in sess
-    
+
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
     @testing.fails_on('mysql', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_delete_invalid_evaluation(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-    
+
         assert_raises(sa_exc.InvalidRequestError,
             sess.query(User).filter(User.name == select([func.max(User.name)])).delete, synchronize_session='evaluate'
         )
-        
+
         sess.query(User).filter(User.name == select([func.max(User.name)])).delete(synchronize_session='fetch')
-        
+
         assert john not in sess
-    
+
         eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
 
     @testing.resolve_artifact_names
     def test_update(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
-    
+
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
@@ -1702,7 +1702,7 @@ class UpdateDeleteTest(_base.MappedTest):
         )
         class Data(_base.ComparableEntity):
             pass
-        
+
         mapper(Data, data, properties={'cnt':data.c.counter})
         metadata.create_all()
         d1 = Data()
@@ -1713,12 +1713,12 @@ class UpdateDeleteTest(_base.MappedTest):
 
         sess.query(Data).update({Data.cnt:Data.cnt + 1})
         sess.flush()
-        
+
         eq_(d1.cnt, 1)
 
         sess.query(Data).update({Data.cnt:Data.cnt + 1}, 'fetch')
         sess.flush()
-        
+
         eq_(d1.cnt, 2)
         sess.close()
 
@@ -1738,19 +1738,19 @@ class UpdateDeleteTest(_base.MappedTest):
         sess = create_session(bind=testing.db, autocommit=False, autoflush=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-    
+
         john.age = 50
         jack.age = 37
-    
+
         # autoflush is false.  therefore our '50' and '37' are getting blown away by this operation.
-    
+
         sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='evaluate')
 
         for x in (john, jack, jill, jane):
             assert not sess.is_modified(x)
 
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
-    
+
         john.age = 25
         assert john in sess.dirty
         assert jack in sess.dirty
@@ -1780,16 +1780,16 @@ class UpdateDeleteTest(_base.MappedTest):
         assert jill not in sess.dirty
         assert sess.is_modified(john)
         assert not sess.is_modified(jack)
-    
-    
+
+
 
     @testing.resolve_artifact_names
     def test_update_with_expire_strategy(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(User.age > 29).update({'age': User.age - 10}, synchronize_session='fetch')
-    
+
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
@@ -1847,23 +1847,23 @@ class UpdateDeleteTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_update_all(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).update({'age': 42}, synchronize_session='evaluate')
-    
+
         eq_([john.age, jack.age, jill.age, jane.age], [42,42,42,42])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([42,42,42,42]))
 
     @testing.resolve_artifact_names
     def test_delete_all(self):
         sess = create_session(bind=testing.db, autocommit=False)
-    
+
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).delete(synchronize_session='evaluate')
-        
+
         assert not (john in sess or jack in sess or jill in sess or jane in sess)
         eq_(sess.query(User).count(), 0)
-        
+
 
 class StatementOptionsTest(QueryTest):
 
@@ -1892,13 +1892,13 @@ class StatementOptionsTest(QueryTest):
 
 class OptionsTest(QueryTest):
     """Test the _get_paths() method of PropertyOption."""
-    
+
     def _option_fixture(self, *arg):
         from sqlalchemy.orm import interfaces
         class Opt(interfaces.PropertyOption):
             pass
         return Opt(arg)
-    
+
     def _make_path(self, path):
         r = []
         for i, item in enumerate(path):
@@ -1907,39 +1907,39 @@ class OptionsTest(QueryTest):
                     item = class_mapper(item)
             r.append(item)
         return tuple(r)
-        
+
     def _assert_path_result(self, opt, q, paths, mappers):
         eq_(
             opt._get_paths(q, False),
             ([self._make_path(p) for p in paths], 
             [class_mapper(c) for c in mappers])
         )
-        
+
     def test_get_path_one_level_string(self):
         sess = Session()
         q = sess.query(User)
-        
+
         opt = self._option_fixture("addresses")
         self._assert_path_result(opt, q, [(User, 'addresses')], [User])
 
     def test_get_path_one_level_attribute(self):
         sess = Session()
         q = sess.query(User)
-        
+
         opt = self._option_fixture(User.addresses)
         self._assert_path_result(opt, q, [(User, 'addresses')], [User])
 
     def test_get_path_one_level_with_unrelated(self):
         sess = Session()
         q = sess.query(Order)
-        
+
         opt = self._option_fixture("addresses")
         self._assert_path_result(opt, q, [], [])
 
     def test_path_multilevel_string(self):
         sess = Session()
         q = sess.query(User)
-        
+
         opt = self._option_fixture("orders.items.keywords")
         self._assert_path_result(opt, q, [
             (User, 'orders'), 
@@ -1951,7 +1951,7 @@ class OptionsTest(QueryTest):
     def test_path_multilevel_attribute(self):
         sess = Session()
         q = sess.query(User)
-        
+
         opt = self._option_fixture(User.orders, Order.items, Item.keywords)
         self._assert_path_result(opt, q, [
             (User, 'orders'), 
@@ -2013,10 +2013,10 @@ class OptionsTest(QueryTest):
         mapper(SubAddr, inherits=Address, properties={
             'flub':relationship(Dingaling)
         })
-        
+
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.flub)
-        
+
         self._assert_path_result(opt, q, [(Address, 'flub')], [SubAddr])
 
     def test_from_subclass_to_subclass_attr(self):
@@ -2026,10 +2026,10 @@ class OptionsTest(QueryTest):
         mapper(SubAddr, inherits=Address, properties={
             'flub':relationship(Dingaling)
         })
-        
+
         q = sess.query(SubAddr)
         opt = self._option_fixture(SubAddr.flub)
-        
+
         self._assert_path_result(opt, q, [(SubAddr, 'flub')], [SubAddr])
 
     def test_from_base_to_base_attr_via_subclass(self):
@@ -2039,10 +2039,10 @@ class OptionsTest(QueryTest):
         mapper(SubAddr, inherits=Address, properties={
             'flub':relationship(Dingaling)
         })
-        
+
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.user)
-        
+
         self._assert_path_result(opt, q, [(Address, 'user')], [Address])
 
     def test_of_type(self):
@@ -2050,10 +2050,10 @@ class OptionsTest(QueryTest):
         class SubAddr(Address):
             pass
         mapper(SubAddr, inherits=Address)
-        
+
         q = sess.query(User)
         opt = self._option_fixture(User.addresses.of_type(SubAddr), SubAddr.user)
-        
+
         self._assert_path_result(opt, q, [
             (User, 'addresses'),
             (User, 'addresses', SubAddr, 'user')
@@ -2066,15 +2066,15 @@ class OptionsTest(QueryTest):
         mapper(SubAddr, inherits=Address, properties={
             'flub':relationship(Dingaling)
         })
-        
+
         q = sess.query(User)
         opt = self._option_fixture(User.addresses.of_type(SubAddr), SubAddr.flub)
-        
+
         self._assert_path_result(opt, q, [
             (User, 'addresses'),
             (User, 'addresses', SubAddr, 'flub')
         ], [User, SubAddr])
-        
+
     def test_aliased_single(self):
         sess = Session()
         ualias = aliased(User)
@@ -2109,4 +2109,4 @@ class OptionsTest(QueryTest):
                 )
         opt = self._option_fixture(Address.user, User.addresses)
         self._assert_path_result(opt, q, [], [])
-        
+

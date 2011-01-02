@@ -18,17 +18,17 @@ Usage is nearly the same as that of the standard Python pickle module::
     from sqlalchemy.ext.serializer import loads, dumps
     metadata = MetaData(bind=some_engine)
     Session = scoped_session(sessionmaker())
-    
+
     # ... define mappers
-    
+
     query = Session.query(MyClass).filter(MyClass.somedata=='foo').order_by(MyClass.sortkey)
-    
+
     # pickle the query
     serialized = dumps(query)
-    
+
     # unpickle.  Pass in metadata + scoped_session
     query2 = loads(serialized, metadata, Session)
-    
+
     print query2.all()
 
 Similar restrictions as when using raw pickle apply; mapped classes must be 
@@ -81,7 +81,7 @@ __all__ = ['Serializer', 'Deserializer', 'dumps', 'loads']
 
 def Serializer(*args, **kw):
     pickler = pickle.Pickler(*args, **kw)
-        
+
     def persistent_id(obj):
         #print "serializing:", repr(obj)
         if isinstance(obj, QueryableAttribute):
@@ -101,15 +101,15 @@ def Serializer(*args, **kw):
         else:
             return None
         return id
-        
+
     pickler.persistent_id = persistent_id
     return pickler
-    
+
 our_ids = re.compile(r'(mapper|table|column|session|attribute|engine):(.*)')
 
 def Deserializer(file, metadata=None, scoped_session=None, engine=None):
     unpickler = pickle.Unpickler(file)
-    
+
     def get_engine():
         if engine:
             return engine
@@ -119,7 +119,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             return metadata.bind
         else:
             return None
-            
+
     def persistent_load(id):
         m = our_ids.match(id)
         if not m:
@@ -152,10 +152,10 @@ def dumps(obj, protocol=0):
     pickler = Serializer(buf, protocol)
     pickler.dump(obj)
     return buf.getvalue()
-    
+
 def loads(data, metadata=None, scoped_session=None, engine=None):
     buf = byte_buffer(data)
     unpickler = Deserializer(buf, metadata, scoped_session, engine)
     return unpickler.load()
-    
-    
+
+

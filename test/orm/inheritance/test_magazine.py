@@ -198,7 +198,7 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
         session.add(pub)
 
-        
+
         session.flush()
         print [x for x in session]
         session.expunge_all()

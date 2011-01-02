@@ -78,9 +78,9 @@ class ClassManager(dict):
     STATE_ATTR = '_sa_instance_state'
 
     deferred_scalar_loader = None
-    
+
     original_init = object.__init__
-    
+
     def __init__(self, class_):
         self.class_ = class_
         self.factory = None  # where we came from, for inheritance bookkeeping
@@ -101,30 +101,30 @@ class ClassManager(dict):
 
         self.manage()
         self._instrument_init()
-    
+
     dispatch = event.dispatcher(events.InstanceEvents)
-    
+
     @property
     def is_mapped(self):
         return 'mapper' in self.__dict__
-        
+
     @util.memoized_property
     def mapper(self):
         raise exc.UnmappedClassError(self.class_)
-        
+
     def _attr_has_impl(self, key):
         """Return True if the given attribute is fully initialized.
-        
+
         i.e. has an impl.
         """
-        
+
         return key in self and self[key].impl is not None
-        
+
     def _configure_create_arguments(self, 
                             _source=None, 
                             deferred_scalar_loader=None):
         """Accept extra **kw arguments passed to create_manager_for_cls.
-        
+
         The current contract of ClassManager and other managers is that they
         take a single "cls" argument in their constructor (as per 
         test/orm/instrumentation.py InstrumentationCollisionTest).  This
@@ -133,30 +133,30 @@ class ClassManager(dict):
         ClassManager-like instances.   So create_manager_for_cls sends
         in ClassManager-specific arguments via this method once the 
         non-proxied ClassManager is available.
-        
+
         """
         if _source:
             deferred_scalar_loader = _source.deferred_scalar_loader
 
         if deferred_scalar_loader:
             self.deferred_scalar_loader = deferred_scalar_loader
-    
+
     def _subclass_manager(self, cls):
         """Create a new ClassManager for a subclass of this ClassManager's
         class.
-        
+
         This is called automatically when attributes are instrumented so that
         the attributes can be propagated to subclasses against their own
         class-local manager, without the need for mappers etc. to have already
         pre-configured managers for the full class hierarchy.   Mappers
         can post-configure the auto-generated ClassManager when needed.
-        
+
         """
         manager = manager_of_class(cls)
         if manager is None:
             manager = _create_manager_for_cls(cls, _source=self)
         return manager
-        
+
     def _instrument_init(self):
         # TODO: self.class_.__init__ is often the already-instrumented
         # __init__ from an instrumented superclass.  We still need to make 
@@ -166,12 +166,12 @@ class ClassManager(dict):
         self.original_init = self.class_.__init__
         self.new_init = _generate_init(self.class_, self)
         self.install_member('__init__', self.new_init)
-        
+
     def _uninstrument_init(self):
         if self.new_init:
             self.uninstall_member('__init__')
             self.new_init = None
-    
+
     @util.memoized_property
     def _state_constructor(self):
         self.dispatch.first_init(self, self.class_)
@@ -179,15 +179,15 @@ class ClassManager(dict):
             return state.MutableAttrInstanceState
         else:
             return state.InstanceState
-        
+
     def manage(self):
         """Mark this instance as the manager for its class."""
-        
+
         setattr(self.class_, self.MANAGER_ATTR, self)
 
     def dispose(self):
         """Dissasociate this manager from its class."""
-        
+
         delattr(self.class_, self.MANAGER_ATTR)
 
     def manager_getter(self):
@@ -201,7 +201,7 @@ class ClassManager(dict):
             self.local_attrs[key] = inst
             self.install_descriptor(key, inst)
         self[key] = inst
-        
+
         for cls in self.class_.__subclasses__():
             manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
@@ -214,11 +214,11 @@ class ClassManager(dict):
                 if recursive:
                     for m in mgr.subclass_managers(True):
                         yield m
-        
+
     def post_configure_attribute(self, key):
         instrumentation_registry.dispatch.\
                 attribute_instrument(self.class_, key, self[key])
-        
+
     def uninstrument_attribute(self, key, propagated=False):
         if key not in self:
             return
@@ -238,12 +238,12 @@ class ClassManager(dict):
 
     def unregister(self):
         """remove all instrumentation established by this ClassManager."""
-        
+
         self._uninstrument_init()
 
         self.mapper = self.dispatch = None
         self.info.clear()
-        
+
         for key in list(self):
             if key in self.local_attrs:
                 self.uninstrument_attribute(key)
@@ -304,15 +304,15 @@ class ClassManager(dict):
     def setup_instance(self, instance, state=None):
         setattr(instance, self.STATE_ATTR, 
                     state or self._state_constructor(instance, self))
-    
+
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)
-        
+
     def _new_state_if_none(self, instance):
         """Install a default InstanceState if none is present.
 
         A private convenience method used by the __init__ decorator.
-        
+
         """
         if hasattr(instance, self.STATE_ATTR):
             return False
@@ -329,7 +329,7 @@ class ClassManager(dict):
             state = self._state_constructor(instance, self)
             setattr(instance, self.STATE_ATTR, state)
             return state
-    
+
     def state_getter(self):
         """Return a (instance) -> InstanceState callable.
 
@@ -339,13 +339,13 @@ class ClassManager(dict):
         """
 
         return attrgetter(self.STATE_ATTR)
-    
+
     def dict_getter(self):
         return attrgetter('__dict__')
-        
+
     def has_state(self, instance):
         return hasattr(instance, self.STATE_ATTR)
-        
+
     def has_parent(self, state, key, optimistic=False):
         """TODO"""
         return self.get_impl(key).hasparent(state, optimistic=optimistic)
@@ -365,7 +365,7 @@ class _ClassInstrumentationAdapter(ClassManager):
         self._adapted = override
         self._get_state = self._adapted.state_getter(class_)
         self._get_dict = self._adapted.dict_getter(class_)
-        
+
         ClassManager.__init__(self, class_, **kw)
 
     def manage(self):
@@ -427,10 +427,10 @@ class _ClassInstrumentationAdapter(ClassManager):
 
     def setup_instance(self, instance, state=None):
         self._adapted.initialize_instance_dict(self.class_, instance)
-        
+
         if state is None:
             state = self._state_constructor(instance, self)
-            
+
         # the given instance is assumed to have no state
         self._adapted.install_state(self.class_, instance, state)
         return state
@@ -445,7 +445,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             return False
         else:
             return True
-            
+
     def state_getter(self):
         return self._get_state
 
@@ -454,7 +454,7 @@ class _ClassInstrumentationAdapter(ClassManager):
 
 def register_class(class_, **kw):
     """Register class instrumentation.
-    
+
     Returns the existing or newly created class manager.
     """
 
@@ -462,31 +462,31 @@ def register_class(class_, **kw):
     if manager is None:
         manager = _create_manager_for_cls(class_, **kw)
     return manager
-    
+
 def unregister_class(class_):
     """Unregister class instrumentation."""
-    
+
     instrumentation_registry.unregister(class_)
 
 
 def is_instrumented(instance, key):
     """Return True if the given attribute on the given instance is
     instrumented by the attributes package.
-    
+
     This function may be used regardless of instrumentation
     applied directly to the class, i.e. no descriptors are required.
-    
+
     """
     return manager_of_class(instance.__class__).\
                         is_instrumented(key, search=True)
 
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton.
-    
+
     All classes are routed through this registry 
     when first instrumented, however the InstrumentationRegistry
     is not actually needed unless custom ClassManagers are in use.
-    
+
     """
 
     _manager_finders = weakref.WeakKeyDictionary()
@@ -518,23 +518,23 @@ class InstrumentationRegistry(object):
         manager = factory(class_)
         if not isinstance(manager, ClassManager):
             manager = _ClassInstrumentationAdapter(class_, manager)
-            
+
         if factory != ClassManager and not self._extended:
             # somebody invoked a custom ClassManager.
             # reinstall global "getter" functions with the more 
             # expensive ones.
             self._extended = True
             _install_lookup_strategy(self)
-        
+
         manager._configure_create_arguments(**kw)
 
         manager.factory = factory
         self._manager_finders[class_] = manager.manager_getter()
         self._state_finders[class_] = manager.state_getter()
         self._dict_finders[class_] = manager.dict_getter()
-        
+
         self.dispatch.class_instrument(class_)
-        
+
         return manager
 
     def _collect_management_factories_for(self, cls):
@@ -597,7 +597,7 @@ class InstrumentationRegistry(object):
         except KeyError:
             raise AttributeError("%r is not instrumented" %
                                     instance.__class__)
-        
+
     def unregister(self, class_):
         if class_ in self._manager_finders:
             manager = self.manager_of_class(class_)
@@ -609,7 +609,7 @@ class InstrumentationRegistry(object):
             del self._dict_finders[class_]
         if ClassManager.MANAGER_ATTR in class_.__dict__:
             delattr(class_, ClassManager.MANAGER_ATTR)
-        
+
 instrumentation_registry = InstrumentationRegistry()
 
 
@@ -618,10 +618,10 @@ def _install_lookup_strategy(implementation):
     with either faster or more comprehensive implementations,
     based on whether or not extended class instrumentation
     has been detected.
-    
+
     This function is called only by InstrumentationRegistry()
     and unit tests specific to this behavior.
-    
+
     """
     global instance_state, instance_dict, manager_of_class
     if implementation is util.symbol('native'):

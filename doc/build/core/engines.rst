@@ -46,9 +46,9 @@ SQLAlchemy dialect always requires that an appropriate DBAPI driver is installed
 The table below summarizes the state of DBAPI support in SQLAlchemy 0.7.  The values 
 translate as:
 
-* yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.   
+* yes / Python platform - The SQLAlchemy dialect is mostly or fully operational on the target platform.
 * yes / OS platform - The DBAPI supports that platform.
-* no / Python platform - The DBAPI does not support that platform, or there is no SQLAlchemy dialect support.  
+* no / Python platform - The DBAPI does not support that platform, or there is no SQLAlchemy dialect support.
 * no / OS platform - The DBAPI does not support that platform.
 * partial - the DBAPI is partially usable on the target platform but has major unresolved issues.
 * development - a development version of the dialect exists, but is not yet usable.
@@ -280,7 +280,7 @@ namespace of SA loggers that can be turned on is as follows:
 * ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for SQL query output, ``logging.DEBUG`` for query + result set output.
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects.  See the documentation of individual dialects for details. 
 * ``sqlalchemy.pool`` - controls connection pool logging.  set to ``logging.INFO`` or lower to log connection pool checkouts/checkins.
-* ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.   
+* ``sqlalchemy.orm`` - controls logging of various ORM functions.  set to ``logging.INFO`` for information on mapper configurations.
 
 For example, to log SQL queries using Python logging instead of the ``echo=True`` flag::
 

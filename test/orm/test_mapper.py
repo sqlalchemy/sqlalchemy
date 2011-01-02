@@ -31,7 +31,7 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_update_attr_keys(self):
         """test that update()/insert() use the correct key when given InstrumentedAttributes."""
-        
+
         mapper(User, users, properties={
             'foobar':users.c.name
         })
@@ -41,11 +41,11 @@ class MapperTest(_fixtures.FixtureTest):
 
         users.update().values({User.foobar:User.foobar + 'foo'}).execute()
         eq_(sa.select([User.foobar]).where(User.foobar=='name1foo').execute().fetchall(), [('name1foo',)])
-        
+
     @testing.resolve_artifact_names
     def test_utils(self):
         from sqlalchemy.orm.util import _is_mapped_class, _is_aliased_class
-        
+
         class Foo(object):
             x = "something"
             @property
@@ -53,7 +53,7 @@ class MapperTest(_fixtures.FixtureTest):
                 return "somethign else"
         m = mapper(Foo, users)
         a1 = aliased(Foo)
-        
+
         f = Foo()
 
         for fn, arg, ret in [
@@ -93,13 +93,13 @@ class MapperTest(_fixtures.FixtureTest):
         """test preservation of mapper compile errors raised during hasattr(),
         as well as for redundant mapper compile calls.  Test that 
         repeated calls don't stack up error messages.
-        
+
         """
-        
+
         mapper(Address, addresses, properties={
             'user':relationship(User)
         })
-        
+
         hasattr(Address.user, 'property')
         for i in range(3):
             assert_raises_message(sa.exc.InvalidRequestError,
@@ -109,7 +109,7 @@ class MapperTest(_fixtures.FixtureTest):
                                   "Original exception was: Class "
                                   "'test.orm._fixtures.User' is not mapped$"
                                   , configure_mappers)
-    
+
     @testing.resolve_artifact_names
     def test_column_prefix(self):
         mapper(User, users, column_prefix='_', properties={
@@ -175,7 +175,7 @@ class MapperTest(_fixtures.FixtureTest):
                               "not represented in the mapper's table",
                               mapper, User, users, properties={'foo'
                               : addresses.c.user_id})
-        
+
     @testing.resolve_artifact_names
     def test_constructor_exc(self):
         """TypeError is raised for illegal constructor args, 
@@ -248,12 +248,12 @@ class MapperTest(_fixtures.FixtureTest):
         m= mapper(User, users)
         assert not m.configured
         configure_mappers()
-        
+
         m2 = mapper(Address, addresses, properties={
                                             'user':relationship(User, backref='addresses')
                                         })
         assert m.get_property('addresses')
-        
+
     @testing.resolve_artifact_names
     def test_add_property(self):
         assert_col = []
@@ -279,7 +279,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         class UCComparator(sa.orm.PropComparator):
             __hash__ = None
-            
+
             def __eq__(self, other):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
@@ -452,7 +452,7 @@ class MapperTest(_fixtures.FixtureTest):
             def name(self):
                 pass
         class Empty(object):pass
-        
+
         empty = mapper(Empty, t, properties={'empty_id' : t.c.id}, 
                        include_properties=[])
         p_m = mapper(Person, t, polymorphic_on=t.c.type,
@@ -473,12 +473,12 @@ class MapperTest(_fixtures.FixtureTest):
                      column_prefix="p_")
 
         hd_m = mapper(HasDef, t, column_prefix="h_")
-        
+
         fb_m = mapper(Fub, t, include_properties=(t.c.id, t.c.type))
         frb_m = mapper(Frob, t, column_prefix='f_',
                        exclude_properties=(t.c.boss_id,
                        'employee_number', t.c.vendor_id))
-        
+
         configure_mappers()
 
         def assert_props(cls, want):
@@ -490,9 +490,9 @@ class MapperTest(_fixtures.FixtureTest):
             have = set([p.key for p in class_mapper(cls).iterate_properties])
             want = set(want)
             eq_(have, want)
-        
+
         assert_props(HasDef, ['h_boss_id', 'h_employee_number', 'h_id', 
-                                'name', 'h_name', 'h_vendor_id', 'h_type'])    
+                                'name', 'h_name', 'h_vendor_id', 'h_type'])
         assert_props(Person, ['id', 'name', 'type'])
         assert_instrumented(Person, ['id', 'name', 'type'])
         assert_props(Employee, ['boss', 'boss_id', 'employee_number',
@@ -501,10 +501,10 @@ class MapperTest(_fixtures.FixtureTest):
                                                         'id', 'name', 'type'])
         assert_props(Manager, ['boss', 'boss_id', 'employee_number', 'peon',
                                'id', 'name', 'type'])
-                               
+
         # 'peon' and 'type' are both explicitly stated properties
         assert_instrumented(Manager, ['peon', 'type', 'id'])
-        
+
         assert_props(Vendor, ['vendor_id', 'id', 'name', 'type'])
         assert_props(Hoho, ['id', 'name', 'type'])
         assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
@@ -521,11 +521,11 @@ class MapperTest(_fixtures.FixtureTest):
             Foo, inherits=Person, polymorphic_identity='foo',
             exclude_properties=('type', ),
             )
-    
+
     @testing.resolve_artifact_names
     def test_mapping_to_join_raises(self):
         """Test implicit merging of two cols raises."""
-        
+
         usersaddresses = sa.join(users, addresses,
                                  users.c.id == addresses.c.user_id)
         assert_raises_message(
@@ -624,12 +624,12 @@ class MapperTest(_fixtures.FixtureTest):
         m1 = mapper(Item, items, primary_key=[items.c.id])
         m2 = mapper(Keyword, keywords, primary_key=keywords.c.id)
         m3 = mapper(User, users, primary_key=(users.c.id,))
-        
+
         assert m1.primary_key[0] is items.c.id
         assert m2.primary_key[0] is keywords.c.id
         assert m3.primary_key[0] is users.c.id
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_custom_join(self):
         """select_from totally replace the FROM parameters."""
@@ -668,7 +668,7 @@ class MapperTest(_fixtures.FixtureTest):
             create_session().query(User).order_by(User.name).all(),
             [User(id=10, name=u'chuck'), User(id=8, name=u'ed'), User(id=9, name=u'fred'), User(id=7, name=u'jack')]
         )
-        
+
     # 'Raises a "expression evaluation not supported" error at prepare time
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.resolve_artifact_names
@@ -731,14 +731,14 @@ class MapperTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_override_2(self):
         """exclude_properties cancels the error."""
-        
+
         mapper(User, users,
                exclude_properties=['name'],
                properties=dict(
                    name=relationship(mapper(Address, addresses))))
-        
+
         assert bool(User.name)
-        
+
     @testing.resolve_artifact_names
     def test_override_3(self):
         """The column being named elsewhere also cancels the error,"""
@@ -771,7 +771,7 @@ class MapperTest(_fixtures.FixtureTest):
             adlist = synonym('addresses'),
             adname = synonym('addresses')
         ))
-        
+
         # ensure the synonym can get at the proxied comparators without
         # an explicit compile
         User.name == 'ed'
@@ -783,16 +783,16 @@ class MapperTest(_fixtures.FixtureTest):
 
         # test compile
         assert not isinstance(User.uname == 'jack', bool)
-        
+
         assert User.uname.property
         assert User.adlist.property
-        
+
         sess = create_session()
-        
+
         # test RowTuple names
         row = sess.query(User.id, User.uname).first()
         assert row.uname == row[1]
-        
+
         u = sess.query(User).filter(User.uname=='jack').one()
 
         fixture = self.static.user_address_result[0].addresses
@@ -886,22 +886,22 @@ class MapperTest(_fixtures.FixtureTest):
     def test_comparable(self):
         class extendedproperty(property):
             attribute = 123
-            
+
             def method1(self):
                 return "method1"
-            
+
             def __getitem__(self, key):
                 return 'value'
 
         class UCComparator(sa.orm.PropComparator):
             __hash__ = None
-            
+
             def method1(self):
                 return "uccmethod1"
-                
+
             def method2(self, other):
                 return "method2"
-                
+
             def __eq__(self, other):
                 cls = self.prop.parent.class_
                 col = getattr(cls, 'name')
@@ -940,7 +940,7 @@ class MapperTest(_fixtures.FixtureTest):
                 AttributeError, 
                 "Neither 'extendedproperty' object nor 'UCComparator' object has an attribute 'nonexistent'", 
                 getattr, User.uc_name, 'nonexistent')
-            
+
             # test compile
             assert not isinstance(User.uc_name == 'jack', bool)
             u = q.filter(User.uc_name=='JACK').one()
@@ -973,15 +973,15 @@ class MapperTest(_fixtures.FixtureTest):
             def __eq__(self, other):
                 # lower case comparison
                 return func.lower(self.__clause_element__()) == func.lower(other)
-                
+
             def intersects(self, other):
                 # non-standard comparator
                 return self.__clause_element__().op('&=')(other)
-                
+
         mapper(User, users, properties={
             'name':sa.orm.column_property(users.c.name, comparator_factory=MyComparator)
         })
-        
+
         assert_raises_message(
             AttributeError, 
             "Neither 'InstrumentedAttribute' object nor 'MyComparator' object has an attribute 'nonexistent'", 
@@ -989,7 +989,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         eq_(str((User.name == 'ed').compile(dialect=sa.engine.default.DefaultDialect())) , "lower(users.name) = lower(:lower_1)")
         eq_(str((User.name.intersects('ed')).compile(dialect=sa.engine.default.DefaultDialect())), "users.name &= :name_1")
-        
+
 
     @testing.resolve_artifact_names
     def test_reentrant_compile(self):
@@ -997,7 +997,7 @@ class MapperTest(_fixtures.FixtureTest):
             def post_instrument_class(self, mapper):
                 super(MyFakeProperty, self).post_instrument_class(mapper)
                 configure_mappers()
-            
+
         m1 = mapper(User, users, properties={
             'name':MyFakeProperty(users.c.name)
         })
@@ -1009,13 +1009,13 @@ class MapperTest(_fixtures.FixtureTest):
             def post_instrument_class(self, mapper):
                 super(MyFakeProperty, self).post_instrument_class(mapper)
                 configure_mappers()
-            
+
         m1 = mapper(User, users, properties={
             'name':MyFakeProperty(users.c.name)
         })
         m2 = mapper(Address, addresses)
         configure_mappers()
-        
+
     @testing.resolve_artifact_names
     def test_reconstructor(self):
         recon = []
@@ -1105,7 +1105,7 @@ class MapperTest(_fixtures.FixtureTest):
             pass
         class Sub(Base):
             pass
-        
+
         mapper(Base, users)
         sa.orm.configure_mappers()
 
@@ -1126,14 +1126,14 @@ class MapperTest(_fixtures.FixtureTest):
     def test_unmapped_subclass_error_premap(self):
         class Base(object):
             pass
-            
+
         mapper(Base, users)
-        
+
         class Sub(Base):
             pass
 
         sa.orm.configure_mappers()
-        
+
         # we can create new instances, set attributes.
         s = Sub()
         s.name = 'foo'
@@ -1142,11 +1142,11 @@ class MapperTest(_fixtures.FixtureTest):
             attributes.get_history(s, 'name'),
             (['foo'], (), ())
         )
-        
+
         # using it with an ORM operation, raises
         assert_raises(sa.orm.exc.UnmappedClassError,
                         create_session().add, Sub())
-        
+
     @testing.resolve_artifact_names
     def test_oldstyle_mixin(self):
         class OldStyle:
@@ -1165,7 +1165,7 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(B, users)
 
 class DocumentTest(testing.TestBase):
-        
+
     def test_doc_propagate(self):
         metadata = MetaData()
         t1 = Table('t1', metadata,
@@ -1183,10 +1183,10 @@ class DocumentTest(testing.TestBase):
 
         class Foo(object):
             pass
-        
+
         class Bar(object):
             pass
-            
+
         mapper(Foo, t1, properties={
             'bars':relationship(Bar, 
                                     doc="bar relationship", 
@@ -1205,11 +1205,11 @@ class DocumentTest(testing.TestBase):
         eq_(Foo.hoho.__doc__, "syn of col4")
         eq_(Bar.col1.__doc__, "primary key column")
         eq_(Bar.foo.__doc__, "foo relationship")
-        
-        
-        
+
+
+
 class OptionsTest(_fixtures.FixtureTest):
-    
+
     @testing.fails_if(lambda: True, "0.7 regression, may not support "
                                 "synonyms for relationship")
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -1219,7 +1219,7 @@ class OptionsTest(_fixtures.FixtureTest):
             addresses = relationship(mapper(Address, addresses), lazy='select',
                                  order_by=addresses.c.id),
             adlist = synonym('addresses')))
-        
+
         def go():
             sess = create_session()
             u = (sess.query(User).
@@ -1379,9 +1379,9 @@ class OptionsTest(_fixtures.FixtureTest):
             items = relationship(Item, secondary=order_items)
         ))
         mapper(Item, items)
-        
+
         sess = create_session()
-        
+
         oalias = aliased(Order)
         opt1 = sa.orm.joinedload(User.orders, Order.items)
         opt2a, opt2b = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
@@ -1390,7 +1390,7 @@ class OptionsTest(_fixtures.FixtureTest):
         assert opt1 in ustate.load_options
         assert opt2a not in ustate.load_options
         assert opt2b not in ustate.load_options
-        
+
         import pickle
         pickle.dumps(u1)
 
@@ -1424,7 +1424,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_deep_options_2(self):
         """test (joined|subquery)load_all() options"""
-        
+
         sess = create_session()
 
         l = (sess.query(User).
@@ -1491,7 +1491,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             def validate_name(self, key, name):
                 assert name != 'fred'
                 return name + ' modified'
-                
+
         mapper(User, users)
         sess = create_session()
         u1 = User(name='ed')
@@ -1502,7 +1502,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(User).filter_by(name='ed modified').one(), User(name='ed'))
-        
+
 
     @testing.resolve_artifact_names
     def test_collection(self):
@@ -1511,7 +1511,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             def validate_address(self, key, ad):
                 assert '@' in ad.email_address
                 return ad
-                
+
         mapper(User, users, properties={'addresses':relationship(Address)})
         mapper(Address, addresses)
         sess = create_session()
@@ -1532,12 +1532,12 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class DummyComposite(object):
             def __init__(self, x, y):
                 pass
-        
+
         from sqlalchemy.orm.interfaces import PropComparator
-        
+
         class MyFactory(PropComparator):
             pass
-            
+
         for args in (
             (column_property, users.c.name),
             (deferred, users.c.name),
@@ -1551,11 +1551,11 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             fn = args[0]
             args = args[1:]
             fn(comparator_factory=MyFactory, *args)
-        
+
     @testing.resolve_artifact_names
     def test_column(self):
         from sqlalchemy.orm.properties import ColumnProperty
-        
+
         class MyFactory(ColumnProperty.Comparator):
             __hash__ = None
             def __eq__(self, other):
@@ -1581,7 +1581,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     User.name == 'ed', 
                     "foobar(users.name) = foobar(:foobar_1)",
                     dialect=default.DefaultDialect())
-        
+
         self.assert_compile(
                     aliased(User).name == 'ed', 
                     "foobar(users_1.name) = foobar(:foobar_1)",
@@ -1600,7 +1600,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             __hash__ = None
             def __eq__(self, other):
                 return func.foobar(self.__clause_element__().c.id) == func.foobar(other.user_id)
-                
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User, comparator_factory=MyFactory, 
@@ -1614,7 +1614,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.assert_compile(aliased(Address).user == User(id=5), "foobar(addresses_1.user_id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
         self.assert_compile(aliased(User).addresses == Address(id=5, user_id=7), "foobar(users_1.id) = foobar(:foobar_1)", dialect=default.DefaultDialect())
 
-    
+
 class DeferredTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
@@ -1664,7 +1664,7 @@ class DeferredTest(_fixtures.FixtureTest):
             'isopen':synonym('_isopen', map_column=True),
             'description':deferred(orders.c.description, group='foo')
         })
-        
+
         sess = create_session()
         o1 = sess.query(Order).get(1)
         eq_(o1.description, "order 1")
@@ -1810,7 +1810,7 @@ class DeferredTest(_fixtures.FixtureTest):
 
         def go():
             q.all()[0].user_id
-                
+
         self.sql_eq_(go, [
             ("SELECT orders.id AS orders_id, "
              "orders.address_id AS orders_address_id, "
@@ -1913,7 +1913,7 @@ class SecondaryOptionsTest(_base.MappedTest):
     run_inserts = 'once'
 
     run_deletes = None
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table("base", metadata, 
@@ -1930,7 +1930,7 @@ class SecondaryOptionsTest(_base.MappedTest):
         Table('related', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
         )
-        
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
@@ -1950,7 +1950,7 @@ class SecondaryOptionsTest(_base.MappedTest):
         })
         mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
         mapper(Related, related)
-        
+
     @classmethod
     @testing.resolve_artifact_names
     def insert_data(cls):
@@ -1980,12 +1980,12 @@ class SecondaryOptionsTest(_base.MappedTest):
             {'id':5},
             {'id':6},
         ])
-        
+
     @testing.resolve_artifact_names
     def test_contains_eager(self):
         sess = create_session()
-        
-        
+
+
         child1s = sess.query(Child1).join(Child1.related).options(sa.orm.contains_eager(Child1.related)).order_by(Child1.id)
 
         def go():
@@ -1994,7 +1994,7 @@ class SecondaryOptionsTest(_base.MappedTest):
                 [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
             )
         self.assert_sql_count(testing.db, go, 1)
-        
+
         c1 = child1s[0]
  
         self.assert_sql_execution(
@@ -2020,7 +2020,7 @@ class SecondaryOptionsTest(_base.MappedTest):
                 [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
             )
         self.assert_sql_count(testing.db, go, 1)
-        
+
         c1 = child1s[0]
 
         self.assert_sql_execution(
@@ -2050,7 +2050,7 @@ class SecondaryOptionsTest(_base.MappedTest):
                 [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
             )
         self.assert_sql_count(testing.db, go, 4)
-        
+
         c1 = child1s[0]
 
         # this *does* joinedload
@@ -2064,7 +2064,7 @@ class SecondaryOptionsTest(_base.MappedTest):
                 {'param_1':4}
             )
         )
-        
+
 
 class DeferredPopulationTest(_base.MappedTest):
     @classmethod
@@ -2086,7 +2086,7 @@ class DeferredPopulationTest(_base.MappedTest):
 
         mapper(Human, human, properties={"thing": relationship(Thing)})
         mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
-    
+
     @classmethod
     @testing.resolve_artifact_names
     def insert_data(cls):
@@ -2097,7 +2097,7 @@ class DeferredPopulationTest(_base.MappedTest):
         human.insert().execute([
             {"id": 1, "thing_id": 1, "name": "Clark Kent"},
         ])
-        
+
     def _test(self, thing):
         assert "name" in attributes.instance_state(thing).dict
 
@@ -2121,7 +2121,7 @@ class DeferredPopulationTest(_base.MappedTest):
         result = session.query(Thing).first()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
-    
+
     @testing.resolve_artifact_names
     def test_joinedload_with_clear(self):
         session = create_session()
@@ -2151,8 +2151,8 @@ class DeferredPopulationTest(_base.MappedTest):
         result = session.query(Human).add_entity(Thing).join("thing").first()
         thing = session.query(Thing).options(sa.orm.undefer("name")).first()
         self._test(thing)
-    
-        
+
+
 
 
 class NoLoadTest(_fixtures.FixtureTest):
@@ -2195,8 +2195,8 @@ class NoLoadTest(_fixtures.FixtureTest):
             )
 
 
-        
-        
+
+
 
 class RequirementsTest(_base.MappedTest):
     """Tests the contract for user classes."""
@@ -2232,14 +2232,14 @@ class RequirementsTest(_base.MappedTest):
         assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
 
         assert_raises(sa.exc.ArgumentError, mapper, 123)
-        
+
         class NoWeakrefSupport(str):
             pass
 
         # TODO: is weakref support detectable without an instance?
         #self.assertRaises(sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
     # end Py2K
-    
+
     @testing.resolve_artifact_names
     def test_comparison_overrides(self):
         """Simple tests to ensure users can supply comparison __methods__.
@@ -2340,7 +2340,7 @@ class RequirementsTest(_base.MappedTest):
         class H1(object):
             def __len__(self):
                 return len(self.get_value())
-            
+
             def get_value(self):
                 self.value = "foobar"
                 return self.value
@@ -2352,10 +2352,10 @@ class RequirementsTest(_base.MappedTest):
             def get_value(self):
                 self.value = "foobar"
                 return self.value
-                
+
         mapper(H1, ht1)
         mapper(H2, ht1)
-        
+
         h1 = H1()
         h1.value = "Asdf"
         h1.value = "asdf asdf" # ding
@@ -2363,7 +2363,7 @@ class RequirementsTest(_base.MappedTest):
         h2 = H2()
         h2.value = "Asdf"
         h2.value = "asdf asdf" # ding
-        
+
 class MagicNamesTest(_base.MappedTest):
 
     @classmethod
@@ -2403,7 +2403,7 @@ class MagicNamesTest(_base.MappedTest):
         sess.add(c)
         sess.flush()
         sess.expunge_all()
-    
+
         for C, M in ((Cartographer, Map),
                      (sa.orm.aliased(Cartographer), sa.orm.aliased(Map))):
             c1 = (sess.query(C).

@@ -56,7 +56,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'RETURNING length(mytable.name) AS length_1'
                             , dialect=dialect)
 
-        
+
     def test_insert_returning(self):
         dialect = postgresql.dialect()
         table1 = table('mytable',
@@ -83,7 +83,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'INSERT INTO mytable (name) VALUES '
                             '(%(name)s) RETURNING length(mytable.name) '
                             'AS length_1', dialect=dialect)
-    
+
     @testing.uses_deprecated('.*argument is deprecated.  Please use '
                              'statement.returning.*')
     def test_old_returning_names(self):
@@ -109,7 +109,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'INSERT INTO mytable (name) VALUES '
                             '(%(name)s) RETURNING mytable.myid, '
                             'mytable.name', dialect=dialect)
-        
+
     def test_create_partial_index(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', Integer))
@@ -228,7 +228,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             {'data':52},
             {'data':9},
         )
-    
+
     @testing.resolve_artifact_names
     def test_float_coercion(self):
         for type_, result in [
@@ -251,7 +251,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
                 ])
             ).scalar()
             eq_(round_decimal(ret, 9), result)
-    
+
     @testing.provide_metadata
     def test_arrays(self):
         t1 = Table('t', metadata, 
@@ -267,7 +267,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             row, 
             ([5], [5], [6], [decimal.Decimal("6.4")])
         )
-        
+
 class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
@@ -296,7 +296,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                             "CREATE TABLE sometable (somecolumn "
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
-    
+
     @testing.fails_on('postgresql+zxjdbc',
                       'zxjdbc fails on ENUM: column "XXX" is of type '
                       'XXX but expression is of type character varying')
@@ -319,7 +319,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
             metadata.drop_all()
-    
+
     def test_name_required(self):
         metadata = MetaData(testing.db)
         etype = Enum('four', 'five', 'six', metadata=metadata)
@@ -341,7 +341,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     Enum(u'réveillé', u'drôle', u'S’il',
                             name='onetwothreetype'))
         )
-        
+
         metadata.create_all()
         try:
             t1.insert().execute(value=u'drôle')
@@ -411,24 +411,24 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             metadata.drop_all()
             assert not testing.db.dialect.has_type(testing.db,
                     'fourfivesixtype')
-    
+
     def test_no_support(self):
         def server_version_info(self):
             return (8, 2)
-            
+
         e = engines.testing_engine()
         dialect = e.dialect
         dialect._get_server_version_info = server_version_info
-        
+
         assert dialect.supports_native_enum
         e.connect()
         assert not dialect.supports_native_enum
-        
+
         # initialize is called again on new pool
         e.dispose()
         e.connect()
         assert not dialect.supports_native_enum
-        
+
 
     def test_reflection(self):
         metadata = MetaData(testing.db)
@@ -476,14 +476,14 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             metadata.drop_all()
 
 class NumericInterpretationTest(TestBase):
-    
-    
+
+
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
         from sqlalchemy.util.compat import decimal
-        
+
         for dialect in (pg8000.dialect(), psycopg2.dialect()):
-            
+
             typ = Numeric().dialect_impl(dialect)
             for code in base._INT_TYPES + base._FLOAT_TYPES + \
                         base._DECIMAL_TYPES:
@@ -492,7 +492,7 @@ class NumericInterpretationTest(TestBase):
                 if proc is not None:
                     val = proc(val)
                 assert val in (23.7, decimal.Decimal("23.7"))
-    
+
 class InsertTest(TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
@@ -540,7 +540,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
             assert_raises_message(exc.DBAPIError,
                                   'violates not-null constraint',
                                   eng.execute, t2.insert())
-        
+
     def test_sequence_insert(self):
         table = Table('testtable', metadata, Column('id', Integer,
                       Sequence('my_seq'), primary_key=True),
@@ -975,7 +975,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         con.execute("DROP TABLE enum_test")
         con.execute("DROP DOMAIN enumdomain")
         con.execute("DROP TYPE testtype")
-        
+
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True)
@@ -990,7 +990,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
             "Reflected default value didn't equal expected value")
         assert not table.columns.answer.nullable, \
             'Expected reflected column to not be nullable.'
-    
+
     def test_enum_domain_is_reflected(self):
         metadata = MetaData(testing.db)
         table = Table('enum_test', metadata, autoload=True)
@@ -998,7 +998,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
             table.c.data.type.enums,
             ('test', )
         )
-        
+
     def test_table_is_reflected_test_schema(self):
         metadata = MetaData(testing.db)
         table = Table('testtable', metadata, autoload=True,
@@ -1356,7 +1356,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 'Skipped unsupported reflection of '
                 'expression-based index idx3'
             ])
-        
+
 
     @testing.fails_on('postgresql+pypostgresql',
                       'pypostgresql bombs on multiple calls')
@@ -1370,7 +1370,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                             isolation_level='SERIALIZABLE')
         eq_(eng.execute('show transaction isolation level').scalar(),
             'serializable')
-        
+
         # check that it stays
         conn = eng.connect()
         eq_(conn.execute('show transaction isolation level').scalar(),
@@ -1381,7 +1381,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         eq_(conn.execute('show transaction isolation level').scalar(),
             'serializable')
         conn.close()
-        
+
         eng = create_engine(testing.db.url, isolation_level='FOO')
         if testing.db.driver == 'zxjdbc':
             exception_cls = eng.dialect.dbapi.Error
@@ -1399,11 +1399,11 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         stmt = text("select cast('hi' as char) as hi", typemap={'hi'
                     : Numeric})
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
-        
+
 class TimezoneTest(TestBase):
 
     """Test timezone-aware datetimes.
-    
+
     psycopg will return a datetime with a tzinfo attached to it, if
     postgresql returns it.  python then will not let you compare a
     datetime with a tzinfo to a datetime that doesnt have one.  this
@@ -1526,7 +1526,7 @@ class TimePrecisionTest(TestBase, AssertsCompiledSQL):
             eq_(t2.c.c6.type.timezone, True)
         finally:
             t1.drop()
-        
+
 class ArrayTest(TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
@@ -1654,7 +1654,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         foo.id = 2
         sess.add(foo)
         sess.flush()
-    
+
     @testing.provide_metadata
     def test_tuple_flag(self):
         assert_raises_message(
@@ -1662,7 +1662,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
             "mutable must be set to False if as_tuple is True.",
             postgresql.ARRAY, Integer, mutable=True, 
                 as_tuple=True)
-        
+
         t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', postgresql.ARRAY(String(5), as_tuple=True, mutable=False)),
@@ -1672,7 +1672,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
         testing.db.execute(t1.insert(), id=1, data=["1","2","3"], data2=[5.4, 5.6])
         testing.db.execute(t1.insert(), id=2, data=["4", "5", "6"], data2=[1.0])
         testing.db.execute(t1.insert(), id=3, data=[["4", "5"], ["6", "7"]], data2=[[5.4, 5.6], [1.0, 1.1]])
-        
+
         r = testing.db.execute(t1.select().order_by(t1.c.id)).fetchall()
         eq_(
             r, 
@@ -1687,16 +1687,16 @@ class ArrayTest(TestBase, AssertsExecutionResults):
             set(row[1] for row in r),
             set([('1', '2', '3'), ('4', '5', '6'), (('4', '5'), ('6', '7'))])
         )
-        
-        
-        
+
+
+
 class TimestampTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 
     def test_timestamp(self):
         engine = testing.db
         connection = engine.connect()
-        
+
         s = select(["timestamp '2007-12-25'"])
         result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
@@ -1846,15 +1846,15 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
 
 class SpecialTypesTest(TestBase, ComparesTables):
     """test DDL and reflection of PG-specific types """
-    
+
     __only_on__ = 'postgresql'
     __excluded_on__ = (('postgresql', '<', (8, 3, 0)),)
-    
+
     @classmethod
     def setup_class(cls):
         global metadata, table
         metadata = MetaData(testing.db)
-        
+
         # create these types so that we can issue
         # special SQL92 INTERVAL syntax
         class y2m(types.UserDefinedType, postgresql.INTERVAL):
@@ -1864,7 +1864,7 @@ class SpecialTypesTest(TestBase, ComparesTables):
         class d2s(types.UserDefinedType, postgresql.INTERVAL):
             def get_col_spec(self):
                 return "INTERVAL DAY TO SECOND"
-            
+
         table = Table('sometable', metadata,
             Column('id', postgresql.PGUuid, primary_key=True),
             Column('flag', postgresql.PGBit),
@@ -1877,31 +1877,31 @@ class SpecialTypesTest(TestBase, ComparesTables):
             Column('month_interval', d2s()),
             Column('precision_interval', postgresql.INTERVAL(precision=3))
         )
-        
+
         metadata.create_all()
-        
+
         # cheat so that the "strict type check"
         # works
         table.c.year_interval.type = postgresql.INTERVAL()
         table.c.month_interval.type = postgresql.INTERVAL()
-    
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-    
+
     def test_reflection(self):
         m = MetaData(testing.db)
         t = Table('sometable', m, autoload=True)
-        
+
         self.assert_tables_equal(table, t, strict_types=True)
         assert t.c.plain_interval.type.precision is None
         assert t.c.precision_interval.type.precision == 3
 
 class UUIDTest(TestBase):
     """Test the bind/return values of the UUID type."""
-    
+
     __only_on__ = 'postgresql'
-    
+
     @testing.requires.python25
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_string(self):
@@ -1913,7 +1913,7 @@ class UUIDTest(TestBase):
             str(uuid.uuid4()),
             str(uuid.uuid4())
         )
-        
+
     @testing.requires.python25
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_uuid(self):
@@ -1925,7 +1925,7 @@ class UUIDTest(TestBase):
             uuid.uuid4(),
             uuid.uuid4()
         )
-    
+
     def test_no_uuid_available(self):
         from sqlalchemy.dialects.postgresql import base
         uuid_type = base._python_UUID
@@ -1937,14 +1937,14 @@ class UUIDTest(TestBase):
             )
         finally:
             base._python_UUID = uuid_type
-        
+
     def setup(self):
         self.conn = testing.db.connect()
         trans = self.conn.begin()
-        
+
     def teardown(self):
         self.conn.close()
-        
+
     def _test_round_trip(self, utable, value1, value2):
         utable.create(self.conn)
         self.conn.execute(utable.insert(), {'data':value1})
@@ -1955,8 +1955,8 @@ class UUIDTest(TestBase):
                 )
         eq_(r.fetchone()[0], value2)
         eq_(r.fetchone(), None)
-        
-        
+
+
 class MatchTest(TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
@@ -2063,9 +2063,9 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
 class TupleTest(TestBase):
     __only_on__ = 'postgresql'
-    
+
     def test_tuple_containment(self):
-        
+
         for test, exp in [
             ([('a', 'b')], True),
             ([('a', 'c')], False),

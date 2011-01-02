@@ -183,7 +183,7 @@ class MappedTest(ORMTest):
         if name[0].isupper:
             delattr(cls, name)
         del cls.classes[name]
-    
+
     @classmethod
     def _load_fixtures(cls):
         headers, rows = {}, {}

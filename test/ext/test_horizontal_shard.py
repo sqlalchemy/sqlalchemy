@@ -29,7 +29,7 @@ class ShardTest(TestBase):
 
         def id_generator(ctx):
             # in reality, might want to use a separate transaction for this.
-            
+
             c = db1.contextual_connect()
             nextid = c.execute(ids.select(for_update=True)).scalar()
             c.execute(ids.update(values={ids.c.nextid : ids.c.nextid + 1}))

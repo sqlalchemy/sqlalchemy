@@ -323,7 +323,7 @@ class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_large_binary(self, type_):
         return "LONG BYTE"
-    
+
     def visit_numeric(self, type_):
         if type_.scale and type_.precision:
             return 'FIXED(%s, %s)' % (type_.precision, type_.scale)
@@ -331,10 +331,10 @@ class MaxDBTypeCompiler(compiler.GenericTypeCompiler):
             return 'FIXED(%s)' % type_.precision
         else:
             return 'INTEGER'
-    
+
     def visit_BOOLEAN(self, type_):
         return "BOOLEAN"
-        
+
 colspecs = {
     sqltypes.Numeric: MaxNumeric,
     sqltypes.DateTime: MaxTimestamp,
@@ -480,7 +480,7 @@ class MaxDBCompiler(compiler.SQLCompiler):
     def visit_mod(self, binary, **kw):
         return "mod(%s, %s)" % \
                     (self.process(binary.left), self.process(binary.right))
-        
+
     def default_from(self):
         return ' FROM DUAL'
 
@@ -768,7 +768,7 @@ class MaxDBDDLCompiler(compiler.DDLCompiler):
           Defaults to False.  If true, sets NOCACHE.
         """
         sequence = create.element
-        
+
         if (not sequence.optional and
             (not self.checkfirst or
              not self.dialect.has_sequence(self.connection, sequence.name))):
@@ -825,7 +825,7 @@ class MaxDBDialect(default.DefaultDialect):
 
     colspecs = colspecs
     ischema_names = ischema_names
-    
+
     # MaxDB-specific
     datetimeformat = 'internal'
 

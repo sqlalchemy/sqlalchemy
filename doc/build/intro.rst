@@ -28,7 +28,7 @@ queries.
 Documentation Overview
 ======================
 
-The documentation is separated into three sections: :ref:`orm_toplevel`, :ref:`core_toplevel`, and :ref:`dialect_toplevel`.  
+The documentation is separated into three sections: :ref:`orm_toplevel`, :ref:`core_toplevel`, and :ref:`dialect_toplevel`.
 
 In :ref:`orm_toplevel`, the Object Relational Mapper is introduced and fully
 described. New users should begin with the :ref:`ormtutorial_toplevel`. If you
@@ -71,7 +71,7 @@ this from the command-line:
 .. sourcecode:: none
 
     # easy_install SQLAlchemy
-    
+
 Or with pip:
 
 .. sourcecode:: none

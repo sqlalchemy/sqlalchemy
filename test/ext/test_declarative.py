@@ -24,7 +24,7 @@ class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
     def teardown(self):
         clear_mappers()
         Base.metadata.drop_all()
-    
+
 class DeclarativeTest(DeclarativeTestBase):
     def test_basic(self):
         class User(Base, ComparableEntity):
@@ -49,7 +49,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(Address.__table__.c['id'].name, 'id')
         eq_(Address.__table__.c['_email'].name, 'email')
         eq_(Address.__table__.c['_user_id'].name, 'user_id')
-        
+
         u1 = User(name='u1', addresses=[
             Address(email='one'),
             Address(email='two'),
@@ -99,7 +99,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert class_mapper(Bar).get_property('some_data').columns[0] \
             is t.c.data
-    
+
     def test_difficult_class(self):
         """test no getattr() errors with a customized class"""
 
@@ -126,7 +126,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         decl.instrument_declarative(User,{},Base.metadata)
 
-        
+
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
         # test for this elsewhere
@@ -138,7 +138,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(str(foo), 'foo')
         eq_(foo.key, 'foo')
         eq_(foo.name, 'foo')
-        
+
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""
 
@@ -163,7 +163,7 @@ class DeclarativeTest(DeclarativeTestBase):
         u = User()
         assert User.addresses
         assert mapperlib._new_mappers is False
-    
+
     def test_string_dependency_resolution(self):
         from sqlalchemy.sql import desc
 
@@ -180,7 +180,7 @@ class DeclarativeTest(DeclarativeTestBase):
                     backref=backref('user',
                     primaryjoin='User.id==Address.user_id',
                     foreign_keys='[Address.user_id]'))
-        
+
         class Address(Base, ComparableEntity):
 
             __tablename__ = 'addresses'
@@ -249,7 +249,7 @@ class DeclarativeTest(DeclarativeTestBase):
         configure_mappers()
         eq_(str(User.addresses.prop.primaryjoin),
             'users.id = addresses.user_id')
-        
+
     def test_string_dependency_resolution_in_backref(self):
 
         class User(Base, ComparableEntity):
@@ -271,7 +271,7 @@ class DeclarativeTest(DeclarativeTestBase):
         configure_mappers()
         eq_(str(User.addresses.property.primaryjoin),
             str(Address.user.property.primaryjoin))
-        
+
     def test_string_dependency_resolution_tables(self):
 
         class User(Base, ComparableEntity):
@@ -301,12 +301,12 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_string_dependency_resolution_schemas(self):
         Base = decl.declarative_base()
-        
+
         class User(Base):
 
             __tablename__ = 'users'
             __table_args__ = {'schema':'fooschema'}
-            
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             props = relationship('Prop', secondary='fooschema.user_to_prop',
@@ -327,7 +327,7 @@ class DeclarativeTest(DeclarativeTestBase):
                      Column('prop_id',Integer, ForeignKey('fooschema.props.id')),
                      schema='fooschema')
         configure_mappers()
-        
+
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
 
@@ -370,7 +370,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).filter(User.name == 'ed').one(),
             User(name='ed', addresses=[Address(email='abc'),
             Address(email='def'), Address(email='xyz')]))
-            
+
     def test_nice_dependency_error(self):
 
         class User(Base):
@@ -418,7 +418,7 @@ class DeclarativeTest(DeclarativeTestBase):
         Base = decl.declarative_base(cls=MyBase)
         assert hasattr(Base, 'metadata')
         assert Base().foobar() == "foobar"
-    
+
     def test_uses_get_on_class_col_fk(self):
 
         # test [ticket:1492]
@@ -454,27 +454,27 @@ class DeclarativeTest(DeclarativeTestBase):
             assert d1.master
 
         self.assert_sql_count(testing.db, go, 0)
-        
+
     def test_index_doesnt_compile(self):
         class User(Base):
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
             name = Column('name', String(50))
             error = relationship("Address")
-            
+
         i = Index('my_index', User.name)
-        
+
         # compile fails due to the nonexistent Addresses relationship
         assert_raises(sa.exc.InvalidRequestError, configure_mappers)
-        
+
         # index configured
         assert i in User.__table__.indexes
         assert User.__table__.c.id not in set(i.columns)
         assert User.__table__.c.name in set(i.columns)
-        
+
         # tables create fine
         Base.metadata.create_all()
-        
+
     def test_add_prop(self):
 
         class User(Base, ComparableEntity):
@@ -510,7 +510,7 @@ class DeclarativeTest(DeclarativeTestBase):
         a1 = sess.query(Address).filter(Address.email == 'two').one()
         eq_(a1, Address(email='two'))
         eq_(a1.user, User(name='u1'))
-    
+
     def test_eager_order_by(self):
 
         class Address(Base, ComparableEntity):
@@ -613,7 +613,7 @@ class DeclarativeTest(DeclarativeTestBase):
             __tablename__ = 'foo'
             __mapper_cls__ = mymapper
             id = Column(Integer, primary_key=True)
-        
+
         eq_(Foo.__mapper__.CHECK, True)
 
     def test_custom_mapper_argument(self):
@@ -648,7 +648,7 @@ class DeclarativeTest(DeclarativeTestBase):
         assert_raises_message(sa.exc.ArgumentError,
                               'Mapper Mapper|User|users could not '
                               'assemble any primary key', define)
-        
+
     def test_table_args_bad_format(self):
 
         def err():
@@ -661,7 +661,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert_raises_message(sa.exc.ArgumentError,
                               'Tuple form of __table_args__ is ', err)
-        
+
     def test_table_args_type(self):
         def err():
             class Foo1(Base):
@@ -672,9 +672,9 @@ class DeclarativeTest(DeclarativeTestBase):
                 id = Column('id', Integer, primary_key=True)
         assert_raises_message(sa.exc.ArgumentError,
                               '__table_args__ value must be a tuple, ', err)
-            
+
     def test_table_args_none(self):
-            
+
         class Foo2(Base):
 
             __tablename__ = 'foo'
@@ -682,9 +682,9 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column('id', Integer, primary_key=True)
 
         assert Foo2.__table__.kwargs == {}
-        
+
     def test_table_args_dict_format(self):
-            
+
         class Foo2(Base):
 
             __tablename__ = 'foo'
@@ -758,14 +758,14 @@ class DeclarativeTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             name = Column('name', String(50))
             addresses = relationship('Address', backref='user')
-            
+
             @declared_attr
             def address_count(cls):
                 # this doesn't really gain us anything.  but if
                 # one is used, lets have it function as expected...
                 return sa.orm.column_property(sa.select([sa.func.count(Address.id)]).
                         where(Address.user_id == cls.id))
-            
+
         Base.metadata.create_all()
         u1 = User(name='u1', addresses=[Address(email='one'),
                   Address(email='two')])
@@ -775,7 +775,7 @@ class DeclarativeTest(DeclarativeTestBase):
         sess.expunge_all()
         eq_(sess.query(User).all(), [User(name='u1', address_count=2,
             addresses=[Address(email='one'), Address(email='two')])])
-        
+
     def test_column(self):
 
         class User(Base, ComparableEntity):
@@ -873,7 +873,7 @@ class DeclarativeTest(DeclarativeTestBase):
             eq_(u1.name, 'u1')
 
         self.assert_sql_count(testing.db, go, 1)
-    
+
     def test_mapping_to_join(self):
         users = Table('users', Base.metadata,
             Column('id', Integer, primary_key=True)
@@ -887,16 +887,16 @@ class DeclarativeTest(DeclarativeTestBase):
         class User(Base):
             __table__ = usersaddresses
             __table_args__ = {'primary_key':[users.c.id]}
-            
+
             # need to use column_property for now
             user_id = column_property(users.c.id, addresses.c.user_id)
             address_id = addresses.c.id
-        
+
         assert User.__mapper__.get_property('user_id').columns[0] \
                                 is users.c.id
         assert User.__mapper__.get_property('user_id').columns[1] \
                                 is addresses.c.user_id
-        
+
     def test_synonym_inline(self):
 
         class User(Base, ComparableEntity):
@@ -1404,14 +1404,14 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column('primary_language', String(50))
 
         assert class_mapper(Engineer).inherits is class_mapper(Person)
-    
+
     @testing.fails_if(lambda: True, "Not implemented until 0.7")
     def test_foreign_keys_with_col(self):
         """Test that foreign keys that reference a literal 'id' subclass 
-        'id' attribute behave intuitively.  
-        
+        'id' attribute behave intuitively.
+
         See [ticket:1892].
-        
+
         """
         class Booking(Base):
             __tablename__ = 'booking'
@@ -1430,16 +1430,16 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                                         primary_key=True)
             plan_booking_id = Column(Integer,
                                 ForeignKey(PlanBooking.id))
-            
+
             plan_booking = relationship(PlanBooking,
                         backref='feature_bookings')
-        
+
         assert FeatureBooking.__table__.c.plan_booking_id.\
                     references(PlanBooking.__table__.c.id)
 
         assert FeatureBooking.__table__.c.id.\
                     references(Booking.__table__.c.id)
-      
+
     def test_with_undefined_foreignkey(self):
 
         class Parent(Base):
@@ -1473,10 +1473,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     def test_foreign_keys_with_col(self):
         """Test that foreign keys that reference a literal 'id' subclass 
-        'id' attribute behave intuitively.  
-        
+        'id' attribute behave intuitively.
+
         See [ticket:1892].
-        
+
         """
         class Booking(Base):
             __tablename__ = 'booking'
@@ -1495,16 +1495,16 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                                         primary_key=True)
             plan_booking_id = Column(Integer,
                                 ForeignKey(PlanBooking.id))
-            
+
             plan_booking = relationship(PlanBooking,
                         backref='feature_bookings')
-        
+
         assert FeatureBooking.__table__.c.plan_booking_id.\
                     references(PlanBooking.__table__.c.id)
 
         assert FeatureBooking.__table__.c.id.\
                     references(Booking.__table__.c.id)
-      
+
 
     def test_single_colsonbase(self):
         """test single inheritance where all the columns are on the base
@@ -1562,9 +1562,9 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
     def test_single_colsonsub(self):
         """test single inheritance where the columns are local to their
         class.
-        
+
         this is a newer usage.
-        
+
         """
 
         class Company(Base, ComparableEntity):
@@ -1718,7 +1718,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
     def test_single_fksonsub(self):
         """test single inheritance with a foreign key-holding column on
         a subclass.
-        
+
         """
 
         class Person(Base, ComparableEntity):
@@ -2274,28 +2274,28 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.name, 'testing')
         eq_(obj.foo(), 'bar1')
         eq_(obj.baz, 'fu')
-    
+
     def test_mixin_overrides(self):
         """test a mixin that overrides a column on a superclass."""
-        
+
         class MixinA(object):
             foo = Column(String(50))
-        
+
         class MixinB(MixinA):
             foo = Column(Integer)
 
         class MyModelA(Base, MixinA):
             __tablename__ = 'testa'
             id = Column(Integer, primary_key=True)
-        
+
         class MyModelB(Base, MixinB):
             __tablename__ = 'testb'
             id = Column(Integer, primary_key=True)
-        
+
         eq_(MyModelA.__table__.c.foo.type.__class__, String)
         eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
-        
-        
+
+
     def test_not_allowed(self):
 
         class MyMixin:
@@ -2347,7 +2347,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             pass
 
         eq_(MyModel.__table__.name, 'mymodel')
-    
+
     def test_classproperty_still_works(self):
         class MyMixin(object):
             @classproperty
@@ -2359,7 +2359,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = 'overridden'
 
         eq_(MyModel.__table__.name, 'overridden')
-            
+
     def test_table_name_not_inherited(self):
 
         class MyMixin:
@@ -2449,13 +2449,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         mapped to a superclass and single-table inheritance subclass.
         The superclass table gets the column, the subclass shares
         the MapperProperty.
-        
+
         """
-        
+
         class MyMixin(object):
             foo = Column('foo', Integer)
             bar = Column('bar_newname', Integer)
-            
+
         class General(Base, MyMixin):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
@@ -2468,19 +2468,19 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert General.bar.prop.columns[0] is General.__table__.c.bar_newname
         assert len(General.bar.prop.columns) == 1
         assert Specific.bar.prop is General.bar.prop
-        
+
     def test_columns_joined_table_inheritance(self):
         """Test a column on a mixin with an alternate attribute name,
         mapped to a superclass and joined-table inheritance subclass.
         Both tables get the column, in the case of the subclass the two
         columns are joined under one MapperProperty.
-        
+
         """
 
         class MyMixin(object):
             foo = Column('foo', Integer)
             bar = Column('bar_newname', Integer)
-            
+
         class General(Base, MyMixin):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
@@ -2498,7 +2498,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert len(Specific.bar.prop.columns) == 2
         assert Specific.bar.prop.columns[0] is General.__table__.c.bar_newname
         assert Specific.bar.prop.columns[1] is Specific.__table__.c.bar_newname
-    
+
     def test_column_join_checks_superclass_type(self):
         """Test that the logic which joins subclass props to those
         of the superclass checks that the superclass property is a column.
@@ -2514,7 +2514,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = 'sub'
             id = Column(Integer, ForeignKey('test.id'), primary_key=True)
             type_ = Column('foob', String(50))
-        
+
         assert isinstance(General.type_.property, sa.orm.RelationshipProperty)
         assert Specific.type_.property.columns[0] is Specific.__table__.c.foob
 
@@ -2537,7 +2537,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert_raises_message(
             sa.exc.ArgumentError, "column 'foob' conflicts with property", go
         )
-        
+
     def test_table_args_overridden(self):
 
         class MyMixin:
@@ -2712,13 +2712,13 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 if cls.__name__ != 'MyModel':
                     args.pop('polymorphic_on')
                     args['polymorphic_identity'] = cls.__name__
-                    
+
                 return args
             id = Column(Integer, primary_key=True)
-        
+
         class MySubModel(MyModel):
             pass
-        
+
         eq_(
             MyModel.__mapper__.polymorphic_on.name, 
             'type_'
@@ -2727,32 +2727,32 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MyModel.__mapper__.always_refresh, True)
         eq_(MySubModel.__mapper__.always_refresh, True)
         eq_(MySubModel.__mapper__.polymorphic_identity, 'MySubModel')
-    
+
     def test_mapper_args_property(self):
         class MyModel(Base):
-            
+
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
-            
+
             @declared_attr
             def __table_args__(cls):
                 return {'mysql_engine':'InnoDB'}
-                
+
             @declared_attr
             def __mapper_args__(cls):
                 args = {}
                 args['polymorphic_identity'] = cls.__name__
                 return args
             id = Column(Integer, primary_key=True)
-        
+
         class MySubModel(MyModel):
             id = Column(Integer, ForeignKey('mymodel.id'), primary_key=True)
 
         class MySubModel2(MyModel):
             __tablename__ = 'sometable'
             id = Column(Integer, ForeignKey('mymodel.id'), primary_key=True)
-        
+
         eq_(MyModel.__mapper__.polymorphic_identity, 'MyModel')
         eq_(MySubModel.__mapper__.polymorphic_identity, 'MySubModel')
         eq_(MyModel.__table__.kwargs['mysql_engine'], 'InnoDB')
@@ -2760,37 +2760,37 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MySubModel2.__table__.kwargs['mysql_engine'], 'InnoDB')
         eq_(MyModel.__table__.name, 'mymodel')
         eq_(MySubModel.__table__.name, 'mysubmodel')
-    
+
     def test_mapper_args_custom_base(self):
         """test the @declared_attr approach from a custom base."""
-        
+
         class Base(object):
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
-            
+
             @declared_attr
             def __table_args__(cls):
                 return {'mysql_engine':'InnoDB'}
-            
+
             @declared_attr
             def id(self):
                 return Column(Integer, primary_key=True)
-            
+
         Base = decl.declarative_base(cls=Base)
-        
+
         class MyClass(Base):
             pass
-        
+
         class MyOtherClass(Base):
             pass
-            
+
         eq_(MyClass.__table__.kwargs['mysql_engine'], 'InnoDB')
         eq_(MyClass.__table__.name, 'myclass')
         eq_(MyOtherClass.__table__.name, 'myotherclass')
         assert MyClass.__table__.c.id.table is MyClass.__table__
         assert MyOtherClass.__table__.c.id.table is MyOtherClass.__table__
-        
+
     def test_single_table_no_propagation(self):
 
         class IdColumn:
@@ -2979,7 +2979,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         class ColumnMixin:
             tada = Column(Integer)
-            
+
         def go():
 
             class Model(Base, ColumnMixin):
@@ -2988,20 +2988,20 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                                 Column('data',Integer), 
                                 Column('id', Integer,primary_key=True))
                 foo = relationship("Dest")
-                
+
         assert_raises_message(sa.exc.ArgumentError,
                               "Can't add additional column 'tada' when "
                               "specifying __table__", go)
 
     def test_table_in_model_and_different_named_alt_key_column_in_mixin(self):
-        
+
         # here, the __table__ has a column 'tada'.  We disallow
         # the add of the 'foobar' column, even though it's
         # keyed to 'tada'.
-        
+
         class ColumnMixin:
             tada = Column('foobar', Integer)
-            
+
         def go():
 
             class Model(Base, ColumnMixin):
@@ -3011,7 +3011,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                                 Column('tada', Integer),
                                 Column('id', Integer,primary_key=True))
                 foo = relationship("Dest")
-                
+
         assert_raises_message(sa.exc.ArgumentError,
                               "Can't add additional column 'foobar' when "
                               "specifying __table__", go)
@@ -3098,10 +3098,10 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
     def test_doc(self):
         """test documentation transfer.
-        
+
         the documentation situation with @declared_attr is problematic.
         at least see if mapped subclasses get the doc.
-        
+
         """
 
         class MyMixin(object):
@@ -3224,4 +3224,4 @@ class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
     def test_relationship_primryjoin(self):
         self._test_relationship(True)
-        
+

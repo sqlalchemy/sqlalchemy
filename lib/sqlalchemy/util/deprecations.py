@@ -73,7 +73,7 @@ def pending_deprecation(version, message=None,
 
     if message is None:
         message = "Call to deprecated function %(func)s"
-    
+
     def decorate(fn):
         return _decorate_with_warning(
             fn, exc.SAPendingDeprecationWarning,
@@ -87,13 +87,13 @@ def _sanitize_restructured_text(text):
             name += "()"
         return name
     return re.sub(r'\:(\w+)\:`~?\.?(.+?)`', repl, text)
-    
-    
+
+
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
     message = _sanitize_restructured_text(message)
-    
+
     @decorator
     def warned(fn, *args, **kwargs):
         warnings.warn(wtype(message), stacklevel=3)

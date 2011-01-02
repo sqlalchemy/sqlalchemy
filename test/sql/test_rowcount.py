@@ -4,9 +4,9 @@ from test.lib import *
 
 class FoundRowsTest(TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
-    
+
     __requires__ = ('sane_rowcount', )
-    
+
     @classmethod
     def setup_class(cls):
         global employees_table, metadata

@@ -35,7 +35,7 @@ if not os.path.exists(root):
                 "Press enter to continue.\n" % root
                 )
     os.makedirs(root)
-    
+
 dbfile = os.path.join(root, "beaker_demo.db")
 engine = create_engine('sqlite:///%s' % dbfile, echo=True)
 Session.configure(bind=engine)
@@ -50,7 +50,7 @@ cache_manager.regions['default'] ={
         'type':'file',
         'data_dir':root,
         'expire':3600,
-        
+
         # set start_time to current time
         # to re-cache everything
         # upon application startup

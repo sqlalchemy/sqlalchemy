@@ -25,11 +25,11 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
         t2.insert().execute([dict(('field%d' % fnum, u'value%d' % fnum)
                             for fnum in range(NUM_FIELDS)) for r_num in
                             range(NUM_RECORDS)])
-        
+
         # warm up type caches
         t.select().execute().fetchall()
         t2.select().execute().fetchall()
-        
+
     def teardown(self):
         metadata.drop_all()
 
@@ -54,14 +54,14 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
 
 class ExecutionTest(TestBase):
     __only_on__ = 'sqlite'
-    
+
     def test_minimal_connection_execute(self):
         # create an engine without any instrumentation.
         e = create_engine('sqlite://')
         c = e.connect()
         # ensure initial connect activities complete
         c.execute("select 1")
-        
+
         @profiling.function_call_count(versions={'2.7':36, '2.6':35, '2.5':35, 
                                                     '2.4':21, '3':34}, 
                                             variance=.10)

@@ -6,7 +6,7 @@
 
 """Descriptor proprerties are more "auxilliary" properties
 that exist as configurational elements, but don't participate
-as actively in the load/persist ORM loop.   
+as actively in the load/persist ORM loop.
 
 """
 
@@ -20,23 +20,23 @@ properties = util.importlater('sqlalchemy.orm', 'properties')
 class DescriptorProperty(MapperProperty):
     """:class:`MapperProperty` which proxies access to a 
         user-defined descriptor."""
-        
+
     doc = None
-    
+
     def instrument_class(self, mapper):
         prop = self
-        
+
         class _ProxyImpl(object):
             accepts_scalar_loader = False
             expire_missing = True
 
             def __init__(self, key):
                 self.key = key
-            
+
             if hasattr(prop, 'get_history'):
                 def get_history(self, state, dict_, **kw):
                     return prop.get_history(state, dict_, **kw)
-                
+
         if self.descriptor is None:
             desc = getattr(mapper.class_, self.key, None)
             if mapper._is_userland_descriptor(desc):
@@ -55,7 +55,7 @@ class DescriptorProperty(MapperProperty):
                 fset=fset,
                 fdel=fdel,
             )
-        
+
         proxy_attr = attributes.\
                     create_proxied_attribute(self.descriptor)\
                     (
@@ -68,10 +68,10 @@ class DescriptorProperty(MapperProperty):
         proxy_attr.property = self
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
-    
+
 
 class CompositeProperty(DescriptorProperty):
-    
+
     def __init__(self, class_, *columns, **kwargs):
         self.columns = columns
         self.composite_class = class_
@@ -84,32 +84,32 @@ class CompositeProperty(DescriptorProperty):
     def instrument_class(self, mapper):
         super(CompositeProperty, self).instrument_class(mapper)
         self._setup_event_handlers()
-        
+
     def do_init(self):
         """Initialization which occurs after the :class:`.CompositeProperty` 
         has been associated with its parent mapper.
-        
+
         """
         self._setup_arguments_on_columns()
-    
+
     def _create_descriptor(self):
         """Create the Python descriptor that will serve as 
         the access point on instances of the mapped class.
-        
+
         """
 
         def fget(instance):
             dict_ = attributes.instance_dict(instance)
-            
+
             # key not present, assume the columns aren't
             # loaded.  The load events will establish
             # the item.
             if self.key not in dict_:
                 for key in self._attribute_keys:
                     getattr(instance, key)
-                    
+
             return dict_.get(self.key, None)
-                
+
         def fset(instance, value):
             dict_ = attributes.instance_dict(instance)
             state = attributes.instance_state(instance)
@@ -126,7 +126,7 @@ class CompositeProperty(DescriptorProperty):
                         self._attribute_keys, 
                         value.__composite_values__()):
                     setattr(instance, key, value)
-        
+
         def fdel(instance):
             state = attributes.instance_state(instance)
             dict_ = attributes.instance_dict(instance)
@@ -135,13 +135,13 @@ class CompositeProperty(DescriptorProperty):
             attr.dispatch.remove(state, previous, attr.impl)
             for key in self._attribute_keys:
                 setattr(instance, key, None)
-        
+
         self.descriptor = property(fget, fset, fdel)
-        
+
     def _setup_arguments_on_columns(self):
         """Propagate configuration arguments made on this composite
         to the target columns, for those that apply.
-        
+
         """
         for col in self.columns:
             prop = self.parent._columntoproperty[col]
@@ -153,35 +153,35 @@ class CompositeProperty(DescriptorProperty):
 
     def _setup_event_handlers(self):
         """Establish events that populate/expire the composite attribute."""
-        
+
         def load_handler(state, *args):
             dict_ = state.dict
-            
+
             if self.key in dict_:
                 return
-                
+
             # if column elements aren't loaded, skip.
             # __get__() will initiate a load for those 
             # columns
             for k in self._attribute_keys:
                 if k not in dict_:
                     return
-                    
+
             dict_[self.key] = self.composite_class(
                     *[state.dict[key] for key in 
                     self._attribute_keys]
                 )
-            
+
         def expire_handler(state, keys):
             if keys is None or set(self._attribute_keys).intersection(keys):
                 state.dict.pop(self.key, None)
-        
+
         def insert_update_handler(mapper, connection, state):
             state.dict[self.key] = self.composite_class(
                     *[state.dict.get(key, None) for key in 
                     self._attribute_keys]
                 )
-            
+
         event.listen(self.parent, 'after_insert', 
                                     insert_update_handler, raw=True)
         event.listen(self.parent, 'after_update', 
@@ -189,35 +189,35 @@ class CompositeProperty(DescriptorProperty):
         event.listen(self.parent, 'load', load_handler, raw=True)
         event.listen(self.parent, 'refresh', load_handler, raw=True)
         event.listen(self.parent, "expire", expire_handler, raw=True)
-        
+
         # TODO: need a deserialize hook here
-        
+
     @util.memoized_property
     def _attribute_keys(self):
         return [
             self.parent._columntoproperty[col].key
             for col in self.columns
         ]
-        
+
     def get_history(self, state, dict_, **kw):
         """Provided for userland code that uses attributes.get_history()."""
-        
+
         added = []
         deleted = []
-        
+
         has_history = False
         for col in self.columns:
             key = self.parent._columntoproperty[col].key
             hist = state.manager[key].impl.get_history(state, dict_)
             if hist.has_changes():
                 has_history = True
-            
+
             added.extend(hist.non_deleted())
             if hist.deleted:
                 deleted.extend(hist.deleted)
             else:
                 deleted.append(None)
-        
+
         if has_history:
             return attributes.History(
                 [self.composite_class(*added)],
@@ -236,7 +236,7 @@ class CompositeProperty(DescriptorProperty):
         def __init__(self, prop, adapter=None):
             self.prop = prop
             self.adapter = adapter
-            
+
         def __clause_element__(self):
             if self.adapter:
                 # TODO: test coverage for adapted composite comparison
@@ -244,9 +244,9 @@ class CompositeProperty(DescriptorProperty):
                             *[self.adapter(x) for x in self.prop.columns])
             else:
                 return expression.ClauseList(*self.prop.columns)
-        
+
         __hash__ = None
-        
+
         def __eq__(self, other):
             if other is None:
                 values = [None] * len(self.prop.columns)
@@ -254,7 +254,7 @@ class CompositeProperty(DescriptorProperty):
                 values = other.__composite_values__()
             return sql.and_(
                     *[a==b for a, b in zip(self.prop.columns, values)])
-            
+
         def __ne__(self, other):
             return sql.not_(self.__eq__(other))
 
@@ -280,14 +280,14 @@ class ConcreteInheritedProperty(DescriptorProperty):
 
     def _comparator_factory(self, mapper):
         comparator_callable = None
-        
+
         for m in self.parent.iterate_to_root():
             p = m._props[self.key]
             if not isinstance(p, ConcreteInheritedProperty):
                 comparator_callable = p.comparator_factory
                 break
         return comparator_callable
-    
+
     def __init__(self):
         def warn():
             raise AttributeError("Concrete %s does not implement "
@@ -305,8 +305,8 @@ class ConcreteInheritedProperty(DescriptorProperty):
                     return self.descriptor
                 warn()
         self.descriptor = NoninheritedConcreteProp()
-        
-        
+
+
 class SynonymProperty(DescriptorProperty):
 
     def __init__(self, name, map_column=None, 
@@ -317,16 +317,16 @@ class SynonymProperty(DescriptorProperty):
         self.descriptor = descriptor
         self.comparator_factory = comparator_factory
         self.doc = doc or (descriptor and descriptor.__doc__) or None
-        
+
         util.set_creation_order(self)
-    
+
     # TODO: when initialized, check _proxied_property,
     # emit a warning if its not a column-based property
-    
+
     @util.memoized_property
     def _proxied_property(self):
         return getattr(self.parent.class_, self.name).property
-        
+
     def _comparator_factory(self, mapper):
         prop = self._proxied_property
 
@@ -361,9 +361,9 @@ class SynonymProperty(DescriptorProperty):
                                     init=init, 
                                     setparent=True)
             p._mapped_by_synonym = self.key
-    
+
         self.parent = parent
-        
+
 class ComparableProperty(DescriptorProperty):
     """Instruments a Python property for use in query expressions."""
 

@@ -185,10 +185,10 @@ Creating Table, Class and Mapper All at Once Declaratively
 The preceding approach to configuration involved a
 :class:`~sqlalchemy.schema.Table`, a user-defined class, and
 a call to :func:`~.orm.mapper`.  This illustrates classical SQLAlchemy usage, which values
-the highest separation of concerns possible.  
+the highest separation of concerns possible.
 A large number of applications don't require this degree of
 separation, and for those SQLAlchemy offers an alternate "shorthand"
-configurational style called :mod:`~.sqlalchemy.ext.declarative`.  
+configurational style called :mod:`~.sqlalchemy.ext.declarative`.
 For many applications, this is the only style of configuration needed.
 Our above example using this style is as follows:: 
 
@@ -1440,7 +1440,7 @@ completely and start again.
     >>> session.close()  # roll back and close the transaction
     >>> from sqlalchemy.orm import clear_mappers
     >>> clear_mappers() # remove all class mappings
-    
+
 
 Below, we use :class:`~.orm.mapper` to reconfigure an ORM mapping for ``User`` and
 ``Address``, on our existing but currently un-mapped classes. The

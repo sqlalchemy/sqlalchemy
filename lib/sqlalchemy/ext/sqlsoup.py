@@ -257,7 +257,7 @@ The default session is available at the module level in SQLSoup,
 via::
 
     >>> from sqlalchemy.ext.sqlsoup import Session
-    
+
 The configuration of this session is ``autoflush=True``,
 ``autocommit=False``. This means when you work with the SqlSoup
 object, you need to call ``db.commit()`` in order to have
@@ -460,7 +460,7 @@ def _class_for_table(session, engine, selectable, base_cls, mapper_kwargs):
         engine_encoding = engine.dialect.encoding 
         mapname = mapname.encode(engine_encoding)
     # end Py2K
-    
+
     if isinstance(selectable, Table):
         klass = TableClassType(mapname, (base_cls,), {})
     else:
@@ -475,10 +475,10 @@ def _class_for_table(session, engine, selectable, base_cls, mapper_kwargs):
         except AttributeError:
             raise TypeError('unable to compare with %s' % o.__class__)
         return t1, t2
-    
+
     # python2/python3 compatible system of 
     # __cmp__ - __lt__ + __eq__
-    
+
     def __lt__(self, o):
         t1, t2 = _compare(self, o)
         return t1 < t2
@@ -486,12 +486,12 @@ def _class_for_table(session, engine, selectable, base_cls, mapper_kwargs):
     def __eq__(self, o):
         t1, t2 = _compare(self, o)
         return t1 == t2
-    
+
     def __repr__(self):
         L = ["%s=%r" % (key, getattr(self, key, ''))
              for key in self.__class__.c.keys()]
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
-        
+
     for m in ['__eq__', '__repr__', '__lt__']:
         setattr(klass, m, eval(m))
     klass._table = selectable
@@ -500,16 +500,16 @@ def _class_for_table(session, engine, selectable, base_cls, mapper_kwargs):
                    selectable,
                    extension=AutoAdd(session),
                    **mapper_kwargs)
-                   
+
     for k in mappr.iterate_properties:
         klass.c[k.key] = k.columns[0]
-    
+
     klass._query = session.query_property()
     return klass
 
 class SqlSoup(object):
     """Represent an ORM-wrapped database resource."""
-    
+
     def __init__(self, engine_or_metadata, base=object, session=None):
         """Initialize a new :class:`.SqlSoup`.
 
@@ -525,10 +525,10 @@ class SqlSoup(object):
           module is used.
 
         """
-        
+
         self.session = session or Session
         self.base=base
-        
+
         if isinstance(engine_or_metadata, MetaData):
             self._metadata = engine_or_metadata
         elif isinstance(engine_or_metadata, (basestring, Engine)):
@@ -536,10 +536,10 @@ class SqlSoup(object):
         else:
             raise ArgumentError("invalid engine or metadata argument %r" % 
                                 engine_or_metadata)
-            
+
         self._cache = {}
         self.schema = None
-    
+
     @property
     def bind(self):
         """The :class:`.Engine` associated with this :class:`.SqlSoup`."""
@@ -551,83 +551,83 @@ class SqlSoup(object):
         """Mark an instance as deleted."""
 
         self.session.delete(instance)
-    
+
     def execute(self, stmt, **params):
         """Execute a SQL statement.
-        
+
         The statement may be a string SQL string,
         an :func:`.expression.select` construct, or an :func:`.expression.text` 
         construct.
-        
+
         """
         return self.session.execute(sql.text(stmt, bind=self.bind), **params)
-    
+
     @property
     def _underlying_session(self):
         if isinstance(self.session, session.Session):
             return self.session
         else:
             return self.session()
-            
+
     def connection(self):
         """Return the current :class:`.Connection` in use by the current transaction."""
-        
+
         return self._underlying_session._connection_for_bind(self.bind)
-        
+
     def flush(self):
         """Flush pending changes to the database.
-        
+
         See :meth:`.Session.flush`.
-        
+
         """
         self.session.flush()
-    
+
     def rollback(self):
         """Rollback the current transction.
-        
+
         See :meth:`.Session.rollback`.
-        
+
         """
         self.session.rollback()
-        
+
     def commit(self):
         """Commit the current transaction.
-        
+
         See :meth:`.Session.commit`.
-        
+
         """
         self.session.commit()
-        
+
     def clear(self):
         """Synonym for :meth:`.SqlSoup.expunge_all`."""
-        
+
         self.session.expunge_all()
-    
+
     def expunge(self, instance):
         """Remove an instance from the :class:`.Session`.
-        
+
         See :meth:`.Session.expunge`.
-        
+
         """
         self.session.expunge(instance)
-        
+
     def expunge_all(self):
         """Clear all objects from the current :class:`.Session`.
-        
+
         See :meth:`.Session.expunge_all`.
-        
+
         """
         self.session.expunge_all()
 
     def map_to(self, attrname, tablename=None, selectable=None, 
                     schema=None, base=None, mapper_args=util.frozendict()):
         """Configure a mapping to the given attrname.
-        
+
         This is the "master" method that can be used to create any 
         configuration.
-        
+
         (new in 0.6.6)
-        
+
         :param attrname: String attribute name which will be
           established as an attribute on this :class:.`.SqlSoup`
           instance.
@@ -648,8 +648,8 @@ class SqlSoup(object):
           argument.
         :param schema: String schema name to use if the
           ``tablename`` argument is present.
-          
-          
+
+
         """
         if attrname in self._cache:
             raise InvalidRequestError(
@@ -657,7 +657,7 @@ class SqlSoup(object):
                 attrname,
                 class_mapper(self._cache[attrname]).mapped_table
             ))
-            
+
         if tablename is not None:
             if not isinstance(tablename, basestring):
                 raise ArgumentError("'tablename' argument must be a string."
@@ -692,7 +692,7 @@ class SqlSoup(object):
                 raise PKNotFoundError(
                             "selectable '%s' does not have a primary "
                             "key defined" % selectable)
-                
+
         mapped_cls = _class_for_table(
             self.session,
             self.engine,
@@ -702,14 +702,14 @@ class SqlSoup(object):
         )
         self._cache[attrname] = mapped_cls
         return mapped_cls
-        
+
 
     def map(self, selectable, base=None, **mapper_args):
         """Map a selectable directly.
-        
+
         The class and its mapping are not cached and will
         be discarded once dereferenced (as of 0.6.6).
-        
+
         :param selectable: an :func:`.expression.select` construct.
         :param base: a Python class which will be used as the
           base for the mapped class. If ``None``, the "base"
@@ -718,7 +718,7 @@ class SqlSoup(object):
           ``object``.
         :param mapper_args: Dictionary of arguments which will
           be passed directly to :func:`.orm.mapper`.
-        
+
         """
 
         return _class_for_table(
@@ -735,7 +735,7 @@ class SqlSoup(object):
 
         The class and its mapping are not cached and will
         be discarded once dereferenced (as of 0.6.6).
-        
+
         :param selectable: an :func:`.expression.select` construct.
         :param base: a Python class which will be used as the
           base for the mapped class. If ``None``, the "base"
@@ -744,9 +744,9 @@ class SqlSoup(object):
           ``object``.
         :param mapper_args: Dictionary of arguments which will
           be passed directly to :func:`.orm.mapper`.
-        
+
         """
-        
+
         # TODO give meaningful aliases
         return self.map(
                     expression._clause_element_as_expr(selectable).
@@ -759,7 +759,7 @@ class SqlSoup(object):
 
         The class and its mapping are not cached and will
         be discarded once dereferenced (as of 0.6.6).
-        
+
         :param left: a mapped class or table object.
         :param right: a mapped class or table object.
         :param onclause: optional "ON" clause construct..
@@ -771,24 +771,24 @@ class SqlSoup(object):
           ``object``.
         :param mapper_args: Dictionary of arguments which will
           be passed directly to :func:`.orm.mapper`.
-        
+
         """
-        
+
         j = join(left, right, onclause=onclause, isouter=isouter)
         return self.map(j, base=base, **mapper_args)
 
     def entity(self, attr, schema=None):
         """Return the named entity from this :class:`.SqlSoup`, or 
         create if not present.
-        
+
         For more generalized mapping, see :meth:`.map_to`.
-        
+
         """
         try:
             return self._cache[attr]
         except KeyError, ke:
             return self.map_to(attr, tablename=attr, schema=schema)
-    
+
     def __getattr__(self, attr):
         return self.entity(attr)
 

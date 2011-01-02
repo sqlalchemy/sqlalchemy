@@ -120,7 +120,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'col2 FROM sometable ORDER BY '
                             'sometable.col2) WHERE ROWNUM <= :ROWNUM_1 '
                             'FOR UPDATE')
-        
+
         s = select([t],
                    for_update=True).limit(10).offset(20).order_by(t.c.col2)
         self.assert_compile(s,
@@ -131,14 +131,14 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'sometable.col2) WHERE ROWNUM <= '
                             ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
                             'UPDATE')
-        
-    
+
+
     def test_long_labels(self):
         dialect = default.DefaultDialect()
         dialect.max_identifier_length = 30
-        
+
         ora_dialect = oracle.dialect()
-        
+
         m = MetaData()
         a_table = Table(
             'thirty_characters_table_xxxxxx',
@@ -156,7 +156,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 primary_key=True
             )
         )
-        
+
         anon = a_table.alias()
         self.assert_compile(select([other_table,
                             anon]).
@@ -189,7 +189,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'thirty_characters_table__1.id = '
                             'other_thirty_characters_table_.thirty_char'
                             'acters_table_id', dialect=ora_dialect)
-        
+
     def test_outer_join(self):
         table1 = table('mytable',
             column('myid', Integer),
@@ -283,12 +283,12 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'mytable.name) WHERE ROWNUM <= :ROWNUM_1) '
                             'WHERE ora_rn > :ora_rn_1',
                             dialect=oracle.dialect(use_ansi=False))
-                            
+
         subq = select([table1]).select_from(table1.outerjoin(table2,
                 table1.c.myid == table2.c.otherid)).alias()
         q = select([table3]).select_from(table3.outerjoin(subq,
                 table3.c.userid == subq.c.myid))
-                
+
         self.assert_compile(q,
                             'SELECT thirdtable.userid, '
                             'thirdtable.otherstuff FROM thirdtable '
@@ -299,7 +299,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'mytable.myid = myothertable.otherid) '
                             'anon_1 ON thirdtable.userid = anon_1.myid'
                             , dialect=oracle.dialect(use_ansi=True))
-                            
+
         self.assert_compile(q,
                             'SELECT thirdtable.userid, '
                             'thirdtable.otherstuff FROM thirdtable, '
@@ -310,7 +310,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             '+)) anon_1 WHERE thirdtable.userid = '
                             'anon_1.myid(+)',
                             dialect=oracle.dialect(use_ansi=False))
-                            
+
         q = select([table1.c.name]).where(table1.c.name == 'foo')
         self.assert_compile(q,
                             'SELECT mytable.name FROM mytable WHERE '
@@ -326,7 +326,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'mytable.name) AS bar FROM mytable',
                             dialect=oracle.dialect(use_ansi=False))
 
-        
+
     def test_alias_outer_join(self):
         address_types = table('address_types', column('id'),
                               column('name'))
@@ -362,11 +362,11 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
 class CompatFlagsTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
-    
+
     def test_ora8_flags(self):
         def server_version_info(self):
             return (8, 2, 5)
-            
+
         dialect = oracle.dialect(dbapi=testing.db.dialect.dbapi)
         dialect._get_server_version_info = server_version_info
 
@@ -389,7 +389,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         dialect._get_server_version_info = server_version_info
         dialect.initialize(testing.db.connect())
         assert dialect.implicit_returning
-        
+
 
     def test_default_flags(self):
         """test with no initialization or server version info"""
@@ -400,7 +400,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
         self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
-    
+
     def test_ora10_flags(self):
         def server_version_info(self):
             return (10, 2, 5)
@@ -413,23 +413,23 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
         self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
-    
-    
+
+
 class MultiSchemaTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
-    
+
     @classmethod
     def setup_class(cls):
         # currently assuming full DBA privs for the user.
         # don't really know how else to go here unless
         # we connect as the other user.
-        
+
         for stmt in """
 create table test_schema.parent(
     id integer primary key, 
     data varchar2(50)
 );
-                
+
 create table test_schema.child(
     id integer primary key,
     data varchar2(50), 
@@ -441,14 +441,14 @@ create synonym test_schema.ctable for test_schema.child;
 
 -- can't make a ref from local schema to the 
 -- remote schema's table without this, 
--- *and* cant give yourself a grant !  
+-- *and* cant give yourself a grant !
 -- so we give it to public.  ideas welcome. 
 grant references on test_schema.parent to public;
 grant references on test_schema.child to public;
 """.split(";"):
             if stmt.strip():
                 testing.db.execute(stmt)
-        
+
     @classmethod
     def teardown_class(cls):
         for stmt in """
@@ -459,7 +459,7 @@ drop synonym test_schema.ptable;
 """.split(";"):
             if stmt.strip():
                 testing.db.execute(stmt)
-        
+
     def test_create_same_names_explicit_schema(self):
         schema = testing.db.dialect.default_schema_name
         meta = MetaData(testing.db)
@@ -597,7 +597,7 @@ class ConstraintTest(TestBase):
                     ForeignKeyConstraint(['foo_id'], ['foo.id'],
                     onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
-        
+
 class TypesTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
     __dialect__ = oracle.OracleDialect()
@@ -620,7 +620,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
         b = bindparam("foo", u"hello world!")
         assert b.type.dialect_impl(dialect).get_dbapi_type(dbapi) == 'STRING'
-    
+
     @testing.fails_on('+zxjdbc', 'zxjdbc lacks the FIXED_CHAR dbapi type')
     def test_fixed_char(self):
         m = MetaData(testing.db)
@@ -628,7 +628,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             Column('id', Integer, primary_key=True),
             Column('data', CHAR(30), nullable=False)
         )
-        
+
         t.create()
         try:
             t.insert().execute(
@@ -640,17 +640,17 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             eq_(t.select().where(t.c.data=='value 2').execute().fetchall(), 
                 [(2, 'value 2                       ')]
                 )
-                
+
             m2 = MetaData(testing.db)
             t2 = Table('t1', m2, autoload=True)
             assert type(t2.c.data.type) is CHAR
             eq_(t2.select().where(t2.c.data=='value 2').execute().fetchall(), 
                 [(2, 'value 2                       ')]
                 )
-            
+
         finally:
             t.drop()
-        
+
     def test_type_adapt(self):
         dialect = cx_oracle.dialect()
 
@@ -686,7 +686,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(x, int)
         finally:
             t1.drop()
-    
+
     @testing.provide_metadata
     def test_rowid(self):
         t = Table('t1', metadata,
@@ -697,7 +697,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         s1 = select([t])
         s2 = select([column('rowid')]).select_from(s1)
         rowid = s2.scalar()
-        
+
         # the ROWID type is not really needed here,
         # as cx_oracle just treats it as a string,
         # but we want to make sure the ROWID works...
@@ -707,7 +707,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         eq_(s3.select().execute().fetchall(),
         [(5, rowid)]
         )
-        
+
     @testing.fails_on('+zxjdbc',
                       'Not yet known how to pass values of the '
                       'INTERVAL type')
@@ -738,7 +738,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                 seconds=5743))
         finally:
             metadata.drop_all()
-        
+
     def test_numerics(self):
         m = MetaData(testing.db)
         t1 = Table('t1', m, 
@@ -750,7 +750,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             Column('numbercol1', oracle.NUMBER(9)),
             Column('numbercol2', oracle.NUMBER(9, 3)),
             Column('numbercol3', oracle.NUMBER),
-            
+
         )
         t1.create()
         try:
@@ -764,7 +764,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
                 numbercol2=14.85,
                 numbercol3=15.76
                 )
-            
+
             m2 = MetaData(testing.db)
             t2 = Table('t1', m2, autoload=True)
 
@@ -788,17 +788,17 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
         finally:
             t1.drop()
-    
+
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):
         """Numeric scenarios where Oracle type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
-        
+
         """
-        
+
         # this test requires cx_oracle 5
-        
+
         foo = Table('foo', metadata,
             Column('idata', Integer),
             Column('ndata', Numeric(20, 2)),
@@ -807,7 +807,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             Column('fdata', Float()),
         )
         foo.create()
-        
+
         foo.insert().execute(
             {'idata':5, 'ndata':decimal.Decimal("45.6"), 'ndata2':decimal.Decimal("45.0"), 
                     'nidata':decimal.Decimal('53'), 'fdata':45.68392},
@@ -822,8 +822,8 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             fdata
         FROM foo
         """
-        
-        
+
+
         row = testing.db.execute(stmt).fetchall()[0]
         eq_([type(x) for x in row], [int, decimal.Decimal, decimal.Decimal, int, float])
         eq_(
@@ -857,7 +857,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             row, 
             (5, decimal.Decimal('45.6'), 45, 53, decimal.Decimal('45.68392'))
         )
-        
+
         row = testing.db.execute(text(stmt, 
                                 typemap={
                                         'idata':Integer(), 
@@ -870,7 +870,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         eq_(row, 
             (5, decimal.Decimal('45.6'), decimal.Decimal('45'), decimal.Decimal('53'), 45.683920000000001)
         )
-        
+
         stmt = """
         SELECT 
                 anon_1.idata AS anon_1_idata,
@@ -924,7 +924,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             (5, 45.6, 45, 53, decimal.Decimal('45.68392'))
         )
 
-        
+
     def test_reflect_dates(self):
         metadata = MetaData(testing.db)
         Table(
@@ -946,10 +946,10 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(t1.c.d3.type, TIMESTAMP)
             assert t1.c.d3.type.timezone
             assert isinstance(t1.c.d4.type, oracle.INTERVAL)
-            
+
         finally:
             metadata.drop_all()
-        
+
     def test_reflect_raw(self):
         types_table = Table('all_types', MetaData(testing.db),
             Column('owner', String(30), primary_key=True),
@@ -984,7 +984,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             assert isinstance(res, unicode)
         finally:
             metadata.drop_all()
-       
+
     def test_char_length(self):
         self.assert_compile(VARCHAR(50),"VARCHAR(50 CHAR)")
 
@@ -994,7 +994,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(NVARCHAR(50),"NVARCHAR2(50)")
         self.assert_compile(CHAR(50),"CHAR(50)")
-        
+
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
               Column("c1", VARCHAR(50)),
@@ -1043,24 +1043,24 @@ class TypesTest(TestBase, AssertsCompiledSQL):
             eq_(row['bindata'].read(), 'this is binary')
         finally:
             t.drop(engine)
-            
+
 class EuroNumericTest(TestBase):
     """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
-    
+
     __only_on__ = 'oracle+cx_oracle'
-    
+
     def setup(self):
         self.old_nls_lang = os.environ.get('NLS_LANG', False)
         os.environ['NLS_LANG'] = "GERMAN"
         self.engine = testing_engine()
-        
+
     def teardown(self):
         if self.old_nls_lang is not False:
             os.environ['NLS_LANG'] = self.old_nls_lang
         else:
             del os.environ['NLS_LANG']
         self.engine.dispose()
-        
+
     @testing.provide_metadata
     def test_output_type_handler(self):
         for stmt, exp, kw in [
@@ -1076,8 +1076,8 @@ class EuroNumericTest(TestBase):
                 exp
             )
             assert type(test_exp) is type(exp)
-        
-    
+
+
 class DontReflectIOTTest(TestBase):
     """test that index overflow tables aren't included in
     table_names."""
@@ -1097,10 +1097,10 @@ class DontReflectIOTTest(TestBase):
             PCTTHRESHOLD 20
             OVERFLOW TABLESPACE users
         """)
-    
+
     def teardown(self):
         testing.db.execute("drop table admin_docindex")
-    
+
     def test_reflect_all(self):
         m = MetaData(testing.db)
         m.reflect()
@@ -1108,7 +1108,7 @@ class DontReflectIOTTest(TestBase):
             set(t.name for t in m.tables.values()),
             set(['admin_docindex'])
         )
-        
+
 class BufferedColumnTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
@@ -1145,7 +1145,7 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
 
 class UnsupportedIndexReflectTest(TestBase):
     __only_on__ = 'oracle'
-    
+
     def setup(self):
         global metadata
         metadata = MetaData(testing.db)
@@ -1153,16 +1153,16 @@ class UnsupportedIndexReflectTest(TestBase):
                     Column('data', String(20), primary_key=True)
                 )
         metadata.create_all()
-    
+
     def teardown(self):
         metadata.drop_all()
-        
+
     def test_reflect_functional_index(self):
         testing.db.execute('CREATE INDEX DATA_IDX ON '
                            'TEST_INDEX_REFLECT (UPPER(DATA))')
         m2 = MetaData(testing.db)
         t2 = Table('test_index_reflect', m2, autoload=True)
-    
+
 class RoundTripIndexTest(TestBase):
     __only_on__ = 'oracle'
 
@@ -1236,7 +1236,7 @@ class RoundTripIndexTest(TestBase):
             metadata.drop_all()
 
 
-        
+
 class SequenceTest(TestBase, AssertsCompiledSQL):
 
     def test_basic(self):
@@ -1250,8 +1250,8 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         seq = Sequence('My_Seq', schema='Some_Schema')
         assert dialect.identifier_preparer.format_sequence(seq) \
             == '"Some_Schema"."My_Seq"'
-    
-    
+
+
 class ExecuteTest(TestBase):
 
     __only_on__ = 'oracle'
@@ -1259,7 +1259,7 @@ class ExecuteTest(TestBase):
     def test_basic(self):
         eq_(testing.db.execute('/*+ this is a comment */ SELECT 1 FROM '
             'DUAL').fetchall(), [(1, )])
-    
+
     def test_sequences_are_integers(self):
         seq = Sequence('foo_seq')
         seq.create(testing.db)
@@ -1269,17 +1269,17 @@ class ExecuteTest(TestBase):
             assert type(val) is int
         finally:
             seq.drop(testing.db)
-            
+
     @testing.provide_metadata
     def test_limit_offset_for_update(self):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
-        
+
         t = Table('t1', metadata, Column('id', Integer, primary_key=True),
             Column('data', Integer)
         )
         metadata.create_all()
-        
+
         t.insert().execute(
             {'id':1, 'data':1},
             {'id':2, 'data':7},
@@ -1287,7 +1287,7 @@ class ExecuteTest(TestBase):
             {'id':4, 'data':15},
             {'id':5, 'data':32},
         )
-        
+
         # here, we can't use ORDER BY.
         eq_(
             t.select(for_update=True).limit(2).execute().fetchall(),
@@ -1302,5 +1302,5 @@ class ExecuteTest(TestBase):
             "ORA-02014",
             t.select(for_update=True).limit(2).offset(3).execute
         )
-        
-        
+
+

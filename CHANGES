@@ -17,7 +17,7 @@ CHANGES
     specified.   This makes it more compatible with Postgresql's
     VARCHAR type which is similarly unbounded when no length
     specified.
-    
+
 0.6.6
 =====
 - orm
@@ -45,12 +45,12 @@ CHANGES
     or collections taken into account when deleting
     objects, despite passive_deletes remaining at 
     its default of False.  [ticket:2002]
-    
+
   - A warning is emitted when version_id_col is specified
     on an inheriting mapper when the inherited mapper
     already has one, if those column expressions are not
     the same.  [ticket:1987]
-    
+
   - "innerjoin" flag doesn't take effect along the chain
     of joinedload() joins if a previous join in that chain
     is an outer join, thus allowing primary rows without
@@ -68,13 +68,13 @@ CHANGES
   - The mapper argument "primary_key" can be passed as a 
     single column as well as a list or tuple.  [ticket:1971]
     The documentation examples that illustrated it as a 
-    scalar value have been changed to lists.  
+    scalar value have been changed to lists.
 
   - Added active_history flag to relationship()
     and column_property(), forces attribute events to
     always load the "old" value, so that it's available to
     attributes.get_history(). [ticket:1961]
-    
+
   - Query.get() will raise if the number of params
     in a composite key is too large, as well as too 
     small. [ticket:1977]
@@ -89,7 +89,7 @@ CHANGES
     and foreign_keys wasn't used - adds "foreign_keys" to
     the suggestion.  Also add "foreign_keys" to the 
     suggestion for the generic "direction" error.
-    
+
 - sql
   - Fixed operator precedence rules for multiple
     chains of a single non-associative operator.
@@ -97,7 +97,7 @@ CHANGES
     and not "x - y - z".  Also works with labels,
     i.e. "x - (y - z).label('foo')"
     [ticket:1984]
-    
+
   - The 'info' attribute of Column is copied during 
     Column.copy(), i.e. as occurs when using columns
     in declarative mixins.  [ticket:1967]
@@ -105,17 +105,17 @@ CHANGES
   - Added a bind processor for booleans which coerces
     to int, for DBAPIs such as pymssql that naively call 
     str() on values.
-    
+
 - engine
   - The "unicode warning" against non-unicode bind data
     is now raised only when the
     Unicode type is used explictly; not when 
     convert_unicode=True is used on the engine 
     or String type.
-    
+
   - Fixed memory leak in C version of Decimal result
     processor.  [ticket:1978]
-    
+
   - Implemented sequence check capability for the C 
     version of RowProxy, as well as 2.7 style 
     "collections.Sequence" registration for RowProxy.
@@ -124,11 +124,11 @@ CHANGES
   - Threadlocal engine methods rollback(), commit(),
     prepare() won't raise if no transaction is in progress;
     this was a regression introduced in 0.6.  [ticket:1998]
-    
+
 - postgresql
   - Single element tuple expressions inside an IN clause
     parenthesize correctly, also from [ticket:1984]
-    
+
   - Ensured every numeric, float, int code, scalar + array,
     are recognized by psycopg2 and pg8000's "numeric" 
     base type. [ticket:1955]
@@ -141,7 +141,7 @@ CHANGES
   - Fixed bug whereby KeyError would occur with non-ENUM 
     supported PG versions after a pool dispose+recreate
     would occur, [ticket:1989]
-    
+
 - mysql
   - Fixed error handling for Jython + zxjdbc, such that 
     has_table() property works again.  Regression from
@@ -172,7 +172,7 @@ CHANGES
     this character.  cx_oracle 5.0.3 or greater is also required
     when using a non-period-decimal-point NLS_LANG setting.
     [ticket:1953].
-    
+
 - declarative
   - An error is raised if __table_args__ is not in tuple
     or dict format, and is not None.  [ticket:1972]
@@ -192,11 +192,11 @@ CHANGES
 - examples
   - The versioning example now supports detection of changes
     in an associated relationship().
-    
+
 0.6.5
 =====
 - orm
-  - Added a new "lazyload" option "immediateload".  
+  - Added a new "lazyload" option "immediateload".
     Issues the usual "lazy" load operation automatically
     as the object is populated.   The use case
     here is when loading objects to be placed in
@@ -204,7 +204,7 @@ CHANGES
     the session isn't available, and straight 'select'
     loading, not 'joined' or 'subquery', is desired.
     [ticket:1914]
-  
+
   - New Query methods: query.label(name), query.as_scalar(),
     return the query's statement as a scalar subquery
     with /without label [ticket:1920];
@@ -213,7 +213,7 @@ CHANGES
     Roughly equivalent to a generative form of query.values()
     which accepts mapped entities as well as column 
     expressions.
-    
+
   - Fixed recursion bug which could occur when moving
     an object from one reference to another, with 
     backrefs involved, where the initiating parent
@@ -223,11 +223,11 @@ CHANGES
   - Fixed a regression in 0.6.4 which occurred if you 
     passed an empty list to "include_properties" on 
     mapper() [ticket:1918]
-  
+
   - Fixed labeling bug in Query whereby the NamedTuple
     would mis-apply labels if any of the column
     expressions were un-labeled.
-    
+
   - Patched a case where query.join() would adapt the
     right side to the right side of the left's join
     inappropriately [ticket:1925]
@@ -238,7 +238,7 @@ CHANGES
     a mapped entity and not a plain selectable, 
     as the default "left" side, not the first entity 
     in the Query object's list of entities.
-    
+
   - The exception raised by Session when it is used
     subsequent to a subtransaction rollback (which is what
     happens when a flush fails in autocommit=False mode) has
@@ -264,7 +264,7 @@ CHANGES
     expiration would fail if the column expression key was
     a class attribute with a different keyname as the 
     actual column name.  [ticket:1935]
-    
+
   - Added an assertion during flush which ensures
     that no NULL-holding identity keys were generated
     on "newly persistent" objects.
@@ -281,7 +281,7 @@ CHANGES
     is not triggered on these loads when the attributes are
     determined and the "committed" state may not be 
     available.  [ticket:1910]
-    
+
   - A new flag on relationship(), load_on_pending, allows
     the lazy loader to fire off on pending objects without a
     flush taking place, as well as a transient object that's
@@ -290,7 +290,7 @@ CHANGES
     object is loaded, so backrefs aren't available until
     after a flush. The flag is only intended for very
     specific use cases.
-  
+
   - Another new flag on relationship(), cascade_backrefs,
     disables the "save-update" cascade when the event was
     initiated on the "reverse" side of a bidirectional 
@@ -299,7 +299,7 @@ CHANGES
     it getting sucked into the child object's session,
     while still allowing the forward collection to 
     cascade.   We *might* default this to False in 0.7.
-      
+
   - Slight improvement to the behavior of
     "passive_updates=False" when placed only on the
     many-to-one side of a relationship; documentation has
@@ -309,13 +309,13 @@ CHANGES
   - Placing passive_deletes=True on a many-to-one emits
     a warning, since you probably intended to put it on
     the one-to-many side.
-  
+
   - Fixed bug that would prevent "subqueryload" from
     working correctly with single table inheritance 
     for a relationship from a subclass - the "where 
     type in (x, y, z)" only gets placed on the inside,
     instead of repeatedly.
-    
+
   - When using from_self() with single table inheritance,
     the "where type in (x, y, z)" is placed on the outside
     of the query only, instead of repeatedly.   May make
@@ -328,12 +328,12 @@ CHANGES
   - reworked the internals of mapper.cascade_iterator() to
     cut down method calls by about 9% in some circumstances.
     [ticket:1932]
-    
+
 - sql
    - Fixed bug in TypeDecorator whereby the dialect-specific
      type was getting pulled in to generate the DDL for a 
      given type, which didn't always return the correct result.
-     
+
    - TypeDecorator can now have a fully constructed type
      specified as its "impl", in addition to a type class.
 
@@ -347,16 +347,16 @@ CHANGES
 
    - TypeDecorator.load_dialect_impl() returns "self.impl" by
      default, i.e. not the dialect implementation type of 
-     "self.impl".   This to support compilation correctly.  
+     "self.impl".   This to support compilation correctly.
      Behavior can be user-overridden in exactly the same way 
      as before to the same effect.
 
-   - Added type_coerce(expr, type_) expression element.  
+   - Added type_coerce(expr, type_) expression element.
      Treats the given expression as the given type when evaluating
      expressions and processing result rows, but does not 
      affect the generation of SQL, other than an anonymous
      label.
-     
+
    - Table.tometadata() now copies Index objects associated
      with the Table as well.
 
@@ -379,7 +379,7 @@ CHANGES
    - Fixed recursion overflow which could occur when operating
      with two expressions both of type "NullType", but
      not the singleton NULLTYPE instance. [ticket:1907]
-     
+
 - declarative
    - @classproperty (soon/now @declared_attr) takes effect for 
      __mapper_args__, __table_args__, __tablename__ on 
@@ -401,27 +401,27 @@ CHANGES
    - A mixin can now specify a column that overrides 
      a column of the same name associated with a superclass.
      Thanks to Oystein Haaland.
-     
+
 - engine
-   
+
    - Fixed a regression in 0.6.4 whereby the change that
      allowed cursor errors to be raised consistently broke
      the result.lastrowid accessor.   Test coverage has
      been added for result.lastrowid.   Note that lastrowid
      is only supported by Pysqlite and some MySQL drivers,
      so isn't super-useful in the general case.
-   
+
    - the logging message emitted by the engine when
      a connection is first used is now "BEGIN (implicit)" 
      to emphasize that DBAPI has no explicit begin().
-   
+
    - added "views=True" option to metadata.reflect(), 
      will add the list of available views to those
      being reflected.  [ticket:1936]
 
    - engine_from_config() now accepts 'debug' for 
      'echo', 'echo_pool', 'force' for 'convert_unicode',
-     boolean values for 'use_native_unicode'.  
+     boolean values for 'use_native_unicode'.
      [ticket:1899]
 
 - postgresql
@@ -443,11 +443,11 @@ CHANGES
      Oracle.  Previously, the flag would be forced
      to False if server version info was < 10.
      [ticket:1878]
-     
+
 - mssql
    - Fixed reflection bug which did not properly handle
      reflection of unknown types.  [ticket:1946]
-    
+
    - Fixed bug where aliasing of tables with "schema" would
      fail to compile properly.  [ticket:1943]
 
@@ -456,10 +456,10 @@ CHANGES
      (spaces, embedded commas, etc.) can be reflected.
      Note that reflection of indexes requires SQL 
      Server 2005 or greater.  [ticket:1770]
-     
+
    - mssql+pymssql dialect now honors the "port" portion
      of the URL instead of discarding it.  [ticket:1952]
-     
+
 - informix
    - *Major* cleanup / modernization of the Informix 
      dialect for 0.6, courtesy Florian Apolloner. 
@@ -473,13 +473,13 @@ CHANGES
      --with-coverage option to turn on coverage before
      SQLAlchemy modules are imported, allowing coverage
      to work correctly.
-      
+
 - misc
    - CircularDependencyError now has .cycles and .edges
      members, which are the set of elements involved in
-     one or more cycles, and the set of edges as 2-tuples.  
+     one or more cycles, and the set of edges as 2-tuples.
      [ticket:1890]
-     
+
 0.6.4
 =====
 - orm
@@ -498,19 +498,19 @@ CHANGES
     iterable.   This because asyncrhonous gc 
     can remove items via the gc thread at any time.
     [ticket:1891]
-    
+
   - The Session class is now present in sqlalchemy.orm.*.
     We're moving away from the usage of create_session(),
     which has non-standard defaults, for those situations
     where a one-step Session constructor is desired. Most
     users should stick with sessionmaker() for general use,
     however.
-  
+
   - query.with_parent() now accepts transient objects
     and will use the non-persistent values of their pk/fk
-    attributes in order to formulate the criterion.  
+    attributes in order to formulate the criterion.
     Docs are also clarified as to the purpose of with_parent().
-    
+
   - The include_properties and exclude_properties arguments
     to mapper() now accept Column objects as members in 
     addition to strings.  This so that same-named Column
@@ -525,9 +525,9 @@ CHANGES
     In 0.7 this warning will be an exception.   Note that
     this warning is not emitted when the combination occurs
     as a result of inheritance, so that attributes
-    still allow being overridden naturally.  
+    still allow being overridden naturally.
     [ticket:1896].  In 0.7 this will be improved further.
-    
+
   - The primary_key argument to mapper() can now specify
     a series of columns that are only a subset of 
     the calculated "primary key" columns of the mapped 
@@ -537,7 +537,7 @@ CHANGES
     in the selectable that are actually marked as 
     "primary_key", such as a join against two 
     tables on their primary key columns [ticket:1896].
-    
+
   - An object that's been deleted now gets a flag
     'deleted', which prohibits the object from
     being re-add()ed to the session, as previously
@@ -548,7 +548,7 @@ CHANGES
 
   - make_transient() can be safely called on an
     already transient instance.
-    
+
   - a warning is emitted in mapper() if the polymorphic_on
     column is not present either in direct or derived
     form in the mapped selectable or in the 
@@ -580,7 +580,7 @@ CHANGES
     the foreign keys to be elsewhere in any case.
     A warning is now emitted instead of an error, 
     and the mapping succeeds. [ticket:1877]
-    
+
   - Moving an o2m object from one collection to
     another, or vice versa changing the referenced
     object by an m2o, where the foreign key is also a
@@ -596,7 +596,7 @@ CHANGES
     at the "old", assuming passive_updates=True,
     unless we know it was a PK switch that
     triggered the change. [ticket:1856]
-    
+
   - The value of version_id_col can be changed 
     manually, and this will result in an UPDATE
     of the row.  Versioned UPDATEs and DELETEs
@@ -626,7 +626,7 @@ CHANGES
     expressions are enforced - lists of strings
     are explicitly disallowed since this is a
     very common error
-    
+
   - Dynamic attributes don't support collection 
     population - added an assertion for when
     set_committed_value() is called, as well as
@@ -658,14 +658,14 @@ CHANGES
   - the versioning example works correctly now
     if versioning on a col that was formerly 
     NULL.
-    
+
 - sql
   - Calling execute() on an alias() construct is pending
     deprecation for 0.7, as it is not itself an
     "executable" construct. It currently "proxies" its
     inner element and is conditionally "executable" but
     this is not the kind of ambiguity we like these days.
-    
+
   - The execute() and scalar() methods of ClauseElement
     are now moved appropriately to the Executable
     subclass. ClauseElement.execute()/ scalar() are still
@@ -673,12 +673,12 @@ CHANGES
     these would always raise an error anyway if you were
     not an Executable (unless you were an alias(), see
     previous note).
-    
+
   - Added basic math expression coercion for 
     Numeric->Integer,
     so that resulting type is Numeric regardless
     of the direction of the expression.
-    
+
   - Changed the scheme used to generate truncated
     "auto" index names when using the "index=True"
     flag on Column.   The truncation only takes
@@ -768,7 +768,7 @@ CHANGES
     upon the base "SET SESSION ISOLATION" command,
     as psycopg2 resets the isolation level on each new 
     transaction otherwise.
-    
+
 - mssql
   - Fixed "default schema" query to work with
     pymssql backend.
@@ -776,7 +776,7 @@ CHANGES
 - firebird
   - Fixed bug whereby a column default would fail to 
     reflect if the "default" keyword were lower case.
-    
+
 - oracle
   - Added ROWID type to the Oracle dialect, for those
     cases where an explicit CAST might be needed.
@@ -813,7 +813,7 @@ CHANGES
     "SQLAlchemy ORM" sections, mapper/relationship docs
     have been broken out. Lots of sections rewritten
     and/or reorganized.
-    
+
 - examples
   - The beaker_caching example has been reorgnized
     such that the Session, cache manager, 
@@ -826,7 +826,7 @@ CHANGES
     when copying columns, so that the versioning 
     table handles multiple rows with repeating values.
     [ticket:1887]
-    
+
 0.6.3
 =====
 - orm
@@ -843,7 +843,7 @@ CHANGES
     themselves + a selectable (i.e. from_self(), 
     union(), etc.), so that join() and such have the 
     correct state to work from.  [ticket:1853]
-    
+
   - Fixed bug where Query.join() would fail if
     querying a non-ORM column then joining without
     an on clause when a FROM clause is already
@@ -856,13 +856,13 @@ CHANGES
     but the subclass is not.  Any attempts to access
     cls._sa_class_manager.mapper now raise 
     UnmappedClassError().  [ticket:1142]
-    
+
   - Added "column_descriptions" accessor to Query,
     returns a list of dictionaries containing
     naming/typing information about the entities
     the Query will return.  Can be helpful for 
     building GUIs on top of ORM queries.
-    
+
 - mysql
 
   - The _extract_error_code() method now works 
@@ -883,7 +883,7 @@ CHANGES
     come back as ints without SQLA type 
     objects being involved and without needless
     conversion to Decimal first.
-    
+
     Unfortunately, some exotic subquery cases 
     can even see different types between 
     individual result rows, so the Numeric 
@@ -900,13 +900,13 @@ CHANGES
     form query.join(target, clause_expression), 
     i.e. missing the tuple, and raise an informative
     error message that this is the wrong calling form.
-    
+
   - Fixed bug regarding flushes on self-referential 
     bi-directional many-to-many relationships, where
     two objects made to mutually reference each other
     in one flush would fail to insert a row for both
     sides.  Regression from 0.5. [ticket:1824]
-  
+
   - the post_update feature of relationship() has been
     reworked architecturally to integrate more closely
     with the new 0.6 unit of work.  The motivation 
@@ -917,13 +917,13 @@ CHANGES
     statement per column per row.   Multiple row
     updates are also batched into executemany()s as 
     possible, while maintaining consistent row ordering.
-    
+
   - Query.statement, Query.subquery(), etc. now transfer
     the values of bind parameters, i.e. those specified
     by query.params(), into the resulting SQL expression.
     Previously the values would not be transferred
     and bind parameters would come out as None.
-    
+
   - Subquery-eager-loading now works with Query objects
     which include params(), as well as get() Queries.
 
@@ -954,12 +954,12 @@ CHANGES
 
   - The make_transient() function is now in the generated
     documentation.
-    
+
   - make_transient() removes all "loader" callables from
     the state being made transient, removing any
     "expired" state - all unloaded attributes reset back
     to undefined, None/empty on access.
-    
+
 - sql
   - The warning emitted by the Unicode and String types
     with convert_unicode=True no longer embeds the actual
@@ -972,11 +972,11 @@ CHANGES
   - Fixed bug that would prevent overridden clause
     compilation from working for "annotated" expression
     elements, which are often generated by the ORM.
-    
+
   - The argument to "ESCAPE" of a LIKE operator or similar
     is passed through render_literal_value(), which may 
     implement escaping of backslashes.  [ticket:1400]
-    
+
   - Fixed bug in Enum type which blew away native_enum
     flag when used with TypeDecorators or other adaption
     scenarios.
@@ -984,7 +984,7 @@ CHANGES
   - Inspector hits bind.connect() when invoked to ensure
     initialize has been called.  the internal name ".conn"
     is changed to ".bind", since that's what it is.
-    
+
   - Modified the internals of "column annotation" such that
     a custom Column subclass can safely override
     _constructor to return Column, for the purposes of 
@@ -998,30 +998,30 @@ CHANGES
 - postgresql
   - render_literal_value() is overridden which escapes
     backslashes, currently applies to the ESCAPE clause
-    of LIKE and similar expressions.   
+    of LIKE and similar expressions.
     Ultimately this will have to detect the value of 
-    "standard_conforming_strings" for full behavior.  
+    "standard_conforming_strings" for full behavior.
     [ticket:1400]
 
   - Won't generate "CREATE TYPE" / "DROP TYPE" if
     using types.Enum on a PG version prior to 8.3 - 
     the supports_native_enum flag is fully
     honored.  [ticket:1836]
-    
+
 - mysql
   - MySQL dialect doesn't emit CAST() for MySQL version 
     detected < 4.0.2.  This allows the unicode
     check on connect to proceed. [ticket:1826]
 
   - MySQL dialect now detects NO_BACKSLASH_ESCAPES sql
-    mode, in addition to ANSI_QUOTES.  
-    
+    mode, in addition to ANSI_QUOTES.
+
   - render_literal_value() is overridden which escapes
     backslashes, currently applies to the ESCAPE clause
     of LIKE and similar expressions.   This behavior
     is derived from detecting the value of 
     NO_BACKSLASH_ESCAPES.  [ticket:1400]
-    
+
 - oracle:
   - Fixed ora-8 compatibility flags such that they
     don't cache a stale value from before the first
@@ -1045,7 +1045,7 @@ CHANGES
     which suggests checking that the FreeTDS version 
     configuration is using 7.0 or 8.0, not 4.2.
     [ticket:1825]
-    
+
 - firebird
   - Fixed incorrect signature in do_execute(), error 
     introduced in 0.6.1. [ticket:1823]
@@ -1053,7 +1053,7 @@ CHANGES
   - Firebird dialect adds CHAR, VARCHAR types which
     accept a "charset" flag, to support Firebird
     "CHARACTER SET" clause.  [ticket:1813]
-  
+
 - declarative
    - Added support for @classproperty to provide 
      any kind of schema/mapping construct from a 
@@ -1063,7 +1063,7 @@ CHANGES
      An error is raised if any MapperProperty subclass
      is specified on a mixin without using @classproperty.
      [ticket:1751] [ticket:1796] [ticket:1805]
-     
+
    - a mixin class can now define a column that matches
      one which is present on a __table__ defined on a 
      subclass.  It cannot, however, define one that is 
@@ -1077,7 +1077,7 @@ CHANGES
     user-defined compiler is specific to certain 
     backends and compilation for a different backend
     is invoked. [ticket:1838]
-    
+
 - documentation
   - Added documentation for the Inspector. [ticket:1820]
 
@@ -1085,18 +1085,18 @@ CHANGES
     decorators so that Sphinx documentation picks up 
     these attributes and methods, such as 
     ResultProxy.inserted_primary_key. [ticket:1830]
-    
-    
+
+
 0.6.1
 =====
 - orm
   - Fixed regression introduced in 0.6.0 involving improper
     history accounting on mutable attributes.  [ticket:1782]
-  
+
   - Fixed regression introduced in 0.6.0 unit of work refactor
     that broke updates for bi-directional relationship()
     with post_update=True. [ticket:1807]
-    
+
   - session.merge() will not expire attributes on the returned
     instance if that instance is "pending".  [ticket:1789]
 
@@ -1117,7 +1117,7 @@ CHANGES
     the related Engine.  The cache is an LRUCache for the
     rare case that a mapper receives an extremely
     high number of different column patterns as UPDATEs.
-    
+
 - sql
   - expr.in_() now accepts a text() construct as the argument.
     Grouping parenthesis are added automatically, i.e. usage
@@ -1128,7 +1128,7 @@ CHANGES
     will coerce a "basestring" on the right side into a 
     _Binary as well so that required DBAPI processing 
     takes place.
-    
+
   - Added table.add_is_dependent_on(othertable), allows manual
     placement of dependency rules between two Table objects
     for use within create_all(), drop_all(), sorted_tables.
@@ -1137,7 +1137,7 @@ CHANGES
   - Fixed bug that prevented implicit RETURNING from functioning
     properly with composite primary key that contained zeroes.
     [ticket:1778]
-  
+
   - Fixed errant space character when generating ADD CONSTRAINT
     for a named UNIQUE constraint.
 
@@ -1162,11 +1162,11 @@ CHANGES
 
   - Pool classes will reuse the same "pool_logging_name" setting
     after a dispose() occurs.
-    
+
   - Engine gains an "execution_options" argument and 
     update_execution_options() method, which will apply to 
     all connections generated by this engine.
-    
+
 - mysql
   - func.sysdate() emits "SYSDATE()", i.e. with the ending
     parenthesis, on MySQL.  [ticket:1794]
@@ -1175,7 +1175,7 @@ CHANGES
   - Fixed concatenation of constraints when "PRIMARY KEY" 
     constraint gets moved to column level due to SQLite
     AUTOINCREMENT keyword being rendered.  [ticket:1812]
-    
+
 - oracle
   - Added a check for cx_oracle versions lower than version 5,
     in which case the incompatible "output type handler" won't 
@@ -1191,7 +1191,7 @@ CHANGES
     "native unicode" check doesn't fail, cx_oracle 
     "native unicode" mode is disabled, VARCHAR() is emitted 
     with bytes count instead of char count. [ticket:1808]
-    
+
   - oracle_xe 5 doesn't accept a Python unicode object in 
     its connect string in normal Python 2.x mode - so we coerce
     to str() directly.  non-ascii characters aren't supported
@@ -1204,12 +1204,12 @@ CHANGES
     or with subqueries, so its still not very usable, but at
     least SQLA gets the SQL past the Oracle parser.
     [ticket:1815]
-    
+
 - firebird
   - Added a label to the query used within has_table() and 
     has_sequence() to work with older versions of Firebird
     that don't provide labels for result columns. [ticket:1521]
-    
+
   - Added integer coercion to the "type_conv" attribute when 
     passed via query string, so that it is properly interpreted
     by Kinterbasdb. [ticket:1779]
@@ -1264,7 +1264,7 @@ CHANGES
     would cause a version check to occur.  Since the instance
     is first expired, refresh() always upgrades the object
     to the most recent version.
-    
+
   - The 'refresh-expire' cascade, when reaching a pending object,
     will expunge the object if the cascade also includes
     "delete-orphan", or will simply detach it otherwise.
@@ -1277,10 +1277,10 @@ CHANGES
   - The ORM will set the docstring of all generated descriptors
     to None by default.  This can be overridden using 'doc'
     (or if using Sphinx, attribute docstrings work too).
-    
+
   - Added kw argument 'doc' to all mapper property callables 
     as well as Column().  Will assemble the string 'doc' as 
-    the '__doc__' attribute on the descriptor.  
+    the '__doc__' attribute on the descriptor.
 
   - Usage of version_id_col on a backend that supports 
     cursor.rowcount for execute() but not executemany() now works
@@ -1294,12 +1294,12 @@ CHANGES
     objects of all the same class, thereby avoiding redundant
     compilation per individual INSERT/UPDATE within an 
     individual flush() call.
-    
+
   - internal getattr(), setattr(), getcommitted() methods
     on ColumnProperty, CompositeProperty, RelationshipProperty
     have been underscored (i.e. are private), signature has 
     changed.
-    
+
 - engines
   - The C extension now also works with DBAPIs which use custom
     sequences as row (and not only tuples). [ticket:1757]
@@ -1315,14 +1315,14 @@ CHANGES
   - somejoin.select(fold_equivalents=True) is no longer 
     deprecated, and will eventually be rolled into a more 
     comprehensive version of the feature for [ticket:1729].
-    
+
   - the Numeric type raises an *enormous* warning when expected
     to convert floats to Decimal from a DBAPI that returns floats.
     This includes SQLite, Sybase, MS-SQL. [ticket:1759]
 
   - Fixed an error in expression typing which caused an endless
     loop for expressions with two NULL types.
-  
+
   - Fixed bug in execution_options() feature whereby the existing
     Transaction and other state information from the parent 
     connection would not be propagated to the sub-connection.
@@ -1335,7 +1335,7 @@ CHANGES
     corresponding to the dialect, clause element, the column
     names within the VALUES or SET clause of an INSERT or UPDATE, 
     as well as the "batch" mode for an INSERT or UPDATE statement.
-  
+
   - Added get_pk_constraint() to reflection.Inspector, similar
     to get_primary_keys() except returns a dict that includes the
     name of the constraint, for supported backends (PG so far).
@@ -1343,13 +1343,13 @@ CHANGES
 
   - Table.create() and Table.drop() no longer apply metadata-
     level create/drop events.  [ticket:1771]
-    
+
 - ext
   - the compiler extension now allows @compiles decorators
     on base classes that extend to child classes, @compiles
     decorators on child classes that aren't broken by a 
     @compiles decorator on the base class.
-   
+
   - Declarative will raise an informative error message
     if a non-mapped class attribute is referenced in the
     string-based relationship() arguments.
@@ -1363,7 +1363,7 @@ CHANGES
     SERIAL columns correctly, after the name of of the sequence
     has been changed.  Thanks to Kumar McMillan for the patch.
     [ticket:1071]
-    
+
   - Repaired missing import in psycopg2._PGNumeric type when 
     unknown numeric is received.
 
@@ -1373,7 +1373,7 @@ CHANGES
 
   - Postgresql reflects the name of primary key constraints,
     if one exists.  [ticket:1769]
-        
+
 - oracle
   - Now using cx_oracle output converters so that the
     DBAPI returns natively the kinds of values we prefer:
@@ -1395,12 +1395,12 @@ CHANGES
      call is slightly expensive however so it can be disabled.
      To re-enable on a per-execution basis, the 
      'enable_rowcount=True' execution option may be used.
-     
+
 - examples
   - Updated attribute_shard.py example to use a more robust
     method of searching a Query for binary expressions which
     compare columns against literal values.
-    
+
 0.6beta3
 ========
 
@@ -1423,7 +1423,7 @@ CHANGES
     loading available, the new names for eagerload() and 
     eagerload_all() are joinedload() and joinedload_all().  The 
     old names will remain as synonyms for the foreseeable future.
-    
+
   - The "lazy" flag on the relationship() function now accepts 
     a string argument for all kinds of loading: "select", "joined",
     "subquery", "noload" and "dynamic", where the default is now
@@ -1435,7 +1435,7 @@ CHANGES
     directly down to select().with_hint() and also accepts
     entities as well as tables and aliases.  See with_hint() in the 
     SQL section below. [ticket:921]
-    
+
   - Fixed bug in Query whereby calling q.join(prop).from_self(...).
     join(prop) would fail to render the second join outside the
     subquery, when joining on the same criterion as was on the 
@@ -1445,7 +1445,7 @@ CHANGES
     would fail if the underlying table (but not the actual alias) 
     were referenced inside the subquery generated by 
     q.from_self() or q.select_from().
-    
+
   - Fixed bug which affected all eagerload() and similar options 
     such that "remote" eager loads, i.e. eagerloads off of a lazy
     load such as query(A).options(eagerload(A.b, B.c))
@@ -1463,13 +1463,13 @@ CHANGES
     carefully that "Cls" is compatible with the current joinpoint,
     and act the same way as Query.join("propname", from_joinpoint=True)
     in that regard.
-    
+
 - sql
    - Added with_hint() method to select() construct.  Specify
      a table/alias, hint text, and optional dialect name, and
      "hints" will be rendered in the appropriate place in the 
      statement.  Works for Oracle, Sybase, MySQL.  [ticket:921]
-     
+
    - Fixed bug introduced in 0.6beta2 where column labels would 
      render inside of column expressions already assigned a label.
      [ticket:1747]
@@ -1490,7 +1490,7 @@ CHANGES
      when reflecting - TINYINT(1) is returned.  Use Boolean/
      BOOLEAN in table definition to get boolean conversion
      behavior.  [ticket:1752]
-     
+
 - oracle
    - The Oracle dialect will issue VARCHAR type definitions
      using character counts, i.e. VARCHAR2(50 CHAR), so that
@@ -1510,7 +1510,7 @@ CHANGES
      __tablename__, __table_args__, etc. now works if
      the method references attributes on the ultimate 
      subclass. [ticket:1749]
-    
+
    - relationships and columns with foreign keys aren't 
      allowed on declarative mixins, sorry.  [ticket:1751]
 
@@ -1518,7 +1518,7 @@ CHANGES
     - The sqlalchemy.orm.shard module now becomes an extension,
       sqlalchemy.ext.horizontal_shard.   The old import 
       works with a deprecation warning.
-      
+
 0.6beta2
 ========
 
@@ -1527,7 +1527,7 @@ CHANGES
     now that Distribute runs on Py3k.   distribute_setup.py
     is now included.  See README.py3k for Python 3 installation/
     testing instructions.
-    
+
 - orm
   - The official name for the relation() function is now
     relationship(), to eliminate confusion over the relational
@@ -1538,9 +1538,9 @@ CHANGES
     callable that, given the current value of the "version_id_col",
     returns the next version number.  Can be used for alternate
     versioning schemes such as uuid, timestamps.  [ticket:1692]
-  
+
   - added "lockmode" kw argument to Session.refresh(), will
-    pass through the string value to Query the same as  
+    pass through the string value to Query the same as
     in with_lockmode(), will also do version check for a 
     version_id_col-enabled mapping.
 
@@ -1562,11 +1562,11 @@ CHANGES
 
   - Fixed bug in session.merge() which prevented dict-like
     collections from merging.
-    
+
   - session.merge() works with relations that specifically
     don't include "merge" in their cascade options - the target
     is ignored completely.
-    
+
   - session.merge() will not expire existing scalar attributes
     on an existing target if the target has a value for that
     attribute, even if the incoming merged doesn't have
@@ -1580,7 +1580,7 @@ CHANGES
     it also is implemented within merge() such that a SELECT
     won't be issued for an incoming instance with partially
     NULL primary key if the flag is False.  [ticket:1680]
-  
+
   - Fixed bug in 0.6-reworked "many-to-one" optimizations
     such that a many-to-one that is against a non-primary key
     column on the remote table (i.e. foreign key against a 
@@ -1589,11 +1589,11 @@ CHANGES
     we will need it for proper history/backref accounting,
     and we can't pull from the local identity map on a 
     non-primary key column. [ticket:1737]
-    
+
   - fixed internal error which would occur if calling has()
     or similar complex expression on a single-table inheritance
     relation(). [ticket:1731]
-    
+
   - query.one() no longer applies LIMIT to the query, this to
     ensure that it fully counts all object identities present
     in the result, even in the case where joins may conceal
@@ -1604,15 +1604,15 @@ CHANGES
 
   - query.get() now returns None if queried for an identifier
     that is present in the identity map with a different class 
-    than the one requested, i.e. when using polymorphic loading.  
+    than the one requested, i.e. when using polymorphic loading.
     [ticket:1727]
-    
+
   - A major fix in query.join(), when the "on" clause is an
     attribute of an aliased() construct, but there is already
     an existing join made out to a compatible target, query properly
     joins to the right aliased() construct instead of sticking
     onto the right side of the existing join.  [ticket:1706]
-    
+
   - Slight improvement to the fix for [ticket:1362] to not issue 
     needless updates of the primary key column during a so-called
     "row switch" operation, i.e. add + delete of two objects
@@ -1622,13 +1622,13 @@ CHANGES
     attribute load or refresh action fails due to object
     being detached from any Session.   UnboundExecutionError
     is specific to engines bound to sessions and statements.
-    
+
   - Query called in the context of an expression will render
     disambiguating labels in all cases.    Note that this does
     not apply to the existing .statement and .subquery()
     accessor/method, which still honors the .with_labels()
-    setting that defaults to False.  
-     
+    setting that defaults to False.
+
   - Query.union() retains disambiguating labels within the
     returned statement, thus avoiding various SQL composition
     errors which can result from column name conflicts.
@@ -1654,7 +1654,7 @@ CHANGES
     query.select_from(), query.with_polymorphic(), or
     query.from_statement() raises an exception now instead of 
     silently dropping those criterion. [ticket:1736]
-    
+
   - query.scalar() now raises an exception if more than one 
     row is returned.  All other behavior remains the same.
     [ticket:1735]
@@ -1662,7 +1662,7 @@ CHANGES
   - Fixed bug which caused "row switch" logic, that is an 
     INSERT and DELETE replaced by an UPDATE, to fail when 
     version_id_col was in use. [ticket:1692]
-    
+
 - sql
   - join() will now simulate a NATURAL JOIN by default.  Meaning,
     if the left side is a join, it will attempt to join the right
@@ -1670,7 +1670,7 @@ CHANGES
     any exceptions about ambiguous join conditions if successful
     even if there are further join targets across the rest of
     the left.  [ticket:1714]
-    
+
   - The most common result processors conversion function were
     moved to the new "processors" module.  Dialect authors are
     encouraged to use those functions whenever they correspond
@@ -1696,7 +1696,7 @@ CHANGES
     Dialects can also expand upon the areas where binds are not 
     accepted, such as within argument lists of functions 
     (which don't work on MS-SQL when native SQL binding is used).
-    
+
   - Added "unicode_errors" parameter to String, Unicode, etc.
     Behaves like the 'errors' keyword argument to
     the standard library's string.decode() functions.   This flag
@@ -1711,19 +1711,19 @@ CHANGES
     in the first place (i.e. MySQL. *not* PG, Sqlite, etc.)
 
   - Added math negation operator support, -x.
-  
+
   - FunctionElement subclasses are now directly executable the
     same way any func.foo() construct is, with automatic 
     SELECT being applied when passed to execute().
-    
+
   - The "type" and "bind" keyword arguments of a func.foo() 
     construct are now local to "func." constructs and are 
     not part of the FunctionElement base class, allowing 
     a "type" to be handled in a custom constructor or 
     class-level variable.
-    
+
   - Restored the keys() method to ResultProxy.
-  
+
   - The type/expression system now does a more complete job
     of determining the return type from an expression
     as well as the adaptation of the Python operator into 
@@ -1766,7 +1766,7 @@ CHANGES
   - Column() requires a type if it has no foreign keys (this is 
     not new).  An error is now raised if a Column() has no type
     and no foreign keys.  [ticket:1705]
-    
+
   - the "scale" argument of the Numeric() type is honored when 
     coercing a returned floating point value into a string 
     on its way to Decimal - this allows accuracy to function
@@ -1775,7 +1775,7 @@ CHANGES
   - the copy() method of Column now copies over uninitialized
     "on table attach" events.  Helps with the new declarative
     "mixin" capability.
-    
+
 - engines
   - Added an optional C extension to speed up the sql layer by
     reimplementing RowProxy and the most common result processors.
@@ -1790,7 +1790,7 @@ CHANGES
     info from the cursor before commit() is called on the 
     DBAPI connection in an "autocommit" scenario.  This helps 
     mxodbc with rowcount and is probably a good idea overall.
-    
+
   - Opened up logging a bit such that isEnabledFor() is called 
     more often, so that changes to the log level for engine/pool
     will be reflected on next connect.   This adds a small 
@@ -1798,7 +1798,7 @@ CHANGES
     life a lot easier for all those situations when logging 
     just happens to be configured after create_engine() is called.
     [ticket:1719]
-    
+
   - The assert_unicode flag is deprecated.  SQLAlchemy will raise
     a warning in all cases where it is asked to encode a non-unicode
     Python string, as well as when a Unicode or UnicodeType type
@@ -1823,19 +1823,19 @@ CHANGES
     filters down to that of Pool.   Issues the given string name
     within the "name" field of logging messages instead of the default
     hex identifier string.  [ticket:1555]
-    
+
   - The visit_pool() method of Dialect is removed, and replaced with
     connect().  This method returns a callable which receives
     the raw DBAPI connection after each one is created.   The callable
     is assembled into a first_connect/connect pool listener by the 
     connection strategy if non-None.   Provides a simpler interface 
     for dialects.
-    
+
   - StaticPool now initializes, disposes and recreates without 
     opening a new connection - the connection is only opened when 
     first requested. dispose() also works on AssertionPool now.
     [ticket:1728]
-    
+
 - metadata
   - Added the ability to strip schema information when using
     "tometadata" by passing "schema=None" as an argument. If schema
@@ -1853,13 +1853,13 @@ CHANGES
   - declarative now accepts mixin classes directly, as a means
     to provide common functional and column-based elements on
     all subclasses, as well as a means to propagate a fixed
-    set of __table_args__ or __mapper_args__ to subclasses.  
+    set of __table_args__ or __mapper_args__ to subclasses.
     For custom combinations of __table_args__/__mapper_args__ from
     an inherited mixin to local, descriptors can now be used.
     New details are all up in the Declarative documentation.
     Thanks to Chris Withers for putting up with my strife 
     on this. [ticket:1707]
-    
+
   - the __mapper_args__ dict is copied when propagating to a subclass,
     and is taken straight off the class __dict__ to avoid any
     propagation from the parent.  mapper inheritance already
@@ -1869,7 +1869,7 @@ CHANGES
   - An exception is raised when a single-table subclass specifies
     a column that is already present on the base class.
     [ticket:1732]
-    
+
 - mysql
   - Fixed reflection bug whereby when COLLATE was present, 
     nullable flag and server defaults would not be reflected.
@@ -1879,26 +1879,26 @@ CHANGES
     integer flags like UNSIGNED.
 
   - Further fixes for the mysql-connector dialect.  [ticket:1668]
-  
+
   - Composite PK table on InnoDB where the "autoincrement" column
     isn't first will emit an explicit "KEY" phrase within 
     CREATE TABLE thereby avoiding errors, [ticket:1496]
 
   - Added reflection/create table support for a wide range
     of MySQL keywords.  [ticket:1634]
-  
+
   - Fixed import error which could occur reflecting tables on
     a Windows host [ticket:1580]
-    
+
 - mssql
   - Re-established support for the pymssql dialect.
 
   - Various fixes for implicit returning, reflection,
     etc. - the MS-SQL dialects aren't quite complete
     in 0.6 yet (but are close)
-  
+
   - Added basic support for mxODBC [ticket:1710].
-  
+
   - Removed the text_as_varchar option.
 
 - oracle
@@ -1920,17 +1920,17 @@ CHANGES
      is emitted asking that the user seriously consider
      the usage of this difficult mode of operation.
      [ticket:1670]
-  
+
    - The except_() method now renders as MINUS on Oracle,
      which is more or less equivalent on that platform.
      [ticket:1712]
-   
+
    - Added support for rendering and reflecting 
      TIMESTAMP WITH TIME ZONE, i.e. TIMESTAMP(timezone=True).
      [ticket:651]
-     
+
    - Oracle INTERVAL type can now be reflected.
-     
+
 - sqlite
    - Added "native_datetime=True" flag to create_engine().
      This will cause the DATE and TIMESTAMP types to skip 
@@ -1947,7 +1947,7 @@ CHANGES
      creates/drops and basic round trip functionality.
      Does not yet include reflection or comprehensive
      support of unicode/special expressions/etc.
-     
+
 - examples
    - Changed the beaker cache example a bit to have a separate
      RelationCache option for lazyload caching.  This object
@@ -1971,11 +1971,11 @@ CHANGES
 
   - Platforms targeted now include Python 2.4/2.5/2.6, Python
     3.1, Jython2.5.
-    
+
 - orm
   - Changes to query.update() and query.delete():
       - the 'expire' option on query.update() has been renamed to
-        'fetch', thus matching that of query.delete().  
+        'fetch', thus matching that of query.delete().
         'expire' is deprecated and issues a warning.
 
       - query.update() and query.delete() both default to
@@ -2022,7 +2022,7 @@ CHANGES
   - Enhancements / Changes on Session.merge():
      - the "dont_load=True" flag on Session.merge() is deprecated
        and is now "load=False".
-    
+
      - Session.merge() is performance optimized, using half the
        call counts for "load=False" mode compared to 0.5 and
        significantly fewer SQL queries in the case of collections
@@ -2030,39 +2030,39 @@ CHANGES
 
      - merge() will not issue a needless merge of attributes if the
        given instance is the same instance which is already present.
-       
+
      - merge() now also merges the "options" associated with a given
        state, i.e. those passed through query.options() which follow
        along with an instance, such as options to eagerly- or
        lazyily- load various attributes.   This is essential for
        the construction of highly integrated caching schemes.  This
        is a subtle behavioral change vs. 0.5.
-       
+
      - A bug was fixed regarding the serialization of the "loader
        path" present on an instance's state, which is also necessary
        when combining the usage of merge() with serialized state
-       and associated options that should be preserved.  
-       
+       and associated options that should be preserved.
+
      - The all new merge() is showcased in a new comprehensive 
        example of how to integrate Beaker with SQLAlchemy.  See
        the notes in the "examples" note below.
-  
+
   - Primary key values can now be changed on a joined-table inheritance
     object, and ON UPDATE CASCADE will be taken into account when
     the flush happens.  Set the new "passive_updates" flag to False
     on mapper() when using SQLite or MySQL/MyISAM. [ticket:1362]
-    
+
   - flush() now detects when a primary key column was updated by
     an ON UPDATE CASCADE operation from another primary key, and
     can then locate the row for a subsequent UPDATE on the new PK
     value.  This occurs when a relation() is there to establish
     the relationship as well as passive_updates=True.  [ticket:1671]
-    
+
   - the "save-update" cascade will now cascade the pending *removed*
     values from a scalar or collection attribute into the new session 
     during an add() operation.  This so that the flush() operation
     will also delete or modify rows of those disconnected items.
-    
+
   - Using a "dynamic" loader with a "secondary" table now produces
     a query where the "secondary" table is *not* aliased.  This
     allows the secondary Table object to be used in the "order_by"
@@ -2075,25 +2075,25 @@ CHANGES
     the row.  This may be due to primaryjoin/secondaryjoin 
     conditions which aren't appropriate for an eager LEFT OUTER 
     JOIN or for other conditions.  [ticket:1643]
-    
+
   - an explicit check occurs when a synonym() is used with 
     map_column=True, when a ColumnProperty (deferred or otherwise)
     exists separately in the properties dictionary sent to mapper
     with the same keyname.   Instead of silently replacing 
     the existing property (and possible options on that property), 
     an error is raised.  [ticket:1633]
-    
+
   - a "dynamic" loader sets up its query criterion at construction
     time so that the actual query is returned from non-cloning
     accessors like "statement".
-    
+
   - the "named tuple" objects returned when iterating a
     Query() are now pickleable.
 
   - mapping to a select() construct now requires that you 
     make an alias() out of it distinctly.   This to eliminate
     confusion over such issues as [ticket:1542]
-    
+
   - query.join() has been reworked to provide more consistent 
     behavior and more flexibility (includes [ticket:1537])
 
@@ -2109,7 +2109,7 @@ CHANGES
   - query.get() can be used with a mapping to an outer join
     where one or more of the primary key values are None.
     [ticket:1135]
-    
+
   - query.from_self(), query.union(), others which do a 
     "SELECT * from (SELECT...)" type of nesting will do
     a better job translating column expressions within the subquery
@@ -2118,12 +2118,12 @@ CHANGES
     may break queries with literal expressions that do not have labels
     applied (i.e. literal('foo'), etc.)
     [ticket:1568]
-  
+
   - relation primaryjoin and secondaryjoin now check that they
     are column-expressions, not just clause elements.  this prohibits
     things like FROM expressions being placed there directly.
     [ticket:1622]
-    
+
   - `expression.null()` is fully understood the same way
     None is when comparing an object/collection-referencing
     attribute within query.filter(), filter_by(), etc.
@@ -2149,7 +2149,7 @@ CHANGES
      subclasses of RelationProperty) into the reverse reference. 
      The internal BackRef() is gone and backref() returns a plain 
      tuple that is understood by RelationProperty.
-     
+
    - The version_id_col feature on mapper() will raise a warning when
      used with dialects that don't support "rowcount" adequately.
      [ticket:1569]
@@ -2159,10 +2159,10 @@ CHANGES
      Select-statements have these options, and the only option
      used is "stream_results", and the only dialect which knows
      "stream_results" is psycopg2. 
-     
+
    - Query.yield_per() will set the "stream_results" statement
      option automatically.
-     
+
    - Deprecated or removed:
       * 'allow_null_pks' flag on mapper() is deprecated.  It does
         nothing now and the setting is "on" in all cases.
@@ -2210,9 +2210,9 @@ CHANGES
         expect a regular mapped object instance.
       * the 'engine' parameter to declarative_base() is removed.
         Use the 'bind' keyword argument.
-        
+
 - sql
-  
+
     - the "autocommit" flag on select() and text() as well
       as select().autocommit() are deprecated - now call
       .execution_options(autocommit=True) on either of those
@@ -2221,7 +2221,7 @@ CHANGES
     - the autoincrement flag on column now indicates the column
       which should be linked to cursor.lastrowid, if that method
       is used.  See the API docs for details.
-    
+
     - an executemany() now requires that all bound parameter
       sets require that all keys are present which are 
       present in the first bound parameter set.  The structure
@@ -2232,7 +2232,7 @@ CHANGES
       is not impacted.  For this reason defaults would otherwise 
       silently "fail" for missing parameters, so this is now guarded 
       against. [ticket:1566]
-      
+
     - returning() support is native to insert(), update(),
       delete(). Implementations of varying levels of
       functionality exist for Postgresql, Firebird, MSSQL and
@@ -2245,7 +2245,7 @@ CHANGES
       version in use supports it (a version number check is
       performed). This occurs if no end-user returning() was
       specified.
-    
+
     - union(), intersect(), except() and other "compound" types
       of statements have more consistent behavior w.r.t. 
       parenthesizing.   Each compound element embedded within 
@@ -2260,18 +2260,18 @@ CHANGES
       when nesting compound elements, the first one usually needs
       ".alias().select()" called on it to wrap it inside
       of a subquery.  [ticket:1665]
-      
+
     - insert() and update() constructs can now embed bindparam()
       objects using names that match the keys of columns.  These
       bind parameters will circumvent the usual route to those 
       keys showing up in the VALUES or SET clause of the generated
       SQL. [ticket:1579]
-      
+
     - the Binary type now returns data as a Python string
       (or a "bytes" type in Python 3), instead of the built-
       in "buffer" type.  This allows symmetric round trips
       of binary data. [ticket:1524]
-    
+
     - Added a tuple_() construct, allows sets of expressions
       to be compared to another set, typically with IN against
       composite primary keys or similar.  Also accepts an 
@@ -2279,7 +2279,7 @@ CHANGES
       have only one column" error message is removed - will
       rely upon the database to report problems with 
       col mismatch.
-        
+
     - User-defined "default" and "onupdate" callables which 
       accept a context should now call upon 
       "context.current_parameters" to get at the dictionary
@@ -2292,7 +2292,7 @@ CHANGES
       with underscores for dots, i.e. "dbo_master_table_column".
       This is a "friendly" label that behaves better
       in result sets. [ticket:1428]
-    
+
     - removed needless "counter" behavior with select()
       labelnames that match a column name in the table,
       i.e. generates "tablename_id" for "id", instead of
@@ -2301,7 +2301,7 @@ CHANGES
       named "tablename_id" - this is because
       the labeling logic is always applied to all columns
       so a naming conflict will never occur.
-    
+
     - calling expr.in_([]), i.e. with an empty list, emits a warning
       before issuing the usual "expr != expr" clause.  The
       "expr != expr" can be very expensive, and it's preferred
@@ -2312,7 +2312,7 @@ CHANGES
 
     - Added "execution_options()" to select()/text(), which set the
       default options for the Connection.  See the note in "engines".
-       
+
     - Deprecated or removed:
         * "scalar" flag on select() is removed, use 
           select.as_scalar().
@@ -2322,12 +2322,12 @@ CHANGES
           the new returning() method.
         * fold_equivalents flag on join is deprecated (will remain
           until [ticket:1131] is implemented)
-    
+
 - engines
   - transaction isolation level may be specified with
     create_engine(... isolation_level="..."); available on
     postgresql and sqlite. [ticket:443]
-    
+
   - Connection has execution_options(), generative method
     which accepts keywords that affect how the statement 
     is executed w.r.t. the DBAPI.   Currently supports 
@@ -2337,11 +2337,11 @@ CHANGES
     option from select() and text().   select() and
     text() also have .execution_options() as well as 
     ORM Query().
-    
+
   - fixed the import for entrypoint-driven dialects to 
     not rely upon silly tb_info trick to determine import
     error status.  [ticket:1630]
-    
+
   - added first() method to ResultProxy, returns first row and
     closes result set immediately.
 
@@ -2351,7 +2351,7 @@ CHANGES
   - RowProxy no longer has a close() method, as the row no longer
     maintains a reference to the parent.  Call close() on 
     the parent ResultProxy instead, or use autoclose.
-    
+
   - ResultProxy internals have been overhauled to greatly reduce
     method call counts when fetching columns.  Can provide a large 
     speed improvement (up to more than 100%) when fetching large 
@@ -2369,31 +2369,31 @@ CHANGES
 
   - the last_inserted_ids() method has been renamed to the
     descriptor "inserted_primary_key".
-    
+
   - setting echo=False on create_engine() now sets the loglevel
     to WARN instead of NOTSET.  This so that logging can be
     disabled for a particular engine even if logging
     for "sqlalchemy.engine" is enabled overall.  Note that the
     default setting of "echo" is `None`. [ticket:1554]
-  
+
   - ConnectionProxy now has wrapper methods for all transaction
     lifecycle events, including begin(), rollback(), commit()
     begin_nested(), begin_prepared(), prepare(), release_savepoint(),
     etc.
-    
+
   - Connection pool logging now uses both INFO and DEBUG
     log levels for logging.  INFO is for major events such
     as invalidated connections, DEBUG for all the acquire/return
     logging.  `echo_pool` can be False, None, True or "debug"
     the same way as `echo` works.
-  
+
   - All pyodbc-dialects now support extra pyodbc-specific 
     kw arguments 'ansi', 'unicode_results', 'autocommit'.
     [ticket:1621]
 
   - the "threadlocal" engine has been rewritten and simplified 
     and now supports SAVEPOINT operations.
-    
+
   - deprecated or removed
       * result.last_inserted_ids() is deprecated.  Use 
         result.inserted_primary_key
@@ -2404,22 +2404,22 @@ CHANGES
         now has those methods.   All four methods accept
         *args and **kwargs which are passed to the given callable, 
         as well as the operating connection.
-        
+
 - schema
     - the `__contains__()` method of `MetaData` now accepts
       strings or `Table` objects as arguments.  If given
       a `Table`, the argument is converted to `table.key` first,
       i.e. "[schemaname.]<tablename>" [ticket:1541]
-      
+
     - deprecated MetaData.connect() and
       ThreadLocalMetaData.connect() have been removed - send
       the "bind" attribute to bind a metadata.
 
     - deprecated metadata.table_iterator() method removed (use
       sorted_tables)
-    
+
     - deprecated PassiveDefault - use DefaultClause.
-    
+
     - the "metadata" argument is removed from DefaultGenerator
       and subclasses, but remains locally present on Sequence,
       which is a standalone construct in DDL.
@@ -2433,12 +2433,12 @@ CHANGES
         - PrimaryKeyConstraint.remove()
       These should be constructed declaratively (i.e. in one
       construction).
-    
+
     - The "start" and "increment" attributes on Sequence now
       generate "START WITH" and "INCREMENT BY" by default,
       on Oracle and Postgresql.  Firebird doesn't support
       these keywords right now.  [ticket:1545]
-      
+
     - UniqueConstraint, Index, PrimaryKeyConstraint all accept
       lists of column names or column objects as arguments.
 
@@ -2450,40 +2450,40 @@ CHANGES
         - Column.metadata   (get via column.table.metadata)
         - Column.sequence   (use column.default)
         - ForeignKey(constraint=some_parent) (is now private _constraint)
-        
+
     - The use_alter flag on ForeignKey is now a shortcut option
       for operations that can be hand-constructed using the
       DDL() event system. A side effect of this refactor is
       that ForeignKeyConstraint objects with use_alter=True
       will *not* be emitted on SQLite, which does not support
       ALTER for foreign keys.
-    
+
     - ForeignKey and ForeignKeyConstraint objects now correctly
       copy() all their public keyword arguments.  [ticket:1605]
-      
+
 - Reflection/Inspection
     - Table reflection has been expanded and generalized into 
       a new API called "sqlalchemy.engine.reflection.Inspector".
       The Inspector object provides fine-grained information about
       a wide variety of schema information, with room for expansion,
       including table names, column names, view definitions, sequences,
-      indexes, etc.  
-    
+      indexes, etc.
+
     - Views are now reflectable as ordinary Table objects.  The same
       Table constructor is used, with the caveat that "effective" 
       primary and foreign key constraints aren't part of the reflection
       results; these have to be specified explicitly if desired.
-    
+
     - The existing autoload=True system now uses Inspector underneath
       so that each dialect need only return "raw" data about tables
       and other objects - Inspector is the single place that information
       is compiled into Table objects so that consistency is at a maximum.
-      
+
 - DDL
     - the DDL system has been greatly expanded.  the DDL() class
       now extends the more generic DDLElement(), which forms the basis
       of many new constructs:
-      
+
         - CreateTable()
         - DropTable()
         - AddConstraint()
@@ -2492,14 +2492,14 @@ CHANGES
         - DropIndex()
         - CreateSequence()
         - DropSequence()
-        
+
        These support "on" and "execute-at()" just like plain DDL() 
        does.  User-defined DDLElement subclasses can be created and 
        linked to a compiler using the sqlalchemy.ext.compiler extension.
 
     - The signature of the "on" callable passed to DDL() and
       DDLElement() is revised as follows:
-      
+
         "ddl" - the DDLElement object itself.
         "event" - the string event name.
         "target" - previously "schema_item", the Table or 
@@ -2523,7 +2523,7 @@ CHANGES
 
     - the setuptools entrypoint for external dialects is now 
       called "sqlalchemy.dialects".
-      
+
     - the "owner" keyword argument is removed from Table. Use
       "schema" to represent any namespaces to be prepended to
       the table name.
@@ -2538,17 +2538,17 @@ CHANGES
 
     - cached TypeEngine classes are cached per-dialect class 
       instead of per-dialect.
-    
+
     - new UserDefinedType should be used as a base class for
       new types, which preserves the 0.5 behavior of 
       get_col_spec().
-      
+
     - The result_processor() method of all type classes now 
       accepts a second argument "coltype", which is the DBAPI
       type argument from cursor.description.  This argument
       can help some types decide on the most efficient processing
       of result values.
-      
+
     - Deprecated Dialect.get_params() removed.
 
     - Dialect.get_rowcount() has been renamed to a descriptor
@@ -2561,7 +2561,7 @@ CHANGES
       ExecutionContext.  Dialects which support sequences should
       add a `fire_sequence()` method to their execution context
       implementation.  [ticket:1566]
-      
+
     - Functions and operators generated by the compiler now use
       (almost) regular dispatch functions of the form
       "visit_<opname>" and "visit_<funcname>_fn" to provide
@@ -2575,7 +2575,7 @@ CHANGES
 - postgresql
     - New dialects: pg8000, zxjdbc, and pypostgresql
       on py3k.
-      
+
     - The "postgres" dialect is now named "postgresql" !
       Connection strings look like:
 
@@ -2601,24 +2601,24 @@ CHANGES
              the older "postgres_returning" and
              "postgres_where" names still work with a
              deprecation warning.
-    
+
     - "postgresql_where" now accepts SQL expressions which 
       can also include literals, which will be quoted as needed.
-      
+
     - The psycopg2 dialect now uses psycopg2's "unicode extension"
       on all new connections, which allows all String/Text/etc.
       types to skip the need to post-process bytestrings into
       unicode (an expensive step due to its volume).  Other 
       dialects which return unicode natively (pg8000, zxjdbc)
       also skip unicode post-processing.
-      
+
     - Added new ENUM type, which exists as a schema-level
       construct and extends the generic Enum type.  Automatically
       associates itself with tables and their parent metadata
       to issue the appropriate CREATE TYPE/DROP TYPE 
       commands as needed, supports unicode labels, supports
       reflection.  [ticket:1511]
-    
+
     - INTERVAL supports an optional "precision" argument 
       corresponding to the argument that PG accepts.
 
@@ -2630,17 +2630,17 @@ CHANGES
       %(foobar)s however and SQLA doesn't want to add overhead
       just to treat that one non-existent use case.
       [ticket:1279]
-    
+
     - Inserting NULL into a primary key + foreign key column
       will allow the "not null constraint" error to raise,
       not an attempt to execute a nonexistent "col_id_seq" 
       sequence.  [ticket:1516]
-    
+
     - autoincrement SELECT statements, i.e. those which 
       select from a procedure that modifies rows, now work 
       with server-side cursor mode (the named cursor isn't 
       used for such statements.)
-    
+
     - postgresql dialect can properly detect pg "devel" version
       strings, i.e. "8.5devel" [ticket:1636]
 
@@ -2650,17 +2650,17 @@ CHANGES
       used for the statement. If false, they will not be used, even
       if "server_side_cursors" is true on the
       connection. [ticket:1619]
-      
+
 - mysql
     - New dialects: oursql, a new native dialect, 
       MySQL Connector/Python, a native Python port of MySQLdb,
       and of course zxjdbc on Jython.
-    
+
     - VARCHAR/NVARCHAR will not render without a length, raises
       an error before passing to MySQL.   Doesn't impact 
       CAST since VARCHAR is not allowed in MySQL CAST anyway,
       the dialect renders CHAR/NCHAR in those cases.
-      
+
     - all the _detect_XXX() functions now run once underneath
       dialect.initialize()
 
@@ -2668,26 +2668,26 @@ CHANGES
       MySQLdb can't handle % signs in SQL when executemany() is used,
       and SQLA doesn't want to add overhead just to treat that one 
       non-existent use case. [ticket:1279]
-    
+
     - the BINARY and MSBinary types now generate "BINARY" in all
       cases.  Omitting the "length" parameter will generate
       "BINARY" with no length.  Use BLOB to generate an unlengthed
       binary column.
-      
+
     - the "quoting='quoted'" argument to MSEnum/ENUM is deprecated.
       It's best to rely upon the automatic quoting.
-      
+
     - ENUM now subclasses the new generic Enum type, and also handles
       unicode values implicitly, if the given labelnames are unicode
       objects.
-    
+
     - a column of type TIMESTAMP now defaults to NULL if
       "nullable=False" is not passed to Column(), and no default
       is present. This is now consistent with all other types, 
       and in the case of TIMESTAMP explictly renders "NULL" 
       due to MySQL's "switching" of default nullability
       for TIMESTAMP columns. [ticket:1539]
-      
+
 - oracle
     - unit tests pass 100% with cx_oracle !
 
@@ -2696,24 +2696,24 @@ CHANGES
       later of cx_oracle.
 
     - an NCLOB type is added to the base types.
-    
+
     - use_ansi=False won't leak into the FROM/WHERE clause of
       a statement that's selecting from a subquery that also
       uses JOIN/OUTERJOIN.
-      
+
     - added native INTERVAL type to the dialect.  This supports
       only the DAY TO SECOND interval type so far due to lack 
       of support in cx_oracle for YEAR TO MONTH. [ticket:1467]
-      
+
     - usage of the CHAR type results in cx_oracle's 
       FIXED_CHAR dbapi type being bound to statements.
-      
+
     - the Oracle dialect now features NUMBER which intends
       to act justlike Oracle's NUMBER type.  It is the primary
       numeric type returned by table reflection and attempts
       to return Decimal()/float/int based on the precision/scale
       parameters.  [ticket:885]
-      
+
     - func.char_length is a generic function for LENGTH
 
     - ForeignKey() which includes onupdate=<value> will emit a
@@ -2729,15 +2729,15 @@ CHANGES
 
     - using new dialect.initialize() feature to set up
       version-dependent behavior.
-    
+
     - using types.BigInteger with Oracle will generate
       NUMBER(19) [ticket:1125]
-    
+
     - "case sensitivity" feature will detect an all-lowercase
       case-sensitive column name during reflect and add 
       "quote=True" to the generated Column, so that proper
       quoting is maintained.
-      
+
 - firebird
     - the keys() method of RowProxy() now returns the result
       column names *normalized* to be SQLAlchemy case
@@ -2797,7 +2797,7 @@ CHANGES
       applies the SQLite keyword "AUTOINCREMENT" to the single integer
       primary key column when generating DDL. Will prevent generation of 
       a separate PRIMARY KEY constraint. [ticket:1016]
-      
+
 - new dialects
     - postgresql+pg8000
     - postgresql+pypostgresql (partial)
@@ -2821,13 +2821,13 @@ CHANGES
       parameters. In particular, Numeric, Float, NUMERIC,
       FLOAT, DECIMAL don't generate any length or scale unless
       specified.
-    
+
     - types.Binary is renamed to types.LargeBinary, it only
-      produces BLOB, BYTEA, or a similar "long binary" type.   
+      produces BLOB, BYTEA, or a similar "long binary" type.
       New base BINARY and VARBINARY
       types have been added to access these MySQL/MS-SQL specific
       types in an agnostic way [ticket:1664].
-      
+
     - String/Text/Unicode types now skip the unicode() check
       on each result column value if the dialect has 
       detected the DBAPI as returning Python unicode objects
@@ -2846,13 +2846,13 @@ CHANGES
       Time, Date and DateTime on Sqlite, ARRAY on Postgresql,
       Time on MySQL, Numeric(as_decimal=False) on MySQL, oursql and 
       pypostgresql, DateTime on cx_oracle and LOB-based types on cx_oracle.
-      
+
     - Reflection of types now returns the exact UPPERCASE
       type within types.py, or the UPPERCASE type within
       the dialect itself if the type is not a standard SQL 
       type.  This means reflection now returns more accurate
-      information about reflected types.  
-    
+      information about reflected types.
+
     - Added a new Enum generic type. Enum is a schema-aware object
       to support databases which require specific DDL in order to
       use enum or equivalent; in the case of PG it handles the
@@ -2860,13 +2860,13 @@ CHANGES
       native enum support will by generate VARCHAR + an inline CHECK
       constraint to enforce the enum.
       [ticket:1109] [ticket:1511]
-    
+
     - The Interval type includes a "native" flag which controls
       if native INTERVAL types (postgresql + oracle) are selected
       if available, or not.  "day_precision" and "second_precision"
       arguments are also added which propagate as appropriately
       to these native types. Related to [ticket:1467].
-      
+
     - The Boolean type, when used on a backend that doesn't 
       have native boolean support, will generate a CHECK 
       constraint "col IN (0, 1)" along with the int/smallint-
@@ -2875,14 +2875,14 @@ CHANGES
       Note that MySQL has no native boolean *or* CHECK constraint
       support so this feature isn't available on that platform.
       [ticket:1589]
-      
+
     - PickleType now uses == for comparison of values when
       mutable=True, unless the "comparator" argument with a
       comparsion function is specified to the type. Objects
       being pickled will be compared based on identity (which
       defeats the purpose of mutable=True) if __eq__() is not
       overridden or a comparison function is not provided.
-      
+
     - The default "precision" and "scale" arguments of Numeric
       and Float have been removed and now default to None.
       NUMERIC and FLOAT will be rendered with no numeric
@@ -2890,7 +2890,7 @@ CHANGES
 
     - AbstractType.get_search_list() is removed - the games
       that was used for are no longer necessary.
-    
+
     - Added a generic BigInteger type, compiles to 
       BIGINT or NUMBER(19). [ticket:1125]
 
@@ -2904,15 +2904,15 @@ CHANGES
 
     - sqlsoup db.<sometable>.update() and delete() now call
       query(cls).update() and delete(), respectively.
-    
+
     - sqlsoup now has execute() and connection(), which call upon
       the Session methods of those names, ensuring that the bind is
       in terms of the SqlSoup object's bind.
-    
+
     - sqlsoup objects no longer have the 'query' attribute - it's
       not needed for sqlsoup's usage paradigm and it gets in the
       way of a column that is actually named 'query'.
-      
+
     - The signature of the proxy_factory callable passed to 
       association_proxy is now (lazy_collection, creator, 
       value_attr, association_proxy), adding a fourth argument
@@ -2923,7 +2923,7 @@ CHANGES
     - association_proxy now has basic comparator methods .any(),
       .has(), .contains(), ==, !=, thanks to Scott Torborg.
       [ticket:1372]
-      
+
 - examples
     - The "query_cache" examples have been removed, and are replaced
       with a fully comprehensive approach that combines the usage of
@@ -2931,13 +2931,13 @@ CHANGES
       the caching characteristics of a particular Query, which 
       can also be invoked deep within an object graph when lazily
       loading related objects.  See /examples/beaker_caching/README.
-    
+
 0.5.9
 =====
 - sql
     - Fixed erroneous self_group() call in expression package.
       [ticket:1661]
-    
+
 0.5.8
 =====
 - sql
@@ -2945,15 +2945,15 @@ CHANGES
       unnamed Column objects. This allows easy creation of 
       declarative helpers which place common columns on multiple 
       subclasses.
-    
+
     - Default generators like Sequence() translate correctly
       across a copy() operation.
-      
+
     - Sequence() and other DefaultGenerator objects are accepted 
       as the value for the "default" and "onupdate" keyword
       arguments of Column, in addition to being accepted
-      positionally.  
-      
+      positionally.
+
     - Fixed a column arithmetic bug that affected column
       correspondence for cloned selectables which contain
       free-standing column expressions.   This bug is
@@ -2961,7 +2961,7 @@ CHANGES
       ORM behavior only availble in 0.6 via [ticket:1568], 
       but is more correct at the SQL expression level 
       as well. [ticket:1617]
-    
+
 - postgresql
     - The extract() function, which was slightly improved in
       0.5.7, needed a lot more work to generate the correct
@@ -2981,28 +2981,28 @@ CHANGES
     - contains_eager() now works with the automatically 
       generated subquery that results when you say 
       "query(Parent).join(Parent.somejoinedsubclass)", i.e. 
-      when Parent joins to a joined-table-inheritance subclass.  
+      when Parent joins to a joined-table-inheritance subclass.
       Previously contains_eager() would erroneously add the 
       subclass table to the query separately producing a 
       cartesian product.  An example is in the ticket
       description.  [ticket:1543]
-    
+
     - query.options() now only propagate to loaded objects
       for potential further sub-loads only for options where
       such behavior is relevant, keeping
       various unserializable options like those generated
       by contains_eager() out of individual instance states.
       [ticket:1553]
-    
+
     - Session.execute() now locates table- and 
       mapper-specific binds based on a passed
       in expression which is an insert()/update()/delete() 
       construct. [ticket:1054]
-      
+
     - Session.merge() now properly overwrites a many-to-one or 
       uselist=False attribute to None if the attribute 
       is also None in the given object to be merged.
-     
+
     - Fixed a needless select which would occur when merging
       transient objects that contained a null primary key
       identifier.  [ticket:1618]
@@ -3013,14 +3013,14 @@ CHANGES
       duplicate extensions, such as backref populators,
       from being inserted into the list.
       [ticket:1585]
-    
+
     - Fixed the call to get_committed_value() on CompositeProperty.
       [ticket:1504]
 
     - Fixed bug where Query would crash if a join() with no clear
       "left" side were called when a non-mapped column entity
       appeared in the columns list. [ticket:1602]
-    
+
     - Fixed bug whereby composite columns wouldn't load properly
       when configured on a joined-table subclass, introduced in
       version 0.5.6 as a result of the fix for [ticket:1480].
@@ -3034,26 +3034,26 @@ CHANGES
       combinations of reflected and non-reflected types to work
       with 0.5 style type reflection, such as PGText/Text (note 0.6 
       reflects types as their generic versions).   [ticket:1556]
-    
+
     - Fixed bug in query.update() when passing Cls.attribute
       as keys in the value dict and using synchronize_session='expire'
       ('fetch' in 0.6). [ticket:1436]
-      
+
 - sql
     - Fixed bug in two-phase transaction whereby commit() method
       didn't set the full state which allows subsequent close()
       call to succeed. [ticket:1603]
-      
+
     - Fixed the "numeric" paramstyle, which apparently is the
       default paramstyle used by Informixdb.
-      
+
     - Repeat expressions in the columns clause of a select
       are deduped based on the identity of each clause element,
       not the actual string.  This allows positional 
       elements to render correctly even if they all render
       identically, such as "qmark" style bind parameters.
       [ticket:1574]
-    
+
     - The cursor associated with connection pool connections
       (i.e. _CursorFairy) now proxies `__iter__()` to the 
       underlying cursor correctly. [ticket:1632]
@@ -3066,14 +3066,14 @@ CHANGES
     - Fixed bug preventing alias() of an alias() from being
       cloned or adapted (occurs frequently in ORM operations).
       [ticket:1641]
-      
+
 - sqlite
     - sqlite dialect properly generates CREATE INDEX for a table
       that is in an alternate schema.  [ticket:1439]
-      
+
 - postgresql
     - Added support for reflecting the DOUBLE PRECISION type,
-      via a new postgres.PGDoublePrecision object.  
+      via a new postgres.PGDoublePrecision object.
       This is postgresql.DOUBLE_PRECISION in 0.6.
       [ticket:1085]
 
@@ -3087,7 +3087,7 @@ CHANGES
 
     - Fixed the behavior of extract() to apply operator
       precedence rules to the "::" operator when applying
-      the "timestamp" cast - ensures proper parenthesization.  
+      the "timestamp" cast - ensures proper parenthesization.
       [ticket:1611]
 
 - mssql
@@ -3101,7 +3101,7 @@ CHANGES
        table generated by Oracle when "index only tables"
        with overflow are used.  These tables aren't accessible
        via SQL and can't be reflected.  [ticket:1637]
-       
+
 - ext 
     - A column can be added to a joined-table declarative 
       superclass after the class has been constructed 
@@ -3114,10 +3114,10 @@ CHANGES
       Comparing equivalence of columns in the ORM is best 
       accomplished using col1.shares_lineage(col2).
       [ticket:1491]
-    
+
     - Removed unused `load()` method from ShardedQuery.
       [ticket:1606]
-      
+
 0.5.6
 =====
 - orm
@@ -3128,60 +3128,60 @@ CHANGES
     - Fixed bug which disallowed one side of a many-to-many 
       bidirectional reference to declare itself as "viewonly"
       [ticket:1507]
-    
+
     - Added an assertion that prevents a @validates function
       or other AttributeExtension from loading an unloaded
       collection such that internal state may be corrupted.
       [ticket:1526]
-      
+
     - Fixed bug which prevented two entities from mutually
       replacing each other's primary key values within a single
       flush() for some orderings of operations.  [ticket:1519]
-      
+
     - Fixed an obscure issue whereby a joined-table subclass
       with a self-referential eager load on the base class
       would populate the related object's "subclass" table with
       data from the "subclass" table of the parent.
       [ticket:1485]
-    
+
     - relations() now have greater ability to be "overridden",
       meaning a subclass that explicitly specifies a relation()
       overriding that of the parent class will be honored
       during a flush.  This is currently to support 
       many-to-many relations from concrete inheritance setups.
       Outside of that use case, YMMV.  [ticket:1477]
-    
+
     - Squeezed a few more unnecessary "lazy loads" out of 
       relation().  When a collection is mutated, many-to-one
       backrefs on the other side will not fire off to load
-      the "old" value, unless "single_parent=True" is set.  
+      the "old" value, unless "single_parent=True" is set.
       A direct assignment of a many-to-one still loads 
       the "old" value in order to update backref collections 
       on that value, which may be present in the session 
       already, thus maintaining the 0.5 behavioral contract.
       [ticket:1483]
-      
+
     - Fixed bug whereby a load/refresh of joined table
       inheritance attributes which were based on 
       column_property() or similar would fail to evaluate.
       [ticket:1480]
-    
+
     - Improved support for MapperProperty objects overriding
       that of an inherited mapper for non-concrete 
       inheritance setups - attribute extensions won't randomly
       collide with each other.  [ticket:1488]
-    
+
     - UPDATE and DELETE do not support ORDER BY, LIMIT, OFFSET,
       etc. in standard SQL.  Query.update() and Query.delete()
       now raise an exception if any of limit(), offset(),
       order_by(), group_by(), or distinct() have been
       called. [ticket:1487]
-      
+
     - Added AttributeExtension to sqlalchemy.orm.__all__
-      
+
     - Improved error message when query() is called with
       a non-SQL /entity expression. [ticket:1476]
-    
+
     - Using False or 0 as a polymorphic discriminator now
       works on the base class as well as a subclass.
       [ticket:1440]
@@ -3205,12 +3205,12 @@ CHANGES
       in query.join() which would fail to issue correctly
       if the query was against a pure SQL construct.
       [ticket:1522]
-    
+
     - Fixed a somewhat hypothetical issue which would result
       in the wrong primary key being calculated for a mapper
       using the old polymorphic_union function - but this
       is old stuff.  [ticket:1486]
-      
+
 - sql
     - Fixed column.copy() to copy defaults and onupdates.
       [ticket:1373]
@@ -3219,11 +3219,11 @@ CHANGES
       the string "field" argument was getting treated as a 
       ClauseElement, causing various errors within more 
       complex SQL transformations.
-      
+
     - Unary expressions such as DISTINCT propagate their 
       type handling to result sets, allowing conversions like
       unicode and such to take place.  [ticket:1420]
-    
+
     - Fixed bug in Table and Column whereby passing empty
       dict for "info" argument would raise an exception.
       [ticket:1482]
@@ -3231,7 +3231,7 @@ CHANGES
 - oracle
     - Backported 0.6 fix for Oracle alias names not getting
       truncated.  [ticket:1309]
-      
+
 - ext
    - The collection proxies produced by associationproxy are now
      pickleable.  A user-defined proxy_factory however
@@ -3246,7 +3246,7 @@ CHANGES
      in string expressions sent to primaryjoin/secondaryjoin/
      secondary - the name is pulled from the MetaData of the
      declarative base.  [ticket:1527]
-     
+
    - A column can be added to a joined-table subclass after
      the class has been constructed (i.e. via class-level
      attribute assignment).  The column is added to the underlying
@@ -3254,12 +3254,12 @@ CHANGES
      "join" to include the new column, instead of raising
      an error about "no such column, use column_property()
      instead".  [ticket:1523]
-     
+
 - test
    - Added examples into the test suite so they get exercised
      regularly and cleaned up a couple deprecation warnings.
 
-     
+
 0.5.5
 =======
 - general
@@ -3361,7 +3361,7 @@ CHANGES
 - sql
     - Repaired the printing of SQL exceptions which are not 
       based on parameters or are not executemany() style.
-      
+
 - postgresql
     - Deprecated the hardcoded TIMESTAMP function, which when
       used as func.TIMESTAMP(value) would render "TIMESTAMP value".
@@ -3370,15 +3370,15 @@ CHANGES
       uppercase is also inappropriate and there's lots of other
       PG casts that we'd need to support.  So instead, use
       text constructs i.e. select(["timestamp '12/05/09'"]).
-      
-      
+
+
 0.5.4p1
 =======
 
 - orm
     - Fixed an attribute error introduced in 0.5.4 which would 
       occur when merge() was used with an incomplete object.
-    
+
 0.5.4
 =====
 
@@ -3386,55 +3386,55 @@ CHANGES
     - Significant performance enhancements regarding Sessions/flush()
       in conjunction with large mapper graphs, large numbers of 
       objects:
-      
+
       - Removed all* O(N) scanning behavior from the flush() process,
         i.e. operations that were scanning the full session, 
         including an extremely expensive one that was erroneously
         assuming primary key values were changing when this 
         was not the case.
-        
+
         * one edge case remains which may invoke a full scan,
           if an existing primary key attribute is modified
           to a new value.
-      
+
       - The Session's "weak referencing" behavior is now *full* -
         no strong references whatsoever are made to a mapped object
         or related items/collections in its __dict__.  Backrefs and 
         other cycles in objects no longer affect the Session's ability 
         to lose all references to unmodified objects.  Objects with 
-        pending changes still are maintained strongly until flush.  
+        pending changes still are maintained strongly until flush.
         [ticket:1398]
-        
+
         The implementation also improves performance by moving
         the "resurrection" process of garbage collected items
         to only be relevant for mappings that map "mutable" 
         attributes (i.e. PickleType, composite attrs).  This removes
         overhead from the gc process and simplifies internal 
         behavior.
-        
+
         If a "mutable" attribute change is the sole change on an object 
         which is then dereferenced, the mapper will not have access to 
         other attribute state when the UPDATE is issued.  This may present 
         itself differently to some MapperExtensions.
-        
+
         The change also affects the internal attribute API, but not
         the AttributeExtension interface nor any of the publically
         documented attribute functions.
-        
+
       - The unit of work no longer genererates a graph of "dependency"
         processors for the full graph of mappers during flush(), instead
         creating such processors only for those mappers which represent
         objects with pending changes.  This saves a tremendous number
         of method calls in the context of a large interconnected 
         graph of mappers.
-        
+
       - Cached a wasteful "table sort" operation that previously
         occured multiple times per flush, also removing significant
         method call count from flush().
-        
+
       - Other redundant behaviors have been simplified in 
         mapper._save_obj().
-      
+
     - Modified query_cls on DynamicAttributeImpl to accept a full
       mixin version of the AppenderQuery, which allows subclassing
       the AppenderMixin.
@@ -3442,7 +3442,7 @@ CHANGES
     - The "polymorphic discriminator" column may be part of a 
       primary key, and it will be populated with the correct 
       discriminator value.  [ticket:1300]
-      
+
     - Fixed the evaluator not being able to evaluate IS NULL clauses.
 
     - Fixed the "set collection" function on "dynamic" relations to
@@ -3450,12 +3450,12 @@ CHANGES
       be assigned to a pending parent instance, otherwise modified
       events would not be fired correctly.  Set collection is now
       compatible with merge(), fixes [ticket:1352].
-    
+
     - Allowed pickling of PropertyOption objects constructed with
       instrumented descriptors; previously, pickle errors would occur 
       when pickling an object which was loaded with a descriptor-based 
       option, such as query.options(eagerload(MyClass.foo)).
-      
+
     - Lazy loader will not use get() if the "lazy load" SQL clause
       matches the clause used by get(), but contains some parameters
       hardcoded.  Previously the lazy strategy would fail with the
@@ -3471,15 +3471,15 @@ CHANGES
       the need in most cases for per-instance/attribute loader 
       objects, improving load speed and memory overhead for
       individual instances. [ticket:1391]
-      
+
     - Fixed another location where autoflush was interfering
       with session.merge().  autoflush is disabled completely
       for the duration of merge() now. [ticket:1360]
-    
+
     - Fixed bug which prevented "mutable primary key" dependency
       logic from functioning properly on a one-to-one
       relation().  [ticket:1406]
-      
+
     - Fixed bug in relation(), introduced in 0.5.3, 
       whereby a self referential relation
       from a base class to a joined-table subclass would 
@@ -3488,11 +3488,11 @@ CHANGES
     - Fixed obscure mapper compilation issue when inheriting
       mappers are used which would result in un-initialized
       attributes.
-      
+
     - Fixed documentation for session weak_identity_map - 
       the default value is True, indicating a weak
       referencing map in use.
-      
+
     - Fixed a unit of work issue whereby the foreign
       key attribute on an item contained within a collection 
       owned by an object being deleted would not be set to
@@ -3505,7 +3505,7 @@ CHANGES
       condition in the foreign_keys or remote_side collection.  Whereas
       previously it was just nonsensical, but would succeed in a 
       non-deterministic way.
-      
+
 - schema
     - Added a quote_schema() method to the IdentifierPreparer class
       so that dialects can override how schemas get handled. This
@@ -3519,12 +3519,12 @@ CHANGES
       handy as an alternative to text() when you'd like to 
       build a construct that has database-specific compilations.
       See the extension docs for details.
-      
+
     - Exception messages are truncated when the list of bound 
       parameters is larger than 10, preventing enormous
       multi-page exceptions from filling up screens and logfiles
       for large executemany() statements. [ticket:1413]
-      
+
     - ``sqlalchemy.extract()`` is now dialect sensitive and can
       extract components of timestamps idiomatically across the
       supported databases, including SQLite.
@@ -3537,7 +3537,7 @@ CHANGES
     - Reflecting a FOREIGN KEY construct will take into account
       a dotted schema.tablename combination, if the foreign key
       references a table in a remote schema. [ticket:1405]
-      
+
 - mssql
     - Modified how savepoint logic works to prevent it from
       stepping on non-savepoint oriented routines. Savepoint
@@ -3571,7 +3571,7 @@ CHANGES
       one side of the link and not the other, so supporting
       this operation leads to misleading results.
       [ticket:1315]
-    
+
     - Query now implements __clause_element__() which produces
       its selectable, which means a Query instance can be accepted 
       in many SQL expressions, including col.in_(query), 
@@ -3580,14 +3580,14 @@ CHANGES
 
     - Query.join() can now construct multiple FROM clauses, if 
       needed.  Such as, query(A, B).join(A.x).join(B.y)
-      might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.  
+      might say SELECT A.*, B.* FROM A JOIN X, B JOIN Y.
       Eager loading can also tack its joins onto those 
       multiple FROM clauses.  [ticket:1337]
 
     - Fixed bug in dynamic_loader() where append/remove events
       after construction time were not being propagated to the 
       UOW to pick up on flush(). [ticket:1347]
-      
+
     - Fixed bug where column_prefix wasn't being checked before
       not mapping an attribute that already had class-level 
       name present.
@@ -3598,48 +3598,48 @@ CHANGES
       in the database.  Presents some degree of a workaround for 
       [ticket:1315], although we are considering removing the 
       flush([objects]) feature altogether.
-    
+
     - Session.scalar() now converts raw SQL strings to text()
       the same way Session.execute() does and accepts same 
       alternative **kw args.
-      
+
     - improvements to the "determine direction" logic of 
       relation() such that the direction of tricky situations 
       like mapper(A.join(B)) -> relation-> mapper(B) can be
       determined.
-      
+
     - When flushing partial sets of objects using session.flush([somelist]),
       pending objects which remain pending after the operation won't
       inadvertently be added as persistent. [ticket:1306]
-     
+
     - Added "post_configure_attribute" method to InstrumentationManager,
       so that the "listen_for_events.py" example works again.
       [ticket:1314]
-    
+
     - a forward and complementing backwards reference which are both
       of the same direction, i.e. ONETOMANY or MANYTOONE, 
-      is now detected, and an error message is raised.   
+      is now detected, and an error message is raised.
       Saves crazy CircularDependencyErrors later on.
-        
+
     - Fixed bugs in Query regarding simultaneous selection of 
       multiple joined-table inheritance entities with common base 
       classes:
-      
+
       - previously the adaption applied to "B" on 
         "A JOIN B" would be erroneously partially applied 
         to "A".
-      
+
       - comparisons on relations (i.e. A.related==someb)
         were not getting adapted when they should.
-      
+
       - Other filterings, like 
         query(A).join(A.bs).filter(B.foo=='bar'), were erroneously
         adapting "B.foo" as though it were an "A".
-    
+
      - Fixed adaptation of EXISTS clauses via any(), has(), etc.
        in conjunction with an aliased object on the left and 
        of_type() on the right.  [ticket:1325]
-       
+
      - Added an attribute helper method ``set_committed_value`` in 
        sqlalchemy.orm.attributes.  Given an object, attribute name,
        and value, will set the value on the object as part of its
@@ -3650,17 +3650,17 @@ CHANGES
      - Query won't fail with weakref error when a non-mapper/class
        instrumented descriptor is passed, raises 
        "Invalid column expession".
-    
+
      - Query.group_by() properly takes into account aliasing applied
        to the FROM clause, such as with select_from(), using
        with_polymorphic(), or using from_self().
-        
+
 - sql
     - An alias() of a select() will convert to a "scalar subquery"
       when used in an unambiguously scalar context, i.e. it's used 
       in a comparison operation.  This applies to
       the ORM when using query.subquery() as well.
-      
+
     - Fixed missing _label attribute on Function object, others
       when used in a select() with use_labels (such as when used
       in an ORM column_property()).  [ticket:1302]
@@ -3668,7 +3668,7 @@ CHANGES
     - anonymous alias names now truncate down to the max length
       allowed by the dialect.  More significant on DBs like
       Oracle with very small character limits. [ticket:1309]
-      
+
     - the __selectable__() interface has been replaced entirely
       by __clause_element__().
 
@@ -3686,14 +3686,14 @@ CHANGES
       close, will be detected so that no results doesn't
       fail on recent versions of pysqlite which raise 
       an error when fetchone() called with no rows present.
-      
+
 - postgresql
     - Index reflection won't fail when an index with 
       multiple expressions is encountered.
-      
+
     - Added PGUuid and PGBit types to 
       sqlalchemy.databases.postgres. [ticket:1327]
-    
+
     - Refection of unknown PG types won't crash when those
       types are specified within a domain.  [ticket:1327]
 
@@ -3710,20 +3710,20 @@ CHANGES
 
     - Declarative locates the "inherits" class using a search
       through __bases__, to skip over mixins that are local
-      to subclasses.   
-      
+      to subclasses.
+
     - Declarative figures out joined-table inheritance primary join
       condition even if "inherits" mapper argument is given 
       explicitly. 
 
     - Declarative will properly interpret the "foreign_keys" argument
       on a backref() if it's a string.
-      
+
     - Declarative will accept a table-bound column as a property
       when used in conjunction with __table__, if the column is already
       present in __table__.  The column will be remapped to the given 
       key the same way as when added to the mapper() properties dict.
-      
+
 0.5.2
 ======
 
@@ -3747,7 +3747,7 @@ CHANGES
       fully establish instrumentation for subclasses where the mapper
       was created after the superclass had already been fully
       instrumented. [ticket:1292]
-      
+
     - Fixed bug in delete-orphan cascade whereby two one-to-one
       relations from two different parent classes to the same target 
       class would prematurely expunge the instance.
@@ -3756,7 +3756,7 @@ CHANGES
       loading would prevent other eager loads, self referential or not,
       from joining to the parent JOIN properly.  Thanks to Alex K
       for creating a great test case.
-    
+
     - session.expire() and related methods will not expire() unloaded
       deferred attributes.  This prevents them from being needlessly
       loaded when the instance is refreshed.
@@ -3765,7 +3765,7 @@ CHANGES
       construct to the existing left side, even if query.from_self()
       or query.select_from(someselectable) has been called.
       [ticket:1293]
-      
+
 - sql
     - Further fixes to the "percent signs and spaces in column/table
        names" functionality. [ticket:1284]
@@ -3791,7 +3791,7 @@ CHANGES
       Session methods have been deprecated, replaced by 
       "expunge_all()" and "add()".  "expunge_all()" has also
       been added to ScopedSession.
-      
+
     - Modernized the "no mapped table" exception and added a more
       explicit __table__/__tablename__ exception to declarative.
 
@@ -3808,12 +3808,12 @@ CHANGES
 
     - Test coverage added for `relation()` objects specified on
       concrete mappers. [ticket:1237]
-    
+
     - Query.from_self() as well as query.subquery() both disable 
       the rendering of eager joins inside the subquery produced.
       The "disable all eager joins" feature is available publically
       via a new query.enable_eagerloads() generative. [ticket:1276]
-      
+
     - Added a rudimental series of set operations to Query that
       receive Query objects as arguments, including union(),
       union_all(), intersect(), except_(), insertsect_all(),
@@ -3822,7 +3822,7 @@ CHANGES
 
     - Fixed bug that prevented Query.join() and eagerloads from 
       attaching to a query that selected from a union or aliased union.
-      
+
     - A short documentation example added for bidirectional
       relations specified on concrete mappers. [ticket:1237]
 
@@ -3850,17 +3850,17 @@ CHANGES
       behavior with an m2m table, use an explcit association class
       so that the individual association row is treated as a parent.
       [ticket:1281]
-    
+
     - delete-orphan cascade always requires delete cascade.  Specifying
       delete-orphan without delete now raises a deprecation warning.
       [ticket:1281]
-      
+
 - sql
     - Improved the methodology to handling percent signs in column
       names from [ticket:1256].  Added more tests.  MySQL and
       PostgreSQL dialects still do not issue correct CREATE TABLE
       statements for identifiers with percent signs in them.
-      
+
 - schema
     - Index now accepts column-oriented InstrumentedAttributes
       (i.e. column-based mapped class attributes) as column
@@ -3869,16 +3869,16 @@ CHANGES
     - Column with no name (as in declarative) won't raise a 
       NoneType error when it's string output is requsted
       (such as in a stack trace).
-      
+
     - Fixed bug when overriding a Column with a ForeignKey
       on a reflected table, where derived columns (i.e. the 
       "virtual" columns of a select, etc.) would inadvertently
       call upon schema-level cleanup logic intended only
       for the original column. [ticket:1278]
-      
+
 - declarative
     - Can now specify Column objects on subclasses which have no
-      table of their own (i.e. use single table inheritance).  
+      table of their own (i.e. use single table inheritance).
       The columns will be appended to the base table, but only
       mapped by the subclass.
 
@@ -3897,7 +3897,7 @@ CHANGES
 
     - It's an error to add new Column objects to a declarative class
       that specified an existing table using __table__.
-      
+
 - mysql
     - Added the missing keywords from MySQL 4.1 so they get escaped
       properly.
@@ -4542,38 +4542,38 @@ CHANGES
 
     - Added an example illustrating Celko's "nested sets" as a 
       SQLA mapping.
-    
+
     - contains_eager() with an alias argument works even when 
       the alias is embedded in a SELECT, as when sent to the
       Query via query.select_from().
-      
+
     - contains_eager() usage is now compatible with a Query that
       also contains a regular eager load and limit/offset, in that
       the columns are added to the Query-generated subquery.
       [ticket:1180]
-      
+
     - session.execute() will execute a Sequence object passed to
       it (regression from 0.4).
-    
+
     - Removed the "raiseerror" keyword argument from object_mapper()
       and class_mapper().  These functions raise in all cases
       if the given class/instance is not mapped.
 
     - Fixed session.transaction.commit() on a autocommit=False
       session not starting a new transaction.
-      
+
     - Some adjustments to Session.identity_map's weak referencing
       behavior to reduce asynchronous GC side effects.
-    
+
     - Adjustment to Session's post-flush accounting of newly
       "clean" objects to better protect against operating on
       objects as they're asynchronously gc'ed. [ticket:1182]
-    
+
 - sql
     - column.in_(someselect) can now be used as a columns-clause
       expression without the subquery bleeding into the FROM clause
       [ticket:1074]
-      
+
 - sqlite
     - Overhauled SQLite date/time bind/result processing to use
       regular expressions and format strings, rather than
@@ -4585,7 +4585,7 @@ CHANGES
       2.5.0's new requirement that only Python unicode objects are 
       accepted;
       http://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
-      
+
 - mysql
     - Temporary tables are now reflectable.
 
@@ -4614,7 +4614,7 @@ CHANGES
       roughly equivalent to first()[0], value()
       takes a single column expression and is roughly equivalent to
       values(expr).next()[0].
-      
+
     - Improved the determination of the FROM clause when placing SQL
       expressions in the query() list of entities.  In particular
       scalar subqueries should not "leak" their inner FROM objects
@@ -4643,12 +4643,12 @@ CHANGES
 
     - query.order_by().get() silently drops the "ORDER BY" from 
       the query issued by GET but does not raise an exception.
-      
+
     - Added a Validator AttributeExtension, as well as a 
       @validates decorator which is used in a similar fashion
       as @reconstructor, and marks a method as validating
       one or more mapped attributes.
-      
+
     - class.someprop.in_() raises NotImplementedError pending the
       implementation of "in_" for relation [ticket:1140]
 
@@ -4658,7 +4658,7 @@ CHANGES
     - Fixed bug whereby deferred() columns with a group in conjunction
       with an otherwise unrelated synonym() would produce 
       an AttributeError during deferred load.
-      
+
     - The before_flush() hook on SessionExtension takes place before
       the list of new/dirty/deleted is calculated for the final
       time, allowing routines within before_flush() to further
@@ -4669,7 +4669,7 @@ CHANGES
       optionally be a list, supporting events sent to multiple
       SessionExtension instances.  Session places SessionExtensions
       in Session.extensions.
-      
+
     - Reentrant calls to flush() raise an error.  This also serves
       as a rudimentary, but not foolproof, check against concurrent
       calls to Session.flush().
@@ -4696,11 +4696,11 @@ CHANGES
     - The 3-tuple of iterables returned by attributes.get_history()
       may now be a mix of lists and tuples.  (Previously members
       were always lists.)
-      
+
     - Fixed bug whereby changing a primary key attribute on an 
       entity where the attribute's previous value had been expired 
       would produce an error upon flush(). [ticket:1151]
-      
+
     - Fixed custom instrumentation bug whereby get_instance_dict()
       was not called for newly constructed instances not loaded
       by the ORM.
@@ -4708,22 +4708,22 @@ CHANGES
     - Session.delete() adds the given object to the session if 
       not already present.  This was a regression bug from 0.4.
       [ticket:1150]
-      
+
     - The `echo_uow` flag on `Session` is deprecated, and unit-of-work
       logging is now application-level only, not per-session level.
 
     - Removed conflicting `contains()` operator from 
       `InstrumentedAttribute` which didn't accept `escape` kwaarg
       [ticket:1153].
-      
+
 - declarative
     - Fixed bug whereby mapper couldn't initialize if a composite
       primary key referenced another table that was not defined
       yet. [ticket:1161]
-    
+
     - Fixed exception throw which would occur when string-based
       primaryjoin condition was used in conjunction with backref.
-      
+
 - schema
     - Added "sorted_tables" accessor to MetaData, which returns
       Table objects sorted in order of dependency as a list.
@@ -4748,33 +4748,33 @@ CHANGES
     - The exists() construct won't "export" its contained list 
       of elements as FROM clauses, allowing them to be used more
       effectively in the columns clause of a SELECT.
-      
+
     - and_() and or_() now generate a ColumnElement, allowing
       boolean expressions as result columns, i.e.
       select([and_(1, 0)]).  [ticket:798]
-    
+
     - Bind params now subclass ColumnElement which allows them to be
       selectable by orm.query (they already had most ColumnElement
       semantics).
-      
+
     - Added select_from() method to exists() construct, which becomes
       more and more compatible with a regular select().
-      
+
     - Added func.min(), func.max(), func.sum() as "generic functions",
       which basically allows for their return type to be determined
       automatically.  Helps with dates on SQLite, decimal types, 
       others. [ticket:1160]
-    
+
     - added decimal.Decimal as an "auto-detect" type; bind parameters
       and generic functions will set their type to Numeric when a 
       Decimal is used.
-      
+
 - mysql
     - The 'length' argument to MSInteger, MSBigInteger, MSTinyInteger,
       MSSmallInteger and MSYear has been renamed to 'display_width'.
-      
+
     - Added MSMediumInteger type [ticket:1146].
-    
+
     - the function func.utc_timestamp() compiles to UTC_TIMESTAMP, without
       the parenthesis, which seem to get in the way when using in 
       conjunction with executemany().

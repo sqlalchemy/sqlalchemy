@@ -40,10 +40,10 @@ class ShardedSession(Session):
         :param query_chooser: For a given Query, returns the list of shard_ids where the query
           should be issued.  Results from all shards returned will be combined
           together into a single listing.
-        
+
         :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.base.Engine`
-          objects.   
-          
+          objects.
+
         """
         super(ShardedSession, self).__init__(**kwargs)
         self.shard_chooser = shard_chooser
@@ -55,7 +55,7 @@ class ShardedSession(Session):
         if shards is not None:
             for k in shards:
                 self.bind_shard(k, shards[k])
-    
+
     def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
         if shard_id is None:
             shard_id = self.shard_chooser(mapper, instance)
@@ -66,7 +66,7 @@ class ShardedSession(Session):
             return self.get_bind(mapper, 
                                 shard_id=shard_id, 
                                 instance=instance).contextual_connect(**kwargs)
-    
+
     def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):
         if shard_id is None:
             shard_id = self.shard_chooser(mapper, instance, clause=clause)
@@ -81,18 +81,18 @@ class ShardedQuery(Query):
         self.id_chooser = self.session.id_chooser
         self.query_chooser = self.session.query_chooser
         self._shard_id = None
-        
+
     def set_shard(self, shard_id):
         """return a new query, limited to a single shard ID.
-        
+
         all subsequent operations with the returned query will 
         be against the single shard regardless of other state.
         """
-        
+
         q = self._clone()
         q._shard_id = shard_id
         return q
-        
+
     def _execute_and_instances(self, context):
         if self._shard_id is not None:
             result = self.session.connection(
@@ -106,7 +106,7 @@ class ShardedQuery(Query):
                             mapper=self._mapper_zero(),
                             shard_id=shard_id).execute(context.statement, self._params)
                 partial = partial + list(self.instances(result, context))
-                
+
             # if some kind of in memory 'sorting' 
             # were done, this is where it would happen
             return iter(partial)
@@ -122,4 +122,4 @@ class ShardedQuery(Query):
                     return o
             else:
                 return None
-    
+

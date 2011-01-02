@@ -19,7 +19,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'mysql'
     __dialect__ = mysql.dialect()
-    
+
     @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_basic(self):
         meta1 = MetaData(testing.db)
@@ -485,22 +485,22 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             # if needed, can break out the eq_() just to check for
             # timestamps that are within a few seconds of "now" 
             # using timedelta.
-            
+
             now = testing.db.execute("select now()").scalar()
-            
+
             # TIMESTAMP without NULL inserts current time when passed
             # NULL.  when not passed, generates 0000-00-00 quite
             # annoyingly.
             ts_table.insert().execute({'t1':now, 't2':None})
             ts_table.insert().execute({'t1':None, 't2':None})
-            
+
             eq_(
                 ts_table.select().execute().fetchall(),
                 [(now, now), (None, now)]
             )
         finally:
             meta.drop_all()
-            
+
     def test_year(self):
         """Exercise YEAR."""
 
@@ -623,7 +623,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         assert_raises(exc.SQLError, enum_table.insert().execute, 
                         e1=None, e2=None, e3=None, e4=None)
-        
+
         assert_raises(exc.InvalidRequestError, enum_table.insert().execute,
                                         e1='c', e2='c', e2generic='c', e3='c',
                                         e4='c', e5='c', e5generic='c', e6='c')
@@ -663,7 +663,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         eq_(res, expected)
         enum_table.drop()
-    
+
     def test_unicode_enum(self):
         unicode_engine = utf8_engine()
         metadata = MetaData(unicode_engine)
@@ -696,7 +696,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     (u'réveillé', u'drôle') #, u'S’il') # eh ? 
         finally:
             metadata.drop_all()
-        
+
     def test_enum_compile(self):
         e1 = Enum('x', 'y', 'z', name='somename')
         t1 = Table('sometable', MetaData(), Column('somecolumn', e1))
@@ -709,7 +709,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                             "CREATE TABLE sometable (somecolumn "
                             "VARCHAR(1), CHECK (somecolumn IN ('x', "
                             "'y', 'z')))")
-        
+
     @testing.exclude('mysql', '<', (4,), "3.23 can't handle an ENUM of ''")
     @testing.uses_deprecated('Manually quoting ENUM value literals')
     def test_enum_parse(self):
@@ -1041,7 +1041,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         eq_(
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
-        
+
     def test_backslash_escaping(self):
         self.assert_compile(
             sql.column('foo').like('bar', escape='\\'),
@@ -1055,7 +1055,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             "foo LIKE %s ESCAPE '\\'",
             dialect=dialect
         )
-        
+
     def test_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
@@ -1068,13 +1068,13 @@ class SQLTest(TestBase, AssertsCompiledSQL):
             select([t]).limit(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s", 
             {'param_1':10})
-            
+
         self.assert_compile(
             select([t]).offset(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s, 18446744073709551615",
             {'param_1':10}
             )
-    
+
     def test_varchar_raise(self):
         for type_ in (
             String,
@@ -1087,7 +1087,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         ):
             type_ = sqltypes.to_instance(type_)
             assert_raises(exc.InvalidRequestError, type_.compile, dialect=mysql.dialect())
-            
+
     def test_update_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))
 
@@ -1113,7 +1113,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
     def test_sysdate(self):
         self.assert_compile(func.sysdate(), "SYSDATE()")
-        
+
     def test_cast(self):
         t = sql.table('t', sql.column('col'))
         m = mysql
@@ -1205,7 +1205,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
         for type_, expected in specs:
             self.assert_compile(cast(t.c.col, type_), expected)
-    
+
     def test_no_cast_pre_4(self):
         self.assert_compile(
                     cast(Column('foo', Integer), String),
@@ -1218,7 +1218,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                     "foo",
                     dialect=dialect
             )
-        
+
     def test_extract(self):
         t = sql.table('t', sql.column('col1'))
 
@@ -1231,24 +1231,24 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([extract('milliseconds', t.c.col1)]),
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t")
-    
+
     def test_too_long_index(self):
         exp = 'ix_zyrenian_zyme_zyzzogeton_zyzzogeton_zyrenian_zyme_zyz_5cd2'
         tname = 'zyrenian_zyme_zyzzogeton_zyzzogeton'
         cname = 'zyrenian_zyme_zyzzogeton_zo'
-        
+
         t1 = Table(tname, MetaData(), 
                     Column(cname, Integer, index=True),
                 )
         ix1 = list(t1.indexes)[0]
-        
+
         self.assert_compile(
             schema.CreateIndex(ix1),
             "CREATE INDEX %s "
             "ON %s (%s)" % (exp, tname, cname),
             dialect=mysql.dialect()
         )
-        
+
     def test_innodb_autoincrement(self):
         t1 = Table('sometable', MetaData(), Column('assigned_id',
                    Integer(), primary_key=True, autoincrement=False),
@@ -1273,7 +1273,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
 class SQLModeDetectionTest(TestBase):
     __only_on__ = 'mysql'
-    
+
     def _options(self, modes):
         def connect(con, record):
             cursor = con.cursor()
@@ -1286,7 +1286,7 @@ class SQLModeDetectionTest(TestBase):
             ]
         })
         return e
-        
+
     def test_backslash_escapes(self):
         engine = self._options(['NO_BACKSLASH_ESCAPES'])
         c = engine.connect()
@@ -1314,7 +1314,7 @@ class SQLModeDetectionTest(TestBase):
         assert not engine.dialect._backslash_escapes
         c.close()
         engine.dispose()
-        
+
 class RawReflectionTest(TestBase):
     def setup(self):
         dialect = mysql.dialect()
@@ -1346,7 +1346,7 @@ class ExecutionTest(TestBase):
         meta.reflect(cx)
         eq_(cx.dialect._connection_charset, charset)
         cx.close()
-    
+
     def test_sysdate(self):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
@@ -1402,7 +1402,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             matchtable.c.title.match('somstr'),
             "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
-    
+
     @testing.fails_on('mysql+mysqldb', 'uses format')
     @testing.fails_on('mysql+oursql', 'uses format')
     @testing.fails_on('mysql+pyodbc', 'uses format')

@@ -97,9 +97,9 @@ class QueryAlternativesTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_override_get(self):
         """MapperExtension.get()
-        
+
         x = session.query.get(5)
-        
+
         """
         from sqlalchemy.orm.query import Query
         cache = {}
@@ -111,25 +111,25 @@ class QueryAlternativesTest(_base.MappedTest):
                     x = super(MyQuery, self).get(ident)
                     cache[ident] = x
                     return x
-                    
+
         session = sessionmaker(query_cls=MyQuery)()
-        
+
         ad1 = session.query(Address).get(1)
         assert ad1 in cache.values()
-    
+
     @testing.resolve_artifact_names
     def test_load(self):
         """x = session.query(Address).load(1)
-            
+
             x = session.load(Address, 1)
-        
+
         """
 
         session = create_session()
         ad1 = session.query(Address).populate_existing().get(1)
         assert bool(ad1)
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_apply_max(self):
         """Query.apply_max(col)

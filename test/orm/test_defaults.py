@@ -47,7 +47,7 @@ class TriggerDefaultsTest(_base.MappedTest):
                 ),
             ):
             event.listen(dt, 'after_create', ins)
-        
+
         event.listen(dt, 'before_drop', sa.DDL("DROP TRIGGER dt_ins"))
 
         for up in (
@@ -128,16 +128,16 @@ class ExcludedDefaultsTest(_base.MappedTest):
                    Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
                    Column('col1', String(20), default="hello"),
         )
-        
+
     @testing.resolve_artifact_names
     def test_exclude(self):
         class Foo(_base.ComparableEntity):
             pass
         mapper(Foo, dt, exclude_properties=('col1',))
-    
+
         f1 = Foo()
         sess = create_session()
         sess.add(f1)
         sess.flush()
         eq_(dt.select().execute().fetchall(), [(1, "hello")])
-    
+

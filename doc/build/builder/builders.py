@@ -14,14 +14,14 @@ from mako.template import Template
 class MakoBridge(TemplateBridge):
     def init(self, builder, *args, **kw):
         self.layout = builder.config.html_context.get('mako_layout', 'html')
-        
+
         self.lookup = TemplateLookup(directories=builder.config.templates_path,
             format_exceptions=True, 
             imports=[
                 "from builder import util"
             ]
         )
-        
+
     def render(self, template, context):
         template = template.replace(".html", ".mako")
         context['prevtopic'] = context.pop('prev', None)
@@ -30,8 +30,8 @@ class MakoBridge(TemplateBridge):
         # sphinx 1.0b2 doesn't seem to be providing _ for some reason...
         context.setdefault('_', lambda x:x)
         return self.lookup.get_template(template).render_unicode(**context)
-        
-    
+
+
     def render_string(self, template, context):
         context['prevtopic'] = context.pop('prev', None)
         context['nexttopic'] = context.pop('next', None)
@@ -44,7 +44,7 @@ class MakoBridge(TemplateBridge):
                 "from builder import util"
             ]
         ).render_unicode(**context)
-        
+
 class StripDocTestFilter(Filter):
     def filter(self, lexer, stream):
         for ttype, value in stream:
@@ -116,7 +116,7 @@ def _strip_trailing_whitespace(iter_):
         buf[-1] = (buf[-1][0], buf[-1][1].rstrip())
     for t, v in buf:
         yield t, v
-    
+
 class PopupSQLFormatter(HtmlFormatter):
     def _format_lines(self, tokensource):
         buf = []
@@ -134,7 +134,7 @@ class PopupSQLFormatter(HtmlFormatter):
                     yield 1, "<div class='popup_sql'>%s</div>" % re.sub(r'(?:[{stop}|\n]*)$', '', value)
             else:
                 buf.append((ttype, value))
-        
+
         for t, v in _strip_trailing_whitespace(HtmlFormatter._format_lines(self, iter(buf))):
             yield t, v
 
@@ -148,7 +148,7 @@ class PopupLatexFormatter(LatexFormatter):
                     continue
             else:
                 yield ttype, value
-        
+
     def format(self, tokensource, outfile):
         LatexFormatter.format(self, self._filter_tokens(tokensource), outfile)
 
@@ -164,5 +164,4 @@ def setup(app):
     app.connect('autodoc-skip-member', autodoc_skip_member)
     PygmentsBridge.html_formatter = PopupSQLFormatter
     PygmentsBridge.latex_formatter = PopupLatexFormatter
-    
-    
+

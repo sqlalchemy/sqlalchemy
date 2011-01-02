@@ -274,17 +274,17 @@ many decimal places.   Here's a recipe that rounds them down::
 
     from sqlalchemy.types import TypeDecorator, Numeric
     from decimal import Decimal
-    
+
     class SafeNumeric(TypeDecorator):
         """Adds quantization to Numeric."""
-    
+
         impl = Numeric
-    
+
         def __init__(self, *arg, **kw):
             TypeDecorator.__init__(self, *arg, **kw)
             self.quantize_int = -(self.impl.precision - self.impl.scale)
             self.quantize = Decimal(10) ** self.quantize_int
-        
+
         def process_bind_param(self, value, dialect):
             if isinstance(value, Decimal) and \
                 value.as_tuple()[2] < self.quantize_int:
@@ -305,10 +305,10 @@ binary in CHAR(16) if desired::
 
     class GUID(TypeDecorator):
         """Platform-independent GUID type.
-    
+
         Uses Postgresql's UUID type, otherwise uses
         CHAR(32), storing as stringified hex values.
-    
+
         """
         impl = CHAR
 
@@ -348,11 +348,11 @@ to/from JSON.   Can be modified to use Python's builtin json encoder::
 
     class JSONEncodedDict(TypeDecorator):
         """Represents an immutable structure as a json-encoded string.
-        
+
         Usage::
-        
+
             JSONEncodedDict(255)
-            
+
         """
 
         impl = VARCHAR
@@ -377,7 +377,7 @@ changes, and combine this using the ``sqlalchemy.ext.mutable`` extension
 described in :ref:`mutable_toplevel`::
 
     from sqlalchemy.ext.mutable import Mutable
-    
+
     class MutationDict(Mutable, dict):
         @classmethod
         def coerce(cls, key, value):
@@ -385,15 +385,15 @@ described in :ref:`mutable_toplevel`::
             if not isinstance(value, MutationDict):
                 if isinstance(value, dict):
                     return MutationDict(value)
-                    
+
                 # this call will raise ValueError
                 return Mutable.coerce(key, value)
             else:
                 return value
-    
+
         def __setitem__(self, key, value):
             """Detect dictionary set events and emit change events."""
-            
+
             dict.__setitem__(self, key, value)
             self.change()
 
@@ -402,7 +402,7 @@ described in :ref:`mutable_toplevel`::
 
             dict.__delitem__(self, key)
             self.change()
-        
+
         # additional dict methods would be overridden here
 
 The new dictionary type can be associated with JSONEncodedDict using

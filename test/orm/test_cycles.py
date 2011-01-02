@@ -65,7 +65,7 @@ class SelfReferentialTest(_base.MappedTest):
 
         test that the circular dependency sort can assemble a many-to-one
         dependency processor when only the object on the "many" side is
-        actually in the list of modified objects.  
+        actually in the list of modified objects.
 
         """
         mapper(C1, t1, properties={
@@ -111,7 +111,7 @@ class SelfReferentialTest(_base.MappedTest):
         mapper(C1, t1, properties={
             'children':relationship(C1)
         })
-        
+
         sess = create_session()
         c1 = C1()
         c2 = C1()
@@ -119,14 +119,14 @@ class SelfReferentialTest(_base.MappedTest):
         sess.add(c1)
         sess.flush()
         assert c2.parent_c1 == c1.c1
-        
+
         sess.delete(c1)
         sess.flush()
         assert c2.parent_c1 is None
-        
+
         sess.expire_all()
         assert c2.parent_c1 is None
-        
+
 class SelfReferentialNoPKTest(_base.MappedTest):
     """A self-referential relationship that joins on a column other than the primary key column"""
 
@@ -300,7 +300,7 @@ class InheritTestTwo(_base.MappedTest):
 
 class BiDirectionalManyToOneTest(_base.MappedTest):
     run_define_tables = 'each'
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
@@ -517,7 +517,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
     """
     run_define_tables = 'each'
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table('ball', metadata,
@@ -618,7 +618,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_post_update_backref(self):
         """test bidirectional post_update."""
-        
+
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
             balls=relationship(Ball,
@@ -629,20 +629,20 @@ class OneToManyManyToOneTest(_base.MappedTest):
            favorite=relationship(Ball,
                              primaryjoin=person.c.favorite_ball_id == ball.c.id,
                              remote_side=person.c.favorite_ball_id)
-            
+
             ))
-        
+
         sess = sessionmaker()()
         p1 = Person(data='p1')
         p2 = Person(data='p2')
         p3 = Person(data='p3')
-        
+
         b1 = Ball(data='b1')
-        
+
         b1.person = p1
         sess.add_all([p1, p2, p3])
         sess.commit()
-        
+
         # switch here.  the post_update
         # on ball.person can't get tripped up
         # by the fact that there's a "reverse" prop.
@@ -658,7 +658,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
         eq_(
             p3, b1.person
         )
-        
+
 
 
     @testing.resolve_artifact_names
@@ -724,9 +724,9 @@ class OneToManyManyToOneTest(_base.MappedTest):
             ),
 
         )
-        
+
         sess.delete(p)
-        
+
         self.assert_sql_execution(testing.db, sess.flush, 
             CompiledSQL("UPDATE ball SET person_id=:person_id "
                 "WHERE ball.id = :ball_id",
@@ -750,8 +750,8 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
 class SelfReferentialPostUpdateTest(_base.MappedTest):
     """Post_update on a single self-referential mapper.
-    
-    
+
+
     """
 
     @classmethod
@@ -835,7 +835,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         session.flush()
 
         remove_child(root, cats)
-        
+
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
         self.assert_sql_execution(
@@ -854,7 +854,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
              "WHERE node.id = :node_id",
              lambda ctx:{'next_sibling_id':None, 'node_id':cats.id}),
             ),
-             
+
             CompiledSQL("DELETE FROM node WHERE node.id = :id",
              lambda ctx:[{'id':cats.id}])
         )
@@ -981,7 +981,7 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         mapper(Child, child, properties={
             'parent':relationship(Child, remote_side=child.c.id)
         })
-        
+
         session = create_session()
         p1 = Parent('p1')
         c1 = Child('c1')
@@ -989,7 +989,7 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         p1.children =[c1, c2]
         c2.parent = c1
         p1.child = c2
-        
+
         session.add_all([p1, c1, c2])
         session.flush()
 
@@ -998,18 +998,18 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         p2.children = [c3]
         p2.child = c3
         session.add(p2)
-        
+
         session.delete(c2)
         p1.children.remove(c2)
         p1.child = None
         session.flush()
-        
+
         p2.child = None
         session.flush()
-        
+
 class PostUpdateBatchingTest(_base.MappedTest):
     """test that lots of post update cols batch together into a single UPDATE."""
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
@@ -1037,7 +1037,7 @@ class PostUpdateBatchingTest(_base.MappedTest):
              Column('name', String(50), nullable=False),
              Column('parent_id', Integer,
                     ForeignKey('parent.id'), nullable=False))
-                    
+
         Table('child3', metadata,
            Column('id', Integer, primary_key=True,
                   test_needs_autoincrement=True),
@@ -1059,14 +1059,14 @@ class PostUpdateBatchingTest(_base.MappedTest):
         class Child3(_base.BasicEntity):
             def __init__(self, name=''):
                 self.name = name
-    
+
     @testing.resolve_artifact_names
     def test_one(self):
         mapper(Parent, parent, properties={
             'c1s':relationship(Child1, primaryjoin=child1.c.parent_id==parent.c.id),
             'c2s':relationship(Child2, primaryjoin=child2.c.parent_id==parent.c.id),
             'c3s':relationship(Child3, primaryjoin=child3.c.parent_id==parent.c.id),
-            
+
             'c1':relationship(Child1, primaryjoin=child1.c.id==parent.c.c1_id, post_update=True),
             'c2':relationship(Child2, primaryjoin=child2.c.id==parent.c.c2_id, post_update=True),
             'c3':relationship(Child3, primaryjoin=child3.c.id==parent.c.c3_id, post_update=True),
@@ -1074,20 +1074,20 @@ class PostUpdateBatchingTest(_base.MappedTest):
         mapper(Child1, child1)
         mapper(Child2, child2)
         mapper(Child3, child3)
-        
+
         sess = create_session()
-        
+
         p1 = Parent('p1')
         c11, c12, c13 = Child1('c1'), Child1('c2'), Child1('c3')
         c21, c22, c23 = Child2('c1'), Child2('c2'), Child2('c3')
         c31, c32, c33 = Child3('c1'), Child3('c2'), Child3('c3')
-        
+
         p1.c1s = [c11, c12, c13]
         p1.c2s = [c21, c22, c23]
         p1.c3s = [c31, c32, c33]
         sess.add(p1)
         sess.flush()
-        
+
         p1.c1 = c12
         p1.c2 = c23
         p1.c3 = c31
@@ -1113,4 +1113,3 @@ class PostUpdateBatchingTest(_base.MappedTest):
                 lambda ctx: {'c2_id': None, 'parent_id': p1.id, 'c1_id': None, 'c3_id': None}
             )
         )
-        

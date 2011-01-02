@@ -11,9 +11,9 @@ def produce_test(parent, child, direction):
     """produce a testcase for A->B->C inheritance with a self-referential
     relationship between two of the classes, using either one-to-many or
     many-to-one.
-    
+
     the old "no discriminator column" pattern is used.
-    
+
     """
     class ABCTest(_base.MappedTest):
         @classmethod

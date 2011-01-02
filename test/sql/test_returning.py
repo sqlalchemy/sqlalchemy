@@ -10,10 +10,10 @@ class ReturningTest(TestBase, AssertsExecutionResults):
     def setup(self):
         meta = MetaData(testing.db)
         global table, GoofyType
-        
+
         class GoofyType(TypeDecorator):
             impl = String
-            
+
             def process_bind_param(self, value, dialect):
                 if value is None:
                     return None
@@ -23,7 +23,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
                 if value is None:
                     return None
                 return value + "BAR"
-            
+
         table = Table('tables', meta,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('persons', Integer),
@@ -31,19 +31,19 @@ class ReturningTest(TestBase, AssertsExecutionResults):
             Column('goofy', GoofyType(50))
         )
         table.create(checkfirst=True)
-    
+
     def teardown(self):
         table.drop()
-    
+
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_column_targeting(self):
         result = table.insert().returning(table.c.id, table.c.full).execute({'persons': 1, 'full': False})
-        
+
         row = result.first()
         assert row[table.c.id] == row['id'] == 1
         assert row[table.c.full] == row['full'] == False
-        
+
         result = table.insert().values(persons=5, full=True, goofy="somegoofy").\
                             returning(table.c.persons, table.c.full, table.c.goofy).execute()
         row = result.first()
@@ -52,7 +52,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         eq_(row[table.c.goofy], row['goofy'])
         eq_(row['goofy'], "FOOsomegoofyBAR")
-    
+
     @testing.fails_on('firebird', "fb can't handle returning x AS y")
     @testing.exclude('firebird', '<', (2, 0), '2.0+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
@@ -76,7 +76,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
                             returning(table.c.persons + 18).execute()
         row = result.first()
         assert row[0] == 30
-        
+
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     def test_update_returning(self):
@@ -115,8 +115,8 @@ class ReturningTest(TestBase, AssertsExecutionResults):
 
         test_executemany()
 
-    
-        
+
+
     @testing.exclude('firebird', '<', (2, 1), '2.1+ feature')
     @testing.exclude('postgresql', '<', (8, 2), '8.2+ feature')
     @testing.fails_on_everything_except('postgresql', 'firebird')
@@ -164,7 +164,7 @@ class SequenceReturningTest(TestBase):
 
 class KeyReturningTest(TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
-    
+
     __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
 
     def setup(self):
@@ -186,8 +186,8 @@ class KeyReturningTest(TestBase, AssertsExecutionResults):
         result = table.insert().returning(table.c.foo_id).execute(data='somedata')
         row = result.first()
         assert row[table.c.foo_id] == row['id'] == 1
-        
+
         result = table.select().execute().first()
         assert row[table.c.foo_id] == row['id'] == 1
-        
+
 

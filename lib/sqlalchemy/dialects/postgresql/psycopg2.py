@@ -157,7 +157,7 @@ SERVER_SIDE_CURSOR_RE = re.compile(
 class PGExecutionContext_psycopg2(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
-        
+
         if self.dialect.server_side_cursors:
             is_server_side = \
                 self.execution_options.get('stream_results', True) and (
@@ -185,7 +185,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         # TODO: ouch
         if logger.isEnabledFor(logging.INFO):
             self._log_notices(self.cursor)
-        
+
         if self.__is_server_side:
             return base.BufferedRowResultProxy(self)
         else:
@@ -203,7 +203,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 class PGCompiler_psycopg2(PGCompiler):
     def visit_mod(self, binary, **kw):
         return self.process(binary.left) + " %% " + self.process(binary.right)
-    
+
     def post_process_text(self, text):
         return text.replace('%', '%%')
 
@@ -237,12 +237,12 @@ class PGDialect_psycopg2(PGDialect):
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         self.supports_unicode_binds = use_native_unicode
-        
+
     @classmethod
     def dbapi(cls):
         psycopg = __import__('psycopg2')
         return psycopg
-    
+
     def on_connect(self):
         if self.isolation_level is not None:
             extensions = __import__('psycopg2.extensions').extensions
@@ -251,7 +251,7 @@ class PGDialect_psycopg2(PGDialect):
             'READ_UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED, 
             'REPEATABLE_READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
             'SERIALIZABLE':extensions.ISOLATION_LEVEL_SERIALIZABLE
-            
+
             }
             def base_on_connect(conn):
                 try:
@@ -262,7 +262,7 @@ class PGDialect_psycopg2(PGDialect):
                                 self.isolation_level)
         else:
             base_on_connect = None
-            
+
         if self.dbapi and self.use_native_unicode:
             extensions = __import__('psycopg2.extensions').extensions
             def connect(conn):
@@ -292,4 +292,4 @@ class PGDialect_psycopg2(PGDialect):
             return False
 
 dialect = PGDialect_psycopg2
-    
+

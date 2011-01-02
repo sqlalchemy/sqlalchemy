@@ -47,7 +47,7 @@ class O2OTest(_base.MappedTest):
         session.add(j)
         p = Port(name='fa0/1')
         session.add(p)
-        
+
         j.port=p
         session.flush()
         jid = j.id

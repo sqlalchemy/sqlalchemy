@@ -19,7 +19,7 @@ def install():
         ('New York', 'United States', ('10001', '10002', '10003', '10004', '10005', '10006')),
         ('San Francisco', 'United States', ('94102', '94103', '94104', '94105', '94107', '94108'))
     ]
-    
+
     countries = {}
     all_post_codes = []
     for city, country, postcodes in data:
@@ -27,12 +27,12 @@ def install():
             country = countries[country]
         except KeyError:
             countries[country] = country = Country(country)
-            
+
         city = City(city, country)
         pc = [PostalCode(code, city) for code in postcodes]
         Session.add_all(pc)
         all_post_codes.extend(pc)
-    
+
     for i in xrange(1, 51):
         person = Person(
                     "person %.2d" % i,
@@ -44,6 +44,6 @@ def install():
         Session.add(person)
 
     Session.commit()
-    
+
     # start the demo fresh
     Session.remove()

@@ -169,7 +169,7 @@ CREATE DOMAIN DOM_ID INTEGER NOT NULL
 CREATE TABLE A (
 ID DOM_ID /* INTEGER NOT NULL */ DEFAULT 0 )
 """
-    
+
     # the 'default' keyword is lower case here
     TABLE_B = """\
 CREATE TABLE B (
@@ -222,14 +222,14 @@ ID DOM_ID /* INTEGER NOT NULL */ default 0 )
         table_a = Table('a', metadata, autoload=True)
 
         eq_(table_a.c.id.server_default.arg.text, "0")
-    
+
     def test_lowercase_default_name(self):
         metadata = MetaData(testing.db)
 
         table_b = Table('b', metadata, autoload=True)
 
         eq_(table_b.c.id.server_default.arg.text, "0")
-        
+
 
 class CompileTest(TestBase, AssertsCompiledSQL):
 

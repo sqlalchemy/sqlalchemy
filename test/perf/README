@@ -14,4 +14,4 @@ Current automated stress and performance tests are in test/aaa_profiling/,
 which test either for expected function call count, or flat growth in memory 
 usage over time.   These tests are part of the automated test suite
 and are maintained for 100% success rate along Python versions from 2.4 through
-current 3 versions.   
+current 3 versions.

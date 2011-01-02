@@ -22,7 +22,7 @@ meta = MetaData()
 def are_elements_equal(x, y):
     return x == y
 
-# stores a top level record of an XML document.  
+# stores a top level record of an XML document.
 # the "element" column will store the ElementTree document as a BLOB.
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
@@ -33,7 +33,7 @@ documents = Table('documents', meta,
 meta.create_all(e)
 
 # our document class.  contains a string name,
-# and the ElementTree root element.  
+# and the ElementTree root element.
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
@@ -47,7 +47,7 @@ mapper(Document, documents)
 # get ElementTree document
 filename = os.path.join(os.path.dirname(__file__), "test.xml")
 doc = ElementTree.parse(filename)
-    
+
 # save to DB
 session = Session(e)
 session.add(Document("test.xml", doc))

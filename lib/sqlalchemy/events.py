@@ -11,55 +11,55 @@ from sqlalchemy import event, exc
 class DDLEvents(event.Events):
     """
     Define create/drop event listers for schema objects.
-    
+
     These events currently apply to :class:`.Table`
     and :class:`.MetaData` objects as targets.
-    
+
     e.g.::
-    
+
         from sqlalchemy import event
         from sqlalchemy import Table, Column, Metadata, Integer
-        
+
         m = MetaData()
         some_table = Table('some_table', m, Column('data', Integer))
-        
+
         def after_create(target, connection, **kw):
             connection.execute("ALTER TABLE %s SET name=foo_%s" % 
                                     (target.name, target.name))
-                                    
+
         event.listen(some_table, "after_create", after_create)
-    
+
     DDL events integrate closely with the 
     :class:`.DDL` class and the :class:`.DDLElement` hierarchy
     of DDL clause constructs, which are themselves appropriate 
     as listener callables::
-    
+
         from sqlalchemy import DDL
         event.listen(
             some_table,
             "after_create",
             DDL("ALTER TABLE %(table)s SET name=foo_%(table)s")
         )
-    
+
     The methods here define the name of an event as well
     as the names of members that are passed to listener
     functions.
-    
+
     See also:
 
         :ref:`event_toplevel`
-        
+
         :class:`.DDLElement`
-        
+
         :class:`.DDL`
-        
+
         :ref:`schema_ddl_sequences`
-    
+
     """
-    
+
     def before_create(self, target, connection, **kw):
         """Called before CREATE statments are emitted.
-        
+
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
         :param connection: the :class:`.Connection` where the
@@ -69,12 +69,12 @@ class DDLEvents(event.Events):
          argument in the case of a :class:`.MetaData` object,
          which is the list of :class:`.Table` objects for which
          CREATE will be emitted.
-           
+
         """
 
     def after_create(self, target, connection, **kw):
         """Called after CREATE statments are emitted.
-        
+
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
         :param connection: the :class:`.Connection` where the
@@ -84,12 +84,12 @@ class DDLEvents(event.Events):
          argument in the case of a :class:`.MetaData` object,
          which is the list of :class:`.Table` objects for which
          CREATE has been emitted.
-           
+
         """
 
     def before_drop(self, target, connection, **kw):
         """Called before DROP statments are emitted.
-        
+
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
         :param connection: the :class:`.Connection` where the
@@ -99,12 +99,12 @@ class DDLEvents(event.Events):
          argument in the case of a :class:`.MetaData` object,
          which is the list of :class:`.Table` objects for which
          DROP will be emitted.
-           
+
         """
-    
+
     def after_drop(self, target, connection, **kw):
         """Called after DROP statments are emitted.
-        
+
         :param target: the :class:`.MetaData` or :class:`.Table`
          object which is the target of the event.
         :param connection: the :class:`.Connection` where the
@@ -114,24 +114,24 @@ class DDLEvents(event.Events):
          argument in the case of a :class:`.MetaData` object,
          which is the list of :class:`.Table` objects for which
          DROP has been emitted.
-           
+
         """
-    
+
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.
-    
+
     The methods here define the name of an event as well
     as the names of members that are passed to listener
     functions.
-    
+
     e.g.::
-    
+
         from sqlalchemy import event
-        
+
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
-            
+
         events.listen(Pool, 'checkout', my_on_checkout)
 
     In addition to accepting the :class:`.Pool` class and :class:`.Pool` instances,
@@ -139,19 +139,19 @@ class PoolEvents(event.Events):
     the :class:`.Engine` class as targets, which will be resolved
     to the ``.pool`` attribute of the given engine or the :class:`.Pool`
     class::
-        
+
         engine = create_engine("postgresql://scott:tiger@localhost/test")
-        
+
         # will associate with engine.pool
         events.listen(engine, 'checkout', my_on_checkout)
 
     """
-    
+
     @classmethod
     def _accept_with(cls, target):
         from sqlalchemy.engine import Engine
         from sqlalchemy.pool import Pool
-        
+
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Pool
@@ -161,7 +161,7 @@ class PoolEvents(event.Events):
             return target.pool
         else:
             return target
-    
+
     def connect(self, dbapi_connection, connection_record):
         """Called once for each new DB-API connection or Pool's ``creator()``.
 
@@ -222,30 +222,30 @@ class PoolEvents(event.Events):
 
 class EngineEvents(event.Events):
     """Available events for :class:`.Engine`.
-    
+
     The methods here define the name of an event as well as the names of members that are passed to listener functions.
-    
+
     e.g.::
-    
+
         from sqlalchemy import event, create_engine
-        
+
         def before_execute(conn, clauseelement, multiparams, params):
             log.info("Received statement: %s" % clauseelement)
-        
+
         engine = create_engine('postgresql://scott:tiger@localhost/test')
         event.listen(engine, "before_execute", before_execute)
-    
+
     Some events allow modifiers to the listen() function.
-    
+
     :param retval=False: Applies to the :meth:`.before_execute` and 
       :meth:`.before_cursor_execute` events only.  When True, the
       user-defined event function must have a return value, which
       is a tuple of parameters that replace the given statement 
       and parameters.  See those methods for a description of
       specific return arguments.
-    
+
     """
-    
+
     @classmethod
     def _listen(cls, target, identifier, fn, retval=False):
         from sqlalchemy.engine.base import Connection, \
@@ -254,7 +254,7 @@ class EngineEvents(event.Events):
             target.Connection = _listener_connection_cls(
                                         Connection, 
                                         target.dispatch)
-        
+
         if not retval:
             if identifier == 'before_execute':
                 orig_fn = fn
@@ -270,7 +270,7 @@ class EngineEvents(event.Events):
                         parameters, context, executemany)
                     return statement, parameters
                 fn = wrap
-                    
+
         elif retval and identifier not in ('before_execute', 'before_cursor_execute'):
             raise exc.ArgumentError(
                     "Only the 'before_execute' and "
@@ -284,7 +284,7 @@ class EngineEvents(event.Events):
 
     def after_execute(self, conn, clauseelement, multiparams, params, result):
         """Intercept high level execute() events."""
-        
+
     def before_cursor_execute(self, conn, cursor, statement, 
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
@@ -295,31 +295,31 @@ class EngineEvents(event.Events):
 
     def begin(self, conn):
         """Intercept begin() events."""
-        
+
     def rollback(self, conn):
         """Intercept rollback() events."""
-        
+
     def commit(self, conn):
         """Intercept commit() events."""
-        
+
     def savepoint(self, conn, name=None):
         """Intercept savepoint() events."""
-        
+
     def rollback_savepoint(self, conn, name, context):
         """Intercept rollback_savepoint() events."""
-        
+
     def release_savepoint(self, conn, name, context):
         """Intercept release_savepoint() events."""
-        
+
     def begin_twophase(self, conn, xid):
         """Intercept begin_twophase() events."""
-        
+
     def prepare_twophase(self, conn, xid):
         """Intercept prepare_twophase() events."""
-        
+
     def rollback_twophase(self, conn, xid, is_prepared):
         """Intercept rollback_twophase() events."""
-        
+
     def commit_twophase(self, conn, xid, is_prepared):
         """Intercept commit_twophase() events."""
 

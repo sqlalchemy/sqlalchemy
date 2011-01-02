@@ -122,13 +122,13 @@ class AttributesTest(_base.ORMTest):
         self.assert_(len(o4.mt2) == 1)
         self.assert_(o4.mt2[0].a == 'abcde')
         self.assert_(o4.mt2[0].b is None)
-    
+
     def test_state_gc(self):
         """test that InstanceState always has a dict, even after host object gc'ed."""
-        
+
         class Foo(object):
             pass
-        
+
         instrumentation.register_class(Foo)
         f = Foo()
         state = attributes.instance_state(f)
@@ -138,7 +138,7 @@ class AttributesTest(_base.ORMTest):
         gc_collect()
         assert state.obj() is None
         assert state.dict == {}
-        
+
     def test_deferred(self):
         class Foo(object):pass
 
@@ -233,24 +233,24 @@ class AttributesTest(_base.ORMTest):
         a.email_address = 'foo@bar.com'
         u.addresses.append(a)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
-    
+
     def test_extension_commit_attr(self):
         """test that an extension which commits attribute history
         maintains the end-result history.
-        
+
         This won't work in conjunction with some unitofwork extensions.
-        
+
         """
-        
+
         class Foo(_base.ComparableEntity):
             pass
         class Bar(_base.ComparableEntity):
             pass
-        
+
         class ReceiveEvents(AttributeExtension):
             def __init__(self, key):
                 self.key = key
-                
+
             def append(self, state, child, initiator):
                 if commit:
                     state.commit_all(state.dict)
@@ -270,34 +270,34 @@ class AttributesTest(_base.ORMTest):
         instrumentation.register_class(Bar)
 
         b1, b2, b3, b4 = Bar(id='b1'), Bar(id='b2'), Bar(id='b3'), Bar(id='b4')
-        
+
         def loadcollection(state, passive):
             if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
             return [b1, b2]
-        
+
         def loadscalar(state, passive):
             if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
             return b2
-            
+
         attributes.register_attribute(Foo, 'bars', 
                                uselist=True, 
                                useobject=True, 
                                callable_=loadcollection,
                                extension=[ReceiveEvents('bars')])
-                               
+
         attributes.register_attribute(Foo, 'bar', 
                               uselist=False, 
                               useobject=True, 
                               callable_=loadscalar,
                               extension=[ReceiveEvents('bar')])
-                              
+
         attributes.register_attribute(Foo, 'scalar', 
                             uselist=False, 
                             useobject=False, extension=[ReceiveEvents('scalar')])
-        
-            
+
+
         def create_hist():
             def hist(key, shouldmatch, fn, *arg):
                 attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
@@ -314,7 +314,7 @@ class AttributesTest(_base.ORMTest):
             hist('scalar', True, setattr, f1, 'scalar', 5)
             hist('scalar', True, setattr, f1, 'scalar', None)
             hist('scalar', True, setattr, f1, 'scalar', 4)
-        
+
         histories = []
         commit = False
         create_hist()
@@ -330,7 +330,7 @@ class AttributesTest(_base.ORMTest):
                 eq_(woc, wic)
             else:
                 ne_(woc, wic)
-        
+
     def test_extension_lazyload_assertion(self):
         class Foo(_base.BasicEntity):
             pass
@@ -356,7 +356,7 @@ class AttributesTest(_base.ORMTest):
         def func1(state, passive):
             if passive is attributes.PASSIVE_NO_FETCH:
                 return attributes.PASSIVE_NO_RESULT
-            
+
             return [bar1, bar2, bar3]
 
         attributes.register_attribute(Foo, 'bars', uselist=True,
@@ -367,20 +367,20 @@ class AttributesTest(_base.ORMTest):
 
         x = Foo()
         assert_raises(AssertionError, Bar(id=4).foos.append, x)
-        
+
         x.bars
         b = Bar(id=4)
         b.foos.append(x)
         attributes.instance_state(x).expire_attributes(attributes.instance_dict(x), ['bars'])
         assert_raises(AssertionError, b.foos.remove, x)
-        
-        
+
+
     def test_scalar_listener(self):
         # listeners on ScalarAttributeImpl and MutableScalarAttributeImpl aren't used normally.
         # test that they work for the benefit of user extensions
         class Foo(object):
             pass
-        
+
         results = []
         class ReceiveEvents(AttributeExtension):
             def append(self, state, child, initiator):
@@ -392,11 +392,11 @@ class AttributesTest(_base.ORMTest):
             def set(self, state, child, oldchild, initiator):
                 results.append(("set", state.obj(), child, oldchild))
                 return child
-        
+
         instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'x', uselist=False, mutable_scalars=False, useobject=False, extension=ReceiveEvents())
         attributes.register_attribute(Foo, 'y', uselist=False, mutable_scalars=True, useobject=False, copy_function=lambda x:x, extension=ReceiveEvents())
-        
+
         f = Foo()
         f.x = 5
         f.x = 17
@@ -404,7 +404,7 @@ class AttributesTest(_base.ORMTest):
         f.y = [1,2,3]
         f.y = [4,5,6]
         del f.y
-        
+
         eq_(results, [
             ('set', f, 5, None),
             ('set', f, 17, 5),
@@ -413,12 +413,12 @@ class AttributesTest(_base.ORMTest):
             ('set', f, [4,5,6], [1,2,3]),
             ('remove', f, [4,5,6])
         ])
-        
-        
+
+
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly 
            when lazy loaders and backrefs are used
-           
+
         """
 
         class Post(object):pass
@@ -640,7 +640,7 @@ class AttributesTest(_base.ORMTest):
 
         attributes.unregister_attribute(Foo, "collection")
         assert not attributes.manager_of_class(Foo).is_instrumented("collection")
-        
+
         try:
             attributes.register_attribute(Foo, "collection", uselist=True, typecallable=dict, useobject=True)
             assert False
@@ -690,11 +690,11 @@ class UtilTest(_base.ORMTest):
 
         class Bar(object):
             pass
-        
+
         instrumentation.register_class(Foo)
         instrumentation.register_class(Bar)
         attributes.register_attribute(Foo, "coll", uselist=True, useobject=True)
-    
+
         f1 = Foo()
         b1 = Bar()
         b2 = Bar()
@@ -706,7 +706,7 @@ class UtilTest(_base.ORMTest):
         eq_(attributes.get_history(f1, "coll"), ([b1], [], []))
         attributes.set_committed_value(f1, "coll", [b2])
         eq_(attributes.get_history(f1, "coll"), ((), [b2], ()))
-        
+
         attributes.del_attribute(f1, "coll")
         assert "coll" not in f1.__dict__
 
@@ -781,11 +781,11 @@ class BackrefTest(_base.ORMTest):
 
         attributes.register_attribute(Port, 'jack', uselist=False, 
                                             useobject=True, backref="port")
-        
+
         attributes.register_attribute(Jack, 'port', uselist=False,
                                             useobject=True, backref="jack")
-        
-                
+
+
         p = Port()
         j = Jack()
         p.jack = j
@@ -800,7 +800,7 @@ class BackrefTest(_base.ORMTest):
         a token that is global to all InstrumentedAttribute objects
         within a particular class, not just the indvidual IA object
         since we use distinct objects in an inheritance scenario.
-        
+
         """
         class Parent(object):
             pass
@@ -811,7 +811,7 @@ class BackrefTest(_base.ORMTest):
 
         p_token = object()
         c_token = object()
-        
+
         instrumentation.register_class(Parent)
         instrumentation.register_class(Child)
         instrumentation.register_class(SubChild)
@@ -828,11 +828,11 @@ class BackrefTest(_base.ORMTest):
                 backref="child",
                 parent_token = c_token,
                 useobject=True)
-        
+
         p1 = Parent()
         c1 = Child()
         p1.child = c1
-        
+
         c2 = SubChild()
         c2.parent = p1
 
@@ -846,7 +846,7 @@ class BackrefTest(_base.ORMTest):
 
         p_token = object()
         c_token = object()
-        
+
         instrumentation.register_class(Parent)
         instrumentation.register_class(SubParent)
         instrumentation.register_class(Child)
@@ -862,26 +862,26 @@ class BackrefTest(_base.ORMTest):
                 backref='children',
                 parent_token = c_token,
                 useobject=True)
-        
+
         p1 = Parent()
         p2 = SubParent()
         c1 = Child()
-        
+
         p1.children.append(c1)
 
         assert c1.parent is p1
         assert c1 in p1.children
-        
+
         p2.children.append(c1)
         assert c1.parent is p2
-        
+
         # note its still in p1.children -
         # the event model currently allows only
         # one level deep.  without the parent_token,
         # it keeps going until a ValueError is raised
         # and this condition changes.
         assert c1 in p1.children
-        
+
 class PendingBackrefTest(_base.ORMTest):
     def setup(self):
         global Post, Blog, called, lazy_load
@@ -926,7 +926,7 @@ class PendingBackrefTest(_base.ORMTest):
 
         b = Blog("blog 1")
         p = Post("post 4")
-        
+
         p.blog = b
         p = Post("post 5")
         p.blog = b
@@ -936,17 +936,17 @@ class PendingBackrefTest(_base.ORMTest):
         # calling backref calls the callable, populates extra posts
         assert b.posts == [p1, p2, p3, Post("post 4"), Post("post 5")]
         assert called[0] == 1
-    
+
     def test_lazy_history(self):
         global lazy_load
 
         p1, p2, p3 = Post("post 1"), Post("post 2"), Post("post 3")
         lazy_load = [p1, p2, p3]
-        
+
         b = Blog("blog 1")
         p = Post("post 4")
         p.blog = b
-        
+
         p4 = Post("post 5")
         p4.blog = b
         assert called[0] == 0
@@ -1022,7 +1022,7 @@ class HistoryTest(_base.ORMTest):
         f = Foo()
         f.someattr = 3
         eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), None)
-        
+
         attributes.instance_state(f).commit(attributes.instance_dict(f), ['someattr'])
         eq_(Foo.someattr.impl.get_committed_value(attributes.instance_state(f), attributes.instance_dict(f)), 3)
 
@@ -1084,8 +1084,8 @@ class HistoryTest(_base.ORMTest):
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), (['one'], (), ()))
         f.someattr = 'two'
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), (['two'], (), ()))
-        
-        
+
+
     def test_mutable_scalar(self):
         class Foo(_base.BasicEntity):
             pass
@@ -1138,12 +1138,12 @@ class HistoryTest(_base.ORMTest):
 
         attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [{'a':'b'},], ()))
-        
+
         f.someattr['a'] = 'c'
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [{'a':'c'},], ()))
         attributes.flag_modified(f, 'someattr')
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([{'a':'c'},], (), ()))
-        
+
         f.someattr = ['a']
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([['a']], (), ()))
         attributes.instance_state(f).commit_all(attributes.instance_dict(f))
@@ -1156,7 +1156,7 @@ class HistoryTest(_base.ORMTest):
         attributes.flag_modified(f, 'someattr')
 
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([['b', 'c']], (), ()))
-        
+
     def test_use_object(self):
         class Foo(_base.BasicEntity):
             pass
@@ -1395,10 +1395,10 @@ class HistoryTest(_base.ORMTest):
 
         attributes.instance_state(f).commit_all(attributes.instance_dict(f))
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ((), [hi, there, hi], ()))
-        
+
         f.someattr = []
         eq_(attributes.get_state_history(attributes.instance_state(f), 'someattr'), ([], [], [hi, there, hi]))
-        
+
     def test_collections_via_backref(self):
         class Foo(_base.BasicEntity):
             pass
@@ -1621,12 +1621,12 @@ class HistoryTest(_base.ORMTest):
 class ListenerTest(_base.ORMTest):
     def test_receive_changes(self):
         """test that Listeners can mutate the given value."""
-        
+
         class Foo(object):
             pass
         class Bar(object):
             pass
-            
+
         def append(state, child, initiator):
             b2 = Bar()
             b2.data = b1.data + " appended"
@@ -1641,11 +1641,11 @@ class ListenerTest(_base.ORMTest):
         attributes.register_attribute(Foo, 'barlist', uselist=True, useobject=True)
         attributes.register_attribute(Foo, 'barset', typecallable=set, uselist=True, useobject=True)
         attributes.register_attribute(Bar, 'data', uselist=False, useobject=False)
-        
+
         event.listen(Foo.data, 'set', on_set, retval=True)
         event.listen(Foo.barlist, 'append', append, retval=True)
         event.listen(Foo.barset, 'append', append, retval=True)
-        
+
         f1 = Foo()
         f1.data = "some data"
         eq_(f1.data, "some data modified")
@@ -1654,10 +1654,10 @@ class ListenerTest(_base.ORMTest):
         f1.barlist.append(b1)
         assert b1.data == "some bar"
         assert f1.barlist[0].data == "some bar appended"
-        
+
         f1.barset.add(b1)
         assert f1.barset.pop().data == "some bar appended"
-    
+
     def test_propagate(self):
         classes = [None, None, None]
         canary = []
@@ -1665,45 +1665,45 @@ class ListenerTest(_base.ORMTest):
             class A(object):
                 pass
             classes[0] = A
-            
+
         def make_b():
             class B(classes[0]):
                 pass
             classes[1] = B
-        
+
         def make_c():
             class C(classes[1]):
                 pass
             classes[2] = C
-            
+
         def instrument_a():
             instrumentation.register_class(classes[0])
 
         def instrument_b():
             instrumentation.register_class(classes[1])
-        
+
         def instrument_c():
             instrumentation.register_class(classes[2])
-            
+
         def attr_a():
             attributes.register_attribute(classes[0], 'attrib', uselist=False, useobject=False)
-        
+
         def attr_b():
             attributes.register_attribute(classes[1], 'attrib', uselist=False, useobject=False)
 
         def attr_c():
             attributes.register_attribute(classes[2], 'attrib', uselist=False, useobject=False)
-        
+
         def set(state, value, oldvalue, initiator):
             canary.append(value)
-            
+
         def events_a():
             event.listen(classes[0].attrib, 'set', set, propagate=True)
-        
+
         def teardown():
             classes[:] = [None, None, None]
             canary[:] = []
-        
+
         ordering = [
             (instrument_a, instrument_b),
             (instrument_b, instrument_c),
@@ -1722,20 +1722,20 @@ class ListenerTest(_base.ORMTest):
         elements = [make_a, make_b, make_c, 
                     instrument_a, instrument_b, instrument_c, 
                     attr_a, attr_b, attr_c, events_a]
-        
+
         for i, series in enumerate(all_partial_orderings(ordering, elements)):
             for fn in series:
                 fn()
-                
+
             b = classes[1]()
             b.attrib = "foo"
             eq_(b.attrib, "foo")
             eq_(canary, ["foo"])
-            
+
             c = classes[2]()
             c.attrib = "bar"
             eq_(c.attrib, "bar")
             eq_(canary, ["foo", "bar"])
-            
+
             teardown()
-        
+

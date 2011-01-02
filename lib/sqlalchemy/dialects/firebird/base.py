@@ -194,7 +194,7 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
     def visit_VARCHAR(self, type_):
         basic = super(FBTypeCompiler, self).visit_VARCHAR(type_)
         return self._extend_string(type_, basic)
-        
+
 
 
 class FBCompiler(sql.compiler.SQLCompiler):

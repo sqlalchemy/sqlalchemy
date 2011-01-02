@@ -155,13 +155,13 @@ class AltEngineTest(testing.TestBase):
     def setup_class(cls):
         cls.engine = cls.create_engine()
         super(AltEngineTest, cls).setup_class()
-        
+
     @classmethod
     def teardown_class(cls):
         cls.engine.dispose()
         cls.engine = None
         super(AltEngineTest, cls).teardown_class()
-        
+
     @classmethod
     def create_engine(cls):
         raise NotImplementedError

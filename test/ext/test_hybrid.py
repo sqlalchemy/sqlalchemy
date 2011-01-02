@@ -23,7 +23,7 @@ Base = declarative_base()
 
 
 class UCComparator(hybrid.Comparator):
-    
+
     def __eq__(self, other):
         if other is None:
             return self.expression == None
@@ -42,7 +42,7 @@ class A(Base):
     @value.comparator
     def value(cls):
         return UCComparator(cls._value)
-        
+
     @value.setter
     def value(self, v):
         self.value = v
@@ -73,7 +73,7 @@ class A(Base):
     @hybrid.property
     def value(self):
         return int(self._value)
-    
+
     @value.expression
     def value(cls):
         return func.foo(cls._value) + cls.bar_value
@@ -85,7 +85,7 @@ class A(Base):
     @hybrid.property
     def bar_value(cls):
         return func.bar(cls._value)
-        
+
 #print A.value
 #print A.value.__doc__
 

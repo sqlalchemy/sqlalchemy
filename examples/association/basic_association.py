@@ -60,7 +60,7 @@ class OrderItem(object):
     def __init__(self, item, price=None):
         self.item = item
         self.price = price or item.price
-        
+
 mapper(Order, orders, properties={
     'order_items': relationship(OrderItem, cascade="all, delete-orphan",
                             backref='order')
@@ -82,7 +82,7 @@ session.commit()
 # function to return items from the DB
 def item(name):
     return session.query(Item).filter_by(description=name).one()
-    
+
 # create an order
 order = Order('john smith')
 

@@ -10,18 +10,18 @@ org_table = Table('organizations', meta,
     Column('org_id', Integer, primary_key=True),
     Column('org_name', String(50), nullable=False, key='name'),
     mysql_engine='InnoDB')
-    
+
 member_table = Table('members', meta,
     Column('member_id', Integer, primary_key=True),
     Column('member_name', String(50), nullable=False, key='name'),
     Column('org_id', Integer, ForeignKey('organizations.org_id', ondelete="CASCADE")),
     mysql_engine='InnoDB')
-    
-    
+
+
 class Organization(object):
     def __init__(self, name):
         self.name = name
-    
+
 class Member(object):
     def __init__(self, name):
         self.name = name
@@ -31,11 +31,11 @@ mapper(Organization, org_table, properties = {
         # Organization.members will be a Query object - no loading
         # of the entire collection occurs unless requested
         lazy="dynamic", 
-        
+
         # Member objects "belong" to their parent, are deleted when 
         # removed from the collection
         cascade="all, delete-orphan",
-        
+
         # "delete, delete-orphan" cascade does not load in objects on delete,
         # allows ON DELETE CASCADE to handle it.
         # this only works with a database that supports ON DELETE CASCADE - 
@@ -49,7 +49,7 @@ mapper(Member, member_table)
 if __name__ == '__main__':
     engine = create_engine("mysql://scott:tiger@localhost/test", echo=True)
     meta.create_all(engine)
-    
+
     # expire_on_commit=False means the session contents
     # will not get invalidated after commit.
     sess = sessionmaker(engine, expire_on_commit=False)()
@@ -86,9 +86,9 @@ if __name__ == '__main__':
     sess.delete(org)
     print "-------------------------\nflush three - delete org, delete members in one statement\n"
     sess.commit()
-    
+
     print "-------------------------\nno Member rows should remain:\n"
     print sess.query(Member).count()
-    
+
     print "------------------------\ndone.  dropping tables."
     meta.drop_all(engine)

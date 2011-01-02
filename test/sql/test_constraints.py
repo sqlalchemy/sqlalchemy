@@ -36,10 +36,10 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_double_fk_usage_raises(self):
         f = ForeignKey('b.id')
-        
+
         Column('x', Integer, f)
         assert_raises(exc.InvalidRequestError, Column, "y", Integer, f)
-        
+
     def test_circular_constraint(self):
         a = Table("a", metadata,
             Column('id', Integer, primary_key=True),
@@ -192,22 +192,22 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 ('sometable', 'this_name_is_too_long', 'ix_sometable_t_09aa'),
                 ('sometable', 'this_name_alsois_long', 'ix_sometable_t_3cf1'),
             ]:
-        
+
                 t1 = Table(tname, MetaData(), 
                             Column(cname, Integer, index=True),
                         )
                 ix1 = list(t1.indexes)[0]
-        
+
                 self.assert_compile(
                     schema.CreateIndex(ix1),
                     "CREATE INDEX %s "
                     "ON %s (%s)" % (exp, tname, cname),
                     dialect=dialect
                 )
-        
+
         dialect.max_identifier_length = 22
         dialect.max_index_name_length = None
-        
+
         t1 = Table('t', MetaData(), Column('c', Integer))
         assert_raises(
             exc.IdentifierError,
@@ -217,7 +217,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             dialect=dialect
         )
 
-    
+
 class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
 
     def _test_deferrable(self, constraint_factory):
@@ -225,11 +225,11 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
                   Column('a', Integer),
                   Column('b', Integer),
                   constraint_factory(deferrable=True))
-                  
+
         sql = str(schema.CreateTable(t).compile(bind=testing.db))
         assert 'DEFERRABLE' in sql, sql
         assert 'NOT DEFERRABLE' not in sql, sql
-        
+
         t = Table('tbl', MetaData(),
                   Column('a', Integer),
                   Column('b', Integer),
@@ -291,18 +291,18 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
                          CheckConstraint('a < b',
                                          deferrable=True,
                                          initially='DEFERRED')))
-        
+
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE tbl (a INTEGER, b INTEGER CHECK (a < b) DEFERRABLE INITIALLY DEFERRED)"
         )
-    
+
     def test_use_alter(self):
         m = MetaData()
         t = Table('t', m,
                   Column('a', Integer),
         )
-        
+
         t2 = Table('t2', m,
                 Column('a', Integer, ForeignKey('t.a', use_alter=True, name='fk_ta')),
                 Column('b', Integer, ForeignKey('t.a', name='fk_tb')), # to ensure create ordering ...
@@ -320,25 +320,25 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
             'DROP TABLE t2', 
             'DROP TABLE t'
         ])
-        
-        
+
+
     def test_add_drop_constraint(self):
         m = MetaData()
-        
+
         t = Table('tbl', m,
                   Column('a', Integer),
                   Column('b', Integer)
         )
-        
+
         t2 = Table('t2', m,
                 Column('a', Integer),
                 Column('b', Integer)
         )
-        
+
         constraint = CheckConstraint('a < b',name="my_test_constraint",
                                         deferrable=True,initially='DEFERRED', table=t)
 
-        
+
         # before we create an AddConstraint,
         # the CONSTRAINT comes out inline
         self.assert_compile(
@@ -397,13 +397,13 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
             schema.AddConstraint(constraint),
             "ALTER TABLE t2 ADD CONSTRAINT uq_cst UNIQUE (a, b)"
         )
-        
+
         constraint = UniqueConstraint(t2.c.a, t2.c.b, name="uq_cs2")
         self.assert_compile(
             schema.AddConstraint(constraint),
             "ALTER TABLE t2 ADD CONSTRAINT uq_cs2 UNIQUE (a, b)"
         )
-        
+
         assert t.c.a.primary_key is False
         constraint = PrimaryKeyConstraint(t.c.a)
         assert t.c.a.primary_key is True
@@ -411,5 +411,5 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
             schema.AddConstraint(constraint),
             "ALTER TABLE tbl ADD PRIMARY KEY (a)"
         )
-    
-        
+
+

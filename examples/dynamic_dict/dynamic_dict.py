@@ -4,15 +4,15 @@ class ProxyDict(object):
         self.collection_name = collection_name
         self.childclass = childclass
         self.keyname = keyname
-    
+
     @property
     def collection(self):
         return getattr(self.parent, self.collection_name)
-    
+
     def keys(self):
         descriptor = getattr(self.childclass, self.keyname)
         return [x[0] for x in self.collection.values(descriptor)]
-        
+
     def __getitem__(self, key):
         x = self.collection.filter_by(**{self.keyname:key}).first()
         if x:
@@ -40,11 +40,11 @@ class Parent(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
     _collection = relationship("Child", lazy="dynamic", cascade="all, delete-orphan")
-    
+
     @property
     def child_map(self):
         return ProxyDict(self, '_collection', Child, 'key')
-    
+
 class Child(Base):
     __tablename__ = 'child'
     id = Column(Integer, primary_key=True)
@@ -53,7 +53,7 @@ class Child(Base):
 
     def __repr__(self):
         return "Child(key=%r)" % self.key
-    
+
 Base.metadata.create_all()
 
 sess = sessionmaker()()

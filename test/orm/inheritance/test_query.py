@@ -25,7 +25,7 @@ class Boss(Manager):
 
 class Machine(_fixtures.Base):
     pass
-    
+
 class Paperwork(_fixtures.Base):
     pass
 
@@ -34,7 +34,7 @@ def _produce_test(select_type):
         run_inserts = 'once'
         run_setup_mappers = 'once'
         run_deletes = None
-        
+
         @classmethod
         def define_tables(cls, metadata):
             global companies, people, engineers, managers, boss, paperwork, machines
@@ -55,12 +55,12 @@ def _produce_test(select_type):
                Column('engineer_name', String(50)),
                Column('primary_language', String(50)),
               )
-         
+
             machines = Table('machines', metadata,
                 Column('machine_id', Integer, primary_key=True, test_needs_autoincrement=True),
                 Column('name', String(50)),
                 Column('engineer_id', Integer, ForeignKey('engineers.person_id')))
-            
+
             managers = Table('managers', metadata,
                Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
                Column('status', String(30)),
@@ -78,7 +78,7 @@ def _produce_test(select_type):
                 Column('person_id', Integer, ForeignKey('people.person_id')))
 
             clear_mappers()
-            
+
             mapper(Company, companies, properties={
                 'employees':relationship(Person, order_by=people.c.person_id)
             })
@@ -129,7 +129,7 @@ def _produce_test(select_type):
                         inherits=Person, polymorphic_identity='manager')
             mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
             mapper(Paperwork, paperwork)
-        
+
 
         @classmethod
         def insert_data(cls):
@@ -165,7 +165,7 @@ def _produce_test(select_type):
                     Machine(name="Commodore 64"),
                     Machine(name="IBM 3270")
             ])
-        
+
             c2.employees = [e3]
             sess = create_session()
             sess.add(c1)
@@ -176,10 +176,10 @@ def _produce_test(select_type):
             all_employees = [e1, e2, b1, m1, e3]
             c1_employees = [e1, e2, b1, m1]
             c2_employees = [e3]
-        
+
         def test_loads_at_once(self):
             """test that all objects load from the full query, when with_polymorphic is used"""
-            
+
             sess = create_session()
             def go():
                 eq_(sess.query(Person).all(), all_employees)
@@ -187,7 +187,7 @@ def _produce_test(select_type):
 
         def test_foo(self):
             sess = create_session()
-            
+
             def go():
                 eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
             self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
@@ -197,13 +197,13 @@ def _produce_test(select_type):
 
             # for both joinedload() and subqueryload(), if the original q is not loading
             # the subclass table, the joinedload doesn't happen.
-            
+
             def go():
                 eq_(sess.query(Person).options(joinedload(Engineer.machines))[1:3], all_employees[1:3])
             self.assert_sql_count(testing.db, go, {'':6, 'Polymorphic':3}.get(select_type, 4))
 
             sess = create_session()
-            
+
             def go():
                 eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
             self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
@@ -220,26 +220,26 @@ def _produce_test(select_type):
                         options(joinedload(Engineer.machines))[1:3], 
                     all_employees[1:3])
             self.assert_sql_count(testing.db, go, 3)
-            
-            
+
+
         def test_get(self):
             sess = create_session()
-            
+
             # for all mappers, ensure the primary key has been calculated as just the "person_id"
             # column
             eq_(sess.query(Person).get(e1.person_id), Engineer(name="dilbert", primary_language="java"))
             eq_(sess.query(Engineer).get(e1.person_id), Engineer(name="dilbert", primary_language="java"))
             eq_(sess.query(Manager).get(b1.person_id), Boss(name="pointy haired boss", golf_swing="fore"))
-        
+
         def test_multi_join(self):
             sess = create_session()
 
             e = aliased(Person)
             c = aliased(Company)
-            
+
             q = sess.query(Company, Person, c, e).join(Person, Company.employees).join(e, c.employees).\
                     filter(Person.name=='dilbert').filter(e.name=='wally')
-            
+
             eq_(q.count(), 1)
             eq_(q.all(), [
                 (
@@ -249,7 +249,7 @@ def _produce_test(select_type):
                     Engineer(status=u'regular engineer',engineer_name=u'wally',name=u'wally',company_id=1,primary_language=u'c++',person_id=2,type=u'engineer')
                 )
             ])
-            
+
         def test_filter_on_subclass(self):
             sess = create_session()
             eq_(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
@@ -261,7 +261,7 @@ def _produce_test(select_type):
             eq_(sess.query(Manager).filter(Manager.person_id==m1.person_id).one(), Manager(name="dogbert"))
 
             eq_(sess.query(Manager).filter(Manager.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
-        
+
             eq_(sess.query(Boss).filter(Boss.person_id==b1.person_id).one(), Boss(name="pointy haired boss"))
 
         def test_join_from_polymorphic(self):
@@ -288,7 +288,7 @@ def _produce_test(select_type):
 
                 sess.expunge_all()
                 eq_(sess.query(Person).with_polymorphic([Manager, Engineer]).join('paperwork', aliased=aliased).filter(Person.name.like('%dog%')).filter(Paperwork.description.like('%#2%')).all(), [m1])
-    
+
         def test_join_to_polymorphic(self):
             sess = create_session()
             eq_(sess.query(Company).join('employees').filter(Person.name=='vlad').one(), c2)
@@ -302,7 +302,7 @@ def _produce_test(select_type):
                 sess.query(Company).\
                     filter(Company.employees.any(Person.name=='vlad')).all(), [c2]
             )
-            
+
             # test that the aliasing on "Person" does not bleed into the
             # EXISTS clause generated by any()
             eq_(
@@ -314,12 +314,12 @@ def _produce_test(select_type):
                 sess.query(Company).join(Company.employees, aliased=True).filter(Person.name=='dilbert').\
                     filter(Company.employees.any(Person.name=='vlad')).all(), []
             )
-            
+
             eq_(
                 sess.query(Company).filter(Company.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).one(),
                 c2
                 )
-            
+
             calias = aliased(Company)
             eq_(
                 sess.query(calias).filter(calias.employees.of_type(Engineer).any(Engineer.primary_language=='cobol')).one(),
@@ -343,12 +343,12 @@ def _produce_test(select_type):
             eq_(
                 sess.query(Person).filter(Person.paperwork.any(Paperwork.description=="review #2")).all(), [m1]
             )
-            
+
             eq_(
                 sess.query(Company).filter(Company.employees.of_type(Engineer).any(and_(Engineer.primary_language=='cobol'))).one(),
                 c2
                 )
-        
+
         def test_join_from_columns_or_subclass(self):
             sess = create_session()
 
@@ -356,7 +356,7 @@ def _produce_test(select_type):
                 sess.query(Manager.name).order_by(Manager.name).all(),
                 [(u'dogbert',), (u'pointy haired boss',)]
             )
-            
+
             eq_(
                 sess.query(Manager.name).join(Paperwork, Manager.paperwork).order_by(Manager.name).all(),
                 [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
@@ -366,20 +366,20 @@ def _produce_test(select_type):
                 sess.query(Person.name).join(Paperwork, Person.paperwork).order_by(Person.name).all(),
                 [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
             )
-            
+
             # Load Person.name, joining from Person -> paperwork, get all
             # the people.
             eq_(
                 sess.query(Person.name).join(paperwork, Person.person_id==paperwork.c.person_id).order_by(Person.name).all(),
                 [(u'dilbert',), (u'dilbert',), (u'dogbert',), (u'dogbert',), (u'pointy haired boss',), (u'vlad',), (u'wally',), (u'wally',)]
             )
-            
+
             # same, on manager.  get only managers.
             eq_(
                 sess.query(Manager.name).join(paperwork, Manager.person_id==paperwork.c.person_id).order_by(Person.name).all(),
                 [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
             )
-            
+
             if select_type == '':
                 # this now raises, due to [ticket:1892].  Manager.person_id is now the "person_id" column on Manager.
                 # the SQL is incorrect.
@@ -400,8 +400,8 @@ def _produce_test(select_type):
                     sess.query(Person.name).join(paperwork, Manager.person_id==paperwork.c.person_id).order_by(Person.name).all(),
                     [(u'dogbert',), (u'dogbert',), (u'pointy haired boss',)]
                 )
-                    
-                
+
+
             eq_(
                 sess.query(Manager).join(Paperwork, Manager.paperwork).order_by(Manager.name).all(),
                 [m1, b1]
@@ -416,7 +416,7 @@ def _produce_test(select_type):
                 sess.query(Manager.person_id).join(paperwork, Manager.person_id==paperwork.c.person_id).order_by(Manager.name).all(),
                 [(4,), (4,), (3,)]
             )
-            
+
             eq_(
                 sess.query(Manager.name, Paperwork.description).
                     join(Paperwork, Manager.person_id==Paperwork.person_id).
@@ -424,41 +424,41 @@ def _produce_test(select_type):
                     all(),
                 [(u'pointy haired boss', u'review #1'), (u'dogbert', u'review #2'), (u'dogbert', u'review #3')]
             )
-            
+
             malias = aliased(Manager)
             eq_(
                 sess.query(malias.name).join(paperwork, malias.person_id==paperwork.c.person_id).all(),
                 [(u'pointy haired boss',), (u'dogbert',), (u'dogbert',)]
             )
-        
+
         def test_polymorphic_option(self):
             """test that polymorphic loading sets state.load_path with its actual mapper
             on a subclass, and not the superclass mapper.
-            
+
             """
             paths = []
             class MyOption(interfaces.MapperOption):
                 propagate_to_loaders = True
                 def process_query_conditionally(self, query):
                     paths.append(query._current_path)
-            
+
             sess = create_session()
             dilbert, boss = sess.query(Person).\
                             options(MyOption()).\
                             filter(Person.name.in_(['dilbert', 'pointy haired boss'])).\
                             order_by(Person.name).\
                             all()
-                            
+
             dilbert.machines
             boss.paperwork
             eq_(paths, 
                 [(class_mapper(Engineer), 'machines'), 
                 (class_mapper(Boss), 'paperwork')])
-            
-            
+
+
         def test_expire(self):
             """test that individual column refresh doesn't get tripped up by the select_table mapper"""
-            
+
             sess = create_session()
             m1 = sess.query(Manager).filter(Manager.name=='dogbert').one()
             sess.expire(m1)
@@ -467,16 +467,16 @@ def _produce_test(select_type):
             m2 = sess.query(Manager).filter(Manager.name=='pointy haired boss').one()
             sess.expire(m2, ['manager_name', 'golf_swing'])
             assert m2.golf_swing=='fore'
-            
+
         def test_with_polymorphic(self):
-            
+
             sess = create_session()
-            
-            
+
+
             assert_raises(sa_exc.InvalidRequestError, sess.query(Person).with_polymorphic, Paperwork)
             assert_raises(sa_exc.InvalidRequestError, sess.query(Engineer).with_polymorphic, Boss)
             assert_raises(sa_exc.InvalidRequestError, sess.query(Engineer).with_polymorphic, Person)
-            
+
             # compare to entities without related collections to prevent additional lazy SQL from firing on 
             # loaded entities
             emps_without_relationships = [
@@ -487,12 +487,12 @@ def _produce_test(select_type):
                 Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer")
             ]
             eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relationships)
-            
-            
+
+
             def go():
                 eq_(sess.query(Person).with_polymorphic(Engineer).filter(Engineer.primary_language=='java').all(), emps_without_relationships[0:1])
             self.assert_sql_count(testing.db, go, 1)
-            
+
             sess.expunge_all()
             def go():
                 eq_(sess.query(Person).with_polymorphic('*').all(), emps_without_relationships)
@@ -507,13 +507,13 @@ def _produce_test(select_type):
             def go():
                 eq_(sess.query(Person).with_polymorphic(Engineer, people.outerjoin(engineers)).all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 3)
-            
+
             sess.expunge_all()
             def go():
                 # limit the polymorphic join down to just "Person", overriding select_table
                 eq_(sess.query(Person).with_polymorphic(Person).all(), emps_without_relationships)
             self.assert_sql_count(testing.db, go, 6)
-        
+
         def test_relationship_to_polymorphic(self):
             assert_result = [
                 Company(name="MegaCorp, Inc.", employees=[
@@ -528,14 +528,14 @@ def _produce_test(select_type):
                     Engineer(name="vlad", engineer_name="vlad", primary_language="cobol", status="elbonian engineer")
                 ])
             ]
-            
+
             sess = create_session()
-            
+
             def go():
                 # test load Companies with lazy load to 'employees'
                 eq_(sess.query(Company).all(), assert_result)
             self.assert_sql_count(testing.db, go, {'':9, 'Polymorphic':4}.get(select_type, 5))
-        
+
             sess = create_session()
             def go():
                 # currently, it doesn't matter if we say Company.employees, 
@@ -546,14 +546,14 @@ def _produce_test(select_type):
                                         joinedload_all(Company.employees.of_type(Engineer), Engineer.machines
                                     )).all(), 
                         assert_result)
-            
+
             # in the case of select_type='', the joinedload 
             # doesn't take in this case; it joinedloads company->people, 
-            # then a load for each of 5 rows, then lazyload of "machines"            
+            # then a load for each of 5 rows, then lazyload of "machines"
             self.assert_sql_count(testing.db, go, 
                                     {'':7, 'Polymorphic':1}.get(select_type, 2)
                                     )
-            
+
             sess = create_session()
             def go():
                 eq_(
@@ -561,7 +561,7 @@ def _produce_test(select_type):
                                     subqueryload_all(Company.employees.of_type(Engineer), Engineer.machines
                                 )).all(), 
                             assert_result)
-        
+
             self.assert_sql_count(
                             testing.db, go, 
                             {'':8, 
@@ -570,7 +570,7 @@ def _produce_test(select_type):
                                 'Polymorphic':3,
                                 'AliasedJoins':4}[select_type]
                         )
-    
+
         def test_joinedload_on_subclass(self):
             sess = create_session()
             def go():
@@ -588,7 +588,7 @@ def _produce_test(select_type):
                 )
             self.assert_sql_count(testing.db, go, 2)
 
-            
+
         def test_query_subclass_join_to_base_relationship(self):
             sess = create_session()
             # non-polymorphic
@@ -601,7 +601,7 @@ def _produce_test(select_type):
             if select_type == '':
                 eq_(sess.query(Company).select_from(companies.join(people).join(engineers)).filter(Engineer.primary_language=='java').all(), [c1])
                 eq_(sess.query(Company).join(people.join(engineers), 'employees').filter(Engineer.primary_language=='java').all(), [c1])
-                
+
                 ealias = aliased(Engineer)
                 eq_(sess.query(Company).join(ealias, 'employees').filter(ealias.primary_language=='java').all(), [c1])
 
@@ -616,7 +616,7 @@ def _produce_test(select_type):
                 eq_(sess.query(Person).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
                 eq_(sess.query(Company).join('employees', Engineer.machines).all(), [c1, c2])
                 eq_(sess.query(Company).join('employees', Engineer.machines).filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
-            
+
             # non-polymorphic
             eq_(sess.query(Engineer).join(Engineer.machines).all(), [e1, e2, e3])
             eq_(sess.query(Engineer).join(Engineer.machines).filter(Machine.name.ilike("%ibm%")).all(), [e1, e3])
@@ -647,7 +647,7 @@ def _produce_test(select_type):
                         join('employees', 'paperwork', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#2%')).all(),
                     [c1]
                 )
-        
+
                 eq_(
                     sess.query(Company).\
                         join('employees', 'paperwork', aliased=aliased).filter(Person.name.in_(['dilbert', 'vlad'])).filter(Paperwork.description.like('%#%')).all(),
@@ -686,31 +686,31 @@ def _produce_test(select_type):
                     filter(Engineer.engineer_name=='vlad').one(),
                 c2
             )
-                
-        
+
+
         def test_filter_on_baseclass(self):
             sess = create_session()
 
             eq_(sess.query(Person).all(), all_employees)
 
             eq_(sess.query(Person).first(), all_employees[0])
-        
+
             eq_(sess.query(Person).filter(Person.person_id==e2.person_id).one(), e2)
-    
+
         def test_from_alias(self):
             sess = create_session()
-            
+
             palias = aliased(Person)
             eq_(
                 sess.query(palias).filter(palias.name.in_(['dilbert', 'wally'])).all(),
                 [e1, e2]
             )
-            
+
         def test_self_referential(self):
             sess = create_session()
-            
+
             c1_employees = [e1, e2, b1, m1]
-            
+
             palias = aliased(Person)
             eq_(
                 sess.query(Person, palias).filter(Person.company_id==palias.company_id).filter(Person.name=='dogbert').\
@@ -731,17 +731,17 @@ def _produce_test(select_type):
                     (m1, b1),
                 ]
             )
-        
+
         def test_nesting_queries(self):
             sess = create_session()
-            
+
             # query.statement places a flag "no_adapt" on the returned statement.  This prevents
             # the polymorphic adaptation in the second "filter" from hitting it, which would pollute 
             # the subquery and usually results in recursion overflow errors within the adaption.
             subq = sess.query(engineers.c.person_id).filter(Engineer.primary_language=='java').statement.as_scalar()
-            
+
             eq_(sess.query(Person).filter(Person.person_id==subq).one(), e1)
-            
+
         def test_mixed_entities(self):
             sess = create_session()
 
@@ -756,8 +756,8 @@ def _produce_test(select_type):
                 [(Engineer(status=u'elbonian engineer',engineer_name=u'vlad',name=u'vlad',primary_language=u'cobol'),
                     u'Elbonia, Inc.')]
             )
-            
-            
+
+
             eq_(
                 sess.query(Manager.name).all(), 
                 [('pointy haired boss', ), ('dogbert',)]
@@ -771,7 +771,7 @@ def _produce_test(select_type):
             row = sess.query(Engineer.name, Engineer.primary_language).filter(Engineer.name=='dilbert').first()
             assert row.name == 'dilbert'
             assert row.primary_language == 'java'
-            
+
 
             eq_(
                 sess.query(Engineer.name, Engineer.primary_language).all(),
@@ -782,7 +782,7 @@ def _produce_test(select_type):
                 sess.query(Boss.name, Boss.golf_swing).all(),
                 [(u'pointy haired boss', u'fore')]
             )
-            
+
             # TODO: I think raise error on these for now.  different inheritance/loading schemes have different
             # results here, all incorrect
             #
@@ -790,7 +790,7 @@ def _produce_test(select_type):
             #    sess.query(Person.name, Engineer.primary_language).all(),
             #    []
             # )
-            
+
             # self.assertEquals(
             #    sess.query(Person.name, Engineer.primary_language, Manager.manager_name).all(),
             #    []
@@ -815,7 +815,7 @@ def _produce_test(select_type):
                     (Engineer(status=u'elbonian engineer',engineer_name=u'vlad',name=u'vlad',company_id=2,primary_language=u'cobol',person_id=5,type=u'engineer'), u'Elbonia, Inc.')
                     ]
                 )
-            
+
                 eq_(
                     sess.query(Engineer.primary_language, Company.name).join(Company.employees).filter(Person.type=='engineer').order_by(desc(Engineer.primary_language)).all(),
                     [(u'java', u'MegaCorp, Inc.'), (u'cobol', u'Elbonia, Inc.'), (u'c++', u'MegaCorp, Inc.')]
@@ -841,7 +841,7 @@ def _produce_test(select_type):
                 sess.query(Person.name, Company.name, palias.name).join(Company.employees).filter(Company.name=='Elbonia, Inc.').filter(palias.name=='dilbert').all(),
                 [(u'vlad', u'Elbonia, Inc.', u'dilbert')]
             )
-            
+
             palias = aliased(Person)
             eq_(
                 sess.query(Person.type, Person.name, palias.type, palias.name).filter(Person.company_id==palias.company_id).filter(Person.name=='dogbert').\
@@ -850,7 +850,7 @@ def _produce_test(select_type):
                 (u'manager', u'dogbert', u'engineer', u'wally'), 
                 (u'manager', u'dogbert', u'boss', u'pointy haired boss')]
             )
-        
+
             eq_(
                 sess.query(Person.name, Paperwork.description).filter(Person.person_id==Paperwork.person_id).order_by(Person.name, Paperwork.description).all(), 
                 [(u'dilbert', u'tps report #1'), (u'dilbert', u'tps report #2'), (u'dogbert', u'review #2'), 
@@ -867,7 +867,7 @@ def _produce_test(select_type):
                     sess.query(func.count(Person.person_id)).filter(Engineer.primary_language=='java').all(), 
                     [(1, )]
                 )
-            
+
             eq_(
                 sess.query(Company.name, func.count(Person.person_id)).filter(Company.company_id==Person.company_id).group_by(Company.name).order_by(Company.name).all(),
                 [(u'Elbonia, Inc.', 1), (u'MegaCorp, Inc.', 4)]
@@ -877,20 +877,20 @@ def _produce_test(select_type):
                 sess.query(Company.name, func.count(Person.person_id)).join(Company.employees).group_by(Company.name).order_by(Company.name).all(),
                 [(u'Elbonia, Inc.', 1), (u'MegaCorp, Inc.', 4)]
             )
-    
-    
+
+
     PolymorphicQueryTest.__name__ = "Polymorphic%sTest" % select_type
     return PolymorphicQueryTest
 
 for select_type in ('', 'Polymorphic', 'Unions', 'AliasedJoins', 'Joins'):
     testclass = _produce_test(select_type)
     exec("%s = testclass" % testclass.__name__)
-    
+
 del testclass
 
 class SelfReferentialTestJoinedToBase(_base.MappedTest):
     run_setup_mappers = 'once'
-    
+
     @classmethod
     def define_tables(cls, metadata):
         global people, engineers
@@ -913,9 +913,9 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
           polymorphic_identity='engineer', properties={
           'reports_to':relationship(Person, primaryjoin=people.c.person_id==engineers.c.reports_to_id)
         })
-    
+
     def test_has(self):
-        
+
         p1 = Person(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
         sess = create_session()
@@ -923,7 +923,7 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
         sess.add(e1)
         sess.flush()
         sess.expunge_all()
-        
+
         eq_(sess.query(Engineer).filter(Engineer.reports_to.has(Person.name=='dogbert')).first(), Engineer(name='dilbert'))
 
     def test_oftype_aliases_in_exists(self):
@@ -932,9 +932,9 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
         sess = create_session()
         sess.add_all([e1, e2])
         sess.flush()
-        
+
         eq_(sess.query(Engineer).filter(Engineer.reports_to.of_type(Engineer).has(Engineer.name=='dilbert')).first(), e2)
-        
+
     def test_join(self):
         p1 = Person(name='dogbert')
         e1 = Engineer(name='dilbert', primary_language='java', reports_to=p1)
@@ -943,7 +943,7 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
         sess.add(e1)
         sess.flush()
         sess.expunge_all()
-        
+
         eq_(
             sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
             Engineer(name='dilbert'))
@@ -964,7 +964,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
            Column('primary_language', String(50)),
            Column('reports_to_id', Integer, ForeignKey('managers.person_id'))
           )
-          
+
         managers = Table('managers', metadata,
             Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
         )
@@ -973,7 +973,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
     def setup_mappers(cls):
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Manager, managers, inherits=Person, polymorphic_identity='manager')
-        
+
         mapper(Engineer, engineers, inherits=Person, 
           polymorphic_identity='engineer', properties={
           'reports_to':relationship(Manager, primaryjoin=managers.c.person_id==engineers.c.reports_to_id, backref='engineers')
@@ -1003,7 +1003,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
         eq_(
             sess.query(Engineer).join('reports_to', aliased=True).filter(Manager.name=='dogbert').first(), 
             Engineer(name='dilbert'))
-    
+
     def test_filter_aliasing(self):
         m1 = Manager(name='dogbert')
         m2 = Manager(name='foo')
@@ -1033,7 +1033,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
                 (m1, e1),
             ]
         )
-        
+
     def test_relationship_compare(self):
         m1 = Manager(name='dogbert')
         m2 = Manager(name='foo')
@@ -1059,17 +1059,17 @@ class SelfReferentialJ2JTest(_base.MappedTest):
             [m1]
         )
 
-        
+
 
 class M2MFilterTest(_base.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
-    
+
     @classmethod
     def define_tables(cls, metadata):
         global people, engineers, organizations, engineers_to_org
-        
+
         organizations = Table('organizations', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('name', String(50)),
@@ -1078,7 +1078,7 @@ class M2MFilterTest(_base.MappedTest):
             Column('org_id', Integer, ForeignKey('organizations.id')),
             Column('engineer_id', Integer, ForeignKey('engineers.person_id')),
         )
-        
+
         people = Table('people', metadata,
            Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
            Column('name', String(50)),
@@ -1094,14 +1094,14 @@ class M2MFilterTest(_base.MappedTest):
         global Organization
         class Organization(_fixtures.Base):
             pass
-            
+
         mapper(Organization, organizations, properties={
             'engineers':relationship(Engineer, secondary=engineers_to_org, backref='organizations')
         })
-        
+
         mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
         mapper(Engineer, engineers, inherits=Person, polymorphic_identity='engineer')
-    
+
     @classmethod
     def insert_data(cls):
         e1 = Engineer(name='e1')
@@ -1110,23 +1110,23 @@ class M2MFilterTest(_base.MappedTest):
         e4 = Engineer(name='e4')
         org1 = Organization(name='org1', engineers=[e1, e2])
         org2 = Organization(name='org2', engineers=[e3, e4])
-        
+
         sess = create_session()
         sess.add(org1)
         sess.add(org2)
         sess.flush()
-        
+
     def test_not_contains(self):
         sess = create_session()
-        
+
         e1 = sess.query(Person).filter(Engineer.name=='e1').one()
-        
+
         # this works
         eq_(sess.query(Organization).filter(~Organization.engineers.of_type(Engineer).contains(e1)).all(), [Organization(name='org2')])
 
         # this had a bug
         eq_(sess.query(Organization).filter(~Organization.engineers.contains(e1)).all(), [Organization(name='org2')])
-    
+
     def test_any(self):
         sess = create_session()
         eq_(sess.query(Organization).filter(Organization.engineers.of_type(Engineer).any(Engineer.name=='e1')).all(), [Organization(name='org1')])
@@ -1134,7 +1134,7 @@ class M2MFilterTest(_base.MappedTest):
 
 class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
-    
+
     @classmethod
     def define_tables(cls, metadata):
         global Parent, Child1, Child2
@@ -1167,19 +1167,19 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
                uselist = False, backref="right_children"
                                )
 
-    
+
     def test_query_crit(self):
         session = create_session()
         c11, c12, c13 = Child1(), Child1(), Child1()
         c21, c22, c23 = Child2(), Child2(), Child2()
-        
+
         c11.left_child2 = c22
         c12.left_child2 = c22
         c13.left_child2 = c23
-        
+
         session.add_all([c11, c12, c13, c21, c22, c23])
         session.flush()
-        
+
         # test that the join to Child2 doesn't alias Child1 in the select
         eq_(
             set(session.query(Child1).join(Child1.left_child2)), 
@@ -1210,12 +1210,12 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
 
     def test_eager_join(self):
         session = create_session()
-        
+
         c1 = Child1()
         c1.left_child2 = Child2()
         session.add(c1)
         session.flush()
-        
+
         q = session.query(Child1).options(joinedload('left_child2'))
 
         # test that the splicing of the join works here, doesnt break in the middle of "parent join child1"
@@ -1233,21 +1233,21 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
 
         # another way to check
         assert q.limit(1).with_labels().subquery().count().scalar() == 1
-        
+
         assert q.first() is c1
-    
+
     def test_subquery_load(self):
         session = create_session()
-        
+
         c1 = Child1()
         c1.left_child2 = Child2()
         session.add(c1)
         session.flush()
         session.expunge_all()
-        
+
         for row in session.query(Child1).options(subqueryload('left_child2')).all():
             assert row.left_child2
-        
+
 class EagerToSubclassTest(_base.MappedTest):
     """Test joinedloads to subclass mappers"""
 

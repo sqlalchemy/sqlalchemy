@@ -15,7 +15,7 @@ Note that all patterns here apply both to the usage of explicit
 takes a form such as::
 
     mapper(User, users_table, primary_key=[users_table.c.id])
-    
+
 Would translate into declarative as::
 
     class User(Base):
@@ -29,9 +29,9 @@ with the class definition. These are usable as is within ``__mapper_args__``::
 
     class User(Base):
         __tablename__ = 'users'
-        
+
         id = Column(Integer)
-        
+
         __mapper_args__ = {
             'primary_key':[id]
         }
@@ -52,7 +52,7 @@ use the ``include_properties`` or ``exclude_properties`` arguments. For
 example::
 
     mapper(User, users_table, include_properties=['user_id', 'user_name'])
-    
+
 ...will map the ``User`` class to the ``users_table`` table, only including
 the "user_id" and "user_name" columns - the rest are not refererenced.
 Similarly::
@@ -106,7 +106,7 @@ using the desired attribute name in the class definition::
 
     from sqlalchemy.ext.declarative import declarative_base
     Base = declarative_base()
-    
+
     class User(Base):
         __tablename__ = 'user'
         id = Column('user_id', Integer, primary_key=True)
@@ -130,7 +130,7 @@ key relationship or join condition into the same mapped attribute, put them
 together using a list, as below where we map to a :func:`~.expression.join`::
 
     from sqlalchemy.sql import join
-    
+
     # join users and addresses
     usersaddresses = join(users_table, addresses_table, \
         users_table.c.user_id == addresses_table.c.user_id)
@@ -152,21 +152,21 @@ usually invoked implicitly for each mapped :class:`.Column`.  Explicit usage
 looks like::
 
     from sqlalchemy.orm import mapper, column_property
-    
+
     mapper(User, users, properties={
         'name':column_property(users.c.name, active_history=True)
     })
 
 or with declarative::
-    
+
     class User(Base):
         __tablename__ = 'users'
-        
+
         id = Column(Integer, primary_key=True)
         name = column_property(Column(String(50)), active_history=True)
 
 Further examples of :func:`.column_property` are at :ref:`mapper_sql_expressions`.
-        
+
 .. autofunction:: column_property
 
 .. _deferred:
@@ -204,7 +204,7 @@ With declarative, :class:`.Column` objects can be declared directly inside of :f
 
     class Book(Base):
         __tablename__ = 'books'
-        
+
         book_id = Column(Integer, primary_key=True)
         title = Column(String(200), nullable=False)
         summary = Column(String(2000))
@@ -273,7 +273,7 @@ scalar-returning
 used.  Unlike older versions of SQLAlchemy, there is no :func:`~.sql.expression.label` requirement::
 
     from sqlalchemy.orm import column_property
-    
+
     mapper(User, users_table, properties={
         'fullname': column_property(
             users_table.c.firstname + " " + users_table.c.lastname
@@ -284,7 +284,7 @@ Correlated subqueries may be used as well::
 
     from sqlalchemy.orm import column_property
     from sqlalchemy import select, func
-    
+
     mapper(User, users_table, properties={
         'address_count': column_property(
                 select([func.count(addresses_table.c.address_id)]).\
@@ -305,7 +305,7 @@ loaded::
         @property
         def fullname(self):
             return self.firstname + " " + self.lastname
-            
+
 To invoke a SQL statement from an instance that's already been loaded, the
 session associated with the instance can be acquired using
 :func:`~.session.object_session` which will provide the appropriate
@@ -313,7 +313,7 @@ transactional context from which to emit a statement::
 
     from sqlalchemy.orm import object_session
     from sqlalchemy import select, func
-    
+
     class User(object):
         @property
         def address_count(self):
@@ -343,9 +343,9 @@ attribute extensions, are only called by normal userland code; they are not
 issued when the ORM is populating the object.
 
 .. sourcecode:: python+sql
-    
+
     from sqlalchemy.orm import validates
-    
+
     addresses_table = Table('addresses', metadata,
         Column('id', Integer, primary_key=True),
         Column('email', String)
@@ -383,11 +383,11 @@ plain descriptor, and to have it read/write from a mapped attribute with a
 different name. Below we illustrate this using Python 2.6-style properties::
 
     class EmailAddress(object):
-        
+
         @property
         def email(self):
             return self._email
-            
+
         @email.setter
         def email(self, email):
             self._email = email
@@ -456,7 +456,7 @@ do case-insensitive comparison::
 
     from sqlalchemy.orm.properties import ColumnProperty
     from sqlalchemy.sql import func
-    
+
     class MyComparator(ColumnProperty.Comparator):
         def __eq__(self, other):
             return func.lower(self.__clause_element__()) == func.lower(other)
@@ -496,13 +496,13 @@ class you provide.
     As of SQLAlchemy 0.7, composites are implemented as a simple wrapper using
     the :ref:`hybrids_toplevel` feature.   Note that composites no longer
     "conceal" the underlying colunm based attributes, or support in-place 
-    mutation.  
+    mutation.
 
-A simple example represents pairs of columns as a "Point" object.  
+A simple example represents pairs of columns as a "Point" object.
 Starting with a table that represents two points as x1/y1 and x2/y2::
 
     from sqlalchemy import Table, Column
-    
+
     vertices = Table('vertices', metadata,
         Column('id', Integer, primary_key=True),
         Column('x1', Integer),
@@ -597,7 +597,7 @@ passed in to a mapper as the table.
 
     from sqlalchemy.orm import mapper
     from sqlalchemy.sql import join
-    
+
     class AddressUser(object):
         pass
 
@@ -614,7 +614,7 @@ Note that the list of columns is equivalent to the usage of :func:`.column_prope
 with multiple columns::
 
     from sqlalchemy.orm import mapper, column_property
-    
+
     mapper(AddressUser, j, properties={
         'user_id': column_property(users_table.c.user_id, addresses_table.c.user_id)
     })
@@ -624,12 +624,12 @@ to multiple columns, since the declarative class parser won't recognize a plain
 list of columns::
 
     from sqlalchemy.ext.declarative import declarative_base
-    
+
     Base = declarative_base()
-    
+
     class AddressUser(Base):
         __table__ = j
-        
+
         user_id = column_property(users_table.c.user_id, addresses_table.c.user_id)
 
 A second example::

@@ -23,50 +23,50 @@ from sqlalchemy.ext.declarative import declarative_base
 import random
 import os
 from decimal import Decimal
-    
+
 Base = declarative_base()
 
 class Employee(Base):
     __tablename__ = 'employee'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
     type = Column(String(50), nullable=False)
-    
+
     __mapper_args__ = {'polymorphic_on':type}
 
 class Boss(Employee):
     __tablename__ = 'boss'
-    
+
     id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
     golf_average = Column(Numeric)
-    
+
     __mapper_args__ = {'polymorphic_identity':'boss'}
-    
+
 class Grunt(Employee):
     __tablename__ = 'grunt'
-    
+
     id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
     savings = Column(Numeric)
-    
+
     employer_id = Column(Integer, ForeignKey('boss.id'))
 
     # Configure an 'employer' relationship, where Grunt references 
     # Boss.  This is a joined-table subclass to subclass relationship, 
     # which is a less typical case.
-    
+
     # In 0.7, "Boss.id" is the "id" column of "boss", as would be expected.
     if __version__ >= "0.7":
         employer = relationship("Boss", backref="employees", 
                                     primaryjoin=Boss.id==employer_id)
-                                    
-    # Prior to 0.7, "Boss.id" is the "id" column of "employee".  
+
+    # Prior to 0.7, "Boss.id" is the "id" column of "employee".
     # Long story.  So we hardwire the relationship against the "id"
     # column of Boss' table.
     elif __version__ >= "0.6":
         employer = relationship("Boss", backref="employees", 
                                 primaryjoin=Boss.__table__.c.id==employer_id)
-                                
+
     # In 0.5, the many-to-one loader wouldn't recognize the above as a 
     # simple "identity map" fetch.  So to give 0.5 a chance to emit
     # the same amount of SQL as 0.6, we hardwire the relationship against
@@ -75,9 +75,9 @@ class Grunt(Employee):
         employer = relationship("Boss", backref="employees", 
                                 primaryjoin=Employee.__table__.c.id==employer_id, 
                                 foreign_keys=employer_id)
-        
+
     __mapper_args__ = {'polymorphic_identity':'grunt'}
-    
+
 if os.path.exists('orm2010.db'):
     os.remove('orm2010.db')
 # use a file based database so that cursor.execute() has some 
@@ -99,9 +99,9 @@ def runit():
     ]
 
     sess.add_all(bosses)
-    
-    
-    # create 10000 Grunt objects.  
+
+
+    # create 10000 Grunt objects.
     grunts = [
         Grunt(
             name="Grunt %d" % i,
@@ -109,7 +109,7 @@ def runit():
         )
         for i in xrange(10000)
     ]
-    
+
     # Assign each Grunt a Boss.  Look them up in the DB
     # to simulate a little bit of two-way activity with the 
     # DB while we populate.  Autoflush occurs on each query.
@@ -121,15 +121,15 @@ def runit():
                     first()
         for grunt in grunts[0:100]:
             grunt.employer = boss
-        
+
         grunts = grunts[100:]
 
     sess.commit()
 
     report = []
-    
+
     # load all the Grunts, print a report with their name, stats,
-    # and their bosses' stats.  
+    # and their bosses' stats.
     for grunt in sess.query(Grunt):
         # here, the overhead of a many-to-one fetch of 
         # "grunt.employer" directly from the identity map 
@@ -160,7 +160,7 @@ print 'Total executemany calls: %d' \
                          "objects>", 0)
 
 os.system("runsnake %s" % filename)
-    
+
 # SQLA Version: 0.7b1
 # Total calls 4956750
 # Total execute calls: 11201
@@ -178,9 +178,9 @@ os.system("runsnake %s" % filename)
 
 
 
-    
 
 
-    
+
+
 
 

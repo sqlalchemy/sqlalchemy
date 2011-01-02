@@ -31,7 +31,7 @@ Currently *not* supported are::
     UNICHAR
     UNITEXT
     UNIVARCHAR
-    
+
 """
 
 from sqlalchemy.dialects.sybase.base import SybaseDialect,\
@@ -42,11 +42,11 @@ from sqlalchemy.util.compat import decimal
 
 class _SybNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < -6 into floats.
-    
+
     It's not yet known how to get decimals with many 
     significant digits or very large adjusted() into Sybase
     via pyodbc.
-    
+
     """
 
     def bind_processor(self, dialect):

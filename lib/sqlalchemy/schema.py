@@ -83,12 +83,12 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-    
+
 class Table(SchemaItem, expression.TableClause):
     """Represent a table in a database.
-    
+
     e.g.::
-    
+
         mytable = Table("mytable", metadata, 
                         Column('mytable_id', Integer, primary_key=True),
                         Column('value', String(50))
@@ -97,7 +97,7 @@ class Table(SchemaItem, expression.TableClause):
     The Table object constructs a unique instance of itself based on its
     name within the given MetaData object.   Constructor
     arguments are as follows:
-    
+
     :param name: The name of this table as represented in the database. 
 
         This property, along with the *schema*, indicates the *singleton
@@ -123,7 +123,7 @@ class Table(SchemaItem, expression.TableClause):
         table. Similar to the style of a CREATE TABLE statement, other
         :class:`.SchemaItem` constructs may be added here, including
         :class:`PrimaryKeyConstraint`, and :class:`ForeignKeyConstraint`.
-        
+
     :param autoload: Defaults to False: the Columns for this table should 
         be reflected from the database. Usually there will be no Column
         objects in the constructor if this property is set.
@@ -174,7 +174,7 @@ class Table(SchemaItem, expression.TableClause):
         :class:`Table` are overwritten.
 
     """
-    
+
     __visit_name__ = 'table'
 
     dispatch = event.dispatcher(events.DDLEvents)
@@ -183,12 +183,12 @@ class Table(SchemaItem, expression.TableClause):
         if not args:
             # python3k pickle seems to call this
             return object.__new__(cls)
-            
+
         try:
             name, metadata, args = args[0], args[1], args[2:]
         except IndexError:
             raise TypeError("Table() takes at least two arguments")
-        
+
         schema = kw.get('schema', None)
         useexisting = kw.pop('useexisting', False)
         mustexist = kw.pop('mustexist', False)
@@ -206,7 +206,7 @@ class Table(SchemaItem, expression.TableClause):
             if mustexist:
                 raise exc.InvalidRequestError(
                     "Table '%s' not defined" % (key))
-            table = object.__new__(cls)                    
+            table = object.__new__(cls)
             metadata._add_table(name, schema, table)
             try:
                 table._init(name, metadata, *args, **kw)
@@ -214,12 +214,12 @@ class Table(SchemaItem, expression.TableClause):
             except:
                 metadata._remove_table(name, schema)
                 raise
-                
+
     def __init__(self, *args, **kw):
         # __init__ is overridden to prevent __new__ from 
         # calling the superclass constructor.
         pass
-        
+
     def _init(self, name, metadata, *args, **kwargs):
         super(Table, self).__init__(name)
         self.metadata = metadata
@@ -309,7 +309,7 @@ class Table(SchemaItem, expression.TableClause):
 
     def _init_collections(self):
         pass
-        
+
     def _set_primary_key(self, pk):
         if self.primary_key in self.constraints:
             self.constraints.remove(self.primary_key)
@@ -350,18 +350,18 @@ class Table(SchemaItem, expression.TableClause):
 
     def add_is_dependent_on(self, table):
         """Add a 'dependency' for this Table.
-        
+
         This is another Table object which must be created
         first before this one can, or dropped after this one.
-        
+
         Usually, dependencies between tables are determined via 
         ForeignKey objects.   However, for other situations that 
         create dependencies outside of foreign keys (rules, inheriting),
         this method can manually establish such a link.
-        
+
         """
         self._extra_dependencies.add(table)
-        
+
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
 
@@ -374,14 +374,14 @@ class Table(SchemaItem, expression.TableClause):
 
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``Table``.
-        
+
         Deprecated.  See :class:`.DDLEvents`.
 
         """
-        
+
         def adapt_listener(target, connection, **kw):
             listener(event_name, target, connection, **kw)
-            
+
         event.listen(self, "" + event_name.replace('-', '_'), adapt_listener)
 
     def _set_parent(self, metadata):
@@ -428,14 +428,14 @@ class Table(SchemaItem, expression.TableClause):
         if bind is None:
             bind = _bind_or_error(self)
         bind.drop(self, checkfirst=checkfirst)
-        
+
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA):
         """Return a copy of this :class:`Table` associated with a different
         :class:`MetaData`.
-        
+
         E.g.::
-        
+
             # create two metadata
             meta1 = MetaData('sqlite:///querytest.db')
             meta2 = MetaData()
@@ -445,7 +445,7 @@ class Table(SchemaItem, expression.TableClause):
 
             # create the same Table object for the plain metadata
             users_table_2 = users_table.tometadata(meta2)
-        
+
         """
 
         if schema is RETAIN_SCHEMA:
@@ -481,38 +481,38 @@ class Column(SchemaItem, expression.ColumnClause):
     """Represents a column in a database table."""
 
     __visit_name__ = 'column'
-    
+
     def __init__(self, *args, **kwargs):
         """
         Construct a new ``Column`` object.
-        
+
         :param name: The name of this column as represented in the database. 
           This argument may be the first positional argument, or specified
           via keyword.
-          
+
           Names which contain no upper case characters
           will be treated as case insensitive names, and will not be quoted
           unless they are a reserved word.  Names with any number of upper
           case characters will be quoted and sent exactly.  Note that this
           behavior applies even for databases which standardize upper 
           case names as case insensitive such as Oracle.
-          
+
           The name field may be omitted at construction time and applied
           later, at any time before the Column is associated with a 
           :class:`Table`.  This is to support convenient
           usage within the :mod:`~sqlalchemy.ext.declarative` extension.
-          
+
         :param type\_: The column's type, indicated using an instance which 
           subclasses :class:`~sqlalchemy.types.TypeEngine`.  If no arguments
           are required for the type, the class of the type can be sent
           as well, e.g.::
-          
+
             # use a type with arguments
             Column('data', String(50))
-            
+
             # use no arguments
             Column('level', Integer)
-            
+
           The ``type`` argument may be the second positional argument
           or specified by keyword.
 
@@ -541,21 +541,21 @@ class Column(SchemaItem, expression.ColumnClause):
           has a composite primary key consisting of more than one
           integer column, set this flag to True only on the 
           column that should be considered "autoincrement".
-          
+
           The setting *only* has an effect for columns which are:
-          
+
           * Integer derived (i.e. INT, SMALLINT, BIGINT)
-          
+
           * Part of the primary key
-          
+
           * Are not referenced by any foreign keys
-          
+
           * have no server side or client side defaults (with the exception
             of Postgresql SERIAL).
-            
+
           The setting has these two effects on columns that meet the
           above criteria:
-          
+
           * DDL issued for the column will include database-specific
             keywords intended to signify this column as an
             "autoincrement" column, such as AUTO INCREMENT on MySQL,
@@ -564,7 +564,7 @@ class Column(SchemaItem, expression.ColumnClause):
             special SQLite flag that is not required for autoincrementing
             behavior.  See the SQLite dialect documentation for
             information on SQLite's AUTOINCREMENT.
-            
+
           * The column will be considered to be available as 
             cursor.lastrowid or equivalent, for those dialects which
             "post fetch" newly inserted identifiers after a row has
@@ -579,14 +579,14 @@ class Column(SchemaItem, expression.ColumnClause):
             if this column is otherwise not specified in the VALUES clause of
             the insert. This is a shortcut to using :class:`ColumnDefault` as
             a positional argument.
-          
+
             Contrast this argument to ``server_default`` which creates a 
             default generator on the database side.
-        
+
         :param doc: optional String that can be used by the ORM or similar
             to document attributes.   This attribute does not render SQL
             comments (a future attribute 'comment' will achieve that).
-            
+
         :param key: An optional string identifier which will identify this
             ``Column`` object on the :class:`Table`. When a key is provided,
             this is the only identifier referencing the ``Column`` within the
@@ -614,7 +614,7 @@ class Column(SchemaItem, expression.ColumnClause):
             present in the SET clause of the update. This is a shortcut to
             using :class:`ColumnDefault` as a positional argument with
             ``for_update=True``.
-            
+
         :param primary_key: If ``True``, marks this column as a primary key
             column. Multiple columns can have this flag set to specify
             composite primary keys. As an alternative, the primary key of a
@@ -640,7 +640,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
             Strings and text() will be converted into a :class:`DefaultClause`
             object upon initialization.
-          
+
             Use :class:`FetchedValue` to indicate that an already-existing
             column will generate a default value on the database side which
             will be available to SQLAlchemy for post-fetch after inserts. This
@@ -682,7 +682,7 @@ class Column(SchemaItem, expression.ColumnClause):
                 name = args.pop(0)
         if args:
             coltype = args[0]
-            
+
             if (isinstance(coltype, types.TypeEngine) or
                 (isinstance(coltype, type) and
                  issubclass(coltype, types.TypeEngine))):
@@ -690,9 +690,9 @@ class Column(SchemaItem, expression.ColumnClause):
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword.")
                 type_ = args.pop(0)
-        
+
         no_type = type_ is None
-        
+
         super(Column, self).__init__(name, None, type_)
         self.key = kwargs.pop('key', name)
         self.primary_key = kwargs.pop('primary_key', False)
@@ -716,7 +716,7 @@ class Column(SchemaItem, expression.ColumnClause):
         # otherwise, add DDL-related events
         elif isinstance(self.type, types.SchemaType):
             self.type._set_parent(self)
-            
+
         if self.default is not None:
             if isinstance(self.default, (ColumnDefault, Sequence)):
                 args.append(self.default)
@@ -728,13 +728,13 @@ class Column(SchemaItem, expression.ColumnClause):
                 args.append(self.server_default)
             else:
                 args.append(DefaultClause(self.server_default))
-                
+
         if self.onupdate is not None:
             if isinstance(self.onupdate, (ColumnDefault, Sequence)):
                 args.append(self.onupdate)
             else:
                 args.append(ColumnDefault(self.onupdate, for_update=True))
-            
+
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):
                 args.append(self.server_default)
@@ -750,7 +750,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
-            
+
         if kwargs:
             raise exc.ArgumentError(
                 "Unknown arguments passed to Column: " + repr(kwargs.keys()))
@@ -822,7 +822,7 @@ class Column(SchemaItem, expression.ColumnClause):
                     # already, if it's a composite constraint
                     # and more than one col being replaced
                     table.constraints.remove(fk.constraint)
-            
+
         table._columns.replace(self)
 
         if self.primary_key:
@@ -854,25 +854,25 @@ class Column(SchemaItem, expression.ColumnClause):
         for fn in self._table_events:
             fn(table, self)
         del self._table_events
-    
+
     def _on_table_attach(self, fn):
         if self.table is not None:
             fn(self.table, self)
         else:
             self._table_events.add(fn)
-            
+
     def copy(self, **kw):
         """Create a copy of this ``Column``, unitialized.
 
         This is used in ``Table.tometadata``.
 
         """
-        
+
         # Constraint objects plus non-constraint-bound ForeignKey objects
         args = \
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
-            
+
         c = Column(
                 name=self.name, 
                 type_=self.type, 
@@ -893,7 +893,7 @@ class Column(SchemaItem, expression.ColumnClause):
         if hasattr(self, '_table_events'):
             c._table_events = list(self._table_events)
         return c
-        
+
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
 
@@ -901,7 +901,7 @@ class Column(SchemaItem, expression.ColumnClause):
         (such as an alias or select statement).  The column should
         be used only in select scenarios, as its full DDL/default
         information is not transferred.
-        
+
         """
         fk = [ForeignKey(f.column) for f in self.foreign_keys]
         if name is None and self.name is None:
@@ -938,11 +938,11 @@ class ForeignKey(SchemaItem):
 
     ``ForeignKey`` is specified as an argument to a :class:`Column` object,
     e.g.::
-    
+
         t = Table("remote_table", metadata, 
             Column("remote_id", ForeignKey("main_table.id"))
         )
-    
+
     Note that ``ForeignKey`` is only a marker object that defines
     a dependency between two columns.   The actual constraint
     is in all cases represented by the :class:`ForeignKeyConstraint`
@@ -953,18 +953,18 @@ class ForeignKey(SchemaItem):
     ``ForeignKey`` markers are automatically generated to be
     present on each associated :class:`Column`, which are also
     associated with the constraint object.
-    
+
     Note that you cannot define a "composite" foreign key constraint,
     that is a constraint between a grouping of multiple parent/child
     columns, using ``ForeignKey`` objects.   To define this grouping,
     the :class:`ForeignKeyConstraint` object must be used, and applied
     to the :class:`Table`.   The associated ``ForeignKey`` objects
     are created automatically.
-    
+
     The ``ForeignKey`` objects associated with an individual 
     :class:`Column` object are available in the `foreign_keys` collection
     of that column.
-    
+
     Further examples of foreign key configuration are in
     :ref:`metadata_foreignkeys`.
 
@@ -976,8 +976,8 @@ class ForeignKey(SchemaItem):
                     onupdate=None, ondelete=None, deferrable=None,
                     initially=None, link_to_name=False):
         """
-        Construct a column-level FOREIGN KEY.  
-        
+        Construct a column-level FOREIGN KEY.
+
         The :class:`ForeignKey` object when constructed generates a
         :class:`ForeignKeyConstraint` which is associated with the parent
         :class:`Table` object's collection of constraints.
@@ -1005,28 +1005,28 @@ class ForeignKey(SchemaItem):
 
         :param initially: Optional string. If set, emit INITIALLY <value> when
             issuing DDL for this constraint.
-        
+
         :param link_to_name: if True, the string name given in ``column`` is
             the rendered name of the referenced column, not its locally
             assigned ``key``.
-          
+
         :param use_alter: passed to the underlying
             :class:`ForeignKeyConstraint` to indicate the constraint should be
             generated/dropped externally from the CREATE TABLE/ DROP TABLE
             statement. See that classes' constructor for details.
-        
+
         """
 
         self._colspec = column
-        
+
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
         # is attached to a Table, *or* ForeignKeyConstraint
         # object passes itself in when creating ForeignKey 
         # markers.
         self.constraint = _constraint
-        
-        
+
+
         self.use_alter = use_alter
         self.name = name
         self.onupdate = onupdate
@@ -1040,20 +1040,20 @@ class ForeignKey(SchemaItem):
 
     def copy(self, schema=None):
         """Produce a copy of this :class:`ForeignKey` object.
-        
+
         The new :class:`ForeignKey` will not be bound
         to any :class:`Column`.
-        
+
         This method is usually used by the internal
         copy procedures of :class:`Column`, :class:`Table`,
         and :class:`MetaData`.
-        
+
         :param schema: The returned :class:`ForeignKey` will
           reference the original table and column name, qualified
           by the given string schema name.
-          
+
         """
-        
+
         return ForeignKey(
                 self._get_colspec(schema=schema),
                 use_alter=self.use_alter,
@@ -1067,10 +1067,10 @@ class ForeignKey(SchemaItem):
 
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this :class:`ForeignKey`.
-        
+
         This is usually the equivalent of the string-based "tablename.colname"
         argument first passed to the object's constructor.
-        
+
         """
         if schema:
             return schema + "." + self.column.table.name + \
@@ -1081,14 +1081,14 @@ class ForeignKey(SchemaItem):
             _column = self._colspec.__clause_element__()
         else:
             _column = self._colspec
-            
+
         return "%s.%s" % (_column.table.fullname, _column.key)
 
     target_fullname = property(_get_colspec)
 
     def references(self, table):
         """Return True if the given :class:`Table` is referenced by this :class:`ForeignKey`."""
-        
+
         return table.corresponding_column(self.column) is not None
 
     def get_referent(self, table):
@@ -1105,7 +1105,7 @@ class ForeignKey(SchemaItem):
     @util.memoized_property
     def column(self):
         """Return the target :class:`.Column` referenced by this :class:`.ForeignKey`.
-        
+
         If this :class:`ForeignKey` was created using a
         string-based target column specification, this
         attribute will on first access initiate a resolution
@@ -1114,7 +1114,7 @@ class ForeignKey(SchemaItem):
         to the parent :class:`.Column`, :class:`.Table`, and
         :class:`.MetaData` to proceed - if any of these aren't 
         yet present, an error is raised.
-        
+
         """
         # ForeignKey inits its remote column as late as possible, so tables
         # can be defined without dependencies
@@ -1165,7 +1165,7 @@ class ForeignKey(SchemaItem):
                     "foreign key to target column '%s'" % (self.parent, tname, colname))
             table = Table(tname, parenttable.metadata,
                           mustexist=True, schema=schema)
-                          
+
             _column = None
             if colname is None:
                 # colname is None in the case that ForeignKey argument
@@ -1208,7 +1208,7 @@ class ForeignKey(SchemaItem):
         self.parent = column
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
-    
+
     def _set_table(self, table, column):
         # standalone ForeignKey - create ForeignKeyConstraint
         # on the hosting Table when attached to the Table.
@@ -1221,14 +1221,14 @@ class ForeignKey(SchemaItem):
             self.constraint._elements[self.parent] = self
             self.constraint._set_parent(table)
         table.foreign_keys.add(self)
-        
+
 class DefaultGenerator(SchemaItem):
     """Base class for column *default* values."""
 
     __visit_name__ = 'default_generator'
 
     is_sequence = False
-    
+
     def __init__(self, for_update=False):
         self.for_update = for_update
 
@@ -1261,21 +1261,21 @@ class ColumnDefault(DefaultGenerator):
 
     This could correspond to a constant, a callable function, 
     or a SQL clause.
-    
+
     :class:`.ColumnDefault` is generated automatically
     whenever the ``default``, ``onupdate`` arguments of
     :class:`.Column` are used.  A :class:`.ColumnDefault`
     can be passed positionally as well.
-    
+
     For example, the following::
-    
+
         Column('foo', Integer, default=50)
-        
+
     Is equivalent to::
-    
+
         Column('foo', Integer, ColumnDefault(50))
 
-    
+
     """
 
     def __init__(self, arg, **kwargs):
@@ -1286,21 +1286,21 @@ class ColumnDefault(DefaultGenerator):
         if util.callable(arg):
             arg = self._maybe_wrap_callable(arg)
         self.arg = arg
-    
+
     @util.memoized_property
     def is_callable(self):
         return util.callable(self.arg)
-        
+
     @util.memoized_property
     def is_clause_element(self):
         return isinstance(self.arg, expression.ClauseElement)
-    
+
     @util.memoized_property
     def is_scalar(self):
         return not self.is_callable and \
                     not self.is_clause_element and \
                     not self.is_sequence
-        
+
     def _maybe_wrap_callable(self, fn):
         """Backward compat: Wrap callables that don't accept a context."""
 
@@ -1319,7 +1319,7 @@ class ColumnDefault(DefaultGenerator):
             return lambda ctx: fn()
 
         positionals = len(argspec[0])
-        
+
         # Py3K compat - no unbound methods
         if inspect.ismethod(inspectable) or inspect.isclass(fn):
             positionals -= 1
@@ -1350,7 +1350,7 @@ class Sequence(DefaultGenerator):
     __visit_name__ = 'sequence'
 
     is_sequence = True
-    
+
     def __init__(self, name, start=None, increment=None, schema=None,
                  optional=False, quote=None, metadata=None, for_update=False):
         super(Sequence, self).__init__(for_update=for_update)
@@ -1379,17 +1379,17 @@ class Sequence(DefaultGenerator):
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column._on_table_attach(self._set_table)
-    
+
     def _set_table(self, table, column):
         self.metadata = table.metadata
-        
+
     @property
     def bind(self):
         if self.metadata:
             return self.metadata.bind
         else:
             return None
-        
+
     def create(self, bind=None, checkfirst=True):
         """Creates this sequence in the database."""
 
@@ -1407,18 +1407,18 @@ class Sequence(DefaultGenerator):
 
 class FetchedValue(object):
     """A marker for a transparent database-side default.
-    
+
     Use :class:`.FetchedValue` when the database is configured
     to provide some automatic default for a column.
-    
+
     E.g.::
-    
+
         Column('foo', Integer, FetchedValue())
-    
+
     Would indicate that some trigger or default generator
     will create a new value for the ``foo`` column during an
     INSERT.
-    
+
     """
 
     def __init__(self, for_update=False):
@@ -1437,24 +1437,24 @@ class FetchedValue(object):
 
 class DefaultClause(FetchedValue):
     """A DDL-specified DEFAULT column value.
-    
+
     :class:`.DefaultClause` is a :class:`.FetchedValue`
     that also generates a "DEFAULT" clause when
     "CREATE TABLE" is emitted.
-    
+
     :class:`.DefaultClause` is generated automatically
     whenever the ``server_default``, ``server_onupdate`` arguments of
     :class:`.Column` are used.  A :class:`.DefaultClause`
     can be passed positionally as well.
-    
+
     For example, the following::
-    
+
         Column('foo', Integer, server_default="50")
-        
+
     Is equivalent to::
-    
+
         Column('foo', Integer, DefaultClause("50"))
-    
+
     """
 
     def __init__(self, arg, for_update=False):
@@ -1470,7 +1470,7 @@ class DefaultClause(FetchedValue):
 
 class PassiveDefault(DefaultClause):
     """A DDL-specified DEFAULT column value.
-    
+
     .. deprecated:: 0.6 :class:`.PassiveDefault` is deprecated. 
         Use :class:`.DefaultClause`.
     """
@@ -1500,7 +1500,7 @@ class Constraint(SchemaItem):
         :param initially:
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
-          
+
         :param _create_rule:
           a callable which is passed the DDLCompiler object during
           compilation. Returns True or False to signal inline generation of
@@ -1517,7 +1517,7 @@ class Constraint(SchemaItem):
 
           _create_rule is used by some types to create constraints.
           Currently, its call signature is subject to change at any time.
-          
+
         """
 
         self.name = name
@@ -1545,7 +1545,7 @@ class Constraint(SchemaItem):
 
 class ColumnCollectionConstraint(Constraint):
     """A constraint that proxies a ColumnCollection."""
-    
+
     def __init__(self, *columns, **kw):
         """
         :param \*columns:
@@ -1561,7 +1561,7 @@ class ColumnCollectionConstraint(Constraint):
         :param initially:
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
-        
+
         """
         super(ColumnCollectionConstraint, self).__init__(**kw)
         self.columns = expression.ColumnCollection()
@@ -1571,7 +1571,7 @@ class ColumnCollectionConstraint(Constraint):
                 isinstance(self._pending_colargs[0], Column) and \
                 self._pending_colargs[0].table is not None:
             self._set_parent(self._pending_colargs[0].table)
-        
+
     def _set_parent(self, table):
         super(ColumnCollectionConstraint, self)._set_parent(table)
         for col in self._pending_colargs:
@@ -1613,7 +1613,7 @@ class CheckConstraint(Constraint):
         :param sqltext:
           A string containing the constraint definition, which will be used
           verbatim, or a SQL expression construct.
-          
+
         :param name:
           Optional, the in-database name of the constraint.
 
@@ -1624,7 +1624,7 @@ class CheckConstraint(Constraint):
         :param initially:
           Optional string.  If set, emit INITIALLY <value> when issuing DDL
           for this constraint.
-          
+
         """
 
         super(CheckConstraint, self).\
@@ -1632,7 +1632,7 @@ class CheckConstraint(Constraint):
         self.sqltext = expression._literal_as_text(sqltext)
         if table is not None:
             self._set_parent(table)
-            
+
     def __visit_name__(self):
         if isinstance(self.parent, Table):
             return "check_constraint"
@@ -1650,9 +1650,9 @@ class ForeignKeyConstraint(Constraint):
     constraint. For a no-frills, single column foreign key, adding a
     :class:`ForeignKey` to the definition of a :class:`Column` is a shorthand
     equivalent for an unnamed, single column :class:`ForeignKeyConstraint`.
-    
+
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
-    
+
     """
     __visit_name__ = 'foreign_key_constraint'
 
@@ -1698,7 +1698,7 @@ class ForeignKeyConstraint(Constraint):
           as "after-create" and "before-drop" events on the MetaData object.
           This is normally used to generate/drop constraints on objects that
           are mutually dependent on each other.
-          
+
         """
         super(ForeignKeyConstraint, self).\
                         __init__(name, deferrable, initially)
@@ -1711,7 +1711,7 @@ class ForeignKeyConstraint(Constraint):
         self.use_alter = use_alter
 
         self._elements = util.OrderedDict()
-        
+
         # standalone ForeignKeyConstraint - create
         # associated ForeignKey objects which will be applied to hosted
         # Column objects (in col.foreign_keys), either now or when attached 
@@ -1729,15 +1729,15 @@ class ForeignKeyConstraint(Constraint):
 
         if table is not None:
             self._set_parent(table)
-    
+
     @property
     def columns(self):
         return self._elements.keys()
-        
+
     @property
     def elements(self):
         return self._elements.values()
-        
+
     def _set_parent(self, table):
         super(ForeignKeyConstraint, self)._set_parent(table)
         for col, fk in self._elements.iteritems():
@@ -1746,16 +1746,16 @@ class ForeignKeyConstraint(Constraint):
             if isinstance(col, basestring):
                 col = table.c[col]
             fk._set_parent(col)
-            
+
         if self.use_alter:
             def supports_alter(ddl, event, schema_item, bind, **kw):
                 return table in set(kw['tables']) and \
                             bind.dialect.supports_alter
-            
+
             event.listen(table.metadata, "after_create", AddConstraint(self, on=supports_alter))
             event.listen(table.metadata, "before_drop", DropConstraint(self, on=supports_alter))
-            
-            
+
+
     def copy(self, **kw):
         return ForeignKeyConstraint(
                     [x.parent.name for x in self._elements.values()], 
@@ -1823,7 +1823,7 @@ class Index(SchemaItem):
 
         :param \**kw:
             Other keyword arguments may be interpreted by specific dialects.
-        
+
         """
 
         self.name = name
@@ -1851,7 +1851,7 @@ class Index(SchemaItem):
     @property
     def bind(self):
         """Return the connectable associated with this Index."""
-        
+
         return self.table.bind
 
     def create(self, bind=None):
@@ -1943,7 +1943,7 @@ class MetaData(SchemaItem):
         dict.__setitem__(self.tables, key, table)
         if schema:
             self._schemas.add(schema)
-    
+
     def _remove_table(self, name, schema):
         key = _get_table_key(name, schema)
         dict.pop(self.tables, key, None)
@@ -1951,7 +1951,7 @@ class MetaData(SchemaItem):
             self._schemas = set([t.schema 
                                 for t in self.tables.values() 
                                 if t.schema is not None])
-        
+
     def __getstate__(self):
         return {'tables': self.tables}
 
@@ -1970,7 +1970,7 @@ class MetaData(SchemaItem):
         This property may be assigned an ``Engine`` or ``Connection``, or
         assigned a string or URL to automatically create a basic ``Engine``
         for this bind with ``create_engine()``.
-        
+
         """
         return self._bind
 
@@ -1989,10 +1989,10 @@ class MetaData(SchemaItem):
 
         dict.clear(self.tables)
         self._schemas.clear()
-        
+
     def remove(self, table):
         """Remove the given Table object from this MetaData."""
-        
+
         self._remove_table(table.name, table.schema)
 
     @property
@@ -2001,7 +2001,7 @@ class MetaData(SchemaItem):
         dependency.
         """
         return sqlutil.sort_tables(self.tables.itervalues())
-        
+
     def reflect(self, bind=None, schema=None, views=False, only=None):
         """Load all available table definitions from the database.
 
@@ -2018,10 +2018,10 @@ class MetaData(SchemaItem):
 
         :param schema:
           Optional, query and reflect tables from an alterate schema.
-        
+
         :param views:
           If True, also reflect views.
-          
+
         :param only:
           Optional.  Load only a sub-set of available named tables.  May be
           specified as a sequence of names or a callable.
@@ -2054,7 +2054,7 @@ class MetaData(SchemaItem):
             available.update(
                 bind.dialect.get_view_names(conn or bind, schema)
             )
-            
+
         current = set(self.tables.iterkeys())
 
         if only is None:
@@ -2083,7 +2083,7 @@ class MetaData(SchemaItem):
         """
         def adapt_listener(target, connection, **kw):
             listener(event, target, connection, **kw)
-            
+
         event.listen(self, "" + event_name.replace('-', '_'), adapt_listener)
 
     def create_all(self, bind=None, tables=None, checkfirst=True):
@@ -2104,7 +2104,7 @@ class MetaData(SchemaItem):
         :param checkfirst:
           Defaults to True, don't issue CREATEs for tables already present
           in the target database.
-          
+
         """
         if bind is None:
             bind = _bind_or_error(self)
@@ -2206,16 +2206,16 @@ class SchemaVisitor(visitors.ClauseVisitor):
 
 class DDLElement(expression.Executable, expression.ClauseElement):
     """Base class for DDL expression constructs.
-    
+
     This class is the base for the general purpose :class:`.DDL` class,
     as well as the various create/drop clause constructs such as
     :class:`.CreateTable`, :class:`.DropTable`, :class:`.AddConstraint`,
     etc.
-    
+
     :class:`.DDLElement` integrates closely with SQLAlchemy events,
     introduced in :ref:`event_toplevel`.  An instance of one is
     itself an event receiving callable::
-    
+
         event.listen(
             users,
             'after_create',
@@ -2223,17 +2223,17 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         )
 
     See also:
-    
+
         :class:`.DDL`
-        
+
         :class:`.DDLEvents`
-    
+
         :ref:`event_toplevel`
 
         :ref:`schema_ddl_sequences`
-        
+
     """
-    
+
     _execution_options = expression.Executable.\
                             _execution_options.union({'autocommit':True})
 
@@ -2241,7 +2241,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
     on = None
     dialect = None
     callable_ = None
-    
+
     def execute(self, bind=None, target=None):
         """Execute this DDL immediately.
 
@@ -2277,13 +2277,13 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         ":meth:`.DDLElement.execute_if`.")
     def execute_at(self, event_name, target):
         """Link execution of this DDL to the DDL lifecycle of a SchemaItem.
-        
+
         Links this ``DDLElement`` to a ``Table`` or ``MetaData`` instance,
         executing it when that schema item is created or dropped. The DDL
         statement will be executed using the same Connection and transactional
         context as the Table create/drop itself. The ``.bind`` property of
         this statement is ignored.
-        
+
         :param event:
           One of the events defined in the schema item's ``.ddl_events``;
           e.g. 'before-create', 'after-create', 'before-drop' or 'after-drop'
@@ -2300,14 +2300,14 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         Caveat: Creating or dropping a Table in isolation will also trigger
         any DDL set to ``execute_at`` that Table's MetaData.  This may change
         in a future release.
-        
+
         """
-        
+
         def call_event(target, connection, **kw):
             if self._should_execute_deprecated(event_name, 
                                     target, connection, **kw):
                 return connection.execute(self.against(target))
-            
+
         event.listen(target, "" + event_name.replace('-', '_'), call_event)
 
     @expression._generative
@@ -2320,15 +2320,15 @@ class DDLElement(expression.Executable, expression.ClauseElement):
     def execute_if(self, dialect=None, callable_=None):
         """Return a callable that will execute this 
         DDLElement conditionally.
-        
+
         Used to provide a wrapper for event listening::
-        
+
             event.listen(
                         metadata,
                         'before_create', 
                         DDL("my_ddl").execute_if(dialect='postgresql')
                     )
-        
+
         :param dialect: May be a string, tuple or a callable
           predicate.  If a string, it will be compared to the name of the
           executing database dialect::
@@ -2338,14 +2338,14 @@ class DDLElement(expression.Executable, expression.ClauseElement):
           If a tuple, specifies multiple dialect names::
 
             DDL('something').execute_if(dialect=('postgresql', 'mysql'))
-        
+
         :param callable_: A callable, which will be invoked with 
           four positional arguments as well as optional keyword 
           arguments:
-            
+
             :ddl:
               This DDL element.
-              
+
             :target:
               The :class:`.Table` or :class:`.MetaData` object which is the target of 
               this event. May be None if the DDL is executed explicitly.
@@ -2353,20 +2353,20 @@ class DDLElement(expression.Executable, expression.ClauseElement):
             :bind:
               The :class:`.Connection` being used for DDL execution
 
-            :tables:  
+            :tables:
               Optional keyword argument - a list of Table objects which are to
               be created/ dropped within a MetaData.create_all() or drop_all()
               method call.
 
           If the callable returns a true value, the DDL statement will be
           executed.
-                    
+
         See also:
-        
+
             :class:`.DDLEvents`
-            
+
             :ref:`event_toplevel`
-            
+
         """
         self.dialect = dialect
         self.callable_ = callable_
@@ -2375,7 +2375,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         if self.on is not None and \
             not self._should_execute_deprecated(None, target, bind, **kw):
             return False
-            
+
         if isinstance(self.dialect, basestring):
             if self.dialect != bind.engine.name:
                 return False
@@ -2385,7 +2385,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         if self.callable_ is not None and \
             not self.callable_(self, target, bind, **kw):
             return False
-            
+
         return True
 
     def _should_execute_deprecated(self, event, target, bind, **kw):
@@ -2397,10 +2397,10 @@ class DDLElement(expression.Executable, expression.ClauseElement):
             return bind.engine.name in self.on
         else:
             return self.on(self, event, target, bind, **kw)
-        
+
     def __call__(self, target, bind, **kw):
         """Execute the DDL as a ddl_listener."""
-        
+
         if self._should_execute(target, bind, **kw):
             return bind.execute(self.against(target))
 
@@ -2424,11 +2424,11 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         s = self.__class__.__new__(self.__class__)
         s.__dict__ = self.__dict__.copy()
         return s
-    
+
     def _compiler(self, dialect, **kw):
         """Return a compiler appropriate for this ClauseElement, given a
         Dialect."""
-        
+
         return dialect.ddl_compiler(dialect, self, **kw)
 
 class DDL(DDLElement):
@@ -2441,9 +2441,9 @@ class DDL(DDLElement):
     to handle repetitive tasks for multiple tables.
 
     Examples::
-      
+
       from sqlalchemy import event, DDL
-      
+
       tbl = Table('users', metadata, Column('uid', Integer))
       event.listen(tbl, 'before_create', DDL('DROP TRIGGER users_trigger'))
 
@@ -2467,7 +2467,7 @@ class DDL(DDLElement):
     """
 
     __visit_name__ = "ddl"
-    
+
     def __init__(self, statement, on=None, context=None, bind=None):
         """Create a DDL statement.
 
@@ -2495,10 +2495,10 @@ class DDL(DDLElement):
 
           If a callable, it will be invoked with four positional arguments
           as well as optional keyword arguments:
-            
+
             :ddl:
               This DDL element.
-              
+
             :event:
               The name of the event that has triggered this DDL, such as
               'after-create' Will be None if the DDL is executed explicitly.
@@ -2510,12 +2510,12 @@ class DDL(DDLElement):
             :connection:
               The ``Connection`` being used for DDL execution
 
-            :tables:  
+            :tables:
               Optional keyword argument - a list of Table objects which are to
               be created/ dropped within a MetaData.create_all() or drop_all()
               method call.
 
-              
+
           If the callable returns a true value, the DDL statement will be
           executed.
 
@@ -2529,10 +2529,10 @@ class DDL(DDLElement):
 
 
         See also:
-        
+
             :class:`.DDLEvents`
             :mod:`sqlalchemy.event`
-          
+
         """
 
         if not isinstance(statement, basestring):
@@ -2575,9 +2575,9 @@ class _CreateDropBase(DDLElement):
     The common theme of _CreateDropBase is a single
     ``element`` attribute which refers to the element
     to be created or dropped.
-    
+
     """
-    
+
     def __init__(self, element, on=None, bind=None):
         self.element = element
         self._check_ddl_on(on)
@@ -2586,19 +2586,19 @@ class _CreateDropBase(DDLElement):
 
     def _create_rule_disable(self, compiler):
         """Allow disable of _create_rule using a callable.
-        
+
         Pass to _create_rule using 
         util.portable_instancemethod(self._create_rule_disable)
         to retain serializability.
-        
+
         """
         return False
 
 class CreateTable(_CreateDropBase):
     """Represent a CREATE TABLE statement."""
-    
+
     __visit_name__ = "create_table"
-    
+
 class DropTable(_CreateDropBase):
     """Represent a DROP TABLE statement."""
 
@@ -2606,17 +2606,17 @@ class DropTable(_CreateDropBase):
 
 class CreateSequence(_CreateDropBase):
     """Represent a CREATE SEQUENCE statement."""
-    
+
     __visit_name__ = "create_sequence"
 
 class DropSequence(_CreateDropBase):
     """Represent a DROP SEQUENCE statement."""
 
     __visit_name__ = "drop_sequence"
-    
+
 class CreateIndex(_CreateDropBase):
     """Represent a CREATE INDEX statement."""
-    
+
     __visit_name__ = "create_index"
 
 class DropIndex(_CreateDropBase):
@@ -2626,19 +2626,19 @@ class DropIndex(_CreateDropBase):
 
 class AddConstraint(_CreateDropBase):
     """Represent an ALTER TABLE ADD CONSTRAINT statement."""
-    
+
     __visit_name__ = "add_constraint"
 
     def __init__(self, element, *args, **kw):
         super(AddConstraint, self).__init__(element, *args, **kw)
         element._create_rule = util.portable_instancemethod(
                                             self._create_rule_disable)
-        
+
 class DropConstraint(_CreateDropBase):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
-    
+
     def __init__(self, element, cascade=False, **kw):
         self.cascade = cascade
         super(DropConstraint, self).__init__(element, **kw)
@@ -2659,7 +2659,7 @@ def _bind_or_error(schemaitem, msg=None):
             bindable = "the %s's .bind" % name
         else:
             bindable = "this %s's .metadata.bind" % name
-        
+
         if msg is None:
             msg = "The %s is not bound to an Engine or Connection.  "\
                    "Execution can not proceed without a database to execute "\

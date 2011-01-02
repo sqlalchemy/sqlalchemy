@@ -113,25 +113,25 @@ class URL(object):
                 return module
             else:
                 raise
-    
+
     def _load_entry_point(self):
         """attempt to load this url's dialect from entry points, or return None
         if pkg_resources is not installed or there is no matching entry point.
-        
+
         Raise ImportError if the actual load fails.
-        
+
         """
         try:
             import pkg_resources
         except ImportError:
             return None
-            
+
         for res in pkg_resources.iter_entry_points('sqlalchemy.dialects'):
             if res.name == self.drivername:
                 return res.load()
         else:
             return None
-        
+
     def translate_connect_args(self, names=[], **kw):
         """Translate url attributes into a dictionary of connection arguments.
 

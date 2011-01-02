@@ -8,7 +8,7 @@ from test.lib.entities import ComparableEntity
 def setup():
     global engine
     engine = create_engine('sqlite://', echo=True)
-    
+
 class TestVersioning(TestBase):
     def setup(self):
         global Base, Session, Versioned
@@ -17,34 +17,34 @@ class TestVersioning(TestBase):
             __metaclass__ = VersionedMeta
             _decl_class_registry = Base._decl_class_registry
         Session = sessionmaker(extension=VersionedListener())
-        
+
     def teardown(self):
         clear_mappers()
         Base.metadata.drop_all()
-    
+
     def create_tables(self):
         Base.metadata.create_all()
-        
+
     def test_plain(self):
         class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
-            
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
-        
+
         self.create_tables()
         sess = Session()
         sc = SomeClass(name='sc1')
         sess.add(sc)
         sess.commit()
-        
+
         sc.name = 'sc1modified'
         sess.commit()
-        
+
         assert sc.version == 2
-        
+
         SomeClassHistory = SomeClass.__history_mapper__.class_
-        
+
         eq_(
             sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1')]
@@ -61,7 +61,7 @@ class TestVersioning(TestBase):
         )
 
         assert sc.version == 3
-        
+
         sess.commit()
 
         sc.name = 'temp'
@@ -76,7 +76,7 @@ class TestVersioning(TestBase):
                 SomeClassHistory(version=2, name='sc1modified')
             ]
         )
-        
+
         sess.delete(sc)
         sess.commit()
 
@@ -92,41 +92,41 @@ class TestVersioning(TestBase):
     def test_from_null(self):
         class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
-            
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
-        
+
         self.create_tables()
         sess = Session()
         sc = SomeClass()
         sess.add(sc)
         sess.commit()
-        
+
         sc.name = 'sc1'
         sess.commit()
-        
+
         assert sc.version == 2
 
     def test_deferred(self):
         """test versioning of unloaded, deferred columns."""
-        
+
         class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
 
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             data = deferred(Column(String(25)))
-            
+
         self.create_tables()
         sess = Session()
         sc = SomeClass(name='sc1', data='somedata')
         sess.add(sc)
         sess.commit()
         sess.close()
-        
+
         sc = sess.query(SomeClass).first()
         assert 'data' not in sc.__dict__
-        
+
         sc.name = 'sc1modified'
         sess.commit()
 
@@ -138,8 +138,8 @@ class TestVersioning(TestBase):
             sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1', data='somedata')]
         )
-        
-        
+
+
     def test_joined_inheritance(self):
         class BaseClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'basetable'
@@ -147,9 +147,9 @@ class TestVersioning(TestBase):
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             type = Column(String(20))
-            
+
             __mapper_args__ = {'polymorphic_on':type, 'polymorphic_identity':'base'}
-            
+
         class SubClassSeparatePk(BaseClass):
             __tablename__ = 'subtable1'
 
@@ -175,7 +175,7 @@ class TestVersioning(TestBase):
         same1 = SubClassSamePk(name='same1', subdata2='same1subdata')
         sess.add_all([sep1, base1, same1])
         sess.commit()
-        
+
         base1.name = 'base1mod'
         same1.subdata2 = 'same1subdatamod'
         sep1.name ='sep1mod'
@@ -189,10 +189,10 @@ class TestVersioning(TestBase):
             [
                 SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1), 
                 BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
-                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1)            
+                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1)
             ]
         )
-        
+
         same1.subdata2 = 'same1subdatamod2'
 
         eq_(
@@ -201,7 +201,7 @@ class TestVersioning(TestBase):
                 SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1), 
                 BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
                 SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1), 
-                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)            
+                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)
             ]
         )
 
@@ -213,7 +213,7 @@ class TestVersioning(TestBase):
                 BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
                 BaseClassHistory(id=2, name=u'base1mod', type=u'base', version=2), 
                 SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1), 
-                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)            
+                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)
             ]
         )
 
@@ -225,7 +225,7 @@ class TestVersioning(TestBase):
             name = Column(String(50))
             type = Column(String(50))
             __mapper_args__ = {'polymorphic_on':type, 'polymorphic_identity':'base'}
-            
+
         class SubClass(BaseClass):
 
             subname = Column(String(50))
@@ -236,21 +236,21 @@ class TestVersioning(TestBase):
 
         b1 = BaseClass(name='b1')
         sc = SubClass(name='s1', subname='sc1')
-        
+
         sess.add_all([b1, sc])
-        
+
         sess.commit()
-        
+
         b1.name='b1modified'
 
         BaseClassHistory = BaseClass.__history_mapper__.class_
         SubClassHistory = SubClass.__history_mapper__.class_
-        
+
         eq_(
             sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
             [BaseClassHistory(id=1, name=u'b1', type=u'base', version=1)]
         )
-        
+
         sc.name ='s1modified'
         b1.name='b1modified2'
 
@@ -262,48 +262,48 @@ class TestVersioning(TestBase):
                 SubClassHistory(id=2, name=u's1', type=u'sub', version=1)
             ]
         )
-    
+
     def test_unique(self):
         class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
-            
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50), unique=True)
             data = Column(String(50))
-            
+
         self.create_tables()
         sess = Session()
         sc = SomeClass(name='sc1', data='sc1')
         sess.add(sc)
         sess.commit()
-        
+
         sc.data = 'sc1modified'
         sess.commit()
-        
+
         assert sc.version == 2
-        
+
         sc.data = 'sc1modified2'
         sess.commit()
-        
+
         assert sc.version == 3
 
     def test_relationship(self):
 
         class SomeRelated(Base, ComparableEntity):
             __tablename__ = 'somerelated'
-            
+
             id = Column(Integer, primary_key=True)
 
         class SomeClass(Versioned, Base, ComparableEntity):
             __tablename__ = 'sometable'
-            
+
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
             related_id = Column(Integer, ForeignKey('somerelated.id'))
             related = relationship("SomeRelated")
-            
+
         SomeClassHistory = SomeClass.__history_mapper__.class_
-            
+
         self.create_tables()
         sess = Session()
         sc = SomeClass(name='sc1')
@@ -311,13 +311,13 @@ class TestVersioning(TestBase):
         sess.commit()
 
         assert sc.version == 1
-        
+
         sr1 = SomeRelated()
         sc.related = sr1
         sess.commit()
-        
+
         assert sc.version == 2
-        
+
         eq_(
             sess.query(SomeClassHistory).filter(SomeClassHistory.version == 1).all(),
             [SomeClassHistory(version=1, name='sc1', related_id=None)]
@@ -334,4 +334,4 @@ class TestVersioning(TestBase):
         )
 
         assert sc.version == 3
-        
+

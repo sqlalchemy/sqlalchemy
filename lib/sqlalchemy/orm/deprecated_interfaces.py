@@ -14,27 +14,27 @@ class MapperExtension(object):
     .. note:: :class:`.MapperExtension` is deprecated.   Please
        refer to :func:`.event.listen` as well as 
        :class:`.MapperEvents`.
-    
+
     New extension classes subclass :class:`.MapperExtension` and are specified
     using the ``extension`` mapper() argument, which is a single
     :class:`.MapperExtension` or a list of such::
-    
+
         from sqlalchemy.orm.interfaces import MapperExtension
-    
+
         class MyExtension(MapperExtension):
             def before_insert(self, mapper, connection, instance):
                 print "instance %s before insert !" % instance
-    
+
         m = mapper(User, users_table, extension=MyExtension())
-    
+
     A single mapper can maintain a chain of ``MapperExtension``
     objects. When a particular mapping event occurs, the
     corresponding method on each ``MapperExtension`` is invoked
     serially, and each method has the ability to halt the chain
     from proceeding further::
-    
+
         m = mapper(User, users_table, extension=[ext1, ext2, ext3])
-    
+
     Each ``MapperExtension`` method returns the symbol
     EXT_CONTINUE by default.   This symbol generally means "move
     to the next ``MapperExtension`` for processing".  For methods
@@ -43,13 +43,13 @@ class MapperExtension(object):
     should be ignored.   In some cases it's required for a 
     default mapper activity to be performed, such as adding a 
     new instance to a result list.
-    
+
     The symbol EXT_STOP has significance within a chain
     of ``MapperExtension`` objects that the chain will be stopped
     when this symbol is returned.  Like EXT_CONTINUE, it also
     has additional significance in some cases that a default
     mapper activity will not be performed.
-    
+
     """
 
     @classmethod
@@ -75,17 +75,17 @@ class MapperExtension(object):
             'before_delete',
             'after_delete'
         ))
-        
+
     @classmethod
     def _adapt_listener_methods(cls, self, listener, methods):
-        
+
         for meth in methods:
             me_meth = getattr(MapperExtension, meth)
             ls_meth = getattr(listener, meth)
-            
+
             # TODO: comparing self.methods to cls.method, 
             # this comparison is probably moot
-            
+
             if me_meth is not ls_meth:
                 if meth == 'reconstruct_instance':
                     def go(ls_meth):
@@ -109,7 +109,7 @@ class MapperExtension(object):
                             util.warn_exception(ls_meth, self, self.class_, 
                                             self.class_manager.original_init, 
                                             instance, args, kwargs)
-                            
+
                         return init_failed
                     event.listen(self.class_manager, 'init_failure', 
                                         go(ls_meth), raw=False, propagate=True)
@@ -121,20 +121,20 @@ class MapperExtension(object):
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
         return EXT_CONTINUE
 
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         """Receive an instance when it's constructor is called.
-        
+
         This method is only called during a userland construction of 
         an object.  It is not called when an object is loaded from the
         database.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
 
@@ -144,11 +144,11 @@ class MapperExtension(object):
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
         """Receive an instance when it's constructor has been called, 
         and raised an exception.
-        
+
         This method is only called during a userland construction of 
         an object.  It is not called when an object is loaded from the
         database.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
 
@@ -166,10 +166,10 @@ class MapperExtension(object):
         object which contains mapped columns as keys.  The 
         returned object should also be a dictionary-like object
         which recognizes mapped columns as keys.
-        
+
         If the ultimate return value is EXT_CONTINUE, the row
         is not translated.
-        
+
         """
         return EXT_CONTINUE
 
@@ -302,7 +302,7 @@ class MapperExtension(object):
 
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE
@@ -319,7 +319,7 @@ class MapperExtension(object):
         This means that an instance being sent to before_update is *not* a
         guarantee that an UPDATE statement will be issued (although you can
         affect the outcome here).
-        
+
         To detect if the column-based attributes on the object have net
         changes, and will therefore generate an UPDATE statement, use
         ``object_session(instance).is_modified(instance,
@@ -344,7 +344,7 @@ class MapperExtension(object):
 
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE
@@ -377,17 +377,17 @@ class MapperExtension(object):
 class SessionExtension(object):
 
     """Base implementation for :class:`.Session` event hooks.
-    
+
     .. note:: :class:`.SessionExtension` is deprecated.   Please
        refer to :func:`.event.listen` as well as 
        :class:`.SessionEvents`.
-    
+
     Subclasses may be installed into a :class:`.Session` (or
     :func:`.sessionmaker`) using the ``extension`` keyword
     argument::
-    
+
         from sqlalchemy.orm.interfaces import SessionExtension
-    
+
         class MySessionExtension(SessionExtension):
             def before_commit(self, session):
                 print "before commit!"
@@ -414,32 +414,32 @@ class SessionExtension(object):
 
     def before_commit(self, session):
         """Execute right before commit is called.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def after_commit(self, session):
         """Execute after a commit has occured.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def after_rollback(self, session):
         """Execute after a rollback has occured.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def before_flush( self, session, flush_context, instances):
         """Execute before flush process has started.
-        
+
         `instances` is an optional list of objects which were passed to
         the ``flush()`` method. """
 
     def after_flush(self, session, flush_context):
         """Execute after flush has completed, but before commit has been
         called.
-        
+
         Note that the session's state is still in pre-flush, i.e. 'new',
         'dirty', and 'deleted' lists still show pre-flush state as well
         as the history settings on instance attributes."""
@@ -447,7 +447,7 @@ class SessionExtension(object):
     def after_flush_postexec(self, session, flush_context):
         """Execute after flush has completed, and after the post-exec
         state occurs.
-        
+
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
         occured, depending on whether or not the flush started its own
@@ -455,20 +455,20 @@ class SessionExtension(object):
 
     def after_begin( self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
-        
+
         `transaction` is the SessionTransaction. This method is called
         after an engine level transaction is begun on a connection. """
 
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.
-        
+
         This is called after an add, delete or merge. """
 
     def after_bulk_update( self, session, query, query_context, result):
         """Execute after a bulk update operation to the session.
-        
+
         This is called after a session.query(...).update()
-        
+
         `query` is the query object that this update operation was
         called on. `query_context` was the query context object.
         `result` is the result object returned from the bulk operation.
@@ -476,9 +476,9 @@ class SessionExtension(object):
 
     def after_bulk_delete( self, session, query, query_context, result):
         """Execute after a bulk delete operation to the session.
-        
+
         This is called after a session.query(...).delete()
-        
+
         `query` is the query object that this delete operation was
         called on. `query_context` was the query context object.
         `result` is the result object returned from the bulk operation.
@@ -492,7 +492,7 @@ class AttributeExtension(object):
     .. note:: :class:`.AttributeExtension` is deprecated.   Please
        refer to :func:`.event.listen` as well as 
        :class:`.AttributeEvents`.
-    
+
     :class:`.AttributeExtension` is used to listen for set,
     remove, and append events on individual mapped attributes.
     It is established on an individual mapped attribute using
@@ -502,16 +502,16 @@ class AttributeExtension(object):
 
         from sqlalchemy.orm.interfaces import AttributeExtension
         from sqlalchemy.orm import mapper, relationship, column_property
-    
+
         class MyAttrExt(AttributeExtension):
             def append(self, state, value, initiator):
                 print "append event !"
                 return value
-        
+
             def set(self, state, value, oldvalue, initiator):
                 print "set event !"
                 return value
-            
+
         mapper(SomeClass, sometable, properties={
             'foo':column_property(sometable.c.foo, extension=MyAttrExt()),
             'bar':relationship(Bar, extension=MyAttrExt())
@@ -523,10 +523,10 @@ class AttributeExtension(object):
     ``value`` parameter. The returned value is used as the
     effective value, and allows the extension to change what is
     ultimately persisted.
-    
+
     AttributeExtension is assembled within the descriptors associated
     with a mapped class.
-    
+
     """
 
     active_history = True
@@ -535,7 +535,7 @@ class AttributeExtension(object):
 
     Note that ``active_history`` can also be set directly via
     :func:`.column_property` and :func:`.relationship`.
-    
+
     """
 
     @classmethod
@@ -549,7 +549,7 @@ class AttributeExtension(object):
         event.listen(self, 'set', listener.set,
                             active_history=listener.active_history, 
                             raw=True, retval=True)
-    
+
     def append(self, state, value, initiator):
         """Receive a collection append event.
 

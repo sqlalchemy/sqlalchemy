@@ -26,7 +26,7 @@ class NoseSQLAlchemy(Plugin):
     Handles the setup and extra properties required for testing SQLAlchemy
     """
     enabled = True
-    
+
     # nose 1.0 will allow us to replace the old "sqlalchemy" plugin,
     # if installed, using the same name, but nose 1.0 isn't released yet...
     name = '_sqlalchemy'
@@ -79,33 +79,33 @@ class NoseSQLAlchemy(Plugin):
         file_config.readfp(StringIO.StringIO(base_config))
         file_config.read(['test.cfg', os.path.expanduser('~/.satest.cfg')])
         config.file_config = file_config
-        
+
     def configure(self, options, conf):
         Plugin.configure(self, options, conf)
         self.options = options
         for fn in pre_configure:
             fn(self.options, file_config)
-            
+
     def begin(self):
         global testing, requires, util
         from test.lib import testing, requires
         from sqlalchemy import util
-        
+
         testing.db = db
         testing.requires = requires
 
         # Lazy setup of other options (post coverage)
         for fn in post_configure:
             fn(self.options, file_config)
-        
+
     def describeTest(self, test):
         return ""
-    
+
     def wantFunction(self, fn):
         if fn.__module__.startswith('test.lib') or \
             fn.__module__.startswith('test.bootstrap'):
             return False
-            
+
     def wantClass(self, cls):
         """Return true if you want the main test selector to collect
         tests from this class, false if you don't, and None if you don't
@@ -124,7 +124,7 @@ class NoseSQLAlchemy(Plugin):
                 return True
             else:
                 return not self.__should_skip_for(cls)
-    
+
     def __should_skip_for(self, cls):
         if hasattr(cls, '__requires__'):
             def test_suite(): return 'ok'
@@ -141,13 +141,13 @@ class NoseSQLAlchemy(Plugin):
                 print "'%s' unsupported on DB implementation '%s'" % (
                      cls.__class__.__name__, testing.db.name)
                 return True
-                
+
         if getattr(cls, '__only_on__', None):
             spec = testing.db_spec(*util.to_list(cls.__only_on__))
             if not spec(testing.db):
                 print "'%s' unsupported on DB implementation '%s'" % (
                      cls.__class__.__name__, testing.db.name)
-                return True                    
+                return True
 
         if getattr(cls, '__skip_if__', False):
             for c in getattr(cls, '__skip_if__'):
@@ -155,7 +155,7 @@ class NoseSQLAlchemy(Plugin):
                     print "'%s' skipped by %s" % (
                         cls.__class__.__name__, c.__name__)
                     return True
-                    
+
         for rule in getattr(cls, '__excluded_on__', ()):
             if testing._is_excluded(*rule):
                 print "'%s' unsupported on DB %s version %s" % (
@@ -169,10 +169,10 @@ class NoseSQLAlchemy(Plugin):
 
     def afterTest(self, test):
         testing.resetwarnings()
-        
+
     def afterContext(self):
         testing.global_cleanup_assertions()
-        
+
     #def handleError(self, test, err):
         #pass
 

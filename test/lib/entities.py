@@ -50,7 +50,7 @@ class ComparableEntity(BasicEntity):
                 self_key = sa.orm.attributes.instance_state(self).key
             except sa.orm.exc.NO_STATE:
                 self_key = None
-                
+
             if other is None:
                 a = self
                 b = other

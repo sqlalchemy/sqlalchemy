@@ -15,12 +15,12 @@ Running as a user with permission to modify the Python distribution,
 install Distribute:
 
     python3 distribute_setup.py
-    
+
 
 Installing SQLAlchemy in Python 3
 ---------------------------------
 
-Once Distribute is installed, SQLAlchemy can be installed directly.  
+Once Distribute is installed, SQLAlchemy can be installed directly.
 The 2to3 process will kick in which takes several minutes:
 
     python3 setup.py install

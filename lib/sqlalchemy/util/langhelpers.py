@@ -59,10 +59,10 @@ def get_cls_kwargs(cls):
     __init__ defines a \**kwargs catch-all, then the constructor is presumed to
     pass along unrecognized keywords to it's base classes, and the collection
     process is repeated recursively on each of the bases.
-    
+
     Uses a subset of inspect.getargspec() to cut down on method overhead. 
     No anonymous tuple arguments please !
-    
+
     """
 
     for c in cls.__mro__:
@@ -79,10 +79,10 @@ def get_cls_kwargs(cls):
         if not ctr or not isinstance(ctr, types.FunctionType):
             stack.update(class_.__bases__)
             continue
-        
+
         # this is shorthand for
         # names, _, has_kw, _ = inspect.getargspec(ctr)
-        
+
         names, has_kw = inspect_func_args(ctr)
         args.update(names)
         if has_kw:
@@ -106,12 +106,12 @@ except ImportError:
 
 def get_func_kwargs(func):
     """Return the set of legal kwargs for the given `func`.
-    
+
     Uses getargspec so is safe to call for methods, functions,
     etc.
-    
+
     """
-    
+
     return inspect.getargspec(func)[0]
 
 def format_argspec_plus(fn, grouped=True):
@@ -203,7 +203,7 @@ def getargspec_init(method):
         else:
             return (['self'], 'args', 'kwargs', None)
 
-    
+
 def unbound_method_to_callable(func_or_cls):
     """Adjust the incoming callable such that a 'self' argument is not required."""
 
@@ -215,7 +215,7 @@ def unbound_method_to_callable(func_or_cls):
 class portable_instancemethod(object):
     """Turn an instancemethod into a (parent, name) pair
     to produce a serializable callable.
-    
+
     """
     def __init__(self, meth):
         self.target = meth.im_self
@@ -223,7 +223,7 @@ class portable_instancemethod(object):
 
     def __call__(self, *arg, **kw):
         return getattr(self.target, self.name)(*arg, **kw)
-        
+
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
 
@@ -468,22 +468,22 @@ class group_expirable_memoized_property(object):
 
 class importlater(object):
     """Deferred import object.
-    
+
     e.g.::
-    
+
         somesubmod = importlater("mypackage.somemodule", "somesubmod")
-        
+
     is equivalent to::
-    
+
         from mypackage.somemodule import somesubmod
-        
+
     except evaluted upon attribute access to "somesubmod".
-    
+
     """
     def __init__(self, path, addtl=None):
         self._il_path = path
         self._il_addtl = addtl
-    
+
     @memoized_property
     def module(self):
         if self._il_addtl:
@@ -501,7 +501,7 @@ class importlater(object):
             for token in self._il_path.split(".")[1:]:
                 m = getattr(m, token)
             return m
-        
+
     def __getattr__(self, key):
         try:
             attr = getattr(self.module, key)
@@ -528,7 +528,7 @@ def asbool(obj):
 def bool_or_str(*text):
     """Return a callable that will evaulate a string as 
     boolean, or one of a set of "alternate" string values.
-    
+
     """
     def bool_or_value(obj):
         if obj in text:
@@ -536,7 +536,7 @@ def bool_or_str(*text):
         else:
             return asbool(obj)
     return bool_or_value
-    
+
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -552,11 +552,11 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
 
 def constructor_copy(obj, cls, **kw):
     """Instantiate cls using the __dict__ of obj as constructor arguments.
-    
+
     Uses inspect to match the named arguments of ``cls``.
-    
+
     """
-    
+
     names = get_cls_kwargs(cls)
     kw.update((k, obj.__dict__[k]) for k in names if k in obj.__dict__)
     return cls(**kw)
@@ -645,13 +645,13 @@ class classproperty(property):
     module, but note that the 
     :class:`~.sqlalchemy.ext.declarative.declared_attr`
     decorator should be used for this purpose with declarative.
-    
+
     """
-    
+
     def __init__(self, fget, *arg, **kw):
         super(classproperty, self).__init__(fget, *arg, **kw)
         self.__doc__ = fget.__doc__
-        
+
     def __get__(desc, self, cls):
         return desc.fget(cls)
 
@@ -719,15 +719,15 @@ def warn_exception(func, *args, **kwargs):
 
 def warn(msg, stacklevel=3):
     """Issue a warning.
-    
+
     If msg is a string, :class:`.exc.SAWarning` is used as 
     the category.
-    
+
     .. note:: This function is swapped out when the test suite
        runs, with a compatible version that uses 
        warnings.warn_explicit, so that the warnings registry can
        be controlled.
-       
+
     """
     if isinstance(msg, basestring):
         warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)

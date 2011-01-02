@@ -16,17 +16,17 @@ In this demo, the following techniques are illustrated:
   deep within an object graph when lazy loads occur.
 
 E.g.::
-    
+
     # query for Person objects, specifying cache
     q = Session.query(Person).options(FromCache("default", "all_people"))
-    
+
     # specify that each Person's "addresses" collection comes from
     # cache too
     q = q.options(RelationshipCache("default", "by_person", Person.addresses))
-    
+
     # query
     print q.all()
-    
+
 To run, both SQLAlchemy and Beaker (1.4 or greater) must be
 installed or on the current PYTHONPATH. The demo will create a local
 directory for datafiles, insert initial data, and run. Running the
@@ -53,7 +53,7 @@ Listing of files:
     bootstrap fixture data if necessary.
 
     caching_query.py - Represent functions and classes 
-    which allow the usage of Beaker caching with SQLAlchemy.  
+    which allow the usage of Beaker caching with SQLAlchemy.
     Introduces a query option called FromCache.
 
     model.py - The datamodel, which represents Person that has multiple

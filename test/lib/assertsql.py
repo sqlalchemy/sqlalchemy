@@ -16,10 +16,10 @@ class AssertRule(object):
 
     def is_consumed(self):
         """Return True if this rule has been consumed, False if not.
-        
+
         Should raise an AssertionError if this rule's condition has
         definitely failed.
-        
+
         """
 
         raise NotImplementedError()
@@ -32,10 +32,10 @@ class AssertRule(object):
 
     def consume_final(self):
         """Return True if this rule has been consumed.
-        
+
         Should raise an AssertionError if this rule's condition has not
         been consumed or has failed.
-        
+
         """
 
         if self._result is None:
@@ -46,18 +46,18 @@ class SQLMatchRule(AssertRule):
     def __init__(self):
         self._result = None
         self._errmsg = ""
-    
+
     def rule_passed(self):
         return self._result
-        
+
     def is_consumed(self):
         if self._result is None:
             return False
-            
+
         assert self._result, self._errmsg
-        
+
         return True
-    
+
 class ExactSQL(SQLMatchRule):
 
     def __init__(self, sql, params=None):
@@ -96,7 +96,7 @@ class ExactSQL(SQLMatchRule):
                 'Testing for exact statement %r exact params %r, '\
                 'received %r with params %r' % (sql, params,
                     _received_statement, _received_parameters)
-    
+
 
 class RegexSQL(SQLMatchRule):
 
@@ -194,7 +194,7 @@ class CompiledSQL(SQLMatchRule):
 
 
             # print self._errmsg
-    
+
 class CountStatements(AssertRule):
 
     def __init__(self, count):
@@ -216,7 +216,7 @@ class CountStatements(AssertRule):
             'desired statement count %d does not match %d' \
             % (self.count, self._statement_count)
         return True
-        
+
 class AllOf(AssertRule):
 
     def __init__(self, *rules):
@@ -243,7 +243,7 @@ class AllOf(AssertRule):
 
     def consume_final(self):
         return len(self.rules) == 0
-        
+
 def _process_engine_statement(query, context):
     if util.jython:
 
@@ -255,7 +255,7 @@ def _process_engine_statement(query, context):
         query = query[:-25]
     query = re.sub(r'\n', '', query)
     return query
-    
+
 def _process_assertion_statement(query, context):
     paramstyle = context.dialect.paramstyle
     if paramstyle == 'named':
@@ -311,4 +311,4 @@ class SQLAssert(object):
                     executemany)
 
 asserter = SQLAssert()
-    
+

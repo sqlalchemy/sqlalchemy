@@ -43,7 +43,7 @@ class SQLSoupTest(TestBase):
 
     def test_map_to_table_not_string(self):
         db = sqlsoup.SqlSoup(engine)
-        
+
         table = Table('users', db._metadata, Column('id', Integer, primary_key=True))
         assert_raises_message(
             exc.ArgumentError,

@@ -23,10 +23,10 @@ class TransactionTest(FixtureTest):
             })
         mapper(Address, addresses)
 
-    
+
 class FixtureDataTest(TransactionTest):
     run_inserts = 'each'
-    
+
     def test_attrs_on_rollback(self):
         sess = self.session()
         u1 = sess.query(User).get(7)
@@ -93,13 +93,13 @@ class AutoExpireTest(TransactionTest):
         s.rollback()
         assert u1 in s
         assert u1 not in s.deleted
-    
+
     def test_gced_delete_on_rollback(self):
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
         s.commit()
-        
+
         s.delete(u1)
         u1_state = attributes.instance_state(u1)
         assert u1_state in s.identity_map.all_states()
@@ -110,7 +110,7 @@ class AutoExpireTest(TransactionTest):
         del u1
         gc_collect()
         assert u1_state.obj() is None
-        
+
         s.rollback()
         assert u1_state in s.identity_map.all_states()
         u1 = s.query(User).filter_by(name='ed').one()
@@ -120,7 +120,7 @@ class AutoExpireTest(TransactionTest):
         s.flush()
         assert s.scalar(users.count()) == 0
         s.commit()
-        
+
     def test_trans_deleted_cleared_on_rollback(self):
         s = self.session()
         u1 = User(name='ed')
@@ -189,14 +189,14 @@ class TwoPhaseTest(TransactionTest):
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
         s = self.session(twophase=True)
-    
+
         u = User(name='ed')
         s.add(u)
         s.prepare()
         s.rollback()
-        
+
         assert u not in s
-        
+
 class RollbackRecoverTest(TransactionTest):
 
     def test_pk_violation(self):
@@ -416,7 +416,7 @@ class AccountingFlagsTest(TransactionTest):
         sess.commit()
 
         testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
-        
+
         assert u1.name == 'ed'
         sess.expire_all()
         assert u1.name == 'edward'
@@ -429,7 +429,7 @@ class AccountingFlagsTest(TransactionTest):
 
         u1.name = 'edwardo'
         sess.rollback()
-        
+
         testing.db.execute(users.update(users.c.name=='ed').values(name='edward'))
 
         assert u1.name == 'edwardo'
@@ -449,30 +449,30 @@ class AccountingFlagsTest(TransactionTest):
 
         assert u1.name == 'edwardo'
         sess.commit()
-        
+
         assert testing.db.execute(select([users.c.name])).fetchall() == [('edwardo',)]
         assert u1.name == 'edwardo'
 
         sess.delete(u1)
         sess.commit()
-        
+
     def test_preflush_no_accounting(self):
         sess = sessionmaker(_enable_transaction_accounting=False, autocommit=True)()
         u1 = User(name='ed')
         sess.add(u1)
         sess.flush()
-        
+
         sess.begin()
         u1.name = 'edwardo'
         u2 = User(name="some other user")
         sess.add(u2)
-        
+
         sess.rollback()
 
         sess.begin()
         assert testing.db.execute(select([users.c.name])).fetchall() == [('ed',)]
-        
-    
+
+
 class AutoCommitTest(TransactionTest):
     def test_begin_nested_requires_trans(self):
         sess = create_session(autocommit=True)
@@ -483,7 +483,7 @@ class AutoCommitTest(TransactionTest):
 
         u1 = User(name='ed')
         sess.add(u1)
-        
+
         sess.begin()
         u2 = User(name='some other user')
         sess.add(u2)
@@ -533,7 +533,7 @@ class NaturalPKRollbackTest(_base.MappedTest):
 
         session.rollback()
 
-        
-        
+
+
 
 

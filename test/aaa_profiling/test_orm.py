@@ -96,21 +96,21 @@ class MergeTest(_base.MappedTest):
 
 class LoadManyToOneFromIdentityTest(_base.MappedTest):
     """test overhead associated with many-to-one fetches.
-    
+
     Prior to the refactor of LoadLazyAttribute and 
     query._get(), the load from identity map took 2x
     as many calls (65K calls here instead of around 33K)
     to load 1000 related objects from the identity map.
-    
+
     """
-    
+
     # only need to test for unexpected variance in a large call 
     # count here,
     # so remove some platforms that have wildly divergent
     # callcounts.
     __requires__ = 'python25',
     __unsupported_on__ = 'postgresql+pg8000',
-    
+
     @classmethod
     def define_tables(cls, metadata):
         parent = Table('parent', metadata, 
@@ -118,7 +118,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
                        Column('data', String(20)),
                        Column('child_id', Integer, ForeignKey('child.id'))
                        )
-                       
+
         child = Table('child', metadata, 
                     Column('id', Integer,primary_key=True),
                   Column('data', String(20))
@@ -154,13 +154,13 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
             } 
             for i in xrange(1, 1000)
         ])
-    
+
     @testing.resolve_artifact_names
     def test_many_to_one_load_no_identity(self):
         sess = Session()
         parents = sess.query(Parent).all()
-        
-        
+
+
         @profiling.function_call_count(108019, variance=.2)
         def go():
             for p in parents:
@@ -172,11 +172,11 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
         sess = Session()
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
-        
+
         @profiling.function_call_count(17987, {'3':18987})
         def go():
             for p in parents:
                 p.child
         go()
-        
-        
+
+

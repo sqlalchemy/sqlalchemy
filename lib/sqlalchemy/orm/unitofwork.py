@@ -21,10 +21,10 @@ session = util.importlater("sqlalchemy.orm", "session")
 def track_cascade_events(descriptor, prop):
     """Establish event listeners on object attributes which handle
     cascade-on-set/append.
-    
+
     """
     key = prop.key
-    
+
     def append(state, item, initiator):
         # process "save_update" cascade rules for when 
         # an instance is appended to the list of another instance
@@ -38,7 +38,7 @@ def track_cascade_events(descriptor, prop):
                 not sess._contains_state(item_state):
                 sess._save_or_update_state(item_state)
         return item
-        
+
     def remove(state, item, initiator):
         sess = session._state_session(state)
         if sess:
@@ -65,15 +65,15 @@ def track_cascade_events(descriptor, prop):
                     (prop.cascade_backrefs or key == initiator.key) and \
                     not sess._contains_state(newvalue_state):
                     sess._save_or_update_state(newvalue_state)
-            
+
             if oldvalue is not None and prop.cascade.delete_orphan:
                 oldvalue_state = attributes.instance_state(oldvalue)
-                
+
                 if oldvalue_state in sess._new and \
                     prop.mapper._is_orphan(oldvalue_state):
                     sess.expunge(oldvalue)
         return newvalue
-        
+
     event.listen(descriptor, 'append', append, raw=True, retval=True)
     event.listen(descriptor, 'remove', remove, raw=True, retval=True)
     event.listen(descriptor, 'set', set_, raw=True, retval=True)
@@ -86,45 +86,45 @@ class UOWTransaction(object):
         # dictionary used by external actors to 
         # store arbitrary state information.
         self.attributes = {}
-        
+
         # dictionary of mappers to sets of 
         # DependencyProcessors, which are also 
         # set to be part of the sorted flush actions,
         # which have that mapper as a parent.
         self.deps = util.defaultdict(set)
-        
+
         # dictionary of mappers to sets of InstanceState
         # items pending for flush which have that mapper
         # as a parent.
         self.mappers = util.defaultdict(set)
-        
+
         # a dictionary of Preprocess objects, which gather
         # additional states impacted by the flush
         # and determine if a flush action is needed
         self.presort_actions = {}
-        
+
         # dictionary of PostSortRec objects, each 
         # one issues work during the flush within
         # a certain ordering.
         self.postsort_actions = {}
-        
+
         # a set of 2-tuples, each containing two
         # PostSortRec objects where the second
         # is dependent on the first being executed
         # first
         self.dependencies = set()
-        
+
         # dictionary of InstanceState-> (isdelete, listonly)
         # tuples, indicating if this state is to be deleted
         # or insert/updated, or just refreshed
         self.states = {}
-    
+
         # tracks InstanceStates which will be receiving
         # a "post update" call.  Keys are mappers,
         # values are a set of states and a set of the 
         # columns which should be included in the update.
         self.post_update_states = util.defaultdict(lambda: (set(), set()))
-        
+
     @property
     def has_work(self):
         return bool(self.states)
@@ -132,23 +132,23 @@ class UOWTransaction(object):
     def is_deleted(self, state):
         """return true if the given state is marked as deleted 
         within this uowtransaction."""
-        
+
         return state in self.states and self.states[state][0]
-    
+
     def memo(self, key, callable_):
         if key in self.attributes:
             return self.attributes[key]
         else:
             self.attributes[key] = ret = callable_()
             return ret
-            
+
     def remove_state_actions(self, state):
         """remove pending actions for a state from the uowtransaction."""
-        
+
         isdelete = self.states[state][0]
-        
+
         self.states[state] = (isdelete, True)
-        
+
     def get_attribute_history(self, state, key, passive=True):
         """facade to attributes.get_state_history(), including caching of results."""
 
@@ -157,7 +157,7 @@ class UOWTransaction(object):
         # cache the objects, not the states; the strong reference here
         # prevents newly loaded objects from being dereferenced during the
         # flush process
-        
+
         if hashkey in self.attributes:
             history, state_history, cached_passive = self.attributes[hashkey]
             # if the cached lookup was "passive" and now 
@@ -180,17 +180,17 @@ class UOWTransaction(object):
             else:
                 state_history = history
             self.attributes[hashkey] = (history, state_history, passive)
-        
+
         return state_history
-    
+
     def has_dep(self, processor):
         return (processor, True) in self.presort_actions
-        
+
     def register_preprocessor(self, processor, fromparent):
         key = (processor, fromparent)
         if key not in self.presort_actions:
             self.presort_actions[key] = Preprocess(processor, fromparent)
-            
+
     def register_object(self, state, isdelete=False, 
                             listonly=False, cancel_delete=False,
                             operation=None, prop=None):
@@ -203,56 +203,56 @@ class UOWTransaction(object):
 
         if state not in self.states:
             mapper = state.manager.mapper
-            
+
             if mapper not in self.mappers:
                 mapper._per_mapper_flush_actions(self)
-            
+
             self.mappers[mapper].add(state)
             self.states[state] = (isdelete, listonly)
         else:
             if not listonly and (isdelete or cancel_delete):
                 self.states[state] = (isdelete, False)
         return True
-        
+
     def issue_post_update(self, state, post_update_cols):
         mapper = state.manager.mapper.base_mapper
         states, cols = self.post_update_states[mapper]
         states.add(state)
         cols.update(post_update_cols)
-    
+
     @util.memoized_property
     def _mapper_for_dep(self):
         """return a dynamic mapping of (Mapper, DependencyProcessor) to 
         True or False, indicating if the DependencyProcessor operates 
         on objects of that Mapper.
-        
+
         The result is stored in the dictionary persistently once
         calculated.
-        
+
         """
         return util.PopulateDict(
                     lambda tup:tup[0]._props.get(tup[1].key) is tup[1].prop
                 )
-    
+
     def filter_states_for_dep(self, dep, states):
         """Filter the given list of InstanceStates to those relevant to the 
         given DependencyProcessor.
-        
+
         """
         mapper_for_dep = self._mapper_for_dep
         return [s for s in states if mapper_for_dep[(s.manager.mapper, dep)]]
-        
+
     def states_for_mapper_hierarchy(self, mapper, isdelete, listonly):
         checktup = (isdelete, listonly)
         for mapper in mapper.base_mapper.self_and_descendants:
             for state in self.mappers[mapper]:
                 if self.states[state] == checktup:
                     yield state
-    
+
     def _generate_actions(self):
         """Generate the full, unsorted collection of PostSortRecs as
         well as dependency pairs for this UOWTransaction.
-        
+
         """
         # execute presort_actions, until all states
         # have been processed.   a presort_action might
@@ -269,7 +269,7 @@ class UOWTransaction(object):
         self.cycles = cycles = topological.find_cycles(
                                         self.dependencies, 
                                         self.postsort_actions.values())
-        
+
         if cycles:
             # if yes, break the per-mapper actions into
             # per-state actions
@@ -294,7 +294,7 @@ class UOWTransaction(object):
                     self.dependencies.remove(edge)
                     for dep in convert[edge[1]]:
                         self.dependencies.add((edge[0], dep))
-        
+
         return set([a for a in self.postsort_actions.values()
                     if not a.disabled
                     ]
@@ -302,13 +302,13 @@ class UOWTransaction(object):
 
     def execute(self):
         postsort_actions = self._generate_actions()
-        
+
         #sort = topological.sort(self.dependencies, postsort_actions)
         #print "--------------"
         #print self.dependencies
         #print list(sort)
         #print "COUNT OF POSTSORT ACTIONS", len(postsort_actions)
-        
+
         # execute
         if self.cycles:
             for set_ in topological.sort_as_subsets(
@@ -322,14 +322,14 @@ class UOWTransaction(object):
                                     self.dependencies, 
                                     postsort_actions):
                 rec.execute(self)
-            
-            
+
+
     def finalize_flush_changes(self):
         """mark processed objects as clean / deleted after a successful flush().
 
         this method is called within the flush() method after the
         execute() method has succeeded and the transaction has been committed.
-        
+
         """
         for state, (isdelete, listonly) in self.states.iteritems():
             if isdelete:
@@ -348,18 +348,18 @@ class IterateMappersMixin(object):
             )
         else:
             return self.dependency_processor.mapper.self_and_descendants
-    
+
 class Preprocess(IterateMappersMixin):
     def __init__(self, dependency_processor, fromparent):
         self.dependency_processor = dependency_processor
         self.fromparent = fromparent
         self.processed = set()
         self.setup_flush_actions = False
-    
+
     def execute(self, uow):
         delete_states = set()
         save_states = set()
-        
+
         for mapper in self._mappers(uow):
             for state in uow.mappers[mapper].difference(self.processed):
                 (isdelete, listonly) = uow.states[state]
@@ -375,7 +375,7 @@ class Preprocess(IterateMappersMixin):
         if save_states:
             self.dependency_processor.presort_saves(uow, save_states)
             self.processed.update(save_states)
-        
+
         if (delete_states or save_states):
             if not self.setup_flush_actions and (
                     self.dependency_processor.\
@@ -391,7 +391,7 @@ class Preprocess(IterateMappersMixin):
 
 class PostSortRec(object):
     disabled = False
-    
+
     def __new__(cls, uow, *args):
         key = (cls, ) + args
         if key in uow.postsort_actions:
@@ -401,10 +401,10 @@ class PostSortRec(object):
                                     ret = \
                                     object.__new__(cls)
             return ret
-    
+
     def execute_aggregate(self, uow, recs):
         self.execute(uow)
-        
+
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
@@ -417,7 +417,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
         self.delete = delete
         self.fromparent = fromparent
         uow.deps[dependency_processor.parent.base_mapper].add(dependency_processor)
-        
+
     def execute(self, uow):
         states = self._elements(uow)
         if self.delete:
@@ -454,20 +454,20 @@ class IssuePostUpdate(PostSortRec):
     def execute(self, uow):
         states, cols = uow.post_update_states[self.mapper]
         states = [s for s in states if uow.states[s][0] == self.isdelete]
-        
+
         self.mapper._post_update(states, uow, cols)
 
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
         assert mapper is mapper.base_mapper
-        
+
     def execute(self, uow):
         self.mapper._save_obj(
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow
         )
-    
+
     def per_state_flush_actions(self, uow):
         states = list(uow.states_for_mapper_hierarchy(self.mapper, False, False))
         for rec in self.mapper._per_state_flush_actions(
@@ -475,11 +475,11 @@ class SaveUpdateAll(PostSortRec):
                             states, 
                             False):
             yield rec
-            
+
         for dep in uow.deps[self.mapper]:
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, False)
-        
+
 class DeleteAll(PostSortRec):
     def __init__(self, uow, mapper):
         self.mapper = mapper
@@ -498,7 +498,7 @@ class DeleteAll(PostSortRec):
                             states, 
                             True):
             yield rec
-            
+
         for dep in uow.deps[self.mapper]:
             states_for_prop = uow.filter_states_for_dep(dep, states)
             dep.per_state_flush_actions(uow, states_for_prop, True)
@@ -531,12 +531,12 @@ class ProcessState(PostSortRec):
             mapperutil.state_str(self.state),
             self.delete
         )
-        
+
 class SaveUpdateState(PostSortRec):
     def __init__(self, uow, state, mapper):
         self.state = state
         self.mapper = mapper
-        
+
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
         mapper = self.mapper
@@ -559,7 +559,7 @@ class DeleteState(PostSortRec):
     def __init__(self, uow, state, mapper):
         self.state = state
         self.mapper = mapper
-        
+
     def execute_aggregate(self, uow, recs):
         cls_ = self.__class__
         mapper = self.mapper

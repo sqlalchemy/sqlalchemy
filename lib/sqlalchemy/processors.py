@@ -46,7 +46,7 @@ try:
             return UnicodeResultProcessor(encoding, errors).process
         else:
             return UnicodeResultProcessor(encoding).process
-    
+
     def to_decimal_processor_factory(target_class, scale=10):
         # Note that the scale argument is not taken into account for integer
         # values in the C implementation while it is in the Python one. 

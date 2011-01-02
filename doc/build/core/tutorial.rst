@@ -1078,7 +1078,7 @@ Finally, we're back to INSERT for some more detail. The :func:`~sqlalchemy.sql.e
 
     # insert from a function
     users.insert().values(id=12, name=func.upper('jack'))
-    
+
     # insert from a concatenation expression
     addresses.insert().values(email_address = name + '@' + host)
 
@@ -1088,7 +1088,7 @@ Finally, we're back to INSERT for some more detail. The :func:`~sqlalchemy.sql.e
         users.insert().values(name=func.upper('jack')),
         fullname='Jack Jones'
     )
-    
+
 :func:`~sqlalchemy.sql.expression.bindparam` constructs can be passed, however the names of the table's columns are reserved for the "automatic" generation of bind names::
 
     users.insert().values(id=bindparam('_id'), name=bindaparam('_name'))
@@ -1102,7 +1102,7 @@ Finally, we're back to INSERT for some more detail. The :func:`~sqlalchemy.sql.e
             {'_id':3, '_name':'name3'},
         ]
     )
-    
+
 Updates work a lot like INSERTS, except there is an additional WHERE clause that can be specified:
 
 .. sourcecode:: pycon+sql

@@ -76,27 +76,27 @@ class PGIdentifierPreparer_pg8000(PGIdentifierPreparer):
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value.replace('%', '%%')
 
-    
+
 class PGDialect_pg8000(PGDialect):
     driver = 'pg8000'
 
     supports_unicode_statements = True
-    
+
     supports_unicode_binds = True
-    
+
     default_paramstyle = 'format'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
-    
+
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
             sqltypes.Numeric : _PGNumeric,
         }
     )
-    
+
     @classmethod
     def dbapi(cls):
         return __import__('pg8000').dbapi

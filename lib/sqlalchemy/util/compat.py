@@ -52,7 +52,7 @@ else:
 # a controversial feature, required by MySQLdb currently
 def buffer(x):
     return x 
-    
+
 # Py2K
 buffer = getattr(__builtin__, 'buffer', buffer)
 # end Py2K
@@ -136,7 +136,7 @@ except ImportError:
 class _probe(dict):
     def __missing__(self, key):
         return 1
-        
+
 try:
     try:
         _probe()['missing']

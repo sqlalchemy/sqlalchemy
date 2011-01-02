@@ -5,7 +5,7 @@
 Collection Configuration and Techniques
 =======================================
 
-The :func:`.relationship` function defines a linkage between two classes.   
+The :func:`.relationship` function defines a linkage between two classes.
 When the linkage defines a one-to-many or many-to-many relationship, it's
 represented as a Python collection when objects are loaded and manipulated.
 This section presents additional information about collection configuration
@@ -335,21 +335,21 @@ on :class:`.MappedCollection` are already instrumented - calling them
 from within an already instrumented call can cause events to be fired off
 repeatedly, or inappropriately, leading to internal state corruption in
 rare cases::
-    
+
     from sqlalchemy.orm.collections import MappedCollection,\
                                         collection
 
     class MyMappedCollection(MappedCollection):
         """Use @internally_instrumented when your methods 
         call down to already-instrumented methods.
-        
+
         """
-        
+
         @collection.internally_instrumented
         def __setitem__(self, key, value, _sa_initiator=None):
             # do something with key, value
             super(MyMappedCollection, self).__setitem__(key, value, _sa_initiator)
-        
+
         @collection.internally_instrumented
         def __delitem__(self, key, _sa_initiator=None):
             # do something with key

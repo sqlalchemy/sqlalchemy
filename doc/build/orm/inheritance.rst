@@ -261,7 +261,7 @@ what's specified in the :meth:`.Session.query`, :meth:`.Query.filter`, or
 :meth:`.Query.select_from` methods::
 
     session.query(Manager.manager_data).select_from(manager)
-    
+
     session.query(engineer.c.id).filter(engineer.c.engineer_info==manager.c.manager_data)
 
 Creating Joins to Specific Subtypes
@@ -530,17 +530,17 @@ to the parent:
                     with_polymorphic=('*', pjoin), 
                     polymorphic_on=pjoin.c.type, 
                     polymorphic_identity='employee')
-                    
+
     mapper(Manager, managers_table, 
                     inherits=employee_mapper, 
                     concrete=True, 
                     polymorphic_identity='manager')
-                    
+
     mapper(Engineer, engineers_table, 
                     inherits=employee_mapper, 
                     concrete=True, 
                     polymorphic_identity='engineer')
-                    
+
     mapper(Company, companies, properties={
         'employees': relationship(Employee)
     })

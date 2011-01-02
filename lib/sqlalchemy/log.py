@@ -45,29 +45,29 @@ def class_logger(cls, enable=False):
     cls._should_log_info = lambda self: logger.isEnabledFor(logging.INFO)
     cls.logger = logger
     _logged_classes.add(cls)
-    
+
 
 class Identified(object):
     logging_name = None
-    
+
     def _should_log_debug(self):
         return self.logger.isEnabledFor(logging.DEBUG)
-    
+
     def _should_log_info(self):
         return self.logger.isEnabledFor(logging.INFO)
 
 class InstanceLogger(object):
     """A logger adapter (wrapper) for :class:`.Identified` subclasses.
-    
+
     This allows multiple instances (e.g. Engine or Pool instances)
     to share a logger, but have its verbosity controlled on a 
     per-instance basis.
 
     The basic functionality is to return a logging level
     which is based on an instance's echo setting.
-    
+
     Default implementation is:
-    
+
     'debug' -> logging.DEBUG
     True    -> logging.INFO
     False   -> Effective level of underlying logger
@@ -86,7 +86,7 @@ class InstanceLogger(object):
     def __init__(self, echo, name):
         self.echo = echo
         self.logger = logging.getLogger(name)
-        
+
         # if echo flag is enabled and no handlers,
         # add a handler to the list
         if self._echo_map[echo] <= logging.INFO \
@@ -98,17 +98,17 @@ class InstanceLogger(object):
     #
     def debug(self, msg, *args, **kwargs):
         """Delegate a debug call to the underlying logger."""
-        
+
         self.log(logging.DEBUG, msg, *args, **kwargs)
 
     def info(self, msg, *args, **kwargs):
         """Delegate an info call to the underlying logger."""
-        
+
         self.log(logging.INFO, msg, *args, **kwargs)
 
     def warning(self, msg, *args, **kwargs):
         """Delegate a warning call to the underlying logger."""
-        
+
         self.log(logging.WARNING, msg, *args, **kwargs)
 
     warn = warning
@@ -121,27 +121,27 @@ class InstanceLogger(object):
 
     def exception(self, msg, *args, **kwargs):
         """Delegate an exception call to the underlying logger."""
-        
+
         kwargs["exc_info"] = 1
         self.log(logging.ERROR, msg, *args, **kwargs)
 
     def critical(self, msg, *args, **kwargs):
         """Delegate a critical call to the underlying logger."""
-        
+
         self.log(logging.CRITICAL, msg, *args, **kwargs)
 
     def log(self, level, msg, *args, **kwargs):
         """Delegate a log call to the underlying logger.
-        
+
         The level here is determined by the echo
         flag as well as that of the underlying logger, and
         logger._log() is called directly.
-        
+
         """
 
         # inline the logic from isEnabledFor(),
         # getEffectiveLevel(), to avoid overhead.
-        
+
         if self.logger.manager.disable >= level:
             return
 
@@ -154,14 +154,14 @@ class InstanceLogger(object):
 
     def isEnabledFor(self, level):
         """Is this logger enabled for level 'level'?"""
-        
+
         if self.logger.manager.disable >= level:
             return False
         return level >= self.getEffectiveLevel()
 
     def getEffectiveLevel(self):
         """What's the effective level for this logger?"""
-        
+
         level = self._echo_map[self.echo]
         if level == logging.NOTSET:
             level = self.logger.getEffectiveLevel()
@@ -176,9 +176,9 @@ def instance_logger(instance, echoflag=None):
     else:
         name = "%s.%s" % (instance.__class__.__module__,
                   instance.__class__.__name__)
-        
+
     instance._echo = echoflag
-    
+
     if echoflag in (False, None):
         # if no echo setting or False, return a Logger directly,
         # avoiding overhead of filtering
@@ -188,9 +188,9 @@ def instance_logger(instance, echoflag=None):
         # which checks the flag, overrides normal log 
         # levels by calling logger._log()
         logger = InstanceLogger(echoflag, name)
-            
+
     instance.logger = logger
-    
+
 class echo_property(object):
     __doc__ = """\
     When ``True``, enable log output for this element.

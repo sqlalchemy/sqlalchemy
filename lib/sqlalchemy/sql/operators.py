@@ -12,7 +12,7 @@
 from operator import (
     and_, or_, inv, add, mul, sub, mod, truediv, lt, le, ne, gt, ge, eq, neg
     )
-    
+
 # Py2K
 from operator import (div,)
 # end Py2K
@@ -101,7 +101,7 @@ def is_commutative(op):
     return op in _commutative
 
 _associative = _commutative.union([concat_op, and_, or_])
-    
+
 
 _smallest = symbol('_smallest')
 _largest = symbol('_largest')

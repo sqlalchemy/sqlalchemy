@@ -31,7 +31,7 @@ class MSDialect_adodbapi(MSDialect):
     supports_unicode = sys.maxunicode == 65535
     supports_unicode_statements = True
     driver = 'adodbapi'
-    
+
     @classmethod
     def import_dbapi(cls):
         import adodbapi as module

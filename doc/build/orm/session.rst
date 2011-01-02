@@ -91,10 +91,10 @@ to acquire connection resources.   This association can
 be set up as in the example above, using the ``bind`` argument.   You 
 can also associate a :class:`.Engine` with an existing :func:`.sessionmaker` 
 using the :meth:`.sessionmaker.configure` method::
-    
+
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import create_engine
-    
+
     # configure Session class with desired options
     Session = sessionmaker()
 
@@ -111,7 +111,7 @@ you can also associate individual :class:`.Session` objects with an :class:`.Eng
 on each invocation::
 
     session = Session(bind=engine)
-    
+
 ...or directly with a :class:`.Connection`::
 
     conn = engine.connect()
@@ -167,12 +167,12 @@ Frequently Asked Questions
     that point on your other modules say "from mypackage import Session". That
     way, everyone else just uses :class:`.Session()`,
     and the configuration of that session is controlled by that central point.
-    
+
     If your application starts up, does imports, but does not know what
     database it's going to be connecting to, you can bind the
     :class:`.Session` at the "class" level to the
     engine later on, using ``configure()``.
-    
+
     In the examples in this section, we will frequently show the
     :func:`.sessionmaker` being created right above the line where we actually
     invoke :class:`~sqlalchemy.orm.session.Session()`. But that's just for
@@ -189,7 +189,7 @@ Frequently Asked Questions
     then remains in use for the lifespan of a particular database
     conversation, which includes not just the initial loading of objects but
     throughout the whole usage of those instances.
-    
+
     Objects become detached if their owning session is discarded. They are
     still functional in the detached state if the user has ensured that their
     state has not been expired before detachment, but they will not be able to
@@ -197,14 +197,14 @@ Frequently Asked Questions
     to consider persisted objects as an extension of the state of a particular
     :class:`.Session`, and to keep that session around until all referenced
     objects have been discarded.
-    
+
     An exception to this is when objects are placed in caches or otherwise
     shared among threads or processes, in which case their detached state can
     be stored, transmitted, or shared. However, the state of detached objects
     should still be transferred back into a new :class:`.Session` using
     :meth:`.Session.add` or :meth:`.Session.merge` before working with the
     object (or in the case of merge, its state) again.
-    
+
     It is also very common that a :class:`.Session` as well as its associated
     objects are only referenced by a single thread.  Sharing objects between
     threads is most safely accomplished by sharing their state among multiple
@@ -212,7 +212,7 @@ Frequently Asked Questions
     :class:`.Session` per thread, :meth:`.Session.merge` to transfer state
     between threads.   This pattern is not a strict requirement by any means, 
     but it has the least chance of introducing concurrency issues.
-    
+
     To help with the recommended :class:`.Session` -per-thread,
     :class:`.Session` -per-set-of-objects patterns, the
     :func:`.scoped_session` function is provided which produces a
@@ -233,10 +233,10 @@ Frequently Asked Questions
     map and see that the object is already there. It's only when you say
     ``query.get({some primary key})`` that the
     :class:`~sqlalchemy.orm.session.Session` doesn't have to issue a query.
-    
+
     Additionally, the Session stores object instances using a weak reference
     by default. This also defeats the purpose of using the Session as a cache.
-    
+
     The :class:`.Session` is not designed to be a
     global object from which everyone consults as a "registry" of objects.
     That's more the job of a **second level cache**.   SQLAlchemy provides
@@ -278,7 +278,7 @@ Frequently Asked Questions
     sharing the session with those threads, but you also will have implemented
     a proper locking scheme (or your graphical framework does) so that those
     threads do not collide.
-    
+
     A multithreaded application is usually going to want to make usage of
     :func:`.scoped_session` to transparently manage sessions per thread.
     More on this at :ref:`unitofwork_contextual`.
@@ -416,33 +416,33 @@ Merge Tips
 
 :meth:`~.Session.merge` is an extremely useful method for many purposes.  However,
 it deals with the intricate border between objects that are transient/detached and
-those that are persistent, as well as the automated transferrence of state.  
+those that are persistent, as well as the automated transferrence of state.
 The wide variety of scenarios that can present themselves here often require a
 more careful approach to the state of objects.   Common problems with merge usually involve 
-some unexpected state regarding the object being passed to :meth:`~.Session.merge`.   
+some unexpected state regarding the object being passed to :meth:`~.Session.merge`.
 
 Lets use the canonical example of the User and Address objects::
 
     class User(Base):
         __tablename__ = 'user'
-    
+
         id = Column(Integer, primary_key=True)
         name = Column(String(50), nullable=False)
         addresses = relationship("Address", backref="user")
-    
+
     class Address(Base):
         __tablename__ = 'address'
 
         id = Column(Integer, primary_key=True)
         email_address = Column(String(50), nullable=False)
         user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-        
+
 Assume a ``User`` object with one ``Address``, already persistent::
 
     >>> u1 = User(name='ed', addresses=[Address(email_address='ed@ed.com')])
     >>> session.add(u1)
     >>> session.commit()
-    
+
 We now create ``a1``, an object outside the session, which we'd like
 to merge on top of the existing ``Address``::
 
@@ -450,7 +450,7 @@ to merge on top of the existing ``Address``::
     >>> a1 = Address(id=existing_a1.id)
 
 A surprise would occur if we said this::
-    
+
     >>> a1.user = u1
     >>> a1 = session.merge(a1)
     >>> session.commit()
@@ -508,7 +508,7 @@ is equivalent to::
     >>> existing_a1.id = existing_a1.id
     >>> existing_a1.user_id = u1.id
     >>> existing_a1.user = None
-    
+
 Where above, both ``user_id`` and ``user`` are assigned to, and change events
 are emitted for both.  The ``user`` association
 takes precedence, and None is applied to ``user_id``, causing a failure.
@@ -517,11 +517,11 @@ Most :meth:`~.Session.merge` issues can be examined by first checking -
 is the object prematurely in the session ? 
 
 .. sourcecode:: python+sql
-    
+
     >>> a1 = Address(id=existing_a1, user_id=user.id)
     >>> assert a1 not in session
     >>> a1 = session.merge(a1)
-    
+
 Or is there state on the object that we don't want ?   Examining ``__dict__``
 is a quick way to check::
 
@@ -537,7 +537,7 @@ is a quick way to check::
     >>> a1 = session.merge(a1)
     >>> # success
     >>> session.commit()
-    
+
 Deleting
 --------
 
@@ -900,14 +900,14 @@ place::
     >>> session.add(o1)
     >>> o1 in session
     True
-    
+
     >>> i1 = Item()
     >>> i1.order = o1
     >>> i1 in o1.orders
     True
     >>> i1 in session
     True
-    
+
 This behavior can be disabled as of 0.6.5 using the ``cascade_backrefs`` flag::
 
     mapper(Order, order_table, properties={
@@ -1241,7 +1241,7 @@ entire database interaction is rolled back::
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import create_engine
     from unittest import TestCase
-    
+
     # global application scope.  create Session class, engine
     Session = sessionmaker()
 
@@ -1254,23 +1254,23 @@ entire database interaction is rolled back::
 
             # begin a non-ORM transaction
             self.trans = connection.begin()
-    
+
             # bind an individual Session to the connection
             self.session = Session(bind=self.connection)
-    
+
         def test_something(self):
-            # use the session in tests.   
-            
+            # use the session in tests.
+
             self.session.add(Foo())
             self.session.commit()
-    
+
         def tearDown(self):
             # rollback - everything that happened with the
             # Session above (including calls to commit()) 
             # is rolled back.
             self.trans.rollback()
             self.session.close()
-            
+
 Above, we issue :meth:`.Session.commit` as well as
 :meth:`.Transaction.rollback`. This is an example of where we take advantage
 of the :class:`.Connection` object's ability to maintain *subtransactions*, or
@@ -1414,7 +1414,7 @@ Contextual Session API
 
 .. autoclass:: sqlalchemy.util.ScopedRegistry
     :members:
-    
+
 .. autoclass:: sqlalchemy.util.ThreadLocalRegistry
 
 .. _session_partitioning:
@@ -1490,7 +1490,7 @@ those described in :ref:`events_orm_toplevel`.
 
 .. autoclass:: History
     :members:
-    
+
 .. attribute:: sqlalchemy.orm.attributes.PASSIVE_NO_INITIALIZE
 
    Symbol indicating that loader callables should

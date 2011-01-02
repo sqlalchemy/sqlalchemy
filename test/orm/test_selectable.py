@@ -46,12 +46,12 @@ class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
             "could not assemble any primary key columns",
             mapper, Subset, selectable
         )
-        
+
     @testing.resolve_artifact_names
     def test_no_selects(self):
         subset_select = select([common.c.id, common.c.data])
         assert_raises(sa.exc.InvalidRequestError, mapper, Subset, subset_select)
-        
+
     @testing.resolve_artifact_names
     def test_basic(self):
         subset_select = select([common.c.id, common.c.data]).alias()

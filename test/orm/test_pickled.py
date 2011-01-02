@@ -18,7 +18,7 @@ User, EmailUser = None, None
 
 class PickleTest(_fixtures.FixtureTest):
     run_inserts = None
-    
+
     @testing.resolve_artifact_names
     def test_transient(self):
         mapper(User, users, properties={
@@ -40,7 +40,7 @@ class PickleTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_no_mappers(self):
-        
+
         umapper = mapper(User, users)
         u1 = User(name='ed')
         u1_pickled = pickle.dumps(u1, -1)
@@ -67,21 +67,21 @@ class PickleTest(_fixtures.FixtureTest):
         # this fails unless the InstanceState
         # compiles the mapper
         eq_(str(u1), "User(name='ed')")
-        
+
     @testing.resolve_artifact_names
     def test_serialize_path(self):
         umapper = mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
         amapper = mapper(Address, addresses)
-        
+
         # this is a "relationship" path with mapper, key, mapper, key
         p1 = (umapper, 'addresses', amapper, 'email_address')
         eq_(
             interfaces.deserialize_path(interfaces.serialize_path(p1)),
             p1
         )
-        
+
         # this is a "mapper" path with mapper, key, mapper, no key
         # at the end.
         p2 = (umapper, 'addresses', amapper, )
@@ -89,14 +89,14 @@ class PickleTest(_fixtures.FixtureTest):
             interfaces.deserialize_path(interfaces.serialize_path(p2)),
             p2
         )
-        
+
         # test a blank path
         p3 = ()
         eq_(
             interfaces.deserialize_path(interfaces.serialize_path(p3)),
             p3
         )
-        
+
     @testing.resolve_artifact_names
     def test_class_deferred_cols(self):
         mapper(User, users, properties={
@@ -134,7 +134,7 @@ class PickleTest(_fixtures.FixtureTest):
             'addresses':relationship(Address, lazy='noload')
         })
         mapper(Address, addresses)
-        
+
         sess = Session()
         u1 = User(name='ed', addresses=[
                         Address(
@@ -145,16 +145,16 @@ class PickleTest(_fixtures.FixtureTest):
         sess.add(u1)
         sess.commit()
         sess.close()
-        
+
         u1 = sess.query(User).options(
                                 lazyload(User.addresses)
                             ).first()
         u2 = pickle.loads(pickle.dumps(u1))
-        
+
         sess = Session()
         sess.add(u2)
         assert u2.addresses
-        
+
     @testing.resolve_artifact_names
     def test_instance_deferred_cols(self):
         mapper(User, users, properties={
@@ -192,11 +192,11 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2.name, 'ed')
         assert 'addresses' not in u2.__dict__
         ad = u2.addresses[0]
-        
+
         # mapper options now transmit over merge(),
         # new as of 0.6, so email_address is deferred.
-        assert 'email_address' not in ad.__dict__  
-        
+        assert 'email_address' not in ad.__dict__
+
         eq_(ad.email_address, 'ed@bar.com')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
@@ -218,7 +218,7 @@ class PickleTest(_fixtures.FixtureTest):
         for protocol in -1, 0, 1, 2:
             u2 = pickle.loads(pickle.dumps(u1, protocol))
             eq_(u1, u2)
-        
+
     @testing.resolve_artifact_names
     def test_options_with_descriptors(self):
         mapper(User, users, properties={
@@ -241,17 +241,17 @@ class PickleTest(_fixtures.FixtureTest):
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
             eq_(opt.key, opt2.key)
-        
+
         u1 = sess.query(User).options(opt).first()
-        
+
         u2 = pickle.loads(pickle.dumps(u1))
-        
+
     def test_collection_setstate(self):
         """test a particular cycle that requires CollectionAdapter 
         to not rely upon InstanceState to deserialize."""
-        
+
         global Child1, Child2, Parent, Screen
-        
+
         m = MetaData()
         c1 = Table('c1', m, 
             Column('parent_id', String, 
@@ -272,7 +272,7 @@ class PickleTest(_fixtures.FixtureTest):
 
         class Parent(_base.ComparableEntity):
             pass
-        
+
         mapper(Parent, p, properties={
             'children1':relationship(Child1),
             'children2':relationship(Child2)
@@ -289,7 +289,7 @@ class PickleTest(_fixtures.FixtureTest):
         screen1.errors = [obj.children1, obj.children2]
         screen2 = Screen(Child2(), screen1)
         pickle.loads(pickle.dumps(screen2))
-        
+
 class PolymorphicDeferredTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -339,7 +339,7 @@ class CustomSetupTeardownTest(_fixtures.FixtureTest):
     def test_rebuild_state(self):
         """not much of a 'test', but illustrate how to 
         remove instance-level state before pickling.
-        
+
         """
         mapper(User, users)
 
@@ -349,12 +349,12 @@ class CustomSetupTeardownTest(_fixtures.FixtureTest):
         u2 = pickle.loads(pickle.dumps(u1))
         attributes.manager_of_class(User).setup_instance(u2)
         assert attributes.instance_state(u2)
-    
+
 class UnpickleSA05Test(_fixtures.FixtureTest):
     """test loading picklestrings from SQLA 0.5."""
-    
+
     __requires__ = ('python2',)
-    
+
     @testing.resolve_artifact_names
     def test_one(self):
         mapper(User, users, properties={

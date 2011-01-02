@@ -64,7 +64,7 @@ class UnicodeTest(_base.MappedTest):
             uni_type = VARCHAR(50, collation='utf8_unicode_ci')
         else:
             uni_type = sa.Unicode(50)
-        
+
         Table('uni_t1', metadata,
             Column('id',  Integer, primary_key=True,
                    test_needs_autoincrement=True),
@@ -94,7 +94,7 @@ class UnicodeTest(_base.MappedTest):
         session.commit()
 
         self.assert_(t1.txt == txt)
-    
+
     @testing.resolve_artifact_names
     def test_relationship(self):
         mapper(Test, uni_t1, properties={
@@ -226,17 +226,17 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
 
     @testing.resolve_artifact_names
     def test_binary_equality(self):
-        
+
         # Py3K
         #data = b"this is some data"
         # Py2K
         data = "this is some data"
         # end Py2K
-        
+
         mapper(Foo, t1)
-        
+
         s = create_session()
-        
+
         f1 = Foo(data=data)
         s.add(f1)
         s.flush()
@@ -251,8 +251,8 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
         def go():
             s.flush()
         self.assert_sql_count(testing.db, go, 0)
-        
-        
+
+
 
 
 
@@ -491,12 +491,12 @@ class PassiveDeletesTest(_base.MappedTest):
 
         assert mytable.count().scalar() == 0
         assert myothertable.count().scalar() == 0
-    
+
     @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     @testing.resolve_artifact_names
     def test_backwards_pd(self):
         """Test that passive_deletes=True disables a delete from an m2o.
-        
+
         This is not the usual usage and it now raises a warning, but test
         that it works nonetheless.
 
@@ -505,7 +505,7 @@ class PassiveDeletesTest(_base.MappedTest):
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
         mapper(MyClass, mytable)
-        
+
         session = create_session()
         mc = MyClass()
         mco = MyOtherClass()
@@ -515,15 +515,15 @@ class PassiveDeletesTest(_base.MappedTest):
 
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 1
-        
+
         session.expire(mco, ['myclass'])
         session.delete(mco)
         session.flush()
-        
+
         # mytable wasn't deleted, is the point.
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 0
-    
+
     @testing.resolve_artifact_names
     def test_aaa_m2o_emits_warning(self):
         mapper(MyOtherClass, myothertable, properties={
@@ -531,7 +531,7 @@ class PassiveDeletesTest(_base.MappedTest):
         })
         mapper(MyClass, mytable)
         assert_raises(sa.exc.SAWarning, sa.orm.configure_mappers)
-        
+
 class ExtraPassiveDeletesTest(_base.MappedTest):
     __requires__ = ('foreign_keys',)
 
@@ -628,19 +628,19 @@ class ColumnCollisionTest(_base.MappedTest):
             Column('book_id', String(50)),
             Column('title', String(50))
         )
-    
+
     @testing.resolve_artifact_names
     def test_naming(self):
         class Book(_base.ComparableEntity):
             pass
-    
+
         mapper(Book, book)
         sess = create_session()
-        
+
         b1 = Book(book_id='abc', title='def')
         sess.add(b1)
         sess.flush()
-        
+
         b1.title = 'ghi'
         sess.flush()
         sess.close()
@@ -648,9 +648,9 @@ class ColumnCollisionTest(_base.MappedTest):
             sess.query(Book).first(),
             Book(book_id='abc', title='ghi')
         )
-        
-        
-        
+
+
+
 class DefaultTest(_base.MappedTest):
     """Exercise mappings on columns with DefaultGenerators.
 
@@ -847,12 +847,12 @@ class ColumnPropertyTest(_base.MappedTest):
             Column('id', Integer, ForeignKey('data.id'), primary_key=True),
             Column('c', String(50)),
             )
-            
+
     @classmethod
     def setup_mappers(cls):
         class Data(_base.BasicEntity):
             pass
-        
+
     @testing.resolve_artifact_names
     def test_refreshes(self):
         mapper(Data, data, properties={
@@ -865,7 +865,7 @@ class ColumnPropertyTest(_base.MappedTest):
         m = mapper(Data, data)
         m.add_property('aplusb', column_property(data.c.a + literal_column("' '") + data.c.b))
         self._test()
-    
+
     @testing.resolve_artifact_names
     def test_with_inheritance(self):
         class SubData(Data):
@@ -874,32 +874,32 @@ class ColumnPropertyTest(_base.MappedTest):
             'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
         })
         mapper(SubData, subdata, inherits=Data)
-        
+
         sess = create_session()
         sd1 = SubData(a="hello", b="there", c="hi")
         sess.add(sd1)
         sess.flush()
         eq_(sd1.aplusb, "hello there")
-        
+
     @testing.resolve_artifact_names
     def _test(self):
         sess = create_session()
-        
+
         d1 = Data(a="hello", b="there")
         sess.add(d1)
         sess.flush()
-        
+
         eq_(d1.aplusb, "hello there")
-        
+
         d1.b = "bye"
         sess.flush()
         eq_(d1.aplusb, "hello bye")
-        
+
         d1.b = 'foobar'
         d1.aplusb = 'im setting this explicitly'
         sess.flush()
         eq_(d1.aplusb, "im setting this explicitly")
-    
+
 class OneToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -1372,29 +1372,29 @@ class SaveTest(_fixtures.FixtureTest):
                 assert instance is self.current_instance
 
         mapper(User, users, batch=False)
-        
+
         evt = Events()
         event.listen(User, "before_insert", evt.before_insert)
         event.listen(User, "after_insert", evt.after_insert)
-        
+
         u1 = User(name='user1')
         u2 = User(name='user2')
 
         session = create_session()
         session.add_all((u1, u2))
         session.flush()
-        
+
         u3 = User(name='user3')
         u4 = User(name='user4')
         u5 = User(name='user5')
-        
+
         session.add_all([u4, u5, u3])
         session.flush()
-        
+
         # test insert ordering is maintained
         assert names == ['user1', 'user2', 'user4', 'user5', 'user3']
         session.expunge_all()
-        
+
         sa.orm.clear_mappers()
 
         m = mapper(User, users)
@@ -1930,14 +1930,14 @@ class BooleanColTest(_base.MappedTest):
 
 class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
     """Test that objects with NULL identity keys aren't permitted to complete a flush.
-    
+
     User-defined callables that execute during a load may modify state
     on instances which results in their being autoflushed, before attributes
     are populated.  If the primary key identifiers are missing, an explicit assertion
     is needed to check that the object doesn't go through the flush process with
     no net changes and gets placed in the identity map with an incorrect 
     identity key.
-    
+
     """
     @classmethod
     def define_tables(cls, metadata):
@@ -1945,7 +1945,7 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
         )
-    
+
     @testing.resolve_artifact_names
     def test_flush_raises(self):
         class T1(_base.ComparableEntity):
@@ -1956,28 +1956,28 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
                 # before 'id' was even populated, i.e. a callable
                 # within an attribute_mapped_collection
                 self.__dict__.pop('id', None)
-                
+
                 # generate a change event, perhaps this occurs because
                 # someone wrote a broken attribute_mapped_collection that 
                 # inappropriately fires off change events when it should not,
                 # now we're dirty
                 self.data = 'foo bar'
-                
+
                 # blow away that change, so an UPDATE does not occur
                 # (since it would break)
                 self.__dict__.pop('data', None)
-                
+
                 # flush ! any lazyloader here would trigger
                 # autoflush, for example.
                 sess.flush()
-                
+
         mapper(T1, t1)
-        
+
         sess = Session()
         sess.add(T1(data='test', id=5))
         sess.commit()
         sess.close()
-        
+
         # make sure that invalid state doesn't get into the session
         # with the wrong key.  If the identity key is not NULL, at least
         # the population process would continue after the erroneous flush
@@ -1987,9 +1987,9 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
                               'flush is occuring at an inappropriate '
                               'time, such as during a load operation.',
                               sess.query(T1).first)
-        
-        
-    
+
+
+
 class RowSwitchTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -2096,7 +2096,7 @@ class RowSwitchTest(_base.MappedTest):
         assert o5 in sess.deleted
         assert o5.t7s[0] in sess.deleted
         assert o5.t7s[1] in sess.deleted
-        
+
         sess.add(o6)
         sess.flush()
 
@@ -2151,17 +2151,17 @@ class InheritingRowSwitchTest(_base.MappedTest):
 
         class C(P):
             pass
-    
+
     @testing.resolve_artifact_names
     def test_row_switch_no_child_table(self):
         mapper(P, parent)
         mapper(C, child, inherits=P)
-        
+
         sess = create_session()
         c1 = C(id=1, pdata='c1', cdata='c1')
         sess.add(c1)
         sess.flush()
-        
+
         # establish a row switch between c1 and c2.
         # c2 has no value for the "child" table
         c2 = C(id=1, pdata='c2')
@@ -2172,7 +2172,7 @@ class InheritingRowSwitchTest(_base.MappedTest):
             CompiledSQL("UPDATE parent SET pdata=:pdata WHERE parent.id = :parent_id",
                 {'pdata':'c2', 'parent_id':1}
             ),
-            
+
             # this fires as of [ticket:1362], since we synchronzize
             # PK/FKs on UPDATES.  c2 is new so the history shows up as
             # pure added, update occurs.  If a future change limits the
@@ -2181,8 +2181,8 @@ class InheritingRowSwitchTest(_base.MappedTest):
                 {'pid':1, 'child_id':1}
             )
         )
-        
-        
+
+
 
 class TransactionTest(_base.MappedTest):
     __requires__ = ('deferrable_constraints',)

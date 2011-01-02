@@ -25,7 +25,7 @@ class Employee(object):
         self.name = name
     def __repr__(self):
         return self.__class__.__name__ + " " + self.name
-        
+
 class Manager(Employee):
     def __init__(self, name, manager_data):
         self.name = name
@@ -33,7 +33,7 @@ class Manager(Employee):
     def __repr__(self):
         return self.__class__.__name__ + " " + \
                     self.name + " " +  self.manager_data
-    
+
 class Engineer(Employee):
     def __init__(self, name, engineer_info):
         self.name = name

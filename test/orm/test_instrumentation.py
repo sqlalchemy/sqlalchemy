@@ -651,16 +651,16 @@ class MiscTest(_base.ORMTest):
 
         a = A()
         assert not a.bs
-    
+
     def test_uninstrument(self):
         class A(object):pass
-        
+
         manager = instrumentation.register_class(A)
-        
+
         assert instrumentation.manager_of_class(A) is manager
         instrumentation.unregister_class(A)
         assert instrumentation.manager_of_class(A) is None
-        
+
     def test_compileonattr_rel_backref_a(self):
         m = MetaData()
         t1 = Table('t1', m,

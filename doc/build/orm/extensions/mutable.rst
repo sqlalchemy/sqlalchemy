@@ -10,7 +10,7 @@ API Reference
 
 .. autoclass:: Mutable
     :members:
-    
+
 .. autoclass:: MutableComposite
     :members:
 

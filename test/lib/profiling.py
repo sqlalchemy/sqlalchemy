@@ -41,7 +41,7 @@ def profiled(target=None, **target_opts):
     all_targets.add(target)
 
     filename = "%s.prof" % target
-    
+
     @decorator
     def decorate(fn, *args, **kw):
         if (target not in profile_config['targets'] and
@@ -50,7 +50,7 @@ def profiled(target=None, **target_opts):
 
         elapsed, load_stats, result = _profile(
             filename, fn, *args, **kw)
-        
+
         graphic = target_opts.get('graphic', profile_config['graphic'])
         if graphic:
             os.system("runsnake %s" % filename)
@@ -68,17 +68,17 @@ def profiled(target=None, **target_opts):
                     stats.print_stats(limit)
                 else:
                     stats.print_stats()
-            
+
                 print_callers = target_opts.get('print_callers', 
                                                 profile_config['print_callers'])
                 if print_callers:
                     stats.print_callers()
-            
+
                 print_callees = target_opts.get('print_callees', 
                                                 profile_config['print_callees'])
                 if print_callees:
                     stats.print_callees()
-                
+
         os.unlink(filename)
         return result
     return decorate
@@ -113,7 +113,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
         cextension = True
     except ImportError:
         cextension = False
-    
+
     while version_info:
         version = '.'.join([str(v) for v in version_info])
         if cextension and (version + "+cextension") in versions:
@@ -129,7 +129,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
     if count is None:
         print "Warning: no function call count specified for version: '%s'" % py_version
         return lambda fn: fn
-    
+
     @decorator
     def decorate(fn, *args, **kw):
         try:

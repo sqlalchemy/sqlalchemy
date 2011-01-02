@@ -88,10 +88,10 @@ RESERVED_WORDS = set([
     "within", "work", "writetext",
     ])
 
-        
+
 class _SybaseUnitypeMixin(object):
     """these types appear to return a buffer object."""
-    
+
     def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
@@ -99,7 +99,7 @@ class _SybaseUnitypeMixin(object):
             else:
                 return None
         return process
-    
+
 class UNICHAR(_SybaseUnitypeMixin, sqltypes.Unicode):
     __visit_name__ = 'UNICHAR'
 
@@ -114,7 +114,7 @@ class TINYINT(sqltypes.Integer):
 
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
-    
+
 class MONEY(sqltypes.TypeEngine):
     __visit_name__ = "MONEY"
 
@@ -123,7 +123,7 @@ class SMALLMONEY(sqltypes.TypeEngine):
 
 class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
     __visit_name__ = "UNIQUEIDENTIFIER"
-  
+
 class IMAGE(sqltypes.LargeBinary):
     __visit_name__ = 'IMAGE'
  
@@ -131,7 +131,7 @@ class IMAGE(sqltypes.LargeBinary):
 class SybaseTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_):
         return self.visit_IMAGE(type_)
-    
+
     def visit_boolean(self, type_):
         return self.visit_BIT(type_)
 
@@ -149,7 +149,7 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_TINYINT(self, type_):
         return "TINYINT"
-        
+
     def visit_IMAGE(self, type_):
         return "IMAGE"
 
@@ -158,13 +158,13 @@ class SybaseTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_MONEY(self, type_):
         return "MONEY"
-    
+
     def visit_SMALLMONEY(self, type_):
         return "SMALLMONEY"
-        
+
     def visit_UNIQUEIDENTIFIER(self, type_):
         return "UNIQUEIDENTIFIER"
-        
+
 ischema_names = {
     'integer' : INTEGER,
     'unsigned int' : INTEGER, # TODO: unsigned flags
@@ -194,31 +194,31 @@ ischema_names = {
 
 class SybaseExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
-    
+
     def set_ddl_autocommit(self, connection, value):
         """Must be implemented by subclasses to accommodate DDL executions.
-        
+
         "connection" is the raw unwrapped DBAPI connection.   "value"
         is True or False.  when True, the connection should be configured
         such that a DDL can take place subsequently.  when False,
         a DDL has taken place and the connection should be resumed
         into non-autocommit mode.
-        
+
         """
         raise NotImplementedError()
-        
+
     def pre_exec(self):
         if self.isinsert:
             tbl = self.compiled.statement.table
             seq_column = tbl._autoincrement_column
             insert_has_sequence = seq_column is not None
-            
+
             if insert_has_sequence:
                 self._enable_identity_insert = \
                                 seq_column.key in self.compiled_parameters[0]
             else:
                 self._enable_identity_insert = False
-            
+
             if self._enable_identity_insert:
                 self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
                     self.dialect.identifier_preparer.format_table(tbl))
@@ -238,15 +238,15 @@ class SybaseExecutionContext(default.DefaultExecutionContext):
             self.set_ddl_autocommit(
                         self.root_connection.connection.connection, 
                         True)
-            
+
 
     def post_exec(self):
        if self.isddl:
             self.set_ddl_autocommit(self.root_connection, False)
-        
+
        if self._enable_identity_insert:
             self.cursor.execute(
-                        "SET IDENTITY_INSERT %s OFF" %  
+                        "SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.
                             format_table(self.compiled.statement.table)
                         )
@@ -395,7 +395,7 @@ class SybaseDialect(default.DefaultDialect):
             self.max_identifier_length = 30
         else:
             self.max_identifier_length = 255
-        
+
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         if schema is None:
