@@ -1,10 +1,10 @@
-# informix.py
-# Copyright (C) 2005,2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
-#
+# informix/base.py
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
 # coding: gbk
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 """Support for the Informix database.
 
 This dialect is mostly functional as of SQLAlchemy 0.6.5.

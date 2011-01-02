@@ -1,4 +1,5 @@
-# access.py
+# access/base.py
+# Copyright (C) 2007-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
 # Copyright (C) 2007 Paul Johnston, paj@pajhome.org.uk
 # Portions derived from jet2sql.py by Matt Keranen, mksql@yahoo.com
 #
