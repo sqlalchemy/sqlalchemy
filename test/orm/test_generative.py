@@ -46,11 +46,11 @@ class GenerativeQueryTest(_base.MappedTest):
         sess = create_session()
         query = sess.query(Foo).order_by(Foo.id)
         orig = query.all()
-        
+
         assert query[1] == orig[1]
         assert query[-4] == orig[-4]
         assert query[-1] == orig[-1]
-        
+
         assert list(query[10:20]) == orig[10:20]
         assert list(query[10:]) == orig[10:]
         assert list(query[:10]) == orig[:10]
@@ -61,7 +61,7 @@ class GenerativeQueryTest(_base.MappedTest):
         assert list(query[-2:-5]) == orig[-2:-5]
         assert list(query[-5:-2]) == orig[-5:-2]
         assert list(query[:-2]) == orig[:-2]
-        
+
         assert query[10:20][5] == orig[10:20][5]
 
     @testing.uses_deprecated('Call to deprecated function apply_max')
@@ -71,7 +71,7 @@ class GenerativeQueryTest(_base.MappedTest):
         query = sess.query(Foo)
         assert query.count() == 100
         assert sess.query(func.min(foo.c.bar)).filter(foo.c.bar<30).one() == (0,)
-        
+
         assert sess.query(func.max(foo.c.bar)).filter(foo.c.bar<30).one() == (29,)
         # Py3K
         #assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).__next__()[0] == 29
@@ -80,7 +80,7 @@ class GenerativeQueryTest(_base.MappedTest):
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         assert query.filter(foo.c.bar<30).values(sa.func.max(foo.c.bar)).next()[0] == 29
         # end Py2K
-    
+
     @testing.fails_if(lambda:testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma'),
             "unknown incompatibility")

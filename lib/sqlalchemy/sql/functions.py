@@ -35,7 +35,7 @@ class AnsiFunction(GenericFunction):
 
 class ReturnTypeFromArgs(GenericFunction):
     """Define a function whose return type is the same as its arguments."""
-    
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('type_', _type_from_args(args))
         GenericFunction.__init__(self, args=args, **kwargs)

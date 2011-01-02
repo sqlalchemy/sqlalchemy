@@ -449,7 +449,7 @@ class collection(object):
 # implementations
 def collection_adapter(collection):
     """Fetch the :class:`.CollectionAdapter` for a collection."""
-    
+
     return getattr(collection, '_sa_adapter', None)
 
 def collection_iter(collection):
@@ -483,7 +483,7 @@ class CollectionAdapter(object):
         self._data = weakref.ref(data)
         self.owner_state = owner_state
         self.link_to_self(data)
-    
+
     @property
     def data(self):
         "The entity collection being adapted."
@@ -492,7 +492,7 @@ class CollectionAdapter(object):
     @util.memoized_property
     def attr(self):
         return self.owner_state.manager[self._key].impl
-        
+
     def link_to_self(self, data):
         """Link a collection to this adapter, and fire a link event."""
         setattr(data, '_sa_adapter', self)
@@ -552,7 +552,7 @@ class CollectionAdapter(object):
 
     def append_with_event(self, item, initiator=None):
         """Add an entity to the collection, firing mutation events."""
-        
+
         getattr(self._data(), '_sa_appender')(item, _sa_initiator=initiator)
 
     def append_without_event(self, item):
@@ -579,7 +579,7 @@ class CollectionAdapter(object):
 
     def __iter__(self):
         """Iterate over entities in the collection."""
-        
+
         # Py3K requires iter() here
         return iter(getattr(self._data(), '_sa_iterator')())
 
@@ -913,7 +913,7 @@ def __set(collection, item, _sa_initiator=None):
         if executor:
             item = getattr(executor, 'fire_append_event')(item, _sa_initiator)
     return item
-    
+
 def __del(collection, item, _sa_initiator=None):
     """Run del events, may eventually be inlined into decorators."""
     if _sa_initiator is not False and item is not None:
@@ -974,12 +974,12 @@ def _list_decorators():
                 stop = index.stop or len(self)
                 if stop < 0:
                     stop += len(self)
-                
+
                 if step == 1:
                     for i in xrange(start, stop, step):
                         if len(self) > start:
                             del self[start]
-                    
+
                     for i, item in enumerate(value):
                         self.insert(i + start, item)
                 else:
@@ -1028,7 +1028,7 @@ def _list_decorators():
         _tidy(__delslice__)
         return __delslice__
     # end Py2K
-    
+
     def extend(fn):
         def extend(self, iterable):
             for value in iterable:
@@ -1358,7 +1358,7 @@ class InstrumentedDict(dict):
     __instrumentation__ = {
         'iterator': 'itervalues', }
     # end Py2K
-    
+
 __canned_instrumentation = {
     list: InstrumentedList,
     set: InstrumentedSet,

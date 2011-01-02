@@ -34,10 +34,10 @@ class SchemaGenerator(DDLBase):
         else:
             tables = metadata.tables.values()
         collection = [t for t in sql_util.sort_tables(tables) if self._can_create(t)]
-        
+
         for listener in metadata.ddl_listeners['before-create']:
             listener('before-create', metadata, self.connection, tables=collection)
-            
+
         for table in collection:
             self.traverse_single(table, create_ok=True)
 
@@ -47,7 +47,7 @@ class SchemaGenerator(DDLBase):
     def visit_table(self, table, create_ok=False):
         if not create_ok and not self._can_create(table):
             return
-            
+
         for listener in table.ddl_listeners['before-create']:
             listener('before-create', table, self.connection)
 
@@ -90,10 +90,10 @@ class SchemaDropper(DDLBase):
         else:
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) if self._can_drop(t)]
-        
+
         for listener in metadata.ddl_listeners['before-drop']:
             listener('before-drop', metadata, self.connection, tables=collection)
-        
+
         for table in collection:
             self.traverse_single(table, drop_ok=True)
 
@@ -112,7 +112,7 @@ class SchemaDropper(DDLBase):
     def visit_table(self, table, drop_ok=False):
         if not drop_ok and not self._can_drop(table):
             return
-            
+
         for listener in table.ddl_listeners['before-drop']:
             listener('before-drop', table, self.connection)
 

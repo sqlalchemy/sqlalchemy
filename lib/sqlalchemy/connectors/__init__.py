@@ -7,5 +7,4 @@
 
 class Connector(object):
     pass
-    
-    
+

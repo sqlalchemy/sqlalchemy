@@ -8,7 +8,7 @@ from sqlalchemy.dialects.maxdb.base import MaxDBDialect
 
 class MaxDBDialect_sapdb(MaxDBDialect):
     driver = 'sapdb'
-    
+
     @classmethod
     def dbapi(cls):
         from sapdb import dbapi as _dbapi

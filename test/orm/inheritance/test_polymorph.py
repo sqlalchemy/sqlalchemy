@@ -146,7 +146,7 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
                         'engineer':people.join(engineers),
                         'manager':people.join(managers),
                     }, None, 'pjoin')
-                
+
             manager_join = people.join(managers).outerjoin(boss)
             person_with_polymorphic = ['*', person_join]
             manager_with_polymorphic = ['*', manager_join]
@@ -194,11 +194,11 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}),
             Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'})
         ]
-        
+
         pointy = employees[0]
         jsmith = employees[-1]
         dilbert = employees[1]
-        
+
         session = create_session()
         c = Company(name='company1')
         c.employees = employees
@@ -206,7 +206,7 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
 
         session.flush()
         session.expunge_all()
-        
+
         eq_(session.query(Person).get(dilbert.person_id), dilbert)
         session.expunge_all()
 
@@ -216,7 +216,7 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
         def go():
             cc = session.query(Company).get(c.company_id)
             eq_(cc.employees, employees)
-            
+
         if not lazy_relationship:
             if with_polymorphic != 'none':
                 self.assert_sql_count(testing.db, go, 1)
@@ -228,7 +228,7 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
                 self.assert_sql_count(testing.db, go, 2)
             else:
                 self.assert_sql_count(testing.db, go, 6)
-        
+
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
         eq_(
@@ -242,7 +242,7 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
             dilbert
         )
-        
+
         # test selecting from the query, joining against an alias of the base "people" table.  test that
         # the "palias" alias does *not* get sucked up into the "person_join" conversion.
         palias = people.alias("palias")
@@ -251,12 +251,12 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
         assert dilbert is session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
         assert dilbert is session.query(Person).filter((Engineer.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id)).first()
         assert dilbert is session.query(Engineer).filter(Engineer.engineer_name=="engineer1")[0]
-        
+
         dilbert.engineer_name = 'hes dibert!'
 
         session.flush()
         session.expunge_all()
-        
+
         def go():
             session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
         self.assert_sql_count(testing.db, go, 1)
@@ -279,12 +279,12 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
 
         eq_(session.query(Manager).order_by(Manager.person_id).all(), manager_list)
         c = session.query(Company).first()
-        
+
         session.delete(c)
         session.flush()
-        
+
         eq_(people.count().scalar(), 0)
-        
+
     test_roundtrip = function_named(
         test_roundtrip, "test_%s%s%s_%s" % (
           (lazy_relationship and "lazy" or "eager"),

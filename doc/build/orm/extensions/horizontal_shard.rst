@@ -8,7 +8,7 @@ API Documentation
 
 .. autoclass:: ShardedSession
    :members:
-   
+
 .. autoclass:: ShardedQuery
    :members:
 

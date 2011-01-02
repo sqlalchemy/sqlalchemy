@@ -16,14 +16,14 @@ metadata = None
 class ZooMarkTest(TestBase):
 
     """Runs the ZooMark and squawks if method counts vary from the norm.
-    
+
     Each test has an associated `call_range`, the total number of
     accepted function calls made during the test.  The count can vary
     between Python 2.4 and 2.5.
-    
+
     Unlike a unit test, this is a ordered collection of steps.  Running
     components individually will fail.
-    
+
     """
 
     __only_on__ = 'postgresql+psycopg2'

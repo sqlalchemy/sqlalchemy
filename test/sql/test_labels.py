@@ -51,7 +51,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         assert_raises(exceptions.IdentifierError, m.drop_all)
         assert_raises(exceptions.IdentifierError, t1.create)
         assert_raises(exceptions.IdentifierError, t1.drop)
-        
+
     def test_result(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})
@@ -82,7 +82,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
             (1, "data1"),
             (2, "data2"),
         ], repr(result)
-  
+
         @testing.requires.offset
         def go():
             r = s.limit(2).offset(1).execute()
@@ -94,7 +94,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
                 (3, "data3"),
             ], repr(result)
         go()
-        
+
     def test_table_alias_names(self):
         if testing.against('oracle'):
             self.assert_compile(
@@ -113,7 +113,7 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([table1, ta]).select_from(table1.join(ta, table1.c.this_is_the_data_column==ta.c.this_is_the_data_column)).\
                         where(ta.c.this_is_the_data_column=='data3'),
-                        
+
             "SELECT some_large_named_table.this_is_the_primarykey_column, some_large_named_table.this_is_the_data_column, "
             "table_with_exactly_29_c_1.this_is_the_primarykey_column, table_with_exactly_29_c_1.this_is_the_data_column FROM "
             "some_large_named_table JOIN table_with_exactly_29_characs AS table_with_exactly_29_c_1 ON "
@@ -121,17 +121,17 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
             "WHERE table_with_exactly_29_c_1.this_is_the_data_column = :this_is_the_data_column_1",
             dialect=dialect
         )
-        
+
         table2.insert().execute(
             {"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"},
             {"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"},
             {"this_is_the_primarykey_column":3, "this_is_the_data_column":"data3"},
             {"this_is_the_primarykey_column":4, "this_is_the_data_column":"data4"},
         )
-        
+
         r = table2.alias().select().execute()
         assert r.fetchall() == [(x, "data%d" % x) for x in range(1, 5)]
-        
+
     def test_colbinds(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})
         table1.insert().execute(**{"this_is_the_primarykey_column":2, "this_is_the_data_column":"data2"})
@@ -201,5 +201,5 @@ class LongLabelsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(x, "SELECT _1.this_is_the_primarykey_column AS _1, _1.this_is_the_data_column AS _2 FROM "
             "(SELECT some_large_named_table.this_is_the_primarykey_column AS _3, some_large_named_table.this_is_the_data_column AS _4 "
             "FROM some_large_named_table WHERE some_large_named_table.this_is_the_primarykey_column = :_1) AS _1", dialect=compile_dialect)
-        
-        
+
+

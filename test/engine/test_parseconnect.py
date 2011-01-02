@@ -56,7 +56,7 @@ class DialectImportTest(TestBase):
             exec ('from sqlalchemy.dialects import %s\ndialect = '
                   '%s.dialect()' % (name, name), globals())
             eq_(dialect.name, name)
-    
+
 class CreateEngineTest(TestBase):
     """test that create_engine arguments of different types get
     propagated properly"""

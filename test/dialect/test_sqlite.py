@@ -16,7 +16,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
 
     def test_boolean(self):
         """Test that the boolean only treats 1 as True
-        
+
         """
 
         meta = MetaData(testing.db)
@@ -214,7 +214,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
 
     def test_extra_reserved_words(self):
         """Tests reserved words in identifiers.
-        
+
         'true', 'false', and 'column' are undocumented reserved words
         when used as column identifiers (as of 3.5.1).  Covering them
         here to ensure they remain in place if the dialect's
@@ -403,7 +403,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                         Column('id', Integer, primary_key=True),
                         Column('t1_id', Integer, ForeignKey('master.t1.id')),
                     )
-        
+
         # schema->schema, generate REFERENCES with no schema name
         self.assert_compile(
             schema.CreateTable(t2),
@@ -412,7 +412,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                 "t1_id INTEGER, "
                 "PRIMARY KEY (id), "
                 "FOREIGN KEY(t1_id) REFERENCES t1 (id)"
-                ")"            
+                ")"
         )
 
         # schema->different schema, don't generate REFERENCES
@@ -422,7 +422,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                 "id INTEGER NOT NULL, "
                 "t1_id INTEGER, "
                 "PRIMARY KEY (id)"
-                ")"            
+                ")"
         )
 
         # same for local schema
@@ -432,7 +432,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                 "id INTEGER NOT NULL, "
                 "t1_id INTEGER, "
                 "PRIMARY KEY (id)"
-                ")"            
+                ")"
         )
 
 

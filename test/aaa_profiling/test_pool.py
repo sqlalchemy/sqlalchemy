@@ -7,7 +7,7 @@ class QueuePoolTest(TestBase, AssertsExecutionResults):
     class Connection(object):
         def rollback(self):
             pass
-            
+
         def close(self):
             pass
 

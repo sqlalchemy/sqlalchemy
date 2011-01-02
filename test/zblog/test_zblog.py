@@ -12,7 +12,7 @@ class ZBlogTest(TestBase, AssertsExecutionResults):
     def create_tables(cls):
         tables.metadata.drop_all(bind=testing.db)
         tables.metadata.create_all(bind=testing.db)
-    
+
     @classmethod
     def drop_tables(cls):
         tables.metadata.drop_all(bind=testing.db)
@@ -33,7 +33,7 @@ class SavePostTest(ZBlogTest):
     @classmethod
     def setup_class(cls):
         super(SavePostTest, cls).setup_class()
-        
+
         mappers.zblog_mappers()
         global blog_id, user_id
         s = create_session(bind=testing.db)
@@ -54,7 +54,7 @@ class SavePostTest(ZBlogTest):
 
     def test_attach_noautoflush(self):
         """Test pending backref behavior."""
-        
+
         s = create_session(bind=testing.db, autoflush=False)
 
         s.begin()

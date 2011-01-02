@@ -108,18 +108,18 @@ class UserDefinedExtensionTest(_base.ORMTest):
     def test_instance_dict(self):
         class User(MyClass):
             pass
-            
+
         attributes.register_class(User)
         attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
         attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
-            
+
         u = User()
         u.user_id = 7
         u.user_name = 'john'
         u.email_address = 'lala@123.com'
         self.assert_(u.__dict__ == {'_my_state':u._my_state, '_goofy_dict':{'user_id':7, 'user_name':'john', 'email_address':'lala@123.com'}}, u.__dict__)
-        
+
     def test_basic(self):
         for base in (object, MyBaseClass, MyClass):
             class User(base):
@@ -158,7 +158,7 @@ class UserDefinedExtensionTest(_base.ORMTest):
             manager.deferred_scalar_loader = loader
             attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
             attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
-            
+
             assert Foo in attributes.instrumentation_registry._state_finders
             f = Foo()
             attributes.instance_state(f).expire_attributes(attributes.instance_dict(f), None)

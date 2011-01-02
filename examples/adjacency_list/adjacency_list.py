@@ -1,9 +1,9 @@
 from sqlalchemy import MetaData, Table, Column, Sequence, ForeignKey,\
                         Integer, String, create_engine
-                        
+
 from sqlalchemy.orm import sessionmaker, mapper, relationship, backref,\
                                 joinedload_all
-                                
+
 from sqlalchemy.orm.collections import attribute_mapped_collection
 
 metadata = MetaData()
@@ -18,38 +18,38 @@ class TreeNode(object):
     def __init__(self, name, parent=None):
         self.name = name
         self.parent = parent
-        
+
     def append(self, nodename):
         self.children[nodename] = TreeNode(nodename, parent=self)
-    
+
     def __repr__(self):
         return "TreeNode(name=%r, id=%r, parent_id=%r)" % (
                     self.name,
                     self.id,
                     self.parent_id
                 )
-                
+
 def dump_tree(node, indent=0):
-    
+
     return "   " * indent + repr(node) + \
                 "\n" + \
                 "".join([
                     dump_tree(c, indent +1) 
                     for c in node.children.values()]
                 )
-                    
+
 
 mapper(TreeNode, tree_table, properties={
     'children': relationship(TreeNode, 
 
                         # cascade deletions
                         cascade="all",
-    
+
                         # many to one + adjacency list - remote_side
                         # is required to reference the 'remote' 
                         # column in the join condition.
                         backref=backref("parent", remote_side=tree_table.c.id),
-                         
+
                         # children will be represented as a dictionary
                         # on the "name" attribute.
                         collection_class=attribute_mapped_collection('name'),

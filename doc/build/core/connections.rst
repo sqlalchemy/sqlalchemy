@@ -22,7 +22,7 @@ Recall from :ref:`engines_toplevel` that an :class:`.Engine` is created via
 the :func:`.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')
-    
+
 The typical usage of :func:`.create_engine()` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`.Engine` manages many individual DBAPI connections on behalf of the
@@ -89,7 +89,7 @@ If the :class:`.ResultProxy` potentially has rows remaining, it can be
 instructed to close out its resources explicitly::
 
     result.close()
-    
+
 If the :class:`.ResultProxy` has pending rows remaining and is dereferenced by
 the application without being closed, Python garbage collection will
 ultimately close out the cursor as well as trigger a return of the pooled
@@ -116,7 +116,7 @@ in :ref:`sqlexpression_toplevel`.
 
 .. autoclass:: sqlalchemy.engine.base.ResultProxy
     :members:
-    
+
 .. autoclass:: sqlalchemy.engine.base.RowProxy
     :members:
 
@@ -243,7 +243,7 @@ to use the :meth:`~.Executable.execute` method of
 any :class:`.Executable` construct, which is a marker for SQL expression objects
 that support execution.   The SQL expression object itself references an
 :class:`.Engine` or :class:`.Connection` known as the **bind**, which it uses
-in order to provide so-called "implicit" execution services.  
+in order to provide so-called "implicit" execution services.
 
 Given a table as below::
 

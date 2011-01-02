@@ -29,13 +29,13 @@ import sqlalchemy.processors as processors
 
 class MxODBCConnector(Connector):
     driver='mxodbc'
-    
+
     supports_sane_multi_rowcount = False
     supports_unicode_statements = False
     supports_unicode_binds = False
-    
+
     supports_native_decimal = True
-    
+
     @classmethod
     def dbapi(cls):
         # this classmethod will normally be replaced by an instance
@@ -70,7 +70,7 @@ class MxODBCConnector(Connector):
             conn.decimalformat = self.dbapi.DECIMAL_DECIMALFORMAT
             conn.errorhandler = self._error_handler()
         return connect
-    
+
     def _error_handler(self):
         """ Return a handler that adjusts mxODBC's raised Warnings to
         emit Python standard warnings.
@@ -100,7 +100,7 @@ class MxODBCConnector(Connector):
 
         The arg 'errorhandler' is not used by SQLAlchemy and will
         not be populated.
-        
+
         """
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)

@@ -47,9 +47,9 @@ class RelationshipTest1(_base.MappedTest):
             pass
         class Manager(Person):
             pass
-        
+
         # note that up until recently (0.4.4), we had to specify "foreign_keys" here
-        # for this primary join.  
+        # for this primary join.
         mapper(Person, people, properties={
             'manager':relationship(Manager, primaryjoin=(people.c.manager_id ==
                                                      managers.c.person_id),
@@ -57,9 +57,9 @@ class RelationshipTest1(_base.MappedTest):
         })
         mapper(Manager, managers, inherits=Person,
                inherit_condition=people.c.person_id==managers.c.person_id)
-        
+
         eq_(class_mapper(Person).get_property('manager').synchronize_pairs, [(managers.c.person_id,people.c.manager_id)])
-        
+
         session = create_session()
         p = Person(name='some person')
         m = Manager(name='some manager')
@@ -382,7 +382,7 @@ class RelationshipTest4(_base.MappedTest):
         session.flush()
 
         session.expunge_all()
-    
+
         def go():
             testcar = session.query(Car).options(joinedload('employee')).get(car1.car_id)
             assert str(testcar.employee) == "Engineer E4, status X"
@@ -661,13 +661,13 @@ class RelationshipTest8(_base.MappedTest):
         sess = create_session()
         sess.add(t1)
         sess.flush()
-        
+
         sess.expunge_all()
         eq_(
             sess.query(Taggable).order_by(Taggable.id).all(),
             [User(data='u1'), Taggable(owner=User(data='u1'))]
         )
-        
+
 class GenerativeTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
@@ -787,7 +787,7 @@ class GenerativeTest(TestBase, AssertsExecutionResults):
         # added here for testing
         e = exists([Car.owner], Car.owner==employee_join.c.person_id)
         Query(Person)._adapt_clause(employee_join, False, False)
-        
+
         r = session.query(Person).filter(Person.name.like('%2')).join('status').filter_by(name="active").order_by(Person.person_id)
         eq_(str(list(r)), "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]")
         r = session.query(Engineer).join('status').filter(Person.name.in_(['E2', 'E3', 'E4', 'M4', 'M2', 'M1']) & (status.c.name=="active")).order_by(Person.name)
@@ -1092,7 +1092,7 @@ class MissingPolymorphicOnTest(_base.MappedTest):
             Column('id', Integer, ForeignKey('tablec.id'), primary_key=True),
             Column('ddata', String(50)),
             )
-            
+
     def test_polyon_col_setsup(self):
         class A(_fixtures.Base):
             pass
@@ -1102,16 +1102,16 @@ class MissingPolymorphicOnTest(_base.MappedTest):
             pass
         class D(C):
             pass
-            
+
         poly_select = select([tablea, tableb.c.data.label('discriminator')], from_obj=tablea.join(tableb)).alias('poly')
-        
+
         mapper(B, tableb)
         mapper(A, tablea, with_polymorphic=('*', poly_select), polymorphic_on=poly_select.c.discriminator, properties={
             'b':relationship(B, uselist=False)
         })
         mapper(C, tablec, inherits=A,polymorphic_identity='c')
         mapper(D, tabled, inherits=C, polymorphic_identity='d')
-        
+
         c = C(cdata='c1', adata='a1', b=B(data='c'))
         d = D(cdata='c2', adata='a2', ddata='d2', b=B(data='d'))
         sess = create_session()
@@ -1120,4 +1120,4 @@ class MissingPolymorphicOnTest(_base.MappedTest):
         sess.flush()
         sess.expunge_all()
         eq_(sess.query(A).all(), [C(cdata='c1', adata='a1'), D(cdata='c2', adata='a2', ddata='d2')])
-        
+

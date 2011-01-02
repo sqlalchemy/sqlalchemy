@@ -184,11 +184,11 @@ class CursorErrTest(TestBase):
 
     def setup(self):
         global db, dbapi
-        
+
         class MDBAPI(MockDBAPI):
             def connect(self, *args, **kwargs):
                 return MConn(self)
-            
+
         class MConn(MockConnection):
             def cursor(self):
                 return MCursor(self)
@@ -202,16 +202,16 @@ class CursorErrTest(TestBase):
         db = tsa.create_engine(
                     'postgresql://foo:bar@localhost/test', 
                     module=dbapi, _initialize=False)
-    
+
     def test_cursor_explode(self):
         conn = db.connect()
         result = conn.execute("select foo")
         result.close()
         conn.close()
-    
+
     def teardown(self):
         db.dispose()
-        
+
 engine = None
 class RealReconnectTest(TestBase):
     def setup(self):
@@ -263,14 +263,14 @@ class RealReconnectTest(TestBase):
         conn = engine.connect()
         conn.invalidate()
         conn.invalidate()
-    
+
     def test_explode_in_initializer(self):
         engine = engines.testing_engine()
         def broken_initialize(connection):
             connection.execute("select fake_stuff from _fake_table")
-            
+
         engine.dialect.initialize = broken_initialize
-        
+
         # raises a DBAPIError, not an AttributeError
         assert_raises(exc.DBAPIError, engine.connect)
 
@@ -279,15 +279,15 @@ class RealReconnectTest(TestBase):
         engine.dispose()
 
         p1 = engine.pool
-        
+
         def is_disconnect(e):
             return True
-            
+
         engine.dialect.is_disconnect = is_disconnect
 
         # invalidate() also doesn't screw up
         assert_raises(exc.DBAPIError, engine.connect)
-        
+
         # pool was recreated
         assert engine.pool is not p1
 
@@ -310,7 +310,7 @@ class RealReconnectTest(TestBase):
         assert conn.invalidated
         eq_(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
-        
+
     @testing.fails_on('+informixdb',
                       "Wrong error thrown, fix in informixdb?")
     def test_close(self):
@@ -384,7 +384,7 @@ class RecycleTest(TestBase):
             conn = engine.contextual_connect()
             eq_(conn.execute(select([1])).scalar(), 1)
             conn.close()
-    
+
 meta, table, engine = None, None, None
 class InvalidateDuringResultTest(TestBase):
     def setup(self):

@@ -30,7 +30,7 @@
     % else:
         ${entryname|h}
     % endif
-    
+
     % if subitems:
   <dd><dl>
     % for subentryname, subentrylinks in subitems:

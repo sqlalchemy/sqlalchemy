@@ -21,7 +21,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         u = q.filter(User.id==7).first()
-        
+
         eq_([User(id=7,
                   addresses=[Address(id=1, email_address='jack@bean.com')])],
             q.filter(User.id==7).all())
@@ -31,7 +31,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_statement(self):
         """test that the .statement accessor returns the actual statement that
         would render, without any _clones called."""
-        
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -45,7 +45,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "addresses WHERE :param_1 = addresses.user_id",
             use_default_dialect=True
         )
-        
+
     @testing.resolve_artifact_names
     def test_order_by(self):
         mapper(User, users, properties={
@@ -134,7 +134,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "Dynamic attributes don't support collection population.",
             attributes.set_committed_value, u1, 'addresses', []
         )
-        
+
     @testing.resolve_artifact_names
     def test_m2m(self):
         mapper(Order, orders, properties={
@@ -179,8 +179,8 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             o.items.filter(order_items.c.item_id==2).all(),
             [Item(id=2)]
         )
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_transient_detached(self):
         mapper(User, users, properties={

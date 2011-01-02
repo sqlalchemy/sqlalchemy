@@ -389,7 +389,7 @@ class PropertyInheritanceTest(_base.MappedTest):
             primary_key=True, test_needs_autoincrement=True),
             Column('some_dest_id', Integer, ForeignKey('dest_table.id')),
             Column('cname', String(50)))
-            
+
         Table('dest_table', metadata, Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
               Column('name', String(50)))
@@ -402,10 +402,10 @@ class PropertyInheritanceTest(_base.MappedTest):
 
         class B(A):
             pass
-        
+
         class C(A):
             pass
-            
+
         class Dest(_base.ComparableEntity):
             pass
 
@@ -418,14 +418,14 @@ class PropertyInheritanceTest(_base.MappedTest):
         dest = Dest()
         assert_raises(AttributeError, setattr, b, 'some_dest', dest)
         clear_mappers()
-        
+
         mapper(A, a_table, properties={'a_id': a_table.c.id})
         mapper(B, b_table, inherits=A, concrete=True)
         mapper(Dest, dest_table)
         b = B()
         assert_raises(AttributeError, setattr, b, 'a_id', 3)
         clear_mappers()
-        
+
         mapper(A, a_table, properties={'a_id': a_table.c.id})
         mapper(B, b_table, inherits=A, concrete=True)
         mapper(Dest, dest_table)
@@ -439,7 +439,7 @@ class PropertyInheritanceTest(_base.MappedTest):
                properties={
                     'some_dest': relationship(Dest, back_populates='many_b')
                 })
-                    
+
         mapper(Dest, dest_table, properties={
                     'many_a': relationship(A,back_populates='some_dest'), 
                     'many_b': relationship(B,back_populates='some_dest')
@@ -500,14 +500,14 @@ class PropertyInheritanceTest(_base.MappedTest):
             properties={
                     'some_dest': relationship(Dest, back_populates='many_a')},
             )
-            
+
         mapper(Dest, dest_table, properties={
                 'many_a': relationship(A,
                             back_populates='some_dest', 
                             order_by=ajoin.c.id)
                         }
                 )
-                
+
         sess = sessionmaker()()
         dest1 = Dest(name='c1')
         dest2 = Dest(name='c2')
@@ -517,12 +517,12 @@ class PropertyInheritanceTest(_base.MappedTest):
         b2 = B(some_dest=dest1, bname='b2', id=4)
         c1 = C(some_dest=dest1, cname='c1', id=5)
         c2 = C(some_dest=dest2, cname='c2', id=6)
-        
+
         eq_([a2, c2], dest2.many_a)
         eq_([a1, b1, b2, c1], dest1.many_a)
         sess.add_all([dest1, dest2])
         sess.commit()
-        
+
         assert sess.query(Dest).filter(Dest.many_a.contains(a2)).one() is dest2
         assert sess.query(Dest).filter(Dest.many_a.contains(b1)).one() is dest1
         assert sess.query(Dest).filter(Dest.many_a.contains(c2)).one() is dest2
@@ -576,7 +576,7 @@ class PropertyInheritanceTest(_base.MappedTest):
             properties={
                     'some_dest': relationship(Dest, back_populates='many_a')},
             )
-            
+
         mapper(Dest, dest_table, properties={
                 'many_a': relationship(A,
                             back_populates='some_dest', 
@@ -596,7 +596,7 @@ class PropertyInheritanceTest(_base.MappedTest):
         c1 = C(some_dest=dest2, cname='c1')
         sess.add_all([dest1, dest2, c1, a1, b1])
         sess.commit()
-        
+
         sess2 = sessionmaker()()
         merged_c1 = sess2.merge(c1)
         eq_(merged_c1.some_dest.name, 'd2')

@@ -63,7 +63,7 @@ class ReflectionTest(TestBase, ComparesTables):
             self.assert_tables_equal(addresses, reflected_addresses)
         finally:
             meta.drop_all()
-    
+
     def test_two_foreign_keys(self):
         meta = MetaData(testing.db)
         t1 = Table(
@@ -88,12 +88,12 @@ class ReflectionTest(TestBase, ComparesTables):
             assert t1r.c.t3id.references(t3r.c.id)
         finally:
             meta.drop_all()
-    
+
     def test_nonexistent(self):
         meta = MetaData(testing.db)
         assert_raises(sa.exc.NoSuchTableError, Table, 'nonexistent',
                       meta, autoload=True)
-        
+
     def test_include_columns(self):
         meta = MetaData(testing.db)
         foo = Table('foo', meta, *[Column(n, sa.String(30))
@@ -126,7 +126,7 @@ class ReflectionTest(TestBase, ComparesTables):
     @testing.emits_warning(r".*omitted columns")
     def test_include_columns_indexes(self):
         m = MetaData(testing.db)
-        
+
         t1 = Table('t1', m, Column('a', sa.Integer), Column('b', sa.Integer))
         sa.Index('foobar', t1.c.a, t1.c.b)
         sa.Index('bat', t1.c.a)
@@ -148,13 +148,13 @@ class ReflectionTest(TestBase, ComparesTables):
 
     def test_autoincrement_col(self):
         """test that 'autoincrement' is reflected according to sqla's policy.
-        
+
         Don't mark this test as unsupported for any backend !
-        
+
         (technically it fails with MySQL InnoDB since "id" comes before "id2")
-        
+
         """
-        
+
         meta = MetaData(testing.db)
         t1 = Table('test', meta,
             Column('id', sa.Integer, primary_key=True),
@@ -171,13 +171,13 @@ class ReflectionTest(TestBase, ComparesTables):
             m2 = MetaData(testing.db)
             t1a = Table('test', m2, autoload=True)
             assert t1a._autoincrement_column is t1a.c.id
-            
+
             t2a = Table('test2', m2, autoload=True)
             assert t2a._autoincrement_column is t2a.c.id2
-            
+
         finally:
             meta.drop_all()
-            
+
     def test_unknown_types(self):
         meta = MetaData(testing.db)
         t = Table("test", meta,
@@ -307,7 +307,7 @@ class ReflectionTest(TestBase, ComparesTables):
             u4 = Table('users', meta4, 
                     Column('id', sa.Integer, key='u_id', primary_key=True),
                     autoload=True)
-                    
+
             a4 = Table(
                 'addresses',
                 meta4,
@@ -326,7 +326,7 @@ class ReflectionTest(TestBase, ComparesTables):
             assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
-    
+
     @testing.provide_metadata
     def test_override_composite_fk(self):
         """Test double-remove of composite foreign key, when replaced."""
@@ -356,18 +356,18 @@ class ReflectionTest(TestBase, ComparesTables):
             autoload=True,
             autoload_with=testing.db
         )
-        
+
         assert b1.c.x is c1
         assert b1.c.y is c2
         assert f1 in b1.constraints
         assert len(b1.constraints) == 2
-        
-        
-        
+
+
+
     def test_override_keys(self):
         """test that columns can be overridden with a 'key', 
         and that ForeignKey targeting during reflection still works."""
-        
+
 
         meta = MetaData(testing.db)
         a1 = Table('a', meta,
@@ -390,12 +390,12 @@ class ReflectionTest(TestBase, ComparesTables):
             assert b2.c.y.references(a2.c.x1)
         finally:
             meta.drop_all()
-    
+
     def test_nonreflected_fk_raises(self):
         """test that a NoReferencedColumnError is raised when reflecting
         a table with an FK to another table which has not included the target
         column in its reflection.
-        
+
         """
         meta = MetaData(testing.db)
         a1 = Table('a', meta,
@@ -412,12 +412,12 @@ class ReflectionTest(TestBase, ComparesTables):
             m2 = MetaData(testing.db)
             a2 = Table('a', m2, include_columns=['z'], autoload=True)
             b2 = Table('b', m2, autoload=True)
-            
+
             assert_raises(sa.exc.NoReferencedColumnError, a2.join, b2)
         finally:
             meta.drop_all()
-        
-        
+
+
     @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_override_existing_fk(self):
         """test that you can override columns and specify new foreign
@@ -442,7 +442,7 @@ class ReflectionTest(TestBase, ComparesTables):
                     autoload=True)
             u2 = Table('users', meta2, autoload=True)
             s = sa.select([a2])
-            
+
             assert s.c.user_id is not None
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
@@ -453,7 +453,7 @@ class ReflectionTest(TestBase, ComparesTables):
             assert list(a2.c.user_id.foreign_keys)[0].parent \
                 is a2.c.user_id
             assert u2.join(a2).onclause.compare(u2.c.id == a2.c.user_id)
-            
+
             meta2 = MetaData(testing.db)
             u2 = Table('users', meta2, Column('id', sa.Integer,
                        primary_key=True), autoload=True)
@@ -461,7 +461,7 @@ class ReflectionTest(TestBase, ComparesTables):
                        primary_key=True), Column('user_id', sa.Integer,
                        sa.ForeignKey('users.id')), autoload=True)
             s = sa.select([a2])
-            
+
             assert s.c.user_id is not None
             assert len(a2.foreign_keys) == 1
             assert len(a2.c.user_id.foreign_keys) == 1
@@ -472,7 +472,7 @@ class ReflectionTest(TestBase, ComparesTables):
             assert list(a2.c.user_id.foreign_keys)[0].parent \
                 is a2.c.user_id
             assert u2.join(a2).onclause.compare(u2.c.id == a2.c.user_id)
-            
+
         finally:
             meta.drop_all()
 
@@ -545,7 +545,7 @@ class ReflectionTest(TestBase, ComparesTables):
             Column('pkg_id', sa.Integer, sa.ForeignKey('pkgs.pkg_id')),
             Column('slot', sa.String(128)),
             )
-            
+
         assert_raises_message(sa.exc.InvalidRequestError,
                             "Foreign key assocated with column 'slots.pkg_id' "
                             "could not find table 'pkgs' with which to generate "
@@ -641,14 +641,14 @@ class ReflectionTest(TestBase, ComparesTables):
         else:
             check_col = 'true'
         quoter = meta.bind.dialect.identifier_preparer.quote_identifier
-        
+
         table_b = Table('false', meta, 
                     Column('create', sa.Integer, primary_key=True), 
                     Column('true', sa.Integer,sa.ForeignKey('select.not')),
                     sa.CheckConstraint('%s <> 1'
                         % quoter(check_col), name='limit')
                     )
-                    
+
         table_c = Table('is', meta, 
                 Column('or', sa.Integer, nullable=False, primary_key=True), 
                 Column('join', sa.Integer, nullable=False, primary_key=True),
@@ -769,17 +769,17 @@ class ReflectionTest(TestBase, ComparesTables):
             m2 = MetaData(testing.db)
             users_v = Table("users_v", m2, autoload=True)
             addresses_v = Table("email_addresses_v", m2, autoload=True)
-        
+
             for c1, c2 in zip(users.c, users_v.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
-            
+
             for c1, c2 in zip(addresses.c, addresses_v.c):
                 eq_(c1.name, c2.name)
                 self.assert_types_base(c1, c2)
         finally:
-            dropViews(metadata.bind)    
-    
+            dropViews(metadata.bind)
+
     @testing.provide_metadata
     def test_reflect_all_with_views(self):
         users, addresses = createTables(metadata, None)
@@ -787,13 +787,13 @@ class ReflectionTest(TestBase, ComparesTables):
             metadata.create_all()
             createViews(metadata.bind, None)
             m2 = MetaData(testing.db)
-            
+
             m2.reflect(views=False)
             eq_(
                 set(m2.tables), 
                 set([u'users', u'email_addresses'])
             )
-            
+
             m2 = MetaData(testing.db)
             m2.reflect(views=True)
             eq_(
@@ -803,7 +803,7 @@ class ReflectionTest(TestBase, ComparesTables):
             )
         finally:
             dropViews(metadata.bind)
-            
+
 class CreateDropTest(TestBase):
 
     @classmethod
@@ -815,7 +815,7 @@ class CreateDropTest(TestBase):
                       sa.Sequence('user_id_seq', optional=True),
                       primary_key=True), 
                     Column('user_name',sa.String(40)))
-                      
+
         addresses = Table('email_addresses', metadata,
                       Column('address_id', sa.Integer,
                           sa.Sequence('address_id_seq', optional=True),
@@ -845,10 +845,10 @@ class CreateDropTest(TestBase):
         table_names = [t.name for t in tables]
         ua = [n for n in table_names if n in ('users', 'email_addresses')]
         oi = [n for n in table_names if n in ('orders', 'items')]
-        
+
         eq_(ua, ['users', 'email_addresses'])
         eq_(oi, ['orders', 'items'])
-        
+
 
     def testcheckfirst(self):
         try:
@@ -992,7 +992,7 @@ class SchemaTest(TestBase):
             schema = engine.dialect.default_schema_name
 
         assert bool(schema)
-        
+
         metadata = MetaData(engine)
         table1 = Table('table1', metadata,
                        Column('col1', sa.Integer, primary_key=True),
@@ -1056,7 +1056,7 @@ class HasSequenceTest(TestBase):
             schema=test_schema), False)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
             False)
-        
+
 # Tests related to engine.reflection
 
 
@@ -1157,7 +1157,7 @@ class ComponentReflectionTest(TestBase):
     @testing.requires.schemas
     def test_get_schema_names(self):
         insp = Inspector(testing.db)
-        
+
         self.assert_('test_schema' in insp.get_schema_names())
 
     def test_dialect_initialize(self):
@@ -1165,11 +1165,11 @@ class ComponentReflectionTest(TestBase):
         assert not hasattr(engine.dialect, 'default_schema_name')
         insp = Inspector(engine)
         assert hasattr(engine.dialect, 'default_schema_name')
-        
+
     def test_get_default_schema_name(self):
         insp = Inspector(testing.db)
         eq_(insp.default_schema_name, testing.db.dialect.default_schema_name)
-        
+
     def _test_get_table_names(self, schema=None, table_type='table',
                               order_by=None):
         meta = MetaData(testing.db)
@@ -1286,15 +1286,15 @@ class ComponentReflectionTest(TestBase):
             eq_(users_pkeys,  ['user_id'])
             addr_cons = insp.get_pk_constraint(addresses.name,
                                                 schema=schema)
-                                                
+
             addr_pkeys = addr_cons['constrained_columns']
             eq_(addr_pkeys,  ['address_id'])
-            
+
             @testing.requires.reflects_pk_names
             def go():
                 eq_(addr_cons['name'], 'email_ad_pk')
             go()
-            
+
         finally:
             addresses.drop()
             users.drop()

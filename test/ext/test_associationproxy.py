@@ -634,7 +634,7 @@ class ProxyFactoryTest(ListTest):
                                       ForeignKey('Parent.id')),
                                Column('foo', String(128)),
                                Column('name', String(128)))
-        
+
         class CustomProxy(_AssociationList):
             def __init__(
                 self,
@@ -652,7 +652,7 @@ class ProxyFactoryTest(ListTest):
                     setter,
                     parent,
                     )
-        
+
         class Parent(object):
             children = association_proxy('_children', 'name', 
                         proxy_factory=CustomProxy, 
@@ -676,11 +676,11 @@ class ProxyFactoryTest(ListTest):
         self.metadata = metadata
         self.session = create_session()
         self.Parent, self.Child = Parent, Child
-    
+
     def test_sequence_ops(self):
         self._test_sequence_ops()
-    
-    
+
+
 class ScalarTest(TestBase):
     def test_scalar_proxy(self):
         metadata = MetaData(testing.db)
@@ -1002,7 +1002,7 @@ class ReconstitutionTest(TestBase):
 class PickleKeyFunc(object):
     def __init__(self, name):
         self.name = name
-    
+
     def __call__(self, obj):
         return getattr(obj, self.name)
 
@@ -1012,7 +1012,7 @@ class ComparatorTest(_base.MappedTest):
     run_deletes = None
     run_setup_mappers = 'once'
     run_setup_classes = 'once'
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table('userkeywords', metadata, Column('keyword_id', Integer,

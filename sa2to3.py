@@ -29,7 +29,7 @@ def preprocess(data):
                     yield line
             else:
                 yield line
-    
+
     def consume_py3k():
         yield "# start Py3K"
         while lines:
@@ -42,7 +42,7 @@ def preprocess(data):
                 lines.insert(0, line)
                 break
         yield "# end Py3K"
-    
+
     def consume_py2k():
         yield "# start Py2K"
         while lines:

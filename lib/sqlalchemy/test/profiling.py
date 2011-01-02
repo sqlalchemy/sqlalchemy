@@ -104,7 +104,7 @@ def function_call_count(count=None, versions={}, variance=0.05):
         cextension = True
     except ImportError:
         cextension = False
-        
+
     while version_info:
         version = '.'.join([str(v) for v in version_info])
         if cextension:

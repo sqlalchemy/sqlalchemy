@@ -28,7 +28,7 @@ class EngineStrategy(object):
 
     Provides a ``create`` method that receives input arguments and
     produces an instance of base.Engine or a subclass.
-    
+
     """
 
     def __init__(self):
@@ -44,7 +44,7 @@ class DefaultEngineStrategy(EngineStrategy):
     """Base class for built-in stratgies."""
 
     pool_threadlocal = False
-    
+
     def create(self, name_or_url, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -87,7 +87,7 @@ class DefaultEngineStrategy(EngineStrategy):
                     import sys
                     raise exc.DBAPIError.instance(None, None, e), None, sys.exc_info()[2]
                     # end Py2K
-                    
+
             creator = kwargs.pop('creator', connect)
 
             poolclass = (kwargs.pop('poolclass', None) or
@@ -121,7 +121,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 engine_args[k] = kwargs.pop(k)
 
         _initialize = kwargs.pop('_initialize', True)
-        
+
         # all kwargs should be consumed
         if kwargs:
             raise TypeError(
@@ -132,7 +132,7 @@ class DefaultEngineStrategy(EngineStrategy):
                                     dialect.__class__.__name__,
                                     pool.__class__.__name__,
                                     engineclass.__name__))
-                                    
+
         engine = engineclass(pool, dialect, u, **engine_args)
 
         if _initialize:
@@ -143,9 +143,9 @@ class DefaultEngineStrategy(EngineStrategy):
                     if conn is None:
                         return
                     do_on_connect(conn)
-                    
+
                 pool.add_listener({'first_connect': on_connect, 'connect':on_connect})
-                    
+
             def first_connect(conn, rec):
                 c = base.Connection(engine, connection=conn)
                 dialect.initialize(c)
@@ -159,13 +159,13 @@ class PlainEngineStrategy(DefaultEngineStrategy):
 
     name = 'plain'
     engine_cls = base.Engine
-    
+
 PlainEngineStrategy()
 
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):
     """Strategy for configuring an Engine with thredlocal behavior."""
-    
+
     name = 'threadlocal'
     pool_threadlocal = True
     engine_cls = threadlocal.TLEngine
@@ -178,11 +178,11 @@ class MockEngineStrategy(EngineStrategy):
 
     Produces a single mock Connectable object which dispatches
     statement execution to a passed-in function.
-    
+
     """
 
     name = 'mock'
-    
+
     def create(self, name_or_url, executor, **kwargs):
         # create url.URL object
         u = url.make_url(name_or_url)
@@ -219,7 +219,7 @@ class MockEngineStrategy(EngineStrategy):
         def create(self, entity, **kwargs):
             kwargs['checkfirst'] = False
             from sqlalchemy.engine import ddl
-            
+
             ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse(entity)
 
         def drop(self, entity, **kwargs):

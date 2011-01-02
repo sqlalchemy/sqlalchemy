@@ -29,7 +29,7 @@ class ExecuteTest(TestBase):
     @engines.close_first
     def teardown(self):
         testing.db.connect().execute(users.delete())
-        
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -152,7 +152,7 @@ class ExecuteTest(TestBase):
         eng.update_execution_options(foo='hoho')
         conn = eng.contextual_connect()
         eq_(conn._execution_options['foo'], 'hoho')
-        
+
 
 class CompiledCacheTest(TestBase):
     @classmethod
@@ -169,23 +169,23 @@ class CompiledCacheTest(TestBase):
     @engines.close_first
     def teardown(self):
         testing.db.connect().execute(users.delete())
-        
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-    
+
     def test_cache(self):
         conn = testing.db.connect()
         cache = {}
         cached_conn = conn.execution_options(compiled_cache=cache)
-        
+
         ins = users.insert()
         cached_conn.execute(ins, {'user_name':'u1'})
         cached_conn.execute(ins, {'user_name':'u2'})
         cached_conn.execute(ins, {'user_name':'u3'})
         assert len(cache) == 1
         eq_(conn.execute("select count(*) from users").scalar(), 3)
-    
+
 class LogTest(TestBase):
     def _test_logger(self, eng, eng_name, pool_name):
         buf = logging.handlers.BufferingHandler(100)
@@ -195,18 +195,18 @@ class LogTest(TestBase):
         ]
         for log in logs:
             log.addHandler(buf)
-        
+
         eq_(eng.logging_name, eng_name)
         eq_(eng.pool.logging_name, pool_name)
         eng.execute(select([1]))
         for log in logs:
             log.removeHandler(buf)
-        
+
         names = set([b.name for b in buf.buffer])
         assert 'sqlalchemy.engine.base.Engine.%s' % (eng_name,) in names
         assert 'sqlalchemy.pool.%s.%s' % (eng.pool.__class__.__name__,
                 pool_name) in names
-        
+
     def test_named_logger(self):
         options = {'echo':'debug', 'echo_pool':'debug',
             'logging_name':'myenginename',
@@ -214,10 +214,10 @@ class LogTest(TestBase):
         }
         eng = engines.testing_engine(options=options)
         self._test_logger(eng, "myenginename", "mypoolname")
-        
+
         eng.dispose()
         self._test_logger(eng, "myenginename", "mypoolname")
-        
+
 
     def test_unnamed_logger(self):
         eng = engines.testing_engine(options={'echo': 'debug',
@@ -227,12 +227,12 @@ class LogTest(TestBase):
             "0x...%s" % hex(id(eng))[-4:],
             "0x...%s" % hex(id(eng.pool))[-4:],
         )
-        
+
 class ResultProxyTest(TestBase):
     def test_nontuple_row(self):
         """ensure the C version of BaseRowProxy handles 
         duck-type-dependent rows."""
-        
+
         from sqlalchemy.engine import RowProxy
 
         class MyList(object):
@@ -262,7 +262,7 @@ class ResultProxyTest(TestBase):
 
         engine = engines.testing_engine()
         metadata.bind = engine
-        
+
         t = Table('t1', metadata,
             Column('data', String(10))
         )
@@ -272,7 +272,7 @@ class ResultProxyTest(TestBase):
             @property
             def rowcount(self):
                 assert False
-        
+
         execution_ctx_cls = engine.dialect.execution_ctx_cls
         engine.dialect.execution_ctx_cls = type("FakeCtx", 
                                             (BreakRowcountMixin, 
@@ -289,7 +289,7 @@ class ResultProxyTest(TestBase):
             assert_raises(AssertionError, t.delete().execute)
         finally:
             engine.dialect.execution_ctx_cls = execution_ctx_cls
-    
+
     @testing.requires.python26
     def test_rowproxy_is_sequence(self):
         import collections
@@ -298,13 +298,13 @@ class ResultProxyTest(TestBase):
         row = RowProxy(object(), ['value'], [None], {'key'
                          : (None, 0), 0: (None, 0)})
         assert isinstance(row, collections.Sequence)
-    
+
     @testing.requires.cextensions
     def test_row_c_sequence_check(self):
         import csv
         import collections
         from StringIO import StringIO
-        
+
         metadata = MetaData()
         metadata.bind = 'sqlite://'
         users = Table('users', metadata,
@@ -321,15 +321,15 @@ class ResultProxyTest(TestBase):
         # csv performs PySequenceCheck call
         writer.writerow(row)
         assert s.getvalue().strip() == '1,Test'
-        
+
 class ProxyConnectionTest(TestBase):
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_proxy(self):
-        
+
         stmts = []
         cursor_stmts = []
-        
+
         class MyProxy(ConnectionProxy):
             def execute(
                 self,
@@ -353,7 +353,7 @@ class ProxyConnectionTest(TestBase):
                 ):
                 cursor_stmts.append((str(statement), parameters, None))
                 return execute(cursor, statement, parameters, context)
-        
+
         def assert_stmts(expected, received):
             for stmt, params, posn in expected:
                 if not received:
@@ -420,7 +420,7 @@ class ProxyConnectionTest(TestBase):
                                       # be incorrect
             assert_stmts(compiled, stmts)
             assert_stmts(cursor, cursor_stmts)
-    
+
     def test_options(self):
         track = []
         class TrackProxy(ConnectionProxy):
@@ -438,8 +438,8 @@ class ProxyConnectionTest(TestBase):
         c3 = c2.execution_options(bar='bat')
         eq_(c3._execution_options, {'foo':'bar', 'bar':'bat'})
         eq_(track, ['execute', 'cursor_execute'])
-        
-        
+
+
     def test_transactional(self):
         track = []
         class TrackProxy(ConnectionProxy):
@@ -458,7 +458,7 @@ class ProxyConnectionTest(TestBase):
         trans = conn.begin()
         conn.execute(select([1]))
         trans.commit()
-        
+
         eq_(track, [
             'begin',
             'execute',
@@ -469,7 +469,7 @@ class ProxyConnectionTest(TestBase):
             'cursor_execute',
             'commit',
             ])
-        
+
     @testing.requires.savepoints
     @testing.requires.two_phase_transactions
     def test_transactional_advanced(self):
@@ -484,7 +484,7 @@ class ProxyConnectionTest(TestBase):
 
         engine = engines.testing_engine(options={'proxy':TrackProxy()})
         conn = engine.connect()
-        
+
         trans = conn.begin()
         trans2 = conn.begin_nested()
         conn.execute(select([1]))
@@ -493,7 +493,7 @@ class ProxyConnectionTest(TestBase):
         conn.execute(select([1]))
         trans2.commit()
         trans.rollback()
-        
+
         trans = conn.begin_twophase()
         conn.execute(select([1]))
         trans.prepare()

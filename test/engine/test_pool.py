@@ -36,10 +36,10 @@ class MockCursor(object):
 mock_dbapi = MockDBAPI()
 
 
-class PoolTestBase(TestBase):    
+class PoolTestBase(TestBase):
     def setup(self):
         pool.clear_managers()
-        
+
     @classmethod
     def teardown_class(cls):
        pool.clear_managers()
@@ -82,17 +82,17 @@ class PoolTest(PoolTestBase):
         expected = [(1, )]
         for row in cursor:
             eq_(row, expected.pop(0))
-    
+
     def test_no_connect_on_recreate(self):
         def creator():
             raise Exception("no creates allowed")
-        
+
         for cls in (pool.SingletonThreadPool, pool.StaticPool, 
                     pool.QueuePool, pool.NullPool, pool.AssertionPool):
             p = cls(creator=creator)
             p.dispose()
             p.recreate()
-        
+
             mock_dbapi = MockDBAPI()
             p = cls(creator=mock_dbapi.connect)
             conn = p.connect()
@@ -100,8 +100,8 @@ class PoolTest(PoolTestBase):
             mock_dbapi.throw_error = True
             p.dispose()
             p.recreate()
-            
-            
+
+
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
@@ -367,7 +367,7 @@ class PoolTest(PoolTestBase):
         snoop.assert_total(1, 1, 2, 1)
         c.close()
         snoop.assert_total(1, 1, 2, 2)
-    
+
     def test_listeners_callables(self):
         dbapi = MockDBAPI()
 
@@ -497,7 +497,7 @@ class QueuePoolTest(PoolTestBase):
         c1.close()
         lazy_gc()
         assert not pool._refs
-       
+
     def test_timeout(self):
         p = pool.QueuePool(creator=mock_dbapi.connect, pool_size=3,
                            max_overflow=0, use_threadlocal=False,
@@ -534,7 +534,7 @@ class QueuePoolTest(PoolTestBase):
                     timeouts.append(time.time() - now)
                     continue
                 time.sleep(4)
-                c1.close()  
+                c1.close()
 
         threads = []
         for i in xrange(10):
@@ -553,7 +553,7 @@ class QueuePoolTest(PoolTestBase):
 
     def _test_overflow(self, thread_count, max_overflow):
         gc_collect()
-        
+
         def creator():
             time.sleep(.05)
             return mock_dbapi.connect()
@@ -581,7 +581,7 @@ class QueuePoolTest(PoolTestBase):
             th.join()
  
         self.assert_(max(peaks) <= max_overflow)
-        
+
         lazy_gc()
         assert not pool._refs
  

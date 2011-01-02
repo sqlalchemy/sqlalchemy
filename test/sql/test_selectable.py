@@ -31,7 +31,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
         # get the right result
-        
+
         # same column three times
 
         s = select([table1.c.col1.label('c2'), table1.c.col1,
@@ -48,7 +48,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
     def test_direct_correspondence_on_labels(self):
         # this test depends on labels being part
         # of the proxy set to get the right result
-        
+
         l1, l2 = table1.c.col1.label('foo'), table1.c.col1.label('bar')
         sel = select([l1, l2])
 
@@ -85,20 +85,20 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         j2 = jjj.alias('foo')
         assert j2.corresponding_column(table1.c.col1) \
             is j2.c.table1_col1
-    
+
     def test_against_cloned_non_table(self):
         # test that corresponding column digs across
         # clone boundaries with anonymous labeled elements
         col = func.count().label('foo')
         sel = select([col])
-        
+
         sel2 = visitors.ReplacingCloningVisitor().traverse(sel)
         assert sel2.corresponding_column(col) is sel2.c.foo
 
         sel3 = visitors.ReplacingCloningVisitor().traverse(sel2)
         assert sel3.corresponding_column(col) is sel3.c.foo
 
-        
+
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)
 
@@ -153,22 +153,22 @@ class SelectableTest(TestBase, AssertsExecutionResults):
     def test_union_precedence(self):
         # conflicting column correspondence should be resolved based on 
         # the order of the select()s in the union
-        
+
         s1 = select([table1.c.col1, table1.c.col2])
         s2 = select([table1.c.col2, table1.c.col1])
         s3 = select([table1.c.col3, table1.c.colx])
         s4 = select([table1.c.colx, table1.c.col3])
-        
+
         u1 = union(s1, s2)
         assert u1.corresponding_column(table1.c.col1) is u1.c.col1
         assert u1.corresponding_column(table1.c.col2) is u1.c.col2
-        
+
         u1 = union(s1, s2, s3, s4)
         assert u1.corresponding_column(table1.c.col1) is u1.c.col1
         assert u1.corresponding_column(table1.c.col2) is u1.c.col2
         assert u1.corresponding_column(table1.c.colx) is u1.c.col2
         assert u1.corresponding_column(table1.c.col3) is u1.c.col1
-        
+
 
     def test_singular_union(self):
         u = union(select([table1.c.col1, table1.c.col2,
@@ -254,13 +254,13 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         j = join(a, table2)
         criterion = a.c.acol1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
-    
+
     def test_labeled_select_correspoinding(self):
         l1 = select([func.max(table1.c.col1)]).label('foo')
 
         s = select([l1])
         eq_(s.corresponding_column(l1), s.c.foo)
-        
+
         s = select([table1.c.col1, l1])
         eq_(s.corresponding_column(l1), s.c.foo)
 
@@ -300,7 +300,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
         s = select([t2, t3], use_labels=True)
 
         assert_raises(exc.NoReferencedTableError, s.join, t1)
-    
+
 
     def test_join_condition(self):
         m = MetaData()
@@ -326,7 +326,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
             ]:
             assert expected.compare(sql_util.join_condition(left,
                                     right, a_subset=a_subset))
-        
+
         # these are ambiguous, or have no joins
         for left, right, a_subset in [
             (t1t2, t3, None),
@@ -339,7 +339,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
                 sql_util.join_condition,
                 left, right, a_subset=a_subset
             )
-        
+
         als = t2t3.alias()
         # test join's behavior, including natural
         for left, right, expected in [
@@ -370,7 +370,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
                               "Perhaps you meant to convert the right "
                               "side to a subquery using alias\(\)\?",
                               t1t2.join, t2t3.select(use_labels=True))
-        
+
 
 class PrimaryKeyTest(TestBase, AssertsExecutionResults):
 
@@ -488,7 +488,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
         t3 = Table('t3', meta,
             Column('t3id', Integer, ForeignKey('t2.t2id'), primary_key=True),
             Column('t3data', String(30)))
-        
+
         eq_(util.column_set(sql_util.reduce_columns([
             t1.c.t1id,
             t1.c.t1data,
@@ -498,7 +498,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             t3.c.t3data,
             ])), util.column_set([t1.c.t1id, t1.c.t1data, t2.c.t2data,
                                  t3.c.t3data]))
-    
+
 
     def test_reduce_selectable(self):
         metadata = MetaData()
@@ -514,7 +514,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
         eq_(util.column_set(sql_util.reduce_columns(list(s.c), s)),
             util.column_set([s.c.engineer_id, s.c.engineer_name,
             s.c.manager_id]))
-       
+
 
     def test_reduce_aliased_join(self):
         metadata = MetaData()
@@ -543,7 +543,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
         eq_(util.column_set(sql_util.reduce_columns([pjoin.c.people_person_id,
             pjoin.c.engineers_person_id, pjoin.c.managers_person_id])),
             util.column_set([pjoin.c.people_person_id]))
-        
+
     def test_reduce_aliased_union(self):
         metadata = MetaData()
 
@@ -567,7 +567,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             item_join.c.dummy, item_join.c.child_name])),
             util.column_set([item_join.c.id, item_join.c.dummy,
             item_join.c.child_name]))
-    
+
 
     def test_reduce_aliased_union_2(self):
         metadata = MetaData()
@@ -597,7 +597,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
                      select_from(
                         page_table.join(magazine_page_table).
                         join(classified_page_table)),
-                        
+
                     select([
                         page_table.c.id,
                         magazine_page_table.c.page_id, 
@@ -622,7 +622,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
                         cast(null(), Integer).label('magazine_page_id')
                       ]).
                       select_from(page_table.join(magazine_page_table)),
-                      
+
                       select([
                         page_table.c.id,
                         magazine_page_table.c.page_id,
@@ -684,7 +684,7 @@ class AnnotationsTest(TestBase):
             def __init__(self):
                 Column.__init__(self, 'foo', Integer)
             _constructor = Column
-            
+
         t1 = Table('t1', MetaData(), MyColumn())
         s1 = t1.select()
         assert isinstance(t1.c.foo, MyColumn)
@@ -695,14 +695,14 @@ class AnnotationsTest(TestBase):
         assert isinstance(s2.c.foo, Column)
         annot_2 = s1._annotate({})
         assert isinstance(annot_2.c.foo, Column)
-        
+
     def test_annotated_corresponding_column(self):
         table1 = table('table1', column("col1"))
-        
+
         s1 = select([table1.c.col1])
         t1 = s1._annotate({})
         t2 = s1
-        
+
         # t1 needs to share the same _make_proxy() columns as t2, even
         # though it's annotated.  otherwise paths will diverge once they
         # are corresponded against "inner" below.
@@ -723,12 +723,12 @@ class AnnotationsTest(TestBase):
 
     def test_annotated_visit(self):
         table1 = table('table1', column("col1"), column("col2"))
-        
+
         bin = table1.c.col1 == bindparam('foo', value=None)
         assert str(bin) == "table1.col1 = :foo"
         def visit_binary(b):
             b.right = table1.c.col2
-            
+
         b2 = visitors.cloned_traverse(bin, {}, {'binary':visit_binary})
         assert str(b2) == "table1.col1 = table1.col2"
 
@@ -739,13 +739,13 @@ class AnnotationsTest(TestBase):
 
         def visit_binary(b):
             b.left = bindparam('bar')
-        
+
         b4 = visitors.cloned_traverse(b2, {}, {'binary':visit_binary})
         assert str(b4) == ":bar = table1.col2"
 
         b5 = visitors.cloned_traverse(b3, {}, {'binary':visit_binary})
         assert str(b5) == ":bar = table1.col2"
-    
+
 
     def test_annotate_expressions(self):
         table1 = table('table1', column('col1'), column('col2'))
@@ -760,10 +760,10 @@ class AnnotationsTest(TestBase):
             eq_(str(sql_util._deep_annotate(expr, {})), expected)
             eq_(str(sql_util._deep_annotate(expr, {},
                 exclude=[table1.c.col1])), expected)
-        
+
     def test_deannotate(self):
         table1 = table('table1', column("col1"), column("col2"))
-        
+
         bin = table1.c.col1 == bindparam('foo', value=None)
 
         b2 = sql_util._deep_annotate(bin, {'_orm_adapt':True})
@@ -772,7 +772,7 @@ class AnnotationsTest(TestBase):
 
         for elem in (b2._annotations, b2.left._annotations):
             assert '_orm_adapt' in elem
-        
+
         for elem in b3._annotations, b3.left._annotations, \
             b4._annotations, b4.left._annotations:
             assert elem == {}
@@ -781,4 +781,4 @@ class AnnotationsTest(TestBase):
         assert b3.left is not b2.left is not bin.left
         assert b4.left is bin.left  # since column is immutable
         assert b4.right is not bin.right is not b2.right is not b3.right
-        
+

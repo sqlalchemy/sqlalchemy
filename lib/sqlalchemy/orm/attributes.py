@@ -131,7 +131,7 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def hasparent(self, state, optimistic=False):
         return self.impl.hasparent(state, optimistic=optimistic)
-    
+
     def __getattr__(self, key):
         try:
             return getattr(self.comparator, key)
@@ -142,7 +142,7 @@ class QueryableAttribute(interfaces.PropComparator):
                     type(self.comparator).__name__, 
                     key)
             )
-        
+
     def __str__(self):
         return repr(self.parententity) + "." + self.property.key
 
@@ -170,7 +170,7 @@ class InstrumentedAttribute(QueryableAttribute):
 class _ProxyImpl(object):
     accepts_scalar_loader = False
     expire_missing = True
-    
+
     def __init__(self, key):
         self.key = key
 
@@ -216,7 +216,7 @@ def proxied_attribute_factory(descriptor):
         def __getattr__(self, attribute):
             """Delegate __getattr__ to the original descriptor and/or
             comparator."""
-            
+
             try:
                 return getattr(descriptor, attribute)
             except AttributeError:
@@ -249,7 +249,7 @@ class AttributeImpl(object):
 
         \class_
           associated class
-          
+
         key
           string name of the attribute
 
@@ -280,12 +280,12 @@ class AttributeImpl(object):
           the hasparent() function to identify an "owning" attribute.
           Allows multiple AttributeImpls to all match a single 
           owner attribute.
-          
+
         expire_missing
           if False, don't add an "expiry" callable to this attribute
           during state.expire_attributes(None), if no value is present 
           for this key.
-          
+
         """
         self.class_ = class_
         self.key = key
@@ -303,8 +303,8 @@ class AttributeImpl(object):
                 break
         self.active_history = active_history
         self.expire_missing = expire_missing
-        
-        
+
+
     def hasparent(self, state, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to 
         the given state.
@@ -380,7 +380,7 @@ class AttributeImpl(object):
             if state.committed_state.get(self.key, NEVER_SET) is NEVER_SET:
                 if passive is PASSIVE_NO_INITIALIZE:
                     return PASSIVE_NO_RESULT
-                    
+
                 callable_ = self._get_callable(state)
                 if callable_ is not None:
                     #if passive is not PASSIVE_OFF:
@@ -397,7 +397,7 @@ class AttributeImpl(object):
 
             # Return a new, empty value
             return self.initialize(state, dict_)
-    
+
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         self.set(state, dict_, value, initiator, passive=passive)
 
@@ -510,7 +510,7 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
             v = state.committed_state.get(self.key, NO_VALUE)
         else:
             v = dict_.get(self.key, NO_VALUE)
-            
+
         return History.from_attribute(
             self, state, v)
 
@@ -550,7 +550,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
        where the target object is also instrumented.
 
        Adds events to delete/set operations.
-       
+
     """
 
     accepts_scalar_loader = False
@@ -601,7 +601,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             old = self.get(state, dict_, passive=PASSIVE_ONLY_PERSISTENT)
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
-        
+
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
 
@@ -620,7 +620,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 previous is not None and
                 previous is not PASSIVE_NO_RESULT):
                 self.sethasparent(instance_state(previous), False)
-        
+
         for ext in self.extensions:
             value = ext.set(state, value, previous, initiator or self)
 
@@ -791,7 +791,7 @@ class CollectionAttributeImpl(AttributeImpl):
             return
 
         state.modified_event(dict_, self, True, old)
-        
+
         old_collection = self.get_collection(state, dict_, old)
 
         dict_[self.key] = user_data
@@ -815,7 +815,7 @@ class CollectionAttributeImpl(AttributeImpl):
         state.commit(dict_, [self.key])
 
         if self.key in state.pending:
-            
+
             # pending items exist.  issue a modified event,
             # add/remove new items.
             state.modified_event(dict_, self, True, user_data)
@@ -852,9 +852,9 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
     are two objects which contain scalar references to each other.
 
     """
-    
+
     active_history = False
-    
+
     def __init__(self, key):
         self.key = key
 
@@ -875,7 +875,7 @@ class GenericBackrefExtension(interfaces.AttributeExtension):
                             initiator, passive=PASSIVE_NO_FETCH)
             except (ValueError, KeyError, IndexError):
                 pass
-                
+
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
@@ -945,7 +945,7 @@ class ClassManager(dict):
 
     event_registry_factory = Events
     deferred_scalar_loader = None
-    
+
     def __init__(self, class_):
         self.class_ = class_
         self.factory = None  # where we came from, for inheritance bookkeeping
@@ -963,28 +963,28 @@ class ClassManager(dict):
         self.events = self.event_registry_factory()
         self.manage()
         self._instrument_init()
-    
+
     @property
     def is_mapped(self):
         return 'mapper' in self.__dict__
-        
+
     @util.memoized_property
     def mapper(self):
         raise exc.UnmappedClassError(self.class_)
-        
+
     def _attr_has_impl(self, key):
         """Return True if the given attribute is fully initialized.
-        
+
         i.e. has an impl.
         """
-        
+
         return key in self and self[key].impl is not None
-        
+
     def _configure_create_arguments(self, 
                             _source=None, 
                             deferred_scalar_loader=None):
         """Accept extra **kw arguments passed to create_manager_for_cls.
-        
+
         The current contract of ClassManager and other managers is that they
         take a single "cls" argument in their constructor (as per 
         test/orm/instrumentation.py InstrumentationCollisionTest).  This
@@ -993,30 +993,30 @@ class ClassManager(dict):
         ClassManager-like instances.   So create_manager_for_cls sends
         in ClassManager-specific arguments via this method once the 
         non-proxied ClassManager is available.
-        
+
         """
         if _source:
             deferred_scalar_loader = _source.deferred_scalar_loader
 
         if deferred_scalar_loader:
             self.deferred_scalar_loader = deferred_scalar_loader
-    
+
     def _subclass_manager(self, cls):
         """Create a new ClassManager for a subclass of this ClassManager's
         class.
-        
+
         This is called automatically when attributes are instrumented so that
         the attributes can be propagated to subclasses against their own
         class-local manager, without the need for mappers etc. to have already
         pre-configured managers for the full class hierarchy.   Mappers
         can post-configure the auto-generated ClassManager when needed.
-        
+
         """
         manager = manager_of_class(cls)
         if manager is None:
             manager = _create_manager_for_cls(cls, _source=self)
         return manager
-        
+
     def _instrument_init(self):
         # TODO: self.class_.__init__ is often the already-instrumented
         # __init__ from an instrumented superclass.  We still need to make 
@@ -1026,26 +1026,26 @@ class ClassManager(dict):
         self.events.original_init = self.class_.__init__
         self.new_init = _generate_init(self.class_, self)
         self.install_member('__init__', self.new_init)
-        
+
     def _uninstrument_init(self):
         if self.new_init:
             self.uninstall_member('__init__')
             self.new_init = None
-    
+
     def _create_instance_state(self, instance):
         if self.mutable_attributes:
             return state.MutableAttrInstanceState(instance, self)
         else:
             return state.InstanceState(instance, self)
-        
+
     def manage(self):
         """Mark this instance as the manager for its class."""
-        
+
         setattr(self.class_, self.MANAGER_ATTR, self)
 
     def dispose(self):
         """Dissasociate this manager from its class."""
-        
+
         delattr(self.class_, self.MANAGER_ATTR)
 
     def manager_getter(self):
@@ -1059,14 +1059,14 @@ class ClassManager(dict):
             self.local_attrs[key] = inst
             self.install_descriptor(key, inst)
         self[key] = inst
-        
+
         for cls in self.class_.__subclasses__():
             manager = self._subclass_manager(cls)
             manager.instrument_attribute(key, inst, True)
 
     def post_configure_attribute(self, key):
         pass
-        
+
     def uninstrument_attribute(self, key, propagated=False):
         if key not in self:
             return
@@ -1085,12 +1085,12 @@ class ClassManager(dict):
 
     def unregister(self):
         """remove all instrumentation established by this ClassManager."""
-        
+
         self._uninstrument_init()
 
         self.mapper = self.events = None
         self.info.clear()
-        
+
         for key in list(self):
             if key in self.local_attrs:
                 self.uninstrument_attribute(key)
@@ -1151,15 +1151,15 @@ class ClassManager(dict):
     def setup_instance(self, instance, state=None):
         setattr(instance, self.STATE_ATTR, 
                     state or self._create_instance_state(instance))
-    
+
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)
-        
+
     def _new_state_if_none(self, instance):
         """Install a default InstanceState if none is present.
 
         A private convenience method used by the __init__ decorator.
-        
+
         """
         if hasattr(instance, self.STATE_ATTR):
             return False
@@ -1176,7 +1176,7 @@ class ClassManager(dict):
             state = self._create_instance_state(instance)
             setattr(instance, self.STATE_ATTR, state)
             return state
-    
+
     def state_getter(self):
         """Return a (instance) -> InstanceState callable.
 
@@ -1186,13 +1186,13 @@ class ClassManager(dict):
         """
 
         return attrgetter(self.STATE_ATTR)
-    
+
     def dict_getter(self):
         return attrgetter('__dict__')
-        
+
     def has_state(self, instance):
         return hasattr(instance, self.STATE_ATTR)
-        
+
     def has_parent(self, state, key, optimistic=False):
         """TODO"""
         return self.get_impl(key).hasparent(state, optimistic=optimistic)
@@ -1212,7 +1212,7 @@ class _ClassInstrumentationAdapter(ClassManager):
         self._adapted = override
         self._get_state = self._adapted.state_getter(class_)
         self._get_dict = self._adapted.dict_getter(class_)
-        
+
         ClassManager.__init__(self, class_, **kw)
 
     def manage(self):
@@ -1273,10 +1273,10 @@ class _ClassInstrumentationAdapter(ClassManager):
 
     def setup_instance(self, instance, state=None):
         self._adapted.initialize_instance_dict(self.class_, instance)
-        
+
         if state is None:
             state = self._create_instance_state(instance)
-            
+
         # the given instance is assumed to have no state
         self._adapted.install_state(self.class_, instance, state)
         return state
@@ -1291,7 +1291,7 @@ class _ClassInstrumentationAdapter(ClassManager):
             return False
         else:
             return True
-            
+
     def state_getter(self):
         return self._get_state
 
@@ -1302,7 +1302,7 @@ class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occured on an instrumented
     attribute.
-    
+
     Each tuple member is an iterable sequence.
 
     """
@@ -1312,57 +1312,57 @@ class History(tuple):
     added = property(itemgetter(0))
     """Return the collection of items added to the attribute (the first tuple
     element)."""
-    
+
     unchanged = property(itemgetter(1))
     """Return the collection of items that have not changed on the attribute
     (the second tuple element)."""
-    
-    
+
+
     deleted = property(itemgetter(2))
     """Return the collection of items that have been removed from the
     attribute (the third tuple element)."""
-    
+
     def __new__(cls, added, unchanged, deleted):
         return tuple.__new__(cls, (added, unchanged, deleted))
-    
+
     def __nonzero__(self):
         return self != HISTORY_BLANK
-    
+
     def empty(self):
         """Return True if this :class:`History` has no changes
         and no existing, unchanged state.
-        
+
         """
-        
+
         return not bool(
                         (self.added or self.deleted)
                         or self.unchanged and self.unchanged != [None]
                     ) 
-        
+
     def sum(self):
         """Return a collection of added + unchanged + deleted."""
-        
+
         return (self.added or []) +\
                 (self.unchanged or []) +\
                 (self.deleted or [])
-    
+
     def non_deleted(self):
         """Return a collection of added + unchanged."""
-        
+
         return (self.added or []) +\
                 (self.unchanged or [])
-    
+
     def non_added(self):
         """Return a collection of unchanged + deleted."""
-        
+
         return (self.unchanged or []) +\
                 (self.deleted or [])
-    
+
     def has_changes(self):
         """Return True if this :class:`History` has changes."""
-        
+
         return bool(self.added or self.deleted)
-        
+
     def as_state(self):
         return History(
             [(c is not None and c is not PASSIVE_NO_RESULT)
@@ -1375,7 +1375,7 @@ class History(tuple):
              and instance_state(c) or None
              for c in self.deleted],
             )
-        
+
     @classmethod
     def from_attribute(cls, attribute, state, current):
         original = state.committed_state.get(attribute.key, NEVER_SET)
@@ -1423,18 +1423,18 @@ HISTORY_BLANK = History(None, None, None)
 def get_history(obj, key, **kwargs):
     """Return a :class:`.History` record for the given object 
     and attribute key.
-    
+
     :param obj: an object whose class is instrumented by the
-      attributes package.  
-    
+      attributes package.
+
     :param key: string attribute name.
-    
+
     :param kwargs: Optional keyword arguments currently
       include the ``passive`` flag, which indicates if the attribute should be
       loaded from the database if not already present (:attr:`PASSIVE_NO_FETCH`), and
       if the attribute should be not initialized to a blank value otherwise
       (:attr:`PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
-    
+
     """
     return get_state_history(instance_state(obj), key, **kwargs)
 
@@ -1449,7 +1449,7 @@ def has_parent(cls, obj, key, optimistic=False):
 
 def register_class(class_, **kw):
     """Register class instrumentation.
-    
+
     Returns the existing or newly created class manager.
     """
 
@@ -1457,15 +1457,15 @@ def register_class(class_, **kw):
     if manager is None:
         manager = _create_manager_for_cls(class_, **kw)
     return manager
-    
+
 def unregister_class(class_):
     """Unregister class instrumentation."""
-    
+
     instrumentation_registry.unregister(class_)
 
 def register_attribute(class_, key, **kw):
     proxy_property = kw.pop('proxy_property', None)
-    
+
     comparator = kw.pop('comparator', None)
     parententity = kw.pop('parententity', None)
     doc = kw.pop('doc', None)
@@ -1473,12 +1473,12 @@ def register_attribute(class_, key, **kw):
                             comparator, parententity, doc=doc)
     if not proxy_property:
         register_attribute_impl(class_, key, **kw)
-    
-def register_attribute_impl(class_, key,         
+
+def register_attribute_impl(class_, key,
         uselist=False, callable_=None, 
         useobject=False, mutable_scalars=False, 
         impl_class=None, **kw):
-    
+
     manager = manager_of_class(class_)
     if uselist:
         factory = kw.pop('typecallable', None)
@@ -1501,10 +1501,10 @@ def register_attribute_impl(class_, key,
         impl = ScalarAttributeImpl(class_, key, callable_, **kw)
 
     manager[key].impl = impl
-    
+
     manager.post_configure_attribute(key)
 
-    
+
 def register_descriptor(class_, key, proxy_property=None, comparator=None, 
                                 parententity=None, property_=None, doc=None):
     manager = manager_of_class(class_)
@@ -1515,9 +1515,9 @@ def register_descriptor(class_, key, proxy_property=None, comparator=None,
     else:
         descriptor = InstrumentedAttribute(key, comparator=comparator,
                                             parententity=parententity)
-    
+
     descriptor.__doc__ = doc
-        
+
     manager.instrument_attribute(key, descriptor)
 
 def unregister_attribute(class_, key):
@@ -1525,36 +1525,36 @@ def unregister_attribute(class_, key):
 
 def init_collection(obj, key):
     """Initialize a collection attribute and return the collection adapter.
-    
+
     This function is used to provide direct access to collection internals
     for a previously unloaded attribute.  e.g.::
-        
+
         collection_adapter = init_collection(someobject, 'elements')
         for elem in values:
             collection_adapter.append_without_event(elem)
-    
+
     For an easier way to do the above, see
      :func:`~sqlalchemy.orm.attributes.set_committed_value`.
-    
+
     obj is an instrumented object instance.  An InstanceState
     is accepted directly for backwards compatibility but 
     this usage is deprecated.
-    
+
     """
     state = instance_state(obj)
     dict_ = state.dict
     return init_state_collection(state, dict_, key)
-    
+
 def init_state_collection(state, dict_, key):
     """Initialize a collection attribute and return the collection adapter."""
-    
+
     attr = state.get_impl(key)
     user_data = attr.initialize(state, dict_)
     return attr.get_collection(state, dict_, user_data)
 
 def set_committed_value(instance, key, value):
     """Set the value of an attribute with no history events.
-    
+
     Cancels any previous history present.  The value should be 
     a scalar value for scalar-holding attributes, or
     an iterable for any collection-holding attribute.
@@ -1565,20 +1565,20 @@ def set_committed_value(instance, key, value):
     which has loaded additional attributes or collections through
     separate queries, which can then be attached to an instance
     as though it were part of its original loaded state.
-    
+
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.get_impl(key).set_committed_value(state, dict_, value)
-    
+
 def set_attribute(instance, key, value):
     """Set the value of an attribute, firing history events.
-    
+
     This function may be used regardless of instrumentation
     applied directly to the class, i.e. no descriptors are required.
     Custom attribute management schemes will need to make usage
     of this method to establish attribute state as understood
     by SQLAlchemy.
-    
+
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.get_impl(key).set(state, dict_, value, None)
@@ -1591,7 +1591,7 @@ def get_attribute(instance, key):
     Custom attribute management schemes will need to make usage
     of this method to make usage of attribute state as understood
     by SQLAlchemy.
-    
+
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     return state.get_impl(key).get(state, dict_)
@@ -1604,7 +1604,7 @@ def del_attribute(instance, key):
     Custom attribute management schemes will need to make usage
     of this method to establish attribute state as understood
     by SQLAlchemy.
-    
+
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.get_impl(key).delete(state, dict_)
@@ -1612,21 +1612,21 @@ def del_attribute(instance, key):
 def is_instrumented(instance, key):
     """Return True if the given attribute on the given instance is
     instrumented by the attributes package.
-    
+
     This function may be used regardless of instrumentation
     applied directly to the class, i.e. no descriptors are required.
-    
+
     """
     return manager_of_class(instance.__class__).\
                         is_instrumented(key, search=True)
 
 class InstrumentationRegistry(object):
     """Private instrumentation registration singleton.
-    
+
     All classes are routed through this registry 
     when first instrumented, however the InstrumentationRegistry
     is not actually needed unless custom ClassManagers are in use.
-    
+
     """
 
     _manager_finders = weakref.WeakKeyDictionary()
@@ -1656,14 +1656,14 @@ class InstrumentationRegistry(object):
         manager = factory(class_)
         if not isinstance(manager, ClassManager):
             manager = _ClassInstrumentationAdapter(class_, manager)
-            
+
         if factory != ClassManager and not self._extended:
             # somebody invoked a custom ClassManager.
             # reinstall global "getter" functions with the more 
             # expensive ones.
             self._extended = True
             _install_lookup_strategy(self)
-        
+
         manager._configure_create_arguments(**kw)
 
         manager.factory = factory
@@ -1732,7 +1732,7 @@ class InstrumentationRegistry(object):
         except KeyError:
             raise AttributeError("%r is not instrumented" %
                                     instance.__class__)
-        
+
     def unregister(self, class_):
         if class_ in self._manager_finders:
             manager = self.manager_of_class(class_)
@@ -1743,7 +1743,7 @@ class InstrumentationRegistry(object):
             del self._dict_finders[class_]
         if ClassManager.MANAGER_ATTR in class_.__dict__:
             delattr(class_, ClassManager.MANAGER_ATTR)
-        
+
 instrumentation_registry = InstrumentationRegistry()
 
 def _install_lookup_strategy(implementation):
@@ -1751,10 +1751,10 @@ def _install_lookup_strategy(implementation):
     with either faster or more comprehensive implementations,
     based on whether or not extended class instrumentation
     has been detected.
-    
+
     This function is called only by InstrumentationRegistry()
     and unit tests specific to this behavior.
-    
+
     """
     global instance_state, instance_dict, manager_of_class
     if implementation is util.symbol('native'):
@@ -1766,7 +1766,7 @@ def _install_lookup_strategy(implementation):
         instance_state = instrumentation_registry.state_of
         instance_dict = instrumentation_registry.dict_of
         manager_of_class = instrumentation_registry.manager_of_class
-        
+
 _create_manager_for_cls = instrumentation_registry.create_manager_for_cls
 
 # Install default "lookup" strategies.  These are basically

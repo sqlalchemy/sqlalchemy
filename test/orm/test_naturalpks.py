@@ -21,7 +21,7 @@ class NaturalPKTest(_base.MappedTest):
             fk_args = dict(deferrable=True, initially='deferred')
         else:
             fk_args = dict(onupdate='cascade')
-            
+
         users = Table('users', metadata,
             Column('username', String(50), primary_key=True),
             Column('fullname', String(100)),
@@ -118,7 +118,7 @@ class NaturalPKTest(_base.MappedTest):
         sess.flush()
         sess.expunge_all()
         assert sess.query(User).get('ed').fullname == 'jack'
-        
+
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
@@ -177,7 +177,7 @@ class NaturalPKTest(_base.MappedTest):
         assert sess.query(Address).get('jack1').username is None
         u1 = sess.query(User).get('fred')
         eq_(User(username='fred', fullname='jack'), u1)
-        
+
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
@@ -243,7 +243,7 @@ class NaturalPKTest(_base.MappedTest):
         u1 = User(username='jack', fullname='jack')
         sess.add(u1)
         sess.flush()
-        
+
         a1 = Address(email='jack1')
         u1.address = a1
         sess.add(a1)
@@ -265,7 +265,7 @@ class NaturalPKTest(_base.MappedTest):
 
         sess.expunge_all()
         eq_([Address(username='ed')], sess.query(Address).all())
-        
+
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_bidirectional_passive(self):
@@ -376,7 +376,7 @@ class NaturalPKTest(_base.MappedTest):
         eq_(['jack'], [u.username for u in r[0].users])
         eq_(Item(itemname='item2'), r[1])
         eq_(['ed', 'jack'], sorted([u.username for u in r[1].users]))
-        
+
         sess.expunge_all()
         u2 = sess.query(User).get(u2.username)
         u2.username='wendy'
@@ -386,41 +386,41 @@ class NaturalPKTest(_base.MappedTest):
 
 class TransientExceptionTesst(_fixtures.FixtureTest):
     run_inserts = None
-    
+
     @testing.resolve_artifact_names
     def test_transient_exception(self):
         """An object that goes from a pk value to transient/pending
         doesn't count as a "pk" switch.
-        
+
         """
         mapper(User, users)
         mapper(Address, addresses, properties={'user':relationship(User)})
-        
+
         sess = create_session()
         u1 = User(id=5, name='u1')
         ad1 = Address(email_address='e1', user=u1)
         sess.add_all([u1, ad1])
         sess.flush()
-        
+
         make_transient(u1)
         u1.id = None
         u1.username='u2'
         sess.add(u1)
         sess.flush()
-        
+
         eq_(ad1.user_id, 5)
-        
+
         sess.expire_all()
         eq_(ad1.user_id, 5)
         ne_(u1.id, 5)
         ne_(u1.id, None)
         eq_(sess.query(User).count(), 2)
-        
+
 class ReversePKsTest(_base.MappedTest):
     """reverse the primary keys of two entities and ensure bookkeeping
     succeeds."""
-    
-    
+
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -429,7 +429,7 @@ class ReversePKsTest(_base.MappedTest):
             Column('status', Integer, primary_key=True),
             Column('username', Unicode(50), nullable=False),
             )
-    
+
     @classmethod
     def setup_classes(cls):
         class User(_base.ComparableEntity):
@@ -441,11 +441,11 @@ class ReversePKsTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_reverse(self):
         PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
-        
+
         mapper(User, user)
 
         session = sa.orm.sessionmaker()()
-        
+
         a_published = User(1, PUBLISHED, u'a')
         session.add(a_published)
         session.commit()
@@ -473,7 +473,7 @@ class ReversePKsTest(_base.MappedTest):
         assert session.query(User).get([1, PUBLISHED]) is a_published
         assert session.query(User).get([1, EDITABLE]) is a_editable
 
-    
+
 class SelfReferentialTest(_base.MappedTest):
     # mssql, mysql don't allow 
     # ON UPDATE on self-referential keys
@@ -485,7 +485,7 @@ class SelfReferentialTest(_base.MappedTest):
             fk_args = dict(deferrable=True, initially='deferred')
         else:
             fk_args = dict(onupdate='cascade')
-        
+
         Table('nodes', metadata,
               Column('name', String(50), primary_key=True),
               Column('parent', String(50),
@@ -515,7 +515,7 @@ class SelfReferentialTest(_base.MappedTest):
         n4 = Node(name='n13', parentnode=n1)
         sess.add_all([n2, n3, n4])
         sess.commit()
-        
+
         n1.name = 'new n1'
         sess.commit()
         eq_(['new n1', 'new n1', 'new n1'],
@@ -686,7 +686,7 @@ class NonPKCascadeTest(_base.MappedTest):
 class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     """A primary key mutation cascades onto a foreign key that is itself a
     primary key."""
-    
+
     @classmethod
     def define_tables(cls, metadata):
         if testing.against('oracle'):
@@ -714,7 +714,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
             pass
         class Address(_base.ComparableEntity):
             pass
-    
+
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_onetomany_passive(self):
@@ -724,20 +724,20 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
-        
+
     def test_o2m_change_passive(self):
         self._test_o2m_change(True)
-        
+
     def test_o2m_change_nonpassive(self):
         self._test_o2m_change(False)
 
     @testing.resolve_artifact_names
     def _test_o2m_change(self, passive_updates):
         """Change the PK of a related entity to another.
-        
+
         "on update cascade" is not involved here, so the mapper has 
         to do the UPDATE itself.
-        
+
         """
         mapper(User, users, properties={
             'addresses':relationship(Address,
@@ -748,10 +748,10 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         a1 = Address(username='ed', email='ed@host1')
         u1 = User(username='ed', addresses=[a1])
         u2 = User(username='jack')
-        
+
         sess.add_all([a1, u1, u2])
         sess.flush()
-        
+
         a1.username = 'jack'
         sess.flush()
 
@@ -783,17 +783,17 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         u1.addresses.remove(a1)
         u2.addresses.append(a1)
         sess.flush()
-    
+
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE '
                                 'but requires referential integrity')
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     def test_change_m2o_passive(self):
         self._test_change_m2o(True)
-    
+
     @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
     def test_change_m2o_nonpassive(self):
         self._test_change_m2o(False)
-    
+
     @testing.resolve_artifact_names
     def _test_change_m2o(self, passive_updates):
         mapper(User, users)
@@ -806,11 +806,11 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         a1 = Address(user=u1, email='foo@bar')
         sess.add_all([u1, a1])
         sess.flush()
-        
+
         u1.username='edmodified'
         sess.flush()
         eq_(a1.username, 'edmodified')
-        
+
         sess.expire_all()
         eq_(a1.username, 'edmodified')
 
@@ -834,11 +834,11 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         a1 = Address(user=u1, email='foo@bar')
         sess.add_all([u1, u2, a1])
         sess.flush()
-        
+
         a1.user = u2
         sess.flush()
-        
-    
+
+
     @testing.resolve_artifact_names
     def test_rowswitch_doesntfire(self):
         mapper(User, users)
@@ -849,11 +849,11 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         sess = create_session()
         u1 = User(username='ed')
         a1 = Address(user=u1, email='ed@host1')
-        
+
         sess.add(u1)
         sess.add(a1)
         sess.flush()
-        
+
         sess.delete(u1)
         sess.delete(a1)
 
@@ -863,7 +863,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         sess.add(a2)
 
         from sqlalchemy.test.assertsql import CompiledSQL
-        
+
         # test that the primary key columns of addresses are not
         # being updated as well, since this is a row switch.
         self.assert_sql_execution(testing.db,
@@ -875,22 +875,22 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
                          {'etc': 'foo', 'addresses_username':'ed',
                             'addresses_email':'ed@host1'} ),
                     )
-        
-        
+
+
     @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
         """Change the PK of a related entity via foreign key cascade.
-        
+
         For databases that require "on update cascade", the mapper 
         has to identify the row by the new value, not the old, when
         it does the update.
-        
+
         """
         mapper(User, users, properties={
             'addresses':relationship(Address,
                                 passive_updates=passive_updates)})
         mapper(Address, addresses)
-    
+
         sess = create_session()
         a1, a2 = Address(username='ed', email='ed@host1'),\
                     Address(username='ed', email='ed@host2')
@@ -901,7 +901,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         eq_(a2.username, 'ed')
         eq_(sa.select([addresses.c.username]).execute().fetchall(), 
                 [('ed',), ('ed',)])
-        
+
         u1.username = 'jack'
         a2.email='ed@host3'
         sess.flush()
@@ -914,7 +914,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
 
 class JoinedInheritanceTest(_base.MappedTest):
     """Test cascades of pk->pk/fk on joined table inh."""
-    
+
     # mssql doesn't allow ON UPDATE on self-referential keys
     __unsupported_on__ = ('mssql',) 
 
@@ -929,7 +929,7 @@ class JoinedInheritanceTest(_base.MappedTest):
             Column('name', String(50), primary_key=True),
             Column('type', String(50), nullable=False),
             test_needs_fk=True)
-        
+
         Table('engineer', metadata,
             Column('name', String(50), ForeignKey('person.name', **fk_args),
                                         primary_key=True),
@@ -965,12 +965,12 @@ class JoinedInheritanceTest(_base.MappedTest):
     @testing.fails_on_everything_except('sqlite', 'oracle', '+zxjdbc')
     def test_pk_nonpassive(self):
         self._test_pk(False)
-        
+
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
     @testing.fails_on('oracle', 'oracle doesnt support ON UPDATE CASCADE')
     def test_fk_passive(self):
         self._test_fk(True)
-        
+
     # PG etc. need passive=True to allow PK->PK cascade
     @testing.fails_on_everything_except('sqlite', 'mysql+zxjdbc', 'oracle',
                                                 'postgresql+zxjdbc')
@@ -1000,7 +1000,7 @@ class JoinedInheritanceTest(_base.MappedTest):
         e1.name = 'wally'
         e1.primary_language = 'c++'
         sess.commit()
-        
+
     @testing.resolve_artifact_names
     def _test_fk(self, passive_updates):
         mapper(Person, person, polymorphic_on=person.c.type, 
@@ -1015,9 +1015,9 @@ class JoinedInheritanceTest(_base.MappedTest):
         })
         mapper(Manager, manager, inherits=Person,
                     polymorphic_identity='manager')
-        
+
         sess = sa.orm.sessionmaker()()
-        
+
         m1 = Manager(name='dogbert', paperwork='lots')
         e1, e2 = \
                 Engineer(name='dilbert', primary_language='java', boss=m1),\
@@ -1030,14 +1030,14 @@ class JoinedInheritanceTest(_base.MappedTest):
         eq_(e1.boss_name, 'dogbert')
         eq_(e2.boss_name, 'dogbert')
         sess.expire_all()
-        
+
         m1.name = 'pointy haired'
         e1.primary_language = 'scala'
         e2.primary_language = 'cobol'
         sess.commit()
-        
+
         eq_(e1.boss_name, 'pointy haired')
         eq_(e2.boss_name, 'pointy haired')
-    
-    
-    
+
+
+

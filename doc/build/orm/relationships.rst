@@ -63,20 +63,20 @@ To establish a bi-directional relationship in one-to-many, where the "reverse" s
 ``Child`` will get a ``parent`` attribute with many-to-one semantics.
 
 Declarative::
-    
+
     from sqlalchemy.ext.declarative import declarative_base
     Base = declarative_base()
-    
+
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
         children = relationship("Child", backref="parent")
-        
+
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
-        
+
 
 Many To One
 ~~~~~~~~~~~~
@@ -125,7 +125,7 @@ Declarative::
         id = Column(Integer, primary_key=True)
         child_id = Column(Integer, ForeignKey('child.id'))
         child = relationship("Child", backref="parents")
-        
+
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
@@ -150,14 +150,14 @@ of the relationship. To convert one-to-many into one-to-one::
     mapper(Parent, parent_table, properties={
         'child': relationship(Child, uselist=False, backref='parent')
     })
-    
+
     mapper(Child, child_table)
 
 Or to turn a one-to-many backref into one-to-one, use the :func:`.backref` function
 to provide arguments for the reverse side::
-    
+
     from sqlalchemy.orm import backref
-    
+
     parent_table = Table('parent', metadata,
         Column('id', Integer, primary_key=True),
         Column('child_id', Integer, ForeignKey('child.id'))
@@ -183,11 +183,11 @@ The second example above as declarative::
         id = Column(Integer, primary_key=True)
         child_id = Column(Integer, ForeignKey('child.id'))
         child = relationship("Child", backref=backref("parent", uselist=False))
-        
+
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
-    
+
 Many To Many
 ~~~~~~~~~~~~~
 
@@ -238,18 +238,18 @@ plain schematic form::
         Column('left_id', Integer, ForeignKey('left.id')),
         Column('right_id', Integer, ForeignKey('right.id'))
     )
-    
+
     class Parent(Base):
         __tablename__ = 'left'
         id = Column(Integer, primary_key=True)
         children = relationship("Child", 
                         secondary=association_table, 
                         backref="parents")
-        
+
     class Child(Base):
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
-    
+
 .. _association_pattern:
 
 Association Object
@@ -313,16 +313,16 @@ Declarative::
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
         child = relationship("Child", backref="parent_assocs")
-        
+
     class Parent(Base):
         __tablename__ = 'left'
         id = Column(Integer, primary_key=True)
         children = relationship(Association, backref="parent")
-        
+
     class Child(Base):
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
-        
+
 Working with the association pattern in its direct form requires that child
 objects are associated with an association instance before being appended to
 the parent; similarly, access from parent to child goes through the
@@ -442,7 +442,7 @@ when the collection is only one column)::
 
     from sqlalchemy.ext.declarative import declarative_base
     Base = declarative_base()
-    
+
     class Node(Base):
         __tablename__ = 'nodes'
         id = Column(Integer, primary_key=True)
@@ -451,7 +451,7 @@ when the collection is only one column)::
         children = relationship("Node", 
                         backref=backref('parent', remote_side=id)
                     )
-        
+
 There are several examples included with SQLAlchemy illustrating
 self-referential strategies; these include :ref:`examples_adjacencylist` and
 :ref:`examples_xmlpersistence`.
@@ -761,7 +761,7 @@ A typical mutable primary key setup might look like:
 
     # passive_updates=False *only* needed if the database
     # does not implement ON UPDATE CASCADE
-    
+
     mapper(User, users, properties={
         'addresses': relationship(Address, passive_updates=False)
     })

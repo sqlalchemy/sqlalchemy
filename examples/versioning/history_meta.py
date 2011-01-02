@@ -19,10 +19,10 @@ def _history_mapper(local_mapper):
     # of the info is always loaded (currently sets it on all attributes)
     for prop in local_mapper.iterate_properties:
         getattr(local_mapper.class_, prop.key).impl.active_history = True
-    
+
     super_mapper = local_mapper.inherits
     super_history_mapper = getattr(cls, '__history_mapper__', None)
-    
+
     polymorphic_on = None
     super_fks = []
     if not super_mapper or local_mapper.local_table is not super_mapper.local_table:
@@ -30,7 +30,7 @@ def _history_mapper(local_mapper):
         for column in local_mapper.local_table.c:
             if column.name == 'version':
                 continue
-                
+
             col = column.copy()
             col.unique = False
 
@@ -38,16 +38,16 @@ def _history_mapper(local_mapper):
                 super_fks.append((col.key, list(super_history_mapper.base_mapper.local_table.primary_key)[0]))
 
             cols.append(col)
-            
+
             if column is local_mapper.polymorphic_on:
                 polymorphic_on = col
-        
+
         if super_mapper:
             super_fks.append(('version', super_history_mapper.base_mapper.local_table.c.version))
             cols.append(Column('version', Integer, primary_key=True))
         else:
             cols.append(Column('version', Integer, primary_key=True))
-        
+
         if super_fks:
             cols.append(ForeignKeyConstraint(*zip(*super_fks)))
 
@@ -62,13 +62,13 @@ def _history_mapper(local_mapper):
                 col = column.copy()
                 super_history_mapper.local_table.append_column(col)
         table = None
-        
+
     if super_history_mapper:
         bases = (super_history_mapper.class_,)
     else:
         bases = local_mapper.base_mapper.class_.__bases__
     versioned_cls = type.__new__(type, "%sHistory" % cls.__name__, bases, {})
-    
+
     m = mapper(
             versioned_cls, 
             table, 
@@ -77,11 +77,11 @@ def _history_mapper(local_mapper):
             polymorphic_identity=local_mapper.polymorphic_identity
             )
     cls.__history_mapper__ = m
-    
+
     if not super_history_mapper:
         cls.version = Column('version', Integer, default=1, nullable=False)
-    
-    
+
+
 class VersionedMeta(DeclarativeMeta):
     def __init__(cls, classname, bases, dict_):
         DeclarativeMeta.__init__(cls, classname, bases, dict_)
@@ -102,21 +102,21 @@ def create_version(obj, session, deleted = False):
     obj_mapper = object_mapper(obj)
     history_mapper = obj.__history_mapper__
     history_cls = history_mapper.class_
-    
+
     obj_state = attributes.instance_state(obj)
-    
+
     attr = {}
 
     obj_changed = False
-    
+
     for om, hm in zip(obj_mapper.iterate_to_root(), history_mapper.iterate_to_root()):
         if hm.single:
             continue
-    
+
         for hist_col in hm.local_table.c:
             if hist_col.key == 'version':
                 continue
-                
+
             obj_col = om.local_table.c[hist_col.key]
 
             # get the value of the
@@ -131,7 +131,7 @@ def create_version(obj, session, deleted = False):
                 # the "unmapped" status of the subclass column on the 
                 # base class is a feature of the declarative module as of sqla 0.5.2.
                 continue
-                
+
             # expired object attributes and also deferred cols might not be in the
             # dict.  force it to load no matter what by using getattr().
             if prop.key not in obj_state.dict:
@@ -148,7 +148,7 @@ def create_version(obj, session, deleted = False):
                 # if the attribute had no value.
                 attr[hist_col.key] = a[0]
                 obj_changed = True
-    
+
     if not obj_changed:
         # not changed, but we have relationships.  OK
         # check those too
@@ -157,8 +157,8 @@ def create_version(obj, session, deleted = False):
                 attributes.get_history(obj, prop.key).has_changes():
                 obj_changed = True
                 break
-        
-    if not obj_changed and not deleted:            
+
+    if not obj_changed and not deleted:
         return
 
     attr['version'] = obj.version
@@ -167,7 +167,7 @@ def create_version(obj, session, deleted = False):
         setattr(hist, key, value)
     session.add(hist)
     obj.version += 1
-    
+
 class VersionedListener(SessionExtension):
     def before_flush(self, session, flush_context, instances):
         for obj in versioned_objects(session.dirty):

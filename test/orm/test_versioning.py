@@ -26,13 +26,13 @@ _uuids = [
     '782a5f04b4364a53a6fce762f48921c1',
     'bef510f2420f4476a7629013ead237f5',
     ]
-    
+
 def make_uuid():
     """generate uuids even on Python 2.4 which has no 'uuid'"""
     return _uuids.pop(0)
 
 class VersioningTest(_base.MappedTest):
-    
+
     @classmethod
     def define_tables(cls, metadata):
         Table('version_table', metadata,
@@ -131,11 +131,11 @@ class VersioningTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_bump_version(self):
         """test that version number can be bumped.
-        
+
         Ensures that the UPDATE or DELETE is against the 
         last committed version of version_id_col, not the modified 
         state.
-        
+
         """
         mapper(Foo, version_table, 
                 version_id_col=version_table.c.version_id)
@@ -148,19 +148,19 @@ class VersioningTest(_base.MappedTest):
         f1.version_id = 2
         s1.commit()
         eq_(f1.version_id, 2)
-        
+
         # skip an id, test that history
         # is honored
         f1.version_id = 4
         f1.value = "something new"
         s1.commit()
         eq_(f1.version_id, 4)
-        
+
         f1.version_id = 5
         s1.delete(f1)
         s1.commit()
         eq_(s1.query(Foo).count(), 0)
-        
+
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     @testing.resolve_artifact_names
@@ -189,7 +189,7 @@ class VersioningTest(_base.MappedTest):
 
         # reload it - this expires the old version first
         s1.refresh(f1s1, lockmode='read')
-        
+
         # now assert version OK
         s1.query(Foo).with_lockmode('read').get(f1s1.id)
 
@@ -216,13 +216,13 @@ class VersioningTest(_base.MappedTest):
         f1s2 = s2.query(Foo).get(f1s1.id)
         s2.refresh(f1s2, lockmode='update')
         f1s2.value='f1 new value'
-        
+
         assert_raises(
             exc.DBAPIError,
             s1.refresh, f1s1, lockmode='update_nowait'
         )
         s1.rollback()
-        
+
         s2.commit()
         s1.refresh(f1s1, lockmode='update_nowait')
         assert f1s1.version_id == f1s2.version_id
@@ -281,16 +281,16 @@ class RowSwitchTest(_base.MappedTest):
         session.add(P(id='P1', data='P version 1'))
         session.commit()
         session.close()
-        
+
         p = session.query(P).first()
         session.delete(p)
         session.add(P(id='P1', data="really a row-switch"))
         session.commit()
-    
+
     @testing.resolve_artifact_names
     def test_child_row_switch(self):
         assert P.c.property.strategy.use_get
-        
+
         session = sessionmaker()()
         session.add(P(id='P1', data='P version 1'))
         session.commit()
@@ -369,27 +369,27 @@ class AlternateGeneratorTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_child_row_switch_two(self):
         Session = sessionmaker()
-        
+
         # TODO: not sure this test is 
         # testing exactly what its looking for
-        
+
         sess1 = Session()
         sess1.add(P(id='P1', data='P version 1'))
         sess1.commit()
         sess1.close()
-        
+
         p1 = sess1.query(P).first()
 
         sess2 = Session()
         p2 = sess2.query(P).first()
-        
+
         sess1.delete(p1)
         sess1.commit()
-        
+
         # this can be removed and it still passes
         sess1.add(P(id='P1', data='P version 2'))
         sess1.commit()
-        
+
         p2.data = 'P overwritten by concurrent tx'
         assert_raises_message(
             orm.exc.StaleDataError,
@@ -397,12 +397,12 @@ class AlternateGeneratorTest(_base.MappedTest):
             r"1 row\(s\); 0 were matched.",
             sess2.commit
         )
-        
+
 
 class InheritanceTwoVersionIdsTest(_base.MappedTest):
     """Test versioning where both parent/child table have a
     versioning column.
-    
+
     """
     @classmethod
     def define_tables(cls, metadata):
@@ -454,7 +454,7 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
 
         # base is populated
         eq_(select([base.c.version_id]).scalar(), 1)
-    
+
     @testing.resolve_artifact_names
     def test_sub_only(self):
         mapper(Base, base)
@@ -471,12 +471,12 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
 
         # base is not
         eq_(select([base.c.version_id]).scalar(), None)
-        
+
     @testing.resolve_artifact_names
     def test_mismatch_version_col_warning(self):
         mapper(Base, base, 
                 version_id_col=base.c.version_id)
-        
+
         assert_raises_message(
             exc.SAWarning,
             "Inheriting version_id_col 'version_id' does not "
@@ -487,4 +487,3 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
             mapper,
             Sub, sub, inherits=Base, 
                 version_id_col=sub.c.version_id)
-        

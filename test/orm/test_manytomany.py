@@ -165,11 +165,11 @@ class M2MTest(_base.MappedTest):
         sess.add_all([p1, p2])
         p1.parent_places.append(p2)
         sess.flush()
-        
+
         sess.expire_all()
         assert p1 in p2.parent_places
         assert p2 in p1.parent_places
-        
+
 
     @testing.resolve_artifact_names
     def test_double(self):
@@ -241,7 +241,7 @@ class M2MTest(_base.MappedTest):
                                             passive_updates=False)
         })
         mapper(Transition, transition)
-        
+
         p1 = Place('place1')
         t1 = Transition('t1')
         p1.transitions.append(t1)
@@ -251,10 +251,10 @@ class M2MTest(_base.MappedTest):
 
         p1.place_id
         p1.transitions
-        
+
         sess.execute("delete from place_input", mapper=Place)
         p1.place_id = 7
-        
+
         assert_raises_message(
             orm_exc.StaleDataError,
             r"UPDATE statement on table 'place_input' expected to "
@@ -262,7 +262,7 @@ class M2MTest(_base.MappedTest):
             sess.commit
         )
         sess.rollback()
-        
+
         p1.place_id
         p1.transitions
         sess.execute("delete from place_input", mapper=Place)
@@ -273,7 +273,7 @@ class M2MTest(_base.MappedTest):
             r"delete 1 row\(s\); Only 0 were matched.",
             sess.commit
         )
-        
+
 class M2MTest2(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -327,7 +327,7 @@ class M2MTest2(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_dupliates_raise(self):
         """test constraint error is raised for dupe entries in a list"""
-        
+
         mapper(Student, student)
         mapper(Course, course, properties={
             'students': relationship(Student, enroll, backref='courses')})
@@ -339,7 +339,7 @@ class M2MTest2(_base.MappedTest):
         s1.courses.append(c1)
         sess.add(s1)
         assert_raises(sa.exc.DBAPIError, sess.flush)
-        
+
     @testing.resolve_artifact_names
     def test_delete(self):
         """A many-to-many table gets cleared out with deletion from the backref side"""
@@ -406,7 +406,7 @@ class M2MTest3(_base.MappedTest):
             'a2s': relationship(A, secondary=c2a2, lazy='joined')})
 
         assert create_session().query(C).with_labels().statement is not None
-        
+
         # TODO: seems like just a test for an ancient exception throw.
         # how about some data/inserts/queries/assertions for this one
 
@@ -427,7 +427,7 @@ class M2MTest4(_base.MappedTest):
             Column('t1', Integer, ForeignKey('table1.col1')),
             Column('t2', Integer, ForeignKey('table2.col1')),
             )
-    
+
     @testing.resolve_artifact_names
     def test_delete_parent(self):
         class A(_base.ComparableEntity):

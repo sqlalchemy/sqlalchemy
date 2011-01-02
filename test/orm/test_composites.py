@@ -61,7 +61,7 @@ class PointTest(_base.MappedTest):
             'start':sa.orm.composite(Point, edges.c.x1, edges.c.y1),
             'end': sa.orm.composite(Point, edges.c.x2, edges.c.y2)
         })
-    
+
     @testing.resolve_artifact_names
     def _fixture(self):
         sess = Session()
@@ -72,7 +72,7 @@ class PointTest(_base.MappedTest):
         sess.add(g)
         sess.commit()
         return sess
-        
+
     @testing.resolve_artifact_names
     def test_round_trip(self):
 
@@ -80,7 +80,7 @@ class PointTest(_base.MappedTest):
 
         g1 = sess.query(Graph).first()
         sess.close()
-        
+
         g = sess.query(Graph).get(g1.id)
         eq_(
             [(e.start, e.end) for e in g.edges],
@@ -88,12 +88,12 @@ class PointTest(_base.MappedTest):
                 (Point(3, 4), Point(5, 6)),
                 (Point(14, 5), Point(2, 7)),
             ]
-        )    
+        )
 
     @testing.resolve_artifact_names
     def test_detect_change(self):
         sess = self._fixture()
-        
+
         g = sess.query(Graph).first()
         g.edges[1].end = Point(18, 4)
         sess.commit()
@@ -105,7 +105,7 @@ class PointTest(_base.MappedTest):
     def test_detect_mutation(self):
         # only on 0.6
         sess = self._fixture()
-        
+
         g = sess.query(Graph).first()
         g.edges[1].end.x = 18
         g.edges[1].end.y = 4
@@ -113,28 +113,28 @@ class PointTest(_base.MappedTest):
 
         e = sess.query(Edge).get(g.edges[1].id)
         eq_(e.end, Point(18, 4))
-        
+
     @testing.resolve_artifact_names
     def test_eager_load(self):
         sess = self._fixture()
 
         g = sess.query(Graph).first()
         sess.close()
-        
+
         def go():
             g2 = sess.query(Graph).\
                   options(sa.orm.joinedload('edges')).\
                   get(g.id)
-            
+
             eq_(
                 [(e.start, e.end) for e in g2.edges],
                 [
                     (Point(3, 4), Point(5, 6)),
                     (Point(14, 5), Point(2, 7)),
                 ]
-            )    
+            )
         self.assert_sql_count(testing.db, go, 1)
-    
+
     @testing.resolve_artifact_names
     def test_comparator(self):
         sess = self._fixture()
@@ -162,13 +162,13 @@ class PointTest(_base.MappedTest):
             sess.query(Edge.start, Edge.end).all(), 
             [(3, 4, 5, 6), (14, 5, 2, 7)]
         )
-    
+
 #    @testing.resolve_artifact_names
 #    def test_delete(self):
         # only on 0.7
 #        sess = self._fixture()
 #        g = sess.query(Graph).first()
-        
+
 #        e = g.edges[1]
 #        del e.end
 #        sess.flush()
@@ -181,7 +181,7 @@ class PointTest(_base.MappedTest):
     def test_set_none(self):
         sess = self._fixture()
         g = sess.query(Graph).first()
-        
+
         e = g.edges[1]
         e.end = None
         sess.flush()
@@ -195,7 +195,7 @@ class PointTest(_base.MappedTest):
         # only on 0.6
         sess = self._fixture()
         g = sess.query(Graph).first()
-        
+
         e = g.edges[1]
         e.end.x = e.end.y = None
         sess.flush()
@@ -207,19 +207,19 @@ class PointTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_save_null(self):
         """test saving a null composite value
-        
+
         See google groups thread for more context:
         http://groups.google.com/group/sqlalchemy/browse_thread/thread/0c6580a1761b2c29
-        
+
         """
         sess = Session()
         g = Graph(id=1)
         e = Edge(None, None)
         g.edges.append(e)
-        
+
         sess.add(g)
         sess.commit()
-        
+
         g2 = sess.query(Graph).get(1)
         assert g2.edges[-1].start.x is None
         assert g2.edges[-1].start.y is None
@@ -232,7 +232,7 @@ class PrimaryKeyTest(_base.MappedTest):
                         test_needs_autoincrement=True),
             Column('version_id', Integer, primary_key=True, nullable=True),
             Column('name', String(30)))
-    
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
@@ -256,7 +256,7 @@ class PrimaryKeyTest(_base.MappedTest):
         mapper(Graph, graphs, properties={
             'version':sa.orm.composite(Version, graphs.c.id,
                                        graphs.c.version_id)})
-    
+
 
     @testing.resolve_artifact_names
     def _fixture(self):
@@ -265,13 +265,13 @@ class PrimaryKeyTest(_base.MappedTest):
         sess.add(g)
         sess.commit()
         return sess
-        
+
     @testing.resolve_artifact_names
     def test_get_by_col(self):
 
         sess = self._fixture()
         g = sess.query(Graph).first()
-        
+
         g2 = sess.query(Graph).get([g.version.id, g.version.version])
         eq_(g.version, g2.version)
 
@@ -279,7 +279,7 @@ class PrimaryKeyTest(_base.MappedTest):
     def test_get_by_composite(self):
         sess = self._fixture()
         g = sess.query(Graph).first()
-        
+
         g2 = sess.query(Graph).get(Version(g.version.id, g.version.version))
         eq_(g.version, g2.version)
 
@@ -299,7 +299,7 @@ class PrimaryKeyTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_null_pk(self):
         sess = Session()
-        
+
         # test pk with one column NULL
         # only sqlite can really handle this
         g = Graph(Version(2, None))
@@ -307,7 +307,7 @@ class PrimaryKeyTest(_base.MappedTest):
         sess.commit()
         g2 = sess.query(Graph).filter_by(version=Version(2, None)).one()
         eq_(g.version, g2.version)
-    
+
 class DefaultsTest(_base.MappedTest):
 
     @classmethod
@@ -350,7 +350,7 @@ class DefaultsTest(_base.MappedTest):
                                 foobars.c.x3, 
                                 foobars.c.x4)
         ))
-        
+
     @testing.resolve_artifact_names
     def test_attributes_with_defaults(self):
 
@@ -361,12 +361,12 @@ class DefaultsTest(_base.MappedTest):
         sess.flush()
 
         assert f1.foob == FBComposite(2, 5, 15, None)
-        
+
         f2 = Foobar()
         sess.add(f2)
         sess.flush()
         assert f2.foob == FBComposite(2, None, 15, None)
-    
+
     @testing.resolve_artifact_names
     def test_set_composite_values(self):
         sess = Session()
@@ -374,9 +374,9 @@ class DefaultsTest(_base.MappedTest):
         f1.foob = FBComposite(None, 5, None, None)
         sess.add(f1)
         sess.flush()
-        
+
         assert f1.foob == FBComposite(2, 5, 15, None)
-    
+
 class MappedSelectTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -394,7 +394,7 @@ class MappedSelectTest(_base.MappedTest):
             Column('v1', String(20)),
             Column('v2', String(20)),
         )
-    
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
@@ -431,7 +431,7 @@ class MappedSelectTest(_base.MappedTest):
                                             desc_values.c.v2),
 
         })
-        
+
     @testing.resolve_artifact_names
     def test_set_composite_attrs_via_selectable(self):
         session = Session()

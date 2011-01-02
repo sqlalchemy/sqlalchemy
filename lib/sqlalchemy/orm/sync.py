@@ -22,7 +22,7 @@ def populate(source, source_mapper, dest, dest_mapper,
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, value)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, source_mapper, l, dest_mapper, r)
-        
+
         # techically the "r.primary_key" check isn't
         # needed here, but we check for this condition to limit
         # how often this logic is invoked for memory/performance
@@ -67,7 +67,7 @@ def populate_dict(source, source_mapper, dict_, synchronize_pairs):
 def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
     """return true if the source object has changes from an old to a 
     new value on the given synchronize pairs
-    
+
     """
     for l, r in synchronize_pairs:
         try:

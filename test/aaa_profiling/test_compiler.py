@@ -5,7 +5,7 @@ from sqlalchemy.test import *
 class CompileTest(TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
-        
+
         global t1, t2, metadata
         metadata = MetaData()
         t1 = Table('t1', metadata,
@@ -29,7 +29,7 @@ class CompileTest(TestBase, AssertsExecutionResults):
         from sqlalchemy import types
         for t in types.type_map.values():
             t._type_affinity
-            
+
     @profiling.function_call_count(69, {'2.4': 44, 
                                             '3.0':77, '3.1':77})
     def test_insert(self):

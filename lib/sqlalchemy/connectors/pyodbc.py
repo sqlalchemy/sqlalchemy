@@ -21,15 +21,15 @@ class PyODBCConnector(Connector):
     supports_unicode_statements = supports_unicode
     supports_native_decimal = True
     default_paramstyle = 'named'
-    
+
     # for non-DSN connections, this should
     # hold the desired driver name
     pyodbc_driver_name = None
-    
+
     # will be set to True after initialize()
     # if the freetds.so is detected
     freetds = False
-    
+
     @classmethod
     def dbapi(cls):
         return __import__('pyodbc')
@@ -37,7 +37,7 @@ class PyODBCConnector(Connector):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')
         opts.update(url.query)
-        
+
         keys = opts
         query = url.query
 
@@ -81,7 +81,7 @@ class PyODBCConnector(Connector):
 
             connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
         return [[";".join (connectors)], connect_args]
-        
+
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(e) or \
@@ -94,7 +94,7 @@ class PyODBCConnector(Connector):
     def initialize(self, connection):
         # determine FreeTDS first.   can't issue SQL easily
         # without getting unicode_statements/binds set up.
-        
+
         pyodbc = self.dbapi
 
         dbapi_con = connection.connection
@@ -109,7 +109,7 @@ class PyODBCConnector(Connector):
         self.supports_unicode_statements = not self.freetds
         self.supports_unicode_binds = not self.freetds
         # end Py2K
-        
+
         # run other initialization which asks for user name, etc.
         super(PyODBCConnector, self).initialize(connection)
 

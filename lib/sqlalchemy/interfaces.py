@@ -12,21 +12,21 @@ class PoolListener(object):
     """Hooks into the lifecycle of connections in a ``Pool``.
 
     Usage::
-    
+
         class MyListener(PoolListener):
             def connect(self, dbapi_con, con_record):
                 '''perform connect operations'''
             # etc. 
-            
+
         # create a new pool with a listener
         p = QueuePool(..., listeners=[MyListener()])
-        
+
         # add a listener after the fact
         p.add_listener(MyListener())
-        
+
         # usage with create_engine()
         e = create_engine("url://", listeners=[MyListener()])
-        
+
     All of the standard connection :class:`~sqlalchemy.pool.Pool` types can
     accept event listeners for key connection lifecycle events:
     creation, pool check-out and check-in.  There are no events fired
@@ -57,7 +57,7 @@ class PoolListener(object):
     internal event queues based on its capabilities.  In terms of
     efficiency and function call overhead, you're much better off only
     providing implementations for the hooks you'll be using.
-    
+
     """
 
     def connect(self, dbapi_con, con_record):
@@ -120,16 +120,16 @@ class PoolListener(object):
 
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
-    
+
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and
     cursor level executions, e.g.::
-    
+
         class MyProxy(ConnectionProxy):
             def execute(self, conn, execute, clauseelement, *multiparams, **params):
                 print "compiled statement:", clauseelement
                 return execute(clauseelement, *multiparams, **params)
-                
+
             def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
                 print "raw statement:", statement
                 return execute(cursor, statement, parameters, context)
@@ -137,70 +137,70 @@ class ConnectionProxy(object):
     The ``execute`` argument is a function that will fulfill the default
     execution behavior for the operation.  The signature illustrated
     in the example should be used.
-    
+
     The proxy is installed into an :class:`~sqlalchemy.engine.Engine` via
     the ``proxy`` argument::
-    
+
         e = create_engine('someurl://', proxy=MyProxy())
-    
+
     """
     def execute(self, conn, execute, clauseelement, *multiparams, **params):
         """Intercept high level execute() events."""
-        
+
         return execute(clauseelement, *multiparams, **params)
 
     def cursor_execute(self, execute, cursor, statement, parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
-        
+
         return execute(cursor, statement, parameters, context)
-    
+
     def begin(self, conn, begin):
         """Intercept begin() events."""
-        
+
         return begin()
-        
+
     def rollback(self, conn, rollback):
         """Intercept rollback() events."""
-        
+
         return rollback()
-        
+
     def commit(self, conn, commit):
         """Intercept commit() events."""
-        
+
         return commit()
-        
+
     def savepoint(self, conn, savepoint, name=None):
         """Intercept savepoint() events."""
-        
+
         return savepoint(name=name)
-        
+
     def rollback_savepoint(self, conn, rollback_savepoint, name, context):
         """Intercept rollback_savepoint() events."""
-        
+
         return rollback_savepoint(name, context)
-        
+
     def release_savepoint(self, conn, release_savepoint, name, context):
         """Intercept release_savepoint() events."""
-        
+
         return release_savepoint(name, context)
-        
+
     def begin_twophase(self, conn, begin_twophase, xid):
         """Intercept begin_twophase() events."""
-        
+
         return begin_twophase(xid)
-        
+
     def prepare_twophase(self, conn, prepare_twophase, xid):
         """Intercept prepare_twophase() events."""
-        
+
         return prepare_twophase(xid)
-        
+
     def rollback_twophase(self, conn, rollback_twophase, xid, is_prepared):
         """Intercept rollback_twophase() events."""
-        
+
         return rollback_twophase(xid, is_prepared)
-        
+
     def commit_twophase(self, conn, commit_twophase, xid, is_prepared):
         """Intercept commit_twophase() events."""
-        
+
         return commit_twophase(xid, is_prepared)
-        
+

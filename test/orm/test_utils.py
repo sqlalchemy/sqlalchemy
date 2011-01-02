@@ -39,13 +39,13 @@ class ExtensionCarrierTest(TestBase):
 
         assert 'populate_instance' not in carrier
         carrier.append(interfaces.MapperExtension)
-        
+
         # Py3K
         #assert 'populate_instance' not in carrier
         # Py2K
         assert 'populate_instance' in carrier
         # end Py2K
-        
+
         assert carrier.interface
         for m in carrier.interface:
             assert getattr(interfaces.MapperExtension, m)
@@ -251,5 +251,5 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         row = {users.c.id: 1, users.c.name: "Frank"}
         key = util.identity_key(User, row=row)
         eq_(key, (User, (1,)))
-    
+
 

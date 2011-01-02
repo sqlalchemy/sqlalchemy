@@ -63,10 +63,10 @@ else:
 # a controversial feature, required by MySQLdb currently
 def buffer(x):
     return x 
-    
+
 buffer = getattr(__builtin__, 'buffer', buffer)
 # end Py2K
-        
+
 if sys.version_info >= (2, 5):
     class PopulateDict(dict):
         """A dict which populates missing values via a creation function.
@@ -78,7 +78,7 @@ if sys.version_info >= (2, 5):
 
         def __init__(self, creator):
             self.creator = creator
-            
+
         def __missing__(self, key):
             self[key] = val = self.creator(key)
             return val
@@ -88,7 +88,7 @@ else:
 
         def __init__(self, creator):
             self.creator = creator
-            
+
         def __getitem__(self, key):
             try:
                 return dict.__getitem__(self, key)
@@ -172,7 +172,7 @@ class frozendict(dict):
             d2 = self.copy()
             d2.update(d)
             return frozendict(d2)
-            
+
     def __repr__(self):
         return "frozendict(%s)" % dict.__repr__(self)
 
@@ -181,7 +181,7 @@ class frozendict(dict):
 class _probe(dict):
     def __missing__(self, key):
         return 1
-        
+
 try:
     try:
         _probe()['missing']
@@ -292,7 +292,7 @@ def accepts_a_list_as_starargs(list_deprecation=None):
                 return fn(*(list(args[0:-1]) + args[-1]), **kw)
             else: 
                 return fn(*args, **kw) 
-         
+
         return decorator(go)(fn)
 
     return decorate
@@ -349,13 +349,13 @@ else:
 
 def update_copy(d, _new=None, **kw):
     """Copy the given dict and update with the given values."""
-    
+
     d = d.copy()
     if _new:
         d.update(_new)
     d.update(**kw)
     return d
-    
+
 def flatten_iterator(x):
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
@@ -375,7 +375,7 @@ def get_cls_kwargs(cls):
     __init__ defines a \**kwargs catch-all, then the constructor is presumed to
     pass along unrecognized keywords to it's base classes, and the collection
     process is repeated recursively on each of the bases.
-    
+
     """
 
     for c in cls.__mro__:
@@ -492,7 +492,7 @@ def getargspec_init(method):
         else:
             return (['self'], 'args', 'kwargs', None)
 
-    
+
 def unbound_method_to_callable(func_or_cls):
     """Adjust the incoming callable such that a 'self' argument is not required."""
 
@@ -504,7 +504,7 @@ def unbound_method_to_callable(func_or_cls):
 class portable_instancemethod(object):
     """Turn an instancemethod into a (parent, name) pair
     to produce a serializable callable.
-    
+
     """
     def __init__(self, meth):
         self.target = meth.im_self
@@ -512,7 +512,7 @@ class portable_instancemethod(object):
 
     def __call__(self, *arg, **kw):
         return getattr(self.target, self.name)(*arg, **kw)
-        
+
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
 
@@ -587,7 +587,7 @@ def asbool(obj):
 def bool_or_str(*text):
     """Return a callable that will evaulate a string as 
     boolean, or one of a set of "alternate" string values.
-    
+
     """
     def bool_or_value(obj):
         if obj in text:
@@ -595,7 +595,7 @@ def bool_or_str(*text):
         else:
             return asbool(obj)
     return bool_or_value
-    
+
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -743,9 +743,9 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
 
 class NamedTuple(tuple):
     """tuple() subclass that adds labeled names.
-    
+
     Is also pickleable.
-    
+
     """
 
     def __new__(cls, vals, labels=None):
@@ -1022,11 +1022,11 @@ class IdentitySet(object):
 
     This strategy has edge cases for builtin types- it's possible to have
     two 'foo' strings in one of these sets, for example.  Use sparingly.
-    
+
     """
 
     _working_set = set
-    
+
     def __init__(self, iterable=None):
         self._members = dict()
         if iterable:
@@ -1183,10 +1183,10 @@ class IdentitySet(object):
         result._members.update(
             self._working_set(self._member_id_tuples()).symmetric_difference(_iter_id(iterable)))
         return result
-    
+
     def _member_id_tuples(self):
         return ((id(v), v) for v in self._members.itervalues())
-        
+
     def __xor__(self, other):
         if not isinstance(other, IdentitySet):
             return NotImplemented
@@ -1226,7 +1226,7 @@ class OrderedIdentitySet(IdentitySet):
         # but it's safe here: IDS operates on (id, instance) tuples in the
         # working set.
         __sa_hash_exempt__ = True
-    
+
     def __init__(self, iterable=None):
         IdentitySet.__init__(self)
         self._members = OrderedDict()
@@ -1249,7 +1249,7 @@ populate_column_dict = PopulateDict
 
 def unique_list(seq, compare_with=set):
     seen = compare_with()
-    return [x for x in seq if x not in seen and not seen.add(x)]    
+    return [x for x in seq if x not in seen and not seen.add(x)]
 
 class UniqueAppender(object):
     """Appends items to a collection ensuring uniqueness.
@@ -1281,7 +1281,7 @@ class UniqueAppender(object):
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
     class on the basis of a "scope" function.
-    
+
     The object implements ``__call__`` as the "getter", so by
     calling ``myregistry()`` the contained object is returned
     for the current scope.
@@ -1295,14 +1295,14 @@ class ScopedRegistry(object):
 
     def __init__(self, createfunc, scopefunc):
         """Construct a new :class:`.ScopedRegistry`.
-        
+
         :param createfunc:  A creation function that will generate
           a new value for the current scope, if none is present.
-          
+
         :param scopefunc:  A function that returns a hashable
           token representing the current scope (such as, current
           thread identifier).
-        
+
         """
         self.createfunc = createfunc
         self.scopefunc = scopefunc
@@ -1317,17 +1317,17 @@ class ScopedRegistry(object):
 
     def has(self):
         """Return True if an object is present in the current scope."""
-        
+
         return self.scopefunc() in self.registry
 
     def set(self, obj):
         """Set the value forthe current scope."""
-        
+
         self.registry[self.scopefunc()] = obj
 
     def clear(self):
         """Clear the current scope, if any."""
-        
+
         try:
             del self.registry[self.scopefunc()]
         except KeyError:
@@ -1336,7 +1336,7 @@ class ScopedRegistry(object):
 class ThreadLocalRegistry(ScopedRegistry):
     """A :class:`.ScopedRegistry` that uses a ``threading.local()`` 
     variable for storage.
-    
+
     """
     def __init__(self, createfunc):
         self.createfunc = createfunc
@@ -1560,22 +1560,22 @@ class group_expirable_memoized_property(object):
 
 class importlater(object):
     """Deferred import object.
-    
+
     e.g.::
-    
+
         somesubmod = importlater("mypackage.somemodule", "somesubmod")
-        
+
     is equivalent to::
-    
+
         from mypackage.somemodule import somesubmod
-        
+
     except evaluted upon attribute access to "somesubmod".
-    
+
     """
     def __init__(self, path, addtl=None):
         self._il_path = path
         self._il_addtl = addtl
-    
+
     @memoized_property
     def _il_module(self):
         if self._il_addtl:
@@ -1593,7 +1593,7 @@ class importlater(object):
             for token in self._il_path.split(".")[1:]:
                 m = getattr(m, token)
             return m
-        
+
     def __getattr__(self, key):
         try:
             attr = getattr(self._il_module, key)
@@ -1604,7 +1604,7 @@ class importlater(object):
                     )
         self.__dict__[key] = attr
         return attr
-        
+
 class WeakIdentityMapping(weakref.WeakKeyDictionary):
     """A WeakKeyDictionary with an object identity index.
 
@@ -1682,7 +1682,7 @@ class WeakIdentityMapping(weakref.WeakKeyDictionary):
             del self.by_id[key]
         except (KeyError, AttributeError):  # pragma: no cover
             pass                            # pragma: no cover
-            
+
     class _keyed_weakref(weakref.ref):
         def __init__(self, object, callback):
             weakref.ref.__init__(self, object, callback)
@@ -1700,7 +1700,7 @@ else:
 class LRUCache(dict):
     """Dictionary with 'squishy' removal of least
     recently used items.
-    
+
     """
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
@@ -1811,7 +1811,7 @@ def pending_deprecation(version, message=None,
 
     if message is None:
         message = "Call to deprecated function %(func)s"
-    
+
     def decorate(fn):
         return _decorate_with_warning(
             fn, exc.SAPendingDeprecationWarning,
@@ -1825,13 +1825,13 @@ def _sanitize_rest(text):
             name += "()"
         return name
     return re.sub(r'\:(\w+)\:`~?\.?(.+?)`', repl, text)
-    
-    
+
+
 def _decorate_with_warning(func, wtype, message, docstring_header=None):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
     message = _sanitize_rest(message)
-    
+
     @decorator
     def warned(fn, *args, **kwargs):
         warnings.warn(wtype(message), stacklevel=3)
@@ -1863,13 +1863,13 @@ class classproperty(property):
     module, but note that the 
     :class:`~.sqlalchemy.ext.declarative.declared_attr`
     decorator should be used for this purpose with declarative.
-    
+
     """
-    
+
     def __init__(self, fget, *arg, **kw):
         super(classproperty, self).__init__(fget, *arg, **kw)
         self.__doc__ = fget.__doc__
-        
+
     def __get__(desc, self, cls):
         return desc.fget(cls)
 

@@ -28,11 +28,11 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             select([MyThingy('x'), MyThingy('y')]).where(MyThingy() == 5),
             "SELECT >>x<<, >>y<< WHERE >>MYTHINGY!<< = :MYTHINGY!_1"
         )
-    
+
     def test_types(self):
         class MyType(TypeEngine):
             pass
-        
+
         @compiles(MyType, 'sqlite')
         def visit_type(type, compiler, **kw):
             return "SQLITE_FOO"
@@ -55,8 +55,8 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "POSTGRES_FOO",
             dialect=postgresql.dialect()
         )
-        
-        
+
+
     def test_stateful(self):
         class MyThingy(ColumnClause):
             def __init__(self):
@@ -101,20 +101,20 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z "
             "FROM mytable WHERE mytable.x > :x_1)"
         )
-    
+
     def test_annotations(self):
         """test that annotated clause constructs use the 
         decorated class' compiler.
-        
+
         """
         t1 = table('t1', column('c1'), column('c2'))
-        
+
         dispatch = Select._compiler_dispatch
         try:
             @compiles(Select)
             def compile(element, compiler, **kw):
                 return "OVERRIDE"
-            
+
             s1 = select([t1])
             self.assert_compile(
                 s1, "OVERRIDE"
@@ -127,22 +127,22 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             Select._compiler_dispatch = dispatch
             if hasattr(Select, '_compiler_dispatcher'):
                 del Select._compiler_dispatcher
-            
+
     def test_default_on_existing(self):
         """test that the existing compiler function remains
         as 'default' when overriding the compilation of an
         existing construct."""
-        
+
 
         t1 = table('t1', column('c1'), column('c2'))
-        
+
         dispatch = Select._compiler_dispatch
         try:
-            
+
             @compiles(Select, 'sqlite')
             def compile(element, compiler, **kw):
                 return "OVERRIDE"
-            
+
             s1 = select([t1])
             self.assert_compile(
                 s1, "SELECT t1.c1, t1.c2 FROM t1",
@@ -157,7 +157,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             Select._compiler_dispatch = dispatch
             if hasattr(Select, '_compiler_dispatcher'):
                 del Select._compiler_dispatcher
-        
+
     def test_dialect_specific(self):
         class AddThingy(DDLElement):
             __visit_name__ = 'add_thingy'
@@ -211,18 +211,18 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
 
     def test_functions(self):
         from sqlalchemy.dialects.postgresql import base as postgresql
-        
+
         class MyUtcFunction(FunctionElement):
             pass
-            
+
         @compiles(MyUtcFunction)
         def visit_myfunc(element, compiler, **kw):
             return "utcnow()"
-            
+
         @compiles(MyUtcFunction, 'postgresql')
         def visit_myfunc(element, compiler, **kw):
             return "timezone('utc', current_timestamp)"
-            
+
         self.assert_compile(
             MyUtcFunction(),
             "utcnow()",
@@ -233,17 +233,17 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             "timezone('utc', current_timestamp)",
             dialect=postgresql.dialect()
         )
-    
+
     def test_subclasses_one(self):
         class Base(FunctionElement):
             name = 'base'
-        
+
         class Sub1(Base):
             name = 'sub1'
 
         class Sub2(Base):
             name = 'sub2'
-        
+
         @compiles(Base)
         def visit_base(element, compiler, **kw):
             return element.name
@@ -257,11 +257,11 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             'SELECT FOOsub1, sub2',
             use_default_dialect=True
         )
-    
+
     def test_subclasses_two(self):
         class Base(FunctionElement):
             name = 'base'
-        
+
         class Sub1(Base):
             name = 'sub1'
 
@@ -271,10 +271,10 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
 
         class Sub2(Base):
             name = 'sub2'
-        
+
         class SubSub1(Sub1):
             name = 'subsub1'
-            
+
         self.assert_compile(
             select([Sub1(), Sub2(), SubSub1()]),
             'SELECT sub1, sub2, subsub1',
@@ -290,4 +290,3 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             'SELECT FOOsub1, sub2, FOOsubsub1',
             use_default_dialect=True
         )
-        

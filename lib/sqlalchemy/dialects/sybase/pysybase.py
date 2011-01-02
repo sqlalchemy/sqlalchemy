@@ -54,7 +54,7 @@ class SybaseExecutionContext_pysybase(SybaseExecutionContext):
 class SybaseSQLCompiler_pysybase(SybaseSQLCompiler):
     def bindparam_string(self, name):
         return "@" + name
-   
+
 class SybaseDialect_pysybase(SybaseDialect):
     driver = 'pysybase'
     execution_ctx_cls = SybaseExecutionContext_pysybase

@@ -32,7 +32,7 @@ class B(_base.ComparableEntity):
 def profile_memory(func):
     # run the test 50 times.  if length of gc.get_objects()
     # keeps growing, assert false
-    
+
     def profile(*args):
         gc_collect()
         samples = [0 for x in range(0, 50)]
@@ -40,11 +40,11 @@ def profile_memory(func):
             func(*args)
             gc_collect()
             samples[x] = len(gc.get_objects())
-                
+
         print "sample gc sizes:", samples
 
         assert len(_sessions) == 0
-        
+
         for x in samples[-4:]:
             if x != samples[-5]:
                 flatline = False
@@ -53,7 +53,7 @@ def profile_memory(func):
             flatline = True
 
         # object count is bigger than when it started
-        if not flatline and samples[-1] > samples[0]:  
+        if not flatline and samples[-1] > samples[0]:
             for x in samples[1:-2]:
                 # see if a spike bigger than the endpoint exists
                 if x > samples[-1]:
@@ -74,19 +74,19 @@ class EnsureZeroed(_base.ORMTest):
         _mapper_registry.clear()
 
 class MemUsageTest(EnsureZeroed):
-    
+
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda: True)
     def test_fixture(self):
         class Foo(object):
             pass
-            
+
         x = []
         @profile_memory
         def go():
             x[-1:] = [Foo(), Foo(), Foo(), Foo(), Foo(), Foo()]
         go()
-            
+
     def test_session(self):
         metadata = MetaData(testing.db)
 
@@ -179,7 +179,7 @@ class MemUsageTest(EnsureZeroed):
                                         'pool_logging_name':'BAR'}
                                     )
             sess = create_session(bind=engine)
-            
+
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             a3 = A(col2="a3")
@@ -213,18 +213,18 @@ class MemUsageTest(EnsureZeroed):
 
     def test_many_updates(self):
         metadata = MetaData(testing.db)
-        
+
         wide_table = Table('t', metadata,
             Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             *[Column('col%d' % i, Integer) for i in range(10)]
         )
-        
+
         class Wide(object):
             pass
-        
+
         mapper(Wide, wide_table, _compiled_cache_size=10)
-        
+
         metadata.create_all()
         session = create_session()
         w1 = Wide()
@@ -233,7 +233,7 @@ class MemUsageTest(EnsureZeroed):
         session.close()
         del session
         counter = [1]
-        
+
         @profile_memory
         def go():
             session = create_session()
@@ -250,12 +250,12 @@ class MemUsageTest(EnsureZeroed):
             session.flush()
             session.close()
             counter[0] += 1
-            
+
         try:
             go()
         finally:
             metadata.drop_all()
-    
+
     @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
                       and testing.db.dialect.dbapi.version_info >= (2,
                       5),
@@ -284,7 +284,7 @@ class MemUsageTest(EnsureZeroed):
             go()
         finally:
             metadata.drop_all()
-        
+
     def test_mapper_reset(self):
         metadata = MetaData(testing.db)
 
@@ -462,7 +462,7 @@ class MemUsageTest(EnsureZeroed):
             # dont need to clear_mappers()
             del B
             del A
-            
+
         metadata.create_all()
         try:
             go()
@@ -509,8 +509,8 @@ class MemUsageTest(EnsureZeroed):
             go()
         finally:
             metadata.drop_all()
-            
-            
+
+
     def test_mutable_identity(self):
         metadata = MetaData(testing.db)
 
@@ -519,16 +519,16 @@ class MemUsageTest(EnsureZeroed):
                                 test_needs_autoincrement=True),
             Column('col2', PickleType(comparator=operator.eq))
             )
-        
+
         class Foo(object):
             def __init__(self, col2):
                 self.col2 = col2
-        
+
         mapper(Foo, table1)
         metadata.create_all()
-        
+
         session = sessionmaker()()
-        
+
         def go():
             obj = [
                 Foo({'a':1}),
@@ -544,17 +544,17 @@ class MemUsageTest(EnsureZeroed):
                 Foo({'k':1}),
                 Foo({'l':1}),
             ]
-            
+
             session.add_all(obj)
             session.commit()
-            
+
             testing.eq_(len(session.identity_map._mutable_attrs), 12)
             testing.eq_(len(session.identity_map), 12)
             obj = None
             gc_collect()
             testing.eq_(len(session.identity_map._mutable_attrs), 0)
             testing.eq_(len(session.identity_map), 0)
-            
+
         try:
             go()
         finally:

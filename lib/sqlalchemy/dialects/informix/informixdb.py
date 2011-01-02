@@ -10,7 +10,7 @@ Support for the informixdb DBAPI.
 informixdb is available at:
 
     http://informixdb.sourceforge.net/
-    
+
 Connecting
 ^^^^^^^^^^
 

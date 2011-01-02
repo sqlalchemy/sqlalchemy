@@ -58,12 +58,12 @@
         <div class="topnav">
             <div id="pagecontrol">
                 <a href="${pathto('genindex')}">Index</a>
-            
+
                 % if sourcename:
                 <div class="sourcelink">(<a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')})</div>
                 % endif
             </div>
-            
+
             <div class="navbanner">
                 <a class="totoc" href="${pathto(master_doc)}">Table of Contents</a>
                 % if parents:
@@ -74,7 +74,7 @@
                 % if current_page_name != master_doc:
                 » ${self.show_title()} 
                 % endif
-                
+
                 ${prevnext()}
                 <h2>
                     ${self.show_title()} 
@@ -85,7 +85,7 @@
             % endif
             <div class="clearboth"></div>
         </div>
-        
+
         <div class="document">
             <div class="body">
                 ${next.body()}

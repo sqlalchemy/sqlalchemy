@@ -38,14 +38,14 @@ def setup():
     data = [{'name':'John Doe','sex':1,'age':35, 'type':'employee'}] * 100
     for j in xrange(500):
         i.execute(data)
-        
+
     # note we arent fetching from employee_table,
     # so we can leave it empty even though its "incorrect"
     #i = Employee_table.insert()
     #data = [{'foo':'foo', 'bar':'bar':'bat':'bat'}] * 100
     #for j in xrange(500):
     #    i.execute(data)
-        
+
     print "Inserted 50,000 rows"
 
 def sqlite_select(entity_cls):

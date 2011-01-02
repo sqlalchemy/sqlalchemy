@@ -18,8 +18,8 @@ e = create_engine('sqlite://', echo=True)
 meta = MetaData()
 
 ####################### PART II - Table Metadata #############################
-    
-# stores a top level record of an XML document.  
+
+# stores a top level record of an XML document.
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
     Column('filename', String(30), unique=True),
@@ -48,12 +48,12 @@ meta.create_all(e)
 ########################### PART III - Model #################################
 
 # our document class.  contains a string name,
-# and the ElementTree root element.  
+# and the ElementTree root element.
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
-        
+
     def __str__(self):
         buf = StringIO.StringIO()
         self.element.write(buf)
@@ -101,10 +101,10 @@ class ElementTreeMarshal(object):
     def __get__(self, document, owner):
         if document is None:
             return self
-            
+
         if hasattr(document, '_element'):
             return document._element
-        
+
         nodes = {}
         root = None
         for node in document._nodes:
@@ -120,10 +120,10 @@ class ElementTreeMarshal(object):
                 elem.attrib[attr.name] = attr.value
             elem.text = node.text
             elem.tail = node.tail
-            
+
         document._element = ElementTree.ElementTree(root)
         return document._element
-    
+
     def __set__(self, document, element):
         def traverse(node):
             n = _Node()
@@ -137,7 +137,7 @@ class ElementTreeMarshal(object):
 
         traverse(element.getroot())
         document._element = element
-    
+
     def __delete__(self, document):
         del document._element
         document._nodes = []

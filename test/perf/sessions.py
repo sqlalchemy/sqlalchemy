@@ -23,7 +23,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
             Column('c2', String(30)),
             Column('t1id', Integer, ForeignKey('t1.c1'))
             )
-        
+
         metadata.create_all()
 
         l = []
@@ -35,7 +35,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
             for y in range(1, 100):
                 l.append({'c2':'this is t2 #%d' % y, 't1id':x})
             t2.insert().execute(*l)
-        
+
         class T1(_fixtures.Base):
             pass
         class T2(_fixtures.Base):
@@ -45,12 +45,12 @@ class SessionTest(TestBase, AssertsExecutionResults):
             't2s':relationship(T2, backref='t1')
         })
         mapper(T2, t2)
-    
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
         clear_mappers()
-        
+
     @profiling.profiled('clean', report=True)
     def test_session_clean(self):
         for x in range(0, ITERATIONS):
@@ -68,7 +68,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
         for x in range(0, ITERATIONS):
             sess = create_session()
             t1s = sess.query(T1).filter(T1.c1.between(15, 48)).all()
-            
+
             for index in [2, 7, 12, 15, 18, 20]:
                 t1s[index].c2 = 'this is some modified text'
                 for t2 in t1s[index].t2s:
@@ -76,7 +76,7 @@ class SessionTest(TestBase, AssertsExecutionResults):
 
             del t1s
             gc_collect()
-            
+
             sess.close()
             del sess
             gc_collect()

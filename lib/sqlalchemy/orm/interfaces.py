@@ -50,7 +50,7 @@ MANYTOMANY = util.symbol('MANYTOMANY')
 
 class MapperExtension(object):
     """Base implementation for customizing ``Mapper`` behavior.
-    
+
     New extension classes subclass ``MapperExtension`` and are specified
     using the ``extension`` mapper() argument, which is a single
     ``MapperExtension`` or a list of such.   A single mapper
@@ -58,7 +58,7 @@ class MapperExtension(object):
     particular mapping event occurs, the corresponding method 
     on each ``MapperExtension`` is invoked serially, and each method
     has the ability to halt the chain from proceeding further.
-    
+
     Each ``MapperExtension`` method returns the symbol
     EXT_CONTINUE by default.   This symbol generally means "move
     to the next ``MapperExtension`` for processing".  For methods
@@ -67,32 +67,32 @@ class MapperExtension(object):
     should be ignored.   In some cases it's required for a 
     default mapper activity to be performed, such as adding a 
     new instance to a result list.
-    
+
     The symbol EXT_STOP has significance within a chain
     of ``MapperExtension`` objects that the chain will be stopped
     when this symbol is returned.  Like EXT_CONTINUE, it also
     has additional significance in some cases that a default
     mapper activity will not be performed.
-    
+
     """
-    
+
     def instrument_class(self, mapper, class_):
         """Receive a class when the mapper is first constructed, and has
         applied instrumentation to the mapped class.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
         return EXT_CONTINUE
 
     def init_instance(self, mapper, class_, oldinit, instance, args, kwargs):
         """Receive an instance when it's constructor is called.
-        
+
         This method is only called during a userland construction of 
         an object.  It is not called when an object is loaded from the
         database.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
 
@@ -102,11 +102,11 @@ class MapperExtension(object):
     def init_failed(self, mapper, class_, oldinit, instance, args, kwargs):
         """Receive an instance when it's constructor has been called, 
         and raised an exception.
-        
+
         This method is only called during a userland construction of 
         an object.  It is not called when an object is loaded from the
         database.
-        
+
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
 
@@ -124,10 +124,10 @@ class MapperExtension(object):
         object which contains mapped columns as keys.  The 
         returned object should also be a dictionary-like object
         which recognizes mapped columns as keys.
-        
+
         If the ultimate return value is EXT_CONTINUE, the row
         is not translated.
-        
+
         """
         return EXT_CONTINUE
 
@@ -260,7 +260,7 @@ class MapperExtension(object):
 
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE
@@ -277,7 +277,7 @@ class MapperExtension(object):
         This means that an instance being sent to before_update is *not* a
         guarantee that an UPDATE statement will be issued (although you can
         affect the outcome here).
-        
+
         To detect if the column-based attributes on the object have net
         changes, and will therefore generate an UPDATE statement, use
         ``object_session(instance).is_modified(instance,
@@ -302,7 +302,7 @@ class MapperExtension(object):
 
         The return value is only significant within the ``MapperExtension`` 
         chain; the parent mapper's behavior isn't modified by this method.
-        
+
         """
 
         return EXT_CONTINUE
@@ -340,32 +340,32 @@ class SessionExtension(object):
 
     def before_commit(self, session):
         """Execute right before commit is called.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def after_commit(self, session):
         """Execute after a commit has occured.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def after_rollback(self, session):
         """Execute after a rollback has occured.
-        
+
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def before_flush( self, session, flush_context, instances):
         """Execute before flush process has started.
-        
+
         `instances` is an optional list of objects which were passed to
         the ``flush()`` method. """
 
     def after_flush(self, session, flush_context):
         """Execute after flush has completed, but before commit has been
         called.
-        
+
         Note that the session's state is still in pre-flush, i.e. 'new',
         'dirty', and 'deleted' lists still show pre-flush state as well
         as the history settings on instance attributes."""
@@ -373,7 +373,7 @@ class SessionExtension(object):
     def after_flush_postexec(self, session, flush_context):
         """Execute after flush has completed, and after the post-exec
         state occurs.
-        
+
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
         occured, depending on whether or not the flush started its own
@@ -381,20 +381,20 @@ class SessionExtension(object):
 
     def after_begin( self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
-        
+
         `transaction` is the SessionTransaction. This method is called
         after an engine level transaction is begun on a connection. """
 
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.
-        
+
         This is called after an add, delete or merge. """
 
     def after_bulk_update( self, session, query, query_context, result):
         """Execute after a bulk update operation to the session.
-        
+
         This is called after a session.query(...).update()
-        
+
         `query` is the query object that this update operation was
         called on. `query_context` was the query context object.
         `result` is the result object returned from the bulk operation.
@@ -402,9 +402,9 @@ class SessionExtension(object):
 
     def after_bulk_delete( self, session, query, query_context, result):
         """Execute after a bulk delete operation to the session.
-        
+
         This is called after a session.query(...).delete()
-        
+
         `query` is the query object that this delete operation was
         called on. `query_context` was the query context object.
         `result` is the result object returned from the bulk operation.
@@ -419,9 +419,9 @@ class MapperProperty(object):
 
     cascade = ()
     """The set of 'cascade' attribute names.
-    
+
     This collection is checked before the 'cascade_iterator' method is called.
-    
+
     """
 
     def setup(self, context, entity, path, adapter, **kwargs):
@@ -436,7 +436,7 @@ class MapperProperty(object):
 
     def create_row_processor(self, selectcontext, path, mapper, row, adapter):
         """Return a 3-tuple consisting of three row processing functions.
-        
+
         """
 
         raise NotImplementedError()
@@ -445,9 +445,9 @@ class MapperProperty(object):
                             halt_on=None):
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.
-        
+
         Return an iterator3-tuples (instance, mapper, state).
-        
+
         Note that the 'cascade' collection on this MapperProperty is
         checked first for the given type before cascade_iterator is called.
 
@@ -464,7 +464,7 @@ class MapperProperty(object):
 
     _compile_started = False
     _compile_finished = False
-    
+
     def init(self):
         """Called after all mappers are created to assemble
         relationships between mappers and perform other post-mapper-creation
@@ -485,10 +485,10 @@ class MapperProperty(object):
     def do_init(self):
         """Perform subclass-specific initialization post-mapper-creation
         steps.
-        
+
         This is a template method called by the ``MapperProperty``
         object's init() method.
-        
+
         """
 
         pass
@@ -542,7 +542,7 @@ class PropComparator(expression.ColumnOperators):
     new operator behaivor. The custom :class:`.PropComparator` is passed to
     the mapper property via the ``comparator_factory`` argument. In each case,
     the appropriate subclass of :class:`.PropComparator` should be used::
-    
+
         from sqlalchemy.orm.properties import \\
                                 ColumnProperty,\\
                                 CompositeProperty,\\
@@ -550,13 +550,13 @@ class PropComparator(expression.ColumnOperators):
 
         class MyColumnComparator(ColumnProperty.Comparator):
             pass
-        
+
         class MyCompositeComparator(CompositeProperty.Comparator):
             pass
-            
+
         class MyRelationshipComparator(RelationshipProperty.Comparator):
             pass
-    
+
     """
 
     def __init__(self, prop, mapper, adapter=None):
@@ -570,7 +570,7 @@ class PropComparator(expression.ColumnOperators):
     def adapted(self, adapter):
         """Return a copy of this PropComparator which will use the given
         adaption function on the local side of generated expressions.
-        
+
         """
 
         return self.__class__(self.prop, self.mapper, adapter)
@@ -645,9 +645,9 @@ class StrategizedProperty(MapperProperty):
     There is a single strategy selected by default.  Alternate
     strategies can be selected at Query time through the usage of
     ``StrategizedOption`` objects via the Query.options() method.
-    
+
     """
-    
+
     def _get_context_strategy(self, context, path):
         cls = context.attributes.get(('loaderstrategy',
                 _reduce_path(path)), None)
@@ -686,7 +686,7 @@ class StrategizedProperty(MapperProperty):
         if self.is_primary() and \
             not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
-        
+
 def build_path(entity, key, prev=None):
     if prev:
         return prev + (entity, key)
@@ -696,7 +696,7 @@ def build_path(entity, key, prev=None):
 def serialize_path(path):
     if path is None:
         return None
-    
+
     return zip(
         [m.class_ for m in [path[i] for i in range(0, len(path), 2)]], 
         [path[i] for i in range(1, len(path), 2)] + [None]
@@ -709,7 +709,7 @@ def deserialize_path(path):
     global class_mapper
     if class_mapper is None:
         from sqlalchemy.orm import class_mapper
-    
+
     p = tuple(chain(*[(class_mapper(cls), key) for cls, key in path]))
     if p and p[-1] is None:
         p = p[0:-1]
@@ -722,14 +722,14 @@ class MapperOption(object):
     """if True, indicate this option should be carried along 
     Query object generated by scalar or object lazy loaders.
     """
-    
+
     def process_query(self, query):
         pass
 
     def process_query_conditionally(self, query):
         """same as process_query(), except that this option may not
         apply to the given query.
-        
+
         Used when secondary loaders resend existing options to a new
         Query."""
 
@@ -878,21 +878,21 @@ class PropertyOption(MapperOption):
 
 class AttributeExtension(object):
     """An event handler for individual attribute change events.
-    
+
     AttributeExtension is assembled within the descriptors associated
     with a mapped class.
-    
+
     """
 
     active_history = True
     """indicates that the set() method would like to receive the 'old' value,
     even if it means firing lazy callables.
-    
+
     Note that ``active_history`` can also be set directly via
     :func:`.column_property` and :func:`.relationship`.
-    
+
     """
-    
+
     def append(self, state, value, initiator):
         """Receive a collection append event.
 
@@ -950,11 +950,11 @@ class StrategizedOption(PropertyOption):
 
 def _reduce_path(path):
     """Convert a (mapper, path) path to use base mappers.
-    
+
     This is used to allow more open ended selection of loader strategies, i.e.
     Mapper -> prop1 -> Subclass -> prop2, where Subclass is a sub-mapper
     of the mapper referened by Mapper.prop1.
-    
+
     """
     return tuple([i % 2 != 0 and 
                     path[i] or 
@@ -1005,7 +1005,7 @@ class LoaderStrategy(object):
                                 row, adapter):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.
-        
+
         StrategizedProperty delegates its create_row_processor method
         directly to this method. """
 
@@ -1027,10 +1027,10 @@ class LoaderStrategy(object):
 
 class InstrumentationManager(object):
     """User-defined class instrumentation extension.
-    
+
     The API for this class should be considered as semi-stable,
     and may change slightly with new releases.
-    
+
     """
 
     # r4361 added a mandatory (cls) constructor to this interface.
@@ -1092,4 +1092,3 @@ class InstrumentationManager(object):
 
     def dict_getter(self, class_):
         return lambda inst: self.get_instance_dict(class_, inst)
-        

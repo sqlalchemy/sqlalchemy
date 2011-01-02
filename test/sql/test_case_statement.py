@@ -94,31 +94,31 @@ class CaseTest(TestBase, AssertsCompiledSQL):
 
     def test_literal_interpretation(self):
         t = table('test', column('col1'))
-        
+
         assert_raises(exc.ArgumentError, case, [("x", "y")])
-        
+
         self.assert_compile(case([("x", "y")], value=t.c.col1), "CASE test.col1 WHEN :param_1 THEN :param_2 END")
         self.assert_compile(case([(t.c.col1==7, "y")], else_="z"), "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END")
-        
+
     def test_text_doesnt_explode(self):
 
         for s in [
             select([case([(info_table.c.info == 'pk_4_data',
                    text("'yes'"))], else_=text("'no'"
                    ))]).order_by(info_table.c.info),
-                   
+
            select([case([(info_table.c.info == 'pk_4_data',
                   literal_column("'yes'"))], else_=literal_column("'no'"
                   ))]).order_by(info_table.c.info),
-                   
+
         ]:
             eq_(s.execute().fetchall(), [
                 (u'no', ), (u'no', ), (u'no', ), (u'yes', ),
                 (u'no', ), (u'no', ),
                 ])
-        
-        
-        
+
+
+
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def testcase_with_dict(self):
@@ -146,7 +146,7 @@ class CaseTest(TestBase, AssertsCompiledSQL):
             ],
             whereclause=info_table.c.pk < 4,
             from_obj=[info_table])
-        
+
         assert simple_query.execute().fetchall() == [
             ('one', 1),
             ('two', 2),

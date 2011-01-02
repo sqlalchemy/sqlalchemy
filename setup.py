@@ -16,7 +16,7 @@ import re
 extra = {}
 if sys.version_info >= (3, 0):
     # monkeypatch our preprocessor
-    # onto the 2to3 tool.  
+    # onto the 2to3 tool.
     from sa2to3 import refactor_string
     from lib2to3.refactor import RefactoringTool
     RefactoringTool.refactor_string = refactor_string
@@ -93,7 +93,7 @@ setup(name = "SQLAlchemy",
               'sqlalchemy = sqlalchemy_nose.noseplugin:NoseSQLAlchemy',
               ]
           },
-      
+
       long_description = """\
 SQLAlchemy is:
 

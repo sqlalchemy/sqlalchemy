@@ -96,7 +96,7 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
             '''SELECT 1 FROM (SELECT "foo"."t1"."col1" AS "col1" FROM '''\
             '''"foo"."t1") AS anon WHERE anon."col1" = :col1_1'''
         )
-        
+
         metadata = MetaData()
         t1 = Table('TableOne', metadata,
             Column('ColumnOne', Integer, quote=False), quote=False, schema="FooBar", quote_schema=False)
@@ -105,7 +105,7 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(t1.select().apply_labels(), 
             "SELECT FooBar.TableOne.ColumnOne AS "\
             "FooBar_TableOne_ColumnOne FROM FooBar.TableOne"   # TODO: is this what we really want here ?  what if table/schema 
-                                                               # *are* quoted?  
+                                                               # *are* quoted?
         )
 
         a = t1.select().alias('anon')

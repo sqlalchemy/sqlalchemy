@@ -9,20 +9,20 @@ Base = declarative_base()
 
 class Node(Base):
     __tablename__ = 'node'
-    
+
     node_id = Column(Integer, primary_key=True)
 
     def __init__(self, id):
         self.node_id = id
-        
+
     def add_neighbors(self, *nodes):
         for node in nodes:
             Edge(self, node)
         return self
-        
+
     def higher_neighbors(self):
         return [x.higher_node for x in self.lower_edges]
-        
+
     def lower_neighbors(self):
         return [x.lower_node for x in self.higher_edges]
 
@@ -32,7 +32,7 @@ class Edge(Base):
     lower_id = Column(Integer, 
                         ForeignKey('node.node_id'), 
                         primary_key=True)
-                        
+
     higher_id = Column(Integer, 
                         ForeignKey('node.node_id'), 
                         primary_key=True)
@@ -43,7 +43,7 @@ class Edge(Base):
     higher_node = relationship(Node,
                                 primaryjoin=higher_id==Node.node_id, 
                                 backref='higher_edges')
-    
+
     # here we have lower.node_id <= higher.node_id
     def __init__(self, n1, n2):
         if n1.node_id < n2.node_id:
@@ -62,7 +62,7 @@ session = sessionmaker(engine)()
 #       n1 -> n2 -> n5
 #                -> n7
 #          -> n3 -> n6
-                
+
 n1 = Node(1)
 n2 = Node(2)
 n3 = Node(3)

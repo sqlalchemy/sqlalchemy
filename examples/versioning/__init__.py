@@ -19,13 +19,13 @@ A fragment of example usage, using declarative::
 
     class SomeClass(Base):
         __tablename__ = 'sometable'
-    
+
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
-    
+
         def __eq__(self, other):
             assert type(other) is SomeClass and other.id == self.id
-        
+
     sess = Session()
     sc = SomeClass(name='sc1')
     sess.add(sc)

@@ -23,7 +23,7 @@ is equivalent to::
     import logging
     logger = logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine)))
     logger.setLevel(logging.DEBUG)
-    
+
 """
 
 import logging
@@ -57,7 +57,7 @@ def class_logger(cls, enable=False):
     cls._should_log_info = lambda self: logger.isEnabledFor(logging.INFO)
     cls.logger = logger
     _logged_classes.add(cls)
-    
+
 
 class Identified(object):
     @util.memoized_property
@@ -68,19 +68,19 @@ class Identified(object):
         # cause the app to run out of memory.
         return "0x...%s" % hex(id(self))[-4:]
 
-    
+
 def instance_logger(instance, echoflag=None):
     """create a logger for an instance that implements :class:`Identified`.
-    
+
     Warning: this is an expensive call which also results in a permanent
     increase in memory overhead for each call.  Use only for 
     low-volume, long-time-spanning objects.
-    
+
     """
 
     name = "%s.%s.%s" % (instance.__class__.__module__,
                        instance.__class__.__name__, instance.logging_name)
-    
+
     if echoflag is not None:
         l = logging.getLogger(name)
         if echoflag == 'debug':

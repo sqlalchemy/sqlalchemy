@@ -5,7 +5,7 @@ SQLAlchemy ORM
 
 .. toctree::
     :maxdepth: 2
-    
+
     tutorial
     mapper_config
     relationships
@@ -18,5 +18,4 @@ SQLAlchemy ORM
     exceptions
     extensions/index
     examples
-    
-    
+

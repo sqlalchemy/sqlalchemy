@@ -77,7 +77,7 @@ class TransactionTest(TestBase):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
-    
+
     def test_transaction_container(self):
 
         def go(conn, table, data):
@@ -93,7 +93,7 @@ class TransactionTest(TestBase):
                       {'user_id': 1, 'user_name': 'user3'}])
         eq_(testing.db.execute(users.select()).fetchall(), [(1, 'user1'
             )])
-        
+
     def test_nested_rollback(self):
         connection = testing.db.connect()
         try:
@@ -138,7 +138,7 @@ class TransactionTest(TestBase):
             eq_(connection.scalar("select count(*) from query_users"), 0)
         finally:
             connection.close()
-        
+
     def test_nesting(self):
         connection = testing.db.connect()
         transaction = connection.begin()
@@ -383,7 +383,7 @@ class AutoRollbackTest(TestBase):
 class ExplicitAutoCommitTest(TestBase):
 
     """test the 'autocommit' flag on select() and text() objects.
-    
+
     Requires PostgreSQL so that we may define a custom function which
     modifies the database. """
 
@@ -538,13 +538,13 @@ class TLTransactionTest(TestBase):
         # ensure tests start with engine closed
 
         tlengine.close()
-    
+
     def test_rollback_no_trans(self):
         tlengine = create_engine(testing.db.url, strategy="threadlocal")
 
         # shouldn't fail
         tlengine.rollback()
-        
+
         tlengine.begin()
         tlengine.rollback()
 
@@ -574,7 +574,7 @@ class TLTransactionTest(TestBase):
 
         # shouldn't fail
         tlengine.prepare()
-        
+
     def test_connection_close(self):
         """test that when connections are closed for real, transactions
         are rolled back and disposed."""
@@ -990,11 +990,11 @@ class ForUpdateTest(TestBase):
     @testing.requires.independent_connections
     def test_queued_update(self):
         """Test SELECT FOR UPDATE with concurrent modifications.
-        
+
         Runs concurrent modifications on a single row in the users
         table, with each mutator trying to increment a value stored in
         user_name.
-        
+
         """
 
         db = testing.db

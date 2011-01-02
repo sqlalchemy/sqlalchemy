@@ -7,7 +7,7 @@ Relationship Loading Techniques
 
 A big part of SQLAlchemy is providing a wide range of control over how related objects get loaded when querying.   This behavior
 can be configured at mapper construction time using the ``lazy`` parameter to the :func:`.relationship` function,
-as well as by using options with the :class:`.Query` object.   
+as well as by using options with the :class:`.Query` object.
 
 Using Loader Strategies: Lazy Loading, Eager Loading
 ----------------------------------------------------
@@ -59,7 +59,7 @@ additional SQL statement for each collection requested, aggregated across all
 parent objects:
 
 .. sourcecode:: python+sql
-    
+
     {sql}>>>jack = session.query(User).options(subqueryload('addresses')).filter_by(name='jack').all() 
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
     users.password AS users_password 
@@ -187,7 +187,7 @@ references a scalar many-to-one reference.
  * When using the default lazy loading, if you load 100 objects, and then access a collection on each of
    them, a total of 101 SQL statements will be emitted, although each statement will typically be a
    simple SELECT without any joins.
-   
+
  * When using joined loading, the load of 100 objects and their collections will emit only one SQL
    statement.  However, the 
    total number of rows fetched will be equal to the sum of the size of all the collections, plus one 
@@ -197,16 +197,16 @@ references a scalar many-to-one reference.
    exceptions) will transmit the full data of each parent over the wire to the client connection in 
    any case.  Therefore joined eager loading only makes sense when the size of the collections are 
    relatively small.  The LEFT OUTER JOIN can also be performance intensive compared to an INNER join.
-   
+
  * When using subquery loading, the load of 100 objects will emit two SQL statements.  The second
    statement will fetch a total number of rows equal to the sum of the size of all collections.  An
    INNER JOIN is used, and a minimum of parent columns are requested, only the primary keys.  So a 
    subquery load makes sense when the collections are larger.
-   
+
  * When multiple levels of depth are used with joined or subquery loading, loading collections-within-
    collections will multiply the total number of rows fetched in a cartesian fashion.  Both forms
    of eager loading always join from the original parent class.
-   
+
 * Many to One Reference
 
  * When using the default lazy loading, a load of 100 objects will like in the case of the collection
@@ -216,15 +216,15 @@ references a scalar many-to-one reference.
    if the collection of objects references a relatively small set of target objects, or the full set
    of possible target objects have already been loaded into the session and are strongly referenced,
    using the default of `lazy='select'` is by far the most efficient way to go.
-  
+
  * When using joined loading, the load of 100 objects will emit only one SQL statement.   The join
-   will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.  
+   will be a LEFT OUTER JOIN, and the total number of rows will be equal to 100 in all cases.
    If you know that each parent definitely has a child (i.e. the foreign
    key reference is NOT NULL), the joined load can be configured with ``innerjoin=True``, which is
    usually specified within the :func:`~sqlalchemy.orm.relationship`.   For a load of objects where
    there are many possible target references which may have not been loaded already, joined loading
    with an INNER JOIN is extremely efficient.
-   
+
  * Subquery loading will issue a second load for all the child objects, so for a load of 100 objects
    there would be two SQL statements emitted.  There's probably not much advantage here over
    joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases

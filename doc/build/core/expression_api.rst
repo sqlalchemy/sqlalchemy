@@ -46,11 +46,11 @@ The expression package uses functions to construct SQL expressions.  The return 
 .. autofunction:: extract
 
 .. attribute:: func
-   
+
    Generate SQL function expressions.
-   
+
    ``func`` is a special object instance which generates SQL functions based on name-based attributes, e.g.::
-   
+
         >>> print func.count(1)
         count(:param_1)
 
@@ -58,29 +58,29 @@ The expression package uses functions to construct SQL expressions.  The return 
    SQLAlchemy, it will be rendered exactly as is. For common SQL functions
    which SQLAlchemy is aware of, the name may be interpreted as a *generic
    function* which will be compiled appropriately to the target database::
-    
+
         >>> print func.current_timestamp()
         CURRENT_TIMESTAMP
-    
+
    To call functions which are present in dot-separated packages, specify them in the same manner::
-    
+
         >>> print func.stats.yield_curve(5, 10)
         stats.yield_curve(:yield_curve_1, :yield_curve_2)
-        
+
    SQLAlchemy can be made aware of the return type of functions to enable
    type-specific lexical and result-based behavior. For example, to ensure
    that a string-based function returns a Unicode value and is similarly
    treated as a string in expressions, specify
    :class:`~sqlalchemy.types.Unicode` as the type:
-    
+
         >>> print func.my_string(u'hi', type_=Unicode) + ' ' + \
         ... func.my_string(u'there', type_=Unicode)
         my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
-        
+
    Functions which are interpreted as "generic" functions know how to
    calculate their return type automatically. For a listing of known generic
    functions, see :ref:`generic_functions`.
-   
+
 .. autofunction:: insert
 
 .. autofunction:: intersect
@@ -179,7 +179,7 @@ Classes
 .. autoclass:: Function
    :members:
    :show-inheritance:
-   
+
 .. autoclass:: FromClause
    :members:
    :show-inheritance:
@@ -220,18 +220,18 @@ Generic Functions
 SQL functions which are known to SQLAlchemy with regards to database-specific
 rendering, return types and argument behavior. Generic functions are invoked
 like all SQL functions, using the :attr:`func` attribute::
-    
+
     select([func.count()]).select_from(sometable)
-    
+
 Note that any name not known to :attr:`func` generates the function name as is
 - there is no restriction on what SQL functions can be called, known or
 unknown to SQLAlchemy, built-in or user defined. The section here only
 describes those functions where SQLAlchemy already knows what argument and
 return types are in use.
-    
+
 .. automodule:: sqlalchemy.sql.functions
    :members:
    :undoc-members:
    :show-inheritance:
-   
-   
+
+

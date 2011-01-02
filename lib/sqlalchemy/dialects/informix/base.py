@@ -218,7 +218,7 @@ class InformixDialect(default.DefaultDialect):
     name = 'informix'
 
     max_identifier_length = 128 # adjusts at runtime based on server version
-    
+
     type_compiler = InfoTypeCompiler
     statement_compiler = InfoSQLCompiler
     ddl_compiler = InfoDDLCompiler
@@ -232,13 +232,13 @@ class InformixDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(InformixDialect, self).initialize(connection)
-        
+
         # http://www.querix.com/support/knowledge-base/error_number_message/error_200
         if self.server_version_info < (9, 2):
             self.max_identifier_length = 18
         else:
             self.max_identifier_length = 128
-        
+
     def do_begin(self, connection):
         cu = connection.cursor()
         cu.execute('SET LOCK MODE TO WAIT')
@@ -327,7 +327,7 @@ class InformixDialect(default.DefaultDialect):
                     util.warn("Did not recognize type '%s' of column '%s'" %
                               (coltype, name))
                     coltype = sqltypes.NULLTYPE
-            
+
             column_info = dict(name=name, type=coltype, nullable=not not_nullable,
                                default=default, autoincrement=autoincrement,
                                primary_key=primary_key)

@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Support for the PostgreSQL database.  
+"""Support for the PostgreSQL database.
 
 For information on connecting using specific drivers, see the documentation
 section regarding that driver.
@@ -64,7 +64,7 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
     result = table.insert().returning(table.c.col1, table.c.col2).\\
         values(name='foo')
     print result.fetchall()
-    
+
     # UPDATE..RETURNING
     result = table.update().returning(table.c.col1, table.c.col2).\\
         where(table.c.name=='foo').values(name='bar')
@@ -115,7 +115,7 @@ class BYTEA(sqltypes.LargeBinary):
 
 class DOUBLE_PRECISION(sqltypes.Float):
     __visit_name__ = 'DOUBLE_PRECISION'
-    
+
 class INET(sqltypes.TypeEngine):
     __visit_name__ = "INET"
 PGInet = INET
@@ -132,23 +132,23 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
     def __init__(self, timezone=False, precision=None):
         super(TIMESTAMP, self).__init__(timezone=timezone)
         self.precision = precision
-        
+
 class TIME(sqltypes.TIME):
     def __init__(self, timezone=False, precision=None):
         super(TIME, self).__init__(timezone=timezone)
         self.precision = precision
-    
+
 class INTERVAL(sqltypes.TypeEngine):
     """Postgresql INTERVAL type.
-    
+
     The INTERVAL type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000 or zxjdbc.
-    
+
     """
     __visit_name__ = 'INTERVAL'
     def __init__(self, precision=None):
         self.precision = precision
-    
+
     def adapt(self, impltype):
         return impltype(self.precision)
 
@@ -159,7 +159,7 @@ class INTERVAL(sqltypes.TypeEngine):
     @property
     def _type_affinity(self):
         return sqltypes.Interval
-        
+
 PGInterval = INTERVAL
 
 class BIT(sqltypes.TypeEngine):
@@ -168,32 +168,32 @@ PGBit = BIT
 
 class UUID(sqltypes.TypeEngine):
     """Postgresql UUID type.
-    
+
     Represents the UUID column type, interpreting
     data either as natively returned by the DBAPI
     or as Python uuid objects.
 
     The UUID type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
-    
+
     """
     __visit_name__ = 'UUID'
-    
+
     def __init__(self, as_uuid=False):
         """Construct a UUID type.
-        
-        
+
+
         :param as_uuid=False: if True, values will be interpreted
          as Python uuid objects, converting to/from string via the
          DBAPI.
-         
+
          """
         if as_uuid and _python_UUID is None:
             raise NotImplementedError(
                     "This version of Python does not support the native UUID type."
                 )
         self.as_uuid = as_uuid
-    
+
     def bind_processor(self, dialect):
         if self.as_uuid:
             def process(value):
@@ -203,7 +203,7 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
-            
+
     def result_processor(self, dialect, coltype):
         if self.as_uuid:
             def process(value):
@@ -213,25 +213,25 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
-            
+
 PGUuid = UUID
 
 class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     """Postgresql ARRAY type.
-    
+
     Represents values as Python lists.
 
     The ARRAY type may not be supported on all DBAPIs.
     It is known to work on psycopg2 and not pg8000.
-    
+
     **Note:** be sure to read the notes for 
     :class:`.MutableType` regarding ORM 
     performance implications.   The :class:`.ARRAY` type's 
     mutability can be disabled using the "mutable" flag.
-    
+
     """
     __visit_name__ = 'ARRAY'
-    
+
     def __init__(self, item_type, mutable=True, as_tuple=False):
         """Construct an ARRAY.
 
@@ -250,12 +250,12 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         :param mutable=True: Specify whether lists passed to this
           class should be considered mutable. If so, generic copy operations
           (typically used by the ORM) will shallow-copy values.
-        
+
         :param as_tuple=False: Specify whether return results should be converted
           to tuples from lists.  DBAPIs such as psycopg2 return lists by default.
           When tuples are returned, the results are hashable.   This flag can only
           be set to ``True`` when ``mutable`` is set to ``False``. (new in 0.6.5)
-          
+
         """
         if isinstance(item_type, ARRAY):
             raise ValueError("Do not nest ARRAY types; ARRAY(basetype) "
@@ -269,7 +269,7 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
                 "mutable must be set to False if as_tuple is True."
             )
         self.as_tuple = as_tuple
-        
+
     def copy_value(self, value):
         if value is None:
             return None
@@ -291,14 +291,14 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
             impl.__dict__.update(self.__dict__)
         impl.item_type = self.item_type.dialect_impl(dialect)
         return impl
-    
+
     def adapt(self, impltype):
         return impltype(
             self.item_type,
             mutable=self.mutable,
             as_tuple=self.as_tuple
         )
-        
+
     def bind_processor(self, dialect):
         item_proc = self.item_type.bind_processor(dialect)
         if item_proc:
@@ -354,7 +354,7 @@ class ENUM(sqltypes.Enum):
     def create(self, bind=None, checkfirst=True):
         if not bind.dialect.supports_native_enum:
             return
-            
+
         if not checkfirst or \
             not bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(CreateEnumType(self))
@@ -366,7 +366,7 @@ class ENUM(sqltypes.Enum):
         if not checkfirst or \
             bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(DropEnumType(self))
-        
+
     def _on_table_create(self, event, target, bind, **kw):
         self.create(bind=bind, checkfirst=True)
 
@@ -417,7 +417,7 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
-    
+
     def visit_match_op(self, binary, **kw):
         return "%s @@ to_tsquery(%s)" % (
                         self.process(binary.left), 
@@ -483,7 +483,7 @@ class PGCompiler(compiler.SQLCompiler):
             return super(PGCompiler, self).for_update_clause(select)
 
     def returning_clause(self, stmt, returning_cols):
-        
+
         columns = [
                 self.process(
                     self.label_select_column(None, c, asfrom=False), 
@@ -491,7 +491,7 @@ class PGCompiler(compiler.SQLCompiler):
                     result_map=self.result_map) 
                 for c in expression._select_iterables(returning_cols)
             ]
-            
+
         return 'RETURNING ' + ', '.join(columns)
 
     def visit_extract(self, extract, **kwargs):
@@ -500,7 +500,7 @@ class PGCompiler(compiler.SQLCompiler):
             affinity = extract.expr.type._type_affinity
         else:
             affinity = None
-        
+
         casts = {
                     sqltypes.Date:'date', 
                     sqltypes.DateTime:'timestamp', 
@@ -541,7 +541,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def visit_create_enum_type(self, create):
         type_ = create.element
-        
+
         return "CREATE TYPE %s AS ENUM (%s)" % (
             self.preparer.format_type(type_),
             ",".join("'%s'" % e for e in type_.enums)
@@ -553,7 +553,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         return "DROP TYPE %s" % (
             self.preparer.format_type(type_)
         )
-        
+
     def visit_create_index(self, create):
         preparer = self.preparer
         index = create.element
@@ -566,7 +566,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                    preparer.format_table(index.table),
                    ', '.join([preparer.format_column(c) 
                                 for c in index.columns]))
-        
+
         if "postgres_where" in index.kwargs:
             whereclause = index.kwargs['postgres_where']
             util.warn_deprecated(
@@ -576,7 +576,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             whereclause = index.kwargs['postgresql_where']
         else:
             whereclause = None
-            
+
         if whereclause is not None:
             whereclause = sql_util.expression_as_ddl(whereclause)
             where_compiled = self.sql_compiler.process(whereclause)
@@ -599,25 +599,25 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': type_.precision}
-    
+
     def visit_DOUBLE_PRECISION(self, type_):
         return "DOUBLE PRECISION"
-        
+
     def visit_BIGINT(self, type_):
         return "BIGINT"
 
     def visit_datetime(self, type_):
         return self.visit_TIMESTAMP(type_)
-    
+
     def visit_enum(self, type_):
         if not type_.native_enum or not self.dialect.supports_native_enum:
             return super(PGTypeCompiler, self).visit_enum(type_)
         else:
             return self.visit_ENUM(type_)
-        
+
     def visit_ENUM(self, type_):
         return self.dialect.identifier_preparer.format_type(type_)
-        
+
     def visit_TIMESTAMP(self, type_):
         return "TIMESTAMP%s %s" % (
             getattr(type_, 'precision', None) and "(%d)" % 
@@ -646,7 +646,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_large_binary(self, type_):
         return self.visit_BYTEA(type_)
-        
+
     def visit_BYTEA(self, type_):
         return "BYTEA"
 
@@ -667,12 +667,12 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
     def format_type(self, type_, use_schema=True):
         if not type_.name:
             raise exc.ArgumentError("Postgresql ENUM type requires a name.")
-        
+
         name = self.quote(type_.name, type_.quote)
         if not self.omit_schema and use_schema and type_.schema is not None:
             name = self.quote_schema(type_.schema, type_.quote) + "." + name
         return name
-        
+
 class PGInspector(reflection.Inspector):
 
     def __init__(self, conn):
@@ -727,27 +727,27 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 return self._execute_scalar(exc)
 
         return super(PGExecutionContext, self).get_insert_default(column)
-    
+
 class PGDialect(default.DefaultDialect):
     name = 'postgresql'
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
-    
+
     supports_native_enum = True
     supports_native_boolean = True
-    
+
     supports_sequences = True
     sequences_optional = True
     preexecute_autoincrement_sequences = True
     postfetch_lastrowid = False
-    
+
     supports_default_values = True
     supports_empty_insert = False
     default_paramstyle = 'pyformat'
     ischema_names = ischema_names
     colspecs = colspecs
-    
+
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
     type_compiler = PGTypeCompiler
@@ -787,7 +787,7 @@ class PGDialect(default.DefaultDialect):
             return connect
         else:
             return None
-            
+
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)
 
@@ -1067,24 +1067,24 @@ class PGDialect(default.DefaultDialect):
         rows = c.fetchall()
         domains = self._load_domains(connection)
         enums = self._load_enums(connection)
-        
+
         # format columns
         columns = []
         for name, format_type, default, notnull, attnum, table_oid in rows:
             ## strip (5) from character varying(5), timestamp(5) 
             # with time zone, etc
             attype = re.sub(r'\([\d,]+\)', '', format_type)
-            
+
             # strip '[]' from integer[], etc.
             attype = re.sub(r'\[\]', '', attype)
-            
+
             nullable = not notnull
             is_array = format_type.endswith('[]')
             charlen = re.search('\(([\d,]+)\)', format_type)
             if charlen:
                 charlen = charlen.group(1)
             kwargs = {}
-                
+
             if attype == 'numeric':
                 if charlen:
                     prec, scale = charlen.split(',')
@@ -1116,7 +1116,7 @@ class PGDialect(default.DefaultDialect):
                 args = (int(charlen),)
             else:
                 args = ()
-            
+
             while True:
                 if attype in self.ischema_names:
                     coltype = self.ischema_names[attype]
@@ -1143,7 +1143,7 @@ class PGDialect(default.DefaultDialect):
                 else:
                     coltype = None
                     break
-                
+
             if coltype:
                 coltype = coltype(*args, **kwargs)
                 if is_array:
@@ -1194,7 +1194,7 @@ class PGDialect(default.DefaultDialect):
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         cols = self.get_primary_keys(connection, table_name, 
                                             schema=schema, **kw)
-        
+
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
 

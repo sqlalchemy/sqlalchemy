@@ -51,7 +51,7 @@ url.py
 """
 
 # not sure what this was used for
-#import sqlalchemy.databases  
+#import sqlalchemy.databases
 
 from sqlalchemy.engine.base import (
     BufferedColumnResultProxy,
@@ -174,17 +174,17 @@ def create_engine(*args, **kwargs):
     :param execution_options: Dictionary execution options which will
         be applied to all connections.  See
         :meth:`~sqlalchemy.engine.base.Connection.execution_options`
-        
+
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
         characters. If less than 6, labels are generated as
         "_(counter)". If ``None``, the value of
         ``dialect.max_identifier_length`` is used instead.
-    
+
     :param listeners: A list of one or more 
         :class:`~sqlalchemy.interfaces.PoolListener` objects which will 
         receive connection pool events.
-      
+
     :param logging_name:  String identifier which will be used within
         the "name" field of logging records generated within the
         "sqlalchemy.engine" logger. Defaults to a hexstring of the 
@@ -246,7 +246,7 @@ def create_engine(*args, **kwargs):
     :param strategy='plain': selects alternate engine implementations.
         Currently available is the ``threadlocal``
         strategy, which is described in :ref:`threadlocal_strategy`.
-    
+
     """
 
     strategy = kwargs.pop('strategy', default_strategy)

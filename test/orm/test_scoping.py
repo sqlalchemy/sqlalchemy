@@ -78,7 +78,7 @@ class ScopedSessionTest(_base.MappedTest):
 
     def test_config_errors(self):
         Session = scoped_session(sa.orm.sessionmaker())
-    
+
         s = Session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
@@ -91,7 +91,7 @@ class ScopedSessionTest(_base.MappedTest):
             "At least one scoped session is already present. ",
             Session.configure, bind=testing.db
         )
-        
+
 class ScopedMapperTest(_ScopedTest):
 
     @classmethod

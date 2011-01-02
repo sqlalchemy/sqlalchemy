@@ -191,7 +191,7 @@ class LazyTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def test_many_to_one_binds(self):
         mapper(Address, addresses, primary_key=[addresses.c.user_id, addresses.c.email_address])
-        
+
         mapper(User, users, properties = dict(
             address = relationship(Address, uselist=False,
                 primaryjoin=sa.and_(users.c.id==addresses.c.user_id, addresses.c.email_address=='ed@bettyboop.com')
@@ -207,7 +207,7 @@ class LazyTest(_fixtures.FixtureTest):
             ], 
             list(q)
         )
-        
+
 
     @testing.resolve_artifact_names
     def test_double(self):
@@ -217,9 +217,9 @@ class LazyTest(_fixtures.FixtureTest):
         closedorders = sa.alias(orders, 'closedorders')
 
         mapper(Address, addresses)
-        
+
         mapper(Order, orders)
-        
+
         open_mapper = mapper(Order, openorders, non_primary=True)
         closed_mapper = mapper(Order, closedorders, non_primary=True)
         mapper(User, users, properties = dict(
@@ -306,10 +306,10 @@ class LazyTest(_fixtures.FixtureTest):
 
         class SmallintDecorator(TypeDecorator):
             impl = SmallInteger
-        
+
         class SomeDBInteger(sa.Integer):
             pass
-            
+
         for tt in [
             Integer,
             SmallInteger,

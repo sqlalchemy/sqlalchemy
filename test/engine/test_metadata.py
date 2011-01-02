@@ -32,7 +32,7 @@ class MetaDataTest(TestBase, ComparesTables):
         t2 = Table('t2', metadata, Column('x', Integer), schema='foo')
         t3 = Table('t2', MetaData(), Column('x', Integer))
         t4 = Table('t1', MetaData(), Column('x', Integer), schema='foo')
-        
+
         assert "t1" in metadata
         assert "foo.t2" in metadata
         assert "t2" not in metadata
@@ -41,7 +41,7 @@ class MetaDataTest(TestBase, ComparesTables):
         assert t2 in metadata
         assert t3 not in metadata
         assert t4 not in metadata
-        
+
     def test_uninitialized_column_copy(self):
         for col in [
             Column('foo', String(), nullable=False),
@@ -76,8 +76,8 @@ class MetaDataTest(TestBase, ComparesTables):
             cx = c1.copy()
             t = Table('foo%d' % i, m, cx)
         eq_(msgs, ['attach foo0.foo', 'attach foo1.foo', 'attach foo2.foo'])
-        
-        
+
+
     def test_dupe_tables(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, 
@@ -101,28 +101,28 @@ class MetaDataTest(TestBase, ComparesTables):
                     "Table object."
         finally:
             metadata.drop_all()
-    
+
     def test_fk_copy(self):
         c1 = Column('foo', Integer)
         c2 = Column('bar', Integer)
         m = MetaData()
         t1 = Table('t', m, c1, c2)
-        
+
         kw = dict(onupdate="X", 
                         ondelete="Y", use_alter=True, name='f1',
                         deferrable="Z", initially="Q", link_to_name=True)
-                        
+
         fk1 = ForeignKey(c1, **kw) 
         fk2 = ForeignKeyConstraint((c1,), (c2,), **kw)
-        
+
         t1.append_constraint(fk2)
         fk1c = fk1.copy()
         fk2c = fk2.copy()
-        
+
         for k in kw:
             eq_(getattr(fk1c, k), kw[k])
             eq_(getattr(fk2c, k), kw[k])
-    
+
     def test_fk_construct(self):
         c1 = Column('foo', Integer)
         c2 = Column('bar', Integer)
@@ -130,7 +130,7 @@ class MetaDataTest(TestBase, ComparesTables):
         t1 = Table('t', m, c1, c2)
         fk1 = ForeignKeyConstraint(('foo', ), ('bar', ), table=t1)
         assert fk1 in t1.constraints
-        
+
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
         meta = MetaData()
@@ -222,7 +222,7 @@ class MetaDataTest(TestBase, ComparesTables):
                     assert not c.columns.contains_column(table.c.name)
         finally:
             meta.drop_all(testing.db)
-    
+
     def test_tometadata_with_schema(self):
         meta = MetaData()
 
@@ -272,7 +272,7 @@ class MetaDataTest(TestBase, ComparesTables):
             Column('data2', Integer),
         )
         Index('multi',table.c.data1,table.c.data2),
-        
+
         meta2 = MetaData()
         table_c = table.tometadata(meta2)
 
@@ -280,7 +280,7 @@ class MetaDataTest(TestBase, ComparesTables):
             return [i.name,i.unique] + \
                     sorted(i.kwargs.items()) + \
                     i.columns.keys()
-        
+
         eq_(
             sorted([_get_key(i) for i in table.indexes]),
             sorted([_get_key(i) for i in table_c.indexes])
@@ -288,7 +288,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
     @emits_warning("Table '.+' already exists within the given MetaData")
     def test_tometadata_already_there(self):
-        
+
         meta1 = MetaData()
         table1 = Table('mytable', meta1,
             Column('myid', Integer, primary_key=True),
@@ -299,7 +299,7 @@ class MetaDataTest(TestBase, ComparesTables):
         )
 
         meta3 = MetaData()
-        
+
         table_c = table1.tometadata(meta2)
         table_d = table2.tometadata(meta2)
 
@@ -342,7 +342,7 @@ class MetaDataTest(TestBase, ComparesTables):
         c = Table('c', meta, Column('foo', Integer))
         d = Table('d', meta, Column('foo', Integer))
         e = Table('e', meta, Column('foo', Integer))
-        
+
         e.add_is_dependent_on(c)
         a.add_is_dependent_on(b)
         b.add_is_dependent_on(d)
@@ -352,8 +352,8 @@ class MetaDataTest(TestBase, ComparesTables):
             meta.sorted_tables,
             [d, b, a, c, e]
         )
-        
-        
+
+
     def test_tometadata_strip_schema(self):
         meta = MetaData()
 
@@ -392,7 +392,7 @@ class TableOptionsTest(TestBase, AssertsCompiledSQL):
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
                       prefixes = ["TEMPORARY"])
-                      
+
         self.assert_compile(
             schema.CreateTable(table1), 
             "CREATE TEMPORARY TABLE temporary_table_1 (col1 INTEGER)"

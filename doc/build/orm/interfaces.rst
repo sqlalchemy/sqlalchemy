@@ -18,13 +18,13 @@ Mapper Events
 -----------------
 
 To use :class:`.MapperExtension`, make your own subclass of it and just send it off to a mapper::
-    
+
     from sqlalchemy.orm.interfaces import MapperExtension
-    
+
     class MyExtension(MapperExtension):
         def before_insert(self, mapper, connection, instance):
             print "instance %s before insert !" % instance
-    
+
     m = mapper(User, users_table, extension=MyExtension())
 
 Multiple extensions will be chained together and processed in order; they are specified as a list::
@@ -40,7 +40,7 @@ Session Events
 The :class:`.SessionExtension` applies plugin points for :class:`.Session` objects::
 
     from sqlalchemy.orm.interfaces import SessionExtension
-    
+
     class MySessionExtension(SessionExtension):
         def before_commit(self, session):
             print "before commit!"
@@ -63,16 +63,16 @@ mapped attribute using the `extension` argument, available on
 
     from sqlalchemy.orm.interfaces import AttributeExtension
     from sqlalchemy.orm import mapper, relationship, column_property
-    
+
     class MyAttrExt(AttributeExtension):
         def append(self, state, value, initiator):
             print "append event !"
             return value
-        
+
         def set(self, state, value, oldvalue, initiator):
             print "set event !"
             return value
-            
+
     mapper(SomeClass, sometable, properties={
         'foo':column_property(sometable.c.foo, extension=MyAttrExt()),
         'bar':relationship(Bar, extension=MyAttrExt())

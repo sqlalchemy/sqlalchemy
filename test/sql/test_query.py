@@ -24,7 +24,7 @@ class QueryTest(TestBase):
             Column('address', String(30)),
             test_needs_acid=True
             )
-            
+
         users2 = Table('u2', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
@@ -48,7 +48,7 @@ class QueryTest(TestBase):
 
     def test_insert_heterogeneous_params(self):
         """test that executemany parameters are asserted to match the parameter set of the first."""
-        
+
         assert_raises_message(exc.InvalidRequestError, 
             "A value is required for bind parameter 'user_name', in parameter group 2",
             users.insert().execute,
@@ -88,10 +88,10 @@ class QueryTest(TestBase):
                 comp = ins.compile(engine, column_keys=list(values))
                 if not set(values).issuperset(c.key for c in table.primary_key):
                     assert comp.returning
-            
+
             result = engine.execute(table.insert(), **values)
             ret = values.copy()
-            
+
             for col, id in zip(table.primary_key, result.inserted_primary_key):
                 ret[col.key] = id
 
@@ -105,7 +105,7 @@ class QueryTest(TestBase):
 
         if testing.against('firebird', 'postgresql', 'oracle', 'mssql'):
             assert testing.db.dialect.implicit_returning
-            
+
         if testing.db.dialect.implicit_returning:
             test_engines = [
                 engines.testing_engine(options={'implicit_returning':False}),
@@ -113,7 +113,7 @@ class QueryTest(TestBase):
             ]
         else:
             test_engines = [testing.db]
-            
+
         for engine in test_engines:
             metadata = MetaData()
             for supported, table, values, assertvalues in [
@@ -209,14 +209,14 @@ class QueryTest(TestBase):
             ]
         else:
             test_engines = [testing.db]
-            
+
         for engine in test_engines:
-        
+
             r = engine.execute(users.insert(), 
                 {'user_name':'jack'},
             )
             assert r.closed
-    
+
     def test_row_iteration(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
@@ -246,25 +246,25 @@ class QueryTest(TestBase):
     @testing.fails_on('firebird', "kinterbasdb doesn't send full type information")
     def test_order_by_label(self):
         """test that a label within an ORDER BY works on each backend.
-        
+
         This test should be modified to support [ticket:1068] when that ticket
         is implemented.  For now, you need to put the actual string in the
         ORDER BY.
-        
+
         """
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'},
             {'user_id':9, 'user_name':'fred'},
         )
-        
+
         concat = ("test: " + users.c.user_name).label('thedata')
         print select([concat]).order_by("thedata")
         eq_(
             select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
         )
-        
+
         eq_(
             select([concat]).order_by("thedata").execute().fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)]
@@ -286,8 +286,8 @@ class QueryTest(TestBase):
                 [("test: ed",), ("test: fred",), ("test: jack",)]
             )
         go()
-        
-        
+
+
     def test_row_comparison(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         rp = users.select().execute().first()
@@ -312,10 +312,10 @@ class QueryTest(TestBase):
         for pickle in False, True:
             for use_labels in False, True:
                 result = users.select(use_labels=use_labels).order_by(users.c.user_id).execute().fetchall()
-            
+
                 if pickle:
                     result = util.pickle.loads(util.pickle.dumps(result))
-                
+
                 eq_(
                     result, 
                     [(7, "jack"), (8, "ed"), (9, "fred")]
@@ -326,27 +326,27 @@ class QueryTest(TestBase):
                 else:
                     eq_(result[0]['user_id'], 7)
                     eq_(result[0].keys(), ["user_id", "user_name"])
-                    
+
                 eq_(result[0][0], 7)
                 eq_(result[0][users.c.user_id], 7)
                 eq_(result[0][users.c.user_name], 'jack')
-            
+
                 if use_labels:
                     assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.user_id])
                 else:
                     # test with a different table.  name resolution is 
                     # causing 'user_id' to match when use_labels wasn't used.
                     eq_(result[0][addresses.c.user_id], 7)
-            
+
                 assert_raises(exc.NoSuchColumnError, lambda: result[0]['fake key'])
                 assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.address_id])
-            
+
 
 
     @testing.requires.boolean_col_expressions
     def test_or_and_as_columns(self):
         true, false = literal(True), literal(False)
-        
+
         eq_(testing.db.execute(select([and_(true, false)])).scalar(), False)
         eq_(testing.db.execute(select([and_(true, true)])).scalar(), True)
         eq_(testing.db.execute(select([or_(true, false)])).scalar(), True)
@@ -360,7 +360,7 @@ class QueryTest(TestBase):
         row = testing.db.execute(select([or_(true, false).label("x"), and_(true, false).label("y")])).first()
         assert row.x == True
         assert row.y == False
-        
+
     def test_fetchmany(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'ed')
@@ -395,7 +395,7 @@ class QueryTest(TestBase):
                     ), [(5,)]),
         ):
             eq_(expr.execute().fetchall(), result)
-    
+
     @testing.fails_on("firebird", "see dialect.test_firebird:MiscTest.test_percents_in_text")
     @testing.fails_on("oracle", "neither % nor %% are accepted")
     @testing.fails_on("informix", "neither % nor %% are accepted")
@@ -411,7 +411,7 @@ class QueryTest(TestBase):
             (text("select 'hello % world'"), "hello % world")
         ):
             eq_(testing.db.scalar(expr), result)
-        
+
     def test_ilike(self):
         users.insert().execute(
             {'user_id':1, 'user_name':'one'},
@@ -576,7 +576,7 @@ class QueryTest(TestBase):
                         use_labels=labels,
                         order_by=[users.c.user_id.desc()]),
                  [(3,), (2,), (1,)])
-    
+
     @testing.fails_on("+pyodbc", "pyodbc row doesn't seem to accept slices")
     def test_column_slices(self):
         users.insert().execute(user_id=1, user_name='john')
@@ -587,7 +587,7 @@ class QueryTest(TestBase):
         self.assert_(r[0:1] == (1,))
         self.assert_(r[1:] == (2, 'foo@bar.com'))
         self.assert_(r[:-1] == (1, 2))
-        
+
     def test_column_accessor(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
@@ -596,11 +596,11 @@ class QueryTest(TestBase):
         r = users.select(users.c.user_id==2).execute().first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
-        
+
         r = text("select * from query_users where user_id=2", bind=testing.db).execute().first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
-        
+
         # test a little sqlite weirdness - with the UNION, 
         # cols come back as "query_users.user_id" in cursor.description
         r = text("select query_users.user_id, query_users.user_name from query_users "
@@ -627,14 +627,14 @@ class QueryTest(TestBase):
             users.insert(),
             {'user_id':1, 'user_name':'ed'}
         )
-        
+
         eq_(r.lastrowid, 1)
-        
-        
+
+
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
-        
+
         """
 
         # these proxies don't work with no cursor.description present.
@@ -654,7 +654,7 @@ class QueryTest(TestBase):
                 getattr(result, meth),
             )
             trans.rollback()
-            
+
     def test_fetchone_til_end(self):
         result = testing.db.execute("select * from query_users")
         eq_(result.fetchone(), None)
@@ -666,17 +666,17 @@ class QueryTest(TestBase):
 
     def test_result_case_sensitivity(self):
         """test name normalization for result sets."""
-        
+
         row = testing.db.execute(
             select([
                 literal_column("1").label("case_insensitive"),
                 literal_column("2").label("CaseSensitive")
             ])
         ).first()
-        
+
         assert row.keys() == ["case_insensitive", "CaseSensitive"]
 
-        
+
     def test_row_as_args(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.select(users.c.user_id==1).execute().first()
@@ -689,12 +689,12 @@ class QueryTest(TestBase):
         r = users.select().execute()
         users2.insert().execute(list(r))
         assert users2.select().execute().fetchall() == [(1, 'john'), (2, 'ed')]
-        
+
         users2.delete().execute()
         r = users.select().execute()
         users2.insert().execute(*list(r))
         assert users2.select().execute().fetchall() == [(1, 'john'), (2, 'ed')]
-        
+
     def test_ambiguous_column(self):
         users.insert().execute(user_id=1, user_name='john')
         r = users.outerjoin(addresses).select().execute().first()
@@ -710,7 +710,7 @@ class QueryTest(TestBase):
             "Ambiguous column name",
             lambda: r['user_id']
         )
-        
+
         result = users.outerjoin(addresses).select().execute()
         result = base.BufferedColumnResultProxy(result.context)
         r = result.first()
@@ -749,7 +749,7 @@ class QueryTest(TestBase):
         users.insert().execute(user_id=1, user_name='foo')
         r = users.select().execute().first()
         eq_(len(r), 2)
-            
+
         r = testing.db.execute('select user_name, user_id from query_users').first()
         eq_(len(r), 2)
         r = testing.db.execute('select user_name from query_users').first()
@@ -852,10 +852,10 @@ class QueryTest(TestBase):
                          "uses sql-92 rules")
     def test_bind_in(self):
         """test calling IN against a bind parameter.
-        
+
         this isn't allowed on several platforms since we
         generate ? = ?.
-        
+
         """
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
@@ -868,7 +868,7 @@ class QueryTest(TestBase):
         assert len(r) == 3
         r = s.execute(search_key=None).fetchall()
         assert len(r) == 0
-    
+
     @testing.emits_warning('.*empty sequence.*')
     @testing.fails_on('firebird', 'uses sql-92 bind rules')
     def test_literal_in(self):
@@ -881,15 +881,15 @@ class QueryTest(TestBase):
         s = users.select(not_(literal("john").in_([])))
         r = s.execute().fetchall()
         assert len(r) == 3
-        
-        
+
+
     @testing.emits_warning('.*empty sequence.*')
     @testing.requires.boolean_col_expressions
     def test_in_filtering_advanced(self):
         """test the behavior of the in_() function when 
         comparing against an empty collection, specifically
         that a proper boolean value is generated.
-        
+
         """
 
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -908,11 +908,11 @@ class QueryTest(TestBase):
 
 class PercentSchemaNamesTest(TestBase):
     """tests using percent signs, spaces in table and column names.
-    
+
     Doesn't pass for mysql, postgresql, but this is really a 
     SQLAlchemy bug - we should be escaping out %% signs for this
     operation the same way we do for text() and column labels.
-    
+
     """
 
     @classmethod
@@ -927,11 +927,11 @@ class PercentSchemaNamesTest(TestBase):
 
     def teardown(self):
         percent_table.delete().execute()
-        
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-    
+
     def test_single_roundtrip(self):
         percent_table.insert().execute(
             {'percent%':5, 'spaces % more spaces':12},
@@ -946,7 +946,7 @@ class PercentSchemaNamesTest(TestBase):
             {'percent%':11, 'spaces % more spaces':9},
         )
         self._assert_table()
-    
+
     @testing.crashes('mysql+mysqldb', 'MySQLdb handles executemany() inconsistently vs. execute()')
     def test_executemany_roundtrip(self):
         percent_table.insert().execute(
@@ -958,7 +958,7 @@ class PercentSchemaNamesTest(TestBase):
             {'percent%':11, 'spaces % more spaces':9},
         )
         self._assert_table()
-        
+
     def _assert_table(self):
         for table in (percent_table, percent_table.alias()):
             eq_(
@@ -1001,9 +1001,9 @@ class PercentSchemaNamesTest(TestBase):
                 (11, 15)
             ]
         )
-        
-        
-        
+
+
+
 class LimitTest(TestBase):
 
     @classmethod
@@ -1034,7 +1034,7 @@ class LimitTest(TestBase):
         addresses.insert().execute(address_id=6, user_id=6, address='addr5')
         users.insert().execute(user_id=7, user_name='fido')
         addresses.insert().execute(address_id=7, user_id=7, address='addr5')
-        
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -1117,11 +1117,11 @@ class CompoundTest(TestBase):
             dict(col2="t3col2r2", col3="bbb", col4="aaa"),
             dict(col2="t3col2r3", col3="ccc", col4="bbb"),
         ])
-        
+
     @engines.close_first
     def teardown(self):
         pass
-        
+
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
@@ -1202,13 +1202,13 @@ class CompoundTest(TestBase):
         """like test_union_all, but breaks the sub-union into 
         a subquery with an explicit column reference on the outside,
         more palatable to a wider variety of engines.
-        
+
         """
         u = union(
             select([t1.c.col3]),
             select([t1.c.col3]),
         ).alias()
-        
+
         e = union_all(
             select([t1.c.col3]),
             select([u.c.col3])
@@ -1255,7 +1255,7 @@ class CompoundTest(TestBase):
     def test_except_style2(self):
         # same as style1, but add alias().select() to the except_().
         # sqlite can handle it now.
-        
+
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
             select([t2.c.col3, t2.c.col4]),
@@ -1296,7 +1296,7 @@ class CompoundTest(TestBase):
                 select([t3.c.col3], t3.c.col3 == 'ccc'), #ccc
             ).alias().select()
         )
-        
+
         eq_(e.execute().fetchall(), [('ccc',)])
         eq_(
             e.alias().select().execute().fetchall(),
@@ -1337,7 +1337,7 @@ class CompoundTest(TestBase):
         found = self._fetchall_sorted(u.execute())
 
         eq_(found, wanted)
-    
+
     @testing.requires.intersect
     def test_intersect_unions_3(self):
         u = intersect(
@@ -1661,7 +1661,7 @@ class OperatorTest(TestBase):
     @classmethod
     def teardown_class(cls):
         metadata.drop_all()
-    
+
 
     # TODO: seems like more tests warranted for this setup.
     def test_modulo(self):

@@ -20,7 +20,7 @@ people = Table('people', metadata,
    Column('company_id', Integer, ForeignKey('companies.company_id')),
    Column('name', String(50)),
    Column('type', String(30)))
-   
+
 engineers = Table('engineers', metadata, 
    Column('person_id', Integer, ForeignKey('people.person_id'), 
                                     primary_key=True),
@@ -28,14 +28,14 @@ engineers = Table('engineers', metadata,
    Column('engineer_name', String(50)),
    Column('primary_language', String(50)),
   )
-   
+
 managers = Table('managers', metadata, 
    Column('person_id', Integer, ForeignKey('people.person_id'), 
                                     primary_key=True),
    Column('status', String(30)),
    Column('manager_name', String(50))
    )
-   
+
 # create our classes.  The Engineer and Manager classes extend from Person.
 class Person(object):
     def __init__(self, **kwargs):

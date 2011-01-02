@@ -14,24 +14,24 @@ subclasses and one or more callables defining its compilation::
 
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.sql.expression import ColumnClause
-    
+
     class MyColumn(ColumnClause):
         pass
-            
+
     @compiles(MyColumn)
     def compile_mycolumn(element, compiler, **kw):
         return "[%s]" % element.name
-        
+
 Above, ``MyColumn`` extends :class:`~sqlalchemy.sql.expression.ColumnClause`,
 the base expression element for named column objects. The ``compiles``
 decorator registers itself with the ``MyColumn`` class so that it is invoked
 when the object is compiled to a string::
 
     from sqlalchemy import select
-    
+
     s = select([MyColumn('x'), MyColumn('y')])
     print str(s)
-    
+
 Produces::
 
     SELECT [x], [y]
@@ -71,7 +71,7 @@ and :class:`~sqlalchemy.sql.compiler.DDLCompiler` both include a ``process()``
 method which can be used for compilation of embedded attributes::
 
     from sqlalchemy.sql.expression import Executable, ClauseElement
-    
+
     class InsertFromSelect(Executable, ClauseElement):
         def __init__(self, table, select):
             self.table = table
@@ -86,7 +86,7 @@ method which can be used for compilation of embedded attributes::
 
     insert = InsertFromSelect(t1, select([t1]).where(t1.c.x>5))
     print insert
-    
+
 Produces::
 
     "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z FROM mytable WHERE mytable.x > :x_1)"
@@ -139,7 +139,7 @@ Changing Compilation of Types
             return "VARCHAR('max')"
         else:
             return compiler.visit_VARCHAR(element, **kw)
-    
+
     foo = Table('foo', metadata,
         Column('data', VARCHAR('max'))
     )
@@ -158,12 +158,12 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   "column-like" elements. Anything that you'd place in the "columns" clause of
   a SELECT statement (as well as order by and group by) can derive from this -
   the object will automatically have Python "comparison" behavior.
-  
+
   :class:`~sqlalchemy.sql.expression.ColumnElement` classes want to have a
   ``type`` member which is expression's return type.  This can be established
   at the instance level in the constructor, or at the class level if its
   generally constant::
-  
+
       class timestamp(ColumnElement):
           type = TIMESTAMP()
  
@@ -173,7 +173,7 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   statements along the line of "SELECT FROM <some function>"
   ``FunctionElement`` adds in the ability to be used in the FROM clause of a
   ``select()`` construct::
-  
+
       from sqlalchemy.sql.expression import FunctionElement
 
       class coalesce(FunctionElement):
@@ -209,14 +209,14 @@ def compiles(class_, *specs):
         existing_dispatch = class_.__dict__.get('_compiler_dispatch')
         if not existing:
             existing = _dispatcher()
-            
+
             if existing_dispatch:
                 existing.specs['default'] = existing_dispatch
-                
+
             # TODO: why is the lambda needed ?
             setattr(class_, '_compiler_dispatch', lambda *arg, **kw: existing(*arg, **kw))
             setattr(class_, '_compiler_dispatcher', existing)
-        
+
         if specs:
             for s in specs:
                 existing.specs[s] = fn
@@ -225,15 +225,15 @@ def compiles(class_, *specs):
             existing.specs['default'] = fn
         return fn
     return decorate
-    
+
 class _dispatcher(object):
     def __init__(self):
         self.specs = {}
-    
+
     def __call__(self, element, compiler, **kw):
         # TODO: yes, this could also switch off of DBAPI in use.
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
             fn = self.specs['default']
         return fn(element, compiler, **kw)
-        
+

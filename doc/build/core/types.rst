@@ -274,17 +274,17 @@ many decimal places.   Here's a recipe that rounds them down::
 
     from sqlalchemy.types import TypeDecorator, Numeric
     from decimal import Decimal
-    
+
     class SafeNumeric(TypeDecorator):
         """Adds quantization to Numeric."""
-    
+
         impl = Numeric
-    
+
         def __init__(self, *arg, **kw):
             TypeDecorator.__init__(self, *arg, **kw)
             self.quantize_int = -(self.impl.precision - self.impl.scale)
             self.quantize = Decimal(10) ** self.quantize_int
-        
+
         def process_bind_param(self, value, dialect):
             if isinstance(value, Decimal) and \
                 value.as_tuple()[2] < self.quantize_int:
@@ -305,10 +305,10 @@ binary in CHAR(16) if desired::
 
     class GUID(TypeDecorator):
         """Platform-independent GUID type.
-    
+
         Uses Postgresql's UUID type, otherwise uses
         CHAR(32), storing as stringified hex values.
-    
+
         """
         impl = CHAR
 
@@ -344,7 +344,7 @@ to/from JSON.   Can be modified to use Python's builtin json encoder.
 
 Note that the base type is not "mutable", meaning in-place changes to 
 the value will not be detected by the ORM - you instead would need to 
-replace the existing value with a new one to detect changes.  
+replace the existing value with a new one to detect changes.
 The subtype ``MutableJSONEncodedDict``
 adds "mutability" to allow this, but note that "mutable" types add
 a significant performance penalty to the ORM's flush process::
@@ -354,11 +354,11 @@ a significant performance penalty to the ORM's flush process::
 
     class JSONEncodedDict(TypeDecorator):
         """Represents an immutable structure as a json-encoded string.
-        
+
         Usage::
-        
+
             JSONEncodedDict(255)
-            
+
         """
 
         impl = VARCHAR
@@ -373,10 +373,10 @@ a significant performance penalty to the ORM's flush process::
             if value is not None:
                 value = simplejson.loads(value, use_decimal=True)
             return value
-    
+
     class MutableJSONEncodedDict(MutableType, JSONEncodedDict):
         """Adds mutability to JSONEncodedDict."""
-        
+
         def copy_value(self, value):
             return simplejson.loads(
                         simplejson.dumps(value, use_decimal=True), 

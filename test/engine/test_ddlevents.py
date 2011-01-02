@@ -230,7 +230,7 @@ class DDLExecutionTest(TestBase):
         assert 'klptzyxm' not in strings
         assert 'xyzzy' in strings
         assert 'fnord' in strings
-    
+
     def test_conditional_constraint(self):
         metadata, users, engine = self.metadata, self.users, self.engine
         nonpg_mock = engines.mock_engine(dialect_name='sqlite')
@@ -257,7 +257,7 @@ class DDLExecutionTest(TestBase):
         metadata.drop_all(bind=pg_mock)
         strings = ' '.join(str(x) for x in pg_mock.mock)
         assert 'my_test_constraint' in strings
-        
+
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
         DDL('mxyzptlk').execute_at('before-create', metadata)

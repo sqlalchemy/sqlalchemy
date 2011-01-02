@@ -71,12 +71,12 @@ weather_reports = Table("weather_reports", meta,
 for db in (db1, db2, db3, db4):
     meta.drop_all(db)
     meta.create_all(db)
-    
+
 # establish initial "id" in db1
 db1.execute(ids.insert(), nextid=1)
 
 
-# step 5. define sharding functions.  
+# step 5. define sharding functions.
 
 # we'll use a straight mapping of a particular set of "country" 
 # attributes to shard id.
@@ -89,12 +89,12 @@ shard_lookup = {
 
 def shard_chooser(mapper, instance, clause=None):
     """shard chooser.
-    
+
     looks at the given instance and returns a shard id
     note that we need to define conditions for 
     the WeatherLocation class, as well as our secondary Report class which will
     point back to its WeatherLocation via its 'location' attribute.
-    
+
     """
     if isinstance(instance, WeatherLocation):
         return shard_lookup[instance.continent]
@@ -102,24 +102,24 @@ def shard_chooser(mapper, instance, clause=None):
         return shard_chooser(mapper, instance.location)
 
 def id_chooser(query, ident):
-    """id chooser.  
-    
+    """id chooser.
+
     given a primary key, returns a list of shards
     to search.  here, we don't have any particular information from a
     pk so we just return all shard ids. often, youd want to do some 
     kind of round-robin strategy here so that requests are evenly 
     distributed among DBs.
-    
+
     """
     return ['north_america', 'asia', 'europe', 'south_america']
 
 def query_chooser(query):
     """query chooser.
-    
+
     this also returns a list of shard ids, which can
     just be all of them.  but here we'll search into the Query in order
     to try to narrow down the list of shards to query.
-    
+
     """
     ids = []
 
@@ -137,7 +137,7 @@ def query_chooser(query):
                 ids.append(shard_lookup[value])
             elif operator == operators.in_op:
                 ids.extend(shard_lookup[v] for v in value)
-                    
+
     if len(ids) == 0:
         return ['north_america', 'asia', 'europe', 'south_america']
     else:
@@ -145,12 +145,12 @@ def query_chooser(query):
 
 def _get_query_comparisons(query):
     """Search an orm.Query object for binary expressions.
-    
+
     Returns expressions which match a Column against one or more
     literal values as a list of tuples of the form 
     (column, operator, values).   "values" is a single value
     or tuple of values depending on the operator.
-    
+
     """
     binds = {}
     clauses = set()
@@ -213,7 +213,7 @@ create_session.configure(
                     query_chooser=query_chooser
                     )
 
-# step 6.  mapped classes.    
+# step 6.  mapped classes.
 class WeatherLocation(object):
     def __init__(self, continent, city):
         self.continent = continent
@@ -228,7 +228,7 @@ mapper(WeatherLocation, weather_locations, properties={
     'reports':relationship(Report, backref='location')
 })
 
-mapper(Report, weather_reports)    
+mapper(Report, weather_reports)
 
 
 # save and load objects!

@@ -30,15 +30,15 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'UPDATE sometable SET somecolumn=:somecolum'
                             'n WHERE sometable.somecolumn = '
                             ':somecolumn_1', dict(somecolumn=10))
-    
+
     # TODO: should this be for *all* MS-SQL dialects ?
     def test_mxodbc_binds(self):
         """mxodbc uses MS-SQL native binds, which aren't allowed in
         various places."""
-        
+
         mxodbc_dialect = mxodbc.dialect()
         t = table('sometable', column('foo'))
-        
+
         for expr, compile in [
             (
                 select([literal("x"), literal("y")]), 
@@ -60,7 +60,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             )
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)
-    
+
     def test_in_with_subqueries(self):
         """Test that when using subqueries in a binary expression
         the == and != are changed to IN and NOT IN respectively.
@@ -150,7 +150,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'remotetable_1.value FROM mytable JOIN '
                             'remote_owner.remotetable AS remotetable_1 '
                             'ON remotetable_1.rem_id = mytable.myid')
-        
+
         self.assert_compile(select([table4.c.rem_id,
                 table4.c.value]).apply_labels().union(select([table1.c.myid,
                 table1.c.description]).apply_labels()).alias().select(),
@@ -162,8 +162,8 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                 "SELECT mytable.myid AS mytable_myid, mytable.description "
                 "AS mytable_description FROM mytable) AS anon_1"
             )
-        
-        
+
+
     def test_delete_schema(self):
         metadata = MetaData()
         tbl = Table('test', metadata, Column('id', Integer,
@@ -453,7 +453,7 @@ class ReflectionTest(TestBase, ComparesTables):
                                 and table2.c['col1'].default
         assert sequence.start == 2
         assert sequence.increment == 3
-    
+
     @testing.emits_warning("Did not recognize")
     @testing.provide_metadata
     def test_skip_types(self):
@@ -466,14 +466,14 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_indexes_cols(self):
-        
+
         t1 = Table('t', metadata, Column('x', Integer), Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
-        
+
         m2 = MetaData()
         t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
-        
+
         eq_(
             set(list(t2.indexes)[0].columns),
             set([t2.c['x'], t2.c.y])
@@ -481,38 +481,38 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_indexes_cols_with_commas(self):
-        
+
         t1 = Table('t', metadata, 
                         Column('x, col', Integer, key='x'), 
                         Column('y', Integer)
                     )
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
-        
+
         m2 = MetaData()
         t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
-        
+
         eq_(
             set(list(t2.indexes)[0].columns),
             set([t2.c['x, col'], t2.c.y])
         )
-    
+
     @testing.provide_metadata
     def test_indexes_cols_with_spaces(self):
-        
+
         t1 = Table('t', metadata, Column('x col', Integer, key='x'), 
                                     Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
         metadata.create_all()
-        
+
         m2 = MetaData()
         t2 = Table('t', m2, autoload=True, autoload_with=testing.db)
-        
+
         eq_(
             set(list(t2.indexes)[0].columns),
             set([t2.c['x col'], t2.c.y])
         )
-        
+
 class QueryUnicodeTest(TestBase):
 
     __only_on__ = 'mssql'
@@ -544,24 +544,24 @@ class QueryTest(TestBase):
     def test_fetchid_trigger(self):
         """
         Verify identity return value on inserting to a trigger table.
-        
+
         MSSQL's OUTPUT INSERTED clause does not work for the
         case of a table having an identity (autoincrement)
         primary key column, and which also has a trigger configured
         to fire upon each insert and subsequently perform an
         insert into a different table. 
-        
+
         SQLALchemy's MSSQL dialect by default will attempt to
         use an OUTPUT_INSERTED clause, which in this case will
         raise the following error:
-        
+
         ProgrammingError: (ProgrammingError) ('42000', 334, 
         "[Microsoft][SQL Server Native Client 10.0][SQL Server]The 
         target table 't1' of the DML statement cannot have any enabled
         triggers if the statement contains an OUTPUT clause without
         INTO clause.", 7748) 'INSERT INTO t1 (descr) OUTPUT inserted.id
         VALUES (?)' ('hello',)
-        
+
         This test verifies a workaround, which is to rely on the
         older SCOPE_IDENTITY() call, which still works for this scenario.
         To enable the workaround, the Table must be instantiated
@@ -716,10 +716,10 @@ class SchemaTest(TestBase):
         dialect = mssql.dialect()
         self.ddl_compiler = dialect.ddl_compiler(dialect,
                 schema.CreateTable(t))
-    
+
     def _column_spec(self):
         return self.ddl_compiler.get_column_specification(self.column)
-        
+
     def test_that_mssql_default_nullability_emits_null(self):
         eq_("test_column VARCHAR NULL", self._column_spec())
 
@@ -955,7 +955,7 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
         connection = dialect.create_connect_args(u)
         eq_([['DRIVER={SQL Server};Server=hostspec;Database=database;UI'
             'D=username;PWD=password'], {}], connection)
-    
+
     def test_pymssql_port_setting(self):
         dialect = pymssql.dialect()
 
@@ -974,7 +974,7 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
             [[], {'host': 'somehost:5000', 'password': 'tiger', 
                     'user': 'scott', 'database': 'test'}], connection
         )
-    
+
     @testing.only_on(['mssql+pyodbc', 'mssql+pymssql'], "FreeTDS specific test")
     def test_bad_freetds_warning(self):
         engine = engines.testing_engine()
@@ -997,7 +997,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
     def teardown(self):
         metadata.drop_all()
-    
+
     @testing.fails_on_everything_except('mssql+pyodbc',
             'this is some pyodbc-specific feature')
     def test_decimal_notation(self):
@@ -1493,7 +1493,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
                 elif c.name.startswith('int_n'):
                     assert not c.autoincrement, name
                     assert tbl._autoincrement_column is not c, name
-            
+
             # mxodbc can't handle scope_identity() with DEFAULT VALUES
 
             if testing.db.driver == 'mxodbc':
@@ -1506,7 +1506,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
                      : False}),
                      engines.testing_engine(options={'implicit_returning'
                      : True})]
-                    
+
             for counter, engine in enumerate(eng):
                 engine.execute(tbl.insert())
                 if 'int_y' in tbl.c:
@@ -1521,9 +1521,9 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
 
 class BinaryTest(TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""
-    
+
     __only_on__ = 'mssql'
-    
+
     @classmethod
     def setup_class(cls):
         global binary_table, MyPickleType
@@ -1541,7 +1541,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
                     value.stuff = 'this is the right stuff'
                 return value
 
-        binary_table = Table(  
+        binary_table = Table(
             'binary_table',
             MetaData(testing.db),
             Column('primary_id', Integer, Sequence('binary_id_seq',

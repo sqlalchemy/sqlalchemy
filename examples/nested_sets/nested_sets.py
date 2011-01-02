@@ -22,7 +22,7 @@ class NestedSetExtension(MapperExtension):
             right_most_sibling = connection.scalar(
                 select([personnel.c.rgt]).where(personnel.c.emp==instance.parent.emp)
             )
-            
+
             connection.execute(
                 personnel.update(personnel.c.rgt>=right_most_sibling).values(
                     lft = case(
@@ -41,21 +41,21 @@ class NestedSetExtension(MapperExtension):
     # before_update() would be needed to support moving of nodes
     # after_delete() would be needed to support removal of nodes.
     # [ticket:1172] needs to be implemented for deletion to work as well.
-    
+
 class Employee(Base):
     __tablename__ = 'personnel'
     __mapper_args__ = {
         'extension':NestedSetExtension(), 
         'batch':False  # allows extension to fire for each instance before going to the next.
     }
-    
+
     parent = None
-    
+
     emp = Column(String, primary_key=True)
-    
+
     left = Column("lft", Integer, nullable=False)
     right = Column("rgt", Integer, nullable=False)
-    
+
     def __repr__(self):
         return "Employee(%s, %d, %d)" % (self.emp, self.left, self.right)
 
@@ -100,4 +100,4 @@ for indentation, employee in session.query(func.count(Employee.emp).label('inden
     group_by(ealias.emp).\
     order_by(ealias.left):
     print "    " * indentation + str(employee)
-    
+

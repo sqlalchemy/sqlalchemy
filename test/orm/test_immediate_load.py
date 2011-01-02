@@ -17,12 +17,12 @@ class ImmediateTest(_fixtures.FixtureTest):
             'addresses':relationship(Address)
         })
         sess = create_session()
-        
+
         l = sess.query(User).options(immediateload(User.addresses)).filter(users.c.id==7).all()
         eq_(len(sess.identity_map), 2)
-        
+
         sess.close()
-        
+
         eq_(
             [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
             l
@@ -36,11 +36,11 @@ class ImmediateTest(_fixtures.FixtureTest):
             'addresses':relationship(Address, lazy='immediate')
         })
         sess = create_session()
-        
+
         l = sess.query(User).filter(users.c.id==7).all()
         eq_(len(sess.identity_map), 2)
         sess.close()
-        
+
         eq_(
             [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])],
             l

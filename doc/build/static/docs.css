@@ -86,7 +86,7 @@ h1 {
     font: normal 20px/22px arial,helvetica,sans-serif;
     color: #222;
     padding:0px;
-    margin:0px;   
+    margin:0px;
 }
 
 .topnav h2 {
@@ -94,7 +94,7 @@ h1 {
     font-family:arial,helvetica,sans-serif;
     font-size:1.6em;
     font-weight:normal;
-    line-height:1.6em;  
+    line-height:1.6em;
 }
 
 .topnav h3 {
@@ -185,7 +185,7 @@ div.admonition .admonition-title {
 }
 
 .totoc {
-    
+
 }
 
 .doc_copyright {

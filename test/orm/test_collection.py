@@ -174,7 +174,7 @@ class CollectionsTest(_base.ORMTest):
                 def invalid():
                     direct[slice(0, 6, 2)] = [creator()]
                 assert_raises(ValueError, invalid)
-                
+
         if hasattr(direct, '__delitem__'):
             e = creator()
             direct.append(e)
@@ -199,7 +199,7 @@ class CollectionsTest(_base.ORMTest):
                 del direct[::2]
                 del control[::2]
                 assert_eq()
-            
+
         if hasattr(direct, 'remove'):
             e = creator()
             direct.append(e)
@@ -208,21 +208,21 @@ class CollectionsTest(_base.ORMTest):
             direct.remove(e)
             control.remove(e)
             assert_eq()
-        
+
         if hasattr(direct, '__setitem__') or hasattr(direct, '__setslice__'):
-            
+
             values = [creator(), creator()]
             direct[:] = values
             control[:] = values
             assert_eq()
-            
+
             # test slice assignment where
             # slice size goes over the number of items
             values = [creator(), creator()]
             direct[1:3] = values
             control[1:3] = values
             assert_eq()
-            
+
             values = [creator(), creator()]
             direct[0:1] = values
             control[0:1] = values
@@ -247,7 +247,7 @@ class CollectionsTest(_base.ORMTest):
             direct[1::2] = values
             control[1::2] = values
             assert_eq()
-            
+
             values = [creator(), creator()]
             direct[-1:-3] = values
             control[-1:-3] = values
@@ -257,7 +257,7 @@ class CollectionsTest(_base.ORMTest):
             direct[-2:-1] = values
             control[-2:-1] = values
             assert_eq()
-            
+
 
         if hasattr(direct, '__delitem__') or hasattr(direct, '__delslice__'):
             for i in range(1, 4):
@@ -276,7 +276,7 @@ class CollectionsTest(_base.ORMTest):
             del direct[:]
             del control[:]
             assert_eq()
-        
+
         if hasattr(direct, 'extend'):
             values = [creator(), creator(), creator()]
 
@@ -376,7 +376,7 @@ class CollectionsTest(_base.ORMTest):
         self._test_list_bulk(list)
 
     def test_list_setitem_with_slices(self):
-        
+
         # this is a "list" that has no __setslice__
         # or __delslice__ methods.  The __setitem__
         # and __delitem__ must therefore accept
@@ -1452,7 +1452,7 @@ class DictHelpersTest(_base.MappedTest):
 
         p = session.query(Parent).get(pid)
 
-        
+
         eq_(set(p.children.keys()), set(['foo', 'bar']))
         cid = p.children['foo'].id
 
@@ -1543,7 +1543,7 @@ class DictHelpersTest(_base.MappedTest):
 
     def test_declarative_column_mapped(self):
         """test that uncompiled attribute usage works with column_mapped_collection"""
-        
+
         from sqlalchemy.ext.declarative import declarative_base
 
         BaseObject = declarative_base()
@@ -1552,13 +1552,13 @@ class DictHelpersTest(_base.MappedTest):
             __tablename__ = "foo"
             id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
             bar_id = Column(Integer, ForeignKey('bar.id'))
-            
+
         class Bar(BaseObject):
             __tablename__ = "bar"
             id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
             foos = relationship(Foo, collection_class=collections.column_mapped_collection(Foo.id))
             foos2 = relationship(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
-            
+
         eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
         eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
 
@@ -1573,8 +1573,8 @@ class DictHelpersTest(_base.MappedTest):
                               "for argument 'mapping_spec'; got: 'a'",
                               collections.column_mapped_collection,
                               text('a'))
-        
-        
+
+
     @testing.resolve_artifact_names
     def test_column_mapped_collection(self):
         collection_class = collections.column_mapped_collection(
@@ -1759,9 +1759,9 @@ class CustomCollectionsTest(_base.MappedTest):
                 return self.data == other
             def __repr__(self):
                 return 'ListLike(%s)' % repr(self.data)
-        
+
         self._test_list(ListLike)
-        
+
     @testing.resolve_artifact_names
     def _test_list(self, listcls):
         class Parent(object):
@@ -1800,7 +1800,7 @@ class CustomCollectionsTest(_base.MappedTest):
 
         o = [Child()]
         control[1:3] = o
-        
+
         p.children[1:3] = o
         assert control == p.children
         assert control == list(p.children)

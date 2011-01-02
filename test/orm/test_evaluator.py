@@ -27,17 +27,17 @@ class EvaluateTest(_base.MappedTest):
         Table('users', metadata,
               Column('id', Integer, primary_key=True),
               Column('name', String(64)))
-    
+
     @classmethod
     def setup_classes(cls):
         class User(_base.ComparableEntity):
             pass
-    
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(User, users)
-    
+
     @testing.resolve_artifact_names
     def test_compare_to_value(self):
         eval_eq(User.name == 'foo', testcases=[
@@ -45,20 +45,20 @@ class EvaluateTest(_base.MappedTest):
             (User(name='bar'), False),
             (User(name=None), None),
         ])
-        
+
         eval_eq(User.id < 5, testcases=[
             (User(id=3), True),
             (User(id=5), False),
             (User(id=None), None),
         ])
-    
+
     @testing.resolve_artifact_names
     def test_compare_to_none(self):
         eval_eq(User.name == None, testcases=[
             (User(name='foo'), False),
             (User(name=None), True),
         ])
-   
+
     @testing.resolve_artifact_names
     def test_boolean_ops(self):
         eval_eq(and_(User.name == 'foo', User.id == 1), testcases=[
@@ -68,7 +68,7 @@ class EvaluateTest(_base.MappedTest):
             (User(id=2, name='bar'), False),
             (User(id=1, name=None), None),
         ])
-        
+
         eval_eq(or_(User.name == 'foo', User.id == 1), testcases=[
             (User(id=1, name='foo'), True),
             (User(id=2, name='foo'), True),
@@ -77,7 +77,7 @@ class EvaluateTest(_base.MappedTest):
             (User(id=1, name=None), True),
             (User(id=2, name=None), None),
         ])
-        
+
         eval_eq(not_(User.id == 1), testcases=[
             (User(id=1), False),
             (User(id=2), True),

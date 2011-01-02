@@ -26,10 +26,10 @@ class ScopedSession(object):
       Session = scoped_session(sessionmaker())
 
     ... use Session normally.
-      
+
     The internal registry is accessible as well,
     and by default is an instance of :class:`.ThreadLocalRegistry`.
-      
+
 
     """
 
@@ -59,7 +59,7 @@ class ScopedSession(object):
 
     def remove(self):
         """Dispose of the current contextual session."""
-        
+
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
@@ -87,7 +87,7 @@ class ScopedSession(object):
 
     def configure(self, **kwargs):
         """reconfigure the sessionmaker used by this ScopedSession."""
-        
+
         if self.registry.has():
             warn('At least one scoped session is already present. '
                       ' configure() can not affect sessions that have '
@@ -100,7 +100,7 @@ class ScopedSession(object):
         class when called.
 
         e.g.::
-        
+
             Session = scoped_session(sessionmaker())
 
             class MyClass(object):

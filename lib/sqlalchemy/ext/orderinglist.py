@@ -52,7 +52,7 @@ An ``orderinglist`` can automate this and manage the 'position' attribute on all
 related bullets for you.
 
 .. sourcecode:: python+sql
-        
+
     mapper(Slide, slides_table, properties={
            'bullets': relationship(Bullet,
                                collection_class=ordering_list('position'),
@@ -71,7 +71,7 @@ related bullets for you.
 
 Use the ``ordering_list`` function to set up the ``collection_class`` on relationships
 (as in the mapper example above).  This implementation depends on the list
-starting in the proper order, so be SURE to put an order_by on your relationship.  
+starting in the proper order, so be SURE to put an order_by on your relationship.
 
 .. warning:: ``ordering_list`` only provides limited functionality when a primary
   key column or unique column is the target of the sort.  Since changing the order of 
@@ -89,7 +89,7 @@ or some other integer, provide ``count_from=1``.
 
 Ordering values are not limited to incrementing integers.  Almost any scheme
 can implemented by supplying a custom ``ordering_func`` that maps a Python list
-index to any value you require.  
+index to any value you require.
 
 
 
@@ -292,7 +292,7 @@ class OrderingList(list):
             stop = index.stop or len(self)
             if stop < 0:
                 stop += len(self)
-            
+
             for i in xrange(start, stop, step):
                 self.__setitem__(i, entity[i])
         else:
@@ -312,7 +312,7 @@ class OrderingList(list):
         super(OrderingList, self).__delslice__(start, end)
         self._reorder()
     # end Py2K
-    
+
     for func_name, func in locals().items():
         if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(list, func_name)):

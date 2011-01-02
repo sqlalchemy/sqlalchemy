@@ -287,7 +287,7 @@ of the ``Holding`` while also giving access to ``.shares``::
 
     session.add(broker)
     session.commit()
-    
+
     # lets take a peek at that holdings_table after committing changes to the db
     print list(holdings_table.select().execute())
     # [(1, 'ZZK', 10), (1, 'JEK', 123), (1, 'STEPZ', 123)]

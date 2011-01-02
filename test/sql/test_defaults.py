@@ -147,7 +147,7 @@ class DefaultTest(testing.TestBase):
             assert_raises_message(sa.exc.ArgumentError,
                                      ex_msg,
                                      sa.ColumnDefault, fn)
-    
+
     def test_arg_signature(self):
         def fn1(): pass
         def fn2(): pass
@@ -277,7 +277,7 @@ class DefaultTest(testing.TestBase):
         assert r.lastrow_has_defaults()
         eq_(set(r.context.postfetch_cols),
             set([t.c.col3, t.c.col5, t.c.col4, t.c.col6]))
-        
+
         eq_(t.select(t.c.col1==54).execute().fetchall(),
             [(54, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, None)])
@@ -301,7 +301,7 @@ class DefaultTest(testing.TestBase):
               12, today, 'py'),
              (53, 'imthedefault', f, ts, ts, ctexec, True, False,
               12, today, 'py')])
-    
+
     def test_missing_many_param(self):
         assert_raises_message(exc.InvalidRequestError, 
             "A value is required for bind parameter 'col7', in parameter group 1",
@@ -310,7 +310,7 @@ class DefaultTest(testing.TestBase):
             {'col4':7, 'col8':19},
             {'col4':7, 'col7':12, 'col8':19},
         )
-        
+
     def test_insert_values(self):
         t.insert(values={'col3':50}).execute()
         l = t.select().execute()
@@ -366,7 +366,7 @@ class DefaultTest(testing.TestBase):
         l = l.first()
         eq_(55, l['col3'])
 
-    
+
 class PKDefaultTest(_base.TablesTest):
     __requires__ = ('subqueries',)
 
@@ -379,14 +379,14 @@ class PKDefaultTest(_base.TablesTest):
               Column('id', Integer, primary_key=True,
                      default=sa.select([func.max(t2.c.nextid)]).as_scalar()),
               Column('data', String(30)))
-    
+
     @testing.requires.returning
     def test_with_implicit_returning(self):
         self._test(True)
-        
+
     def test_regular(self):
         self._test(False)
-        
+
     @testing.resolve_artifact_names
     def _test(self, returning):
         if not returning and not testing.db.dialect.implicit_returning:
@@ -442,7 +442,7 @@ class PKIncrementTest(_base.TablesTest):
         ids.add(last)
 
         eq_(ids, set([1,2,3,4]))
-        
+
         eq_(list(bind.execute(aitable.select().order_by(aitable.c.id))),
             [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
 
@@ -477,7 +477,7 @@ class EmptyInsertTest(testing.TestBase):
         t1 = Table('t1', metadata,
                 Column('is_true', Boolean, server_default=('1')))
         metadata.create_all()
-        
+
         try:
             result = t1.insert().execute()
             eq_(1, select([func.count(text('*'))], from_obj=t1).scalar())
@@ -588,7 +588,7 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
             "DROP SEQUENCE foo_seq",
             use_default_dialect=True,
         )
-        
+
 
     @testing.fails_on('firebird', 'no FB support for start/increment')
     @testing.requires.sequences
@@ -605,10 +605,10 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
                 start = seq.start or 1
                 inc = seq.increment or 1
                 assert values == list(xrange(start, start + inc * 3, inc))
-                
+
             finally:
                 seq.drop(testing.db)
-        
+
     @testing.requires.sequences
     def test_seq_nonpk(self):
         """test sequences fire off as defaults on non-pk columns"""

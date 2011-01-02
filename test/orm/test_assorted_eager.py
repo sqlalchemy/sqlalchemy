@@ -18,15 +18,15 @@ class EagerTest(_base.MappedTest):
     run_deletes = None
     run_inserts = "once"
     run_setup_mappers = "once"
-    
+
     @classmethod
     def define_tables(cls, metadata):
-        
+
         if testing.db.dialect.supports_native_boolean:
             false = 'false'
         else:
             false = "0"
-            
+
         cls.other_artifacts['false'] = false
 
         Table('owners', metadata ,
@@ -335,7 +335,7 @@ class EagerTest3(_base.MappedTest):
         arb_result = [row['data_id'] for row in arb_result]
 
         arb_data = arb_data.alias('arb')
-        
+
         # now query for Data objects using that above select, adding the
         # "order by max desc" separately
         q = (session.query(Data).

@@ -179,7 +179,7 @@ class AssociationProxy(object):
             proxy = self._new(_lazy_collection(obj, self.target_collection))
             setattr(obj, self.key, (id(obj), proxy))
             return proxy
-    
+
     def __set__(self, obj, values):
         if self.owning_class is None:
             self.owning_class = type(obj)
@@ -233,7 +233,7 @@ class AssociationProxy(object):
             getter, setter = self.getset_factory(self.collection_class, self)
         else:
             getter, setter = self._default_getset(self.collection_class)
-        
+
         if self.collection_class is list:
             return _AssociationList(lazy_collection, creator, getter, setter, self)
         elif self.collection_class is dict:
@@ -254,7 +254,7 @@ class AssociationProxy(object):
             getter, setter = self.getset_factory(self.collection_class, self)
         else:
             getter, setter = self._default_getset(self.collection_class)
-        
+
         proxy.creator = creator
         proxy.getter = getter
         proxy.setter = setter
@@ -279,7 +279,7 @@ class AssociationProxy(object):
 
     def any(self, criterion=None, **kwargs):
         return self._comparator.any(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
-    
+
     def has(self, criterion=None, **kwargs):
         return self._comparator.has(getattr(self.target_class, self.value_attr).has(criterion, **kwargs))
 
@@ -308,15 +308,15 @@ class _lazy_collection(object):
 
     def __getstate__(self):
         return {'obj':self.ref(), 'target':self.target}
-    
+
     def __setstate__(self, state):
         self.ref = weakref.ref(state['obj'])
         self.target = state['target']
 
 class _AssociationCollection(object):
     def __init__(self, lazy_collection, creator, getter, setter, parent):
-        """Constructs an _AssociationCollection.  
-        
+        """Constructs an _AssociationCollection.
+
         This will always be a subclass of either _AssociationList,
         _AssociationSet, or _AssociationDict.
 
@@ -360,7 +360,7 @@ class _AssociationCollection(object):
         self.parent = state['parent']
         self.lazy_collection = state['lazy_collection']
         self.parent._inflate(self)
-    
+
 class _AssociationList(_AssociationCollection):
     """Generic, converting, list-to-list proxy."""
 

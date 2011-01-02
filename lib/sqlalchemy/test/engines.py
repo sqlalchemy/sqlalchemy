@@ -49,7 +49,7 @@ testing_reaper = ConnectionKiller()
 def drop_all_tables(metadata):
     testing_reaper.close_all()
     metadata.drop_all()
-    
+
 def assert_conns_closed(fn):
     def decorated(*args, **kw):
         try:
@@ -74,8 +74,8 @@ def close_first(fn):
         testing_reaper.close_all()
         fn(*args, **kw)
     return function_named(decorated, fn.__name__)
-    
-    
+
+
 def close_open_connections(fn):
     """Decorator that closes all connections after fn execution."""
 
@@ -96,7 +96,7 @@ def all_dialects(exclude=None):
         if not mod:
             mod = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
         yield mod.dialect()
-        
+
 class ReconnectFixture(object):
     def __init__(self, dbapi):
         self.dbapi = dbapi
@@ -140,16 +140,16 @@ def testing_engine(url=None, options=None):
     options = options or config.db_opts
 
     options.setdefault('proxy', asserter)
-    
+
     listeners = options.setdefault('listeners', [])
     listeners.append(testing_reaper)
 
     engine = create_engine(url, **options)
-    
+
     # may want to call this, results
     # in first-connect initializers
     #engine.connect()
-    
+
     return engine
 
 def utf8_engine(url=None, options=None):
@@ -175,18 +175,18 @@ def utf8_engine(url=None, options=None):
 
 def mock_engine(dialect_name=None):
     """Provides a mocking engine based on the current testing.db.
-    
+
     This is normally used to test DDL generation flow as emitted
     by an Engine.
-    
+
     It should not be used in other cases, as assert_compile() and
     assert_sql_execution() are much better choices with fewer 
     moving parts.
-    
+
     """
-    
+
     from sqlalchemy import create_engine
-    
+
     if not dialect_name:
         dialect_name = config.db.name
 
@@ -196,7 +196,7 @@ def mock_engine(dialect_name=None):
     def assert_sql(stmts):
         recv = [re.sub(r'[\n\t]', '', str(s)) for s in buffer]
         assert  recv == stmts, recv
-        
+
     engine = create_engine(dialect_name + '://',
                            strategy='mock', executor=executor)
     assert not hasattr(engine, 'mock')
@@ -222,7 +222,7 @@ class ReplayableSession(object):
                             #for t in ('FunctionType', 'BuiltinFunctionType',
                             #          'MethodType', 'BuiltinMethodType',
                             #          'LambdaType', )])
-                            
+
                             # Py2K
                                for t in ('FunctionType', 'BuiltinFunctionType',
                                          'MethodType', 'BuiltinMethodType',
@@ -253,11 +253,11 @@ class ReplayableSession(object):
             else:
                 buffer.append(result)
                 return result
-        
+
         @property
         def _sqla_unwrap(self):
             return self._subject
-            
+
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)
@@ -290,11 +290,11 @@ class ReplayableSession(object):
                 return self
             else:
                 return result
-        
+
         @property
         def _sqla_unwrap(self):
             return None
-            
+
         def __getattribute__(self, key):
             try:
                 return object.__getattribute__(self, key)

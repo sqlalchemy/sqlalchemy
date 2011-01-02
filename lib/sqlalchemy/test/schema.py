@@ -82,4 +82,4 @@ def _truncate_name(dialect, name):
         return name[0:max(dialect.max_identifier_length - 6, 0)] + "_" + hex(hash(name) % 64)[2:]
     else:
         return name
-    
+

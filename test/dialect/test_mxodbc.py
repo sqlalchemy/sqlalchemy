@@ -10,7 +10,7 @@ class MockDBAPI(object):
         self.log = []
     def connect(self, *args, **kwargs):
         return MockConnection(self)
-    
+
 class MockConnection(object):
     def __init__(self, parent):
         self.parent = parent

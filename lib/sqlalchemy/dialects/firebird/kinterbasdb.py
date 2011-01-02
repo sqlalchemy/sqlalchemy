@@ -13,7 +13,7 @@ The connection URL is of the form
 
 Kinterbasedb backend specific keyword arguments are:
 
-* type_conv - select the kind of mapping done on the types: by default  
+* type_conv - select the kind of mapping done on the types: by default
   SQLAlchemy uses 200 with Unicode, datetime and decimal support (see
   details__).
 
@@ -34,11 +34,11 @@ Kinterbasedb backend specific keyword arguments are:
   SQLAlchemy ORM to ignore its usage. The behavior can also be controlled on a
   per-execution basis using the `enable_rowcount` option with
   :meth:`execution_options()`::
-  
+
       conn = engine.connect().execution_options(enable_rowcount=True)
       r = conn.execute(stmt)
       print r.rowcount
-  
+
 __ http://sourceforge.net/projects/kinterbasdb
 __ http://firebirdsql.org/index.php?op=devel&sub=python
 __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
@@ -66,23 +66,23 @@ class FBExecutionContext_kinterbasdb(FBExecutionContext):
             return self.cursor.rowcount
         else:
             return -1
-            
+
 class FBDialect_kinterbasdb(FBDialect):
     driver = 'kinterbasdb'
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     execution_ctx_cls = FBExecutionContext_kinterbasdb
-    
+
     supports_native_decimal = True
-    
+
     colspecs = util.update_copy(
         FBDialect.colspecs,
         {
             sqltypes.Numeric:_FBNumeric_kinterbasdb
         }
-        
+
     )
-    
+
     def __init__(self, type_conv=200, concurrency_level=1,
                             enable_rowcount=True, **kwargs):
         super(FBDialect_kinterbasdb, self).__init__(**kwargs)
@@ -91,7 +91,7 @@ class FBDialect_kinterbasdb(FBDialect):
         self.concurrency_level = concurrency_level
         if enable_rowcount:
             self.supports_sane_rowcount = True
-        
+
     @classmethod
     def dbapi(cls):
         k = __import__('kinterbasdb')
@@ -103,13 +103,13 @@ class FBDialect_kinterbasdb(FBDialect):
             opts['host'] = "%s/%s" % (opts['host'], opts['port'])
             del opts['port']
         opts.update(url.query)
-        
+
         util.coerce_kw_type(opts, 'type_conv', int)
-        
+
         type_conv = opts.pop('type_conv', self.type_conv)
         concurrency_level = opts.pop('concurrency_level',
                                     self.concurrency_level)
-        
+
         if self.dbapi is not None:
             initialized = getattr(self.dbapi, 'initialized', None)
             if initialized is None:
