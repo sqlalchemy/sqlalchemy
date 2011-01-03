@@ -40,7 +40,9 @@ In the :ref:`ormtutorial_toplevel`, we introduced the concept of **Eager
 Loading**. We used an ``option`` in conjunction with the
 :class:`~sqlalchemy.orm.query.Query` object in order to indicate that a
 relationship should be loaded at the same time as the parent, within a single
-SQL query.   This option, known as :func:`.joinedload`
+SQL query.   This option, known as :func:`.joinedload`, connects a JOIN (by default
+a LEFT OUTER join) to the statement and populates the scalar/collection from the
+same result set as that of the parent:
 
 .. sourcecode:: python+sql
 
