@@ -147,6 +147,9 @@ class InstanceState(object):
         )
         if self.load_path:
             d['load_path'] = interfaces.serialize_path(self.load_path)
+
+        self.manager.dispatch.pickle(self, d)
+
         return d
 
     def __setstate__(self, state):
@@ -182,7 +185,7 @@ class InstanceState(object):
         if 'load_path' in state:
             self.load_path = interfaces.deserialize_path(state['load_path'])
 
-        # TODO: need an event here, link to composite, mutable
+        manager.dispatch.unpickle(self, state)
 
     def initialize(self, key):
         """Set this attribute to an empty value or collection, 

@@ -2,6 +2,7 @@ from test.lib.testing import eq_
 import pickle
 import sqlalchemy as sa
 from test.lib import testing
+from test.lib.util import picklers
 from test.lib.testing import assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, exc, MetaData
 from test.lib.schema import Table, Column
@@ -215,8 +216,9 @@ class PickleTest(_fixtures.FixtureTest):
 
         u1 = sess.query(User).first()
         u1.addresses
-        for protocol in -1, 0, 1, 2:
-            u2 = pickle.loads(pickle.dumps(u1, protocol))
+
+        for loads, dumps in picklers():
+            u2 = loads(dumps(u1))
             eq_(u1, u2)
 
     @testing.resolve_artifact_names

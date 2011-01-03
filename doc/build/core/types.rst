@@ -342,9 +342,8 @@ Marshal JSON Strings
 This type uses ``simplejson`` to marshal Python data structures
 to/from JSON.   Can be modified to use Python's builtin json encoder::
 
-
-    from sqlalchemy.types import TypeDecorator, MutableType, VARCHAR
-    import simplejson
+    from sqlalchemy.types import TypeDecorator, VARCHAR
+    import json
 
     class JSONEncodedDict(TypeDecorator):
         """Represents an immutable structure as a json-encoded string.
@@ -359,65 +358,23 @@ to/from JSON.   Can be modified to use Python's builtin json encoder::
 
         def process_bind_param(self, value, dialect):
             if value is not None:
-                value = simplejson.dumps(value, use_decimal=True)
+                value = json.dumps(value)
 
             return value
 
         def process_result_value(self, value, dialect):
             if value is not None:
-                value = simplejson.loads(value, use_decimal=True)
+                value = json.loads(value)
             return value
 
-
-Note that the base type is not "mutable", meaning in-place changes to 
-the value will not be detected by the ORM - you instead would need to 
-replace the existing value with a new one to detect changes.  To add
-support for mutability, we need to build a dictionary that detects
-changes, and combine this using the ``sqlalchemy.ext.mutable`` extension
-described in :ref:`mutable_toplevel`::
-
-    from sqlalchemy.ext.mutable import Mutable
-
-    class MutationDict(Mutable, dict):
-        @classmethod
-        def coerce(cls, key, value):
-            """Convert plain dictionaries to MutationDict."""
-            if not isinstance(value, MutationDict):
-                if isinstance(value, dict):
-                    return MutationDict(value)
-
-                # this call will raise ValueError
-                return Mutable.coerce(key, value)
-            else:
-                return value
-
-        def __setitem__(self, key, value):
-            """Detect dictionary set events and emit change events."""
-
-            dict.__setitem__(self, key, value)
-            self.change()
-
-        def __delitem__(self, key):
-            """Detect dictionary del events and emit change events."""
-
-            dict.__delitem__(self, key)
-            self.change()
-
-        # additional dict methods would be overridden here
-
-The new dictionary type can be associated with JSONEncodedDict using
-an event listener established by the :meth:`.Mutable.associate_with`
-method::
-
-    MutationDict.associate_with(JSONEncodedDict)
-
-Alternatively, specific usages of ``JSONEncodedDict`` can be associated
-with ``MutationDict`` via :meth:`.Mutable.as_mutable`::
-
-    Table('mytable', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', MutationDict.as_mutable(JSONEncodedDict))
-    )
+Note that the ORM by default will not detect "mutability" on such a type -
+meaning, in-place changes to values will not be detected and will not be
+flushed. Without further steps, you instead would need to replace the existing
+value with a new one on each parent object to detect changes. Note that
+there's nothing wrong with this, as many applications may not require that the
+values are ever mutated once created.  For those which do have this requirment,
+support for mutability is best applied using the ``sqlalchemy.ext.mutable``
+extension - see the example in :ref:`mutable_toplevel`.
 
 Creating New Types
 ~~~~~~~~~~~~~~~~~~

@@ -8,11 +8,18 @@ Mutation Tracking
 API Reference
 -------------
 
+.. autoclass:: MutableBase
+    :members: _parents
+
 .. autoclass:: Mutable
+    :show-inheritance:
     :members:
 
 .. autoclass:: MutableComposite
+    :show-inheritance:
     :members:
+
+
 
 
 

@@ -5,11 +5,18 @@ from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.instrumentation import ClassManager
 from test.lib.schema import Table, Column
 from test.lib.testing import eq_
+from test.lib.util import picklers
 from test.lib import testing
 from test.orm import _base
 import sys
+import pickle
+
+class Foo(_base.BasicEntity):
+    pass
 
 class _MutableDictTestBase(object):
+    run_define_tables = 'each'
+
     @classmethod
     def _type_fixture(cls):
         from sqlalchemy.ext.mutable import Mutable
@@ -30,23 +37,20 @@ class _MutableDictTestBase(object):
             def __getstate__(self):
                 return dict(self)
 
-            def __setstate__(self, dict):
-                self.update(dict)
+            def __setstate__(self, state):
+                self.update(state)
 
             def __setitem__(self, key, value):
                 dict.__setitem__(self, key, value)
-                self.change()
+                self.changed()
 
             def __delitem__(self, key):
                 dict.__delitem__(self, key)
-                self.change()
+                self.changed()
         return MutationDict
 
     @testing.resolve_artifact_names
     def setup_mappers(cls):
-        class Foo(_base.BasicEntity):
-            pass
-
         mapper(Foo, foo)
 
     def teardown(self):
@@ -67,6 +71,23 @@ class _MutableDictTestBase(object):
         sess.commit()
 
         eq_(f1.data, {'a':'c'})
+
+    @testing.resolve_artifact_names
+    def test_pickle_parent(self):
+        sess = Session()
+
+        f1 = Foo(data={'a':'b'})
+        sess.add(f1)
+        sess.commit()
+        f1.data
+        sess.close()
+
+        for loads, dumps in picklers():
+            sess = Session()
+            f2 = loads(dumps(f1))
+            sess.add(f2)
+            f2.data['a'] = 'c'
+            assert f2 in sess.dirty
 
     @testing.resolve_artifact_names
     def _test_non_mutable(self):
@@ -169,7 +190,8 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, _base.MappedTest):
             Column('data', JSONEncodedDict)
         )
 
-class MutableCompositesTest(_base.MappedTest):
+
+class _CompositeTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
         Table('foo', metadata,
@@ -182,7 +204,9 @@ class MutableCompositesTest(_base.MappedTest):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(MutableCompositesTest, self).teardown()
+        super(_CompositeTestBase, self).teardown()
+
+class MutableCompositesTest(_CompositeTestBase, _base.MappedTest):
 
     @classmethod
     def _type_fixture(cls):
@@ -199,10 +223,18 @@ class MutableCompositesTest(_base.MappedTest):
 
             def __setattr__(self, key, value):
                 object.__setattr__(self, key, value)
-                self.change()
+                self.changed()
 
             def __composite_values__(self):
                 return self.x, self.y
+
+            def __getstate__(self):
+                d = dict(self.__dict__)
+                d.pop('_parents', None)
+                return d
+
+            #def __setstate__(self, state):
+            #    self.x, self.y = state
 
             def __eq__(self, other):
                 return isinstance(other, Point) and \
@@ -214,9 +246,6 @@ class MutableCompositesTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         Point = cls._type_fixture()
-
-        class Foo(_base.BasicEntity):
-            pass
 
         mapper(Foo, foo, properties={
             'data':composite(Point, foo.c.x, foo.c.y)
@@ -235,3 +264,21 @@ class MutableCompositesTest(_base.MappedTest):
 
         eq_(f1.data, Point(3, 5))
 
+    @testing.resolve_artifact_names
+    def test_pickle_of_parent(self):
+        sess = Session()
+        d = Point(3, 4)
+        f1 = Foo(data=d)
+        sess.add(f1)
+        sess.commit()
+
+        f1.data
+        assert 'data' in f1.__dict__
+        sess.close()
+
+        for loads, dumps in picklers():
+            sess = Session()
+            f2 = loads(dumps(f1))
+            sess.add(f2)
+            f2.data.y = 12
+            assert f2 in sess.dirty

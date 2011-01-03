@@ -493,10 +493,10 @@ provides a single attribute which represents the group of columns using the
 class you provide.
 
 .. note::
-    As of SQLAlchemy 0.7, composites are implemented as a simple wrapper using
-    the :ref:`hybrids_toplevel` feature.   Note that composites no longer
-    "conceal" the underlying colunm based attributes, or support in-place 
-    mutation.
+    As of SQLAlchemy 0.7, composites have been simplified such that 
+    they no longer "conceal" the underlying column based attributes.  Additionally,
+    in-place mutation is no longer automatic; see the section below on
+    enabling mutability to support tracking of in-place changes.
 
 A simple example represents pairs of columns as a "Point" object.
 Starting with a table that represents two points as x1/y1 and x2/y2::
@@ -518,12 +518,15 @@ pair::
         def __init__(self, x, y):
             self.x = x
             self.y = y
+
         def __composite_values__(self):
             return self.x, self.y
+
         def __eq__(self, other):
-            return other is not None and \
-                    other.x == self.x and \
-                    other.y == self.y
+            return isinstance(other, Point) and \
+                other.x == self.x and \
+                other.y == self.y
+
         def __ne__(self, other):
             return not self.__eq__(other)
 
@@ -546,14 +549,43 @@ The :func:`.composite` function is then used in the mapping::
         'end': composite(Point, vertices.c.x2, vertices.c.y2)
     })
 
-We can now use the ``Vertex`` instances as well as querying as though the
-``start`` and ``end`` attributes are regular scalar attributes::
+When using :mod:`sqlalchemy.ext.declarative`, the individual 
+:class:`.Column` objects may optionally be bundled into the 
+:func:`.composite` call, ensuring that they are named::
+
+    from sqlalchemy.ext.declarative import declarative_base
+    Base = declarative_base()
+
+    class Vertex(Base):
+        __tablename__ = 'vertices'
+        id = Column(Integer, primary_key=True)
+        start = composite(Point, Column('x1', Integer), Column('y1', Integer))
+        end = composite(Point, Column('x2', Integer), Column('y2', Integer))
+
+Using either configurational approach, we can now use the ``Vertex`` instances
+as well as querying as though the ``start`` and ``end`` attributes are regular
+scalar attributes::
 
     session = Session()
     v = Vertex(Point(3, 4), Point(5, 6))
     session.add(v)
 
     v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
+
+.. autofunction:: composite
+
+Tracking In-Place Mutations on Composites
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As of SQLAlchemy 0.7, in-place changes to an existing composite value are 
+not tracked automatically.  Instead, the composite class needs to provide
+events to its parent object explicitly.   This task is largely automated 
+via the usage of the :class:`.MutableComposite` mixin, which uses events
+to associate each user-defined composite object with all parent associations.
+Please see the example in :ref:`mutable_composites`.
+
+Redefining Comparison Operations for Composites
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The "equals" comparison operation by default produces an AND of all
 corresponding columns equated to one another. This can be changed using
@@ -578,9 +610,6 @@ the same expression that the base "greater than" does::
         'end': composite(Point, vertices.c.x2, vertices.c.y2,
                                     comparator_factory=PointComparator)
     })
-
-.. autofunction:: composite
-
 
 .. _maptojoin:
 

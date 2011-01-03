@@ -195,6 +195,33 @@ class InstanceEvents(event.Events):
 
         """
 
+    def pickle(self, target, state_dict):
+        """Receive an object instance when its associated state is
+        being pickled.
+
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param state_dict: the dictionary returned by 
+         :class:`.InstanceState.__getstate__`, containing the state
+         to be pickled.
+         
+        """
+
+    def unpickle(self, target, state_dict):
+        """Receive an object instance after it's associated state has
+        been unpickled.
+
+        :param target: the mapped instance.  If 
+         the event is configured with ``raw=True``, this will 
+         instead be the :class:`.InstanceState` state-management
+         object associated with the instance.
+        :param state_dict: the dictionary sent to
+         :class:`.InstanceState.__setstate__`, containing the state
+         dictionary which was pickled.
+        
+        """
 
 class MapperEvents(event.Events):
     """Define events specific to mappings.

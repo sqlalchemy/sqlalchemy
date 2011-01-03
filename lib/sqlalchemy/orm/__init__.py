@@ -671,6 +671,7 @@ def composite(class_, *cols, **kwargs):
       an :class:`.AttributeExtension` instance,
       or list of extensions, which will be prepended to the list of
       attribute listeners for the resulting descriptor placed on the class.
+      **Deprecated.**  Please see :class:`.AttributeEvents`.
 
     """
     return CompositeProperty(class_, *cols, **kwargs)
