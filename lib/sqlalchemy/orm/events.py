@@ -62,8 +62,43 @@ class InstrumentationEvents(event.Events):
 class InstanceEvents(event.Events):
     """Define events specific to object lifecycle.
 
-    Instance-level don't automatically propagate their associations
-    to subclasses.
+    e.g.::
+
+        from sqlalchemy import event
+
+        def my_load_listener(target, context):
+            print "on load!"
+
+        event.listen(SomeMappedClass, 'load', my_load_listener)
+
+    Available targets include mapped classes, instances of
+    :class:`.Mapper` (i.e. returned by :func:`.mapper`,
+    :func:`.class_mapper` and similar), as well as the
+    :class:`.Mapper` class and :func:`.mapper` function itself
+    for global event reception::
+
+        from sqlalchemy.orm import mapper
+
+        def some_listener(target, context):
+            log.debug("Instance %s being loaded" % target)
+
+        # attach to all mappers
+        event.listen(mapper, 'load', some_listener)
+
+    Instance events are closely related to mapper events, but
+    are more specific to the instance and its instrumentation,
+    rather than its system of persistence.
+
+    When using :class:`.InstanceEvents`, several modifiers are
+    available to the :func:`.event.listen` function.
+
+    :param propagate=False: When True, the event listener should 
+       be applied to all inheriting mappers as well as the 
+       mapper which is the target of this listener.
+    :param raw=False: When True, the "target" argument passed
+       to applicable event listener functions will be the 
+       instance's :class:`.InstanceState` management
+       object, rather than the mapped instance itself.
 
     """
     @classmethod

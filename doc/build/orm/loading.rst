@@ -122,7 +122,7 @@ To reference a relationship that is deeper than one level, separate the names by
     session.query(Parent).options(joinedload('foo.bar.bat')).all()
 
 When using dot-separated names with :func:`~sqlalchemy.orm.joinedload` or
-:func:`~sqlalchemy.orm.subqueryload`, option applies **only** to the actual
+:func:`~sqlalchemy.orm.subqueryload`, the option applies **only** to the actual
 attribute named, and **not** its ancestors. For example, suppose a mapping
 from ``A`` to ``B`` to ``C``, where the relationships, named ``atob`` and
 ``btoc``, are both lazy-loading. A statement like the following:
@@ -131,21 +131,26 @@ from ``A`` to ``B`` to ``C``, where the relationships, named ``atob`` and
 
     session.query(A).options(joinedload('atob.btoc')).all()
 
-will load only ``A`` objects to start.  When the ``atob`` attribute on each ``A`` is accessed, the returned ``B`` objects will *eagerly* load their ``C`` objects.
+will load only ``A`` objects to start. When the ``atob`` attribute on each
+``A`` is accessed, the returned ``B`` objects will *eagerly* load their ``C``
+objects.
 
-Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``, place joinedloads for both:
+Therefore, to modify the eager load to load both ``atob`` as well as ``btoc``,
+place joinedloads for both:
 
 .. sourcecode:: python+sql
 
     session.query(A).options(joinedload('atob'), joinedload('atob.btoc')).all()
 
-or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or :func:`~sqlalchemy.orm.subqueryload_all`:
+or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or
+:func:`~sqlalchemy.orm.subqueryload_all`:
 
 .. sourcecode:: python+sql
 
     session.query(A).options(joinedload_all('atob.btoc')).all()
 
-There are two other loader strategies available, **dynamic loading** and **no loading**; these are described in :ref:`largecollections`.
+There are two other loader strategies available, **dynamic loading** and **no
+loading**; these are described in :ref:`largecollections`.
 
 The Zen of Eager Loading
 -------------------------
