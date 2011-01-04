@@ -48,11 +48,12 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurr
 from sqlalchemy.dialects.firebird.base import FBDialect, \
                                     FBCompiler, FBExecutionContext
 from sqlalchemy import util, types as sqltypes
+from sqlalchemy.util.compat import decimal
 
 class _FBNumeric_kinterbasdb(sqltypes.Numeric):
     def bind_processor(self, dialect):
         def process(value):
-            if value is not None:
+            if isinstance(value, decimal.Decimal):
                 return str(value)
             else:
                 return value
@@ -78,7 +79,7 @@ class FBDialect_kinterbasdb(FBDialect):
     colspecs = util.update_copy(
         FBDialect.colspecs,
         {
-            sqltypes.Numeric:_FBNumeric_kinterbasdb
+            sqltypes.Numeric:_FBNumeric_kinterbasdb,
         }
 
     )
