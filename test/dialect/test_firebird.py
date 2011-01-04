@@ -319,6 +319,20 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         for type_, args, kw, res in columns:
             self.assert_compile(type_(*args, **kw), res)
 
+class TypesTest(TestBase):
+    __only_on__ = 'firebird'
+
+    @testing.provide_metadata
+    def test_infinite_float(self):
+        t = Table('t', metadata, 
+            Column('data', Float)
+        )
+        metadata.create_all()
+        t.insert().execute(data=float('inf'))
+        eq_(t.select().execute().fetchall(),
+            [(float('inf'),)]
+        )
+
 class MiscTest(TestBase):
 
     __only_on__ = 'firebird'

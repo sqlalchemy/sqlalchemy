@@ -173,6 +173,11 @@ CHANGES
     when using a non-period-decimal-point NLS_LANG setting.
     [ticket:1953].
 
+- firebird
+  - Firebird numeric type now checks for Decimal explicitly,
+    lets float() pass right through, thereby allowing 
+    special values such as float('inf'). [ticket:2012]
+
 - declarative
   - An error is raised if __table_args__ is not in tuple
     or dict format, and is not None.  [ticket:1972]

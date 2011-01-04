@@ -564,7 +564,7 @@ class FBDialect(default.DefaultDialect):
                 else:
                     coltype = BLOB()
             else:
-                coltype = coltype(row)
+                coltype = coltype()
 
             # does it have a default value?
             defvalue = None
