@@ -48,7 +48,7 @@ __ http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurr
 from sqlalchemy.dialects.firebird.base import FBDialect, \
                                     FBCompiler, FBExecutionContext
 from sqlalchemy import util, types as sqltypes
-from sqlalchemy.util.compat import decimal
+import decimal
 
 class _FBNumeric_kinterbasdb(sqltypes.Numeric):
     def bind_processor(self, dialect):
