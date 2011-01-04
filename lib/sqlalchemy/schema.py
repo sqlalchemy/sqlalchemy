@@ -1543,7 +1543,23 @@ class Constraint(SchemaItem):
     def copy(self, **kw):
         raise NotImplementedError()
 
-class ColumnCollectionConstraint(Constraint):
+class ColumnCollectionMixin(object):
+    def __init__(self, *columns):
+        self.columns = expression.ColumnCollection()
+        self._pending_colargs = [_to_schema_column_or_string(c) 
+                                    for c in columns]
+        if self._pending_colargs and \
+                isinstance(self._pending_colargs[0], Column) and \
+                self._pending_colargs[0].table is not None:
+            self._set_parent(self._pending_colargs[0].table)
+
+    def _set_parent(self, table):
+        for col in self._pending_colargs:
+            if isinstance(col, basestring):
+                col = table.c[col]
+            self.columns.add(col)
+
+class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     """A constraint that proxies a ColumnCollection."""
 
     def __init__(self, *columns, **kw):
@@ -1563,21 +1579,12 @@ class ColumnCollectionConstraint(Constraint):
           for this constraint.
 
         """
-        super(ColumnCollectionConstraint, self).__init__(**kw)
-        self.columns = expression.ColumnCollection()
-        self._pending_colargs = [_to_schema_column_or_string(c) 
-                                    for c in columns]
-        if self._pending_colargs and \
-                isinstance(self._pending_colargs[0], Column) and \
-                self._pending_colargs[0].table is not None:
-            self._set_parent(self._pending_colargs[0].table)
+        ColumnCollectionMixin.__init__(self, *columns)
+        Constraint.__init__(self, **kw)
 
     def _set_parent(self, table):
-        super(ColumnCollectionConstraint, self)._set_parent(table)
-        for col in self._pending_colargs:
-            if isinstance(col, basestring):
-                col = table.c[col]
-            self.columns.add(col)
+        ColumnCollectionMixin._set_parent(self, table)
+        Constraint._set_parent(self, table)
 
     def __contains__(self, x):
         return x in self.columns
@@ -1798,7 +1805,7 @@ class UniqueConstraint(ColumnCollectionConstraint):
 
     __visit_name__ = 'unique_constraint'
 
-class Index(SchemaItem):
+class Index(ColumnCollectionMixin, SchemaItem):
     """A table-level INDEX.
 
     Defines a composite (one or more column) INDEX. For a no-frills, single
@@ -1808,7 +1815,7 @@ class Index(SchemaItem):
 
     __visit_name__ = 'index'
 
-    def __init__(self, name, *columns, **kwargs):
+    def __init__(self, name, *columns, **kw):
         """Construct an index object.
 
         :param name:
@@ -1825,27 +1832,33 @@ class Index(SchemaItem):
             Other keyword arguments may be interpreted by specific dialects.
 
         """
-
-        self.name = name
-        self.columns = expression.ColumnCollection()
         self.table = None
-        self.unique = kwargs.pop('unique', False)
-        self.kwargs = kwargs
-
-        for column in columns:
-            column = _to_schema_column(column)
-            if self.table is None:
-                self._set_parent(column.table)
-            elif column.table != self.table:
-                # all columns muse be from same table
-                raise exc.ArgumentError(
-                    "All index columns must be from same table. "
-                    "%s is from %s not %s" % 
-                    (column, column.table, self.table))
-            self.columns.add(column)
+        # will call _set_parent() if table-bound column
+        # objects are present
+        ColumnCollectionMixin.__init__(self, *columns)
+        self.name = name
+        self.unique = kw.pop('unique', False)
+        self.kwargs = kw
 
     def _set_parent(self, table):
+        ColumnCollectionMixin._set_parent(self, table)
+
+        if self.table is not None and table is not self.table:
+            raise exc.ArgumentError(
+                "Index '%s' is against table '%s', and "
+                "cannot be associated with table '%s'." % (
+                    self.name,
+                    self.table.description,
+                    table.description
+                )
+            )
         self.table = table
+        for c in self.columns:
+            if c.table != self.table:
+                raise exc.ArgumentError(
+                    "Column '%s' is not part of table '%s'." %
+                    (c, self.table.description)
+                )
         table.indexes.add(self)
 
     @property

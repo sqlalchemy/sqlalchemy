@@ -1076,10 +1076,6 @@ separate UNIQUE constraint. For indexes with specific names or which encompass
 more than one column, use the :class:`~sqlalchemy.schema.Index` construct,
 which requires a name.
 
-Note that the :class:`~sqlalchemy.schema.Index` construct is created
-**externally** to the table which it corresponds, using
-:class:`~sqlalchemy.schema.Column` objects and not strings.
-
 Below we illustrate a :class:`~sqlalchemy.schema.Table` with several
 :class:`~sqlalchemy.schema.Index` objects associated. The DDL for "CREATE
 INDEX" is issued right after the create statements for the table:
@@ -1120,6 +1116,28 @@ INDEX" is issued right after the create statements for the table:
     CREATE UNIQUE INDEX ix_mytable_col2 ON mytable (col2)
     CREATE UNIQUE INDEX myindex ON mytable (col5, col6)
     CREATE INDEX idx_col34 ON mytable (col3, col4){stop}
+
+Note in the example above, the :class:`.Index` construct is created
+externally to the table which it corresponds, using :class:`.Column` 
+objects directly.  As of SQLAlchemy 0.7, :class:`.Index` also supports
+"inline" definition inside the :class:`.Table`, using string names to 
+identify columns::
+
+    meta = MetaData()
+    mytable = Table('mytable', meta,
+        Column('col1', Integer),
+
+        Column('col2', Integer),
+
+        Column('col3', Integer),
+        Column('col4', Integer),
+
+        # place an index on col1, col2
+        Index('idx_col12', 'col1', 'col2'),
+
+        # place a unique index on col3, col4
+        Index('idx_col34', 'col3', 'col4', unique=True)
+    )
 
 The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` method:
 

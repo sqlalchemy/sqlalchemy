@@ -217,6 +217,43 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             dialect=dialect
         )
 
+    def test_index_declartion_inline(self):
+        t1 = Table('t1', metadata, 
+            Column('x', Integer),
+            Column('y', Integer),
+            Index('foo', 'x', 'y')
+        )
+        self.assert_compile(
+            schema.CreateIndex(list(t1.indexes)[0]), 
+            "CREATE INDEX foo ON t1 (x, y)"
+        )
+
+    def test_index_asserts_cols_standalone(self):
+        t1 = Table('t1', metadata, 
+            Column('x', Integer)
+        )
+        t2 = Table('t2', metadata,
+            Column('y', Integer)
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Column 't2.y' is not part of table 't1'.",
+            Index,
+            "bar", t1.c.x, t2.c.y
+        )
+
+    def test_index_asserts_cols_inline(self):
+        t1 = Table('t1', metadata, 
+            Column('x', Integer)
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Index 'bar' is against table 't1', and "
+            "cannot be associated with table 't2'.",
+            Table, 't2', metadata,
+                Column('y', Integer),
+                Index('bar', t1.c.x)
+        )
 
 class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
 

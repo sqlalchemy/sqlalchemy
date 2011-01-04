@@ -11,6 +11,10 @@ CHANGES
     as an extension to the asc() and desc() operators, called
     nullsfirst() and nullslast().  [ticket:723]
 
+  - The Index() construct can be created inline with a Table
+    definition, using strings as column names, as an alternative
+    to the creation of the index outside of the Table.
+
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/
     NVARCHAR, emit "max" as the length when no length is 

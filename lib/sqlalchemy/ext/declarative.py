@@ -819,13 +819,32 @@ from multiple collections::
         __tablename__='my_model'
 
         @declared_attr
-        def __table_args__(self):
+        def __table_args__(cls):
             args = dict()
             args.update(MySQLSettings.__table_args__)
             args.update(MyOtherMixin.__table_args__)
             return args
 
         id =  Column(Integer, primary_key=True)
+
+Creating Indexes with Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To define a named, potentially multicolumn :class:`.Index` that applies to all 
+tables derived from a mixin, use the "inline" form of :class:`.Index` and establish
+it as part of ``__table_args__``::
+
+    class MyMixin(object):
+        a =  Column(Integer)
+        b =  Column(Integer)
+        
+        @declared_attr
+        def __table_args__(cls):
+            return (Index('test_idx_%s' % cls.__tablename__, 'a', 'b'),)
+
+    class MyModel(Base,MyMixin):
+        __tablename__ = 'atable'
+        c =  Column(Integer,primary_key=True)
 
 
 Class Constructor
