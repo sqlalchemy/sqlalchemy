@@ -149,7 +149,7 @@ class UOWTransaction(object):
 
         self.states[state] = (isdelete, True)
 
-    def get_attribute_history(self, state, key, passive=True):
+    def get_attribute_history(self, state, key, passive=attributes.PASSIVE_NO_INITIALIZE):
         """facade to attributes.get_state_history(), including caching of results."""
 
         hashkey = ("history", state, key)

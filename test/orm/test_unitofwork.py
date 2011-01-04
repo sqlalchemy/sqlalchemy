@@ -561,16 +561,14 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
     @testing.resolve_artifact_names
     def test_assertions(self):
         mapper(MyOtherClass, myothertable)
-        try:
-            mapper(MyClass, mytable, properties={
-                'children':relationship(MyOtherClass,
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Can't set passive_deletes='all' in conjunction with 'delete' "
+            "or 'delete-orphan' cascade",
+            relationship, MyOtherClass,
                                     passive_deletes='all',
-                                    cascade="all")})
-            assert False
-        except sa.exc.ArgumentError, e:
-            eq_(str(e),
-                "Can't set passive_deletes='all' in conjunction with 'delete' "
-                "or 'delete-orphan' cascade")
+                                    cascade="all"
+        )
 
     @testing.resolve_artifact_names
     def test_extra_passive(self):
@@ -617,6 +615,23 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         mc.children[0].data = 'some new data'
         assert_raises(sa.exc.DBAPIError, session.flush)
 
+    @testing.resolve_artifact_names
+    def test_dont_emit(self):
+        mapper(MyOtherClass, myothertable)
+        mapper(MyClass, mytable, properties={
+            'children': relationship(MyOtherClass,
+                                 passive_deletes='all',
+                                 cascade="save-update")})
+        session = Session()
+        mc = MyClass()
+        session.add(mc)
+        session.commit()
+        mc.id
+
+        session.delete(mc)
+
+        # no load for "children" should occur
+        self.assert_sql_count(testing.db, session.flush, 1)
 
 class ColumnCollisionTest(_base.MappedTest):
     """Ensure the mapper doesn't break bind param naming rules on flush."""

@@ -29,6 +29,10 @@ CHANGES
     that weren't previously saved in the "mutable changes"
     dictionary.
 
+  - Fixed bug whereby "passive_deletes='all'" wasn't passing
+    the correct symbols to lazy loaders during flush, thereby
+    causing an unwarranted load.  [ticket:2013]
+
   - Fixed bug which prevented composite mapped
     attributes from being used on a mapped select statement. 
     [ticket:1997]. Note the workings of composite are slated to 
