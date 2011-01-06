@@ -746,9 +746,23 @@ class SubqueryLoader(AbstractRelationshipLoader):
                     for i in xrange(0, len(subq_path), 2)
                 ]
 
+        # determine the immediate parent class we are joining from,
+        # which needs to be aliased.
+
         if len(to_join) < 2:
+            # in the case of a one level eager load, this is the
+            # leftmost "left_alias".
             parent_alias = left_alias
+        elif subq_path[-2].isa(self.parent):
+            # In the case of multiple levels, retrieve
+            # it from subq_path[-2]. This is the same as self.parent 
+            # in the vast majority of cases, and [ticket:2014] 
+            # illustrates a case where sub_path[-2] is a subclass
+            # of self.parent
+            parent_alias = mapperutil.AliasedClass(subq_path[-2])
         else:
+            # if of_type() were used leading to this relationship, 
+            # self.parent is more specific than subq_path[-2]
             parent_alias = mapperutil.AliasedClass(self.parent)
 
         local_cols, remote_cols = \

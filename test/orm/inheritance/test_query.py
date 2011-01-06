@@ -1249,7 +1249,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
             assert row.left_child2
 
 class EagerToSubclassTest(_base.MappedTest):
-    """Test joinedloads to subclass mappers"""
+    """Test eager loads to subclass mappers"""
 
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
@@ -1259,19 +1259,29 @@ class EagerToSubclassTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
             Column('data', String(10)),
         )
 
         Table('base', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
             Column('type', String(10)),
+            Column('related_id', Integer, ForeignKey('related.id'))
         )
 
         Table('sub', metadata,
             Column('id', Integer, ForeignKey('base.id'), primary_key=True),
             Column('data', String(10)),
-            Column('parent_id', Integer, ForeignKey('parent.id'), nullable=False)
+            Column('parent_id', Integer, 
+                                ForeignKey('parent.id'), nullable=False)
+        )
+
+        Table('related', metadata,
+            Column('id', Integer, primary_key=True,
+                                test_needs_autoincrement=True),
+            Column('data', String(10)),
         )
 
     @classmethod
@@ -1286,51 +1296,108 @@ class EagerToSubclassTest(_base.MappedTest):
         class Sub(Base):
             pass
 
+        class Related(_base.ComparableEntity):
+            pass
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Parent, parent, properties={
-            'children':relationship(Sub)
+            'children':relationship(Sub, order_by=sub.c.data)
         })
-        mapper(Base, base, polymorphic_on=base.c.type, polymorphic_identity='b')
-        mapper(Sub, sub, inherits=Base, polymorphic_identity='s')
+        mapper(Base, base, 
+                    polymorphic_on=base.c.type, 
+                    polymorphic_identity='b', 
+                    properties={
+                        'related':relationship(Related)
+                    })
+        mapper(Sub, sub, inherits=Base, 
+                    polymorphic_identity='s')
+        mapper(Related, related)
 
     @classmethod
     @testing.resolve_artifact_names
     def insert_data(cls):
-        sess = create_session()
-        p1 = Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')])
-        p2 = Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+        sess = Session()
+        r1, r2 = Related(data='r1'), Related(data='r2')
+        s1, s2, s3 = Sub(data='s1', related=r1), \
+                        Sub(data='s2', related=r2), \
+                        Sub(data='s3')
+        s4, s5 = Sub(data='s4', related=r2), Sub(data='s5')
+
+        p1 = Parent(data='p1', children=[s1, s2, s3])
+        p2 = Parent(data='p2', children=[s4, s5])
         sess.add(p1)
         sess.add(p2)
-        sess.flush()
+        sess.commit()
 
     @testing.resolve_artifact_names
     def test_joinedload(self):
-        sess = create_session()
+        sess = Session()
         def go():
             eq_(
-                sess.query(Parent).options(joinedload(Parent.children)).all(), 
+                sess.query(Parent).\
+                        options(joinedload(Parent.children)).all(), 
                 [
-                    Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
-                    Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                    Parent(data='p1', children=[
+                                        Sub(data='s1'), 
+                                        Sub(data='s2'), 
+                                        Sub(data='s3')
+                                    ]),
+                    Parent(data='p2', children=[
+                                        Sub(data='s4'), 
+                                        Sub(data='s5')
+                                    ])
                 ]
             )
         self.assert_sql_count(testing.db, go, 1)
 
     @testing.resolve_artifact_names
     def test_contains_eager(self):
-        sess = create_session()
+        sess = Session()
         def go():
             eq_(
-                sess.query(Parent).join(Parent.children).options(contains_eager(Parent.children)).\
+                sess.query(Parent).join(Parent.children).\
+                                options(contains_eager(Parent.children)).\
                                 order_by(Parent.data, Sub.data).all(), 
                 [
-                    Parent(data='p1', children=[Sub(data='s1'), Sub(data='s2'), Sub(data='s3')]),
-                    Parent(data='p2', children=[Sub(data='s4'), Sub(data='s5')])
+                    Parent(data='p1', children=[
+                                        Sub(data='s1'), 
+                                        Sub(data='s2'), 
+                                        Sub(data='s3')
+                                    ]),
+                    Parent(data='p2', children=[
+                                        Sub(data='s4'), 
+                                        Sub(data='s5')
+                                    ])
                 ]
             )
         self.assert_sql_count(testing.db, go, 1)
+
+    @testing.resolve_artifact_names
+    def test_subq_through_related(self):
+        sess = Session()
+        def go():
+            eq_(
+                sess.query(Parent).\
+                        options(
+                            subqueryload_all(Parent.children, Sub.related)
+                        ).\
+                        order_by(Parent.data).\
+                        all(),
+                [
+                    Parent(data='p1', children=[
+                                Sub(data='s1', related=Related(data='r1')), 
+                                Sub(data='s2', related=Related(data='r2')), 
+                                Sub(data='s3', related=None)
+                            ]),
+                    Parent(data='p2', children=[
+                                Sub(data='s4',related=Related(data='r2')), 
+                                Sub(data='s5',related=None)
+                            ])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 3)
 
 class SubClassEagerToSubClassTest(_base.MappedTest):
     """Test joinedloads from subclass to subclass mappers"""

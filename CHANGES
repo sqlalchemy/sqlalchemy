@@ -69,6 +69,10 @@ CHANGES
     strategy would fail if the entity was an aliased()
     construct.  [ticket:1964]
 
+  - Fixed bug regarding "subqueryload" strategy whereby
+    the join would fail if using a multi-level load
+    of the form from A->joined-subclass->C [ticket:2014]
+
   - Fixed indexing of Query objects by -1. It was erroneously
     transformed to the empty slice -1:0 that resulted in
     IndexError. [ticket:1968]
