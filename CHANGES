@@ -99,6 +99,10 @@ CHANGES
     to int, for DBAPIs such as pymssql that naively call 
     str() on values.
 
+  - CheckConstraint will copy its 'initially', 'deferrable',
+    and '_create_rule' attributes within a copy()/tometadata()
+    [ticket:2000]
+
 - engine
   - The "unicode warning" against non-unicode bind data
     is now raised only when the
