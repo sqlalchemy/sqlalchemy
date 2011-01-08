@@ -189,6 +189,24 @@ class TypeEngine(AbstractType):
         return util.constructor_copy(self, cls, **kw)
 
     def _coerce_compared_value(self, op, value):
+        """Suggest a type for a 'coerced' Python value in an expression.
+        
+        Given an operator and value, gives the type a chance
+        to return a type which the value should be coerced into.
+        
+        The default behavior here is conservative; if the right-hand
+        side is already coerced into a SQL type based on its 
+        Python type, it is usually left alone.
+        
+        End-user functionality extension here should generally be via
+        :class:`.TypeDecorator`, which provides more liberal behavior in that
+        it defaults to coercing the other side of the expression into this
+        type, thus applying special Python conversions above and beyond those
+        needed by the DBAPI to both ides. It also provides the public method
+        :meth:`.TypeDecorator.coerce_compared_value` which is intended for
+        end-user customization of this behavior.
+        
+        """
         _coerced_type = _type_map.get(type(value), NULLTYPE)
         if _coerced_type is NULLTYPE or _coerced_type._type_affinity \
             is self._type_affinity:
@@ -491,6 +509,8 @@ class TypeDecorator(TypeEngine):
         return self
 
     def _coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
+
         return self.coerce_compared_value(op, value)
 
     def copy(self):
@@ -1326,6 +1346,8 @@ class _Binary(TypeEngine):
     # end Py2K
 
     def _coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
+
         if isinstance(value, basestring):
             return self
         else:
@@ -1826,6 +1848,8 @@ class Interval(_DateAffinity, TypeDecorator):
         return Interval
 
     def _coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine._coerce_compared_value` for a description."""
+
         return self.impl._coerce_compared_value(op, value)
 
 

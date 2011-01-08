@@ -641,6 +641,27 @@ class TLTransactionTest(TestBase):
         finally:
             external_connection.close()
 
+    def test_with_interface(self):
+        trans = tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        trans.commit()
+
+        trans = tlengine.begin()
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        trans.__exit__(Exception, "fake", None)
+        trans = tlengine.begin()
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        trans.__exit__(None, None, None)
+        eq_(
+            tlengine.execute(users.select().order_by(users.c.user_id)).fetchall(),
+            [
+                (1, 'user1'),
+                (2, 'user2'),
+                (4, 'user4'),
+            ]
+        )
+
     def test_commits(self):
         connection = tlengine.connect()
         assert connection.execute('select count(*) from query_users'

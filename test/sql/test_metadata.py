@@ -165,6 +165,20 @@ class MetaDataTest(TestBase, ComparesTables):
             eq_(getattr(fk1c, k), kw[k])
             eq_(getattr(fk2c, k), kw[k])
 
+    def test_check_constraint_copy(self):
+        r = lambda x: x
+        c = CheckConstraint("foo bar", 
+                            name='name', 
+                            initially=True, 
+                            deferrable=True, 
+                            _create_rule = r)
+        c2 = c.copy()
+        eq_(c2.name, 'name')
+        eq_(str(c2.sqltext), "foo bar")
+        eq_(c2.initially, True)
+        eq_(c2.deferrable, True)
+        assert c2._create_rule is r
+
     def test_fk_construct(self):
         c1 = Column('foo', Integer)
         c2 = Column('bar', Integer)

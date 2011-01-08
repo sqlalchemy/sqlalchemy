@@ -1648,7 +1648,11 @@ class CheckConstraint(Constraint):
     __visit_name__ = property(__visit_name__)
 
     def copy(self, **kw):
-        return CheckConstraint(self.sqltext, name=self.name)
+        return CheckConstraint(self.sqltext, 
+                                name=self.name,
+                                initially=self.initially,
+                                deferrable=self.deferrable,
+                                _create_rule=self._create_rule)
 
 class ForeignKeyConstraint(Constraint):
     """A table-level FOREIGN KEY constraint.

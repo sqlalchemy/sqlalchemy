@@ -118,6 +118,10 @@ CHANGES
     to int, for DBAPIs such as pymssql that naively call 
     str() on values.
 
+  - CheckConstraint will copy its 'initially', 'deferrable',
+    and '_create_rule' attributes within a copy()/tometadata()
+    [ticket:2000]
+
 - engine
   - The "unicode warning" against non-unicode bind data
     is now raised only when the
@@ -136,6 +140,10 @@ CHANGES
   - Threadlocal engine methods rollback(), commit(),
     prepare() won't raise if no transaction is in progress;
     this was a regression introduced in 0.6.  [ticket:1998]
+
+  - Threadlocal engine returns itself upon begin(),
+    begin_nested(); engine then implements contextmanager
+    methods to allow the "with" statement. [ticket:2004]
 
 - postgresql
   - Single element tuple expressions inside an IN clause
