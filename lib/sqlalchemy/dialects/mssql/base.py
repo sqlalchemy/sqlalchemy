@@ -114,6 +114,32 @@ compatibiility level information. Because of this, if running under
 a backwards compatibility mode SQAlchemy may attempt to use T-SQL
 statements that are unable to be parsed by the database server.
 
+Triggers
+--------
+
+SQLAlchemy by default uses OUTPUT INSERTED to get at newly
+generated primary key values via SEQUENCE columns.   MS-SQL does not 
+allow the usage of OUTPUT INSERTED on tables that have triggers.
+To disable the usage of OUTPUT INSERTED on a per-table basis,
+specify ``implicit_returning=False`` to each :class:`.Table`
+which has sequences::
+
+    Table('mytable', metadata, 
+        Column('id', Integer, primary_key=True), 
+        # ...,
+        implicit_returning=False
+    )
+    
+Declarative form::
+
+    class MyClass(Base):
+        # ...
+        __table_args__ = {'implicit_returning':False}
+        
+        
+This option can also be specified enginewide using the
+``implicit_returning=False`` argument on :func:`.create_engine`.
+
 Known Issues
 ------------
 
