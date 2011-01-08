@@ -118,11 +118,12 @@ Triggers
 --------
 
 SQLAlchemy by default uses OUTPUT INSERTED to get at newly
-generated primary key values via SEQUENCE columns.   MS-SQL does not 
+generated primary key values via IDENTITY columns or other
+server side defaults.   MS-SQL does not 
 allow the usage of OUTPUT INSERTED on tables that have triggers.
 To disable the usage of OUTPUT INSERTED on a per-table basis,
-specify ``implicit_returning=False`` to each :class:`.Table`
-which has sequences::
+specify ``implicit_returning=False`` for each :class:`.Table`
+which has triggers::
 
     Table('mytable', metadata, 
         Column('id', Integer, primary_key=True), 
@@ -137,7 +138,7 @@ Declarative form::
         __table_args__ = {'implicit_returning':False}
         
         
-This option can also be specified enginewide using the
+This option can also be specified engine-wide using the
 ``implicit_returning=False`` argument on :func:`.create_engine`.
 
 Known Issues

@@ -175,15 +175,14 @@ def create_engine(*args, **kwargs):
         be applied to all connections.  See
         :meth:`~sqlalchemy.engine.base.Connection.execution_options`
 
-    :param implicit_returning=True: When ``False``, the RETURNING
-        feature of the database, if available, will not be used 
-        to fetch newly generated primary key values.   This applies
-        to those backends which support RETURNING or a compatible
-        construct, including Postgresql, Firebird, Oracle, Microsoft
-        SQL Server.  The default behavior is to use a compatible RETURNING
-        construct when a single-row INSERT statement is emitted with no 
-        existing returning() clause in order to fetch newly generated 
-        primary key values.
+    :param implicit_returning=True: When ``True``, a RETURNING-
+        compatible construct, if available, will be used to
+        fetch newly generated primary key values when a single row
+        INSERT statement is emitted with no existing returning() 
+        clause.  This applies to those backends which support RETURNING 
+        or a compatible construct, including Postgresql, Firebird, Oracle, 
+        Microsoft SQL Server.   Set this to ``False`` to disable
+        the automatic usage of RETURNING.
 
     :param label_length=None: optional integer value which limits
         the size of dynamically generated column labels to that many
