@@ -122,6 +122,10 @@ CHANGES
     prepare() won't raise if no transaction is in progress;
     this was a regression introduced in 0.6.  [ticket:1998]
 
+  - Threadlocal engine returns itself upon begin(),
+    begin_nested(); engine then implements contextmanager
+    methods to allow the "with" statement. [ticket:2004]
+
 - postgresql
   - Single element tuple expressions inside an IN clause
     parenthesize correctly, also from [ticket:1984]

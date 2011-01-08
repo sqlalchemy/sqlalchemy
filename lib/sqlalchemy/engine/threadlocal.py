@@ -33,7 +33,6 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""
 
@@ -66,16 +65,28 @@ class TLEngine(base.Engine):
         if not hasattr(self._connections, 'trans'):
             self._connections.trans = []
         self._connections.trans.append(self.contextual_connect().begin_twophase(xid=xid))
+        return self
 
     def begin_nested(self):
         if not hasattr(self._connections, 'trans'):
             self._connections.trans = []
         self._connections.trans.append(self.contextual_connect().begin_nested())
+        return self
 
     def begin(self):
         if not hasattr(self._connections, 'trans'):
             self._connections.trans = []
         self._connections.trans.append(self.contextual_connect().begin())
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if type is None:
+            self.commit()
+        else:
+            self.rollback()
 
     def prepare(self):
         if not hasattr(self._connections, 'trans') or \
