@@ -485,6 +485,27 @@ class QueryTest(TestBase):
         a_eq(prep(r"(\:that$other)"), "(:that$other)")
         a_eq(prep(r".\:that$ :other."), ".:that$ ?.")
 
+    def test_select_from_bindparam(self):
+        """Test result row processing when selecting from a plain bind param."""
+
+        class MyInteger(TypeDecorator):
+            impl = Integer
+            def process_bind_param(self, value, dialect):
+                return int(value[4:])
+
+            def process_result_value(self, value, dialect):
+                return "INT_%d" % value
+
+        eq_(
+            testing.db.scalar(select([literal("INT_5", type_=MyInteger)])),
+            "INT_5"
+        )
+        eq_(
+            testing.db.scalar(select([literal("INT_5", type_=MyInteger).label('foo')])),
+            "INT_5"
+        )
+
+
     def test_delete(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')

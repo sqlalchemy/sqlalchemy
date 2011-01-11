@@ -202,12 +202,12 @@ def offset(fn):
 def returning(fn):
     return _chain_decorators_on(
         fn,
-        no_support('access', 'not supported by database'),
-        no_support('sqlite', 'not supported by database'),
-        no_support('mysql', 'not supported by database'),
-        no_support('maxdb', 'not supported by database'),
-        no_support('sybase', 'not supported by database'),
-        no_support('informix', 'not supported by database'),
+        no_support('access', "'returning' not supported by database"),
+        no_support('sqlite', "'returning' not supported by database"),
+        no_support('mysql', "'returning' not supported by database"),
+        no_support('maxdb', "'returning' not supported by database"),
+        no_support('sybase', "'returning' not supported by database"),
+        no_support('informix', "'returning' not supported by database"),
     )
 
 def two_phase_transactions(fn):

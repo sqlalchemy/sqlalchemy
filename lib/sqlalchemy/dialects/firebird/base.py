@@ -331,12 +331,13 @@ class FBIdentifierPreparer(sql.compiler.IdentifierPreparer):
 
 
 class FBExecutionContext(default.DefaultExecutionContext):
-    def fire_sequence(self, seq):
+    def fire_sequence(self, seq, proc):
         """Get the next value from the sequence using ``gen_id()``."""
 
         return self._execute_scalar(
                 "SELECT gen_id(%s, 1) FROM rdb$database" % 
-                self.dialect.identifier_preparer.format_sequence(seq)
+                self.dialect.identifier_preparer.format_sequence(seq),
+                proc
                 )
 
 

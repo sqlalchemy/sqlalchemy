@@ -647,3 +647,17 @@ class TestAutoIncrement(TestBase, AssertsCompiledSQL):
                             'CREATE TABLE noautoinctable (id INTEGER '
                             'NOT NULL, x INTEGER, PRIMARY KEY (id))',
                             dialect=sqlite.dialect())
+
+    def test_sqlite_autoincrement_int_affinity(self):
+        class MyInteger(TypeDecorator):
+            impl = Integer
+        table = Table(
+            'autoinctable',
+            MetaData(),
+            Column('id', MyInteger, primary_key=True),
+            sqlite_autoincrement=True,
+            )
+        self.assert_compile(schema.CreateTable(table),
+                            'CREATE TABLE autoinctable (id INTEGER NOT '
+                            'NULL PRIMARY KEY AUTOINCREMENT)',
+                            dialect=sqlite.dialect())

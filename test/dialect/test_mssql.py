@@ -43,7 +43,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         for expr, compile in [
             (
                 select([literal("x"), literal("y")]), 
-                "SELECT 'x', 'y'",
+                "SELECT 'x' AS anon_1, 'y' AS anon_2",
             ),
             (
                 select([t]).where(t.c.foo.in_(['x', 'y', 'z'])),

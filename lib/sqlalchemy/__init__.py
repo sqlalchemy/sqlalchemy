@@ -83,6 +83,7 @@ from sqlalchemy.types import (
     TIMESTAMP,
     Text,
     Time,
+    TypeDecorator,
     Unicode,
     UnicodeText,
     VARCHAR,

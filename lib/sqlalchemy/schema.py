@@ -323,9 +323,10 @@ class Table(SchemaItem, expression.TableClause):
     def _autoincrement_column(self):
         for col in self.primary_key:
             if col.autoincrement and \
-                isinstance(col.type, types.Integer) and \
+                issubclass(col.type._type_affinity, types.Integer) and \
                 not col.foreign_keys and \
-                isinstance(col.default, (type(None), Sequence)):
+                isinstance(col.default, (type(None), Sequence)) and \
+                col.server_default is None:
 
                 return col
 
@@ -544,7 +545,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
           The setting *only* has an effect for columns which are:
 
-          * Integer derived (i.e. INT, SMALLINT, BIGINT)
+          * Integer derived (i.e. INT, SMALLINT, BIGINT).
 
           * Part of the primary key
 

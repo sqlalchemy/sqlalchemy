@@ -268,6 +268,20 @@ class SQLCompiler(engine.Compiled):
                  if value is not None
             )
 
+    @util.memoized_property
+    def _pk_processors(self):
+        return [
+                col.type._cached_result_processor(self.dialect, None) 
+                for col in self.statement.table.primary_key
+            ]
+
+    @util.memoized_property
+    def _prefetch_processors(self):
+        return [
+                col.type._cached_result_processor(self.dialect, None) 
+                for col in self.prefetch
+            ]
+
     def is_subquery(self):
         return len(self.stack) > 1
 
@@ -612,6 +626,7 @@ class SQLCompiler(engine.Compiled):
                     )
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
+
         return self.bindparam_string(name)
 
     def render_literal_bindparam(self, bindparam, **kw):
@@ -732,8 +747,7 @@ class SQLCompiler(engine.Compiled):
             not isinstance(column.table, sql.Select):
             return _CompileLabel(column, sql._generated_label(column.name))
         elif not isinstance(column, 
-                    (sql._UnaryExpression, sql._TextClause,
-                        sql._BindParamClause)) \
+                    (sql._UnaryExpression, sql._TextClause)) \
                 and (not hasattr(column, 'name') or \
                         isinstance(column, sql.Function)):
             return _CompileLabel(column, column.anon_label)

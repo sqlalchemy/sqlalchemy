@@ -244,13 +244,13 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([bindparam('a'), bindparam('b'), bindparam('c')]),
-            "SELECT :a, :b, :c"
+            "SELECT :a AS anon_1, :b AS anon_2, :c AS anon_3"
             , dialect=default.DefaultDialect(paramstyle='named')
         )
 
         self.assert_compile(
             select([bindparam('a'), bindparam('b'), bindparam('c')]),
-            "SELECT ?, ?, ?"
+            "SELECT ? AS anon_1, ? AS anon_2, ? AS anon_3"
             , dialect=default.DefaultDialect(paramstyle='qmark'),
         )
 
@@ -1262,7 +1262,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select([literal("someliteral")]),
-            "SELECT 'someliteral'",
+            "SELECT 'someliteral' AS anon_1",
             dialect=dialect
         )
 
@@ -1298,7 +1298,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
     def test_literal(self):
 
-        self.assert_compile(select([literal('foo')]), "SELECT :param_1")
+        self.assert_compile(select([literal('foo')]), "SELECT :param_1 AS anon_1")
 
         self.assert_compile(select([literal("foo") + literal("bar")], from_obj=[table1]),
             "SELECT :param_1 || :param_2 AS anon_1 FROM mytable")

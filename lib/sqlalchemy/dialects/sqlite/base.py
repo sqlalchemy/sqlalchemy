@@ -249,7 +249,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if column.primary_key and \
              column.table.kwargs.get('sqlite_autoincrement', False) and \
              len(column.table.primary_key.columns) == 1 and \
-             isinstance(column.type, sqltypes.Integer) and \
+             issubclass(column.type._type_affinity, sqltypes.Integer) and \
              not column.foreign_keys:
              colspec += " PRIMARY KEY AUTOINCREMENT"
 
@@ -263,7 +263,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
             c = list(constraint)[0]
             if c.primary_key and \
                 c.table.kwargs.get('sqlite_autoincrement', False) and \
-                isinstance(c.type, sqltypes.Integer) and \
+                issubclass(c.type._type_affinity, sqltypes.Integer) and \
                 not c.foreign_keys:
                 return None
  

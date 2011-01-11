@@ -1309,16 +1309,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         elif column.nullable and is_timestamp and default is None:
             colspec.append('NULL')
 
-        if column.primary_key and column.autoincrement:
-            try:
-                first = [c for c in column.table.primary_key.columns
-                         if (c.autoincrement and
-                             isinstance(c.type, sqltypes.Integer) and
-                             not c.foreign_keys)].pop(0)
-                if column is first:
-                    colspec.append('AUTO_INCREMENT')
-            except IndexError:
-                pass
+        if column is column.table._autoincrement_column:
+            colspec.append('AUTO_INCREMENT')
 
         return ' '.join(colspec)
 
@@ -1335,7 +1327,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
 
                 if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                           'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 'DEFAULT_CHARSET',
+                           'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
+                           'DEFAULT_CHARSET',
                            'DEFAULT_COLLATE'):
                     opt = opt.replace('_', ' ')
 

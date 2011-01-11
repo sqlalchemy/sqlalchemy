@@ -1233,7 +1233,7 @@ class Connection(Connectable):
             self._handle_dbapi_exception(e, None, None, None, None)
             raise
 
-        ret = ctx._exec_default(default)
+        ret = ctx._exec_default(default, None)
         if self.should_close_with_result:
             self.close()
         return ret

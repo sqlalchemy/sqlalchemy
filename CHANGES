@@ -15,6 +15,24 @@ CHANGES
     definition, using strings as column names, as an alternative
     to the creation of the index outside of the Table.
 
+  - A TypeDecorator of Integer can be used with a primary key
+    column, and the "autoincrement" feature of various dialects
+    as well as the "sqlite_autoincrement" flag will honor
+    the underlying database type as being Integer-based.
+    [ticket:2005]
+
+  - Result-row processors are applied to pre-executed SQL 
+    defaults, as well as cursor.lastrowid, when determining
+    the contents of result.inserted_primary_key.
+    [ticket:2006]
+
+  - Bind parameters present in the "columns clause" of a select
+    are now auto-labeled like other "anonymous" clauses,
+    which among other things allows their "type" to be meaningful
+    when the row is fetched, as in result row processors.
+
+  - TypeDecorator is present in the "sqlalchemy" import space.
+
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/
     NVARCHAR, emit "max" as the length when no length is 

@@ -1,11 +1,12 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 import datetime
-from sqlalchemy import Sequence, Column, func
 from sqlalchemy.schema import CreateSequence, DropSequence
-from sqlalchemy.sql import select, text
+from sqlalchemy.sql import select, text, literal_column
 import sqlalchemy as sa
 from test.lib import testing, engines
-from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc
+from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
+                Sequence, Column, func, literal
+from sqlalchemy.types import TypeDecorator
 from test.lib.schema import Table
 from test.lib.testing import eq_
 from test.sql import _base
@@ -688,5 +689,83 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
     @testing.requires.sequences
     def teardown_class(cls):
         metadata.drop_all()
+
+
+class SpecialTypePKTest(testing.TestBase):
+    """test process_result_value in conjunction with primary key columns.
+    
+    Also tests that "autoincrement" checks are against column.type._type_affinity,
+    rather than the class of "type" itself.
+    
+    """
+
+    @classmethod
+    def setup_class(cls):
+        class MyInteger(TypeDecorator):
+            impl = Integer
+            def process_bind_param(self, value, dialect):
+                return int(value[4:])
+
+            def process_result_value(self, value, dialect):
+                return "INT_%d" % value
+
+        cls.MyInteger = MyInteger
+
+    @testing.provide_metadata
+    def _run_test(self, *arg, **kw):
+        implicit_returning = kw.pop('implicit_returning', True)
+        kw['primary_key'] = True
+        t = Table('x', metadata,
+            Column('y', self.MyInteger, *arg, **kw),
+            Column('data', Integer),
+            implicit_returning=implicit_returning
+        )
+
+        t.create()
+        r = t.insert().values(data=5).execute()
+        eq_(r.inserted_primary_key, ['INT_1'])
+        r.close()
+
+        eq_(
+            t.select().execute().first(),
+            ('INT_1', 5)
+        )
+
+    def test_plain(self):
+        # among other things, tests that autoincrement
+        # is enabled.
+        self._run_test()
+
+    def test_literal_default_label(self):
+        self._run_test(default=literal("INT_1", type_=self.MyInteger).label('foo'))
+
+    def test_literal_default_no_label(self):
+        self._run_test(default=literal("INT_1", type_=self.MyInteger))
+
+    def test_sequence(self):
+        self._run_test(Sequence('foo_seq'))
+
+    @testing.fails_on('mysql', "Pending [ticket:2021]")
+    @testing.fails_on('sqlite', "Pending [ticket:2021]")
+    def test_server_default(self):
+        # note that the MySQL dialect has to not render AUTOINCREMENT on this one
+        self._run_test(server_default='1',)
+
+    @testing.fails_on('mysql', "Pending [ticket:2021]")
+    @testing.fails_on('sqlite', "Pending [ticket:2021]")
+    def test_server_default_no_autoincrement(self):
+        self._run_test(server_default='1', autoincrement=False)
+
+    def test_clause(self):
+        stmt = select([literal("INT_1", type_=self.MyInteger)]).as_scalar()
+        self._run_test(default=stmt)
+
+    @testing.requires.returning
+    def test_no_implicit_returning(self):
+        self._run_test(implicit_returning=False)
+
+    @testing.requires.returning
+    def test_server_default_no_implicit_returning(self):
+        self._run_test(server_default='1', autoincrement=False)
 
 
