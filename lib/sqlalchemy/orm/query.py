@@ -1073,7 +1073,14 @@ class Query(object):
 
             SELECT * FROM (SELECT * FROM X UNION SELECT * FROM y UNION 
                             SELECT * FROM Z)
-
+        
+        Note that many database backends do not allow ORDER BY to
+        be rendered on a query called within UNION, EXCEPT, etc.
+        To disable all ORDER BY clauses including those configured
+        on mappers, issue ``query.order_by(None)`` - the resulting
+        :class:`.Query` object will not render ORDER BY within 
+        its SELECT statement.
+        
         """
 
 
