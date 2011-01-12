@@ -325,9 +325,11 @@ class Table(SchemaItem, expression.TableClause):
             if col.autoincrement and \
                 issubclass(col.type._type_affinity, types.Integer) and \
                 not col.foreign_keys and \
-                isinstance(col.default, (type(None), Sequence)) and \
-                col.server_default is None:
-
+                isinstance(col.default, (type(None), Sequence)):
+                # don't look at server_default here since different backends may
+                # or may not have a server_default, e.g. postgresql reflected
+                # SERIAL cols will have a DefaultClause here but are still
+                # autoincrement. 
                 return col
 
     @property

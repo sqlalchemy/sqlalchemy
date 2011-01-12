@@ -1309,7 +1309,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         elif column.nullable and is_timestamp and default is None:
             colspec.append('NULL')
 
-        if column is column.table._autoincrement_column:
+        if column is column.table._autoincrement_column and column.server_default is None:
             colspec.append('AUTO_INCREMENT')
 
         return ' '.join(colspec)

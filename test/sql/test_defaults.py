@@ -746,7 +746,6 @@ class SpecialTypePKTest(testing.TestBase):
         self._run_test(Sequence('foo_seq'))
 
     @testing.fails_on('mysql', "Pending [ticket:2021]")
-    @testing.fails_on('sqlite', "Pending [ticket:2021]")
     def test_server_default(self):
         # note that the MySQL dialect has to not render AUTOINCREMENT on this one
         self._run_test(server_default='1',)
