@@ -31,22 +31,22 @@ or as the class itself::
 
     # A base class for intervals
 
-    from sqlalchemy.orm import hybrid
+    from sqlalchemy.orm.hybrid import hybrid_property, hybrid_method
 
     class Interval(object):
         def __init__(self, start, end):
             self.start = start
             self.end = end
 
-        @hybrid.property
+        @hybrid_property
         def length(self):
             return self.end - self.start
 
-        @hybrid.method
+        @hybrid_method
         def contains(self,point):
             return (self.start <= point) & (point < self.end)
 
-        @hybrid.method
+        @hybrid_method
         def intersects(self, other):
             return self.contains(other.start) | self.contains(other.end)
 
@@ -56,7 +56,7 @@ or as the class itself::
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, interfaces
 
-class method(object):
+class hybrid_method(object):
     def __init__(self, func, expr=None):
         self.func = func
         self.expr = expr or func
@@ -71,7 +71,7 @@ class method(object):
         self.expr = expr
         return self
 
-class property_(object):
+class hybrid_property(object):
     def __init__(self, fget, fset=None, fdel=None, expr=None):
         self.fget = fget
         self.fset = fset
@@ -107,7 +107,7 @@ class property_(object):
         proxy_attr = attributes.\
                         create_proxied_attribute(self)
         def expr(owner):
-            return proxy_attr(self.__name__, self, comparator(owner))
+            return proxy_attr(owner, self.__name__, self, comparator(owner))
         self.expr = expr
         return self
 

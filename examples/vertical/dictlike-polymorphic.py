@@ -21,14 +21,16 @@ For any given properties row, the value of the 'type' column will point to the
 
 This example approach uses exactly the same dict mapping approach as the
 'dictlike' example.  It only differs in the mapping for vertical rows.  Here,
-we'll use a Python @property to build a smart '.value' attribute that wraps up
+we'll use a @hybrid_property to build a smart '.value' attribute that wraps up
 reading and writing those various '_value' columns and keeps the '.type' up to
 date.
 
+Class decorators are used, so Python 2.6 or greater is required.
 """
 
 from sqlalchemy.orm.interfaces import PropComparator
 from sqlalchemy.orm import comparable_property
+from sqlalchemy.ext.hybrid import hybrid_property
 
 # Using the VerticalPropertyDictMixin from the base example
 from dictlike import VerticalPropertyDictMixin
@@ -72,39 +74,19 @@ class PolymorphicVerticalProperty(object):
         type(None): (None, None),
         }
 
-    class Comparator(PropComparator):
-        """A comparator for .value, builds a polymorphic comparison via CASE.
-
-        Optional.  If desired, install it as a comparator in the mapping::
-
-          mapper(..., properties={
-            'value': comparable_property(PolymorphicVerticalProperty.Comparator,
-                                         PolymorphicVerticalProperty.value)
-          })
-        """
-
-        def _case(self):
-            cls = self.prop.parent.class_
-            whens = [(text("'%s'" % p[0]), getattr(cls, p[1]))
-                     for p in cls.type_map.values()
-                     if p[1] is not None]
-            return case(whens, cls.type, null())
-        def __eq__(self, other):
-            return cast(self._case(), String) == cast(other, String)
-        def __ne__(self, other):
-            return cast(self._case(), String) != cast(other, String)
-
     def __init__(self, key, value=None):
         self.key = key
         self.value = value
 
-    def _get_value(self):
+    @hybrid_property
+    def value(self):
         for discriminator, field in self.type_map.values():
             if self.type == discriminator:
                 return getattr(self, field)
         return None
 
-    def _set_value(self, value):
+    @value.setter
+    def value(self, value):
         py_type = type(value)
         if py_type not in self.type_map:
             raise TypeError(py_type)
@@ -118,11 +100,27 @@ class PolymorphicVerticalProperty(object):
             if field is not None:
                 setattr(self, field, field_value)
 
-    def _del_value(self):
+    @value.deleter
+    def value(self):
         self._set_value(None)
 
-    value = property(_get_value, _set_value, _del_value, doc=
-                     """The logical value of this property.""")
+    @value.comparator
+    class value(PropComparator):
+        """A comparator for .value, builds a polymorphic comparison via CASE.
+
+        """
+        def __init__(self, cls):
+            self.cls = cls
+
+        def _case(self):
+            whens = [(text("'%s'" % p[0]), getattr(self.cls, p[1]))
+                     for p in self.cls.type_map.values()
+                     if p[1] is not None]
+            return case(whens, self.cls.type, null())
+        def __eq__(self, other):
+            return cast(self._case(), String) == cast(other, String)
+        def __ne__(self, other):
+            return cast(self._case(), String) != cast(other, String)
 
     def __repr__(self):
         return '<%s %r=%r>' % (self.__class__.__name__, self.key, self.value)
@@ -131,7 +129,7 @@ class PolymorphicVerticalProperty(object):
 if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
-        null, case)
+        null, case, create_engine)
     from sqlalchemy.orm import mapper, relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -185,11 +183,9 @@ if __name__ == '__main__':
             collection_class=attribute_mapped_collection('key')),
         })
 
-    mapper(AnimalFact, chars, properties={
-        'value': comparable_property(AnimalFact.Comparator, AnimalFact.value)
-        })
+    mapper(AnimalFact, chars)
 
-    metadata.bind = 'sqlite:///'
+    metadata.bind = create_engine('sqlite://', echo=True)
     metadata.create_all()
     session = Session()
 
@@ -208,9 +204,7 @@ if __name__ == '__main__':
     print "changing cuteness value and type:"
     critter[u'cuteness'] = u'very cute'
 
-    metadata.bind.echo = True
     session.commit()
-    metadata.bind.echo = False
 
     marten = Animal(u'marten')
     marten[u'cuteness'] = 5
