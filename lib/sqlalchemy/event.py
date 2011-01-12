@@ -21,7 +21,7 @@ def listen(target, identifier, fn, *args, **kw):
         if tgt is not None:
             tgt.dispatch._listen(tgt, identifier, fn, *args, **kw)
             return
-    raise exc.InvalidRequestError("No such event %s for target %s" %
+    raise exc.InvalidRequestError("No such event '%s' for target '%s'" %
                                 (identifier,target))
 
 def remove(target, identifier, fn):

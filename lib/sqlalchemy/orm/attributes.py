@@ -113,7 +113,7 @@ class QueryableAttribute(interfaces.PropComparator):
             )
 
     def __str__(self):
-        return repr(self.parententity) + "." + self.property.key
+        return "%s.%s" % (self.class_.__name__, self.key)
 
     @util.memoized_property
     def property(self):

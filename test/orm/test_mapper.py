@@ -89,6 +89,18 @@ class MapperTest(_fixtures.FixtureTest):
                           relationship, Address, cascade="fake, all, delete-orphan")
 
     @testing.resolve_artifact_names
+    def test_friendly_attribute_str_on_uncompiled_boom(self):
+        def boom():
+            raise Exception("it broke")
+        mapper(User, users, properties={
+            'addresses':relationship(boom)
+        })
+
+        # test that QueryableAttribute.__str__() doesn't 
+        # cause a compile.  
+        eq_(str(User.addresses), "User.addresses")
+
+    @testing.resolve_artifact_names
     def test_exceptions_sticky(self):
         """test preservation of mapper compile errors raised during hasattr(),
         as well as for redundant mapper compile calls.  Test that 
