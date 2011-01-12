@@ -525,13 +525,13 @@ class SQLiteDialect(default.DefaultDialect):
                 args = ''
             try:
                 coltype = self.ischema_names[coltype]
+                if args is not None:
+                    args = re.findall(r'(\d+)', args)
+                    coltype = coltype(*[int(a) for a in args])
             except KeyError:
                 util.warn("Did not recognize type '%s' of column '%s'" %
                           (coltype, name))
-                coltype = sqltypes.NullType
-            if args is not None:
-                args = re.findall(r'(\d+)', args)
-                coltype = coltype(*[int(a) for a in args])
+                coltype = sqltypes.NullType()
 
             columns.append({
                 'name' : name,

@@ -4,7 +4,7 @@ from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 import datetime
 from sqlalchemy import *
-from sqlalchemy import exc, sql, schema, pool
+from sqlalchemy import exc, sql, schema, pool, types as sqltypes
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
 from test.lib import *
@@ -98,6 +98,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
             assert not bindproc or isinstance(bindproc(u'some string'),
                     unicode)
 
+    @testing.provide_metadata
     def test_type_reflection(self):
 
         # (ask_for, roundtripped_as_if_different)
@@ -135,25 +136,33 @@ class TestTypes(TestBase, AssertsExecutionResults):
         columns = [Column('c%i' % (i + 1), t[0]) for (i, t) in
                    enumerate(specs)]
         db = testing.db
-        m = MetaData(db)
-        t_table = Table('types', m, *columns)
-        m.create_all()
+        t_table = Table('types', metadata, *columns)
+        metadata.create_all()
+        m2 = MetaData(db)
+        rt = Table('types', m2, autoload=True)
         try:
-            m2 = MetaData(db)
-            rt = Table('types', m2, autoload=True)
-            try:
-                db.execute('CREATE VIEW types_v AS SELECT * from types')
-                rv = Table('types_v', m2, autoload=True)
-                expected = [len(c) > 1 and c[1] or c[0] for c in specs]
-                for table in rt, rv:
-                    for i, reflected in enumerate(table.c):
-                        assert isinstance(reflected.type,
-                                type(expected[i])), '%d: %r' % (i,
-                                type(expected[i]))
-            finally:
-                db.execute('DROP VIEW types_v')
+            db.execute('CREATE VIEW types_v AS SELECT * from types')
+            rv = Table('types_v', m2, autoload=True)
+            expected = [len(c) > 1 and c[1] or c[0] for c in specs]
+            for table in rt, rv:
+                for i, reflected in enumerate(table.c):
+                    assert isinstance(reflected.type,
+                            type(expected[i])), '%d: %r' % (i,
+                            type(expected[i]))
         finally:
-            m.drop_all()
+            db.execute('DROP VIEW types_v')
+
+    @testing.emits_warning('Did not recognize')
+    @testing.provide_metadata
+    def test_unknown_reflection(self):
+        t = Table('t', metadata,
+            Column('x', sqltypes.BINARY(16)),
+            Column('y', sqltypes.BINARY())
+        )
+        t.create()
+        t2 = Table('t', MetaData(), autoload=True, autoload_with=testing.db)
+        assert isinstance(t2.c.x.type, sqltypes.NullType)
+        assert isinstance(t2.c.y.type, sqltypes.NullType)
 
 
 class TestDefaults(TestBase, AssertsExecutionResults):
