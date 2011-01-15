@@ -476,7 +476,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             metadata.drop_all()
 
 class NumericInterpretationTest(TestBase):
-
+    __only_on__ = 'postgresql'
 
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import pg8000, psycopg2, base
@@ -492,6 +492,28 @@ class NumericInterpretationTest(TestBase):
                 if proc is not None:
                     val = proc(val)
                 assert val in (23.7, decimal.Decimal("23.7"))
+
+    @testing.provide_metadata
+    def test_numeric_default(self):
+        t =Table('t', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('nd', Numeric(asdecimal=True), default=0),
+            Column('nf', Numeric(asdecimal=False), default=0),
+            Column('fd', Float(asdecimal=True), default=0),
+            Column('ff', Float(asdecimal=False), default=0),
+        )
+        metadata.create_all()
+        r = t.insert().execute()
+
+        row = t.select().execute().first()
+        assert isinstance(row[1], decimal.Decimal)
+        assert isinstance(row[2], float)
+        assert isinstance(row[3], decimal.Decimal)
+        assert isinstance(row[4], float)
+        eq_(
+            row,
+            (1, decimal.Decimal("0"), 0, decimal.Decimal("0"), 0)
+        )
 
 class InsertTest(TestBase, AssertsExecutionResults):
 

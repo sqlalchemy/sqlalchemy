@@ -532,7 +532,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             return autocommit
 
-    def _execute_scalar(self, stmt, proc):
+    def _execute_scalar(self, stmt, type_):
         """Execute a string statement on the current cursor, returning a
         scalar result.
 
@@ -554,10 +554,15 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         conn._cursor_execute(self.cursor, stmt, default_params)
         r = self.cursor.fetchone()[0]
-        if proc:
-            return proc(r)
-        else:
-            return r
+        if type_ is not None:
+            # apply type post processors to the result
+            proc = type_._cached_result_processor(
+                        self.dialect, 
+                        self.cursor.description[0][1]
+                    )
+            if proc:
+                return proc(r)
+        return r
 
     @property
     def connection(self):
@@ -626,15 +631,19 @@ class DefaultExecutionContext(base.ExecutionContext):
 
             table = self.compiled.statement.table
             lastrowid = self.get_lastrowid()
+
+            autoinc_col = table._autoincrement_column
+            if autoinc_col is not None:
+                # apply type post processors to the lastrowid
+                proc = autoinc_col.type._cached_result_processor(self.dialect, None)
+                if proc is not None:
+                    lastrowid = proc(lastrowid)
+
             self.inserted_primary_key = [
-                c is table._autoincrement_column and (
-                    proc and proc(lastrowid)
-                    or lastrowid
-                ) or v
-                for c, v, proc in zip(
+                c is autoinc_col and lastrowid or v
+                for c, v in zip(
                                     table.primary_key, 
-                                    self.inserted_primary_key, 
-                                    self.compiled._pk_processors)
+                                    self.inserted_primary_key)
             ]
 
     def _fetch_implicit_returning(self, resultproxy):
@@ -698,9 +707,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                 self.root_connection._handle_dbapi_exception(e, None, None, None, self)
                 raise
 
-    def _exec_default(self, default, proc):
+    def _exec_default(self, default, type_):
         if default.is_sequence:
-            return self.fire_sequence(default, proc)
+            return self.fire_sequence(default, type_)
         elif default.is_callable:
             return default.arg(self)
         elif default.is_clause_element:
@@ -712,17 +721,17 @@ class DefaultExecutionContext(base.ExecutionContext):
         else:
             return default.arg
 
-    def get_insert_default(self, column, proc):
+    def get_insert_default(self, column):
         if column.default is None:
             return None
         else:
-            return self._exec_default(column.default, proc)
+            return self._exec_default(column.default, column.type)
 
-    def get_update_default(self, column, proc):
+    def get_update_default(self, column):
         if column.onupdate is None:
             return None
         else:
-            return self._exec_default(column.onupdate, proc)
+            return self._exec_default(column.onupdate, column.type)
 
     def __process_defaults(self):
         """Generate default values for compiled insert/update statements,
@@ -744,14 +753,13 @@ class DefaultExecutionContext(base.ExecutionContext):
 
                 for param in self.compiled_parameters:
                     self.current_parameters = param
-                    for c, proc in zip(self.prefetch_cols, 
-                                        self.compiled._prefetch_processors):
+                    for c in self.prefetch_cols:
                         if c in scalar_defaults:
                             val = scalar_defaults[c]
                         elif self.isinsert:
-                            val = self.get_insert_default(c, proc)
+                            val = self.get_insert_default(c)
                         else:
-                            val = self.get_update_default(c, proc)
+                            val = self.get_update_default(c)
                         if val is not None:
                             param[c.key] = val
                 del self.current_parameters
@@ -759,12 +767,11 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.current_parameters = compiled_parameters = \
                                         self.compiled_parameters[0]
 
-            for c, proc in zip(self.compiled.prefetch, 
-                                        self.compiled._prefetch_processors):
+            for c in self.compiled.prefetch:
                 if self.isinsert:
-                    val = self.get_insert_default(c, proc)
+                    val = self.get_insert_default(c)
                 else:
-                    val = self.get_update_default(c, proc)
+                    val = self.get_update_default(c)
 
                 if val is not None:
                     compiled_parameters[c.key] = val

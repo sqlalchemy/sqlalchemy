@@ -268,20 +268,6 @@ class SQLCompiler(engine.Compiled):
                  if value is not None
             )
 
-    @util.memoized_property
-    def _pk_processors(self):
-        return [
-                col.type._cached_result_processor(self.dialect, None) 
-                for col in self.statement.table.primary_key
-            ]
-
-    @util.memoized_property
-    def _prefetch_processors(self):
-        return [
-                col.type._cached_result_processor(self.dialect, None) 
-                for col in self.prefetch
-            ]
-
     def is_subquery(self):
         return len(self.stack) > 1
 

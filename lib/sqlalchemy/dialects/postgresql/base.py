@@ -681,21 +681,21 @@ class DropEnumType(schema._CreateDropBase):
   __visit_name__ = "drop_enum_type"
 
 class PGExecutionContext(default.DefaultExecutionContext):
-    def fire_sequence(self, seq, proc):
+    def fire_sequence(self, seq, type_):
         if not seq.optional:
             return self._execute_scalar(("select nextval('%s')" % \
-                    self.dialect.identifier_preparer.format_sequence(seq)), proc)
+                    self.dialect.identifier_preparer.format_sequence(seq)), type_)
         else:
             return None
 
-    def get_insert_default(self, column, proc):
+    def get_insert_default(self, column):
         if column.primary_key:
             if (isinstance(column.server_default, schema.DefaultClause) and
                 column.server_default.arg is not None):
 
                 # pre-execute passive defaults on primary key columns
                 return self._execute_scalar("select %s" %
-                                        column.server_default.arg, proc)
+                                        column.server_default.arg, column.type)
 
             elif column is column.table._autoincrement_column \
                     and (column.default is None or 
@@ -714,9 +714,9 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     exc = "select nextval('\"%s_%s_seq\"')" % \
                             (column.table.name, column.name)
 
-                return self._execute_scalar(exc, proc)
+                return self._execute_scalar(exc, column.type)
 
-        return super(PGExecutionContext, self).get_insert_default(column, proc)
+        return super(PGExecutionContext, self).get_insert_default(column)
 
 class PGDialect(default.DefaultDialect):
     name = 'postgresql'
