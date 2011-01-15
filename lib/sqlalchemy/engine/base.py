@@ -2460,9 +2460,23 @@ class ResultProxy(object):
     @util.memoized_property
     def inserted_primary_key(self):
         """Return the primary key for the row just inserted.
+        
+        The return value is a list of scalar values 
+        corresponding to the list of primary key columns
+        in the target table.
 
-        This only applies to single row insert() constructs which
-        did not explicitly specify returning().
+        This only applies to single row :func:`.insert` 
+        constructs which did not explicitly specify 
+        :meth:`.Insert.returning`.
+        
+        Note that primary key columns which specify a
+        server_default clause, 
+        or otherwise do not qualify as "autoincrement"
+        columns (see the notes at :class:`.Column`), and were
+        generated using the database-side default, will
+        appear in this list as ``None`` unless the backend 
+        supports "returning" and the insert statement executed
+        with the "implicit returning" enabled.
 
         """
 

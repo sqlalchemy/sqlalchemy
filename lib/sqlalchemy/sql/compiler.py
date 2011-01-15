@@ -1102,18 +1102,16 @@ class SQLCompiler(engine.Compiled):
                         else:
                             self.returning.append(c)
                     else:
-                        if (
-                            c.default is not None and \
-                                (
-                                    self.dialect.supports_sequences or 
-                                    not c.default.is_sequence
-                                )
-                            ) or \
-                             self.dialect.preexecute_autoincrement_sequences:
+                        if c.default is not None or \
+                            c is stmt.table._autoincrement_column and (
+                                self.dialect.supports_sequences or
+                                self.dialect.preexecute_autoincrement_sequences
+                            ):
 
                             values.append(
                                 (c, self._create_crud_bind_param(c, None))
                             )
+
                             self.prefetch.append(c)
 
                 elif c.default is not None:

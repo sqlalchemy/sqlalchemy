@@ -508,13 +508,15 @@ class PGDDLCompiler(compiler.DDLCompiler):
         colspec = self.preparer.format_column(column)
         type_affinity = column.type._type_affinity
         if column.primary_key and \
-            len(column.foreign_keys)==0 and \
-            column.autoincrement and \
-            issubclass(type_affinity, sqltypes.Integer) and \
+            column is column.table._autoincrement_column and \
             not issubclass(type_affinity, sqltypes.SmallInteger) and \
-            (column.default is None or 
-                (isinstance(column.default, schema.Sequence) and
-                column.default.optional)):
+            (
+                column.default is None or 
+                (
+                    isinstance(column.default, schema.Sequence) and
+                    column.default.optional
+                )
+            ):
             if issubclass(type_affinity, sqltypes.BigInteger):
                 colspec += " BIGSERIAL"
             else:
@@ -689,7 +691,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
             return None
 
     def get_insert_default(self, column):
-        if column.primary_key:
+        if column.primary_key and column is column.table._autoincrement_column:
             if (isinstance(column.server_default, schema.DefaultClause) and
                 column.server_default.arg is not None):
 
@@ -697,8 +699,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 return self._execute_scalar("select %s" %
                                         column.server_default.arg, column.type)
 
-            elif column is column.table._autoincrement_column \
-                    and (column.default is None or 
+            elif (column.default is None or 
                         (isinstance(column.default, schema.Sequence) and
                         column.default.optional)):
 

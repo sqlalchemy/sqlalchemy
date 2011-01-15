@@ -4436,7 +4436,7 @@ class Select(_SelectBase):
         self._bind = bind
     bind = property(bind, _set_bind)
 
-class _UpdateBase(Executable, ClauseElement):
+class UpdateBase(Executable, ClauseElement):
     """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = 'update_base'
@@ -4513,7 +4513,8 @@ class _UpdateBase(Executable, ClauseElement):
         """
         self._returning = cols
 
-class _ValuesBase(_UpdateBase):
+class ValuesBase(UpdateBase):
+    """Supplies support for :meth:`.ValuesBase.values` to INSERT and UPDATE constructs."""
 
     __visit_name__ = 'values_base'
 
@@ -4548,7 +4549,7 @@ class _ValuesBase(_UpdateBase):
             self.parameters.update(self._process_colparams(v))
             self.parameters.update(kwargs)
 
-class Insert(_ValuesBase):
+class Insert(ValuesBase):
     """Represent an INSERT construct.
 
     The :class:`Insert` object is created using the :func:`insert()` function.
@@ -4566,7 +4567,7 @@ class Insert(_ValuesBase):
                 prefixes=None, 
                 returning=None,
                 **kwargs):
-        _ValuesBase.__init__(self, table, values)
+        ValuesBase.__init__(self, table, values)
         self._bind = bind
         self.select = None
         self.inline = inline
@@ -4598,7 +4599,7 @@ class Insert(_ValuesBase):
         clause = _literal_as_text(clause)
         self._prefixes = self._prefixes + (clause,)
 
-class Update(_ValuesBase):
+class Update(ValuesBase):
     """Represent an Update construct.
 
     The :class:`Update` object is created using the :func:`update()` function.
@@ -4614,7 +4615,7 @@ class Update(_ValuesBase):
                 bind=None, 
                 returning=None,
                 **kwargs):
-        _ValuesBase.__init__(self, table, values)
+        ValuesBase.__init__(self, table, values)
         self._bind = bind
         self._returning = returning
         if whereclause is not None:
@@ -4650,7 +4651,7 @@ class Update(_ValuesBase):
             self._whereclause = _literal_as_text(whereclause)
 
 
-class Delete(_UpdateBase):
+class Delete(UpdateBase):
     """Represent a DELETE construct.
 
     The :class:`Delete` object is created using the :func:`delete()` function.

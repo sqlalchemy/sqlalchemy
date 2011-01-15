@@ -325,11 +325,8 @@ class Table(SchemaItem, expression.TableClause):
             if col.autoincrement and \
                 issubclass(col.type._type_affinity, types.Integer) and \
                 not col.foreign_keys and \
-                isinstance(col.default, (type(None), Sequence)):
-                # don't look at server_default here since different backends may
-                # or may not have a server_default, e.g. postgresql reflected
-                # SERIAL cols will have a DefaultClause here but are still
-                # autoincrement. 
+                isinstance(col.default, (type(None), Sequence)) and \
+                (col.server_default is None or col.server_default.reflected):
                 return col
 
     @property
@@ -1231,6 +1228,7 @@ class DefaultGenerator(SchemaItem):
     __visit_name__ = 'default_generator'
 
     is_sequence = False
+    is_server_default = False
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -1423,6 +1421,8 @@ class FetchedValue(object):
     INSERT.
 
     """
+    is_server_default = True
+    reflected = False
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -1460,12 +1460,13 @@ class DefaultClause(FetchedValue):
 
     """
 
-    def __init__(self, arg, for_update=False):
+    def __init__(self, arg, for_update=False, _reflected=False):
         util.assert_arg_type(arg, (basestring,
                                    expression.ClauseElement,
                                    expression._TextClause), 'arg')
         super(DefaultClause, self).__init__(for_update)
         self.arg = arg
+        self.reflected = _reflected
 
     def __repr__(self):
         return "DefaultClause(%r, for_update=%r)" % \

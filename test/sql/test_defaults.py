@@ -5,9 +5,9 @@ from sqlalchemy.sql import select, text, literal_column
 import sqlalchemy as sa
 from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
-                Sequence, Column, func, literal
+                Sequence, func, literal
 from sqlalchemy.types import TypeDecorator
-from test.lib.schema import Table
+from test.lib.schema import Table, Column
 from test.lib.testing import eq_
 from test.sql import _base
 
@@ -704,9 +704,13 @@ class SpecialTypePKTest(testing.TestBase):
         class MyInteger(TypeDecorator):
             impl = Integer
             def process_bind_param(self, value, dialect):
+                if value is None:
+                    return None
                 return int(value[4:])
 
             def process_result_value(self, value, dialect):
+                if value is None:
+                    return None
                 return "INT_%d" % value
 
         cls.MyInteger = MyInteger
@@ -715,6 +719,8 @@ class SpecialTypePKTest(testing.TestBase):
     def _run_test(self, *arg, **kw):
         implicit_returning = kw.pop('implicit_returning', True)
         kw['primary_key'] = True
+        if kw.get('autoincrement', True):
+            kw['test_needs_autoincrement'] = True
         t = Table('x', metadata,
             Column('y', self.MyInteger, *arg, **kw),
             Column('data', Integer),
@@ -723,7 +729,12 @@ class SpecialTypePKTest(testing.TestBase):
 
         t.create()
         r = t.insert().values(data=5).execute()
-        eq_(r.inserted_primary_key, ['INT_1'])
+
+        # we don't pre-fetch 'server_default'.
+        if 'server_default' in kw and (not testing.db.dialect.implicit_returning or not implicit_returning):
+            eq_(r.inserted_primary_key, [None])
+        else:
+            eq_(r.inserted_primary_key, ['INT_1'])
         r.close()
 
         eq_(
@@ -745,13 +756,9 @@ class SpecialTypePKTest(testing.TestBase):
     def test_sequence(self):
         self._run_test(Sequence('foo_seq'))
 
-    @testing.fails_on('mysql', "Pending [ticket:2021]")
     def test_server_default(self):
-        # note that the MySQL dialect has to not render AUTOINCREMENT on this one
         self._run_test(server_default='1',)
 
-    @testing.fails_on('mysql', "Pending [ticket:2021]")
-    @testing.fails_on('sqlite', "Pending [ticket:2021]")
     def test_server_default_no_autoincrement(self):
         self._run_test(server_default='1', autoincrement=False)
 
@@ -767,4 +774,128 @@ class SpecialTypePKTest(testing.TestBase):
     def test_server_default_no_implicit_returning(self):
         self._run_test(server_default='1', autoincrement=False)
 
+class ServerDefaultsOnPKTest(testing.TestBase):
+    @testing.provide_metadata
+    def test_string_default_none_on_insert(self):
+        """Test that without implicit returning, we return None for 
+        a string server default.  
+        
+        That is, we don't want to attempt to pre-execute "server_default"
+        generically - the user should use a Python side-default for a case
+        like this.   Testing that all backends do the same thing here.
+        
+        """
+        t = Table('x', metadata, 
+                Column('y', String(10), server_default='key_one', primary_key=True),
+                Column('data', String(10)),
+                implicit_returning=False
+                )
+        metadata.create_all()
+        r = t.insert().execute(data='data')
+        eq_(r.inserted_primary_key, [None])
+        eq_(
+            t.select().execute().fetchall(),
+            [('key_one', 'data')]
+        )
+
+    @testing.requires.returning
+    @testing.provide_metadata
+    def test_string_default_on_insert_with_returning(self):
+        """With implicit_returning, we get a string PK default back no problem."""
+        t = Table('x', metadata, 
+                Column('y', String(10), server_default='key_one', primary_key=True),
+                Column('data', String(10))
+                )
+        metadata.create_all()
+        r = t.insert().execute(data='data')
+        eq_(r.inserted_primary_key, ['key_one'])
+        eq_(
+            t.select().execute().fetchall(),
+            [('key_one', 'data')]
+        )
+
+    @testing.provide_metadata
+    def test_int_default_none_on_insert(self):
+        t = Table('x', metadata, 
+                Column('y', Integer, 
+                        server_default='5', primary_key=True),
+                Column('data', String(10)),
+                implicit_returning=False
+                )
+        assert t._autoincrement_column is None
+        metadata.create_all()
+        r = t.insert().execute(data='data')
+        eq_(r.inserted_primary_key, [None])
+        if testing.against('sqlite'):
+            eq_(
+                t.select().execute().fetchall(),
+                [(1, 'data')]
+            )
+        else:
+            eq_(
+                t.select().execute().fetchall(),
+                [(5, 'data')]
+            )
+    @testing.fails_on('firebird', "col comes back as autoincrement")
+    @testing.fails_on('sqlite', "col comes back as autoincrement")
+    @testing.fails_on('oracle', "col comes back as autoincrement")
+    @testing.provide_metadata
+    def test_autoincrement_reflected_from_server_default(self):
+        t = Table('x', metadata, 
+                Column('y', Integer, 
+                        server_default='5', primary_key=True),
+                Column('data', String(10)),
+                implicit_returning=False
+                )
+        assert t._autoincrement_column is None
+        metadata.create_all()
+
+        m2 = MetaData(metadata.bind)
+        t2 = Table('x', m2, autoload=True, implicit_returning=False)
+        assert t2._autoincrement_column is None
+
+    @testing.fails_on('firebird', "attempts to insert None")
+    @testing.fails_on('sqlite', "returns a value")
+    @testing.provide_metadata
+    def test_int_default_none_on_insert_reflected(self):
+        t = Table('x', metadata, 
+                Column('y', Integer, 
+                        server_default='5', primary_key=True),
+                Column('data', String(10)),
+                implicit_returning=False
+                )
+        metadata.create_all()
+
+        m2 = MetaData(metadata.bind)
+        t2 = Table('x', m2, autoload=True, implicit_returning=False)
+
+        r = t2.insert().execute(data='data')
+        eq_(r.inserted_primary_key, [None])
+        if testing.against('sqlite'):
+            eq_(
+                t2.select().execute().fetchall(),
+                [(1, 'data')]
+            )
+        else:
+            eq_(
+                t2.select().execute().fetchall(),
+                [(5, 'data')]
+            )
+
+    @testing.requires.returning
+    @testing.provide_metadata
+    def test_int_default_on_insert_with_returning(self):
+        t = Table('x', metadata, 
+                Column('y', Integer, 
+                        server_default='5', primary_key=True),
+                Column('data', String(10))
+                )
+
+        metadata.create_all()
+        r = t.insert().execute(data='data')
+        eq_(r.inserted_primary_key, [5])
+        eq_(
+            t.select().execute().fetchall(),
+            [(5, 'data')]
+        )
 

@@ -101,7 +101,7 @@ class DefaultDialect(base.Dialect):
 
         if not getattr(self, 'ported_sqla_06', True):
             util.warn(
-                "The %s dialect is not yet ported to SQLAlchemy 0.6" %
+                "The %s dialect is not yet ported to SQLAlchemy 0.6/0.7" %
                 self.name)
 
         self.convert_unicode = convert_unicode
@@ -625,7 +625,8 @@ class DefaultExecutionContext(base.ExecutionContext):
         return self.dialect.supports_sane_multi_rowcount
 
     def post_insert(self):
-        if self.dialect.postfetch_lastrowid and \
+        if not self._is_implicit_returning and \
+            self.dialect.postfetch_lastrowid and \
             (not self.inserted_primary_key or \
                         None in self.inserted_primary_key):
 

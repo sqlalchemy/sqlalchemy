@@ -185,7 +185,7 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Insert
-   :members: prefix_with, values
+   :members: prefix_with, values, returning
    :show-inheritance:
 
 .. autoclass:: Join

@@ -398,7 +398,11 @@ class Inspector(object):
             if col_d.get('default') is not None:
                 # the "default" value is assumed to be a literal SQL expression,
                 # so is wrapped in text() so that no quoting occurs on re-issuance.
-                colargs.append(sa_schema.DefaultClause(sql.text(col_d['default'])))
+                colargs.append(
+                    sa_schema.DefaultClause(
+                        sql.text(col_d['default']), _reflected=True
+                    )
+                )
 
             if 'sequence' in col_d:
                 # TODO: mssql, maxdb and sybase are using this.
