@@ -5,6 +5,10 @@ CHANGES
 =======
 0.7.0b1
 =======
+- orm
+  - the aliased() function, if passed a SQL FromClause element
+    (i.e. not a mapped class), will return element.alias() 
+    instead of raising an error on AliasedClass.  [ticket:2018]
 
 - sql
   - Added NULLS FIRST and NULLS LAST support. It's implemented

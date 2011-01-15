@@ -285,6 +285,12 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
+def aliased(element, alias=None, name=None):
+    if isinstance(element, expression.FromClause):
+        return element.alias(name)
+    else:
+        return AliasedClass(element, alias=alias, name=name)
+
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the
     "_orm_adapt" flag.

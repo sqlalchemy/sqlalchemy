@@ -626,10 +626,26 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_deferred_instances(self):
         session = create_session()
-        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).statement
+        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), 
+                                        Address.user_id==User.id)).statement
 
         l = list(session.query(User).instances(s.execute(emailad = 'jack@bean.com')))
         eq_([User(id=7)], l)
+
+    def test_aliased_sql_construct(self):
+        j = join(User, Address)
+        a1 = aliased(j)
+        self.assert_compile(
+            a1.select(),
+            "SELECT anon_1.users_id, anon_1.users_name, anon_1.addresses_id, "
+            "anon_1.addresses_user_id, anon_1.addresses_email_address "
+            "FROM (SELECT users.id AS users_id, users.name AS users_name, "
+            "addresses.id AS addresses_id, addresses.user_id AS "
+            "addresses_user_id, addresses.email_address AS "
+            "addresses_email_address FROM users JOIN addresses "
+            "ON users.id = addresses.user_id) AS anon_1",
+            use_default_dialect=True
+        )
 
     def test_scalar_subquery(self):
         session = create_session()

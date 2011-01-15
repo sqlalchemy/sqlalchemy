@@ -29,7 +29,7 @@ from sqlalchemy.orm.interfaces import (
      AttributeExtension,
      )
 from sqlalchemy.orm.util import (
-     AliasedClass as aliased,
+     aliased,
      join,
      object_mapper,
      outerjoin,
