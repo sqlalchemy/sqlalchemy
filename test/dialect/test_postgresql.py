@@ -495,12 +495,14 @@ class NumericInterpretationTest(TestBase):
 
     @testing.provide_metadata
     def test_numeric_default(self):
+        # pg8000 appears to fail when the value is 0, 
+        # returns an int instead of decimal.
         t =Table('t', metadata, 
             Column('id', Integer, primary_key=True),
-            Column('nd', Numeric(asdecimal=True), default=0),
-            Column('nf', Numeric(asdecimal=False), default=0),
-            Column('fd', Float(asdecimal=True), default=0),
-            Column('ff', Float(asdecimal=False), default=0),
+            Column('nd', Numeric(asdecimal=True), default=1),
+            Column('nf', Numeric(asdecimal=False), default=1),
+            Column('fd', Float(asdecimal=True), default=1),
+            Column('ff', Float(asdecimal=False), default=1),
         )
         metadata.create_all()
         r = t.insert().execute()
@@ -512,7 +514,7 @@ class NumericInterpretationTest(TestBase):
         assert isinstance(row[4], float)
         eq_(
             row,
-            (1, decimal.Decimal("0"), 0, decimal.Decimal("0"), 0)
+            (1, decimal.Decimal("1"), 1, decimal.Decimal("1"), 1)
         )
 
 class InsertTest(TestBase, AssertsExecutionResults):
