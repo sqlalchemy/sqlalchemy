@@ -12,8 +12,9 @@ as actively in the load/persist ORM loop.
 
 from sqlalchemy.orm.interfaces import \
     MapperProperty, PropComparator, StrategizedProperty
+from sqlalchemy.orm.mapper import _none_set
 from sqlalchemy.orm import attributes
-from sqlalchemy import util, sql, exc as sa_exc, event
+from sqlalchemy import util, sql, exc as sa_exc, event, schema
 from sqlalchemy.sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')
 
@@ -72,8 +73,8 @@ class DescriptorProperty(MapperProperty):
 
 class CompositeProperty(DescriptorProperty):
 
-    def __init__(self, class_, *columns, **kwargs):
-        self.columns = columns
+    def __init__(self, class_, *attrs, **kwargs):
+        self.attrs = attrs
         self.composite_class = class_
         self.active_history = kwargs.get('active_history', False)
         self.deferred = kwargs.get('deferred', False)
@@ -90,6 +91,7 @@ class CompositeProperty(DescriptorProperty):
         has been associated with its parent mapper.
 
         """
+        self._init_props()
         self._setup_arguments_on_columns()
 
     def _create_descriptor(self):
@@ -101,12 +103,17 @@ class CompositeProperty(DescriptorProperty):
         def fget(instance):
             dict_ = attributes.instance_dict(instance)
 
-            # key not present, assume the columns aren't
-            # loaded.  The load events will establish
-            # the item.
             if self.key not in dict_:
-                for key in self._attribute_keys:
-                    getattr(instance, key)
+                # key not present.  Iterate through related
+                # attributes, retrieve their values.  This
+                # ensures they all load.
+                values = [getattr(instance, key) for key in self._attribute_keys]
+
+                # usually, the load() event will have loaded our key
+                # at this point, unless we only loaded relationship()
+                # attributes above.  Populate here if that's the case.
+                if self.key not in dict_ and not _none_set.issuperset(values):
+                    dict_[self.key] = self.composite_class(*values)
 
             return dict_.get(self.key, None)
 
@@ -138,13 +145,30 @@ class CompositeProperty(DescriptorProperty):
 
         self.descriptor = property(fget, fset, fdel)
 
+    @util.memoized_property
+    def _comparable_elements(self):
+        return [
+            getattr(self.parent.class_, prop.key)
+            for prop in self.props
+        ]
+
+    def _init_props(self):
+        self.props = props = []
+        for attr in self.attrs:
+            if isinstance(attr, basestring):
+                prop = self.parent.get_property(attr)
+            elif isinstance(attr, schema.Column):
+                prop = self.parent._columntoproperty[attr]
+            elif isinstance(attr, attributes.InstrumentedAttribute):
+                prop = attr.property
+            props.append(prop)
+
     def _setup_arguments_on_columns(self):
         """Propagate configuration arguments made on this composite
         to the target columns, for those that apply.
 
         """
-        for col in self.columns:
-            prop = self.parent._columntoproperty[col]
+        for prop in self.props:
             prop.active_history = self.active_history
             if self.deferred:
                 prop.deferred = self.deferred
@@ -195,8 +219,7 @@ class CompositeProperty(DescriptorProperty):
     @util.memoized_property
     def _attribute_keys(self):
         return [
-            self.parent._columntoproperty[col].key
-            for col in self.columns
+            prop.key for prop in self.props
         ]
 
     def get_history(self, state, dict_, **kw):
@@ -206,8 +229,8 @@ class CompositeProperty(DescriptorProperty):
         deleted = []
 
         has_history = False
-        for col in self.columns:
-            key = self.parent._columntoproperty[col].key
+        for prop in self.props:
+            key = prop.key
             hist = state.manager[key].impl.get_history(state, dict_)
             if hist.has_changes():
                 has_history = True
@@ -241,19 +264,19 @@ class CompositeProperty(DescriptorProperty):
             if self.adapter:
                 # TODO: test coverage for adapted composite comparison
                 return expression.ClauseList(
-                            *[self.adapter(x) for x in self.prop.columns])
+                            *[self.adapter(x) for x in self.prop._comparable_elements])
             else:
-                return expression.ClauseList(*self.prop.columns)
+                return expression.ClauseList(*self.prop._comparable_elements)
 
         __hash__ = None
 
         def __eq__(self, other):
             if other is None:
-                values = [None] * len(self.prop.columns)
+                values = [None] * len(self.prop._comparable_elements)
             else:
                 values = other.__composite_values__()
             return sql.and_(
-                    *[a==b for a, b in zip(self.prop.columns, values)])
+                    *[a==b for a, b in zip(self.prop._comparable_elements, values)])
 
         def __ne__(self, other):
             return sql.not_(self.__eq__(other))

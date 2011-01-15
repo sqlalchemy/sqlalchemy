@@ -426,3 +426,137 @@ class MappedSelectTest(_base.MappedTest):
             testing.db.execute(values.select()).fetchall(),
             [(1, 1, u'Red', u'5'), (2, 1, u'Blue', u'1')]
         )
+
+class ManyToOneTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', 
+            metadata,
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+            Column('b1', String(20)),
+            Column('b2_id', Integer, ForeignKey('b.id'))
+        )
+
+        Table('b', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(20))
+        )
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        class A(_base.ComparableEntity):
+            pass
+        class B(_base.ComparableEntity):
+            pass
+
+        class C(_base.BasicEntity):
+            def __init__(self, b1, b2):
+                self.b1, self.b2 = b1, b2
+
+            def __composite_values__(self):
+                return self.b1, self.b2
+
+            def __eq__(self, other):
+                return isinstance(other, C) and \
+                    other.b1 == self.b1 and \
+                    other.b2 == self.b2
+
+
+        mapper(A, a, properties={
+            'b2':relationship(B),
+            'c':composite(C, 'b1', 'b2')
+        })
+        mapper(B, b)
+
+    @testing.resolve_artifact_names
+    def test_persist(self):
+        sess = Session()
+        sess.add(A(c=C('b1', B(data='b2'))))
+        sess.commit()
+
+        a1 = sess.query(A).one()
+        eq_(a1.c, C('b1', B(data='b2')))
+
+    @testing.resolve_artifact_names
+    def test_query(self):
+        sess = Session()
+        b1, b2 = B(data='b1'), B(data='b2')
+        a1 = A(c=C('a1b1', b1))
+        a2 = A(c=C('a2b1', b2))
+        sess.add_all([a1, a2])
+        sess.commit()
+
+        eq_(
+            sess.query(A).filter(A.c==C('a2b1', b2)).one(),
+            a2
+        )
+
+class ConfigurationTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('edge', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('x1', Integer),
+            Column('y1', Integer),
+            Column('x2', Integer),
+            Column('y2', Integer),
+        )
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        class Point(_base.BasicEntity):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+            def __composite_values__(self):
+                return [self.x, self.y]
+            def __eq__(self, other):
+                return isinstance(other, Point) and \
+                        other.x == self.x and \
+                        other.y == self.y
+            def __ne__(self, other):
+                return not isinstance(other, Point) or \
+                    not self.__eq__(other)
+
+        class Edge(_base.ComparableEntity):
+            pass
+
+    @testing.resolve_artifact_names
+    def _test_roundtrip(self):
+        e1 = Edge(start=Point(3, 4), end=Point(5, 6))
+        sess = Session()
+        sess.add(e1)
+        sess.commit()
+
+        eq_(
+            sess.query(Edge).one(),
+            Edge(start=Point(3, 4), end=Point(5, 6))
+        )
+
+    @testing.resolve_artifact_names
+    def test_columns(self):
+        mapper(Edge, edge, properties={
+            'start':sa.orm.composite(Point, edge.c.x1, edge.c.y1),
+            'end': sa.orm.composite(Point, edge.c.x2, edge.c.y2)
+        })
+
+        self._test_roundtrip()
+
+    @testing.resolve_artifact_names
+    def test_attributes(self):
+        m = mapper(Edge, edge)
+        m.add_property('start', sa.orm.composite(Point, Edge.x1, Edge.y1))
+        m.add_property('end', sa.orm.composite(Point, Edge.x2, Edge.y2))
+
+        self._test_roundtrip()
+
+    @testing.resolve_artifact_names
+    def test_strings(self):
+        m = mapper(Edge, edge)
+        m.add_property('start', sa.orm.composite(Point, 'x1', 'y1'))
+        m.add_property('end', sa.orm.composite(Point, 'x2', 'y2'))
+
+        self._test_roundtrip()
