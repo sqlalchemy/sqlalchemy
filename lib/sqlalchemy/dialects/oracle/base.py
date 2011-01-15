@@ -857,6 +857,7 @@ class OracleDialect(default.DefaultDialect):
                 'type': coltype,
                 'nullable': nullable,
                 'default': default,
+                'autoincrement':default is None
             }
             if orig_colname.lower() == orig_colname:
                 cdict['quote'] = True

@@ -836,9 +836,6 @@ class ServerDefaultsOnPKTest(testing.TestBase):
                 t.select().execute().fetchall(),
                 [(5, 'data')]
             )
-    @testing.fails_on('firebird', "col comes back as autoincrement")
-    @testing.fails_on('sqlite', "col comes back as autoincrement")
-    @testing.fails_on('oracle', "col comes back as autoincrement")
     @testing.provide_metadata
     def test_autoincrement_reflected_from_server_default(self):
         t = Table('x', metadata, 
@@ -854,8 +851,6 @@ class ServerDefaultsOnPKTest(testing.TestBase):
         t2 = Table('x', m2, autoload=True, implicit_returning=False)
         assert t2._autoincrement_column is None
 
-    @testing.fails_on('firebird', "attempts to insert None")
-    @testing.fails_on('sqlite', "returns a value")
     @testing.provide_metadata
     def test_int_default_none_on_insert_reflected(self):
         t = Table('x', metadata, 

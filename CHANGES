@@ -25,6 +25,16 @@ CHANGES
     the underlying database type as being Integer-based.
     [ticket:2005]
 
+  - Established consistency when server_default is present
+    on an Integer PK column.  SQLA doesn't pre-fetch these,
+    nor do they come back in cursor.lastrowid (DBAPI).  
+    Ensured all backends consistently return None 
+    in result.inserted_primary_key for these. Regarding
+    reflection for this case, reflection of an int PK col 
+    with a server_default sets the "autoincrement" flag to False, 
+    except in the case of a PG SERIAL col where we detected a 
+    sequence default. [ticket:2020] [ticket:2021]
+
   - Result-row processors are applied to pre-executed SQL 
     defaults, as well as cursor.lastrowid, when determining
     the contents of result.inserted_primary_key.

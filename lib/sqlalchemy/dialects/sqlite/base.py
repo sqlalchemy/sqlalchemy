@@ -538,6 +538,7 @@ class SQLiteDialect(default.DefaultDialect):
                 'type' : coltype,
                 'nullable' : nullable,
                 'default' : default,
+                'autoincrement':default is None,
                 'primary_key': primary_key
             })
         return columns
