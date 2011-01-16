@@ -18,12 +18,16 @@ class PointTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
             Column('name', String(30)))
 
         Table('edges', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('graph_id', Integer, ForeignKey('graphs.id'), nullable=False),
+            Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
+            Column('graph_id', Integer, 
+                                ForeignKey('graphs.id'), 
+                                nullable=False),
             Column('x1', Integer),
             Column('y1', Integer),
             Column('x2', Integer),
@@ -45,7 +49,8 @@ class PointTest(_base.MappedTest):
                         other.x == self.x and \
                         other.y == self.y
             def __ne__(self, other):
-                return not isinstance(other, Point) or not self.__eq__(other)
+                return not isinstance(other, Point) or \
+                        not self.__eq__(other)
 
         class Graph(_base.BasicEntity):
             pass
@@ -203,7 +208,8 @@ class PrimaryKeyTest(_base.MappedTest):
         Table('graphs', metadata,
             Column('id', Integer, primary_key=True, 
                         test_needs_autoincrement=True),
-            Column('version_id', Integer, primary_key=True, nullable=True),
+            Column('version_id', Integer, primary_key=True, 
+                                            nullable=True),
             Column('name', String(30)))
 
     @classmethod
@@ -217,7 +223,8 @@ class PrimaryKeyTest(_base.MappedTest):
                 return (self.id, self.version)
             __hash__ = None
             def __eq__(self, other):
-                return isinstance(other, Version) and other.id == self.id and \
+                return isinstance(other, Version) and \
+                                other.id == self.id and \
                                 other.version == self.version
             def __ne__(self, other):
                 return not self.__eq__(other)
@@ -286,7 +293,8 @@ class DefaultsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('foobars', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
             Column('x1', Integer, default=2),
             Column('x2', Integer),
             Column('x3', Integer, default=15),
@@ -361,9 +369,11 @@ class MappedSelectTest(_base.MappedTest):
         )
 
         Table('values', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('description_id', Integer, ForeignKey('descriptions.id'),
-                   nullable=False),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+            Column('description_id', Integer, 
+                            ForeignKey('descriptions.id'),
+                            nullable=False),
             Column('v1', String(20)),
             Column('v2', String(20)),
         )
@@ -439,7 +449,8 @@ class ManyToOneTest(_base.MappedTest):
         )
 
         Table('b', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
             Column('data', String(20))
         )
 
@@ -497,7 +508,8 @@ class ConfigurationTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('edge', metadata,
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
             Column('x1', Integer),
             Column('y1', Integer),
             Column('x2', Integer),

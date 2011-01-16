@@ -108,7 +108,7 @@ class MutableWithScalarPickleTest(_MutableDictTestBase, _base.MappedTest):
         MutationDict = cls._type_fixture()
 
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_pk=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', MutationDict.as_mutable(PickleType)),
             Column('non_mutable_data', PickleType)
         )
@@ -141,7 +141,7 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, _base.MappedTest):
         MutationDict = cls._type_fixture()
 
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_pk=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', MutationDict.as_mutable(JSONEncodedDict)),
             Column('non_mutable_data', JSONEncodedDict)
         )
@@ -156,7 +156,7 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase, _base.MappedTest)
         MutationDict.associate_with(PickleType)
 
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_pk=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', PickleType)
         )
 
@@ -186,7 +186,7 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, _base.MappedTest):
         MutationDict.associate_with(JSONEncodedDict)
 
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_pk=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', JSONEncodedDict)
         )
 
@@ -195,7 +195,7 @@ class _CompositeTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
         Table('foo', metadata,
-            Column('id', Integer, primary_key=True, test_needs_pk=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('x', Integer),
             Column('y', Integer)
         )

@@ -360,9 +360,9 @@ class OracleCompiler(compiler.SQLCompiler):
     )
 
     def __init__(self, *args, **kwargs):
-        super(OracleCompiler, self).__init__(*args, **kwargs)
         self.__wheres = {}
         self._quoted_bind_names = {}
+        super(OracleCompiler, self).__init__(*args, **kwargs)
 
     def visit_mod(self, binary, **kw):
         return "mod(%s, %s)" % (self.process(binary.left), self.process(binary.right))
