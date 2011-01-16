@@ -1164,6 +1164,35 @@ class IsolationLevelTest(TestBase):
         eq_(isolation_level, self._default_isolation_level())
 
     @testing.requires.isolation_level
+    def test_reset_level(self):
+        eng = create_engine(testing.db.url)
+        conn = eng.connect()
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._default_isolation_level())
+
+        eng.dialect.set_isolation_level(conn.connection, self._non_default_isolation_level())
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._non_default_isolation_level())
+
+        eng.dialect.reset_isolation_level(conn.connection)
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._default_isolation_level())
+
+        conn.close()
+
+    @testing.requires.isolation_level
+    def test_reset_level_with_setting(self):
+        eng = create_engine(testing.db.url, isolation_level=self._non_default_isolation_level())
+        conn = eng.connect()
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._non_default_isolation_level())
+
+        eng.dialect.set_isolation_level(conn.connection, self._default_isolation_level())
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._default_isolation_level())
+
+        eng.dialect.reset_isolation_level(conn.connection)
+        eq_(eng.dialect.get_isolation_level(conn.connection), self._non_default_isolation_level())
+
+        conn.close()
+
+
+    @testing.requires.isolation_level
     def test_invalid_level(self):
         eng = create_engine(testing.db.url, isolation_level='FOO')
         assert_raises_message(

@@ -524,6 +524,21 @@ class Dialect(object):
         """
         return None
 
+    def reset_isolation_level(self, dbapi_conn):
+        """Given a DBAPI connection, revert its isolation to the default."""
+
+        raise NotImplementedError()
+
+    def set_isolation_level(self, dbapi_conn, level):
+        """Given a DBAPI connection, set its isolation level."""
+
+        raise NotImplementedError()
+
+    def get_isolation_level(self, dbapi_conn):
+        """Given a DBAPI connection, return its isolation level."""
+
+        raise NotImplementedError()
+
 
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single

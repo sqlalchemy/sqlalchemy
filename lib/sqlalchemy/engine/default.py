@@ -175,6 +175,12 @@ class DefaultDialect(base.Dialect):
         except NotImplementedError:
             self.default_schema_name = None
 
+        try:
+            self.default_isolation_level = \
+                        self.get_isolation_level(connection.connection)
+        except NotImplementedError:
+            self.default_isolation_level = None
+
         self.returns_unicode_strings = self._check_unicode_returns(connection)
 
         self.do_rollback(connection.connection)
@@ -319,6 +325,11 @@ class DefaultDialect(base.Dialect):
 
     def is_disconnect(self, e):
         return False
+
+    def reset_isolation_level(self, dbapi_conn):
+        self.set_isolation_level(dbapi_conn, 
+                    self.isolation_level or self.default_isolation_level)
+
 
 
 class DefaultExecutionContext(base.ExecutionContext):
