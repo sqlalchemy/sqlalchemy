@@ -877,16 +877,44 @@ class Connection(Connectable):
         underlying resource, it is probably best to ensure that the copies
         would be discarded immediately, which is implicit if used as in::
 
-            result = connection.execution_options(stream_results=True).\
+            result = connection.execution_options(stream_results=True).\\
                                 execute(stmt)
 
-        The options are the same as those accepted by 
-        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+        :meth:`.Connection.execution_options` accepts all options as those
+        accepted by :meth:`.Executable.execution_options`.  Additionally,
+        it includes options that are applicable only to 
+        :class:`.Connection`.
+        
+        :param isolation_level: Set the transaction isolation level for
+          the lifespan of this connection.   Valid values include
+          those string values accepted by the ``isolation_level``
+          parameter passed to :func:`.create_engine`, and are
+          database specific, including those for :ref:`sqlite_toplevel`, 
+          :ref:`postgresql_toplevel` - see those dialect's documentation
+          for further info.
+          
+          Note that this option necessarily affects the underying 
+          DBAPI connection for the lifespan of the originating 
+          :class:`.Connection`, and is not per-execution. This 
+          setting is not removed until the underying DBAPI connection 
+          is returned to the connection pool, i.e.
+          the :meth:`.Connection.close` method is called.
+
+        :param \**kw: All options accepted by :meth:`.Executable.execution_options`
+          are also accepted.
 
         """
         c = self._clone()
         c._execution_options = c._execution_options.union(opt)
+        if 'isolation_level' in opt:
+            c._set_isolation_level()
         return c
+
+    def _set_isolation_level(self):
+        self.dialect.set_isolation_level(self.connection, 
+                                self._execution_options['isolation_level'])
+        self.connection._connection_record.finalize_callback = \
+                    self.dialect.reset_isolation_level
 
     @property
     def closed(self):
@@ -1724,6 +1752,13 @@ class Engine(Connectable, log.Identified):
         if proxy:
             interfaces.ConnectionProxy._adapt_listener(self, proxy)
         if execution_options:
+            if 'isolation_level' in execution_options:
+                raise exc.ArgumentError(
+                    "'isolation_level' execution option may "
+                    "only be specified on Connection.execution_options(). "
+                    "To set engine-wide isolation level, "
+                    "use the isolation_level argument to create_engine()."
+                )
             self.update_execution_options(**execution_options)
 
 
@@ -1735,7 +1770,6 @@ class Engine(Connectable, log.Identified):
         For details on execution_options, see
         :meth:`Connection.execution_options` as well as
         :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
-
 
         """
         self._execution_options = \

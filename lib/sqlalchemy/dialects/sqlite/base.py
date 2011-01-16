@@ -397,7 +397,7 @@ class SQLiteDialect(default.DefaultDialect):
             raise exc.ArgumentError(
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s" % 
-                (self.name, level, ", ".join(self._isolation_lookup))
+                (level, self.name, ", ".join(self._isolation_lookup))
                 ) 
         cursor = connection.cursor()
         cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)

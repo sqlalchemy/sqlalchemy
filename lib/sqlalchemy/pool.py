@@ -249,6 +249,8 @@ class Pool(log.Identified):
 
 
 class _ConnectionRecord(object):
+    finalize_callback = None
+
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
@@ -347,6 +349,9 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
         if echo:
             pool.logger.debug("Connection %r being returned to pool", 
                                     connection)
+        if connection_record.finalize_callback:
+            connection_record.finalize_callback(connection)
+            del connection_record.finalize_callback 
         if pool.dispatch.checkin:
             pool.dispatch.checkin(connection, connection_record)
         pool._return_conn(connection_record)

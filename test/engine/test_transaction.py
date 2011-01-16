@@ -1110,6 +1110,8 @@ class ForUpdateTest(TestBase):
         self.assert_(len(errors) != 0)
 
 class IsolationLevelTest(TestBase):
+    __requires__ = ('isolation_level',)
+
     def _default_isolation_level(self):
         if testing.against('sqlite'):
             return 'SERIALIZABLE'
@@ -1126,7 +1128,6 @@ class IsolationLevelTest(TestBase):
         else:
             assert False, "non default isolation level not known"
 
-    @testing.requires.isolation_level
     def test_engine_param_stays(self):
 
         eng = create_engine(testing.db.url)
@@ -1157,13 +1158,11 @@ class IsolationLevelTest(TestBase):
         )
         conn.close()
 
-    @testing.requires.isolation_level
     def test_default_level(self):
         eng = create_engine(testing.db.url)
         isolation_level = eng.dialect.get_isolation_level(eng.connect().connection)
         eq_(isolation_level, self._default_isolation_level())
 
-    @testing.requires.isolation_level
     def test_reset_level(self):
         eng = create_engine(testing.db.url)
         conn = eng.connect()
@@ -1177,7 +1176,6 @@ class IsolationLevelTest(TestBase):
 
         conn.close()
 
-    @testing.requires.isolation_level
     def test_reset_level_with_setting(self):
         eng = create_engine(testing.db.url, isolation_level=self._non_default_isolation_level())
         conn = eng.connect()
@@ -1191,13 +1189,55 @@ class IsolationLevelTest(TestBase):
 
         conn.close()
 
-
-    @testing.requires.isolation_level
     def test_invalid_level(self):
         eng = create_engine(testing.db.url, isolation_level='FOO')
         assert_raises_message(
             exc.ArgumentError, 
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s" % 
-                (eng.dialect.name, "FOO", ", ".join(eng.dialect._isolation_lookup)),
+                ("FOO", eng.dialect.name, ", ".join(eng.dialect._isolation_lookup)),
             eng.connect)
+
+    def test_per_connection(self):
+        from sqlalchemy.pool import QueuePool
+        eng = create_engine(testing.db.url, poolclass=QueuePool, pool_size=2, max_overflow=0)
+
+        c1 = eng.connect()
+        c1 = c1.execution_options(isolation_level=self._non_default_isolation_level())
+
+        c2 = eng.connect()
+        eq_(eng.dialect.get_isolation_level(c1.connection), self._non_default_isolation_level())
+        eq_(eng.dialect.get_isolation_level(c2.connection), self._default_isolation_level())
+
+        c1.close()
+        c2.close()
+        c3 = eng.connect()
+        eq_(eng.dialect.get_isolation_level(c3.connection), self._default_isolation_level())
+
+        c4 = eng.connect()
+        eq_(eng.dialect.get_isolation_level(c4.connection), self._default_isolation_level())
+
+        c3.close()
+        c4.close()
+
+    def test_per_statement_bzzt(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"'isolation_level' execution option may only be specified "
+            r"on Connection.execution_options\(\), or "
+            r"per-engine using the isolation_level "
+            r"argument to create_engine\(\).",
+            select([1]).execution_options, isolation_level=self._non_default_isolation_level()
+        )
+
+
+    def test_per_engine_bzzt(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"'isolation_level' execution option may "
+            r"only be specified on Connection.execution_options\(\). "
+            r"To set engine-wide isolation level, "
+            r"use the isolation_level argument to create_engine\(\).",
+            create_engine,
+            testing.db.url, execution_options={'isolation_level':self._non_default_isolation_level}
+        )

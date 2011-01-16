@@ -1,3 +1,5 @@
+.. _postgresql_toplevel:
+
 PostgreSQL
 ==========
 

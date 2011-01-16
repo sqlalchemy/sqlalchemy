@@ -79,13 +79,19 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
 
-Per-Statement Execution Options
--------------------------------
+Per-Statement/Connection Execution Options
+-------------------------------------------
 
-The following per-statement execution options are respected:
+The following DBAPI-specific options are respected when used with 
+:meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
+:meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
 
-* *stream_results* - Enable or disable usage of server side cursors for the SELECT-statement.
-  If *None* or not set, the *server_side_cursors* option of the connection is used. If
+* isolation_level - Set the transaction isolation level for the lifespan of a 
+  :class:`.Connection` (can only be set on a connection, not a statement or query).
+  This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
+  ``READ UNCOMMITTED`` and ``REPEATABLE READ``.
+* stream_results - Enable or disable usage of server side cursors.
+  If ``None`` or not set, the ``server_side_cursors`` option of the :class:`.Engine` is used. If
   auto-commit is enabled, the option is ignored.
 
 """
@@ -247,20 +253,20 @@ class PGDialect_psycopg2(PGDialect):
     def _isolation_lookup(self):
         extensions = __import__('psycopg2.extensions').extensions
         return {
-            'READ_COMMITTED':extensions.ISOLATION_LEVEL_READ_COMMITTED, 
-            'READ_UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED, 
-            'REPEATABLE_READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
+            'READ COMMITTED':extensions.ISOLATION_LEVEL_READ_COMMITTED, 
+            'READ UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED, 
+            'REPEATABLE READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
             'SERIALIZABLE':extensions.ISOLATION_LEVEL_SERIALIZABLE
         }
 
     def set_isolation_level(self, connection, level):
         try:
-            level = self._isolation_lookup[level.replace(' ', '_')]
+            level = self._isolation_lookup[level.replace('_', ' ')]
         except KeyError:
             raise exc.ArgumentError(
                 "Invalid value '%s' for isolation_level. "
                 "Valid isolation levels for %s are %s" % 
-                (self.name, level, ", ".join(self._isolation_lookup))
+                (level, self.name, ", ".join(self._isolation_lookup))
                 ) 
 
         connection.set_isolation_level(level)

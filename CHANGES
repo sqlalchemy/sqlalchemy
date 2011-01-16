@@ -19,6 +19,12 @@ CHANGES
     definition, using strings as column names, as an alternative
     to the creation of the index outside of the Table.
 
+  - execution_options() on Connection accepts 
+    "isolation_level" argument, sets transaction isolation
+    level for that connection only until returned to the
+    connection pool, for thsoe backends which support it
+    (SQLite, Postgresql) [ticket:2001]
+
   - A TypeDecorator of Integer can be used with a primary key
     column, and the "autoincrement" feature of various dialects
     as well as the "sqlite_autoincrement" flag will honor
