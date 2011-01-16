@@ -327,10 +327,10 @@ class DefaultDialect(base.Dialect):
         return False
 
     def reset_isolation_level(self, dbapi_conn):
-        self.set_isolation_level(dbapi_conn, 
-                    self.isolation_level or self.default_isolation_level)
-
-
+        # default_isolation_level is read from the first conenction 
+        # after the initial set of 'isolation_level', if any, so is 
+        # the configured default of this dialect.
+        self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
 class DefaultExecutionContext(base.ExecutionContext):
     isinsert = False
