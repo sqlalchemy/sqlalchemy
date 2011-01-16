@@ -243,23 +243,32 @@ class PGDialect_psycopg2(PGDialect):
         psycopg = __import__('psycopg2')
         return psycopg
 
-    def on_connect(self):
-        if self.isolation_level is not None:
-            extensions = __import__('psycopg2.extensions').extensions
-            isol = {
+    @util.memoized_property
+    def _isolation_lookup(self):
+        extensions = __import__('psycopg2.extensions').extensions
+        return {
             'READ_COMMITTED':extensions.ISOLATION_LEVEL_READ_COMMITTED, 
             'READ_UNCOMMITTED':extensions.ISOLATION_LEVEL_READ_UNCOMMITTED, 
             'REPEATABLE_READ':extensions.ISOLATION_LEVEL_REPEATABLE_READ,
             'SERIALIZABLE':extensions.ISOLATION_LEVEL_SERIALIZABLE
+        }
 
-            }
+    def set_isolation_level(self, connection, level):
+        try:
+            level = self._isolation_lookup[level.replace(' ', '_')]
+        except KeyError:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" % 
+                (self.name, level, ", ".join(self._isolation_lookup))
+                ) 
+
+        connection.set_isolation_level(level)
+
+    def on_connect(self):
+        if self.isolation_level is not None:
             def base_on_connect(conn):
-                try:
-                    conn.set_isolation_level(isol[self.isolation_level])
-                except:
-                    raise exc.InvalidRequestError(
-                                "Invalid isolation level: '%s'" % 
-                                self.isolation_level)
+                self.set_isolation_level(conn, self.isolation_level)
         else:
             base_on_connect = None
 

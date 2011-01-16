@@ -1382,40 +1382,6 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             ])
 
 
-    @testing.fails_on('postgresql+pypostgresql',
-                      'pypostgresql bombs on multiple calls')
-    def test_set_isolation_level(self):
-        """Test setting the isolation level with create_engine"""
-
-        eng = create_engine(testing.db.url)
-        eq_(eng.execute('show transaction isolation level').scalar(),
-            'read committed')
-        eng = create_engine(testing.db.url,
-                            isolation_level='SERIALIZABLE')
-        eq_(eng.execute('show transaction isolation level').scalar(),
-            'serializable')
-
-        # check that it stays
-        conn = eng.connect()
-        eq_(conn.execute('show transaction isolation level').scalar(),
-            'serializable')
-        conn.close()
-
-        conn = eng.connect()
-        eq_(conn.execute('show transaction isolation level').scalar(),
-            'serializable')
-        conn.close()
-
-        eng = create_engine(testing.db.url, isolation_level='FOO')
-        if testing.db.driver == 'zxjdbc':
-            exception_cls = eng.dialect.dbapi.Error
-        elif testing.db.driver == 'psycopg2':
-            exception_cls = exc.InvalidRequestError
-        else:
-            exception_cls = eng.dialect.dbapi.ProgrammingError
-        assert_raises(exception_cls, eng.execute,
-                      'show transaction isolation level')
-
     @testing.fails_on('+zxjdbc', 'psycopg2/pg8000 specific assertion')
     @testing.fails_on('pypostgresql',
                       'psycopg2/pg8000 specific assertion')

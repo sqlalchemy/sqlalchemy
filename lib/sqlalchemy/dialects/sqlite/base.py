@@ -372,11 +372,6 @@ class SQLiteDialect(default.DefaultDialect):
 
     def __init__(self, isolation_level=None, native_datetime=False, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
-        if isolation_level and isolation_level not in ('SERIALIZABLE',
-                'READ UNCOMMITTED'):
-            raise exc.ArgumentError("Invalid value for isolation_level. "
-                "Valid isolation levels for sqlite are 'SERIALIZABLE' and "
-                "'READ UNCOMMITTED'.")
         self.isolation_level = isolation_level
 
         # this flag used by pysqlite dialect, and perhaps others in the
@@ -391,18 +386,39 @@ class SQLiteDialect(default.DefaultDialect):
             self.supports_cast = \
                                 self.dbapi.sqlite_version_info >= (3, 2, 3)
 
+    _isolation_lookup = {
+        'READ UNCOMMITTED':1,
+        'SERIALIZABLE':0
+    }
+    def set_isolation_level(self, connection, level):
+        try:
+            isolation_level = self._isolation_lookup[level.replace('_', ' ')]
+        except KeyError:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" % 
+                (self.name, level, ", ".join(self._isolation_lookup))
+                ) 
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
+        cursor.close()
+
+    def get_isolation_level(self, connection):
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA read_uncommitted')
+        value = cursor.fetchone()[0]
+        cursor.close()
+        if value == 0:
+            return "SERIALIZABLE"
+        elif value == 1:
+            return "READ UNCOMMITTED"
+        else:
+            assert False, "Unknown isolation level %s" % value
 
     def on_connect(self):
         if self.isolation_level is not None:
-            if self.isolation_level == 'READ UNCOMMITTED':
-                isolation_level = 1
-            else:
-                isolation_level = 0
-
             def connect(conn):
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
-                cursor.close()
+                self.set_isolation_level(conn, self.isolation_level)
             return connect
         else:
             return None

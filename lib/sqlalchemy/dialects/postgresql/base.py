@@ -769,15 +769,35 @@ class PGDialect(default.DefaultDialect):
     def on_connect(self):
         if self.isolation_level is not None:
             def connect(conn):
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SET SESSION CHARACTERISTICS AS TRANSACTION "
-                    "ISOLATION LEVEL %s" % self.isolation_level)
-                cursor.execute("COMMIT")
-                cursor.close()
+                self.set_isolation_level(conn, self.isolation_level)
             return connect
         else:
             return None
+
+    _isolation_lookup = set(['SERIALIZABLE', 
+                'READ UNCOMMITTED', 'READ COMMITTED', 'REPEATABLE READ'])
+
+    def set_isolation_level(self, connection, level):
+        level = level.replace('_', ' ')
+        if level not in self._isolation_lookup:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" % 
+                (self.name, level, ", ".join(self._isolation_lookup))
+                ) 
+        cursor = connection.cursor()
+        cursor.execute(
+            "SET SESSION CHARACTERISTICS AS TRANSACTION "
+            "ISOLATION LEVEL %s" % level)
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def get_isolation_level(self, connection):
+        cursor = connection.cursor()
+        cursor.execute('show transaction isolation level')
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper()
 
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)

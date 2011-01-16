@@ -353,20 +353,6 @@ class DialectTest(TestBase, AssertsExecutionResults):
         finally:
             meta.drop_all()
 
-    def test_set_isolation_level(self):
-        """Test setting the read uncommitted/serializable levels"""
-
-        eng = create_engine(testing.db.url)
-        eq_(eng.execute('PRAGMA read_uncommitted').scalar(), 0)
-        eng = create_engine(testing.db.url,
-                            isolation_level='READ UNCOMMITTED')
-        eq_(eng.execute('PRAGMA read_uncommitted').scalar(), 1)
-        eng = create_engine(testing.db.url,
-                            isolation_level='SERIALIZABLE')
-        eq_(eng.execute('PRAGMA read_uncommitted').scalar(), 0)
-        assert_raises(exc.ArgumentError, create_engine, testing.db.url,
-                      isolation_level='FOO')
-
     def test_create_index_with_schema(self):
         """Test creation of index with explicit schema"""
 

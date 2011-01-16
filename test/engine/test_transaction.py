@@ -1,5 +1,5 @@
 from test.lib.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, ne_
 import sys
 import time
 import threading
@@ -1109,3 +1109,66 @@ class ForUpdateTest(TestBase):
                 update_style='nowait')
         self.assert_(len(errors) != 0)
 
+class IsolationLevelTest(TestBase):
+    def _default_isolation_level(self):
+        if testing.against('sqlite'):
+            return 'SERIALIZABLE'
+        elif testing.against('postgresql'):
+            return 'READ COMMITTED'
+        else:
+            assert False, "default isolation level not known"
+
+    def _non_default_isolation_level(self):
+        if testing.against('sqlite'):
+            return 'READ UNCOMMITTED'
+        elif testing.against('postgresql'):
+            return 'SERIALIZABLE'
+        else:
+            assert False, "non default isolation level not known"
+
+    @testing.requires.isolation_level
+    def test_engine_param_stays(self):
+
+        eng = create_engine(testing.db.url)
+        isolation_level = eng.dialect.get_isolation_level(eng.connect().connection)
+        level = self._non_default_isolation_level()
+
+        ne_(isolation_level, level)
+
+        eng = create_engine(testing.db.url,
+                            isolation_level=level)
+        eq_(
+            eng.dialect.get_isolation_level(eng.connect().connection),
+            level
+        )
+
+        # check that it stays
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            level
+        )
+        conn.close()
+
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            level
+        )
+        conn.close()
+
+    @testing.requires.isolation_level
+    def test_default_level(self):
+        eng = create_engine(testing.db.url)
+        isolation_level = eng.dialect.get_isolation_level(eng.connect().connection)
+        eq_(isolation_level, self._default_isolation_level())
+
+    @testing.requires.isolation_level
+    def test_invalid_level(self):
+        eng = create_engine(testing.db.url, isolation_level='FOO')
+        assert_raises_message(
+            exc.ArgumentError, 
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" % 
+                (eng.dialect.name, "FOO", ", ".join(eng.dialect._isolation_lookup)),
+            eng.connect)
