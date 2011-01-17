@@ -1893,6 +1893,28 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     @testing.resolve_artifact_names
+    def test_map_selectable_wo_deferred(self):
+        """test mapping to a selectable with deferred cols,
+        the selectable doesn't include the deferred col.
+        
+        """
+
+        order_select = sa.select([
+                        orders.c.id, 
+                        orders.c.user_id, 
+                        orders.c.address_id, 
+                        orders.c.description,
+                        orders.c.isopen]).alias()
+        mapper(Order, order_select, properties={
+            'description':deferred(order_select.c.description)
+        })
+
+        sess = Session()
+        o1 = sess.query(Order).order_by(Order.id).first()
+        assert 'description' not in o1.__dict__
+        eq_(o1.description, 'order 1')
+
+    @testing.resolve_artifact_names
     def test_deep_options(self):
         mapper(Item, items, properties=dict(
             description=deferred(items.c.description)))
