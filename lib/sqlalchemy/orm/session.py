@@ -1242,6 +1242,34 @@ class Session(object):
         # check that we didn't just pull the exact same
         # state out.
         if state is not merged_state:
+            # version check if applicable
+            if mapper.version_id_col is not None:
+                existing_version = mapper._get_state_attr_by_column(
+                            state, 
+                            state_dict, 
+                            mapper.version_id_col,
+                            passive=attributes.PASSIVE_NO_INITIALIZE)
+
+                merged_version = mapper._get_state_attr_by_column(
+                            merged_state, 
+                            merged_dict, 
+                            mapper.version_id_col,
+                            passive=attributes.PASSIVE_NO_INITIALIZE)
+
+                if existing_version is not attributes.PASSIVE_NO_RESULT and \
+                    merged_version is not attributes.PASSIVE_NO_RESULT and \
+                    existing_version != merged_version:
+                    raise exc.StaleDataError(
+                            "Version id '%s' on merged state %s "
+                            "does not match existing version '%s'. "
+                            "Leave the version attribute unset when "
+                            "merging to update the most recent version."
+                            % (
+                                existing_version,
+                                mapperutil.state_str(merged_state),
+                                merged_version
+                            ))
+
             merged_state.load_path = state.load_path
             merged_state.load_options = state.load_options
 

@@ -10,6 +10,12 @@ CHANGES
     (i.e. not a mapped class), will return element.alias() 
     instead of raising an error on AliasedClass.  [ticket:2018]
 
+  - Session.merge() will check the version id of the incoming
+    state against that of the database, assuming the mapping
+    uses version ids and incoming state has a version_id
+    assigned, and raise StaleDataError if they don't 
+    match.  [ticket:2027]
+
 - sql
   - Added NULLS FIRST and NULLS LAST support. It's implemented
     as an extension to the asc() and desc() operators, called
