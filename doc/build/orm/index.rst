@@ -15,8 +15,8 @@ SQLAlchemy ORM
     query
     loading
     events
-    exceptions
     extensions/index
     examples
     interfaces
+    exceptions
 

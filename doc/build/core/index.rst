@@ -15,8 +15,8 @@ SQLAlchemy Core
     types
     event
     events
-    exceptions
     compiler
     serializer
     interfaces
+    exceptions
 
