@@ -310,7 +310,7 @@ class hybrid_method(object):
                 def value(self, x, y):
                     return self._value + x + y
             
-                @hybrid_property.expression
+                @value.expression
                 def value(self, x, y):
                     return func.some_function(self._value, x, y)
             
@@ -348,7 +348,7 @@ class hybrid_property(object):
                 def value(self):
                     return self._value
             
-                @hybrid_property.setter
+                @value.setter
                 def value(self, value):
                     self._value = value
             

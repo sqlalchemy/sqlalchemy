@@ -636,29 +636,58 @@ class Session(object):
         self.transaction.prepare()
 
     def connection(self, mapper=None, clause=None, 
-                        close_with_result=False, **kw):
-        """Return the active Connection.
+                        bind=None, 
+                        close_with_result=False, 
+                        **kw):
+        """Return a :class:`.Connection` object corresponding to this 
+        :class:`.Session` object's transactional state.
 
-        Retrieves the ``Connection`` managing the current transaction.  Any
-        operations executed on the Connection will take place in the same
-        transactional context as ``Session`` operations.
+        If this :class:`.Session` is configured with ``autocommit=False``,
+        either the :class:`.Connection` correspoinding to the current transaction
+        is returned, or if no transaction is in progress, a new one is begun
+        and the :class:`.Connection` returned.
+        
+        Alternatively, if this :class:`.Session` is configured with ``autocommit=True``,
+        an ad-hoc :class:`.Connection` is returned using the :meth:`.Engine.contextual_connect` 
+        on the underlying :class:`.Engine`.
 
-        For ``autocommit`` Sessions with no active manual transaction,
-        ``connection()`` is a passthrough to ``contextual_connect()`` on the
-        underlying engine.
+        Ambiguity in multi-bind or unbound :class:`.Session` objects can be resolved through
+        any of the optional keyword arguments.   This ultimately makes usage of the 
+        :meth:`.get_bind` method for resolution.
 
-        Ambiguity in multi-bind or unbound Sessions can be resolved through
-        any of the optional keyword arguments.  See ``get_bind()`` for more
-        information.
+        :param bind:
+          Optional :class:`.Engine` to be used as the bind.  If
+          this engine is already involved in an ongoing transaction,
+          that connection will be used.  This argument takes precedence
+          over ``mapper``, ``clause``.
 
-        mapper
-          Optional, a ``mapper`` or mapped class
+        :param mapper:
+          Optional :func:`.mapper` mapped class, used to identify
+          the appropriate bind.  This argument takes precedence over
+          ``clause``.
 
-        clause
-          Optional, any ``ClauseElement``
+        :param clause:
+            A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`, 
+            :func:`~.sql.expression.text`, 
+            etc.) which will be used to locate a bind, if a bind
+            cannot otherwise be identified.
+
+        :param close_with_result: Passed to :meth:`Engine.connect`, indicating
+          the :class:`.Connection` should be considered "single use", automatically
+          closing when the first result set is closed.  This flag only has 
+          an effect if this :class:`.Session` is configued with ``autocommit=True``
+          and does not already have a  transaction in progress.
+
+        :param \**kw:
+          Additional keyword arguments are sent to :meth:`get_bind()`,
+          allowing additional arguments to be passed to custom 
+          implementations of :meth:`get_bind`.
 
         """
-        return self._connection_for_bind(self.get_bind(mapper, clause, **kw), 
+        if bind is None:
+            bind = self.get_bind(mapper, clause=clause, **kw)
+
+        return self._connection_for_bind(bind, 
                                         close_with_result=close_with_result)
 
     def _connection_for_bind(self, engine, **kwargs):
@@ -667,68 +696,73 @@ class Session(object):
         else:
             return engine.contextual_connect(**kwargs)
 
-    def execute(self, clause, params=None, mapper=None, **kw):
+    def execute(self, clause, params=None, mapper=None, bind=None, **kw):
         """Execute a clause within the current transaction.
 
-        Returns a :class:`~sqlalchemy.engine.base.ResultProxy` representing
+        Returns a :class:`.ResultProxy` representing
         results of the statement execution, in the same manner as that of an
-        :class:`~sqlalchemy.engine.base.Engine` or
-        :class:`~sqlalchemy.engine.base.Connection`.
+        :class:`.Engine` or
+        :class:`.Connection`.
 
-        :meth:`Session.execute` accepts any executable clause construct, such
-        as :func:`~sqlalchemy.sql.expression.select`,
-        :func:`~sqlalchemy.sql.expression.insert`,
-        :func:`~sqlalchemy.sql.expression.update`,
-        :func:`~sqlalchemy.sql.expression.delete`, and
-        :func:`~sqlalchemy.sql.expression.text`, and additionally accepts
+        :meth:`~.Session.execute` accepts any executable clause construct, such
+        as :func:`~.sql.expression.select`,
+        :func:`~.sql.expression.insert`,
+        :func:`~.sql.expression.update`,
+        :func:`~.sql.expression.delete`, and
+        :func:`~.sql.expression.text`, and additionally accepts
         plain strings that represent SQL statements. If a plain string is
         passed, it is first converted to a
-        :func:`~sqlalchemy.sql.expression.text` construct, which here means
+        :func:`~.sql.expression.text` construct, which here means
         that bind parameters should be specified using the format ``:param``.
 
         The statement is executed within the current transactional context of
-        this :class:`Session`. If this :class:`Session` is set for
-        "autocommit", and no transaction is in progress, an ad-hoc transaction
-        will be created for the life of the result (i.e., a connection is
-        checked out from the connection pool, which is returned when the
-        result object is closed).
-
-        If the :class:`Session` is not bound to an
-        :class:`~sqlalchemy.engine.base.Engine` or
-        :class:`~sqlalchemy.engine.base.Connection`, the given clause will be
-        inspected for binds (i.e., looking for "bound metadata"). If the
-        session is bound to multiple connectables, the ``mapper`` keyword
-        argument is typically passed in to specify which bind should be used
-        (since the :class:`Session` keys multiple bind sources to a series of
-        :func:`mapper` objects). See :meth:`get_bind` for further details on
-        bind resolution.
-
+        this :class:`.Session`, using the same behavior as that of
+        the :meth:`.Session.connection` method to determine the active
+        :class:`.Connection`.   The ``close_with_result`` flag is
+        set to ``True`` so that an ``autocommit=True`` :class:`.Session`
+        with no active transaction will produce a result that auto-closes
+        the underlying :class:`.Connection`.
+        
         :param clause:
-            A ClauseElement (i.e. select(), text(), etc.) or
-            string SQL statement to be executed
+            A :class:`.ClauseElement` (i.e. :func:`~.sql.expression.select`, 
+            :func:`~.sql.expression.text`, etc.) or string SQL statement to be executed.  The clause
+            will also be used to locate a bind, if this :class:`.Session`
+            is not bound to a single engine already, and the ``mapper``
+            and ``bind`` arguments are not passed.
 
         :param params:
-            Optional, a dictionary of bind parameters.
+            Optional dictionary of bind names mapped to values.
 
         :param mapper:
-          Optional, a ``mapper`` or mapped class
+          Optional :func:`.mapper` or mapped class, used to identify
+          the appropriate bind.  This argument takes precedence over
+          ``clause`` when locating a bind.
 
+        :param bind:
+          Optional :class:`.Engine` to be used as the bind.  If
+          this engine is already involved in an ongoing transaction,
+          that connection will be used.  This argument takes
+          precedence over ``mapper`` and ``clause`` when locating
+          a bind.
+          
         :param \**kw:
-          Additional keyword arguments are sent to :meth:`get_bind()`
-          which locates a connectable to use for the execution.
+          Additional keyword arguments are sent to :meth:`get_bind()`,
+          allowing additional arguments to be passed to custom 
+          implementations of :meth:`get_bind`.
 
         """
         clause = expression._literal_as_text(clause)
 
-        engine = self.get_bind(mapper, clause=clause, **kw)
+        if bind is None:
+            bind = self.get_bind(mapper, clause=clause, **kw)
 
-        return self._connection_for_bind(engine, close_with_result=True).execute(
+        return self._connection_for_bind(bind, close_with_result=True).execute(
             clause, params or {})
 
-    def scalar(self, clause, params=None, mapper=None, **kw):
-        """Like execute() but return a scalar result."""
+    def scalar(self, clause, params=None, mapper=None, bind=None, **kw):
+        """Like :meth:`~.Session.execute` but return a scalar result."""
 
-        return self.execute(clause, params=params, mapper=mapper, **kw).scalar()
+        return self.execute(clause, params=params, mapper=mapper, bind=bind, **kw).scalar()
 
     def close(self):
         """Close this Session.

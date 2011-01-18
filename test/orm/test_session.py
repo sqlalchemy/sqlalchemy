@@ -809,6 +809,31 @@ class SessionTest(_fixtures.FixtureTest):
         assert not c.in_transaction()
         assert c.scalar("select count(1) from users") == 1
 
+    @testing.resolve_artifact_names
+    def test_bind_arguments(self):
+        mapper(User, users)
+        mapper(Address, addresses)
+
+        e1 = engines.testing_engine()
+        e2 = engines.testing_engine()
+        e3 = engines.testing_engine()
+
+        sess = Session(e3)
+        sess.bind_mapper(User, e1)
+        sess.bind_mapper(Address, e2)
+
+        assert sess.connection().engine is e3
+        assert sess.connection(bind=e1).engine is e1
+        assert sess.connection(mapper=Address, bind=e1).engine is e1
+        assert sess.connection(mapper=Address).engine is e2
+        assert sess.connection(clause=addresses.select()).engine is e2
+        assert sess.connection(mapper=User, 
+                                clause=addresses.select()).engine is e1
+        assert sess.connection(mapper=User, 
+                                clause=addresses.select(), 
+                                bind=e2).engine is e2
+
+        sess.close()
 
     @engines.close_open_connections
     @testing.resolve_artifact_names
