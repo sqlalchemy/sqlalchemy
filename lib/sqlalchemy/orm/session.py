@@ -643,12 +643,12 @@ class Session(object):
         :class:`.Session` object's transactional state.
 
         If this :class:`.Session` is configured with ``autocommit=False``,
-        either the :class:`.Connection` correspoinding to the current transaction
+        either the :class:`.Connection` corresponding to the current transaction
         is returned, or if no transaction is in progress, a new one is begun
         and the :class:`.Connection` returned.
         
         Alternatively, if this :class:`.Session` is configured with ``autocommit=True``,
-        an ad-hoc :class:`.Connection` is returned using the :meth:`.Engine.contextual_connect` 
+        an ad-hoc :class:`.Connection` is returned using :meth:`.Engine.contextual_connect` 
         on the underlying :class:`.Engine`.
 
         Ambiguity in multi-bind or unbound :class:`.Session` objects can be resolved through
