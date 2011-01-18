@@ -191,67 +191,6 @@ a class, unless the :class:`.relationship` is declared with ``viewonly=True``.
 Otherwise, the unit-of-work system may attempt duplicate INSERT and
 DELETE statements against the underlying table.
 
-.. _declarative_synonyms:
-
-Defining Synonyms
-=================
-
-Synonyms are introduced in :ref:`synonyms`. To define a getter/setter
-which proxies to an underlying attribute, use
-:func:`~.synonym` with the ``descriptor`` argument.  Here we present
-using Python 2.6 style properties::
-
-    class MyClass(Base):
-        __tablename__ = 'sometable'
-
-        id = Column(Integer, primary_key=True)
-
-        _attr = Column('attr', String)
-
-        @property
-        def attr(self):
-            return self._attr
-
-        @attr.setter
-        def attr(self, attr):
-            self._attr = attr
-
-        attr = synonym('_attr', descriptor=attr)
-
-The above synonym is then usable as an instance attribute as well as a
-class-level expression construct::
-
-    x = MyClass()
-    x.attr = "some value"
-    session.query(MyClass).filter(MyClass.attr == 'some other value').all()
-
-For simple getters, the :func:`synonym_for` decorator can be used in
-conjunction with ``@property``::
-
-    class MyClass(Base):
-        __tablename__ = 'sometable'
-
-        id = Column(Integer, primary_key=True)
-        _attr = Column('attr', String)
-
-        @synonym_for('_attr')
-        @property
-        def attr(self):
-            return self._attr
-
-Similarly, :func:`comparable_using` is a front end for the
-:func:`~.comparable_property` ORM function::
-
-    class MyClass(Base):
-        __tablename__ = 'sometable'
-
-        name = Column('name', String)
-
-        @comparable_using(MyUpperCaseComparator)
-        @property
-        def uc_name(self):
-            return self.name.upper()
-
 .. _declarative_sql_expressions:
 
 Defining SQL Expressions

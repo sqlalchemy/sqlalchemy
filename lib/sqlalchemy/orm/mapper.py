@@ -2449,10 +2449,11 @@ def validates(*names):
 
     Designates a method as a validator, a method which receives the
     name of the attribute as well as a value to be assigned, or in the
-    case of a collection to be added to the collection.  The function
-    can then raise validation exceptions to halt the process from continuing,
-    or can modify or replace the value before proceeding.   The function
-    should otherwise return the given value.
+    case of a collection, the value to be added to the collection.  The function
+    can then raise validation exceptions to halt the process from continuing
+    (where Python's built-in ``ValueError`` and ``AssertionError`` exceptions are
+    reasonable choices), or can modify or replace the value before proceeding.   
+    The function should otherwise return the given value.
 
     Note that a validator for a collection **cannot** issue a load of that
     collection within the validation routine - this usage raises

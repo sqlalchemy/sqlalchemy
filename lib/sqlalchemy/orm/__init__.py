@@ -884,27 +884,14 @@ def mapper(class_, local_table=None, *args, **params):
 
 def synonym(name, map_column=False, descriptor=None, 
                         comparator_factory=None, doc=None):
-    """Set up `name` as a synonym to another mapped property.
+    """Denote an attribute name as a synonym to a mapped property.
+
+    .. note:: :func:`.synonym` is superceded as of 0.7 by 
+       the :mod:`~sqlalchemy.ext.hybrid` extension.  See 
+       the documentation for hybrids at :ref:`hybrids_toplevel`.
 
     Used with the ``properties`` dictionary sent to
-    :func:`~sqlalchemy.orm.mapper`.
-
-    Any existing attributes on the class which map the key name sent
-    to the ``properties`` dictionary will be used by the synonym to provide
-    instance-attribute behavior (that is, any Python property object, provided
-    by the ``property`` builtin or providing a ``__get__()``, ``__set__()``
-    and ``__del__()`` method).  If no name exists for the key, the
-    ``synonym()`` creates a default getter/setter object automatically and
-    applies it to the class.
-
-    `name` refers to the name of the existing mapped property, which can be
-    any other ``MapperProperty`` including column-based properties and
-    relationships.
-
-    If `map_column` is ``True``, an additional ``ColumnProperty`` is created
-    on the mapper automatically, using the synonym's name as the keyname of
-    the property, and the keyname of this ``synonym()`` as the name of the
-    column to map.  For example, if a table has a column named ``status``::
+    :func:`~sqlalchemy.orm.mapper`::
 
         class MyClass(object):
             def _get_status(self):
@@ -916,10 +903,20 @@ def synonym(name, map_column=False, descriptor=None,
         mapper(MyClass, sometable, properties={
             "status":synonym("_status", map_column=True)
         })
+    
+    Above, the ``status`` attribute of MyClass will produce
+    expression behavior against the table column named ``status``,
+    using the Python attribute ``_status`` on the mapped class
+    to represent the underlying value.
 
-    The column named ``status`` will be mapped to the attribute named
-    ``_status``, and the ``status`` attribute on ``MyClass`` will be used to
-    proxy access to the column-based attribute.
+    :param name: the name of the existing mapped property, which can be
+      any other ``MapperProperty`` including column-based properties and
+      relationships.
+
+    :param map_column: if ``True``, an additional ``ColumnProperty`` is created
+      on the mapper automatically, using the synonym's name as the keyname of
+      the property, and the keyname of this ``synonym()`` as the name of the
+      column to map.
 
     """
     return SynonymProperty(name, map_column=map_column, 
@@ -931,36 +928,49 @@ def comparable_property(comparator_factory, descriptor=None):
     """Provides a method of applying a :class:`.PropComparator` 
     to any Python descriptor attribute.
 
-    Allows a regular Python @property (descriptor) to be used in Queries and
+    .. note:: :func:`.comparable_property` is superceded as of 0.7 by 
+       the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example 
+       at :ref:`hybrid_custom_comparators`.
+       
+    Allows a regular Python @property (descriptor) to be used in queries and
     SQL constructs like a managed attribute.  comparable_property wraps a
     descriptor with a proxy that directs operator overrides such as ==
     (__eq__) to the supplied comparator but proxies everything else through to
-    the original descriptor::
+    the original descriptor.  Used with the ``properties`` dictionary sent to
+    :func:`~sqlalchemy.orm.mapper`::
 
       from sqlalchemy.orm import mapper, comparable_property
       from sqlalchemy.orm.interfaces import PropComparator
       from sqlalchemy.sql import func
+      from sqlalchemy import Table, MetaData, Integer, String, Column
+      
+      metadata = MetaData()
 
-      class MyClass(object):
-          @property
-          def myprop(self):
-              return 'foo'
-
-      class MyComparator(PropComparator):
+      word_table = Table('word', metadata,
+        Column('id', Integer, primary_key=True),
+        Column('word', String(200), nullable=False)
+      )
+      
+      class CaseInsensitiveComparator(PropComparator):
+          def __clause_element__(self):
+              return self.prop
+              
           def __eq__(self, other):
-              return func.lower(other) == foo
+              return func.lower(self.__clause_element__()) == func.lower(other)
 
-      mapper(MyClass, mytable, properties={
-               'myprop': comparable_property(MyComparator)})
+      class SearchWord(object):
+          pass
 
-    Used with the ``properties`` dictionary sent to
-    :func:`~sqlalchemy.orm.mapper`.
-
-    Note that :func:`comparable_property` is usually not needed for basic
-    needs. The recipe at :mod:`.derived_attributes` offers a simpler
-    pure-Python method of achieving a similar result using class-bound
-    attributes with SQLAlchemy expression constructs.
-
+      mapper(SearchWord, word_table, properties={
+               'word_insensitive': comparable_property(CaseInsensitiveComparator)
+              })
+    
+    A mapping like the above allows the ``word_insensitive`` attribute 
+    to render an expression like::
+    
+        >>> print SearchWord.word_insensitive == "Trucks"
+        lower(:lower_1) = lower(:lower_2)
+        
     :param comparator_factory:
       A PropComparator subclass or factory that defines operator behavior
       for this property.

@@ -8,7 +8,9 @@ Hybrid Attributes
 API Reference
 -------------
 
-.. autoclass:: method
-.. autoclass:: property_
+.. autoclass:: hybrid_method
+    :members:
+.. autoclass:: hybrid_property
+    :members:
 .. autoclass:: Comparator
-
+    :show-inheritance:

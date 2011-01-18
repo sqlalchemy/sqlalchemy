@@ -174,6 +174,13 @@ def create_proxied_attribute(descriptor):
                 self._comparator = self._comparator.adapted(self.adapter)
             return self._comparator
 
+        def adapted(self, adapter):
+            """Proxy adapted() for the use case of AliasedClass calling adapted."""
+
+            return self.__class__(self.class_, self.key, self.descriptor,
+                                       self._comparator,
+                                       adapter)
+
         def __get__(self, instance, owner):
             if instance is None:
                 return self

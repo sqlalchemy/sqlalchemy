@@ -1,102 +1,240 @@
-"""
-
-tests for sqlalchemy.ext.hybrid TODO
-
-
-"""
-
-
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import func, Integer, String
+from sqlalchemy.orm import relationship, Session, aliased
+from test.lib.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
-from sqlalchemy.orm.interfaces import PropComparator
+from test.lib.testing import TestBase, eq_, AssertsCompiledSQL
 
+class PropertyComparatorTest(TestBase, AssertsCompiledSQL):
 
-"""
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext import hybrid
+    def _fixture(self):
+        Base = declarative_base()
 
-Base = declarative_base()
+        class UCComparator(hybrid.Comparator):
 
+            def __eq__(self, other):
+                if other is None:
+                    return self.expression == None
+                else:
+                    return func.upper(self.expression) == func.upper(other)
 
-class UCComparator(hybrid.Comparator):
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
 
-    def __eq__(self, other):
-        if other is None:
-            return self.expression == None
-        else:
-            return func.upper(self.expression) == func.upper(other)
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value - 5
 
-class A(Base):
-    __tablename__ = 'a'
-    id = Column(Integer, primary_key=True)
-    _value = Column("value", String)
+            @value.comparator
+            def value(cls):
+                return UCComparator(cls._value)
 
-    @hybrid.property_
-    def value(self):
-        return int(self._value)
+            @value.setter
+            def value(self, v):
+                self._value = v + 5
 
-    @value.comparator
-    def value(cls):
-        return UCComparator(cls._value)
+        return A
 
-    @value.setter
-    def value(self, v):
-        self.value = v
-print aliased(A).value
-print aliased(A).__tablename__
+    def test_set_get(self):
+        A = self._fixture()
+        a1 = A(value=5)
+        eq_(a1._value, 10)
+        eq_(a1.value, 5)
 
-sess = create_session()
+    def test_value(self):
+        A = self._fixture()
+        eq_(str(A.value==5), "upper(a.value) = upper(:upper_1)")
 
-print A.value == "foo"
-print sess.query(A.value)
-print sess.query(aliased(A).value)
-print sess.query(aliased(A)).filter_by(value="foo")
-"""
+    def test_aliased_value(self):
+        A = self._fixture()
+        eq_(str(aliased(A).value==5), "upper(a_1.value) = upper(:upper_1)")
 
-"""
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext import hybrid
+    def test_query(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(A.value),
+            "SELECT a.value AS a_value FROM a"
+        )
 
-Base = declarative_base()
+    def test_alised_query(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(aliased(A).value),
+            "SELECT a_1.value AS a_1_value FROM a AS a_1"
+        )
 
-class A(Base):
-    __tablename__ = 'a'
-    id = Column(Integer, primary_key=True)
-    _value = Column("value", String)
+    def test_aliased_filter(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(aliased(A)).filter_by(value="foo"),
+            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "FROM a AS a_1 WHERE upper(a_1.value) = upper(:upper_1)"
+        )
 
-    @hybrid.property
-    def value(self):
-        return int(self._value)
+class PropertyExpressionTest(TestBase, AssertsCompiledSQL):
+    def _fixture(self):
+        Base = declarative_base()
 
-    @value.expression
-    def value(cls):
-        return func.foo(cls._value) + cls.bar_value
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
 
-    @value.setter
-    def value(self, v):
-        self.value = v
+            @hybrid.hybrid_property
+            def value(self):
+                return int(self._value) - 5
 
-    @hybrid.property
-    def bar_value(cls):
-        return func.bar(cls._value)
+            @value.expression
+            def value(cls):
+                return func.foo(cls._value) + cls.bar_value
 
-#print A.value
-#print A.value.__doc__
+            @value.setter
+            def value(self, v):
+                self._value = v + 5
 
-print aliased(A).value
-print aliased(A).__tablename__
+            @hybrid.hybrid_property
+            def bar_value(cls):
+                return func.bar(cls._value)
 
-sess = create_session()
+        return A
 
-print sess.query(A).filter_by(value="foo")
+    def test_set_get(self):
+        A = self._fixture()
+        a1 = A(value=5)
+        eq_(a1._value, 10)
+        eq_(a1.value, 5)
 
-print sess.query(aliased(A)).filter_by(value="foo")
+    def test_expression(self):
+        A = self._fixture()
+        self.assert_compile(
+            A.value,
+            "foo(a.value) + bar(a.value)"
+        )
 
+    def test_aliased_expression(self):
+        A = self._fixture()
+        self.assert_compile(
+            aliased(A).value,
+            "foo(a_1.value) + bar(a_1.value)"
+        )
 
-"""
+    def test_query(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(A).filter_by(value="foo"),
+            "SELECT a.value AS a_value, a.id AS a_id "
+            "FROM a WHERE foo(a.value) + bar(a.value) = :param_1"
+        )
+
+    def test_aliased_query(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(aliased(A)).filter_by(value="foo"),
+            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "FROM a AS a_1 WHERE foo(a_1.value) + bar(a_1.value) = :param_1"
+        )
+
+class PropertyValueTest(TestBase, AssertsCompiledSQL):
+    def _fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value - 5
+
+            @value.setter
+            def value(self, v):
+                self._value = v + 5
+
+        return A
+
+    def test_set_get(self):
+        A = self._fixture()
+        a1 = A(value=5)
+        eq_(a1.value, 5)
+        eq_(a1._value, 10)
+
+class MethodExpressionTest(TestBase, AssertsCompiledSQL):
+    def _fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_method
+            def value(self, x):
+                return int(self._value) + x
+
+            @value.expression
+            def value(cls, value):
+                return func.foo(cls._value, value) + value
+
+        return A
+
+    def test_call(self):
+        A = self._fixture()
+        a1 = A(_value=10)
+        eq_(a1.value(7), 17)
+
+    def test_expression(self):
+        A = self._fixture()
+        self.assert_compile(
+            A.value(5),
+            "foo(a.value, :foo_1) + :foo_2"
+        )
+
+    def test_aliased_expression(self):
+        A = self._fixture()
+        self.assert_compile(
+            aliased(A).value(5),
+            "foo(a_1.value, :foo_1) + :foo_2"
+        )
+
+    def test_query(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(A).filter(A.value(5)=="foo"),
+            "SELECT a.value AS a_value, a.id AS a_id "
+            "FROM a WHERE foo(a.value, :foo_1) + :foo_2 = :param_1"
+        )
+
+    def test_aliased_query(self):
+        A = self._fixture()
+        sess = Session()
+        a1 = aliased(A)
+        self.assert_compile(
+            sess.query(a1).filter(a1.value(5)=="foo"),
+            "SELECT a_1.value AS a_1_value, a_1.id AS a_1_id "
+            "FROM a AS a_1 WHERE foo(a_1.value, :foo_1) + :foo_2 = :param_1"
+        )
+
+    def test_query_col(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(A.value(5)),
+            "SELECT foo(a.value, :foo_1) + :foo_2 AS anon_1 FROM a"
+        )
+
+    def test_aliased_query_col(self):
+        A = self._fixture()
+        sess = Session()
+        self.assert_compile(
+            sess.query(aliased(A).value(5)),
+            "SELECT foo(a_1.value, :foo_1) + :foo_2 AS anon_1 FROM a AS a_1"
+        )

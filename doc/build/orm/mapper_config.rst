@@ -382,6 +382,8 @@ function. The standard SQLAlchemy technique for descriptors is to create a
 plain descriptor, and to have it read/write from a mapped attribute with a
 different name. Below we illustrate this using Python 2.6-style properties::
 
+    from sqlalchemy.orm import mapper
+
     class EmailAddress(object):
 
         @property
@@ -401,33 +403,92 @@ The approach above will work, but there's more we can add. While our
 descriptor and into the ``_email`` mapped attribute, the class level
 ``EmailAddress.email`` attribute does not have the usual expression semantics
 usable with :class:`.Query`. To provide these, we instead use the
-:func:`.synonym` function as follows::
+:mod:`~sqlalchemy.ext.hybrid` extension as follows::
 
-    mapper(EmailAddress, addresses_table, properties={
-        'email': synonym('_email', map_column=True)
-    })
+    from sqlalchemy.ext.hybrid import hybrid_property
 
-The ``email`` attribute is now usable in the same way as any
-other mapped attribute, including filter expressions,
-get/set operations, etc.::
+    class EmailAddress(object):
 
-    address = session.query(EmailAddress).filter(EmailAddress.email == 'some address').one()
+        @hybrid_property
+        def email(self):
+            return self._email
 
-    address.email = 'some other address'
-    session.flush()
+        @email.setter
+        def email(self, email):
+            self._email = email
 
-    q = session.query(EmailAddress).filter_by(email='some other address')
+The ``email`` attribute now provides a SQL expression when used at the class level:
 
-If the mapped class does not provide a property, the :func:`.synonym` construct will create a default getter/setter object automatically.
+.. sourcecode:: python+sql
 
-To use synonyms with :mod:`~sqlalchemy.ext.declarative`, see the section 
-:ref:`declarative_synonyms`.
+    from sqlalchemy.orm import Session
+    session = Session()
 
-Note that the "synonym" feature is eventually to be replaced by the superior
-"hybrid attributes" approach, slated to become a built in feature of SQLAlchemy
-in a future release.  "hybrid" attributes are simply Python properties that evaulate
-at both the class level and at the instance level.  For an example of their usage,
-see the :mod:`derived_attributes` example.
+    {sql}address = session.query(EmailAddress).filter(EmailAddress.email == 'address@example.com').one()
+    SELECT addresses.email AS addresses_email, addresses.id AS addresses_id 
+    FROM addresses 
+    WHERE addresses.email = ?
+    ('address@example.com',)
+    {stop}
+
+    address.email = 'otheraddress@example.com'
+    {sql}session.commit()
+    UPDATE addresses SET email=? WHERE addresses.id = ?
+    ('otheraddress@example.com', 1)
+    COMMIT
+    {stop}
+
+The :class:`~.hybrid_property` also allows us to change the behavior of the attribute, including 
+defining separate behaviors when the attribute is accessed at the instance level versus at 
+the class/expression level, using the :meth:`.hybrid_property.expression` modifier.  Such
+as, if we wanted to add a host name automatically, we might define two sets of string manipulation
+logic::
+
+    class EmailAddress(object):
+        @hybrid_property
+        def email(self):
+            """Return the value of _email up until the last twelve 
+            characters."""
+
+            return self._email[:-12]
+
+        @email.setter
+        def email(self, email):
+            """Set the value of _email, tacking on the twelve character 
+            value @example.com."""
+
+            self._email = email + "@example.com"
+
+        @email.expression
+        def email(cls):
+            """Produce a SQL expression that represents the value 
+            of the _email column, minus the last twelve characters."""
+
+            return func.substr(cls._email, 0, func.length(cls._email) - 12)
+
+Above, accessing the ``email`` property of an instance of ``EmailAddress`` will return the value of 
+the ``_email`` attribute, removing
+or adding the hostname ``@example.com`` from the value.   When we query against the ``email`` attribute,
+a SQL function is rendered which produces the same effect:
+
+.. sourcecode:: python+sql
+
+    {sql}address = session.query(EmailAddress).filter(EmailAddress.email == 'address').one()
+    SELECT addresses.email AS addresses_email, addresses.id AS addresses_id 
+    FROM addresses 
+    WHERE substr(addresses.email, ?, length(addresses.email) - ?) = ?
+    (0, 12, 'address')
+    {stop}
+
+
+
+Read more about Hybrids at :ref:`hybrids_toplevel`.
+
+Synonyms
+~~~~~~~~
+
+Synonyms are a mapper-level construct that applies expression behavior to a descriptor
+based attribute.  The functionality of synonym is superceded as of 0.7 by hybrid attributes.
 
 .. autofunction:: synonym
 
@@ -438,11 +499,16 @@ Custom Comparators
 
 The expressions returned by comparison operations, such as
 ``User.name=='ed'``, can be customized, by implementing an object that
-explicitly defines each comparison method needed. This is a relatively rare
-use case. For most needs, the approach in :ref:`mapper_sql_expressions` will
-often suffice, or alternatively a scheme like that of the 
-:mod:`.derived_attributes` example.  Those approaches should be tried first
-before resorting to custom comparison objects.
+explicitly defines each comparison method needed. 
+
+This is a relatively rare use case which generally applies only to 
+highly customized types.  Usually, custom SQL behaviors can be 
+associated with a mapped class by composing together the classes'
+existing mapped attributes with other expression components, 
+using either mapped SQL expressions as those described in
+:ref:`mapper_sql_expressions`, or so-called "hybrid" attributes
+as described at :ref:`hybrids_toplevel`.  Those approaches should be 
+considered first before resorting to custom comparison objects.
 
 Each of :func:`.column_property`, :func:`~.composite`, :func:`.relationship`,
 and :func:`.comparable_property` accept an argument called
