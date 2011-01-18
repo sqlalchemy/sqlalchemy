@@ -122,9 +122,7 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _sapdb: http://www.sapdb.org/sapdbapi.html
 .. _python-sybase: http://python-sybase.sourceforge.net/
 
-Further detail on dialects is available at :ref:`dialect_toplevel`
-as well as additional notes on the wiki at `Database Notes
-<http://www.sqlalchemy.org/trac/wiki/DatabaseNotes>`_
+Further detail on dialects is available at :ref:`dialect_toplevel`.
 
 
 .. _create_engine_args:

@@ -6,9 +6,9 @@
 
 """Support for the MaxDB database.
 
-This dialect is *not* ported to SQLAlchemy 0.6.
+This dialect is *not* ported to SQLAlchemy 0.6 or 0.7.
 
-This dialect is *not* tested on SQLAlchemy 0.6.
+This dialect is *not* tested on SQLAlchemy 0.6 or 0.7.
 
 Overview
 --------
@@ -30,8 +30,6 @@ use upper case for DB-API.
 
 Implementation Notes
 --------------------
-
-Also check the DatabaseNotes page on the wiki for detailed information.
 
 With the 7.6.00.37 driver and Python 2.5, it seems that all DB-API
 generated exceptions are broken and can cause Python to crash.
@@ -57,6 +55,62 @@ required components such as an Max-aware 'old oracle style' join compiler
 (thetas with (+) outer indicators) are already done and available for
 integration- email the devel list if you're interested in working on
 this.
+
+Versions tested: 7.6.03.07 and 7.6.00.37, native Python DB-API
+
+* MaxDB has severe limitations on OUTER JOINs, which are essential to ORM
+  eager loading. And rather than raise an error if a SELECT can't be serviced,
+  the database simply returns incorrect results.
+* Version 7.6.03.07 seems to JOIN properly, however the docs do not show the
+  OUTER restrictions being lifted (as of this writing), and no changelog is
+  available to confirm either. If you are using a different server version and
+  your tasks require the ORM or any semi-advanced SQL through the SQL layer,
+  running the SQLAlchemy test suite against your database is HIGHLY
+  recommended before you begin.
+* Version 7.6.00.37 is LHS/RHS sensitive in `FROM lhs LEFT OUTER JOIN rhs ON
+  lhs.col=rhs.col` vs `rhs.col=lhs.col`!
+* Version 7.6.00.37 is confused by `SELECT DISTINCT col as alias FROM t ORDER
+  BY col` - these aliased, DISTINCT, ordered queries need to be re-written to
+  order by the alias name.
+* Version 7.6.x supports creating a SAVEPOINT but not its RELEASE.
+* MaxDB supports autoincrement-style columns (DEFAULT SERIAL) and independent
+  sequences. When including a DEFAULT SERIAL column in an insert, 0 needs to
+  be inserted rather than NULL to generate a value.
+* MaxDB supports ANSI and "old Oracle style" theta joins with (+) outer join
+  indicators.
+* The SQLAlchemy dialect is schema-aware and probably won't function correctly
+  on server versions (pre-7.6?). Support for schema-less server versions could
+  be added if there's call.
+* ORDER BY is not supported in subqueries. LIMIT is not supported in
+  subqueries. In 7.6.00.37, TOP does work in subqueries, but without limit not
+  so useful. OFFSET does not work in 7.6 despite being in the docs. Row number
+  tricks in WHERE via ROWNO may be possible but it only seems to allow
+  less-than comparison!
+* Version 7.6.03.07 can't LIMIT if a derived table is in FROM: `SELECT * FROM
+  (SELECT * FROM a) LIMIT 2`
+* MaxDB does not support sql's CAST and can only usefullly cast two types.
+  There isn't much implicit type conversion, so be precise when creating
+  `PassiveDefaults` in DDL generation: `'3'` and `3` aren't the same.
+
+sapdb.dbapi
+^^^^^^^^^^^
+
+* As of 2007-10-22 the Python 2.4 and 2.5 compatible versions of the DB-API
+  are no longer available. A forum posting at SAP states that the Python
+  driver will be available again "in the future". The last release from MySQL
+  AB works if you can find it.
+* sequence.NEXTVAL skips every other value!
+* No rowcount for executemany()
+* If an INSERT into a table with a DEFAULT SERIAL column inserts the results
+  of a function `INSERT INTO t VALUES (LENGTH('foo'))`, the cursor won't have
+  the serial id. It needs to be manually yanked from tablename.CURRVAL.
+* Super-duper picky about where bind params can be placed. Not smart about
+  converting Python types for some functions, such as `MOD(5, ?)`.
+* LONG (text, binary) values in result sets are read-once. The dialect uses a
+  caching RowProxy when these types are present.
+* Connection objects seem like they want to be either `close()`d or garbage
+  collected, but not both. There's a warning issued but it seems harmless.
+
 
 """
 import datetime, itertools, re
