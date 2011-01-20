@@ -1734,7 +1734,7 @@ class Engine(Connectable, log.Identified):
 
     """
 
-    _execution_options = util.frozendict()
+    _execution_options = util.immutabledict()
     Connection = Connection
 
     def __init__(self, pool, dialect, url, 

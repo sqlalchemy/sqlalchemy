@@ -2556,7 +2556,7 @@ class Executable(_Generative):
     """
 
     supports_execution = True
-    _execution_options = util.frozendict()
+    _execution_options = util.immutabledict()
 
     @_generative
     def execution_options(self, **kw):
@@ -4003,7 +4003,7 @@ class Select(_SelectBase):
     __visit_name__ = 'select'
 
     _prefixes = ()
-    _hints = util.frozendict()
+    _hints = util.immutabledict()
 
     def __init__(self, 
                 columns, 
@@ -4457,7 +4457,7 @@ class UpdateBase(Executable, ClauseElement):
 
     _execution_options = \
         Executable._execution_options.union({'autocommit': True})
-    kwargs = util.frozendict()
+    kwargs = util.immutabledict()
 
     def _process_colparams(self, parameters):
         if isinstance(parameters, (list, tuple)):

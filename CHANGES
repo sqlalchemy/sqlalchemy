@@ -5,7 +5,66 @@ CHANGES
 =======
 0.7.0b1
 =======
+- Detailed descriptions of each change below are 
+  described at:
+  http://www.sqlalchemy.org/trac/wiki/07Migration
+
+- general
+  - New event system, supercedes all extensions, listeners,
+    etc.  [ticket:1902]
+
+  - Logging enhancements
+    [ticket:1926]
+
+  - Setup no longer installs a Nose plugin
+    [ticket:1949]
+
 - orm
+  - More succinct form of query.join(target, onclause)
+    [ticket:1923]
+
+  - Hybrid Attributes, implements/supercedes synonym()
+    [ticket:1903]
+
+  - Rewrite of composites [ticket:2008]
+
+  - Mutation Event Extension, supercedes "mutable=True"
+
+  - PickleType and ARRAY mutability turned off by default
+     [ticket:1980]
+
+  - Simplified polymorphic_on assignment
+    [ticket:1895]
+
+  - Flushing of Orphans that have no parent is allowed
+    [ticket:1912]
+
+  - Warnings generated when collection members, scalar referents 
+    not part of the flush
+    [ticket:1973]
+
+  - Non-`Table`-derived constructs can be mapped
+    [ticket:1876]
+
+  - Tuple label names in Query Improved
+    [ticket:1942]
+
+  - Mapped column attributes reference the most specific 
+    column first
+    [ticket:1892]
+
+  - Mapping to joins with two or more same-named columns 
+    requires explicit declaration
+    [ticket:1896]
+
+  - Mapper requires that polymorphic_on column be present 
+    in the mapped selectable
+    [ticket:1875]
+
+  - compile_mappers() renamed configure_mappers(), simplified 
+    configuration internals
+    [ticket:1966]
+
   - the aliased() function, if passed a SQL FromClause element
     (i.e. not a mapped class), will return element.alias() 
     instead of raising an error on AliasedClass.  [ticket:2018]
@@ -21,7 +80,41 @@ CHANGES
     in the open transaction of an engine explicitly.
     [ticket:1996]
 
+  - Query.join(), Query.outerjoin(), eagerload(), 
+    eagerload_all(), others no longer allow lists 
+    of attributes as arguments (i.e. option([x, y, z]) 
+    form, deprecated since 0.5)
+
+  - ScopedSession.mapper is removed 
+    (deprecated since 0.5)
+
 - sql
+  - LIMIT/OFFSET clauses now use bind parameters
+    [ticket:805]
+
+=== TypeDecorator works with primary key columns ===
+
+[ticket:2005] [ticket:2006]
+
+=== `DDL()` Constructs now Escape Percent Signs ===
+
+[ticket:1897]
+
+=== `Table.c` / `MetaData.tables` refined a bit, don't allow direct mutation ===
+
+[ticket:1893] [ticket:1917]
+
+=== Callables passed to `bindparam()` don't get evaluated ===
+
+[ticket:1950]
+
+=== types.type_map is now private, types._type_map ===
+
+[ticket:1870]
+
+=== Non-public Pool Methods Underscored ===
+[ticket:1982]
+
   - Added NULLS FIRST and NULLS LAST support. It's implemented
     as an extension to the asc() and desc() operators, called
     nullsfirst() and nullslast().  [ticket:723]
@@ -63,6 +156,10 @@ CHANGES
     when the row is fetched, as in result row processors.
 
   - TypeDecorator is present in the "sqlalchemy" import space.
+
+-sqlite
+  - SQLite dialect now uses `NullPool` for file-based databases
+    [ticket:1921]
 
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/

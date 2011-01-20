@@ -8,7 +8,7 @@ from compat import callable, cmp, reduce, defaultdict, py25_dict, \
     threading, py3k, jython, win32, set_types, buffer, pickle, \
     update_wrapper, partial, md5_hex, decode_slice, dottedgetter
 
-from _collections import NamedTuple, ImmutableContainer, frozendict, \
+from _collections import NamedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
     OrderedSet, IdentitySet, OrderedIdentitySet, column_set, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \

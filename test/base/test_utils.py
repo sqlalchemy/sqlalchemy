@@ -82,7 +82,7 @@ class OrderedSetTest(TestBase):
 
 class FrozenDictTest(TestBase):
     def test_serialize(self):
-        d = util.frozendict({1:2, 3:4})
+        d = util.immutabledict({1:2, 3:4})
         for loads, dumps in picklers():
             print loads(dumps(d))
 

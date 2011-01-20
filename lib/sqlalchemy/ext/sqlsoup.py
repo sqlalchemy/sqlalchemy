@@ -620,7 +620,7 @@ class SqlSoup(object):
         self.session.expunge_all()
 
     def map_to(self, attrname, tablename=None, selectable=None, 
-                    schema=None, base=None, mapper_args=util.frozendict()):
+                    schema=None, base=None, mapper_args=util.immutabledict()):
         """Configure a mapping to the given attrname.
 
         This is the "master" method that can be used to create any 

@@ -39,7 +39,7 @@ class ImmutableContainer(object):
 
     __delitem__ = __setitem__ = __setattr__ = _immutable
 
-class frozendict(ImmutableContainer, dict):
+class immutabledict(ImmutableContainer, dict):
 
     clear = pop = popitem = setdefault = \
         update = ImmutableContainer._immutable
@@ -53,18 +53,18 @@ class frozendict(ImmutableContainer, dict):
         pass
 
     def __reduce__(self):
-        return frozendict, (dict(self), )
+        return immutabledict, (dict(self), )
 
     def union(self, d):
         if not self:
-            return frozendict(d)
+            return immutabledict(d)
         else:
-            d2 = frozendict(self)
+            d2 = immutabledict(self)
             dict.update(d2, d)
             return d2
 
     def __repr__(self):
-        return "frozendict(%s)" % dict.__repr__(self)
+        return "immutabledict(%s)" % dict.__repr__(self)
 
 class Properties(object):
     """Provide a __getattr__/__setattr__ interface over a dict."""

@@ -1940,7 +1940,7 @@ class MetaData(SchemaItem):
           ``MetaData``.
 
         """
-        self.tables = util.frozendict()
+        self.tables = util.immutabledict()
         self._schemas = set()
         self.bind = bind
         self.metadata = self

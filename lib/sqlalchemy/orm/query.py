@@ -93,10 +93,10 @@ class Query(object):
     _select_from_entity = None
     _filter_aliases = None
     _from_obj_alias = None
-    _joinpath = _joinpoint = util.frozendict()
-    _execution_options = util.frozendict()
-    _params = util.frozendict()
-    _attributes = util.frozendict()
+    _joinpath = _joinpoint = util.immutabledict()
+    _execution_options = util.immutabledict()
+    _params = util.immutabledict()
+    _attributes = util.immutabledict()
     _with_options = ()
     _with_hints = ()
     _enable_single_crit = True

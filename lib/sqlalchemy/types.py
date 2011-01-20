@@ -703,7 +703,7 @@ class _DateAffinity(object):
     def _expression_adaptations(self):
         raise NotImplementedError()
 
-    _blank_dict = util.frozendict()
+    _blank_dict = util.immutabledict()
     def _adapt_expression(self, op, othertype):
         othertype = othertype._type_affinity
         return op, \

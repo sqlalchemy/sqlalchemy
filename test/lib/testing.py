@@ -723,12 +723,12 @@ class AssertsExecutionResults(object):
         numbers of rows that the test suite manipulates.
         """
 
-        class frozendict(dict):
+        class immutabledict(dict):
             def __hash__(self):
                 return id(self)
 
         found = util.IdentitySet(result)
-        expected = set([frozendict(e) for e in expected])
+        expected = set([immutabledict(e) for e in expected])
 
         for wrong in itertools.ifilterfalse(lambda o: type(o) == cls, found):
             fail('Unexpected type "%s", expected "%s"' % (
