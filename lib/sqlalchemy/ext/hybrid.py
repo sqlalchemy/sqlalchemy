@@ -289,7 +289,7 @@ SQL function to both sides::
 """
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, interfaces
-import new
+types = __import__('types')
 
 class hybrid_method(object):
     """A decorator which allows definition of a Python object method with both
@@ -320,9 +320,9 @@ class hybrid_method(object):
 
     def __get__(self, instance, owner):
         if instance is None:
-            return new.instancemethod(self.expr, owner, owner.__class__)
+            return types.MethodType(self.expr, owner, owner.__class__)
         else:
-            return new.instancemethod(self.func, instance, owner)
+            return types.MethodType(self.func, instance, owner)
 
     def expression(self, expr):
         """Provide a modifying decorator that defines a SQL-expression producing method."""
