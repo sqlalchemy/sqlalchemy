@@ -85,35 +85,29 @@ CHANGES
     of attributes as arguments (i.e. option([x, y, z]) 
     form, deprecated since 0.5)
 
-  - ScopedSession.mapper is removed 
-    (deprecated since 0.5)
+  - ScopedSession.mapper is removed (deprecated since 0.5).
 
 - sql
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]
 
-=== TypeDecorator works with primary key columns ===
+  - TypeDecorator works with primary key columns
+    [ticket:2005] [ticket:2006]
 
-[ticket:2005] [ticket:2006]
+  - DDL() constructs now escape percent signs
+    [ticket:1897]
 
-=== `DDL()` Constructs now Escape Percent Signs ===
+  - Table.c / MetaData.tables refined a bit, don't allow direct 
+    mutation  [ticket:1893] [ticket:1917]
 
-[ticket:1897]
+  - Callables passed to `bindparam()` don't get evaluated
+    [ticket:1950]
 
-=== `Table.c` / `MetaData.tables` refined a bit, don't allow direct mutation ===
+  - types.type_map is now private, types._type_map
+    [ticket:1870]
 
-[ticket:1893] [ticket:1917]
-
-=== Callables passed to `bindparam()` don't get evaluated ===
-
-[ticket:1950]
-
-=== types.type_map is now private, types._type_map ===
-
-[ticket:1870]
-
-=== Non-public Pool Methods Underscored ===
-[ticket:1982]
+  - Non-public Pool methods underscored
+    [ticket:1982]
 
   - Added NULLS FIRST and NULLS LAST support. It's implemented
     as an extension to the asc() and desc() operators, called
