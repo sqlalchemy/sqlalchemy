@@ -95,6 +95,7 @@ class ShardedQuery(Query):
 
     def _execute_and_instances(self, context):
         if self._shard_id is not None:
+            context.attributes['shard_id'] = self._shard_id
             result = self.session.connection(
                             mapper=self._mapper_zero(),
                             shard_id=self._shard_id).execute(context.statement, self._params)
@@ -102,6 +103,7 @@ class ShardedQuery(Query):
         else:
             partial = []
             for shard_id in self.query_chooser(self):
+                context.attributes['shard_id'] = shard_id
                 result = self.session.connection(
                             mapper=self._mapper_zero(),
                             shard_id=shard_id).execute(context.statement, self._params)

@@ -87,6 +87,10 @@ CHANGES
 
   - ScopedSession.mapper is removed (deprecated since 0.5).
 
+  - Horizontal shard query places 'shard_id' in 
+    context.attributes where it's accessible by the 
+    "load()" event. [ticket:2031]
+
 - sql
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]
