@@ -1,7 +1,7 @@
 
 # step 1. imports
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
-    String, ForeignKey, Float, DateTime)
+    String, ForeignKey, Float, DateTime, event)
 from sqlalchemy.orm import sessionmaker, mapper, relationship
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators, visitors
@@ -233,6 +233,15 @@ mapper(WeatherLocation, weather_locations, properties={
 
 mapper(Report, weather_reports)
 
+# step 8 (optional), events.  The "shard_id" is placed
+# in the QueryContext where it can be intercepted and associated
+# with objects, if needed.
+
+def add_shard_id(instance, ctx):
+    instance.shard_id = ctx.attributes["shard_id"]
+
+event.listen(WeatherLocation, "load", add_shard_id)
+event.listen(Report, "load", add_shard_id)
 
 # save and load objects!
 
@@ -253,7 +262,11 @@ for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
     sess.add(c)
 sess.commit()
 
-t = sess.query(WeatherLocation).get(tokyo.id)
+tokyo_id = tokyo.id
+
+sess.close()
+
+t = sess.query(WeatherLocation).get(tokyo_id)
 assert t.city == tokyo.city
 assert t.reports[0].temperature == 80.0
 
