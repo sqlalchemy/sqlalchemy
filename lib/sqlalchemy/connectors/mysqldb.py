@@ -87,13 +87,10 @@ class MySQLDBConnector(Connector):
         # supports_sane_rowcount.
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
-            try:
-                CLIENT_FLAGS = __import__(self.dbapi.__package__+'.constants',
-                                          globals(), locals(),
-                                          ['CLIENT'], 0).CLIENT
-                client_flag |= CLIENT_FLAGS.FOUND_ROWS
-            except:
-                pass
+            CLIENT_FLAGS = __import__(
+                                self.dbapi.__name__ + '.constants.CLIENT'
+                                ).constants.CLIENT
+            client_flag |= CLIENT_FLAGS.FOUND_ROWS
             opts['client_flag'] = client_flag
         return [[], opts]
 
