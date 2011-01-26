@@ -1,8 +1,6 @@
-# -*- fill-column: 78 -*-
 # drizzle/base.py
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Michael Bayer mike_mp@zzzcomputing.com
-# and Jason Kirtland.
-# Copyright (C) 2010 Monty Taylor <mordred@inaugust.com>
+# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2010-2011 Monty Taylor <mordred@inaugust.com>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php

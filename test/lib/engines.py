@@ -147,19 +147,15 @@ def utf8_engine(url=None, options=None):
 
     from sqlalchemy.engine import url as engine_url
 
-    if config.db.driver == 'mysqldb' and config.db.dialect.name != 'drizzle':
-        dbapi_ver = config.db.dialect.dbapi.version_info
-        if (dbapi_ver < (1, 2, 1) or
-            dbapi_ver in ((1, 2, 1, 'gamma', 1), (1, 2, 1, 'gamma', 2),
-                          (1, 2, 1, 'gamma', 3), (1, 2, 1, 'gamma', 5))):
-            raise RuntimeError('Character set support unavailable with this '
-                               'driver version: %s' % repr(dbapi_ver))
-        else:
-            url = url or config.db_url
-            url = engine_url.make_url(url)
-            url.query['charset'] = 'utf8'
-            url.query['use_unicode'] = '0'
-            url = str(url)
+    if config.db.dialect.name == 'mysql' and \
+        config.db.driver in ['mysqldb', 'pymysql']:
+        # note 1.2.1.gamma.6 or greater of MySQLdb 
+        # needed here
+        url = url or config.db_url
+        url = engine_url.make_url(url)
+        url.query['charset'] = 'utf8'
+        url.query['use_unicode'] = '0'
+        url = str(url)
 
     return testing_engine(url, options)
 

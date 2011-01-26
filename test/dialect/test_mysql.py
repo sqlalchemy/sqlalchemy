@@ -1404,6 +1404,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
             "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)" % format)
 
     @testing.fails_on('mysql+mysqldb', 'uses format')
+    @testing.fails_on('mysql+pymysql', 'uses format')
     @testing.fails_on('mysql+oursql', 'uses format')
     @testing.fails_on('mysql+pyodbc', 'uses format')
     @testing.fails_on('mysql+zxjdbc', 'uses format')

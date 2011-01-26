@@ -403,6 +403,9 @@ class InvalidateDuringResultTest(TestBase):
         meta.drop_all()
         engine.dispose()
 
+    @testing.fails_on('+pymysql',
+                      "Buffers the result set and doesn't check for "
+                      "connection close")
     @testing.fails_on('+mysqldb',
                       "Buffers the result set and doesn't check for "
                       "connection close")

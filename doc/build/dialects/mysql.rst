@@ -162,6 +162,11 @@ OurSQL Notes
 
 .. automodule:: sqlalchemy.dialects.mysql.oursql
 
+pymysql Notes
+-------------
+
+.. automodule:: sqlalchemy.dialects.mysql.pymysql
+
 MySQL-Connector Notes
 ----------------------
 

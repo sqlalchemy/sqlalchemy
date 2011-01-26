@@ -41,10 +41,11 @@ strings, also pass ``use_unicode=0`` in the connection arguments::
 Known Issues
 -------------
 
-MySQL-python at least as of version 1.2.2 has a serious memory leak related
+MySQL-python version 1.2.2 has a serious memory leak related
 to unicode conversion, a feature which is disabled via ``use_unicode=0``.
-The recommended connection form with SQLAlchemy is::
-
+Using a more recent version of MySQL-python is recommended. The 
+recommended connection form with SQLAlchemy is::
+  
     engine = create_engine('mysql://scott:tiger@localhost/test?charset=utf8&use_unicode=0', pool_recycle=3600)
 
 

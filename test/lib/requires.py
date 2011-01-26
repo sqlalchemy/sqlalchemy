@@ -279,7 +279,8 @@ def cextensions(fn):
 def dbapi_lastrowid(fn):
     return _chain_decorators_on(
         fn,
-        fails_on_everything_except('mysql+mysqldb', 'mysql+oursql', 'sqlite+pysqlite')
+        fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
+                                   'sqlite+pysqlite', 'mysql+pymysql')
     )
 
 def sane_multi_rowcount(fn):

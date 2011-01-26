@@ -166,6 +166,10 @@ CHANGES
     VARCHAR type which is similarly unbounded when no length
     specified.
 
+- mysql
+  - New DBAPI support for pymysql, a pure Python port
+    of MySQL-python.  [ticket:1991]
+
 - drizzle
   - New dialect for Drizzle, a MySQL variant.  Uses MySQL-python
     for the DBAPI.  [ticket:2003]

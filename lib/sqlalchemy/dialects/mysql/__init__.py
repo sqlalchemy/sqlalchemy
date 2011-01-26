@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.dialects.mysql import base, mysqldb, oursql, \
-                                pyodbc, zxjdbc, mysqlconnector
+                                pyodbc, zxjdbc, mysqlconnector, pymysql
 
 # default dialect
 base.dialect = mysqldb.dialect

@@ -48,6 +48,7 @@ class MySQLDBConnector(Connector):
 
     @classmethod
     def dbapi(cls):
+        # is overridden when pymysql is used
         return __import__('MySQLdb')
 
     def do_executemany(self, cursor, statement, parameters, context=None):
@@ -87,7 +88,9 @@ class MySQLDBConnector(Connector):
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
-                from MySQLdb.constants import CLIENT as CLIENT_FLAGS
+                CLIENT_FLAGS = __import__(self.dbapi.__package__+'.constants',
+                                          globals(), locals(),
+                                          ['CLIENT'], 0).CLIENT
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except:
                 pass

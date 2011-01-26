@@ -62,7 +62,7 @@ Driver                     Connect string               Py2K         Py3K       
 **DB2/Informix IDS**
 ibm-db_                    thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
 **Drizzle**
-drizzle_                   ``drizzle+mysqldb``\*        yes          development   no           yes                yes
+mysql-python_              ``drizzle+mysqldb``\*        yes          development   no           yes                yes
 **Firebird**
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
@@ -82,6 +82,7 @@ pymssql_                   ``mssql+pymssql``            yes          development
 `MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          yes           no           yes                yes
 mysql-python_              ``mysql+mysqldb``\*          yes          development   no           yes                yes
 OurSQL_                    ``mysql+oursql``             yes          yes           no           yes                yes
+pymysql_                   ``mysql+pymysql``            yes          development   no           yes                yes
 **Oracle**
 cx_oracle_                 ``oracle+cx_oracle``\*       yes          development   no           yes                yes
 `Oracle JDBC Driver`_      ``oracle+zxjdbc``            no           no            yes          yes                yes
@@ -106,6 +107,7 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _mysql-python: http://sourceforge.net/projects/mysql-python
 .. _MySQL Connector/Python: https://launchpad.net/myconnpy
 .. _OurSQL: http://packages.python.org/oursql/
+.. _pymysql: http://code.google.com/p/pymysql/
 .. _PostgreSQL JDBC Driver: http://jdbc.postgresql.org/
 .. _sqlite3: http://docs.python.org/library/sqlite3.html
 .. _pysqlite: http://pypi.python.org/pypi/pysqlite/
@@ -123,7 +125,6 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _informixdb: http://informixdb.sourceforge.net/
 .. _sapdb: http://www.sapdb.org/sapdbapi.html
 .. _python-sybase: http://python-sybase.sourceforge.net/
-.. _drizzle: http://drizzle.org/
 
 Further detail on dialects is available at :ref:`dialect_toplevel`.
 

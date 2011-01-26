@@ -109,7 +109,7 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
     # so remove some platforms that have wildly divergent
     # callcounts.
     __requires__ = 'python25',
-    __unsupported_on__ = 'postgresql+pg8000',
+    __unsupported_on__ = 'postgresql+pg8000', 'mysql+pymysql'
 
     @classmethod
     def define_tables(cls, metadata):

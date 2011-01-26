@@ -477,7 +477,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
 
     def test_round_trip(self):
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, "\
-                    u"quand une drôle de petit voix m’a réveillé. Elle "\
+                    u"quand une drôle de petite voix m’a réveillé. Elle "\
                     u"disait: « S’il vous plaît… dessine-moi un mouton! »"
 
         unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
@@ -493,7 +493,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         # vs. cursor.execute()
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petit voix m’a réveillé. "\
+                        u"une drôle de petite voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
         unicode_table.insert().execute(
@@ -511,7 +511,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         """ensure compiler processing works for UNIONs"""
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petit voix m’a réveillé. "\
+                        u"une drôle de petite voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
         unicode_table.insert().execute(unicode_varchar=unicodedata,unicode_text=unicodedata)
@@ -536,7 +536,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         """
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petit voix m’a réveillé. "\
+                        u"une drôle de petite voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
         # using Unicode explicly - warning should be emitted
@@ -589,7 +589,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
         """checks String(unicode_error='ignore') is passed to underlying codec."""
 
         unicodedata = u"Alors vous imaginez ma surprise, au lever du jour, quand "\
-                        u"une drôle de petit voix m’a réveillé. "\
+                        u"une drôle de petite voix m’a réveillé. "\
                         u"Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
 
         asciidata = unicodedata.encode('ascii', 'ignore')
@@ -666,7 +666,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
                 eq_(
                       x,
                       u'Alors vous imaginez ma surprise, au lever du jour, quand une '
-                      u'drle de petit voix ma rveill. Elle disait:  Sil vous plat '
+                      u'drle de petite voix ma rveill. Elle disait:  Sil vous plat '
                       u'dessine-moi un mouton! '
                 )
             elif engine.dialect.returns_unicode_strings:
@@ -754,6 +754,7 @@ class EnumTest(TestBase):
         eq_(e1.adapt(ENUM).schema, 'bar')
 
     @testing.fails_on('mysql+mysqldb', "MySQL seems to issue a 'data truncated' warning.")
+    @testing.fails_on('mysql+pymysql', "MySQL seems to issue a 'data truncated' warning.")
     def test_constraint(self):
         assert_raises(exc.DBAPIError, 
             enum_table.insert().execute,

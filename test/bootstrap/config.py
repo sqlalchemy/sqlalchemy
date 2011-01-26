@@ -23,6 +23,7 @@ pg8000=postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
 postgresql_jython=postgresql+zxjdbc://scott:tiger@127.0.0.1:5432/test
 mysql_jython=mysql+zxjdbc://scott:tiger@127.0.0.1:5432/test
 mysql=mysql://scott:tiger@127.0.0.1:3306/test
+pymysql=mysql+pymysql://scott:tiger@127.0.0.1:3306/test?use_unicode=0&charset=utf8
 oracle=oracle://scott:tiger@127.0.0.1:1521
 oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
 mssql=mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test
