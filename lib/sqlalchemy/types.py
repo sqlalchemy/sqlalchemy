@@ -427,7 +427,7 @@ class TypeDecorator(TypeEngine):
 
         """
         adapted = dialect.type_descriptor(self)
-        if adapted is not self:
+        if type(adapted) is not type(self):
             return adapted
         elif isinstance(self.impl, TypeDecorator):
             return self.impl.type_engine(dialect)
@@ -1785,7 +1785,11 @@ class Interval(_DateAffinity, TypeDecorator):
         if self.native and hasattr(cls, '_adapt_from_generic_interval'):
             return cls._adapt_from_generic_interval(self, **kw)
         else:
-            return cls(**kw)
+            return self.__class__(
+                        native=self.native, 
+                        second_precision=self.second_precision, 
+                        day_precision=self.day_precision,
+                        **kw)
 
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)

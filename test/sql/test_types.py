@@ -1506,6 +1506,13 @@ class IntervalTest(TestBase, AssertsExecutionResults):
     def teardown_class(cls):
         metadata.drop_all()
 
+    def test_non_native_adapt(self):
+        interval = Interval(native=False)
+        adapted = interval.dialect_impl(testing.db.dialect)
+        assert type(adapted) is Interval
+        assert adapted.native is False
+        eq_(str(adapted), "DATETIME")
+
     @testing.fails_on("+pg8000", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("postgresql+zxjdbc", "Not yet known how to pass values of the INTERVAL type")
     @testing.fails_on("oracle+zxjdbc", "Not yet known how to pass values of the INTERVAL type")

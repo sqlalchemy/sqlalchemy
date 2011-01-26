@@ -465,7 +465,7 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('base', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('version_id', Integer, nullable=True),
             Column('data', String(50))
         )
