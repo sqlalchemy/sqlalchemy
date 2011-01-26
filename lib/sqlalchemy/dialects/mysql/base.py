@@ -81,7 +81,7 @@ foreign keys.  For these tables, you may supply a
         autoload=True
        )
 
-When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT``` on
+When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT`` on
 an integer primary key column::
 
   >>> t = Table('mytable', metadata,
@@ -151,14 +151,6 @@ available.
 * UPDATE with LIMIT::
 
     update(..., mysql_limit=10)
-
-Troubleshooting
----------------
-
-If you have problems that seem server related, first check that you are
-using the most recent stable MySQL-Python package available.  The Database
-Notes page on the wiki at http://www.sqlalchemy.org is a good resource for
-timely information affecting MySQL in SQLAlchemy.
 
 """
 
@@ -1161,7 +1153,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                 return 'CHAR'
         elif isinstance(type_, sqltypes._Binary):
             return 'BINARY'
-        elif isinstance(type_, NUMERIC):
+        elif isinstance(type_, sqltypes.NUMERIC):
             return self.dialect.type_compiler.process(type_).replace('NUMERIC', 'DECIMAL')
         else:
             return None
@@ -1257,7 +1249,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         if update_stmt._whereclause is not None:
             text += " WHERE " + self.process(update_stmt._whereclause)
 
-        limit = update_stmt.kwargs.get('mysql_limit', None)
+        limit = update_stmt.kwargs.get('%s_limit' % self.dialect.name, None)
         if limit:
             text += " LIMIT %s" % limit
 
@@ -1275,8 +1267,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         """Get table constraints."""
         constraint_string = super(MySQLDDLCompiler, self).create_table_constraints(table)
 
-        is_innodb = table.kwargs.has_key('mysql_engine') and \
-                    table.kwargs['mysql_engine'].lower() == 'innodb'
+        engine_key = '%s_engine' % self.dialect.name
+        is_innodb = table.kwargs.has_key(engine_key) and \
+                    table.kwargs[engine_key].lower() == 'innodb'
 
         auto_inc_column = table._autoincrement_column
 
@@ -1319,8 +1312,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         table_opts = []
         for k in table.kwargs:
-            if k.startswith('mysql_'):
-                opt = k[6:].upper()
+            if k.startswith('%s_' % self.dialect.name):
+                opt = k[len(self.dialect.name)+1:].upper()
 
                 arg = table.kwargs[k]
                 if opt in _options_of_type_string:
@@ -1417,17 +1410,25 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.precision is None:
             return self._extend_numeric(type_, "NUMERIC")
         elif type_.scale is None:
-            return self._extend_numeric(type_, "NUMERIC(%(precision)s)" % {'precision': type_.precision})
+            return self._extend_numeric(type_, 
+                            "NUMERIC(%(precision)s)" % 
+                            {'precision': type_.precision})
         else:
-            return self._extend_numeric(type_, "NUMERIC(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : type_.scale})
+            return self._extend_numeric(type_, 
+                            "NUMERIC(%(precision)s, %(scale)s)" % 
+                            {'precision': type_.precision, 'scale' : type_.scale})
 
     def visit_DECIMAL(self, type_):
         if type_.precision is None:
             return self._extend_numeric(type_, "DECIMAL")
         elif type_.scale is None:
-            return self._extend_numeric(type_, "DECIMAL(%(precision)s)" % {'precision': type_.precision})
+            return self._extend_numeric(type_, 
+                            "DECIMAL(%(precision)s)" % 
+                            {'precision': type_.precision})
         else:
-            return self._extend_numeric(type_, "DECIMAL(%(precision)s, %(scale)s)" % {'precision': type_.precision, 'scale' : type_.scale})
+            return self._extend_numeric(type_, 
+                            "DECIMAL(%(precision)s, %(scale)s)" % 
+                            {'precision': type_.precision, 'scale' : type_.scale})
 
     def visit_DOUBLE(self, type_):
         if type_.precision is not None and type_.scale is not None:
@@ -1446,8 +1447,11 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_numeric(type_, 'REAL')
 
     def visit_FLOAT(self, type_):
-        if self._mysql_type(type_) and type_.scale is not None and type_.precision is not None:
-            return self._extend_numeric(type_, "FLOAT(%s, %s)" % (type_.precision, type_.scale))
+        if self._mysql_type(type_) and \
+            type_.scale is not None and \
+            type_.precision is not None:
+            return self._extend_numeric(type_, 
+                            "FLOAT(%s, %s)" % (type_.precision, type_.scale))
         elif type_.precision is not None:
             return self._extend_numeric(type_, "FLOAT(%s)" % (type_.precision,))
         else:
@@ -1455,19 +1459,25 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_INTEGER(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, "INTEGER(%(display_width)s)" % {'display_width': type_.display_width})
+            return self._extend_numeric(type_, 
+                        "INTEGER(%(display_width)s)" % 
+                        {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "INTEGER")
 
     def visit_BIGINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, "BIGINT(%(display_width)s)" % {'display_width': type_.display_width})
+            return self._extend_numeric(type_, 
+                        "BIGINT(%(display_width)s)" % 
+                        {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "BIGINT")
 
     def visit_MEDIUMINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, "MEDIUMINT(%(display_width)s)" % {'display_width': type_.display_width})
+            return self._extend_numeric(type_, 
+                        "MEDIUMINT(%(display_width)s)" % 
+                        {'display_width': type_.display_width})
         else:
             return self._extend_numeric(type_, "MEDIUMINT")
 
@@ -1479,7 +1489,10 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_SMALLINT(self, type_):
         if self._mysql_type(type_) and type_.display_width is not None:
-            return self._extend_numeric(type_, "SMALLINT(%(display_width)s)" % {'display_width': type_.display_width})
+            return self._extend_numeric(type_, 
+                        "SMALLINT(%(display_width)s)" % 
+                        {'display_width': type_.display_width}
+                    )
         else:
             return self._extend_numeric(type_, "SMALLINT")
 
@@ -1526,7 +1539,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
-            raise exc.InvalidRequestError("VARCHAR requires a length when rendered on MySQL")
+            raise exc.InvalidRequestError(
+                    "VARCHAR requires a length on dialect %s" % 
+                    self.dialect.name)
 
     def visit_CHAR(self, type_):
         if type_.length:
@@ -1540,7 +1555,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
         else:
-            raise exc.InvalidRequestError("NVARCHAR requires a length when rendered on MySQL")
+            raise exc.InvalidRequestError(
+                    "NVARCHAR requires a length on dialect %s" % 
+                    self.dialect.name)
 
     def visit_NCHAR(self, type_):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
@@ -2090,7 +2107,7 @@ class MySQLTableDefinitionParser(object):
         self.dialect = dialect
         self.preparer = preparer
         self._prep_regexes()
-
+    
     def parse(self, show_create, charset):
         state = ReflectedState()
         state.charset = charset
@@ -2194,7 +2211,7 @@ class MySQLTableDefinitionParser(object):
             options.pop(nope, None)
 
         for opt, val in options.items():
-            state.table_options['mysql_%s' % opt] = val
+            state.table_options['%s_%s' % (self.dialect.name, opt)] = val
 
     def _parse_column(self, line, state):
         """Extract column details.

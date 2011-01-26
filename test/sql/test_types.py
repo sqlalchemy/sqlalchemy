@@ -70,13 +70,16 @@ class AdaptTest(TestBase):
                 (CHAR, "CHAR"),
                 (NCHAR, ("NCHAR", "NATIONAL CHAR")),
                 (BLOB, ("BLOB", "BLOB SUB_TYPE 0")),
-                (BOOLEAN, ("BOOLEAN", "BOOL"))
+                (BOOLEAN, ("BOOLEAN", "BOOL", "INTEGER"))
             ):
                 if isinstance(expected, str):
                     expected = (expected, )
 
-                compiled = types.to_instance(type_).\
+                try:
+                    compiled = types.to_instance(type_).\
                             compile(dialect=dialect)
+                except NotImplementedError:
+                    continue
 
                 assert compiled in expected, \
                     "%r matches none of %r for dialect %s" % \

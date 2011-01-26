@@ -155,6 +155,7 @@ def sequences(fn):
     return _chain_decorators_on(
         fn,
         no_support('access', 'no SEQUENCE support'),
+        no_support('drizzle', 'no SEQUENCE support'),
         no_support('mssql', 'no SEQUENCE support'),
         no_support('mysql', 'no SEQUENCE support'),
         no_support('sqlite', 'no SEQUENCE support'),
@@ -228,11 +229,19 @@ def two_phase_transactions(fn):
         no_support('maxdb', 'not supported by database'),
         no_support('mssql', 'FIXME: guessing, needs confirmation'),
         no_support('oracle', 'no SA implementation'),
+        no_support('drizzle', 'not supported by database'),
         no_support('sqlite', 'not supported by database'),
         no_support('sybase', 'FIXME: guessing, needs confirmation'),
         no_support('postgresql+zxjdbc', 'FIXME: JDBC driver confuses the transaction state, may '
                    'need separate XA implementation'),
         exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
+        )
+
+def views(fn):
+    """Target database must support VIEWs."""
+    return _chain_decorators_on(
+        fn,
+        no_support('drizzle', 'no VIEW support'),
         )
 
 def unicode_connections(fn):

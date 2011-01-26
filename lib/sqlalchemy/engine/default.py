@@ -37,6 +37,7 @@ class DefaultDialect(base.Dialect):
     # not cx_oracle.
     execute_sequence_format = tuple
 
+    supports_views = True
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False

@@ -6,6 +6,7 @@
 
 __all__ = (
 #    'access',
+    'drizzle',
     'firebird',
 #    'informix',
 #    'maxdb',

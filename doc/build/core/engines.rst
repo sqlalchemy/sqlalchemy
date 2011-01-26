@@ -61,6 +61,8 @@ Driver                     Connect string               Py2K         Py3K       
 =========================  ===========================  ===========  ===========   ===========  =================  ============
 **DB2/Informix IDS**
 ibm-db_                    thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
+**Drizzle**
+drizzle_                   ``drizzle+mysqldb``\*        yes          development   no           yes                yes
 **Firebird**
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
@@ -121,6 +123,7 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _informixdb: http://informixdb.sourceforge.net/
 .. _sapdb: http://www.sapdb.org/sapdbapi.html
 .. _python-sybase: http://python-sybase.sourceforge.net/
+.. _drizzle: http://drizzle.org/
 
 Further detail on dialects is available at :ref:`dialect_toplevel`.
 

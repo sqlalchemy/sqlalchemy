@@ -166,6 +166,10 @@ CHANGES
     VARCHAR type which is similarly unbounded when no length
     specified.
 
+- drizzle
+  - New dialect for Drizzle, a MySQL variant.  Uses MySQL-python
+    for the DBAPI.  [ticket:2003]
+
 0.6.6
 =====
 - orm

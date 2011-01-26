@@ -12,6 +12,7 @@ from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.postgresql import base as postgresql
 postgres = postgresql
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.dialects.drizzle import base as drizzle
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.firebird import base as firebird
 from sqlalchemy.dialects.maxdb import base as maxdb
@@ -23,6 +24,7 @@ from sqlalchemy.dialects.sybase import base as sybase
 
 __all__ = (
     'access',
+    'drizzle',
     'firebird',
     'informix',
     'maxdb',
