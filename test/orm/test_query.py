@@ -656,6 +656,17 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         eq_(User(id=7), q.one())
 
+    def test_named_subquery(self):
+        session = create_session()
+        a1 = session.query(User.id).filter(User.id==7).subquery('foo1')
+        a2 = session.query(User.id).filter(User.id==7).subquery(name='foo2')
+        a3 = session.query(User.id).filter(User.id==7).subquery()
+
+        eq_(a1.name, 'foo1')
+        eq_(a2.name, 'foo2')
+        eq_(a3.name, '%%(%d anon)s' % id(a3))
+
+
     def test_label(self):
         session = create_session()
 

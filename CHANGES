@@ -176,6 +176,11 @@ CHANGES
 
 0.6.7
 =====
+- orm
+  - Added a `name` argument to `Query.subquery()`, to allow
+    a fixed name to be assigned to the alias object.
+    [ticket:2030]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]

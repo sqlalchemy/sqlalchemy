@@ -420,18 +420,25 @@ class Query(object):
             stmt = stmt.params(self._params)
         return stmt._annotate({'_halt_adapt': True})
 
-    def subquery(self):
+    def subquery(self, name=None):
         """return the full SELECT statement represented by this :class:`.Query`, 
         embedded within an :class:`.Alias`.
 
         Eager JOIN generation within the query is disabled.
 
-        The statement by default will not have disambiguating labels
-        applied to the construct unless with_labels(True) is called
-        first.
+        The statement will not have disambiguating labels
+        applied to the list of selected columns unless the 
+        :meth:`.Query.with_labels` method is used to generate a new
+        :class:`.Query` with the option enabled.
+
+        :param name: string name to be assigned as the alias; 
+            this is passed through to :meth:`.FromClause.alias`.
+            If ``None``, a name will be deterministically generated
+            at compile time.
+        
 
         """
-        return self.enable_eagerloads(False).statement.alias()
+        return self.enable_eagerloads(False).statement.alias(name=name)
 
     def label(self, name):
         """Return the full SELECT statement represented by this :class:`.Query`, converted 
