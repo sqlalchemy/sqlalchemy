@@ -189,6 +189,10 @@ CHANGES
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
 
+  - Added some defs to the resultproxy.c extension so that
+    the extension compiles and runs on Python 2.4.
+    [ticket:2023]
+
 0.6.6
 =====
 - orm
