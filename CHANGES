@@ -3,6 +3,12 @@
 =======
 CHANGES
 =======
+0.6.7
+=====
+- sql
+  - Column.copy(), as used in table.tometadata(), copies the 
+    'doc' attribute.  [ticket:2028]
+
 0.6.6
 =====
 - orm
