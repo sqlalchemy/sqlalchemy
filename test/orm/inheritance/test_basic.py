@@ -1420,6 +1420,49 @@ class OptimizedLoadTest(_base.MappedTest):
             ),
         )
 
+class NoPKOnSubTableWarningTest(testing.TestBase):
+
+    def _fixture(self):
+        metadata = MetaData()
+        parent = Table('parent', metadata,
+            Column('id', Integer, primary_key=True)
+        )
+        child = Table('child', metadata,
+            Column('id', Integer, ForeignKey('parent.id'))
+        )
+        return parent, child
+
+    def tearDown(self):
+        clear_mappers()
+
+    def test_warning_on_sub(self):
+        parent, child = self._fixture()
+
+        class P(object):
+            pass
+        class C(P):
+            pass
+
+        mapper(P, parent)
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Could not assemble any primary keys for locally mapped "
+            "table 'child' - no rows will be persisted in this Table.",
+            mapper, C, child, inherits=P
+        )
+
+    def test_no_warning_with_explicit(self):
+        parent, child = self._fixture()
+
+        class P(object):
+            pass
+        class C(P):
+            pass
+
+        mapper(P, parent)
+        mc = mapper(C, child, inherits=P, primary_key=[parent.c.id])
+        eq_(mc.primary_key, (parent.c.id,))
+
 class PKDiscriminatorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

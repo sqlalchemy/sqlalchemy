@@ -20,7 +20,7 @@ import operator
 from itertools import chain, groupby
 deque = __import__('collections').deque
 
-from sqlalchemy import sql, util, log, exc as sa_exc, event
+from sqlalchemy import sql, util, log, exc as sa_exc, event, schema
 from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
 from sqlalchemy.orm import instrumentation, attributes, sync, \
                         exc as orm_exc, unitofwork, events
@@ -505,6 +505,12 @@ class Mapper(object):
                         "Mapper %s could not assemble any primary "
                         "key columns for mapped table '%s'" % 
                         (self, self.mapped_table.description))
+        elif self.local_table not in self._pks_by_table and \
+            isinstance(self.local_table, schema.Table):
+            util.warn("Could not assemble any primary "
+                        "keys for locally mapped table '%s' - "
+                        "no rows will be persisted in this Table." 
+                        % self.local_table.description)
 
         if self.inherits and \
                 not self.concrete and \

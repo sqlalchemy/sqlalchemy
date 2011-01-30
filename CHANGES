@@ -181,6 +181,10 @@ CHANGES
     a fixed name to be assigned to the alias object.
     [ticket:2030]
 
+  - A warning is emitted when a joined-table inheriting mapper
+    has no primary keys on the locally mapped table
+    (but has pks on the superclass table).  [ticket:2019]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
