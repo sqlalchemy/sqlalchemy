@@ -174,6 +174,12 @@ CHANGES
   - New dialect for Drizzle, a MySQL variant.  Uses MySQL-python
     for the DBAPI.  [ticket:2003]
 
+0.6.7
+=====
+- sql
+  - Column.copy(), as used in table.tometadata(), copies the 
+    'doc' attribute.  [ticket:2028]
+
 0.6.6
 =====
 - orm
