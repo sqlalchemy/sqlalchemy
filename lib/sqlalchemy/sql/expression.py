@@ -670,7 +670,7 @@ def alias(selectable, name=None):
         at compile time.
 
     """
-    return Alias(selectable, alias=alias)
+    return Alias(selectable, name=name)
 
 
 def literal(value, type_=None):
@@ -3356,7 +3356,7 @@ class Alias(FromClause):
     __visit_name__ = 'alias'
     named_with_column = True
 
-    def __init__(self, selectable, alias=None):
+    def __init__(self, selectable, name=None):
         baseselectable = selectable
         while isinstance(baseselectable, Alias):
             baseselectable = baseselectable.element
@@ -3365,12 +3365,12 @@ class Alias(FromClause):
         if self.supports_execution:
             self._execution_options = baseselectable._execution_options
         self.element = selectable
-        if alias is None:
+        if name is None:
             if self.original.named_with_column:
-                alias = getattr(self.original, 'name', None)
-            alias = _generated_label('%%(%d %s)s' % (id(self), alias
+                name = getattr(self.original, 'name', None)
+            name = _generated_label('%%(%d %s)s' % (id(self), name
                     or 'anon'))
-        self.name = alias
+        self.name = name
 
     @property
     def description(self):
