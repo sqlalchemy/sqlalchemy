@@ -32,7 +32,7 @@ from sqlalchemy.util import pickle
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
-from sqlalchemy import processors
+from sqlalchemy import processors, events
 import collections
 default = util.importlater("sqlalchemy.engine", "default")
 
@@ -1391,12 +1391,17 @@ class Binary(LargeBinary):
                              'LargeBinary.')
         LargeBinary.__init__(self, *arg, **kw)
 
-class SchemaType(object):
+class SchemaType(events.SchemaEventTarget):
     """Mark a type as possibly requiring schema-level DDL for usage.
 
     Supports types that must be explicitly created/dropped (i.e. PG ENUM type)
     as well as types that are complimented by table or schema level
     constraints, triggers, and other rules.
+    
+    :class:`.SchemaType` classes can also be targets for the 
+    :meth:`.DDLEvents.before_parent_attach` and :meth:`.DDLEvents.after_parent_attach`
+    events, where the events fire off surrounding the association of
+    the type object with a parent :class:`.Column`.
 
     """
 
@@ -1414,7 +1419,7 @@ class SchemaType(object):
     def _set_parent(self, column):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
-    def _set_table(self, table, column):
+    def _set_table(self, column, table):
         table.append_ddl_listener('before-create',
                                   util.portable_instancemethod(
                                         self._on_table_create))
@@ -1550,9 +1555,9 @@ class Enum(String, SchemaType):
         return not self.native_enum or \
                     not compiler.dialect.supports_native_enum
 
-    def _set_table(self, table, column):
+    def _set_table(self, column, table):
         if self.native_enum:
-            SchemaType._set_table(self, table, column)
+            SchemaType._set_table(self, column, table)
 
 
         e = schema.CheckConstraint(
@@ -1713,7 +1718,7 @@ class Boolean(TypeEngine, SchemaType):
     def _should_create_constraint(self, compiler):
         return not compiler.dialect.supports_native_boolean
 
-    def _set_table(self, table, column):
+    def _set_table(self, column, table):
         if not self.create_constraint:
             return
 

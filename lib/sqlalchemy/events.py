@@ -10,12 +10,22 @@ from sqlalchemy import event, exc
 
 class DDLEvents(event.Events):
     """
-    Define create/drop event listers for schema objects.
+    Define event listeners for schema objects,
+    that is, :class:`.SchemaItem` and :class:`.SchemaEvent`
+    subclasses, including :class:`.MetaData`, :class:`.Table`,
+    :class:`.Column`.
+    
+    :class:`.MetaData` and :class:`.Table` support events
+    specifically regarding when CREATE and DROP
+    DDL is emitted to the database.  
+    
+    Attachment events are also provided to customize
+    behavior whenever a child schema element is associated
+    with a parent, such as, when a :class:`.Column` is associated
+    with its :class:`.Table`, when a :class:`.ForeignKeyConstraint`
+    is associated with a :class:`.Table`, etc.
 
-    These events currently apply to :class:`.Table`
-    and :class:`.MetaData` objects as targets.
-
-    e.g.::
+    Example using the ``after_create`` event::
 
         from sqlalchemy import event
         from sqlalchemy import Table, Column, Metadata, Integer
@@ -117,6 +127,35 @@ class DDLEvents(event.Events):
 
         """
 
+    def before_parent_attach(self, target, parent):
+        """Called before a :class:`.SchemaItem` is associated with 
+        a parent :class:`.SchemaItem`.
+        
+        """
+
+    def after_parent_attach(self, target, parent):
+        """Called after a :class:`.SchemaItem` is associated with 
+        a parent :class:`.SchemaItem`.
+        
+        """
+
+class SchemaEventTarget(object):
+    """Base class for elements that are the targets of :class:`.DDLEvents` events.
+    
+    This includes :class:`.SchemaItem` as well as :class:`.SchemaType`.
+    
+    """
+    dispatch = event.dispatcher(DDLEvents)
+
+    def _set_parent(self, parent):
+        """Associate with this SchemaEvent's parent object."""
+
+        raise NotImplementedError()
+
+    def _set_parent_with_dispatch(self, parent):
+        self.dispatch.before_parent_attach(self, parent) 
+        self._set_parent(parent) 
+        self.dispatch.after_parent_attach(self, parent) 
 
 class PoolEvents(event.Events):
     """Available events for :class:`.Pool`.

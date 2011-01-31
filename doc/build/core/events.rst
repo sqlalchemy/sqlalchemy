@@ -28,3 +28,6 @@ Schema Events
 .. autoclass:: sqlalchemy.events.DDLEvents
     :members:
 
+.. autoclass:: sqlalchemy.events.SchemaEventTarget
+    :members:
+

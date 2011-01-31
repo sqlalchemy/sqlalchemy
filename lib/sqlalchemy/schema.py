@@ -48,7 +48,7 @@ __all__.sort()
 
 RETAIN_SCHEMA = util.symbol('retain_schema')
 
-class SchemaItem(visitors.Visitable):
+class SchemaItem(events.SchemaEventTarget, visitors.Visitable):
     """Base class for items that define a database schema."""
 
     __visit_name__ = 'schema_item'
@@ -59,12 +59,7 @@ class SchemaItem(visitors.Visitable):
 
         for item in args:
             if item is not None:
-                item._set_parent(self)
-
-    def _set_parent(self, parent):
-        """Associate with this SchemaItem's parent object."""
-
-        raise NotImplementedError()
+                item._set_parent_with_dispatch(self)
 
     def get_children(self, **kwargs):
         """used to allow SchemaVisitor access"""
@@ -177,8 +172,6 @@ class Table(SchemaItem, expression.TableClause):
 
     __visit_name__ = 'table'
 
-    dispatch = event.dispatcher(events.DDLEvents)
-
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
@@ -207,9 +200,11 @@ class Table(SchemaItem, expression.TableClause):
                 raise exc.InvalidRequestError(
                     "Table '%s' not defined" % (key))
             table = object.__new__(cls)
+            table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
             try:
                 table._init(name, metadata, *args, **kw)
+                table.dispatch.after_parent_attach(table, metadata)
                 return table
             except:
                 metadata._remove_table(name, schema)
@@ -365,12 +360,12 @@ class Table(SchemaItem, expression.TableClause):
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
 
-        column._set_parent(self)
+        column._set_parent_with_dispatch(self)
 
     def append_constraint(self, constraint):
         """Append a ``Constraint`` to this ``Table``."""
 
-        constraint._set_parent(self)
+        constraint._set_parent_with_dispatch(self)
 
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``Table``.
@@ -708,14 +703,13 @@ class Column(SchemaItem, expression.ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = set()
         self.foreign_keys = set()
-        self._table_events = set()
 
         # check if this Column is proxying another column
         if '_proxies' in kwargs:
             self.proxies = kwargs.pop('_proxies')
         # otherwise, add DDL-related events
         elif isinstance(self.type, types.SchemaType):
-            self.type._set_parent(self)
+            self.type._set_parent_with_dispatch(self)
 
         if self.default is not None:
             if isinstance(self.default, (ColumnDefault, Sequence)):
@@ -777,7 +771,7 @@ class Column(SchemaItem, expression.ColumnClause):
             return False
 
     def append_foreign_key(self, fk):
-        fk._set_parent(self)
+        fk._set_parent_with_dispatch(self)
 
     def __repr__(self):
         kwarg = []
@@ -851,15 +845,10 @@ class Column(SchemaItem, expression.ColumnClause):
                     "Index object external to the Table.")
             table.append_constraint(UniqueConstraint(self.key))
 
-        for fn in self._table_events:
-            fn(table, self)
-        del self._table_events
-
     def _on_table_attach(self, fn):
         if self.table is not None:
-            fn(self.table, self)
-        else:
-            self._table_events.add(fn)
+            fn(self, self.table)
+        event.listen(self, 'after_parent_attach', fn)
 
     def copy(self, **kw):
         """Create a copy of this ``Column``, unitialized.
@@ -873,7 +862,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
-        c = Column(
+        return Column(
                 name=self.name, 
                 type_=self.type, 
                 key = self.key, 
@@ -891,9 +880,6 @@ class Column(SchemaItem, expression.ColumnClause):
                 doc=self.doc,
                 *args
                 )
-        if hasattr(self, '_table_events'):
-            c._table_events = list(self._table_events)
-        return c
 
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
@@ -920,9 +906,7 @@ class Column(SchemaItem, expression.ColumnClause):
         selectable._columns.add(c)
         if self.primary_key:
             selectable.primary_key.add(c)
-        for fn in c._table_events:
-            fn(selectable, c)
-        del c._table_events
+        c.dispatch.after_parent_attach(c, selectable)
         return c
 
     def get_children(self, schema_visitor=False, **kwargs):
@@ -1210,7 +1194,7 @@ class ForeignKey(SchemaItem):
         self.parent.foreign_keys.add(self)
         self.parent._on_table_attach(self._set_table)
 
-    def _set_table(self, table, column):
+    def _set_table(self, column, table):
         # standalone ForeignKey - create ForeignKeyConstraint
         # on the hosting Table when attached to the Table.
         if self.constraint is None and isinstance(table, Table):
@@ -1220,7 +1204,7 @@ class ForeignKey(SchemaItem):
                 deferrable=self.deferrable, initially=self.initially,
                 )
             self.constraint._elements[self.parent] = self
-            self.constraint._set_parent(table)
+            self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
 
 class DefaultGenerator(SchemaItem):
@@ -1382,7 +1366,7 @@ class Sequence(DefaultGenerator):
         super(Sequence, self)._set_parent(column)
         column._on_table_attach(self._set_table)
 
-    def _set_table(self, table, column):
+    def _set_table(self, column, table):
         self.metadata = table.metadata
 
     @property
@@ -1407,7 +1391,7 @@ class Sequence(DefaultGenerator):
         bind.drop(self, checkfirst=checkfirst)
 
 
-class FetchedValue(object):
+class FetchedValue(events.SchemaEventTarget):
     """A marker for a transparent database-side default.
 
     Use :class:`.FetchedValue` when the database is configured
@@ -1556,7 +1540,7 @@ class ColumnCollectionMixin(object):
         if self._pending_colargs and \
                 isinstance(self._pending_colargs[0], Column) and \
                 self._pending_colargs[0].table is not None:
-            self._set_parent(self._pending_colargs[0].table)
+            self._set_parent_with_dispatch(self._pending_colargs[0].table)
 
     def _set_parent(self, table):
         for col in self._pending_colargs:
@@ -1643,7 +1627,7 @@ class CheckConstraint(Constraint):
                         __init__(name, deferrable, initially, _create_rule)
         self.sqltext = expression._literal_as_text(sqltext)
         if table is not None:
-            self._set_parent(table)
+            self._set_parent_with_dispatch(table)
 
     def __visit_name__(self):
         if isinstance(self.parent, Table):
@@ -1744,7 +1728,7 @@ class ForeignKeyConstraint(Constraint):
                 )
 
         if table is not None:
-            self._set_parent(table)
+            self._set_parent_with_dispatch(table)
 
     @property
     def columns(self):
@@ -1761,7 +1745,10 @@ class ForeignKeyConstraint(Constraint):
             # resolved to Column objects
             if isinstance(col, basestring):
                 col = table.c[col]
-            fk._set_parent(col)
+
+            if not hasattr(fk, 'parent') or \
+                fk.parent is not col:
+                fk._set_parent_with_dispatch(col)
 
         if self.use_alter:
             def supports_alter(ddl, event, schema_item, bind, **kw):
@@ -1923,8 +1910,6 @@ class MetaData(SchemaItem):
     """
 
     __visit_name__ = 'metadata'
-
-    dispatch = event.dispatcher(events.DDLEvents)
 
     def __init__(self, bind=None, reflect=False):
         """Create a new MetaData object.

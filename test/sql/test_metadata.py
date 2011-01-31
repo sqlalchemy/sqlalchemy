@@ -5,7 +5,8 @@ from test.lib.testing import emits_warning
 import pickle
 from sqlalchemy import Integer, String, UniqueConstraint, \
     CheckConstraint, ForeignKey, MetaData, Sequence, \
-    ForeignKeyConstraint, ColumnDefault, Index
+    ForeignKeyConstraint, ColumnDefault, Index, event,\
+    events
 from test.lib.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
@@ -68,13 +69,16 @@ class MetaDataTest(TestBase, ComparesTables):
 
     def test_uninitialized_column_copy_events(self):
         msgs = []
-        def write(t, c):
+        def write(c, t):
             msgs.append("attach %s.%s" % (t.name, c.name))
         c1 = Column('foo', String())
-        c1._on_table_attach(write)
         m = MetaData()
         for i in xrange(3):
             cx = c1.copy()
+            # as of 0.7, these events no longer copy.  its expected
+            # that listeners will be re-established from the
+            # natural construction of things.
+            cx._on_table_attach(write)
             t = Table('foo%d' % i, m, cx)
         eq_(msgs, ['attach foo0.foo', 'attach foo1.foo', 'attach foo2.foo'])
 
@@ -584,4 +588,48 @@ class ColumnOptionsTest(TestBase):
         for c in (c1, c2, c3):
             c.info['bar'] = 'zip'
             assert c.info['bar'] == 'zip'
+
+
+class CatchAllEventsTest(TestBase):
+
+    def teardown(self):
+        events.SchemaEventTarget.dispatch._clear()
+
+    def test_all_events(self):
+        canary = []
+        def before_attach(obj, parent):
+            canary.append("%s->%s" % (obj.__class__.__name__, parent.__class__.__name__))
+
+        def after_attach(obj, parent):
+            canary.append("%s->%s" % (obj, parent))
+
+        event.listen(events.SchemaEventTarget, "before_parent_attach", before_attach)
+        event.listen(events.SchemaEventTarget, "after_parent_attach", after_attach)
+
+        m = MetaData()
+        t1 = Table('t1', m, 
+            Column('id', Integer, Sequence('foo_id'), primary_key=True),
+            Column('bar', String, ForeignKey('t2.id'))
+        )
+        t2 = Table('t2', m,
+            Column('id', Integer, primary_key=True),
+        )
+
+        # TODO: test more conditions here, constraints, defaults, etc.
+        eq_(
+            canary,
+            [
+                'Sequence->Column', 
+                "Sequence('foo_id', start=None, increment=None, optional=False)->id", 
+                'ForeignKey->Column', 
+                "ForeignKey('t2.id')->bar", 
+                'Table->MetaData', 
+                'Column->Table', 't1.id->t1', 
+                'Column->Table', 't1.bar->t1', 
+                'ForeignKeyConstraint->Table', 
+                'ForeignKeyConstraint()->t1', 
+                't1->MetaData(None)', 
+                'Table->MetaData', 'Column->Table', 
+                't2.id->t2', 't2->MetaData(None)']
+        )
 

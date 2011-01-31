@@ -376,6 +376,9 @@ Schema API Constructs
     :undoc-members:
     :show-inheritance:
 
+.. autoclass:: SchemaItem
+    :show-inheritance:
+
 .. autoclass:: Table
     :members:
     :undoc-members:
@@ -385,6 +388,7 @@ Schema API Constructs
     :members:
     :undoc-members:
     :show-inheritance:
+
 
 .. _metadata_reflection:
 

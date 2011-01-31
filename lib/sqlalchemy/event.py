@@ -48,7 +48,11 @@ class _UnpickleDispatch(object):
 
     """
     def __call__(self, _parent_cls):
-        return _parent_cls.__dict__['dispatch'].dispatch_cls(_parent_cls)
+        for cls in _parent_cls.__mro__:
+            if 'dispatch' in cls.__dict__:
+                return cls.__dict__['dispatch'].dispatch_cls(_parent_cls)
+        else:
+            raise AttributeError("No class with a 'dispatch' member present.")
 
 class _Dispatch(object):
     """Mirror the event listening definitions of an Events class with 
@@ -167,11 +171,17 @@ class _DispatchDescriptor(object):
         assert isinstance(target, type), \
                 "Class-level Event targets must be classes."
 
-        for cls in [target] + target.__subclasses__():
+        stack = [target]
+        while stack:
+            cls = stack.pop(0)
+            stack.extend(cls.__subclasses__())
             self._clslevel[cls].append(obj)
 
     def remove(self, obj, target):
-        for cls in [target] + target.__subclasses__():
+        stack = [target]
+        while stack:
+            cls = stack.pop(0)
+            stack.extend(cls.__subclasses__())
             self._clslevel[cls].remove(obj)
 
     def clear(self):
