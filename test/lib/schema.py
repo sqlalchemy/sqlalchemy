@@ -3,7 +3,7 @@ desired state for different backends.
 """
 
 from test.lib import testing
-from sqlalchemy import schema
+from sqlalchemy import schema, event
 
 __all__ = 'Table', 'Column',
 
@@ -64,11 +64,11 @@ def Column(*args, **kw):
     if 'test_needs_autoincrement' in test_opts and \
         kw.get('primary_key', False) and \
         testing.against('firebird', 'oracle'):
-        def add_seq(tbl, c):
+        def add_seq(c, tbl):
             c._init_items(
                 schema.Sequence(_truncate_name(testing.db.dialect, tbl.name + '_' + c.name + '_seq'), optional=True)
             )
-        col._on_table_attach(add_seq)
+        event.listen(col, 'after_parent_attach', add_seq, propagate=True)
     return col
 
 def _truncate_name(dialect, name):

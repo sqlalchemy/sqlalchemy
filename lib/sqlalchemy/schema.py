@@ -470,6 +470,7 @@ class Table(SchemaItem, expression.TableClause):
                   unique=index.unique,
                   *[table.c[col] for col in index.columns.keys()],
                   **index.kwargs)
+        table.dispatch._update(self.dispatch)
         return table
 
 class Column(SchemaItem, expression.ColumnClause):
@@ -862,7 +863,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
-        return Column(
+        c = Column(
                 name=self.name, 
                 type_=self.type, 
                 key = self.key, 
@@ -880,6 +881,8 @@ class Column(SchemaItem, expression.ColumnClause):
                 doc=self.doc,
                 *args
                 )
+        c.dispatch._update(self.dispatch)
+        return c
 
     def _make_proxy(self, selectable, name=None):
         """Create a *proxy* for this column.
@@ -1039,7 +1042,7 @@ class ForeignKey(SchemaItem):
 
         """
 
-        return ForeignKey(
+        fk = ForeignKey(
                 self._get_colspec(schema=schema),
                 use_alter=self.use_alter,
                 name=self.name,
@@ -1049,6 +1052,8 @@ class ForeignKey(SchemaItem):
                 initially=self.initially,
                 link_to_name=self.link_to_name
                 )
+        fk.dispatch._update(self.dispatch)
+        return fk
 
     def _get_colspec(self, schema=None):
         """Return a string based 'column specification' for this :class:`ForeignKey`.
@@ -1579,8 +1584,10 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return x in self.columns
 
     def copy(self, **kw):
-        return self.__class__(name=self.name, deferrable=self.deferrable,
+        c = self.__class__(name=self.name, deferrable=self.deferrable,
                               initially=self.initially, *self.columns.keys())
+        c.dispatch._update(self.dispatch)
+        return c
 
     def contains_column(self, col):
         return self.columns.contains_column(col)
@@ -1637,11 +1644,13 @@ class CheckConstraint(Constraint):
     __visit_name__ = property(__visit_name__)
 
     def copy(self, **kw):
-        return CheckConstraint(self.sqltext, 
+        c = CheckConstraint(self.sqltext, 
                                 name=self.name,
                                 initially=self.initially,
                                 deferrable=self.deferrable,
                                 _create_rule=self._create_rule)
+        c.dispatch._update(self.dispatch)
+        return c
 
 class ForeignKeyConstraint(Constraint):
     """A table-level FOREIGN KEY constraint.
@@ -1760,7 +1769,7 @@ class ForeignKeyConstraint(Constraint):
 
 
     def copy(self, **kw):
-        return ForeignKeyConstraint(
+        fkc = ForeignKeyConstraint(
                     [x.parent.name for x in self._elements.values()], 
                     [x._get_colspec(**kw) for x in self._elements.values()], 
                     name=self.name, 
@@ -1771,6 +1780,8 @@ class ForeignKeyConstraint(Constraint):
                     initially=self.initially,
                     link_to_name=self.link_to_name
                 )
+        fkc.dispatch._update(self.dispatch)
+        return fkc
 
 class PrimaryKeyConstraint(ColumnCollectionConstraint):
     """A table-level PRIMARY KEY constraint.
