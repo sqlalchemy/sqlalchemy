@@ -49,6 +49,8 @@ from sqlalchemy.dialects.firebird.base import FBDialect, \
                                     FBCompiler, FBExecutionContext
 from sqlalchemy import util, types as sqltypes
 from sqlalchemy.util.compat import decimal
+from re import match
+
 
 class _FBNumeric_kinterbasdb(sqltypes.Numeric):
     def bind_processor(self, dialect):
@@ -133,18 +135,23 @@ class FBDialect_kinterbasdb(FBDialect):
         # that for backward compatibility reasons returns a string like
         #   LI-V6.3.3.12981 Firebird 2.0
         # where the first version is a fake one resembling the old
-        # Interbase signature. This is more than enough for our purposes,
-        # as this is mainly (only?) used by the testsuite.
-
-        from re import match
+        # Interbase signature. 
 
         fbconn = connection.connection
         version = fbconn.server_version
-        m = match('\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+) \w+ (\d+)\.(\d+)', version)
+
+        return self._parse_version_info(version)
+
+    def _parse_version_info(self, version):
+        m = match('\w+-V(\d+)\.(\d+)\.(\d+)\.(\d+)( \w+ (\d+)\.(\d+))?', version)
         if not m:
             raise AssertionError(
                     "Could not determine version from string '%s'" % version)
-        return tuple([int(x) for x in m.group(5, 6, 4)])
+
+        if m.group(5) != None:
+            return tuple([int(x) for x in m.group(6, 7, 4)] + ['firebird'])
+        else:
+            return tuple([int(x) for x in m.group(1, 2, 3)] + ['interbase'])
 
     def is_disconnect(self, e):
         if isinstance(e, (self.dbapi.OperationalError,

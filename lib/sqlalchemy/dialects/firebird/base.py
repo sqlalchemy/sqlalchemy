@@ -375,7 +375,13 @@ class FBDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(FBDialect, self).initialize(connection)
-        self._version_two = self.server_version_info > (2, )
+        self._version_two = ('firebird' in self.server_version_info and \
+                                self.server_version_info >= (2, )
+                            ) or \
+                            ('interbase' in self.server_version_info and \
+                                self.server_version_info >= (6, )
+                            )
+
         if not self._version_two:
             # TODO: whatever other pre < 2.0 stuff goes here
             self.ischema_names = ischema_names.copy()
@@ -510,7 +516,7 @@ class FBDialect(default.DefaultDialect):
     def get_columns(self, connection, table_name, schema=None, **kw):
         # Query to extract the details of all the fields of the given table
         tblqry = """
-        SELECT DISTINCT r.rdb$field_name AS fname,
+        SELECT r.rdb$field_name AS fname,
                         r.rdb$null_flag AS null_flag,
                         t.rdb$type_name AS ftype,
                         f.rdb$field_sub_type AS stype,
@@ -587,7 +593,7 @@ class FBDialect(default.DefaultDialect):
                 'type' : coltype,
                 'nullable' :  not bool(row['null_flag']),
                 'default' : defvalue,
-                'autoincrement':default is None
+                'autoincrement':defvalue is None
             }
 
             if orig_colname.lower() == orig_colname:

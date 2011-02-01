@@ -63,7 +63,7 @@ Driver                     Connect string               Py2K         Py3K       
 ibm-db_                    thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
 **Drizzle**
 mysql-python_              ``drizzle+mysqldb``\*        yes          development   no           yes                yes
-**Firebird**
+**Firebird / Interbase**
 kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
 **Informix**
 informixdb_                ``informix+informixdb``\*    yes          development   no           unknown            unknown

@@ -355,10 +355,18 @@ class MiscTest(TestBase):
         select([func.count(t.c.id)], func.length(t.c.name)
                == 5).execute().first()[0] == 1
 
-    def test_server_version_info(self):
-        version = testing.db.dialect.server_version_info
-        assert len(version) == 3, 'Got strange version info: %s' \
-            % repr(version)
+    def test_version_parsing(self):
+        for string, result in [
+            ("WI-V1.5.0.1234 Firebird 1.5", (1, 5, 1234, 'firebird')),
+            ("UI-V6.3.2.18118 Firebird 2.1", (2, 1, 18118, 'firebird')),
+            ("LI-V6.3.3.12981 Firebird 2.0", (2, 0, 12981, 'firebird')),
+            ("WI-V8.1.1.333", (8, 1, 1, 'interbase')),
+            ("WI-V8.1.1.333 Firebird 1.5", (1, 5, 333, 'firebird')),
+        ]:
+            eq_(
+                testing.db.dialect._parse_version_info(string),
+                result
+            )
 
     @testing.provide_metadata
     def test_rowcount_flag(self):

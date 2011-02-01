@@ -170,6 +170,12 @@ CHANGES
   - New DBAPI support for pymysql, a pure Python port
     of MySQL-python.  [ticket:1991]
 
+- firebird
+  - Some adjustments so that Interbase is supported as well.
+    FB/Interbase version idents are parsed into a structure
+    such as (8, 1, 1, 'interbase') or (2, 1, 588, 'firebird')
+    so they can be distinguished. [ticket:1885]
+
 - drizzle
   - New dialect for Drizzle, a MySQL variant.  Uses MySQL-python
     for the DBAPI.  [ticket:2003]
