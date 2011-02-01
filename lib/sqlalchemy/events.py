@@ -131,11 +131,31 @@ class DDLEvents(event.Events):
         """Called before a :class:`.SchemaItem` is associated with 
         a parent :class:`.SchemaItem`.
         
+        :param target: the target object
+        :param parent: the parent to which the target is being attached.
+        
+        :func:`.event.listen` also accepts a modifier for this event:
+        
+        :param propagate=False: When True, the listener function will
+         be established for any copies made of the target object,
+         i.e. those copies that are generated when
+         :meth:`.Table.tometadata` is used.
+        
         """
 
     def after_parent_attach(self, target, parent):
         """Called after a :class:`.SchemaItem` is associated with 
         a parent :class:`.SchemaItem`.
+
+        :param target: the target object
+        :param parent: the parent to which the target is being attached.
+        
+        :func:`.event.listen` also accepts a modifier for this event:
+        
+        :param propagate=False: When True, the listener function will
+         be established for any copies made of the target object,
+         i.e. those copies that are generated when
+         :meth:`.Table.tometadata` is used.
         
         """
 
