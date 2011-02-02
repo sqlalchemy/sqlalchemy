@@ -1187,7 +1187,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column(String(50))
 
         assert 'inherits' not in Person.__mapper_args__
-        assert class_mapper(Engineer).polymorphic_on is None
+        assert class_mapper(Engineer).polymorphic_identity is None
+        assert class_mapper(Engineer).polymorphic_on is Person.__table__.c.type
 
     def test_custom_join_condition(self):
 

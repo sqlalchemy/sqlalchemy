@@ -305,16 +305,17 @@ class Mapper(object):
 
             if self.polymorphic_identity is not None:
                 self.polymorphic_map[self.polymorphic_identity] = self
-                if self.polymorphic_on is None:
-                    for mapper in self.iterate_to_root():
-                        # try to set up polymorphic on using
-                        # correesponding_column(); else leave
-                        # as None
-                        if mapper.polymorphic_on is not None:
-                            self.polymorphic_on = \
-                                    self.mapped_table.corresponding_column(
-                                                        mapper.polymorphic_on)
-                            break
+
+            if self.polymorphic_on is None:
+                for mapper in self.iterate_to_root():
+                    # try to set up polymorphic on using
+                    # correesponding_column(); else leave
+                    # as None
+                    if mapper.polymorphic_on is not None:
+                        self.polymorphic_on = \
+                                self.mapped_table.corresponding_column(
+                                                    mapper.polymorphic_on)
+                        break
         else:
             self._all_tables = set()
             self.base_mapper = self

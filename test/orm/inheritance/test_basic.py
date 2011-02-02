@@ -1516,6 +1516,50 @@ class PKDiscriminatorTest(_base.MappedTest):
         assert a.name=='a1new'
         assert p.name=='p1new'
 
+class NoPolyIdentInMiddleTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('base', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('type', String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(_base.BasicEntity):
+            pass
+        class B(A):
+            pass
+        class C(B):
+            pass
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(A, base, polymorphic_on=base.c.type)
+        mapper(B, inherits=A)
+        mapper(C, inherits=B, polymorphic_identity='c')
+
+    @testing.resolve_artifact_names
+    def test_load_from_middle(self):
+        s = Session()
+        s.add(C())
+        o = s.query(B).first()
+        eq_(o.type, 'c')
+        assert isinstance(o, C)
+
+    @testing.resolve_artifact_names
+    def test_load_from_base(self):
+        s = Session()
+        s.add(C())
+        o = s.query(A).first()
+        eq_(o.type, 'c')
+        assert isinstance(o, C)
+
+    @testing.resolve_artifact_names
+    def test_discriminator(self):
+        assert class_mapper(B).polymorphic_on is base.c.type
+        assert class_mapper(C).polymorphic_on is base.c.type
 
 class DeleteOrphanTest(_base.MappedTest):
     """Test the fairly obvious, that an error is raised
@@ -1525,7 +1569,6 @@ class DeleteOrphanTest(_base.MappedTest):
     in memory which is the original rationale for this test.
 
     """
-
 
     @classmethod
     def define_tables(cls, metadata):

@@ -191,6 +191,12 @@ CHANGES
     has no primary keys on the locally mapped table
     (but has pks on the superclass table).  [ticket:2019]
 
+  - Fixed bug where "middle" class in a polymorphic hierarchy
+    would have no 'polymorphic_on' column if it didn't also
+    specify a 'polymorphic_identity', leading to strange
+    errors upon refresh, wrong class loaded when querying
+    from that target. [ticket:2038]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
