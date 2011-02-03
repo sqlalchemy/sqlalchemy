@@ -983,8 +983,7 @@ class Mapper(object):
     def _single_table_criterion(self):
         if self.single and \
             self.inherits and \
-            self.polymorphic_on is not None and \
-            self.polymorphic_identity is not None:
+            self.polymorphic_on is not None:
             return self.polymorphic_on.in_(
                 m.polymorphic_identity
                 for m in self.self_and_descendants)

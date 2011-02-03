@@ -195,7 +195,8 @@ CHANGES
     would have no 'polymorphic_on' column if it didn't also
     specify a 'polymorphic_identity', leading to strange
     errors upon refresh, wrong class loaded when querying
-    from that target. [ticket:2038]
+    from that target. Also emits the correct WHERE criterion
+    when using single table inheritance. [ticket:2038]
 
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
