@@ -206,6 +206,14 @@ CHANGES
     the extension compiles and runs on Python 2.4.
     [ticket:2023]
 
+- postgresql
+  - When explicit sequence execution derives the name 
+    of the auto-generated sequence of a SERIAL column, 
+    which currently only occurs if implicit_returning=False, 
+    now accommodates if the table + column name is greater 
+    than 63 characters using the same logic Postgresql uses.  
+    [ticket:1083]
+
 0.6.6
 =====
 - orm

@@ -706,14 +706,23 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 # execute the sequence associated with a SERIAL primary 
                 # key column. for non-primary-key SERIAL, the ID just
                 # generates server side.
-                sch = column.table.schema
 
+                try:
+                    seq_name = column._postgresql_seq_name
+                except AttributeError:
+                    tab = column.table.name 
+                    col = column.name 
+                    tab = tab[0:29 + max(0, (29 - len(col)))] 
+                    col = col[0:29 + max(0, (29 - len(tab)))] 
+                    column._postgresql_seq_name = seq_name = "%s_%s_seq" % (tab, col)
+
+                sch = column.table.schema
                 if sch is not None:
-                    exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % \
-                            (sch, column.table.name, column.name)
+                    exc = "select nextval('\"%s\".\"%s\"')" % \
+                            (sch, seq_name)
                 else:
-                    exc = "select nextval('\"%s_%s_seq\"')" % \
-                            (column.table.name, column.name)
+                    exc = "select nextval('\"%s\"')" % \
+                            (seq_name, )
 
                 return self._execute_scalar(exc, column.type)
 

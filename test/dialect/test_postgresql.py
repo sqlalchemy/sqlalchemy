@@ -17,7 +17,7 @@ import logging
 
 class SequenceTest(TestBase, AssertsCompiledSQL):
 
-    def test_basic(self):
+    def test_format(self):
         seq = Sequence('my_seq_no_schema')
         dialect = postgresql.PGDialect()
         assert dialect.identifier_preparer.format_sequence(seq) \
@@ -28,6 +28,24 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
         seq = Sequence('My_Seq', schema='Some_Schema')
         assert dialect.identifier_preparer.format_sequence(seq) \
             == '"Some_Schema"."My_Seq"'
+
+    @testing.only_on('postgresql', 'foo')
+    @testing.provide_metadata
+    def test_reverse_eng_name(self):
+        engine = engines.testing_engine(options=dict(implicit_returning=False))
+        for tname, cname in [
+            ('tb1' * 30, 'abc'),
+            ('tb2', 'abc' * 30),
+            ('tb3' * 30, 'abc' * 30),
+            ('tb4', 'abc'),
+        ]:
+            t = Table(tname[:57],
+                metadata,
+                Column(cname[:57], Integer, primary_key=True)
+            )
+            t.create(engine)
+            r = engine.execute(t.insert())
+            assert r.inserted_primary_key == [1]
 
 class CompileTest(TestBase, AssertsCompiledSQL):
 
