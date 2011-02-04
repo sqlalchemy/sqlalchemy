@@ -127,6 +127,7 @@ from sqlalchemy.engine import base
 from sqlalchemy import types as sqltypes, util, exc, processors
 from datetime import datetime
 import random
+import collections
 from sqlalchemy.util.compat import decimal
 import re
 
@@ -423,8 +424,8 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         return ret
 
     def _buffer_rows(self):
-        return [tuple(self._returning_params["ret_%d" % i] 
-                    for i, c in enumerate(self._returning_params))]
+        return collections.deque([tuple(self._returning_params["ret_%d" % i] 
+                    for i, c in enumerate(self._returning_params))])
 
 class OracleDialect_cx_oracle(OracleDialect):
     execution_ctx_cls = OracleExecutionContext_cx_oracle

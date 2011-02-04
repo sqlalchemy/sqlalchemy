@@ -8,6 +8,7 @@ import sqlalchemy as tsa
 from test.lib import TestBase, testing, engines
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
+from sqlalchemy.engine import base, default
 
 users, metadata = None, None
 class ExecuteTest(TestBase):
@@ -433,6 +434,67 @@ class ResultProxyTest(TestBase):
         # csv performs PySequenceCheck call
         writer.writerow(row)
         assert s.getvalue().strip() == '1,Test'
+
+class AlternateResultProxyTest(TestBase):
+    requires = ('sqlite', )
+
+    @classmethod
+    def setup_class(cls):
+        from sqlalchemy.engine import base, create_engine, default
+        cls.engine = engine = create_engine('sqlite://')
+        m = MetaData()
+        cls.table = t = Table('test', m, 
+            Column('x', Integer, primary_key=True),
+            Column('y', String(50, convert_unicode='force'))
+        )
+        m.create_all(engine)
+        engine.execute(t.insert(), [
+            {'x':i, 'y':"t_%d" % i} for i in xrange(1, 12)
+        ])
+
+    def _test_proxy(self, cls):
+        class ExcCtx(default.DefaultExecutionContext):
+            def get_result_proxy(self):
+                return cls(self)
+        self.engine.dialect.execution_ctx_cls = ExcCtx
+        rows = []
+        r = self.engine.execute(select([self.table]))
+        assert isinstance(r, cls)
+        for i in range(5):
+            rows.append(r.fetchone())
+        eq_(rows, [(i, "t_%d" % i) for i in xrange(1, 6)])
+
+        rows = r.fetchmany(3)
+        eq_(rows, [(i, "t_%d" % i) for i in xrange(6, 9)])
+
+        rows = r.fetchall()
+        eq_(rows, [(i, "t_%d" % i) for i in xrange(9, 12)])
+
+        r = self.engine.execute(select([self.table]))
+        rows = r.fetchmany(None)
+        eq_(rows[0], (1, "t_1"))
+        # number of rows here could be one, or the whole thing
+        assert len(rows) == 1 or len(rows) == 11
+
+        r = self.engine.execute(select([self.table]).limit(1))
+        r.fetchone()
+        eq_(r.fetchone(), None)
+
+        r = self.engine.execute(select([self.table]).limit(5))
+        rows = r.fetchmany(6)
+        eq_(rows, [(i, "t_%d" % i) for i in xrange(1, 6)])
+
+    def test_plain(self):
+        self._test_proxy(base.ResultProxy)
+
+    def test_buffered_row_result_proxy(self):
+        self._test_proxy(base.BufferedRowResultProxy)
+
+    def test_fully_buffered_result_proxy(self):
+        self._test_proxy(base.FullyBufferedResultProxy)
+
+    def test_buffered_column_result_proxy(self):
+        self._test_proxy(base.BufferedColumnResultProxy)
 
 class EngineEventsTest(TestBase):
 

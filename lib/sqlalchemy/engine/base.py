@@ -26,6 +26,7 @@ from sqlalchemy import exc, schema, util, types, log, interfaces, \
     event, events
 from sqlalchemy.sql import expression
 from sqlalchemy import processors
+import collections
 
 class Dialect(object):
     """Define the behavior of a specific database and DB-API combination.
@@ -2603,7 +2604,10 @@ class ResultProxy(object):
 
     def _fetchmany_impl(self, size=None):
         try:
-            return self.cursor.fetchmany(size)
+            if size is None:
+                return self.cursor.fetchmany()
+            else:
+                return self.cursor.fetchmany(size)
         except AttributeError:
             self._non_result()
 
@@ -2756,24 +2760,29 @@ class BufferedRowResultProxy(ResultProxy):
         5 : 10,
         10 : 20,
         20 : 50,
-        50 : 100
+        50 : 100,
+        100 : 250,
+        250 : 500,
+        500 : 1000
     }
 
     def __buffer_rows(self):
         size = getattr(self, '_bufsize', 1)
-        self.__rowbuffer = self.cursor.fetchmany(size)
+        self.__rowbuffer = collections.deque(self.cursor.fetchmany(size))
         self._bufsize = self.size_growth.get(size, size)
 
     def _fetchone_impl(self):
         if self.closed:
             return None
-        if len(self.__rowbuffer) == 0:
+        if not self.__rowbuffer:
             self.__buffer_rows()
-            if len(self.__rowbuffer) == 0:
+            if not self.__rowbuffer:
                 return None
-        return self.__rowbuffer.pop(0)
+        return self.__rowbuffer.popleft()
 
     def _fetchmany_impl(self, size=None):
+        if size is None:
+            return self._fetchall_impl()
         result = []
         for x in range(0, size):
             row = self._fetchone_impl()
@@ -2783,8 +2792,9 @@ class BufferedRowResultProxy(ResultProxy):
         return result
 
     def _fetchall_impl(self):
-        ret = self.__rowbuffer + list(self.cursor.fetchall())
-        self.__rowbuffer[:] = []
+        self.__rowbuffer.extend(self.cursor.fetchall())
+        ret = self.__rowbuffer
+        self.__rowbuffer = collections.deque()
         return ret
 
 class FullyBufferedResultProxy(ResultProxy):
@@ -2800,15 +2810,17 @@ class FullyBufferedResultProxy(ResultProxy):
         self.__rowbuffer = self._buffer_rows()
 
     def _buffer_rows(self):
-        return self.cursor.fetchall()
+        return collections.deque(self.cursor.fetchall())
 
     def _fetchone_impl(self):
         if self.__rowbuffer:
-            return self.__rowbuffer.pop(0)
+            return self.__rowbuffer.popleft()
         else:
             return None
 
     def _fetchmany_impl(self, size=None):
+        if size is None:
+            return self._fetchall_impl()
         result = []
         for x in range(0, size):
             row = self._fetchone_impl()
@@ -2819,7 +2831,7 @@ class FullyBufferedResultProxy(ResultProxy):
 
     def _fetchall_impl(self):
         ret = self.__rowbuffer
-        self.__rowbuffer = []
+        self.__rowbuffer = collections.deque()
         return ret
 
 class BufferedColumnRow(RowProxy):
