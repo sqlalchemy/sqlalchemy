@@ -821,6 +821,7 @@ Default Geneation API Constructs
 
 .. autoclass:: Sequence
     :show-inheritance:
+    :members:
 
 Defining Constraints and Indexes
 =================================
