@@ -1195,17 +1195,9 @@ class EagerLazyOption(StrategizedOption):
                     ):
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
-        self.chained = chained
+        self.chained = self.lazy in (False, 'joined', 'subquery') and chained
         self.propagate_to_loaders = propagate_to_loaders
         self.strategy_cls = factory(lazy)
-
-    @property
-    def is_eager(self):
-        return self.lazy in (False, 'joined', 'subquery')
-
-    @property
-    def is_chained(self):
-        return self.is_eager and self.chained
 
     def get_strategy_class(self):
         return self.strategy_cls
@@ -1233,11 +1225,8 @@ class EagerJoinOption(PropertyOption):
         self.innerjoin = innerjoin
         self.chained = chained
 
-    def is_chained(self):
-        return self.chained
-
     def process_query_property(self, query, paths, mappers):
-        if self.is_chained():
+        if self.chained:
             for path in paths:
                 query._attributes[("eager_join_type", path)] = self.innerjoin
         else:
@@ -1245,19 +1234,28 @@ class EagerJoinOption(PropertyOption):
 
 class LoadEagerFromAliasOption(PropertyOption):
 
-    def __init__(self, key, alias=None):
+    def __init__(self, key, alias=None, chained=False):
         super(LoadEagerFromAliasOption, self).__init__(key)
         if alias is not None:
             if not isinstance(alias, basestring):
                 m, alias, is_aliased_class = mapperutil._entity_info(alias)
         self.alias = alias
+        self.chained = chained
 
     def process_query_property(self, query, paths, mappers):
+        if self.chained:
+            for path in paths[0:-1]:
+                (root_mapper, propname) = path[-2:]
+                prop = root_mapper._props[propname]
+                adapter = query._polymorphic_adapters.get(prop.mapper, None)
+                query._attributes.setdefault(
+                            ("user_defined_eager_row_processor", 
+                            interfaces._reduce_path(path)), adapter)
+
         if self.alias is not None:
             if isinstance(self.alias, basestring):
-                mapper = mappers[-1]
                 (root_mapper, propname) = paths[-1][-2:]
-                prop = mapper._props[propname]
+                prop = root_mapper._props[propname]
                 self.alias = prop.target.alias(self.alias)
             query._attributes[
                         ("user_defined_eager_row_processor", 
@@ -1265,8 +1263,7 @@ class LoadEagerFromAliasOption(PropertyOption):
                         ] = sql_util.ColumnAdapter(self.alias)
         else:
             (root_mapper, propname) = paths[-1][-2:]
-            mapper = mappers[-1]
-            prop = mapper._props[propname]
+            prop = root_mapper._props[propname]
             adapter = query._polymorphic_adapters.get(prop.mapper, None)
             query._attributes[
                         ("user_defined_eager_row_processor", 

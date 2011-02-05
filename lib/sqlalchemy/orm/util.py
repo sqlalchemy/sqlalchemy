@@ -212,7 +212,7 @@ class AliasedClass(object):
         self.__mapper = _class_to_mapper(cls)
         self.__target = self.__mapper.class_
         if alias is None:
-            alias = self.__mapper._with_polymorphic_selectable.alias()
+            alias = self.__mapper._with_polymorphic_selectable.alias(name=name)
         self.__adapter = sql_util.ClauseAdapter(alias,
                                 equivalents=self.__mapper._equivalent_columns)
         self.__alias = alias

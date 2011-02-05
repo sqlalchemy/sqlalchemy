@@ -1979,8 +1979,12 @@ class SecondaryOptionsTest(_base.MappedTest):
         mapper(Base, base, polymorphic_on=base.c.type, properties={
             'related':relationship(Related, uselist=False)
         })
-        mapper(Child1, child1, inherits=Base, polymorphic_identity='child1', properties={
-            'child2':relationship(Child2, primaryjoin=child1.c.child2id==base.c.id, foreign_keys=child1.c.child2id)
+        mapper(Child1, child1, inherits=Base, 
+                polymorphic_identity='child1', 
+            properties={
+            'child2':relationship(Child2, 
+                                    primaryjoin=child1.c.child2id==base.c.id, 
+                                    foreign_keys=child1.c.child2id)
         })
         mapper(Child2, child2, inherits=Base, polymorphic_identity='child2')
         mapper(Related, related)
@@ -2019,13 +2023,19 @@ class SecondaryOptionsTest(_base.MappedTest):
     def test_contains_eager(self):
         sess = create_session()
 
-
-        child1s = sess.query(Child1).join(Child1.related).options(sa.orm.contains_eager(Child1.related)).order_by(Child1.id)
+        child1s = sess.query(Child1).\
+                    join(Child1.related).\
+                    options(sa.orm.contains_eager(Child1.related)).\
+                    order_by(Child1.id)
 
         def go():
             eq_(
                 child1s.all(),
-                [Child1(id=1, related=Related(id=1)), Child1(id=2, related=Related(id=2)), Child1(id=3, related=Related(id=3))]
+                [
+                    Child1(id=1, related=Related(id=1)), 
+                    Child1(id=2, related=Related(id=2)), 
+                    Child1(id=3, related=Related(id=3))
+                ]
             )
         self.assert_sql_count(testing.db, go, 1)
 

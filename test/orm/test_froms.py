@@ -190,7 +190,9 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         eq_(
-            sess.query(User, Address).filter(User.id==Address.user_id).filter(Address.id.in_([2, 5])).from_self().all(),
+            sess.query(User, Address).\
+                    filter(User.id==Address.user_id).\
+                    filter(Address.id.in_([2, 5])).from_self().all(),
             [
                 (User(id=8), Address(id=2)),
                 (User(id=9), Address(id=5))
@@ -198,10 +200,15 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         )
 
         eq_(
-            sess.query(User, Address).filter(User.id==Address.user_id).filter(Address.id.in_([2, 5])).from_self().options(joinedload('addresses')).first(),
+            sess.query(User, Address).\
+                    filter(User.id==Address.user_id).\
+                    filter(Address.id.in_([2, 5])).\
+                    from_self().\
+                    options(joinedload('addresses')).first(),
 
-            #    order_by(User.id, Address.id).first(),
-            (User(id=8, addresses=[Address(), Address(), Address()]), Address(id=2)),
+            (User(id=8, 
+                    addresses=[Address(), Address(), Address()]), 
+                Address(id=2)),
         )
 
     def test_multiple_with_column_entities(self):
@@ -395,92 +402,214 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         sess.expunge_all()
 
         adalias = addresses.alias()
-        q = sess.query(User).select_from(users.outerjoin(adalias)).options(contains_eager(User.addresses, alias=adalias)).order_by(User.id, adalias.c.id)
+        q = sess.query(User).\
+                select_from(users.outerjoin(adalias)).\
+                options(contains_eager(User.addresses, alias=adalias)).\
+                order_by(User.id, adalias.c.id)
         def go():
             eq_(self.static.user_address_result, q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
-        selectquery = users.outerjoin(addresses).select(users.c.id<10, use_labels=True, order_by=[users.c.id, addresses.c.id])
+        selectquery = users.\
+                        outerjoin(addresses).\
+                        select(users.c.id<10, 
+                                use_labels=True, 
+                                order_by=[users.c.id, addresses.c.id])
         q = sess.query(User)
 
         def go():
-            l = list(q.options(contains_eager('addresses')).instances(selectquery.execute()))
+            l = list(q.options(
+                        contains_eager('addresses')
+                    ).instances(selectquery.execute()))
             assert self.static.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
 
         def go():
-            l = list(q.options(contains_eager(User.addresses)).instances(selectquery.execute()))
+            l = list(q.options(
+                        contains_eager(User.addresses)
+                        ).instances(selectquery.execute()))
             assert self.static.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
 
         def go():
-            l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
+            l = q.options(
+                    contains_eager('addresses')
+                ).from_statement(selectquery).all()
             assert self.static.user_address_result[0:3] == l
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_contains_eager_alias(self):
-        adalias = addresses.alias('adalias')
-        selectquery = users.outerjoin(adalias).select(use_labels=True, order_by=[users.c.id, adalias.c.id])
+    def test_contains_eager_string_alias(self):
         sess = create_session()
         q = sess.query(User)
 
+        adalias = addresses.alias('adalias')
+        selectquery = users.outerjoin(adalias).\
+                        select(use_labels=True, 
+                                order_by=[users.c.id, adalias.c.id])
+
         # string alias name
         def go():
-            l = list(q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute()))
+            l = list(q.options(
+                            contains_eager('addresses', alias="adalias")
+                        ).instances(selectquery.execute()))
             assert self.static.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
-        sess.expunge_all()
+
+    def test_contains_eager_aliased_instances(self):
+        sess = create_session()
+        q = sess.query(User)
+
+        adalias = addresses.alias('adalias')
+        selectquery = users.outerjoin(adalias).\
+                        select(use_labels=True, 
+                            order_by=[users.c.id, adalias.c.id])
 
         # expression.Alias object
         def go():
-            l = list(q.options(contains_eager('addresses', alias=adalias)).instances(selectquery.execute()))
+            l = list(q.options(
+                        contains_eager('addresses', alias=adalias)
+                    ).instances(selectquery.execute()))
             assert self.static.user_address_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.expunge_all()
+    def test_contains_eager_aliased(self):
+        sess = create_session()
+        q = sess.query(User)
 
         # Aliased object
         adalias = aliased(Address)
         def go():
-            l = q.options(contains_eager('addresses', alias=adalias)).outerjoin(adalias, User.addresses).order_by(User.id, adalias.id)
+            l = q.options(
+                    contains_eager('addresses', alias=adalias)
+                ).\
+                    outerjoin(adalias, User.addresses).\
+                    order_by(User.id, adalias.id)
             assert self.static.user_address_result == l.all()
         self.assert_sql_count(testing.db, go, 1)
-        sess.expunge_all()
+
+    def test_contains_eager_multi_string_alias(self):
+        sess = create_session()
+        q = sess.query(User)
 
         oalias = orders.alias('o1')
         ialias = items.alias('i1')
-        query = users.outerjoin(oalias).outerjoin(order_items).outerjoin(ialias).select(use_labels=True).order_by(users.c.id, oalias.c.id, ialias.c.id)
-        q = create_session().query(User)
+        query = users.outerjoin(oalias).\
+                    outerjoin(order_items).\
+                    outerjoin(ialias).\
+                    select(use_labels=True).\
+                    order_by(users.c.id, oalias.c.id, ialias.c.id)
+
         # test using string alias with more than one level deep
         def go():
-            l = list(q.options(contains_eager('orders', alias='o1'), contains_eager('orders.items', alias='i1')).instances(query.execute()))
+            l = list(q.options(
+                        contains_eager('orders', alias='o1'), 
+                        contains_eager('orders.items', alias='i1')
+                    ).instances(query.execute()))
             assert self.static.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
 
-        sess.expunge_all()
+    def test_contains_eager_multi_alias(self):
+        sess = create_session()
+        q = sess.query(User)
+
+        oalias = orders.alias('o1')
+        ialias = items.alias('i1')
+        query = users.outerjoin(oalias).\
+                    outerjoin(order_items).\
+                    outerjoin(ialias).\
+                    select(use_labels=True).\
+                    order_by(users.c.id, oalias.c.id, ialias.c.id)
 
         # test using Alias with more than one level deep
         def go():
-            l = list(q.options(contains_eager('orders', alias=oalias), contains_eager('orders.items', alias=ialias)).instances(query.execute()))
+            l = list(q.options(
+                    contains_eager('orders', alias=oalias), 
+                    contains_eager('orders.items', alias=ialias)
+                ).instances(query.execute()))
             assert self.static.user_order_result == l
         self.assert_sql_count(testing.db, go, 1)
-        sess.expunge_all()
+
+    def test_contains_eager_multi_aliased(self):
+        sess = create_session()
+        q = sess.query(User)
 
         # test using Aliased with more than one level deep
         oalias = aliased(Order)
         ialias = aliased(Item)
         def go():
-            l = q.options(contains_eager(User.orders, alias=oalias), 
-                            contains_eager(User.orders, Order.items, alias=ialias)).\
+            l = q.options(
+                    contains_eager(User.orders, alias=oalias), 
+                    contains_eager(User.orders, Order.items, alias=ialias)
+                ).\
                 outerjoin(oalias, User.orders).\
-                outerjoin(ialias, oalias.items).order_by(User.id, oalias.id, ialias.id)
+                outerjoin(ialias, oalias.items).\
+                order_by(User.id, oalias.id, ialias.id)
             assert self.static.user_order_result == l.all()
         self.assert_sql_count(testing.db, go, 1)
-        sess.expunge_all()
+
+    def test_contains_eager_chaining(self):
+        """test that contains_eager() 'chains' by default."""
+
+        sess = create_session()
+        q = sess.query(User).\
+                join(User.addresses).\
+                join(Address.dingaling).\
+                options(
+                    contains_eager(User.addresses, Address.dingaling), 
+                    )
+        def go():
+            eq_(
+                q.all(),
+                # note we only load the Address records that 
+                # have a Dingaling here due to using the inner 
+                # join for the eager load
+                [
+                    User(name=u'ed', addresses=[
+                        Address(email_address=u'ed@wood.com', 
+                                dingaling=Dingaling(data='ding 1/2')), 
+                    ]), 
+                    User(name=u'fred', addresses=[
+                        Address(email_address=u'fred@fred.com', 
+                                dingaling=Dingaling(data='ding 2/5'))
+                    ])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_contains_eager_chaining_aliased_endpoint(self):
+        """test that contains_eager() 'chains' by default and supports
+        an alias at the end."""
+
+        sess = create_session()
+        da = aliased(Dingaling, name="foob")
+        q = sess.query(User).\
+                join(User.addresses).\
+                join(da, Address.dingaling).\
+                options(
+                    contains_eager(User.addresses, Address.dingaling, alias=da), 
+                    )
+        def go():
+            eq_(
+                q.all(),
+                # note we only load the Address records that 
+                # have a Dingaling here due to using the inner 
+                # join for the eager load
+                [
+                    User(name=u'ed', addresses=[
+                        Address(email_address=u'ed@wood.com', 
+                                dingaling=Dingaling(data='ding 1/2')), 
+                    ]), 
+                    User(name=u'fred', addresses=[
+                        Address(email_address=u'fred@fred.com', 
+                                dingaling=Dingaling(data='ding 2/5'))
+                    ])
+                ]
+            )
+        self.assert_sql_count(testing.db, go, 1)
 
     def test_mixed_eager_contains_with_limit(self):
         sess = create_session()
@@ -590,6 +719,18 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 filter(users.c.id==8).\
                 filter(users.c.id>sel.c.id).values(users.c.name, sel.c.name, User.name)
         eq_(list(q2), [(u'ed', u'jack', u'jack')])
+
+    def test_alias_naming(self):
+        sess = create_session()
+
+        ua = aliased(User, name="foobar")
+        q= sess.query(ua)
+        self.assert_compile(
+            q,
+            "SELECT foobar.id AS foobar_id, "
+            "foobar.name AS foobar_name FROM users AS foobar",
+            use_default_dialect=True
+        )
 
     @testing.fails_on('mssql', 'FIXME: unknown')
     def test_values_specific_order_by(self):
@@ -701,7 +842,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 eq_(row.User, row[0])
 
             oalias = aliased(Order, name='orders')
-            for row in sess.query(User, oalias).join(User.orders).all():
+            for row in sess.query(User, oalias).join(oalias, User.orders).all():
                 if pickled is not False:
                     row = util.pickle.loads(util.pickle.dumps(row, pickled))
                 eq_(row.keys(), ['User', 'orders'])

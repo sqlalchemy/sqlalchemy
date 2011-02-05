@@ -1196,7 +1196,8 @@ def noload(*keys):
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
-    See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`, :func:`immediateload`
+    See also:  :func:`lazyload`, :func:`eagerload`, 
+    :func:`subqueryload`, :func:`immediateload`
 
     """
     return strategies.EagerLazyOption(keys, lazy=None)
@@ -1264,8 +1265,8 @@ def contains_eager(*keys, **kwargs):
         raise exceptions.ArgumentError('Invalid kwargs for contains_eag'
                 'er: %r' % kwargs.keys())
     return strategies.EagerLazyOption(keys, lazy='joined',
-            propagate_to_loaders=False), \
-        strategies.LoadEagerFromAliasOption(keys, alias=alias)
+            propagate_to_loaders=False, chained=True), \
+        strategies.LoadEagerFromAliasOption(keys, alias=alias, chained=True)
 
 def defer(*keys):
     """Return a ``MapperOption`` that will convert the column property of the

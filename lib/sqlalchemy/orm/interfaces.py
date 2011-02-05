@@ -515,7 +515,7 @@ class StrategizedOption(PropertyOption):
     for an operation by a StrategizedProperty.
     """
 
-    is_chained = False
+    chained = False
 
     def process_query_property(self, query, paths, mappers):
 
@@ -525,7 +525,7 @@ class StrategizedOption(PropertyOption):
         # "(Person, 'machines')" in the path due to the mechanics of how
         # the eager strategy builds up the path
 
-        if self.is_chained:
+        if self.chained:
             for path in paths:
                 query._attributes[('loaderstrategy',
                                   _reduce_path(path))] = \

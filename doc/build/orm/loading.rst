@@ -286,7 +286,7 @@ This is a string alias name or reference to an actual
 
     # construct a Query object which expects the "addresses" results
     query = session.query(User).\
-        outerjoin((adalias, User.addresses)).\
+        outerjoin(adalias, User.addresses).\
         options(contains_eager(User.addresses, alias=adalias))
 
     # get results normally
