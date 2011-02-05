@@ -69,101 +69,9 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
         Session.configure(bind=create_engine('sqlite:///foo.db'))
 
         sess = Session()
-
-    Options:
-
-    :param autocommit: Defaults to ``False``. When ``True``, the ``Session``
-      does not keep a persistent transaction running, and will acquire
-      connections from the engine on an as-needed basis, returning them
-      immediately after their use. Flushes will begin and commit (or possibly
-      rollback) their own transaction if no transaction is present. When using
-      this mode, the `session.begin()` method may be used to begin a
-      transaction explicitly.
-
-      Leaving it on its default value of ``False`` means that the ``Session``
-      will acquire a connection and begin a transaction the first time it is
-      used, which it will maintain persistently until ``rollback()``,
-      ``commit()``, or ``close()`` is called. When the transaction is released
-      by any of these methods, the ``Session`` is ready for the next usage,
-      which will again acquire and maintain a new connection/transaction.
-
-    :param autoflush: When ``True``, all query operations will issue a 
-       ``flush()`` call to this ``Session`` before proceeding. This is a
-       convenience feature so that ``flush()`` need not be called repeatedly
-       in order for database queries to retrieve results. It's typical that
-       ``autoflush`` is used in conjunction with ``autocommit=False``. In this
-       scenario, explicit calls to ``flush()`` are rarely needed; you usually
-       only need to call ``commit()`` (which flushes) to finalize changes.
-
-    :param bind: An optional ``Engine`` or ``Connection`` to which this
-       ``Session`` should be bound. When specified, all SQL operations
-       performed by this session will execute via this connectable.
-
-    :param binds: An optional dictionary which contains more granular "bind"
-       information than the ``bind`` parameter provides. This dictionary can
-       map individual ``Table`` instances as well as ``Mapper`` instances to
-       individual ``Engine`` or ``Connection`` objects. Operations which
-       proceed relative to a particular ``Mapper`` will consult this
-       dictionary for the direct ``Mapper`` instance as well as the mapper's
-       ``mapped_table`` attribute in order to locate an connectable to use.
-       The full resolution is described in the ``get_bind()`` method of
-       ``Session``. Usage looks like::
-
-        Session = sessionmaker(binds={
-            SomeMappedClass: create_engine('postgresql://engine1'),
-            somemapper: create_engine('postgresql://engine2'),
-            some_table: create_engine('postgresql://engine3'),
-            })
-
-      Also see the :meth:`.Session.bind_mapper` and :meth:`.Session.bind_table` methods.
-
-    :param \class_: Specify an alternate class other than
-       ``sqlalchemy.orm.session.Session`` which should be used by the returned
-       class. This is the only argument that is local to the
-       ``sessionmaker()`` function, and is not sent directly to the
-       constructor for ``Session``.
-
-    :param _enable_transaction_accounting:  Defaults to ``True``.  A
-       legacy-only flag which when ``False`` disables *all* 0.5-style object
-       accounting on transaction boundaries, including auto-expiry of
-       instances on rollback and commit, maintenance of the "new" and
-       "deleted" lists upon rollback, and autoflush of pending changes upon
-       begin(), all of which are interdependent.
-
-    :param expire_on_commit:  Defaults to ``True``. When ``True``, all
-       instances will be fully expired after each ``commit()``, so that all
-       attribute/object access subsequent to a completed transaction will load
-       from the most recent database state.
-
-    :param extension: An optional 
-       :class:`~.SessionExtension` instance, or a list
-       of such instances, which will receive pre- and post- commit and flush
-       events, as well as a post-rollback event. **Deprecated.**
-       Please see :class:`.SessionEvents`.
-
-    :param query_cls:  Class which should be used to create new Query objects,
-       as returned by the ``query()`` method. Defaults to
-       :class:`~sqlalchemy.orm.query.Query`.
-
-    :param twophase:  When ``True``, all transactions will be started as
-        a "two phase" transaction, i.e. using the "two phase" semantics
-        of the database in use along with an XID.  During a ``commit()``,
-        after ``flush()`` has been issued for all attached databases, the
-        ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
-        be called. This allows each database to roll back the entire
-        transaction, before each transaction is committed.
-
-    :param weak_identity_map:  When set to the default value of ``True``, a
-       weak-referencing map is used; instances which are not externally
-       referenced will be garbage collected immediately. For dereferenced
-       instances which have pending changes present, the attribute management
-       system will create a temporary strong-reference to the object which
-       lasts until the changes are flushed to the database, at which point
-       it's again dereferenced. Alternatively, when using the value ``False``,
-       the identity map uses a regular Python dictionary to store instances.
-       The session will maintain all instances present until they are removed
-       using expunge(), clear(), or purge().
-
+    
+    For options, see the constructor options for :class:`.Session`.
+    
     """
     kwargs['bind'] = bind
     kwargs['autoflush'] = autoflush
@@ -466,6 +374,7 @@ class Session(object):
 
     The Session's usage paradigm is described at :ref:`session_toplevel`.
 
+
     """
 
     public_methods = (
@@ -484,15 +393,104 @@ class Session(object):
                  query_cls=query.Query):
         """Construct a new Session.
 
-        Arguments to :class:`.Session` are described using the
-        :func:`.sessionmaker` function, which is the 
-        typical point of entry.
+        See also the :func:`.sessionmaker` function which is used to 
+        generate a :class:`.Session`-producing callable with a given
+        set of arguments.
+
+        :param autocommit: Defaults to ``False``. When ``True``, the ``Session``
+          does not keep a persistent transaction running, and will acquire
+          connections from the engine on an as-needed basis, returning them
+          immediately after their use. Flushes will begin and commit (or possibly
+          rollback) their own transaction if no transaction is present. When using
+          this mode, the `session.begin()` method may be used to begin a
+          transaction explicitly.
+
+          Leaving it on its default value of ``False`` means that the ``Session``
+          will acquire a connection and begin a transaction the first time it is
+          used, which it will maintain persistently until ``rollback()``,
+          ``commit()``, or ``close()`` is called. When the transaction is released
+          by any of these methods, the ``Session`` is ready for the next usage,
+          which will again acquire and maintain a new connection/transaction.
+
+        :param autoflush: When ``True``, all query operations will issue a 
+           ``flush()`` call to this ``Session`` before proceeding. This is a
+           convenience feature so that ``flush()`` need not be called repeatedly
+           in order for database queries to retrieve results. It's typical that
+           ``autoflush`` is used in conjunction with ``autocommit=False``. In this
+           scenario, explicit calls to ``flush()`` are rarely needed; you usually
+           only need to call ``commit()`` (which flushes) to finalize changes.
+
+        :param bind: An optional ``Engine`` or ``Connection`` to which this
+           ``Session`` should be bound. When specified, all SQL operations
+           performed by this session will execute via this connectable.
+
+        :param binds: An optional dictionary which contains more granular "bind"
+           information than the ``bind`` parameter provides. This dictionary can
+           map individual ``Table`` instances as well as ``Mapper`` instances to
+           individual ``Engine`` or ``Connection`` objects. Operations which
+           proceed relative to a particular ``Mapper`` will consult this
+           dictionary for the direct ``Mapper`` instance as well as the mapper's
+           ``mapped_table`` attribute in order to locate an connectable to use.
+           The full resolution is described in the ``get_bind()`` method of
+           ``Session``. Usage looks like::
+
+            Session = sessionmaker(binds={
+                SomeMappedClass: create_engine('postgresql://engine1'),
+                somemapper: create_engine('postgresql://engine2'),
+                some_table: create_engine('postgresql://engine3'),
+                })
+
+          Also see the :meth:`.Session.bind_mapper` and :meth:`.Session.bind_table` methods.
+
+        :param \class_: Specify an alternate class other than
+           ``sqlalchemy.orm.session.Session`` which should be used by the returned
+           class. This is the only argument that is local to the
+           ``sessionmaker()`` function, and is not sent directly to the
+           constructor for ``Session``.
+
+        :param _enable_transaction_accounting:  Defaults to ``True``.  A
+           legacy-only flag which when ``False`` disables *all* 0.5-style object
+           accounting on transaction boundaries, including auto-expiry of
+           instances on rollback and commit, maintenance of the "new" and
+           "deleted" lists upon rollback, and autoflush of pending changes upon
+           begin(), all of which are interdependent.
+
+        :param expire_on_commit:  Defaults to ``True``. When ``True``, all
+           instances will be fully expired after each ``commit()``, so that all
+           attribute/object access subsequent to a completed transaction will load
+           from the most recent database state.
+
+        :param extension: An optional 
+           :class:`~.SessionExtension` instance, or a list
+           of such instances, which will receive pre- and post- commit and flush
+           events, as well as a post-rollback event. **Deprecated.**
+           Please see :class:`.SessionEvents`.
+
+        :param query_cls:  Class which should be used to create new Query objects,
+           as returned by the ``query()`` method. Defaults to
+           :class:`~sqlalchemy.orm.query.Query`.
+
+        :param twophase:  When ``True``, all transactions will be started as
+            a "two phase" transaction, i.e. using the "two phase" semantics
+            of the database in use along with an XID.  During a ``commit()``,
+            after ``flush()`` has been issued for all attached databases, the
+            ``prepare()`` method on each database's ``TwoPhaseTransaction`` will
+            be called. This allows each database to roll back the entire
+            transaction, before each transaction is committed.
+
+        :param weak_identity_map:  Defaults to ``True`` - when set to 
+           ``False``, objects placed in the :class:`.Session` will be 
+           strongly referenced until explicitly removed or the 
+           :class:`.Session` is closed.  **Deprecated** - this option
+           is obsolete.
 
         """
 
         if weak_identity_map:
             self._identity_cls = identity.WeakInstanceDict
         else:
+            util.warn_deprecated("weak_identity_map=False is deprecated.  "
+                                    "This feature is not needed.")
             self._identity_cls = identity.StrongInstanceDict
         self.identity_map = self._identity_cls()
 
@@ -1028,6 +1026,8 @@ class Session(object):
             self._new.pop(state)
             state.detach()
 
+    @util.deprecated("The non-weak-referencing identity map "
+                        "feature is no longer needed.")
     def prune(self):
         """Remove unreferenced instances cached in the identity map.
 

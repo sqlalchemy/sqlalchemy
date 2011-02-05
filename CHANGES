@@ -101,6 +101,9 @@ CHANGES
   - The "name" field used in orm.aliased() now renders
     in the resulting SQL statement.
 
+  - Session weak_instance_dict=False is deprecated.
+    [ticket:1473]
+
 - sql
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]

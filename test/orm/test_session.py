@@ -997,6 +997,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         assert not s.identity_map
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_identity_conflict(self):
         mapper(User, users)
@@ -1076,6 +1077,7 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).options(joinedload(User.address)).one()
         eq_(user, User(name="ed", address=Address(email_address="ed2")))
 
+    @testing.uses_deprecated()
     @testing.resolve_artifact_names
     def test_strong_ref(self):
         s = create_session(weak_identity_map=False)
@@ -1097,6 +1099,7 @@ class SessionTest(_fixtures.FixtureTest):
         s.flush()
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
 
+    @testing.uses_deprecated()
     @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
     @testing.resolve_artifact_names
     def test_prune(self):
