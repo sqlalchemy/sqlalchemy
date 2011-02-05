@@ -1026,7 +1026,7 @@ class Session(object):
             self._new.pop(state)
             state.detach()
 
-    @util.deprecated("The non-weak-referencing identity map "
+    @util.deprecated("0.7", "The non-weak-referencing identity map "
                         "feature is no longer needed.")
     def prune(self):
         """Remove unreferenced instances cached in the identity map.
