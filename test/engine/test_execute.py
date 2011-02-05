@@ -436,7 +436,7 @@ class ResultProxyTest(TestBase):
         assert s.getvalue().strip() == '1,Test'
 
 class AlternateResultProxyTest(TestBase):
-    requires = ('sqlite', )
+    __requires__ = ('sqlite', )
 
     @classmethod
     def setup_class(cls):
