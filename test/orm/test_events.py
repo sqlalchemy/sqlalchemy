@@ -509,8 +509,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(
             canary, 
             [ 'after_attach', 'before_flush', 'after_begin',
-            'after_flush', 'before_commit', 'after_commit',
-            'after_flush_postexec', ]
+            'after_flush', 'after_flush_postexec', 
+            'before_commit', 'after_commit',]
         )
 
     @testing.resolve_artifact_names
@@ -976,9 +976,9 @@ class SessionExtensionTest(_fixtures.FixtureTest):
             'before_flush',
             'after_begin',
             'after_flush',
+            'after_flush_postexec',
             'before_commit',
             'after_commit',
-            'after_flush_postexec',
             ]
         log = []
         sess = create_session(autocommit=False, extension=MyExt())

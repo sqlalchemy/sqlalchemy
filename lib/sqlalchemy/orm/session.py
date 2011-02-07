@@ -205,10 +205,12 @@ class SessionTransaction(object):
 
         for s in set(self._new).union(self.session._new):
             self.session._expunge_state(s)
+            if s.key:
+                del s.key
 
         for s in set(self._deleted).union(self.session._deleted):
             if s.deleted:
-                # assert s in self._deleted
+                #assert s in self._deleted
                 del s.deleted
             self.session._update_impl(s)
 
@@ -507,14 +509,6 @@ class Session(object):
         self._enable_transaction_accounting = _enable_transaction_accounting
         self.twophase = twophase
         self._query_cls = query_cls
-
-        if autocommit:
-            if expire_on_commit and _enable_transaction_accounting:
-                util.warn("expire_on_commit=False is recommended with autocommit=True, "
-                            "else excessive SELECT statements may be emitted.")
-            if autoflush:
-                util.warn("autoflush=False is recommended with autocommit=True, "
-                            "else premature/excessive amounts of transaction commits may occur.")
 
         if extension:
             for ext in util.to_list(extension):
@@ -1541,22 +1535,24 @@ class Session(object):
             flush_context.execute()
 
             self.dispatch.after_flush(self, flush_context)
+
+            flush_context.finalize_flush_changes()
+
+            # useful assertions:
+            #if not objects:
+            #    assert not self.identity_map._modified
+            #else:
+            #    assert self.identity_map._modified == \
+            #            self.identity_map._modified.difference(objects)
+
+            self.dispatch.after_flush_postexec(self, flush_context)
+
             transaction.commit()
+
         except:
             transaction.rollback(_capture_exception=True)
             raise
 
-        flush_context.finalize_flush_changes()
-
-        # useful assertions:
-        #if not objects:
-        #    assert not self.identity_map._modified
-        #else:
-        #    assert self.identity_map._modified == \
-        #            self.identity_map._modified.difference(objects)
-        #self.identity_map._modified.clear()
-
-        self.dispatch.after_flush_postexec(self, flush_context)
 
     def is_modified(self, instance, include_collections=True, passive=False):
         """Return ``True`` if instance has modified attributes.
