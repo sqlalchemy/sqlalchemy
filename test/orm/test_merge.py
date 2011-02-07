@@ -876,7 +876,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_cascade_doesnt_blowaway_manytoone(self):
         """a merge test that was fixed by [ticket:1202]"""
 
-        s = create_session(autoflush=True)
+        s = create_session(autoflush=True, autocommit=False)
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses),backref='user')})
 
@@ -892,7 +892,7 @@ class MergeTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_cascades_dont_autoflush(self):
-        sess = create_session(autoflush=True)
+        sess = create_session(autoflush=True, autocommit=False)
         m = mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses),backref='user')})
         user = User(id=8, name='fred', addresses=[Address(email_address='user')])

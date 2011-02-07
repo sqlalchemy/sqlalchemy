@@ -415,7 +415,7 @@ class SessionTest(_fixtures.FixtureTest):
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        backref='user')
         })
-        sess = create_session(autoflush=True)
+        sess = create_session(autoflush=True, autocommit=False)
         u = User(name='ed')
         u.addresses.append(Address(email_address='a'))
         u.addresses.append(Address(email_address='b'))
@@ -451,7 +451,7 @@ class SessionTest(_fixtures.FixtureTest):
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        backref='user', cascade="all, delete-orphan")
         })
-        sess = create_session(autoflush=True)
+        sess = create_session(autoflush=True, autocommit=False)
         u = User(name='ed')
         u.addresses.append(Address(email_address='a'))
         u.addresses.append(Address(email_address='b'))
@@ -487,7 +487,7 @@ class SessionTest(_fixtures.FixtureTest):
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        cascade="all, delete-orphan", backref='user')
         })
-        sess = create_session(autoflush=True)
+        sess = create_session(autoflush=True, autocommit=False)
         u = User(name='ed')
         u.addresses.append(Address(email_address='a'))
         u.addresses.append(Address(email_address='b'))
@@ -526,7 +526,7 @@ class SessionTest(_fixtures.FixtureTest):
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
         })
-        sess = create_session(autoflush=autoflush)
+        sess = create_session(autoflush=autoflush, autocommit=False)
 
         u = User(name='buffy')
 

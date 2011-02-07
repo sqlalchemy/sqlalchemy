@@ -39,6 +39,10 @@ CHANGES
   - Flushing of Orphans that have no parent is allowed
     [ticket:1912]
 
+  - Session constructor emits a warning when autoflush=True
+    or expire_on_commit=True when autocommit=True.
+    [ticket:2041]
+
   - Warnings generated when collection members, scalar referents 
     not part of the flush
     [ticket:1973]

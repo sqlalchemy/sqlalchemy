@@ -501,7 +501,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess, canary = self._listener_fixture(autoflush=False, autocommit=True)
+        sess, canary = self._listener_fixture(autoflush=False, autocommit=True, expire_on_commit=False)
 
         u = User(name='u1')
         sess.add(u)

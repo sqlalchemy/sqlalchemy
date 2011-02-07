@@ -508,6 +508,14 @@ class Session(object):
         self.twophase = twophase
         self._query_cls = query_cls
 
+        if autocommit:
+            if expire_on_commit and _enable_transaction_accounting:
+                util.warn("expire_on_commit=False is recommended with autocommit=True, "
+                            "else excessive SELECT statements may be emitted.")
+            if autoflush:
+                util.warn("autoflush=False is recommended with autocommit=True, "
+                            "else premature/excessive amounts of transaction commits may occur.")
+
         if extension:
             for ext in util.to_list(extension):
                 SessionExtension._adapt_listener(self, ext)

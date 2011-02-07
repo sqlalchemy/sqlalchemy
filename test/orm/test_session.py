@@ -250,6 +250,21 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
         sess.close()
 
+    def test_autocommit_warnings(self):
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "expire_on_commit=False is recommended with autocommit=True, "
+            "else excessive SELECT statements may be emitted.",
+            Session, autocommit=True, autoflush=False
+        )
+
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "autoflush=False is recommended with autocommit=True, "
+            "else premature/excessive amounts of transaction commits may occur.",
+            Session, autocommit=True, expire_on_commit=False
+        )
+
     @testing.resolve_artifact_names
     def test_make_transient(self):
         mapper(User, users)

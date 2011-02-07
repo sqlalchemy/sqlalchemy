@@ -457,7 +457,8 @@ class AccountingFlagsTest(TransactionTest):
         sess.commit()
 
     def test_preflush_no_accounting(self):
-        sess = sessionmaker(_enable_transaction_accounting=False, autocommit=True)()
+        sess = Session(_enable_transaction_accounting=False, 
+                        autocommit=True, autoflush=False)
         u1 = User(name='ed')
         sess.add(u1)
         sess.flush()
