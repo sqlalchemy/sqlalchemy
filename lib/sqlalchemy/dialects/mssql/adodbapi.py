@@ -62,7 +62,7 @@ class MSDialect_adodbapi(MSDialect):
             connectors.append("Integrated Security=SSPI")
         return [[";".join (connectors)], {}]
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         return isinstance(e, self.dbapi.adodbapi.DatabaseError) and \
                             "'connection failure'" in str(e)
 

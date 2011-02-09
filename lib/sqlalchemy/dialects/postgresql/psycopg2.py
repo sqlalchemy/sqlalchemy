@@ -227,6 +227,7 @@ class PGDialect_psycopg2(PGDialect):
     execution_ctx_cls = PGExecutionContext_psycopg2
     statement_compiler = PGCompiler_psycopg2
     preparer = PGIdentifierPreparer_psycopg2
+    psycopg2_version = (0, 0)
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -243,6 +244,11 @@ class PGDialect_psycopg2(PGDialect):
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         self.supports_unicode_binds = use_native_unicode
+        if self.dbapi and hasattr(self.dbapi, '__version__'):
+            m = re.match(r'(\d+)\.(\d+)\.(\d+)?', 
+                                self.dbapi.__version__)
+            if m:
+                self.psycopg2_version = tuple(map(int, m.group(1, 2, 3)))
 
     @classmethod
     def dbapi(cls):
@@ -295,7 +301,7 @@ class PGDialect_psycopg2(PGDialect):
         opts.update(url.query)
         return ([], opts)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.OperationalError):
             # these error messages from libpq: interfaces/libpq/fe-misc.c.
             # TODO: these are sent through gettext in libpq and we can't 

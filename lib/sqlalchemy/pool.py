@@ -425,11 +425,7 @@ class _ConnectionFairy(object):
         self._close()
 
     def cursor(self, *args, **kwargs):
-        try:
-            return self.connection.cursor(*args, **kwargs)
-        except Exception, e:
-            self.invalidate(e=e)
-            raise
+        return self.connection.cursor(*args, **kwargs)
 
     def __getattr__(self, key):
         return getattr(self.connection, key)

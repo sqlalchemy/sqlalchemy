@@ -153,7 +153,7 @@ class FBDialect_kinterbasdb(FBDialect):
         else:
             return tuple([int(x) for x in m.group(1, 2, 3)] + ['interbase'])
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, (self.dbapi.OperationalError,
                             self.dbapi.ProgrammingError)):
             msg = str(e)

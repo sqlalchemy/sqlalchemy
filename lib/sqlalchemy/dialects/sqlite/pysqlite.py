@@ -238,7 +238,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
         return ([filename], opts)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         return isinstance(e, self.dbapi.ProgrammingError) and "Cannot operate on a closed database." in str(e)
 
 dialect = SQLiteDialect_pysqlite

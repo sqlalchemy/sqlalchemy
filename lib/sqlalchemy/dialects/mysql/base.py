@@ -1711,7 +1711,7 @@ class MySQLDialect(default.DefaultDialect):
         resultset = connection.execute("XA RECOVER")
         return [row['data'][0:row['gtrid_length']] for row in resultset]
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.OperationalError):
             return self._extract_error_code(e) in \
                         (2006, 2013, 2014, 2045, 2055)

@@ -46,7 +46,7 @@ class ZxJDBCConnector(Connector):
                 self.jdbc_driver_name],
                 opts]
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if not isinstance(e, self.dbapi.ProgrammingError):
             return False
         e = str(e)

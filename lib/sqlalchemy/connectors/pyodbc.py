@@ -81,7 +81,7 @@ class PyODBCConnector(Connector):
             connectors.extend(['%s=%s' % (k,v) for k,v in keys.iteritems()])
         return [[";".join (connectors)], connect_args]
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(e) or \
                             'Attempt to use a closed connection.' in str(e)

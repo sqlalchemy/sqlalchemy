@@ -95,7 +95,7 @@ class MSDialect_pymssql(MSDialect):
             opts['host'] = "%s:%s" % (opts['host'], port)
         return [[], opts]
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         for msg in (
             "Error 10054",
             "Not connected to any MS SQL server",

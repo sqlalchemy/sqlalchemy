@@ -195,7 +195,7 @@ class MySQLDialect_oursql(MySQLDialect):
                                 execution_options(_oursql_plain_query=True),
                                 table, charset, full_name)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.ProgrammingError):
             return e.errno is None and 'cursor' not in e.args[1] and e.args[1].endswith('closed')
         else:

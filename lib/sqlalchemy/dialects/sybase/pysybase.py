@@ -87,7 +87,7 @@ class SybaseDialect_pysybase(SybaseDialect):
        # (12, 5, 0, 0)
        return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         if isinstance(e, (self.dbapi.OperationalError,
                             self.dbapi.ProgrammingError)):
             msg = str(e)

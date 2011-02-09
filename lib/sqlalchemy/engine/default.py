@@ -324,7 +324,7 @@ class DefaultDialect(base.Dialect):
     def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         return False
 
     def reset_isolation_level(self, dbapi_conn):

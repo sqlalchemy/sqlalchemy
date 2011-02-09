@@ -502,7 +502,7 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         """Return True if the given DB-API error indicates an invalid
         connection"""
 
@@ -1518,7 +1518,7 @@ class Connection(Connectable):
             if context:
                 context.handle_dbapi_exception(e)
 
-            is_disconnect = self.dialect.is_disconnect(e)
+            is_disconnect = self.dialect.is_disconnect(e, self.__connection, cursor)
             if is_disconnect:
                 self.invalidate(e)
                 self.engine.dispose()

@@ -67,7 +67,7 @@ class PGDialect_pypostgresql(PGDialect):
         opts.update(url.query)
         return ([], opts)
 
-    def is_disconnect(self, e):
+    def is_disconnect(self, e, connection, cursor):
         return "connection is closed" in str(e)
 
 dialect = PGDialect_pypostgresql
