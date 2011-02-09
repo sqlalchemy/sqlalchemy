@@ -234,6 +234,10 @@ CHANGES
     than 63 characters using the same logic Postgresql uses.  
     [ticket:1083]
 
+  - Added an additional libpq message to the list of "disconnect"
+    exceptions, "could not receive data from server"
+    [ticket:2044]
+
 0.6.6
 =====
 - orm
