@@ -44,21 +44,24 @@ class VisitableType(type):
             super(VisitableType, cls).__init__(clsname, bases, clsdict)
             return
 
-        # set up an optimized visit dispatch function
-        # for use by the compiler
-        if '__visit_name__' in cls.__dict__:
-            visit_name = cls.__visit_name__
-            if isinstance(visit_name, str):
-                getter = operator.attrgetter("visit_%s" % visit_name)
-                def _compiler_dispatch(self, visitor, **kw):
-                    return getter(visitor)(self, **kw)
-            else:
-                def _compiler_dispatch(self, visitor, **kw):
-                    return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
-
-            cls._compiler_dispatch = _compiler_dispatch
+        _generate_dispatch(cls)
 
         super(VisitableType, cls).__init__(clsname, bases, clsdict)
+
+def _generate_dispatch(cls):
+    # set up an optimized visit dispatch function
+    # for use by the compiler
+    if '__visit_name__' in cls.__dict__:
+        visit_name = cls.__visit_name__
+        if isinstance(visit_name, str):
+            getter = operator.attrgetter("visit_%s" % visit_name)
+            def _compiler_dispatch(self, visitor, **kw):
+                return getter(visitor)(self, **kw)
+        else:
+            def _compiler_dispatch(self, visitor, **kw):
+                return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
+
+        cls._compiler_dispatch = _compiler_dispatch
 
 class Visitable(object):
     """Base class for visitable objects, applies the

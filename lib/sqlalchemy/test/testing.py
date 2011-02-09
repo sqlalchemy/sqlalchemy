@@ -634,7 +634,9 @@ class TestBase(object):
         assert val, msg
 
 class AssertsCompiledSQL(object):
-    def assert_compile(self, clause, result, params=None, checkparams=None, dialect=None, use_default_dialect=False):
+    def assert_compile(self, clause, result, params=None, 
+                            checkparams=None, dialect=None, 
+                            use_default_dialect=False):
         if use_default_dialect:
             dialect = default.DefaultDialect()
 

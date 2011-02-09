@@ -30,12 +30,12 @@ class CompileTest(TestBase, AssertsExecutionResults):
         for t in types.type_map.values():
             t._type_affinity
 
-    @profiling.function_call_count(69, {'2.4': 44, 
+    @profiling.function_call_count(73, {'2.4': 44, 
                                             '3.0':77, '3.1':77})
     def test_insert(self):
         t1.insert().compile()
 
-    @profiling.function_call_count(69, {'2.4': 45})
+    @profiling.function_call_count(73, {'2.4': 45})
     def test_update(self):
         t1.update().compile()
 

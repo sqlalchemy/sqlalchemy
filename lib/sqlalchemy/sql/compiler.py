@@ -543,8 +543,9 @@ class SQLCompiler(engine.Compiled):
         else:
             return fn(" " + operator + " ")
 
-    def visit_bindparam(self, bindparam, within_columns_clause=False, 
+    def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False, **kwargs):
+
         if literal_binds or \
             (within_columns_clause and \
                 self.ansi_bind_rules):
@@ -554,6 +555,7 @@ class SQLCompiler(engine.Compiled):
             return self.render_literal_bindparam(bindparam, within_columns_clause=True, **kwargs)
 
         name = self._truncate_bindparam(bindparam)
+
         if name in self.binds:
             existing = self.binds[name]
             if existing is not bindparam:
@@ -562,7 +564,8 @@ class SQLCompiler(engine.Compiled):
                             "Bind parameter '%s' conflicts with "
                             "unique bind parameter of the same name" % bindparam.key
                         )
-                elif getattr(existing, '_is_crud', False):
+                elif getattr(existing, '_is_crud', False) or \
+                    getattr(bindparam, '_is_crud', False):
                     raise exc.CompileError(
                             "bindparam() name '%s' is reserved "
                             "for automatic usage in the VALUES or SET clause of this "
@@ -923,18 +926,8 @@ class SQLCompiler(engine.Compiled):
     def _create_crud_bind_param(self, col, value, required=False):
         bindparam = sql.bindparam(col.key, value, type_=col.type, required=required)
         bindparam._is_crud = True
-        if col.key in self.binds:
-            raise exc.CompileError(
-                    "bindparam() name '%s' is reserved "
-                    "for automatic usage in the VALUES or SET clause of this "
-                    "insert/update statement.   Please use a " 
-                    "name other than column name when using bindparam() "
-                    "with insert() or update() (for example, 'b_%s')."
-                    % (col.key, col.key)
-                )
+        return bindparam._compiler_dispatch(self)
 
-        self.binds[col.key] = bindparam
-        return self.bindparam_string(self._truncate_bindparam(bindparam))
 
     def _get_colparams(self, stmt):
         """create a set of tuples representing column/string pairs for use

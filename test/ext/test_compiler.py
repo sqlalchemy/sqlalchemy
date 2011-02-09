@@ -1,10 +1,11 @@
 from sqlalchemy import *
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
-                                    FunctionElement, Select
+                                    FunctionElement, Select,\
+                                    _BindParamClause
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql import table, column
+from sqlalchemy.sql import table, column, visitors
 from sqlalchemy.test import *
 
 class UserDefinedTest(TestBase, AssertsCompiledSQL):
@@ -122,36 +123,6 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             self.assert_compile(
                 s1._annotate({}),
                 "OVERRIDE"
-            )
-        finally:
-            Select._compiler_dispatch = dispatch
-            if hasattr(Select, '_compiler_dispatcher'):
-                del Select._compiler_dispatcher
-
-    def test_default_on_existing(self):
-        """test that the existing compiler function remains
-        as 'default' when overriding the compilation of an
-        existing construct."""
-
-
-        t1 = table('t1', column('c1'), column('c2'))
-
-        dispatch = Select._compiler_dispatch
-        try:
-
-            @compiles(Select, 'sqlite')
-            def compile(element, compiler, **kw):
-                return "OVERRIDE"
-
-            s1 = select([t1])
-            self.assert_compile(
-                s1, "SELECT t1.c1, t1.c2 FROM t1",
-            )
-
-            from sqlalchemy.dialects.sqlite import base as sqlite
-            self.assert_compile(
-                s1, "OVERRIDE",
-                dialect=sqlite.dialect()
             )
         finally:
             Select._compiler_dispatch = dispatch
@@ -288,5 +259,68 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([Sub1(), Sub2(), SubSub1()]),
             'SELECT FOOsub1, sub2, FOOsubsub1',
+            use_default_dialect=True
+        )
+
+
+class DefaultOnExistingTest(TestBase, AssertsCompiledSQL):
+    """Test replacement of default compilation on existing constructs."""
+
+    def teardown(self):
+        for cls in (Select, _BindParamClause):
+            if hasattr(cls, '_compiler_dispatcher'):
+                visitors._generate_dispatch(cls)
+                del cls._compiler_dispatcher
+
+    def test_select(self):
+        t1 = table('t1', column('c1'), column('c2'))
+
+        @compiles(Select, 'sqlite')
+        def compile(element, compiler, **kw):
+            return "OVERRIDE"
+
+        s1 = select([t1])
+        self.assert_compile(
+            s1, "SELECT t1.c1, t1.c2 FROM t1",
+        )
+
+        from sqlalchemy.dialects.sqlite import base as sqlite
+        self.assert_compile(
+            s1, "OVERRIDE",
+            dialect=sqlite.dialect()
+        )
+
+    def test_binds_in_select(self):
+        t = table('t',
+            column('a'),
+            column('b'),
+            column('c')
+        )
+
+        @compiles(_BindParamClause)
+        def gen_bind(element, compiler, **kw):
+            return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
+
+        self.assert_compile(
+            t.select().where(t.c.c == 5), 
+            "SELECT t.a, t.b, t.c FROM t WHERE t.c = BIND(:c_1)",
+            use_default_dialect=True
+        )
+
+    def test_binds_in_dml(self):
+        t = table('t',
+            column('a'),
+            column('b'),
+            column('c')
+        )
+
+        @compiles(_BindParamClause)
+        def gen_bind(element, compiler, **kw):
+            return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
+
+        self.assert_compile(
+            t.insert(), 
+            "INSERT INTO t (a, b) VALUES (BIND(:a), BIND(:b))",
+            {'a':1, 'b':2},
             use_default_dialect=True
         )
