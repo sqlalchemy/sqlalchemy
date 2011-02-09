@@ -282,11 +282,19 @@ class PGDialect_psycopg2(PGDialect):
 
     def is_disconnect(self, e):
         if isinstance(e, self.dbapi.OperationalError):
-            return 'closed the connection' in str(e) or 'connection not open' in str(e)
+            # these error messages from libpq: interfaces/libpq/fe-misc.c.
+            # TODO: these are sent through gettext in libpq and we can't 
+            # check within other locales - consider using connection.closed 
+            return 'closed the connection' in str(e) or \
+                    'connection not open' in str(e) or \
+                    'could not receive data from server' in str(e)
         elif isinstance(e, self.dbapi.InterfaceError):
-            return 'connection already closed' in str(e) or 'cursor already closed' in str(e)
+            # psycopg2 client errors, psycopg2/conenction.h, psycopg2/cursor.h
+            return 'connection already closed' in str(e) or \
+                    'cursor already closed' in str(e)
         elif isinstance(e, self.dbapi.ProgrammingError):
-            # yes, it really says "losed", not "closed"
+            # not sure where this path is originally from, it may 
+            # be obsolete.   It really says "losed", not "closed".
             return "losed the connection unexpectedly" in str(e)
         else:
             return False
