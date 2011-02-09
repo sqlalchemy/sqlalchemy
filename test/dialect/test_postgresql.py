@@ -993,7 +993,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
             :
             try:
                 con.execute(ddl)
-            except exc.SQLError, e:
+            except exc.DBAPIError, e:
                 if not 'already exists' in str(e):
                     raise e
         con.execute('CREATE TABLE testtable (question integer, answer '

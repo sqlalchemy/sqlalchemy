@@ -38,14 +38,14 @@ class WrapTest(TestBase):
     def test_db_error_normal(self):
         try:
             raise sa_exceptions.DBAPIError.instance('', [],
-                    OperationalError())
+                    OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError:
             self.assert_(True)
 
     def test_tostring(self):
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message'
-                    , None, OperationalError())
+                    , None, OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc) \
                 == "(OperationalError)  'this is a message' None"
@@ -56,7 +56,7 @@ class WrapTest(TestBase):
                     , 
                 {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h':
                 8, 'i': 9, 'j': 10, 'k': 11,
-                }, OperationalError())
+                }, OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc).startswith("(OperationalError)  'this is a "
                     "message' {")
@@ -64,7 +64,8 @@ class WrapTest(TestBase):
     def test_tostring_large_list(self):
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', 
-                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,], OperationalError())
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,], 
+                OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc).startswith("(OperationalError)  'this is a "
                     "message' [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]")
@@ -74,7 +75,7 @@ class WrapTest(TestBase):
             raise sa_exceptions.DBAPIError.instance('this is a message', 
                 [{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, 
                 {1: 1}, {1:1}, {1: 1}, {1: 1},], 
-                OperationalError())
+                OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc) \
                 == "(OperationalError)  'this is a message' [{1: 1}, "\
@@ -84,7 +85,7 @@ class WrapTest(TestBase):
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, 
                 {1:1}, {1: 1}, {1: 1}, {1: 1},
-                ], OperationalError())
+                ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc) \
                 == "(OperationalError)  'this is a message' [{1: 1}, "\
@@ -94,7 +95,7 @@ class WrapTest(TestBase):
                 [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
                 (1, ),
-                ], OperationalError())
+                ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc) \
                 == "(OperationalError)  'this is a message' [(1,), "\
@@ -103,7 +104,7 @@ class WrapTest(TestBase):
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
                 (1, ), (1, ),
-                ], OperationalError())
+                ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc) \
                 == "(OperationalError)  'this is a message' [(1,), "\
@@ -112,25 +113,23 @@ class WrapTest(TestBase):
     def test_db_error_busted_dbapi(self):
         try:
             raise sa_exceptions.DBAPIError.instance('', [],
-                    ProgrammingError())
+                    ProgrammingError(), DatabaseError)
         except sa_exceptions.DBAPIError, e:
             self.assert_(True)
             self.assert_('Error in str() of DB-API' in e.args[0])
 
     def test_db_error_noncompliant_dbapi(self):
         try:
-            raise sa_exceptions.DBAPIError.instance('', [], OutOfSpec())
+            raise sa_exceptions.DBAPIError.instance('', [], OutOfSpec(), 
+                        DatabaseError)
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except OutOfSpec:
             self.assert_(False)
 
-        # Make sure the DatabaseError recognition logic is limited to
-        # subclasses of sqlalchemy.exceptions.DBAPIError
-
         try:
             raise sa_exceptions.DBAPIError.instance('', [],
-                    sa_exceptions.ArgumentError())
+                    sa_exceptions.ArgumentError(), DatabaseError)
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
         except sa_exceptions.ArgumentError:
@@ -139,7 +138,7 @@ class WrapTest(TestBase):
     def test_db_error_keyboard_interrupt(self):
         try:
             raise sa_exceptions.DBAPIError.instance('', [],
-                    KeyboardInterrupt())
+                    KeyboardInterrupt(), DatabaseError)
         except sa_exceptions.DBAPIError:
             self.assert_(False)
         except KeyboardInterrupt:
@@ -148,7 +147,7 @@ class WrapTest(TestBase):
     def test_db_error_system_exit(self):
         try:
             raise sa_exceptions.DBAPIError.instance('', [],
-                    SystemExit())
+                    SystemExit(), DatabaseError)
         except sa_exceptions.DBAPIError:
             self.assert_(False)
         except SystemExit:

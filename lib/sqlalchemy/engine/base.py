@@ -1286,12 +1286,14 @@ class Connection(Connectable):
         """Execute a schema.DDL object."""
 
         dialect = self.dialect
+
+        compiled = ddl.compile(dialect=dialect)
         return self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_ddl,
-            None, 
+            compiled, 
             None,
-            ddl.compile(dialect=dialect)
+            compiled
         )
 
     def _execute_clauseelement(self, elem, multiparams, params):
@@ -1322,7 +1324,7 @@ class Connection(Connectable):
         return self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
-            None, 
+            compiled_sql, 
             params,
             compiled_sql, params
         )
@@ -1335,7 +1337,7 @@ class Connection(Connectable):
         return self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
-            None, 
+            compiled, 
             parameters,
             compiled, parameters
         )
@@ -1357,7 +1359,8 @@ class Connection(Connectable):
     _after_cursor_execute = None
 
     def _execute_context(self, dialect, constructor, 
-                                    statement, parameters, *args):
+                                    statement, parameters, 
+                                    *args):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`.ResultProxy`."""
 
@@ -1370,7 +1373,7 @@ class Connection(Connectable):
             context = constructor(dialect, self, conn, *args)
         except Exception, e:
             self._handle_dbapi_exception(e, 
-                        statement, parameters, 
+                        str(statement), parameters, 
                         None, None)
             raise
 
@@ -1505,20 +1508,28 @@ class Connection(Connectable):
                                     context):
         if getattr(self, '_reentrant_error', False):
             # Py3K
-            #raise exc.DBAPIError.instance(statement, parameters, e) from e
+            #raise exc.DBAPIError.instance(statement, parameters, e, 
+            #                               self.dialect.dbapi.Error) from e
             # Py2K
-            raise exc.DBAPIError.instance(statement, parameters, e), \
+            raise exc.DBAPIError.instance(statement, 
+                                            parameters, 
+                                            e, 
+                                            self.dialect.dbapi.Error), \
                                             None, sys.exc_info()[2]
             # end Py2K
         self._reentrant_error = True
         try:
-            if not isinstance(e, self.dialect.dbapi.Error):
+            # non-DBAPI error - if we already got a context,
+            # or theres no string statement, don't wrap it
+            if not isinstance(e, self.dialect.dbapi.Error) and \
+                (statement is None or context is not None):
                 return
 
             if context:
                 context.handle_dbapi_exception(e)
 
-            is_disconnect = self.dialect.is_disconnect(e, self.__connection, cursor)
+            is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
+                                self.dialect.is_disconnect(e, self.__connection, cursor)
             if is_disconnect:
                 self.invalidate(e)
                 self.engine.dispose()
@@ -1533,6 +1544,7 @@ class Connection(Connectable):
             #                        statement, 
             #                        parameters, 
             #                        e, 
+            #                        self.dialect.dbapi.Error,
             #                        connection_invalidated=is_disconnect) \
             #                        from e
             # Py2K
@@ -1540,6 +1552,7 @@ class Connection(Connectable):
                                     statement, 
                                     parameters, 
                                     e, 
+                                    self.dialect.dbapi.Error,
                                     connection_invalidated=is_disconnect), \
                                     None, sys.exc_info()[2]
             # end Py2K

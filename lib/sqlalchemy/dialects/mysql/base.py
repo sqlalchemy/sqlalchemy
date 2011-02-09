@@ -1767,7 +1767,7 @@ class MySQLDialect(default.DefaultDialect):
                 have = rs.rowcount > 0
                 rs.close()
                 return have
-            except exc.SQLError, e:
+            except exc.DBAPIError, e:
                 if self._extract_error_code(e.orig) == 1146:
                     return False
                 raise
@@ -2055,7 +2055,7 @@ class MySQLDialect(default.DefaultDialect):
         rp = None
         try:
             rp = connection.execute(st)
-        except exc.SQLError, e:
+        except exc.DBAPIError, e:
             if self._extract_error_code(e.orig) == 1146:
                 raise exc.NoSuchTableError(full_name)
             else:
@@ -2079,7 +2079,7 @@ class MySQLDialect(default.DefaultDialect):
         try:
             try:
                 rp = connection.execute(st)
-            except exc.SQLError, e:
+            except exc.DBAPIError, e:
                 if self._extract_error_code(e.orig) == 1146:
                     raise exc.NoSuchTableError(full_name)
                 else:

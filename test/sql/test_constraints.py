@@ -79,9 +79,9 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
         metadata.create_all()
         foo.insert().execute(id=1,x=9,y=5)
-        assert_raises(exc.SQLError, foo.insert().execute, id=2,x=5,y=9)
+        assert_raises(exc.DBAPIError, foo.insert().execute, id=2,x=5,y=9)
         bar.insert().execute(id=1,x=10)
-        assert_raises(exc.SQLError, bar.insert().execute, id=2,x=5)
+        assert_raises(exc.DBAPIError, bar.insert().execute, id=2,x=5)
 
     def test_unique_constraint(self):
         foo = Table('foo', metadata,
@@ -98,8 +98,8 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         foo.insert().execute(id=2, value='value2')
         bar.insert().execute(id=1, value='a', value2='a')
         bar.insert().execute(id=2, value='a', value2='b')
-        assert_raises(exc.SQLError, foo.insert().execute, id=3, value='value1')
-        assert_raises(exc.SQLError, bar.insert().execute, id=3, value='a', value2='b')
+        assert_raises(exc.DBAPIError, foo.insert().execute, id=3, value='value1')
+        assert_raises(exc.DBAPIError, bar.insert().execute, id=3, value='a', value2='b')
 
     def test_index_create(self):
         employees = Table('employees', metadata,

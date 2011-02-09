@@ -43,7 +43,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
             meta.drop_all()
 
     def test_string_dates_raise(self):
-        assert_raises(TypeError, testing.db.execute,
+        assert_raises(exc.StatementError, testing.db.execute,
                       select([1]).where(bindparam('date', type_=Date)),
                       date=str(datetime.date(2007, 10, 30)))
 

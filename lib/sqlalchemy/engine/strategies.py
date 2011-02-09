@@ -80,10 +80,13 @@ class DefaultEngineStrategy(EngineStrategy):
                     return dialect.connect(*cargs, **cparams)
                 except Exception, e:
                     # Py3K
-                    #raise exc.DBAPIError.instance(None, None, e) from e
+                    #raise exc.DBAPIError.instance(None, None, 
+                    #                   dialect.dbapi.Error, e) from e
                     # Py2K
                     import sys
-                    raise exc.DBAPIError.instance(None, None, e), None, sys.exc_info()[2]
+                    raise exc.DBAPIError.instance(
+                                None, None, e, dialect.dbapi.Error), \
+                                None, sys.exc_info()[2]
                     # end Py2K
 
             creator = kwargs.pop('creator', connect)

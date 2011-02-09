@@ -1,8 +1,9 @@
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import re
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
-    bindparam, select, event
+    bindparam, select, event, TypeDecorator
+from sqlalchemy.sql import column, literal
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
 from test.lib import TestBase, testing, engines
@@ -122,14 +123,30 @@ class ExecuteTest(TestBase):
                     'horse'), (4, 'sally')]
             conn.execute('delete from users')
 
-    def test_exception_wrapping(self):
+    def test_exception_wrapping_dbapi(self):
         for conn in testing.db, testing.db.connect():
-            try:
-                conn.execute('osdjafioajwoejoasfjdoifjowejfoawejqoijwef'
-                             )
-                assert False
-            except tsa.exc.DBAPIError:
-                assert True
+            assert_raises_message(
+                tsa.exc.DBAPIError,
+                r"not_a_valid_statement",
+                conn.execute, 'not_a_valid_statement'
+            )
+
+    def test_exception_wrapping_non_dbapi_statement(self):
+        class MyType(TypeDecorator):
+            impl = Integer
+            def process_bind_param(self, value, dialect):
+                raise Exception("nope")
+
+        for conn in testing.db, testing.db.connect():
+            assert_raises_message(
+                tsa.exc.StatementError,
+                "nope 'SELECT 1 ",
+                conn.execute,
+                    select([1]).\
+                        where(
+                            column('foo') == literal('bar', MyType())
+                        )
+            )
 
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""

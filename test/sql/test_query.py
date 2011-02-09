@@ -48,8 +48,8 @@ class QueryTest(TestBase):
     def test_insert_heterogeneous_params(self):
         """test that executemany parameters are asserted to match the parameter set of the first."""
 
-        assert_raises_message(exc.InvalidRequestError, 
-            "A value is required for bind parameter 'user_name', in parameter group 2",
+        assert_raises_message(exc.StatementError, 
+            "A value is required for bind parameter 'user_name', in parameter group 2 'INSERT INTO query_users",
             users.insert().execute,
             {'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'},
@@ -852,8 +852,8 @@ class QueryTest(TestBase):
     def test_cant_execute_join(self):
         try:
             users.join(addresses).execute()
-        except exc.ArgumentError, e:
-            assert str(e).startswith('Not an executable clause: ')
+        except exc.StatementError, e:
+            assert str(e).startswith('Not an executable clause ')
 
 
 

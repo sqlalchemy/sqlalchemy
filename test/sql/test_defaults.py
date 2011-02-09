@@ -304,7 +304,7 @@ class DefaultTest(testing.TestBase):
               12, today, 'py')])
 
     def test_missing_many_param(self):
-        assert_raises_message(exc.InvalidRequestError, 
+        assert_raises_message(exc.StatementError, 
             "A value is required for bind parameter 'col7', in parameter group 1",
             t.insert().execute,
             {'col4':7, 'col7':12, 'col8':19},
@@ -531,7 +531,7 @@ class AutoIncrementTest(_base.TablesTest):
             nonai.insert().execute(data='row 1')
             nonai.insert().execute(data='row 2')
             assert False
-        except sa.exc.SQLError, e:
+        except sa.exc.DBAPIError, e:
             assert True
 
         nonai.insert().execute(id=1, data='row 1')

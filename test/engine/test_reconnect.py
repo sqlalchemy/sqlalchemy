@@ -1,4 +1,4 @@
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 import time
 import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool
@@ -130,13 +130,11 @@ class MockReconnectTest(TestBase):
         assert not conn.closed
         assert conn.invalidated
         assert trans.is_active
-        try:
-            conn.execute(select([1]))
-            assert False
-        except tsa.exc.InvalidRequestError, e:
-            assert str(e) \
-                == "Can't reconnect until invalid transaction is "\
-                "rolled back"
+        assert_raises_message(
+            tsa.exc.StatementError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute, select([1])
+        )
         assert trans.is_active
         try:
             trans.commit()
@@ -364,13 +362,12 @@ class RealReconnectTest(TestBase):
         assert not conn.closed
         assert conn.invalidated
         assert trans.is_active
-        try:
-            conn.execute(select([1]))
-            assert False
-        except tsa.exc.InvalidRequestError, e:
-            assert str(e) \
-                == "Can't reconnect until invalid transaction is "\
-                "rolled back"
+        assert_raises_message(
+            tsa.exc.StatementError,
+            "Can't reconnect until invalid transaction is "\
+                "rolled back",
+            conn.execute, select([1])
+        )
         assert trans.is_active
         try:
             trans.commit()

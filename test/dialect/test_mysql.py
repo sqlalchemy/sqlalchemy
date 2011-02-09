@@ -621,10 +621,10 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         enum_table.drop(checkfirst=True)
         enum_table.create()
 
-        assert_raises(exc.SQLError, enum_table.insert().execute, 
+        assert_raises(exc.DBAPIError, enum_table.insert().execute, 
                         e1=None, e2=None, e3=None, e4=None)
 
-        assert_raises(exc.InvalidRequestError, enum_table.insert().execute,
+        assert_raises(exc.StatementError, enum_table.insert().execute,
                                         e1='c', e2='c', e2generic='c', e3='c',
                                         e4='c', e5='c', e5generic='c', e6='c')
 

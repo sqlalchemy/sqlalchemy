@@ -175,6 +175,13 @@ CHANGES
 
   - TypeDecorator is present in the "sqlalchemy" import space.
 
+  - Non-DBAPI errors which occur in the scope of an `execute()`
+    call are now wrapped in sqlalchemy.exc.StatementError,
+    and the text of the SQL statement and repr() of params
+    is included.  This makes it easier to identify statement
+    executions which fail before the DBAPI becomes 
+    involved.  [ticket:2015]
+
 -sqlite
   - SQLite dialect now uses `NullPool` for file-based databases
     [ticket:1921]

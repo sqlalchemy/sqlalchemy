@@ -392,7 +392,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.compiled = compiled
 
         if not compiled.can_execute:
-            raise exc.ArgumentError("Not an executable clause: %s" % compiled)
+            raise exc.ArgumentError("Not an executable clause")
 
         self.execution_options = compiled.statement._execution_options
         if connection._execution_options:

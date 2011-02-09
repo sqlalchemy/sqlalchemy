@@ -92,7 +92,37 @@ class UnboundExecutionError(InvalidRequestError):
 # Moved to orm.exc; compatability definition installed by orm import until 0.6
 UnmappedColumnError = None
 
-class DBAPIError(SQLAlchemyError):
+class StatementError(SQLAlchemyError):
+    """An error occured during execution of a SQL statement.
+    
+    :class:`.StatementError` wraps the exception raised
+    during execution, and features :attr:`.statement`
+    and :attr:`.params` attributes which supply context regarding
+    the specifics of the statement which had an issue.
+
+    The wrapped exception object is available in 
+    the :attr:`.orig` attribute.
+    
+    """
+
+    def __init__(self, message, statement, params, orig):
+        SQLAlchemyError.__init__(self, message)
+        self.statement = statement
+        self.params = params
+        self.orig = orig
+
+    def __str__(self):
+        if isinstance(self.params, (list, tuple)) and \
+            len(self.params) > 10 and \
+            isinstance(self.params[0], (list, dict, tuple)):
+            return ' '.join((SQLAlchemyError.__str__(self),
+                             repr(self.statement),
+                             repr(self.params[:2]),
+                             '... and a total of %i bound parameter sets' % len(self.params)))
+        return ' '.join((SQLAlchemyError.__str__(self),
+                         repr(self.statement), repr(self.params)))
+
+class DBAPIError(StatementError):
     """Raised when the execution of a database operation fails.
 
     ``DBAPIError`` wraps exceptions raised by the DB-API underlying the
@@ -103,23 +133,33 @@ class DBAPIError(SQLAlchemyError):
     that there is no guarantee that different DB-API implementations will
     raise the same exception type for any given error condition.
 
-    If the error-raising operation occured in the execution of a SQL
-    statement, that statement and its parameters will be available on
-    the exception object in the ``statement`` and ``params`` attributes.
+    :class:`.DBAPIError` features :attr:`.statement`
+    and :attr:`.params` attributes which supply context regarding
+    the specifics of the statement which had an issue, for the 
+    typical case when the error was raised within the context of
+    emitting a SQL statement.
 
-    The wrapped exception object is available in the ``orig`` attribute.
+    The wrapped exception object is available in the :attr:`.orig` attribute.
     Its type and properties are DB-API implementation specific.
 
     """
 
     @classmethod
-    def instance(cls, statement, params, orig, connection_invalidated=False):
+    def instance(cls, statement, params, 
+                        orig, 
+                        dbapi_base_err,
+                        connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if isinstance(orig, (KeyboardInterrupt, SystemExit)):
             return orig
 
         if orig is not None:
+            # not a DBAPI error, statement is present.
+            # raise a StatementError
+            if not isinstance(orig, dbapi_base_err) and statement:
+                return StatementError(str(orig), statement, params, orig)
+
             name, glob = orig.__class__.__name__, globals()
             if name in glob and issubclass(glob[name], DBAPIError):
                 cls = glob[name]
@@ -133,26 +173,15 @@ class DBAPIError(SQLAlchemyError):
             raise
         except Exception, e:
             text = 'Error in str() of DB-API-generated exception: ' + str(e)
-        SQLAlchemyError.__init__(
-            self, '(%s) %s' % (orig.__class__.__name__, text))
-        self.statement = statement
-        self.params = params
-        self.orig = orig
+        StatementError.__init__(
+                self, 
+                '(%s) %s' % (orig.__class__.__name__, text),
+                statement,
+                params,
+                orig
+        )
         self.connection_invalidated = connection_invalidated
 
-    def __str__(self):
-        if isinstance(self.params, (list, tuple)) and len(self.params) > 10 and isinstance(self.params[0], (list, dict, tuple)):
-            return ' '.join((SQLAlchemyError.__str__(self),
-                             repr(self.statement),
-                             repr(self.params[:2]),
-                             '... and a total of %i bound parameter sets' % len(self.params)))
-        return ' '.join((SQLAlchemyError.__str__(self),
-                         repr(self.statement), repr(self.params)))
-
-
-# As of 0.4, SQLError is now DBAPIError.
-# SQLError alias will be removed in 0.6.
-SQLError = DBAPIError
 
 class InterfaceError(DBAPIError):
     """Wraps a DB-API InterfaceError."""
