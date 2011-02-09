@@ -32,12 +32,12 @@ class CompileTest(TestBase, AssertsExecutionResults):
 
         cls.dialect = default.DefaultDialect()
 
-    @profiling.function_call_count(versions={'2.7':58, '2.6':58,
-                                            '3':64})
+    @profiling.function_call_count(versions={'2.7':62, '2.6':62,
+                                            '3':68})
     def test_insert(self):
         t1.insert().compile(dialect=self.dialect)
 
-    @profiling.function_call_count(versions={'2.6':49, '2.7':49})
+    @profiling.function_call_count(versions={'2.6':53, '2.7':53})
     def test_update(self):
         t1.update().compile(dialect=self.dialect)
 

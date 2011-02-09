@@ -231,6 +231,12 @@ CHANGES
     the extension compiles and runs on Python 2.4.
     [ticket:2023]
 
+  - The compiler extension now supports overriding the default
+    compilation of expression._BindParamClause including that
+    the auto-generated binds within the VALUES/SET clause
+    of an insert()/update() statement will also use the new
+    compilation rules. [ticket:2042]
+
 - postgresql
   - When explicit sequence execution derives the name 
     of the auto-generated sequence of a SERIAL column, 
