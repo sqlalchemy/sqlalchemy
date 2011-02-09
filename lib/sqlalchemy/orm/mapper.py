@@ -1937,7 +1937,8 @@ class Mapper(object):
         if postfetch_cols:
             state.expire_attributes(state.dict, 
                                 [self._columntoproperty[c].key 
-                                for c in postfetch_cols]
+                                for c in postfetch_cols if c in 
+                                self._columntoproperty]
                             )
 
         # synchronize newly inserted ids from one table to the next

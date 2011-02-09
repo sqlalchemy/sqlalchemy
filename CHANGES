@@ -218,6 +218,11 @@ CHANGES
     from that target. Also emits the correct WHERE criterion
     when using single table inheritance. [ticket:2038]
 
+ - Fixed bug where a column with a SQL or server side default
+   that was excluded from a mapping with include_properties
+   or exclude_properties would result in UnmappedColumnError.
+   [ticket:1995]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
