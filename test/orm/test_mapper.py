@@ -6,8 +6,12 @@ from sqlalchemy.test import testing, pickleable
 from sqlalchemy import MetaData, Integer, String, ForeignKey, func, util
 from sqlalchemy.test.schema import Table, Column
 from sqlalchemy.engine import default
-from sqlalchemy.orm import mapper, relationship, backref, create_session, class_mapper, compile_mappers, reconstructor, validates, aliased
-from sqlalchemy.orm import defer, deferred, synonym, attributes, column_property, composite, relationship, dynamic_loader, comparable_property,AttributeExtension
+from sqlalchemy.orm import mapper, relationship, backref, \
+    create_session, class_mapper, compile_mappers, reconstructor, \
+    validates, aliased
+from sqlalchemy.orm import defer, deferred, synonym, attributes, \
+    column_property, composite, relationship, dynamic_loader, \
+    comparable_property, AttributeExtension, Session
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
@@ -570,6 +574,21 @@ class MapperTest(_fixtures.FixtureTest):
             Foo, inherits=Person, polymorphic_identity='foo',
             exclude_properties=('type', ),
             )
+    @testing.resolve_artifact_names
+    @testing.provide_metadata
+    def test_prop_filters_defaults(self):
+        t = Table('t', metadata,
+               Column('id', Integer(), primary_key=True, test_needs_autoincrement=True),
+               Column('x', Integer(), nullable=False, server_default='0')
+              )
+        t.create()
+        class A(object):
+            pass
+        mapper(A, t, include_properties=['id'])
+        s = Session()
+        s.add(A())
+        s.commit()
+
 
     @testing.resolve_artifact_names
     def test_mapping_to_join_raises(self):
