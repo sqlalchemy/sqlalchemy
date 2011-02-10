@@ -1084,24 +1084,125 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
 
+class DistinctOnTest(TestBase, AssertsCompiledSQL):
+    """Test 'DISTINCT' with SQL expression language and orm.Query with
+    an emphasis on PG's 'DISTINCT ON' syntax.
+
+    """
+    __dialect__ = postgresql.dialect()
+
+    def setup(self):
+        self.table = Table('t', MetaData(), 
+                Column('id',Integer, primary_key=True), 
+                Column('a', String),
+                Column('b', String),
+            )
+
+    def test_plain_generative(self):
+        self.assert_compile(
+            select([self.table]).distinct(),
+            "SELECT DISTINCT t.id, t.a, t.b FROM t"
+        )
+
+    def test_on_columns_generative(self):
+        self.assert_compile(
+            select([self.table]).distinct(self.table.c.a),
+            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t"
+        )
+
+    def test_on_columns_generative_multi_call(self):
+        self.assert_compile(
+            select([self.table]).distinct(self.table.c.a).
+                distinct(self.table.c.b),
+            "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t"
+        )
+
+    def test_plain_inline(self):
+        self.assert_compile(
+            select([self.table], distinct=True),
+            "SELECT DISTINCT t.id, t.a, t.b FROM t"
+        )
+
+    def test_on_columns_inline_list(self):
+        self.assert_compile(
+            select([self.table], 
+                    distinct=[self.table.c.a, self.table.c.b]).
+                    order_by(self.table.c.a, self.table.c.b),
+            "SELECT DISTINCT ON (t.a, t.b) t.id, "
+            "t.a, t.b FROM t ORDER BY t.a, t.b"
+        )
+
+    def test_on_columns_inline_scalar(self):
+        self.assert_compile(
+            select([self.table], distinct=self.table.c.a),
+            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t"
+        )
+
+    def test_query_plain(self):
+        sess = Session()
+        self.assert_compile(
+            sess.query(self.table).distinct(),
+            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, "
+            "t.b AS t_b FROM t"
+        )
+
+    def test_query_on_columns(self):
+        sess = Session()
+        self.assert_compile(
+            sess.query(self.table).distinct(self.table.c.a),
+            "SELECT DISTINCT ON (t.a) t.id AS t_id, t.a AS t_a, "
+            "t.b AS t_b FROM t"
+        )
+
+    def test_query_on_columns_multi_call(self):
+        sess = Session()
+        self.assert_compile(
+            sess.query(self.table).distinct(self.table.c.a).
+                    distinct(self.table.c.b),
+            "SELECT DISTINCT ON (t.a, t.b) t.id AS t_id, t.a AS t_a, "
+            "t.b AS t_b FROM t"
+        )
+
+    def test_query_on_columns_subquery(self):
+        sess = Session()
+        class Foo(object):
+            pass
+        mapper(Foo, self.table)
+        sess = Session()
+        self.assert_compile(
+            sess.query(Foo).from_self().distinct(Foo.a, Foo.b),
+            "SELECT DISTINCT ON (anon_1.t_a, anon_1.t_b) anon_1.t_id "
+            "AS anon_1_t_id, anon_1.t_a AS anon_1_t_a, anon_1.t_b "
+            "AS anon_1_t_b FROM (SELECT t.id AS t_id, t.a AS t_a, "
+            "t.b AS t_b FROM t) AS anon_1"
+        )
+
+    def test_query_distinct_on_aliased(self):
+        class Foo(object):
+            pass
+        mapper(Foo, self.table)
+        a1 = aliased(Foo)
+        sess = Session()
+        self.assert_compile(
+            sess.query(a1).distinct(a1.a),
+            "SELECT DISTINCT ON (t_1.a) t_1.id AS t_1_id, "
+            "t_1.a AS t_1_a, t_1.b AS t_1_b FROM t AS t_1"
+        )
 
 class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
 
+    @testing.provide_metadata
     def test_date_reflection(self):
-        m1 = MetaData(testing.db)
-        t1 = Table('pgdate', m1, Column('date1',
+        t1 = Table('pgdate', metadata, Column('date1',
                    DateTime(timezone=True)), Column('date2',
                    DateTime(timezone=False)))
-        m1.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('pgdate', m2, autoload=True)
-            assert t2.c.date1.type.timezone is True
-            assert t2.c.date2.type.timezone is False
-        finally:
-            m1.drop_all()
+        metadata.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('pgdate', m2, autoload=True)
+        assert t2.c.date1.type.timezone is True
+        assert t2.c.date2.type.timezone is False
 
     @testing.fails_on('+zxjdbc',
                       'The JDBC driver handles the version parsing')
@@ -1192,41 +1293,25 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             t.drop(checkfirst=True)
 
+    @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
-        m1 = MetaData(testing.db)
-        t = Table('t', m1, Column('id', Integer, primary_key=True))
-        m1.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('t', m2, autoload=True, implicit_returning=False)
-            eq_(t2.c.id.server_default.arg.text,
-                "nextval('t_id_seq'::regclass)")
-            r = t2.insert().execute()
-            eq_(r.inserted_primary_key, [1])
-            testing.db.connect().execution_options(autocommit=True).\
-                    execute('alter table t_id_seq rename to foobar_id_seq'
-                    )
-            m3 = MetaData(testing.db)
-            t3 = Table('t', m3, autoload=True, implicit_returning=False)
-            eq_(t3.c.id.server_default.arg.text,
-                "nextval('foobar_id_seq'::regclass)")
-            r = t3.insert().execute()
-            eq_(r.inserted_primary_key, [2])
-        finally:
-            m1.drop_all()
-
-    def test_distinct_on(self):
-        t = Table('mytable', MetaData(testing.db), Column('id',
-                  Integer, primary_key=True), Column('a', String(8)))
-        eq_(str(t.select(distinct=t.c.a)),
-            'SELECT DISTINCT ON (mytable.a) mytable.id, mytable.a '
-            '\nFROM mytable')
-        eq_(str(t.select(distinct=['id', 'a'])),
-            'SELECT DISTINCT ON (id, a) mytable.id, mytable.a \nFROM '
-            'mytable')
-        eq_(str(t.select(distinct=[t.c.id, t.c.a])),
-            'SELECT DISTINCT ON (mytable.id, mytable.a) mytable.id, '
-            'mytable.a \nFROM mytable')
+        t = Table('t', metadata, Column('id', Integer, primary_key=True))
+        metadata.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('t', m2, autoload=True, implicit_returning=False)
+        eq_(t2.c.id.server_default.arg.text,
+            "nextval('t_id_seq'::regclass)")
+        r = t2.insert().execute()
+        eq_(r.inserted_primary_key, [1])
+        testing.db.connect().execution_options(autocommit=True).\
+                execute('alter table t_id_seq rename to foobar_id_seq'
+                )
+        m3 = MetaData(testing.db)
+        t3 = Table('t', m3, autoload=True, implicit_returning=False)
+        eq_(t3.c.id.server_default.arg.text,
+            "nextval('foobar_id_seq'::regclass)")
+        r = t3.insert().execute()
+        eq_(r.inserted_primary_key, [2])
 
     def test_schema_reflection(self):
         """note: this test requires that the 'test_schema' schema be

@@ -187,31 +187,13 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       Deprecated.  Use .execution_options(autocommit=<True|False>)
       to set the autocommit option.
 
-    :param prefixes:
-      a list of strings or :class:`ClauseElement` objects to include
-      directly after the SELECT keyword in the generated statement,
-      for dialect-specific query features.
-
-    :param distinct=False:
-      when ``True``, applies a ``DISTINCT`` qualifier to the columns
-      clause of the resulting statement.
-
-    :param use_labels=False:
-      when ``True``, the statement will be generated using labels
-      for each column in the columns clause, which qualify each
-      column with its parent table's (or aliases) name so that name
-      conflicts between columns in different tables don't occur.
-      The format of the label is <tablename>_<column>.  The "c"
-      collection of the resulting :class:`Select` object will use these
-      names as well for targeting column members.
-
-    :param for_update=False:
-      when ``True``, applies ``FOR UPDATE`` to the end of the
-      resulting statement.  Certain database dialects also support
-      alternate values for this parameter, for example mysql
-      supports "read" which translates to ``LOCK IN SHARE MODE``,
-      and oracle supports "nowait" which translates to ``FOR UPDATE
-      NOWAIT``.
+    :param bind=None:
+      an :class:`~.base.Engine` or :class:`~.base.Connection` instance 
+      to which the
+      resulting :class:`.Select` object will be bound.  The :class:`.Select`
+      object will otherwise automatically bind to whatever
+      :class:`~.base.Connectable` instances can be located within its contained
+      :class:`.ClauseElement` members.
 
     :param correlate=True:
       indicates that this :class:`Select` object should have its
@@ -222,6 +204,30 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       enclosing select will not be rendered in the ``FROM`` clause
       of this select statement.
 
+    :param distinct=False:
+      when ``True``, applies a ``DISTINCT`` qualifier to the columns
+      clause of the resulting statement.
+      
+      The boolean argument may also be a column expression or list
+      of column expressions - this is a special calling form which
+      is understood by the Postgresql dialect to render the
+      ``DISTINCT ON (<columns>)`` syntax.
+      
+      ``distinct`` is also available via the :meth:`~.Select.distinct`
+      generative method.
+      
+      .. note:: The ``distinct`` keyword's acceptance of a string
+        argument for usage with MySQL is deprecated.  Use
+        the ``prefixes`` argument or :meth:`~.Select.prefix_with`.
+
+    :param for_update=False:
+      when ``True``, applies ``FOR UPDATE`` to the end of the
+      resulting statement.  Certain database dialects also support
+      alternate values for this parameter, for example mysql
+      supports "read" which translates to ``LOCK IN SHARE MODE``,
+      and oracle supports "nowait" which translates to ``FOR UPDATE
+      NOWAIT``.
+
     :param group_by:
       a list of :class:`ClauseElement` objects which will comprise the
       ``GROUP BY`` clause of the resulting select.
@@ -229,10 +235,6 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     :param having:
       a :class:`ClauseElement` that will comprise the ``HAVING`` clause
       of the resulting select when ``GROUP BY`` is used.
-
-    :param order_by:
-      a scalar or list of :class:`ClauseElement` objects which will
-      comprise the ``ORDER BY`` clause of the resulting select.
 
     :param limit=None:
       a numerical value which usually compiles to a ``LIMIT``
@@ -246,13 +248,29 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       support ``OFFSET`` will attempt to provide similar
       functionality.
 
-    :param bind=None:
-      an ``Engine`` or ``Connection`` instance to which the
-      resulting ``Select ` object will be bound.  The ``Select``
-      object will otherwise automatically bind to whatever
-      ``Connectable`` instances can be located within its contained
-      :class:`ClauseElement` members.
+    :param order_by:
+      a scalar or list of :class:`ClauseElement` objects which will
+      comprise the ``ORDER BY`` clause of the resulting select.
 
+    :param prefixes:
+      a list of strings or :class:`ClauseElement` objects to include
+      directly after the SELECT keyword in the generated statement,
+      for dialect-specific query features.  ``prefixes`` is
+      also available via the :meth:`~.Select.prefix_with`
+      generative method.
+
+    :param use_labels=False:
+      when ``True``, the statement will be generated using labels
+      for each column in the columns clause, which qualify each
+      column with its parent table's (or aliases) name so that name
+      conflicts between columns in different tables don't occur.
+      The format of the label is <tablename>_<column>.  The "c"
+      collection of the resulting :class:`Select` object will use these
+      names as well for targeting column members.
+      
+      use_labels is also available via the :meth:`~._SelectBase.apply_labels`
+      generative method.
+      
     """
     return Select(columns, whereclause=whereclause, from_obj=from_obj,
                   **kwargs)
@@ -4085,6 +4103,7 @@ class Select(_SelectBase):
 
     _prefixes = ()
     _hints = util.immutabledict()
+    _distinct = False
 
     def __init__(self, 
                 columns, 
@@ -4106,7 +4125,24 @@ class Select(_SelectBase):
 
         """
         self._should_correlate = correlate
-        self._distinct = distinct
+        if distinct is not False:
+            if isinstance(distinct, basestring):
+                util.warn_deprecated(
+                    "A string argument passed to the 'distinct' "
+                    "keyword argument of 'select()' is deprecated "
+                    "- please use 'prefixes' or 'prefix_with()' "
+                    "to specify additional prefixes")
+                if prefixes:
+                    prefixes = util.to_list(prefixes) + [distinct]
+                else:
+                    prefixes = [distinct]
+            elif distinct is True:
+                self._distinct = True
+            else:
+                self._distinct = [
+                                _literal_as_text(e) 
+                                for e in util.to_list(distinct)
+                            ]
 
         self._correlate = set()
         self._froms = util.OrderedSet()
@@ -4329,21 +4365,44 @@ class Select(_SelectBase):
         self.append_having(having)
 
     @_generative
-    def distinct(self):
-        """return a new select() construct which will apply DISTINCT to its
+    def distinct(self, *expr):
+        """Return a new select() construct which will apply DISTINCT to its
         columns clause.
 
-         """
-        self._distinct = True
+        :param \*expr: optional column expressions.  When present,
+         the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
+         construct.
+         
+        """
+        if expr:
+            expr = [_literal_as_text(e) for e in expr]
+            if isinstance(self._distinct, list):
+                self._distinct = self._distinct + expr
+            else:
+                self._distinct = expr
+        else:
+            self._distinct = True
 
     @_generative
-    def prefix_with(self, clause):
+    def prefix_with(self, *expr):
         """return a new select() construct which will apply the given
-        expression to the start of its columns clause, not using any commas.
+        expressions, typically strings, to the start of its columns clause, 
+        not using any commas.   In particular is useful for MySQL
+        keywords.
+        
+        e.g.::
+            
+             select(['a', 'b']).prefix_with('HIGH_PRIORITY', 
+                                    'SQL_SMALL_RESULT', 
+                                    'ALL')
+        
+        Would render::
+
+            SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL a, b
 
          """
-        clause = _literal_as_text(clause)
-        self._prefixes = self._prefixes + (clause,)
+        expr = tuple(_literal_as_text(e) for e in expr)
+        self._prefixes = self._prefixes + expr
 
     @_generative
     def select_from(self, fromclause):

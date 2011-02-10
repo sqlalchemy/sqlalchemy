@@ -1023,24 +1023,46 @@ class SQLTest(TestBase, AssertsCompiledSQL):
 
         eq_(gen(None), 'SELECT q')
         eq_(gen(True), 'SELECT DISTINCT q')
-        eq_(gen(1), 'SELECT DISTINCT q')
-        eq_(gen('diSTInct'), 'SELECT DISTINCT q')
-        eq_(gen('DISTINCT'), 'SELECT DISTINCT q')
 
-        # Standard SQL
-        eq_(gen('all'), 'SELECT ALL q')
-        eq_(gen('distinctrow'), 'SELECT DISTINCTROW q')
+        assert_raises(
+            exc.SADeprecationWarning,
+            gen, 'DISTINCT'
+        )
+
+        eq_(gen(prefixes=['ALL']), 'SELECT ALL q')
+        eq_(gen(prefixes=['DISTINCTROW']), 
+                'SELECT DISTINCTROW q')
 
         # Interaction with MySQL prefix extensions
         eq_(
             gen(None, ['straight_join']),
             'SELECT straight_join q')
         eq_(
-            gen('all', ['HIGH_PRIORITY SQL_SMALL_RESULT']),
+            gen(False, ['HIGH_PRIORITY', 'SQL_SMALL_RESULT', 'ALL']),
             'SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL q')
         eq_(
             gen(True, ['high_priority', sql.text('sql_cache')]),
             'SELECT high_priority sql_cache DISTINCT q')
+
+    @testing.uses_deprecated
+    def test_deprecated_distinct(self):
+        dialect = self.__dialect__
+
+        self.assert_compile(
+            select(['q'], distinct='ALL'),
+            'SELECT ALL q',
+        )
+
+        self.assert_compile(
+            select(['q'], distinct='distinctROW'),
+            'SELECT DISTINCTROW q',
+        )
+
+        self.assert_compile(
+            select(['q'], distinct='ALL', 
+                    prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT']),
+            'SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL q'
+        )
 
     def test_backslash_escaping(self):
         self.assert_compile(

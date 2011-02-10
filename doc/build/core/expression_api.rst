@@ -166,7 +166,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: _SelectBaseMixin
+.. autoclass:: _SelectBase
    :members:
    :show-inheritance:
 

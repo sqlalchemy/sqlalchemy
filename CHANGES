@@ -118,9 +118,28 @@ CHANGES
     in the session.  Was a warning in 0.6.6.
     [ticket:2046]
 
+  - Query.distinct() now accepts column expressions
+    as *args, interpreted by the Postgresql dialect
+    as DISTINCT ON (<expr>). [ticket:1069]
+
 - sql
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]
+
+  - select.distinct() now accepts column expressions
+    as *args, interpreted by the Postgresql dialect
+    as DISTINCT ON (<expr>).  Note this was already
+    available via passing a list to the `distinct` 
+    keyword argument to select(). [ticket:1069]
+
+  - select.prefix_with() accepts multiple expressions
+    (i.e. *expr), 'prefix' keyword argument to select()
+    accepts a list or tuple.
+
+  - Passing a string to the `distinct` keyword argument
+    of `select()` for the purpose of emitting special 
+    MySQL keywords (DISTINCTROW etc.) is deprecated - 
+    use `prefix_with()` for this.
 
   - TypeDecorator works with primary key columns
     [ticket:2005] [ticket:2006]

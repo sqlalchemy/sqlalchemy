@@ -1609,12 +1609,23 @@ class Query(object):
         self._offset = offset
 
     @_generative(_no_statement_condition)
-    def distinct(self):
+    def distinct(self, *criterion):
         """Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
+        
+        :param \*expr: optional column expressions.  When present,
+         the Postgresql dialect will render a ``DISTINCT ON (<expressions>>)``
+         construct.
 
         """
-        self._distinct = True
+        if not criterion: 
+            self._distinct = True 
+        else: 
+            criterion = self._adapt_col_list(criterion)
+            if isinstance(self._distinct, list):
+                self._distinct += criterion
+            else: 
+                self._distinct = criterion 
 
     def all(self):
         """Return the results represented by this ``Query`` as a list.

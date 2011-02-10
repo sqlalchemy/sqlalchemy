@@ -457,11 +457,10 @@ class PGCompiler(compiler.SQLCompiler):
                 return "DISTINCT "
             elif isinstance(select._distinct, (list, tuple)):
                 return "DISTINCT ON (" + ', '.join(
-                    [(isinstance(col, basestring) and col 
-                        or self.process(col)) for col in select._distinct]
+                    [self.process(col) for col in select._distinct]
                 )+ ") "
             else:
-                return "DISTINCT ON (" + unicode(select._distinct) + ") "
+                return "DISTINCT ON (" + self.process(select._distinct) + ") "
         else:
             return ""
 
