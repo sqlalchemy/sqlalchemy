@@ -212,6 +212,11 @@ CHANGES
   - SQLite dialect now uses `NullPool` for file-based databases
     [ticket:1921]
 
+  - The path given as the location of a sqlite database is now
+    normalized via os.path.abspath(), so that directory changes
+    within the process don't affect the ultimate location
+    of a relative file path.  [ticket:2036]
+
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/
     NVARCHAR, emit "max" as the length when no length is 

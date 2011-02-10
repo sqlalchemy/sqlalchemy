@@ -143,6 +143,7 @@ from sqlalchemy import exc, pool
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 
+import os
 
 class _SQLite_pysqliteTimeStamp(DATETIME):
     def bind_processor(self, dialect):
@@ -228,6 +229,8 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 " sqlite:///relative/path/to/file.db\n"
                 " sqlite:////absolute/path/to/file.db" % (url,))
         filename = url.database or ':memory:'
+        if filename != ':memory:':
+            filename = os.path.abspath(filename)
 
         opts = url.query.copy()
         util.coerce_kw_type(opts, 'timeout', float)

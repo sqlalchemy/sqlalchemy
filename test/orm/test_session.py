@@ -520,7 +520,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert session.connection().execute('select count(1) from users'
                 ).scalar() == 2
 
-    @testing.fails_on('sqlite', 'FIXME: unknown')
+    @testing.requires.independent_connections
     @testing.resolve_artifact_names
     def test_transactions_isolated(self):
         mapper(User, users)

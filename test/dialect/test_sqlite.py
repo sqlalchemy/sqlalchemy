@@ -7,8 +7,9 @@ from sqlalchemy import *
 from sqlalchemy import exc, sql, schema, pool, types as sqltypes
 from sqlalchemy.dialects.sqlite import base as sqlite, \
     pysqlite as pysqlite_dialect
+from sqlalchemy.engine.url import make_url
 from test.lib import *
-
+import os
 
 class TestTypes(TestBase, AssertsExecutionResults):
 
@@ -328,6 +329,13 @@ class DialectTest(TestBase, AssertsExecutionResults):
                 pass
             raise
 
+    def test_file_path_is_absolute(self):
+        d = pysqlite_dialect.dialect()
+        eq_(
+            d.create_connect_args(make_url('sqlite:///foo.db')),
+            ([os.path.abspath('foo.db')], {})
+        )
+
     def test_pool_class(self):
         e = create_engine('sqlite+pysqlite://')
         assert e.pool.__class__ is pool.SingletonThreadPool
@@ -608,7 +616,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         eq_([1, 3], [r.id for r in results])
 
 
-class TestAutoIncrement(TestBase, AssertsCompiledSQL):
+class AutoIncrementTest(TestBase, AssertsCompiledSQL):
 
     def test_sqlite_autoincrement(self):
         table = Table('autoinctable', MetaData(), Column('id', Integer,

@@ -88,7 +88,8 @@ def independent_connections(fn):
     # ODBC as well.
     return _chain_decorators_on(
         fn,
-        no_support('sqlite', 'no driver support'),
+        no_support('sqlite', 'Independent connections disabled when '
+                            ':memory: connections are used'),
         exclude('mssql', '<', (9, 0, 0),
                 'SQL Server 2005+ is required for independent connections'),
         )
