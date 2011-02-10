@@ -81,7 +81,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 except Exception, e:
                     # Py3K
                     #raise exc.DBAPIError.instance(None, None, 
-                    #                   dialect.dbapi.Error, e) from e
+                    #                   e, dialect.dbapi.Error) from e
                     # Py2K
                     import sys
                     raise exc.DBAPIError.instance(

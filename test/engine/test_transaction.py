@@ -542,6 +542,7 @@ class TLTransactionTest(TestBase):
 
         tlengine.close()
 
+    @testing.crashes('oracle', 'TNS error of unknown origin occurs on the buildbot.')
     def test_rollback_no_trans(self):
         tlengine = create_engine(testing.db.url, strategy="threadlocal")
 
