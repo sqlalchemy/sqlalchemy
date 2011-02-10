@@ -15,7 +15,8 @@ from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
 
-from sqlalchemy.orm import exc as orm_exc, attributes, interfaces
+from sqlalchemy.orm import exc as orm_exc, attributes, interfaces,\
+        util as orm_util
 from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
     PASSIVE_NO_FETCH, NEVER_SET, ATTR_WAS_SET, NO_VALUE
 
@@ -351,7 +352,11 @@ class InstanceState(object):
                 instance_dict._modified.add(self)
 
             self._strong_obj = self.obj()
-
+            if self._strong_obj is None:
+                raise orm_exc.ObjectDereferencedError(
+                        "Can't emit change event for attribute '%s' - parent object "
+                        "of type %s has been garbage collected." 
+                        % (self.manager[attr.key], orm_util.state_class_str(self)))
             self.modified = True
 
     def commit(self, dict_, keys):

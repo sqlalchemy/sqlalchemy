@@ -40,6 +40,9 @@ class FlushError(sa.exc.SQLAlchemyError):
 class UnmappedError(sa.exc.InvalidRequestError):
     """Base for exceptions that involve expected mappings not present."""
 
+class ObjectDereferencedError(sa.exc.SQLAlchemyError):
+    """An operation cannot complete due to an object being garbage collected."""
+
 class DetachedInstanceError(sa.exc.SQLAlchemyError):
     """An attempt to access unloaded attributes on a 
     mapped instance that is detached."""

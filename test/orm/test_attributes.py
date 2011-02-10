@@ -1,10 +1,10 @@
 import pickle
-from sqlalchemy.orm import attributes, instrumentation
+from sqlalchemy.orm import attributes, instrumentation, exc as orm_exc
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from test.lib import *
-from test.lib.testing import eq_, ne_, assert_raises
+from test.lib.testing import eq_, ne_, assert_raises, assert_raises_message
 from test.orm import _base
 from test.lib.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import cmp, jython, topological
@@ -138,6 +138,28 @@ class AttributesTest(_base.ORMTest):
         gc_collect()
         assert state.obj() is None
         assert state.dict == {}
+
+    def test_object_dereferenced_error(self):
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self):
+                gc_collect()
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        attributes.register_attribute(Foo, 
+                                    'bars', 
+                                    uselist=True, 
+                                    useobject=True)
+
+        assert_raises_message(
+            orm_exc.ObjectDereferencedError,
+            "Can't emit change event for attribute "
+            "'Foo.bars' - parent object of type <Foo> "
+            "has been garbage collected.",
+            lambda: Foo().bars.append(Bar())
+        )
 
     def test_deferred(self):
         class Foo(object):pass

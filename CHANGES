@@ -111,6 +111,13 @@ CHANGES
   - Session weak_instance_dict=False is deprecated.
     [ticket:1473]
 
+  - An exception is raised in the unusual case that an 
+    append or similar event on a collection occurs after
+    the parent object has been dereferenced, which 
+    prevents the parent from being marked as "dirty" 
+    in the session.  Was a warning in 0.6.6.
+    [ticket:2046]
+
 - sql
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]
@@ -229,6 +236,13 @@ CHANGES
    that was excluded from a mapping with include_properties
    or exclude_properties would result in UnmappedColumnError.
    [ticket:1995]
+
+  - A warning is emitted in the unusual case that an 
+    append or similar event on a collection occurs after
+    the parent object has been dereferenced, which 
+    prevents the parent from being marked as "dirty" 
+    in the session.  This will be an exception in 0.7.
+    [ticket:2046]
 
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
