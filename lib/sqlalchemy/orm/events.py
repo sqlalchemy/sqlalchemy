@@ -773,7 +773,7 @@ class SessionEvents(event.Events):
         from sqlalchemy import event
         from sqlalchemy.orm import sessionmaker
 
-        class my_before_commit(session):
+        def my_before_commit(session):
             print "before commit!"
 
         Session = sessionmaker()
