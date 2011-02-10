@@ -1284,14 +1284,14 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
              'BINARY(10)'),
 
             (mssql.MSVarBinary, [], {},
-             'VARBINARY'),
+             'VARBINARY(max)'),
             (mssql.MSVarBinary, [10], {},
              'VARBINARY(10)'),
 
-            (types.VARBINARY, [], {},
-             'VARBINARY'),
             (types.VARBINARY, [10], {},
              'VARBINARY(10)'),
+            (types.VARBINARY, [], {},
+             'VARBINARY(max)'),
 
             (mssql.MSImage, [], {},
              'IMAGE'),

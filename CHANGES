@@ -220,9 +220,14 @@ CHANGES
 - mssql
   - the String/Unicode types, and their counterparts VARCHAR/
     NVARCHAR, emit "max" as the length when no length is 
-    specified.   This makes it more compatible with Postgresql's
-    VARCHAR type which is similarly unbounded when no length
-    specified.
+    specified, so that the default length, normally '1' 
+    as per SQL server documentation, is instead
+    'unbounded'.  This also occurs for the VARBINARY type.
+    [ticket:1833].
+
+    This behavior makes these types more closely compatible 
+    with Postgresql's VARCHAR type which is similarly unbounded 
+    when no length is specified.
 
 - mysql
   - New DBAPI support for pymysql, a pure Python port

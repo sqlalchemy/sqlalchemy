@@ -604,6 +604,12 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_IMAGE(self, type_):
         return "IMAGE"
 
+    def visit_VARBINARY(self, type_):
+        return self._extend(
+                        "VARBINARY", 
+                        type_, 
+                        length=type_.length or 'max')
+
     def visit_boolean(self, type_):
         return self.visit_BIT(type_)
 
