@@ -669,6 +669,14 @@ def state_str(state):
     else:
         return '<%s at 0x%x>' % (state.class_.__name__, id(state.obj()))
 
+def state_class_str(state):
+    """Return a string describing an instance's class via its InstanceState."""
+
+    if state is None:
+        return "None"
+    else:
+        return '<%s>' % (state.class_.__name__, )
+
 def attribute_str(instance, attribute):
     return instance_str(instance) + "." + attribute
 

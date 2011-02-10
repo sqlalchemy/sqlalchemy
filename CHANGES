@@ -26,6 +26,13 @@ CHANGES
    or exclude_properties would result in UnmappedColumnError.
    [ticket:1995]
 
+  - A warning is emitted in the unusual case that an 
+    append or similar event on a collection occurs after
+    the parent object has been dereferenced, which 
+    prevents the parent from being marked as "dirty" 
+    in the session.  This will be an exception in 0.7.
+    [ticket:2046]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]

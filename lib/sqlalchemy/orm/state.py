@@ -8,9 +8,9 @@ from sqlalchemy.util import EMPTY_SET
 import weakref
 from sqlalchemy import util
 from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, PASSIVE_OFF, \
-                                        NEVER_SET, NO_VALUE, manager_of_class, \
-                                        ATTR_WAS_SET
-from sqlalchemy.orm import attributes, exc as orm_exc, interfaces
+                        NEVER_SET, NO_VALUE, manager_of_class, ATTR_WAS_SET
+from sqlalchemy.orm import attributes, exc as orm_exc, interfaces, \
+                        util as orm_util
 
 import sys
 attributes.state = sys.modules['sqlalchemy.orm.state']
@@ -357,7 +357,16 @@ class InstanceState(object):
                 instance_dict._modified.add(self)
 
             self._strong_obj = self.obj()
-
+            if self._strong_obj is None:
+                util.warn(
+                        "Can't emit change event for attribute '%s.%s' "
+                        "- parent object of type %s has been garbage "
+                        "collected." 
+                        % (
+                            self.class_.__name__, 
+                            attr.key, 
+                            orm_util.state_class_str(self)
+                        ))
             self.modified = True
 
     def commit(self, dict_, keys):

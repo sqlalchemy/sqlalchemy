@@ -4,7 +4,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.test import *
-from sqlalchemy.test.testing import eq_, ne_, assert_raises
+from sqlalchemy.test.testing import eq_, ne_, assert_raises, assert_raises_message
 from test.orm import _base
 from sqlalchemy.test.util import gc_collect
 from sqlalchemy.util import cmp, jython
@@ -125,6 +125,28 @@ class AttributesTest(_base.ORMTest):
         gc_collect()
         assert state.obj() is None
         assert state.dict == {}
+
+    def test_object_dereferenced_error(self):
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self):
+                gc_collect()
+
+        attributes.register_class(Foo)
+        attributes.register_class(Bar)
+        attributes.register_attribute(Foo, 
+                                    'bars', 
+                                    uselist=True, 
+                                    useobject=True)
+
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "Can't emit change event for attribute "
+            "'Foo.bars' - parent object of type <Foo> "
+            "has been garbage collected.",
+            lambda: Foo().bars.append(Bar())
+        )
 
     def test_deferred(self):
         class Foo(object):pass
