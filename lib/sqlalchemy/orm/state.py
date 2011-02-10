@@ -354,9 +354,13 @@ class InstanceState(object):
             self._strong_obj = self.obj()
             if self._strong_obj is None:
                 raise orm_exc.ObjectDereferencedError(
-                        "Can't emit change event for attribute '%s' - parent object "
-                        "of type %s has been garbage collected." 
-                        % (self.manager[attr.key], orm_util.state_class_str(self)))
+                        "Can't emit change event for attribute '%s' - "
+                        "parent object of type %s has been garbage "
+                        "collected." 
+                        % (
+                            self.manager[attr.key], 
+                            orm_util.state_class_str(self)
+                        ))
             self.modified = True
 
     def commit(self, dict_, keys):
