@@ -9,10 +9,38 @@ import sets
 from sqlalchemy import *
 from sqlalchemy import sql, exc, schema, types as sqltypes, event
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.engine.url import make_url
+
 from test.lib.testing import eq_
 from test.lib import *
 from test.lib.engines import utf8_engine
 import datetime
+
+
+class DialectTest(TestBase):
+    __only_on__ = 'mysql'
+
+    @testing.only_on(['mysql+mysqldb', 'mysql+oursql'], 
+                    'requires particular SSL arguments')
+    def test_ssl_arguments(self):
+        dialect = testing.db.dialect
+        kwarg = dialect.create_connect_args(
+            make_url("mysql://scott:tiger@localhost:3306/test"
+                "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem")
+        )[1]
+        # args that differ among mysqldb and oursql
+        for k in ('use_unicode', 'found_rows', 'client_flag'):
+            kwarg.pop(k, None)
+        eq_(
+            kwarg, 
+            {
+                'passwd': 'tiger', 'db': 'test', 
+                'ssl': {'ca': '/ca.pem', 'cert': '/cert.pem', 
+                        'key': '/key.pem'}, 
+                'host': 'localhost', 'user': 'scott', 
+                'port': 3306
+            }
+        )
 
 class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"

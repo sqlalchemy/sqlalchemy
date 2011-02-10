@@ -222,6 +222,16 @@ class MySQLDialect_oursql(MySQLDialect):
         # supports_sane_rowcount.
         opts.setdefault('found_rows', True)
 
+        ssl = {}
+        for key in ['ssl_ca', 'ssl_key', 'ssl_cert', 
+                        'ssl_capath', 'ssl_cipher']:
+            if key in opts:
+                ssl[key[4:]] = opts[key]
+                util.coerce_kw_type(ssl, key[4:], str)
+                del opts[key]
+        if ssl:
+            opts['ssl'] = ssl
+
         return [[], opts]
 
     def _get_server_version_info(self, connection):
