@@ -580,7 +580,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
 
     def test_expression(self):
         self.assert_compile(matchtable.c.title.match('somstr'),
-                            'matchtable.title MATCH ?')
+                            'matchtable.title MATCH ?', dialect=sqlite.dialect())
 
     def test_simple_match(self):
         results = \
