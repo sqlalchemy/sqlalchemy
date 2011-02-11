@@ -657,10 +657,12 @@ class classproperty(property):
 
 
 class _symbol(object):
-    def __init__(self, name):
+    def __init__(self, name, doc=None):
         """Construct a new named symbol."""
         assert isinstance(name, str)
         self.name = name
+        if doc:
+            self.__doc__ = doc
     def __reduce__(self):
         return symbol, (self.name,)
     def __repr__(self):
@@ -682,16 +684,23 @@ class symbol(object):
 
     Repeated calls of symbol('name') will all return the same instance.
 
+    The optional ``doc`` argument assigns to ``__doc__``.  This
+    is strictly so that Sphinx autoattr picks up the docstring we want
+    (it doesn't appear to pick up the in-module docstring if the datamember
+    is in a different module - autoattribute also blows up completely).
+    If Sphinx fixes/improves this then we would no longer need 
+    ``doc`` here.
+    
     """
     symbols = {}
     _lock = threading.Lock()
 
-    def __new__(cls, name):
+    def __new__(cls, name, doc=None):
         cls._lock.acquire()
         try:
             sym = cls.symbols.get(name)
             if sym is None:
-                cls.symbols[name] = sym = _symbol(name)
+                cls.symbols[name] = sym = _symbol(name, doc)
             return sym
         finally:
             symbol._lock.release()

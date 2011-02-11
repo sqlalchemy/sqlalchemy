@@ -28,34 +28,48 @@ ATTR_EMPTY = util.symbol('ATTR_EMPTY')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
-PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE')
+
+PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE',
 """Symbol indicating that loader callables should
    not be fired off, and a non-initialized attribute 
-   should remain that way."""
+   should remain that way.
+""")
 
-PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
-"""Symbol indicating that loader callables should not emit SQL.
-   Non-initialized attributes should be initialized to an empty value."""
+PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH',
+"""Symbol indicating that loader callables should not emit SQL, 
+   but a value can be fetched from the current session.
+   
+   Non-initialized attributes should be initialized to an empty value.
 
-PASSIVE_NO_FETCH_RELATED = util.symbol('PASSIVE_NO_FETCH_RELATED')
+""")
+
+PASSIVE_NO_FETCH_RELATED = util.symbol('PASSIVE_NO_FETCH_RELATED',
 """Symbol indicating that loader callables should not emit SQL for
-   the related object, but can refresh the attributes of the local
-   instance.
+   loading a related object, but can refresh the attributes of the local
+   instance in order to locate a related object in the current session.
+   
    Non-initialized attributes should be initialized to an empty value.
    
    The unit of work uses this mode to check if history is present
-   with minimal SQL emitted.
-   """
+   on many-to-one attributes with minimal SQL emitted.
 
-PASSIVE_ONLY_PERSISTENT = util.symbol('PASSIVE_ONLY_PERSISTENT')
+""")
+
+PASSIVE_ONLY_PERSISTENT = util.symbol('PASSIVE_ONLY_PERSISTENT',
 """Symbol indicating that loader callables should only fire off for
-persistent objects.
+   parent objects which are persistent (i.e., have a database
+   identity).
 
-Loads of "previous" values during change events use this flag.
-"""
+   Load operations for the "previous" value of an attribute make
+   use of this flag during change events.
 
-PASSIVE_OFF = util.symbol('PASSIVE_OFF')
-"""Symbol indicating that loader callables should be executed."""
+""")
+
+PASSIVE_OFF = util.symbol('PASSIVE_OFF',
+"""Symbol indicating that loader callables should be executed
+   normally.
+
+""")
 
 
 class QueryableAttribute(interfaces.PropComparator):
@@ -1107,11 +1121,20 @@ def get_history(obj, key, passive=PASSIVE_OFF):
     :param key: string attribute name.
 
     :param passive: indicates if the attribute should be
-      loaded from the database if not already present (:attr:`PASSIVE_NO_FETCH`), and
+      loaded from the database if not already present (:attr:`.PASSIVE_NO_FETCH`), and
       if the attribute should be not initialized to a blank value otherwise
-      (:attr:`PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
+      (:attr:`.PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
 
     """
+    if passive is True:
+        util.warn_deprecated("Passing True for 'passive' is deprecated. "
+                                "Use attributes.PASSIVE_NO_INITIALIZE")
+        passive = PASSIVE_NO_INITIALIZE
+    elif passive is False:
+        util.warn_deprecated("Passing False for 'passive' is "
+                                "deprecated.  Use attributes.PASSIVE_OFF")
+        passive = PASSIVE_OFF
+
     return get_state_history(instance_state(obj), key, passive)
 
 def get_state_history(state, key, passive=PASSIVE_OFF):

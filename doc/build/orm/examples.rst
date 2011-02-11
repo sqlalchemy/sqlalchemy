@@ -42,13 +42,6 @@ Location: /examples/beaker_caching/
 
 .. automodule:: beaker_caching
 
-Derived Attributes
-------------------
-
-Location: /examples/derived_attributes/
-
-.. automodule:: derived_attributes
-
 
 Directed Graphs
 ---------------

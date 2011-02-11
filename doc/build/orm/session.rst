@@ -1491,18 +1491,14 @@ those described in :ref:`events_orm_toplevel`.
 .. autoclass:: History
     :members:
 
-.. attribute:: sqlalchemy.orm.attributes.PASSIVE_NO_INITIALIZE
+.. autodata:: PASSIVE_NO_INITIALIZE
 
-   Symbol indicating that loader callables should
-   not be fired off, and a non-initialized attribute 
-   should remain that way.
+.. autodata:: PASSIVE_NO_FETCH
 
-.. attribute:: sqlalchemy.orm.attributes.PASSIVE_NO_FETCH
+.. autodata:: PASSIVE_NO_FETCH_RELATED
 
-   Symbol indicating that loader callables should not boe fired off.
-   Non-initialized attributes should be initialized to an empty value.
+.. autodata:: PASSIVE_ONLY_PERSISTENT
 
-.. attribute:: sqlalchemy.orm.attributes.PASSIVE_OFF
+.. autodata:: PASSIVE_OFF
 
-    Symbol indicating that loader callables should be executed.
 

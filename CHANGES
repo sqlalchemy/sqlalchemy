@@ -131,6 +131,11 @@ CHANGES
     retrieving the information the flush needs in order
     to not miss anything.  [ticket:2049]
 
+  - the value of "passive" as passed to 
+    attributes.get_history() should be one of the 
+    constants defined in the attributes package.  Sending 
+    True or False is deprecated.
+
 - sql
   - Added over() function, method to FunctionElement
     classes, produces the _Over() construct which 
