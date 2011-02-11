@@ -1,7 +1,7 @@
 """tests the "bind" attribute/argument across schema and SQL,
 including the deprecated versions of these arguments"""
 
-from test.lib.testing import eq_
+from test.lib.testing import eq_, assert_raises
 from sqlalchemy import engine, exc
 from sqlalchemy import MetaData, ThreadLocalMetaData
 from sqlalchemy import Integer, text
@@ -177,19 +177,12 @@ class BindTest(testing.TestBase):
                         if isinstance(bind, engine.Connection):
                             bind.close()
 
-                try:
-                    e = elem()
-                    assert e.bind is None
-                    e.execute()
-                    assert False
-                except exc.UnboundExecutionError, e:
-                    assert str(e).endswith('is not bound and does not '
-                            'support direct execution. Supply this '
-                            'statement to a Connection or Engine for '
-                            'execution. Or, assign a bind to the '
-                            'statement or the Metadata of its '
-                            'underlying tables to enable implicit '
-                            'execution via this method.')
+                e = elem()
+                assert e.bind is None
+                assert_raises(
+                    exc.UnboundExecutionError,
+                    e.execute
+                )
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()
