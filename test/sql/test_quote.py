@@ -4,6 +4,8 @@ from sqlalchemy.sql import compiler
 from test.lib import *
 
 class QuoteTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def setup_class(cls):
         # TODO: figure out which databases/which identifiers allow special

@@ -169,6 +169,8 @@ class TraversalTest(TestBase, AssertsExecutionResults):
 class ClauseTest(TestBase, AssertsCompiledSQL):
     """test copy-in-place behavior of various ClauseElements."""
 
+    __dialect__ = 'default'
+
     @classmethod
     def setup_class(cls):
         global t1, t2
@@ -471,6 +473,8 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
                             'anon_1.col1')
 
 class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def setup_class(cls):
         global t1, t2
@@ -858,6 +862,8 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
         )
 
 class SpliceJoinsTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def setup_class(cls):
         global table1, table2, table3, table4
@@ -928,6 +934,8 @@ class SpliceJoinsTest(TestBase, AssertsCompiledSQL):
 
 class SelectTest(TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""
+
+    __dialect__ = 'default'
 
     @classmethod
     def setup_class(cls):
@@ -1082,6 +1090,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
 class InsertTest(TestBase, AssertsCompiledSQL):
     """Tests the generative capability of Insert"""
+
+    __dialect__ = 'default'
 
     # fixme: consolidate converage from elsewhere here and expand
 

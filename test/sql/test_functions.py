@@ -16,6 +16,7 @@ from sqlalchemy.databases import *
 
 
 class CompileTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_compile(self):
         for dialect in all_dialects(exclude=('sybase', 'access', 'informix', 'maxdb')):

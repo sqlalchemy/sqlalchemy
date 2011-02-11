@@ -256,6 +256,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         )
 
 class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def _test_deferrable(self, constraint_factory):
         t = Table('tbl', MetaData(),

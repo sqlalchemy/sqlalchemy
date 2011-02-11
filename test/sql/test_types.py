@@ -873,6 +873,8 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         return open(f, mode='rb').read()
 
 class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     @classmethod
     def setup_class(cls):
         global test_table, meta, MyCustomType, MyTypeDec
@@ -1153,7 +1155,8 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             (INTEGER(), "INTEGER"),
             (dialects.mysql.INTEGER(display_width=5), "INTEGER(5)")
         ):
-            self.assert_compile(type_, expected)
+            self.assert_compile(type_, expected,
+                                allow_dialect_select=True)
 
 class DateTest(TestBase, AssertsExecutionResults):
     @classmethod

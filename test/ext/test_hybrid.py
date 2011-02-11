@@ -6,6 +6,7 @@ from sqlalchemy.ext import hybrid
 from test.lib.testing import TestBase, eq_, AssertsCompiledSQL
 
 class PropertyComparatorTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def _fixture(self):
         Base = declarative_base()
@@ -77,6 +78,7 @@ class PropertyComparatorTest(TestBase, AssertsCompiledSQL):
         )
 
 class PropertyExpressionTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()
 
@@ -142,6 +144,7 @@ class PropertyExpressionTest(TestBase, AssertsCompiledSQL):
         )
 
 class PropertyValueTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()
 
@@ -167,6 +170,7 @@ class PropertyValueTest(TestBase, AssertsCompiledSQL):
         eq_(a1._value, 10)
 
 class MethodExpressionTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()
 

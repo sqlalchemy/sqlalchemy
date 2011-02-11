@@ -7,6 +7,7 @@ from sqlalchemy.sql import table, column
 
 
 class CaseTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     @classmethod
     def setup_class(cls):

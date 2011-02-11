@@ -62,6 +62,7 @@ addresses = table('addresses',
 )
 
 class SelectTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_attribute_sanity(self):
         assert hasattr(table1, 'c')
@@ -2417,6 +2418,8 @@ class SelectTest(TestBase, AssertsCompiledSQL):
 
 
 class CRUDTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_insert(self):
         # generic insert, will create bind params for all columns
         self.assert_compile(insert(table1), 
@@ -2671,6 +2674,8 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
         )
 
 class InlineDefaultTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_insert(self):
         m = MetaData()
         foo =  Table('foo', m,
@@ -2703,6 +2708,8 @@ class InlineDefaultTest(TestBase, AssertsCompiledSQL):
                         "col3=:col3")
 
 class SchemaTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_select(self):
         self.assert_compile(table4.select(), 
                 "SELECT remote_owner.remotetable.rem_id, remote_owner.remotetable.datatype_id,"

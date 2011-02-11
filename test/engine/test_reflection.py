@@ -1133,6 +1133,7 @@ def _drop_views(con, schema=None):
 
 
 class ReverseCasingReflectTest(TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     @testing.requires.denormalized_names
     def setup(self):

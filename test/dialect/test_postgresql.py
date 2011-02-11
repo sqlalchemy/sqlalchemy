@@ -2094,16 +2094,14 @@ class MatchTest(TestBase, AssertsCompiledSQL):
     def test_expression_pyformat(self):
         self.assert_compile(matchtable.c.title.match('somstr'),
                             'matchtable.title @@ to_tsquery(%(title_1)s'
-                            ')',
-                            dialect=postgresql.dialect())
+                            ')')
 
     @testing.fails_on('postgresql+psycopg2', 'uses pyformat')
     @testing.fails_on('postgresql+pypostgresql', 'uses pyformat')
     @testing.fails_on('postgresql+zxjdbc', 'uses qmark')
     def test_expression_positional(self):
         self.assert_compile(matchtable.c.title.match('somstr'),
-                            'matchtable.title @@ to_tsquery(%s)',
-                            dialect=postgresql.dialect())
+                            'matchtable.title @@ to_tsquery(%s)')
 
     def test_simple_match(self):
         results = \
