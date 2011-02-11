@@ -360,6 +360,19 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                             'SELECT t1.c1, t1.c2, t1.c3 FROM t1 MINUS '
                             'SELECT t2.c1, t2.c2, t2.c3 FROM t2')
 
+    def test_no_paren_fns(self):
+        for fn, expected in [
+            (func.uid(), "uid"),
+            (func.UID(), "UID"),
+            (func.sysdate(), "sysdate"),
+            (func.row_number(), "row_number()"),
+            (func.rank(), "rank()"),
+            (func.now(), "CURRENT_TIMESTAMP"),
+            (func.current_timestamp(), "CURRENT_TIMESTAMP"),
+            (func.user(), "USER"),
+        ]:
+            self.assert_compile(fn, expected)
+
 class CompatFlagsTest(TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 

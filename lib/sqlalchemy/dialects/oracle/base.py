@@ -133,15 +133,19 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy.types import VARCHAR, NVARCHAR, CHAR, DATE, DATETIME, \
                 BLOB, CLOB, TIMESTAMP, FLOAT
 
-RESERVED_WORDS = set('SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN '
-                     'DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED '
-                     'ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE ANY '
-                     'TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE BY ASC '
-                     'REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES AS IN VIEW '
-                     'EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS NOT TRIGGER '
-                     'ELSE CREATE INTERSECT PCTFREE DISTINCT USER CONNECT SET MODE '
-                     'OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR DECIMAL UNION PUBLIC '
-                     'AND START UID COMMENT'.split()) 
+RESERVED_WORDS = \
+    set('SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN '\
+        'DEFAULT ALTER IS INTO MINUS INTEGER NUMBER GRANT IDENTIFIED '\
+        'ALL TO ORDER ON FLOAT DATE HAVING CLUSTER NOWAIT RESOURCE '\
+        'ANY TABLE INDEX FOR UPDATE WHERE CHECK SMALLINT WITH DELETE '\
+        'BY ASC REVOKE LIKE SIZE RENAME NOCOMPRESS NULL GROUP VALUES '\
+        'AS IN VIEW EXCLUSIVE COMPRESS SYNONYM SELECT INSERT EXISTS '\
+        'NOT TRIGGER ELSE CREATE INTERSECT PCTFREE DISTINCT USER '\
+        'CONNECT SET MODE OF UNIQUE VARCHAR2 VARCHAR LOCK OR CHAR '\
+        'DECIMAL UNION PUBLIC AND START UID COMMENT'.split())
+
+NO_ARG_FNS = set('UID CURRENT_DATE SYSDATE USER '
+                'CURRENT_TIME CURRENT_TIMESTAMP'.split())
 
 class RAW(sqltypes.LargeBinary):
     pass
@@ -382,7 +386,7 @@ class OracleCompiler(compiler.SQLCompiler):
         )
 
     def function_argspec(self, fn, **kw):
-        if len(fn.clauses) > 0:
+        if len(fn.clauses) > 0 or fn.name.upper() not in NO_ARG_FNS:
             return compiler.SQLCompiler.function_argspec(self, fn, **kw)
         else:
             return ""
