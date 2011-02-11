@@ -219,7 +219,12 @@ class DependencyProcessor(object):
         pass
 
     def prop_has_changes(self, uowcommit, states, isdelete):
-        passive = not isdelete or self.passive_deletes
+        if not isdelete or self.passive_deletes:
+            passive = attributes.PASSIVE_NO_INITIALIZE
+        elif self.direction is MANYTOONE:
+            passive = attributes.PASSIVE_NO_FETCH_RELATED
+        else:
+            passive = attributes.PASSIVE_OFF
 
         for s in states:
             # TODO: add a high speed method 

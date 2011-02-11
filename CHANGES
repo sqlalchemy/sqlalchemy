@@ -122,6 +122,15 @@ CHANGES
     as *args, interpreted by the Postgresql dialect
     as DISTINCT ON (<expr>). [ticket:1069]
 
+  - Additional tuning to "many-to-one" relationship
+    loads during a flush().   A change in version 0.6.6
+    ([ticket:2002]) required that more "unnecessary" m2o 
+    loads during a flush could occur.   Extra loading modes have
+    been added so that the SQL emitted in this 
+    specific use case is trimmed back, while still
+    retrieving the information the flush needs in order
+    to not miss anything.  [ticket:2049]
+
 - sql
   - Added over() function, method to FunctionElement
     classes, produces the _Over() construct which 

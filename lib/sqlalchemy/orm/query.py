@@ -1947,6 +1947,10 @@ class Query(object):
                 if passive is attributes.PASSIVE_NO_FETCH:
                     # TODO: no coverage here
                     return attributes.PASSIVE_NO_RESULT
+                elif passive is attributes.PASSIVE_NO_FETCH_RELATED:
+                    # this mode is used within a flush and the instance's
+                    # expired state will be checked soon enough, if necessary
+                    return instance
                 try:
                     state(passive)
                 except orm_exc.ObjectDeletedError:

@@ -451,7 +451,8 @@ class LazyLoader(AbstractRelationshipLoader):
         pending = not state.key
 
         if (
-                passive is attributes.PASSIVE_NO_FETCH and 
+                (passive is attributes.PASSIVE_NO_FETCH or \
+                    passive is attributes.PASSIVE_NO_FETCH_RELATED) and 
                 not self.use_get
             ) or (
                 passive is attributes.PASSIVE_ONLY_PERSISTENT and 
@@ -476,12 +477,17 @@ class LazyLoader(AbstractRelationshipLoader):
                 get_attr = instance_mapper._get_state_attr_by_column
 
             dict_ = state.dict
+            if passive is attributes.PASSIVE_NO_FETCH_RELATED:
+                attr_passive = attributes.PASSIVE_OFF
+            else:
+                attr_passive = passive
+
             ident = [
                 get_attr(
                         state,
                         state.dict,
                         self._equated_columns[pk],
-                        passive=passive)
+                        passive=attr_passive)
                 for pk in prop_mapper.primary_key
             ]
             if attributes.PASSIVE_NO_RESULT in ident:
@@ -494,7 +500,8 @@ class LazyLoader(AbstractRelationshipLoader):
             instance = Query._get_from_identity(session, ident_key, passive)
             if instance is not None:
                 return instance
-            elif passive is attributes.PASSIVE_NO_FETCH:
+            elif passive is attributes.PASSIVE_NO_FETCH or \
+                passive is attributes.PASSIVE_NO_FETCH_RELATED:
                 return attributes.PASSIVE_NO_RESULT
 
         q = session.query(prop_mapper)._adapt_all_clauses()

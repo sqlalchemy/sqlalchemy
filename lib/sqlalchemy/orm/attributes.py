@@ -37,8 +37,18 @@ PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
 
 # this is used by backrefs.
 PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
-"""Symbol indicating that loader callables should not be fired off.
+"""Symbol indicating that loader callables should not emit SQL.
    Non-initialized attributes should be initialized to an empty value."""
+
+PASSIVE_NO_FETCH_RELATED = util.symbol('PASSIVE_NO_FETCH_RELATED')
+"""Symbol indicating that loader callables should not emit SQL for
+   the related object, but can refresh the attributes of the local
+   instance.
+   Non-initialized attributes should be initialized to an empty value.
+   
+   The unit of work uses this mode to check if history is present
+   with minimal SQL emitted.
+   """
 
 PASSIVE_ONLY_PERSISTENT = util.symbol('PASSIVE_ONLY_PERSISTENT')
 """Symbol indicating that loader callables should only fire off for

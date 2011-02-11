@@ -259,9 +259,11 @@ class RudimentaryFlushTest(UOWTest):
             testing.db,
             session.flush,
             AllOf(
-                # ensure all three m2os are loaded.
+                # [ticket:2002] - ensure the m2os are loaded.
                 # the selects here are in fact unexpiring
                 # each row - the m2o comes from the identity map.
+                # the User row might be handled before or the addresses
+                # are loaded so need to use AllOf
                 CompiledSQL(
                     "SELECT addresses.id AS addresses_id, addresses.user_id AS "
                     "addresses_user_id, addresses.email_address AS "
@@ -281,14 +283,120 @@ class RudimentaryFlushTest(UOWTest):
                     "FROM users WHERE users.id = :param_1",
                     lambda ctx: {'param_1': pid}
                 ),
+                CompiledSQL(
+                    "DELETE FROM addresses WHERE addresses.id = :id",
+                    lambda ctx: [{'id': c1id}, {'id': c2id}]
+                ),
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.id = :id",
+                    lambda ctx: {'id': pid}
+                ),
+            ),
+        )
+
+    def test_many_to_one_delete_childonly_unloaded(self):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'parent':relationship(User)
+        })
+
+        parent = User(name='p1')
+        c1, c2 = Address(email_address='c1', parent=parent), \
+                    Address(email_address='c2', parent=parent)
+
+        session = Session()
+        session.add_all([c1, c2])
+        session.add(parent)
+
+        session.flush()
+
+        pid = parent.id
+        c1id = c1.id
+        c2id = c2.id
+
+        session.expire(c1)
+        session.expire(c2)
+
+        session.delete(c1)
+        session.delete(c2)
+
+        self.assert_sql_execution(
+            testing.db,
+            session.flush,
+            AllOf(
+                # [ticket:2049] - we aren't deleting User,
+                # relationship is simple m2o, no SELECT should be emitted for it.
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c1id}
+                ),
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c2id}
+                ),
             ),
             CompiledSQL(
                 "DELETE FROM addresses WHERE addresses.id = :id",
                 lambda ctx: [{'id': c1id}, {'id': c2id}]
             ),
+        )
+
+    def test_many_to_one_delete_childonly_unloaded_expired(self):
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'parent':relationship(User)
+        })
+
+        parent = User(name='p1')
+        c1, c2 = Address(email_address='c1', parent=parent), \
+                    Address(email_address='c2', parent=parent)
+
+        session = Session()
+        session.add_all([c1, c2])
+        session.add(parent)
+
+        session.flush()
+
+        pid = parent.id
+        c1id = c1.id
+        c2id = c2.id
+
+        session.expire(parent)
+        session.expire(c1)
+        session.expire(c2)
+
+        session.delete(c1)
+        session.delete(c2)
+
+        self.assert_sql_execution(
+            testing.db,
+            session.flush,
+            AllOf(
+                # the parent User is expired, so it gets loaded here.
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c1id}
+                ),
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE addresses.id = "
+                    ":param_1",
+                    lambda ctx: {'param_1': c2id}
+                ),
+            ),
             CompiledSQL(
-                "DELETE FROM users WHERE users.id = :id",
-                lambda ctx: {'id': pid}
+                "DELETE FROM addresses WHERE addresses.id = :id",
+                lambda ctx: [{'id': c1id}, {'id': c2id}]
             ),
         )
 
@@ -708,14 +816,14 @@ class SingleCycleTest(UOWTest):
                     "WHERE nodes.id = :param_1",
                     lambda ctx: {'param_1': c2id}
                 ),
-            ),
-            CompiledSQL(
-                "DELETE FROM nodes WHERE nodes.id = :id",
-                lambda ctx: [{'id': c1id}, {'id': c2id}]
-            ),
-            CompiledSQL(
-                "DELETE FROM nodes WHERE nodes.id = :id",
-                lambda ctx: {'id': pid}
+                CompiledSQL(
+                    "DELETE FROM nodes WHERE nodes.id = :id",
+                    lambda ctx: [{'id': c1id}, {'id': c2id}]
+                ),
+                CompiledSQL(
+                    "DELETE FROM nodes WHERE nodes.id = :id",
+                    lambda ctx: {'id': pid}
+                ),
             ),
         )
 
