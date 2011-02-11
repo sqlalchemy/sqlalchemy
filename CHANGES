@@ -215,6 +215,13 @@ CHANGES
     executions which fail before the DBAPI becomes 
     involved.  [ticket:2015]
 
+  - The concept of associating a ".bind" directly with a 
+    ClauseElement has been explicitly moved to Executable,
+    i.e. the mixin that describes ClauseElements which represent
+    engine-executable constructs.  This change is an improvement
+    to internal organization and is unlikely to affect any 
+    real-world usage.  [ticket:2048]
+
 -sqlite
   - SQLite dialect now uses `NullPool` for file-based databases
     [ticket:1921]
