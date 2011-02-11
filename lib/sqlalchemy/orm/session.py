@@ -1554,7 +1554,8 @@ class Session(object):
             raise
 
 
-    def is_modified(self, instance, include_collections=True, passive=attributes.PASSIVE_OFF):
+    def is_modified(self, instance, include_collections=True, 
+                            passive=attributes.PASSIVE_OFF):
         """Return ``True`` if instance has modified attributes.
 
         This method retrieves a history instance for each instrumented
@@ -1569,6 +1570,7 @@ class Session(object):
 
         The ``passive`` flag indicates if unloaded attributes and collections
         should not be loaded in the course of performing this test.
+        Allowed values include :attr:`.PASSIVE_OFF`, :attr:`.PASSIVE_NO_INITIALIZE`.
 
         A few caveats to this method apply:
 
@@ -1598,6 +1600,10 @@ class Session(object):
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
         dict_ = state.dict
+        if passive is True:
+            passive = attributes.PASSIVE_NO_INITIALIZE
+        elif passive is False:
+            passive = attributes.PASSIVE_OFF
         for attr in state.manager.attributes:
             if \
                 (
