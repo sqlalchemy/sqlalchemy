@@ -210,6 +210,13 @@ def offset(fn):
         fails_on('sybase', 'no support for OFFSET or equivalent'),
     )
 
+def window_functions(fn):
+    return _chain_decorators_on(
+        fn,
+        only_on(('postgresql', 'mssql', 'oracle'), 
+                "Backend does not support window functions"),
+    )
+
 def returning(fn):
     return _chain_decorators_on(
         fn,

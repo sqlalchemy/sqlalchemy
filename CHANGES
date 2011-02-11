@@ -123,6 +123,13 @@ CHANGES
     as DISTINCT ON (<expr>). [ticket:1069]
 
 - sql
+  - Added over() function, method to FunctionElement
+    classes, produces the _Over() construct which 
+    in turn generates "window functions", i.e.
+    "<window function> OVER (PARTITION BY <partition by>,
+    ORDER BY <order by>)".
+    [ticket:1844]
+
   - LIMIT/OFFSET clauses now use bind parameters
     [ticket:805]
 

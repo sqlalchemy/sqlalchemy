@@ -48,6 +48,7 @@ from sqlalchemy.sql.expression import (
     or_,
     outerjoin,
     outparam,
+    over,
     select,
     subquery,
     table,

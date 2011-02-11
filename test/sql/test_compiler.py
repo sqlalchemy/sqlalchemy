@@ -2040,6 +2040,79 @@ class SelectTest(TestBase, AssertsCompiledSQL):
                             'CAST(NULL AS INTEGER)',
                             dialect=sqlite.dialect())
 
+    def test_over(self):
+        self.assert_compile(
+            func.row_number().over(
+                order_by=[table1.c.name, table1.c.description]
+            ),
+            "row_number() OVER (ORDER BY mytable.name, mytable.description)"
+        )
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=[table1.c.name, table1.c.description]
+            ),
+            "row_number() OVER (PARTITION BY mytable.name, "
+            "mytable.description)"
+        )
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=[table1.c.name],
+                order_by=[table1.c.description]
+            ),
+            "row_number() OVER (PARTITION BY mytable.name, "
+            "ORDER BY mytable.description)"
+        )
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=table1.c.name,
+                order_by=table1.c.description
+            ),
+            "row_number() OVER (PARTITION BY mytable.name, "
+            "ORDER BY mytable.description)"
+        )
+
+        self.assert_compile(
+            select([func.row_number().over(
+                order_by=table1.c.description
+            ).label('foo')]),
+            "SELECT row_number() OVER (ORDER BY mytable.description) "
+            "AS foo FROM mytable"
+        )
+
+        # test from_obj generation.
+        # from func:
+        self.assert_compile(
+            select([
+                func.max(table1.c.name).over(
+                    partition_by=['foo']
+                )
+            ]),
+            "SELECT max(mytable.name) OVER (PARTITION BY foo) "
+            "AS anon_1 FROM mytable"
+        )
+        # from partition_by
+        self.assert_compile(
+            select([
+                func.row_number().over(
+                    partition_by=[table1.c.name]
+                )
+            ]),
+            "SELECT row_number() OVER (PARTITION BY mytable.name) "
+            "AS anon_1 FROM mytable"
+        )
+        # from order_by
+        self.assert_compile(
+            select([
+                func.row_number().over(
+                    order_by=table1.c.name
+                )
+            ]),
+            "SELECT row_number() OVER (ORDER BY mytable.name) "
+            "AS anon_1 FROM mytable"
+        )
+
+
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

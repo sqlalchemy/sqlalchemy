@@ -316,6 +316,11 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
         expr2 = CloningVisitor().traverse(expr)
         assert str(expr) == str(expr2)
 
+    def test_over(self):
+        expr = func.row_number().over(order_by=t1.c.col1)
+        expr2 = CloningVisitor().traverse(expr)
+        assert str(expr) == str(expr2)
+
     def test_adapt_union(self):
         u = union(t1.select().where(t1.c.col1==4), t1.select().where(t1.c.col1==5)).alias()
 

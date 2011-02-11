@@ -71,6 +71,8 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: outerjoin
 
+.. autofunction:: over
+
 .. autofunction:: select
 
 .. autofunction:: subquery
@@ -101,6 +103,10 @@ Classes
    :show-inheritance:
 
 .. autoclass:: ClauseElement
+   :members:
+   :show-inheritance:
+
+.. autoclass:: ClauseList
    :members:
    :show-inheritance:
 

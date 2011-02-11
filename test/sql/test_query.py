@@ -1764,5 +1764,14 @@ class OperatorTest(TestBase):
             [(2,),(1,)]
         )
 
+    @testing.requires.window_functions
+    def test_over(self):
+        eq_(
+            select([
+                flds.c.intcol, func.row_number().over(order_by=flds.c.strcol)
+            ]).execute().fetchall(),
+            [(13, 1L), (5, 2L)]
+        )
+
 
 

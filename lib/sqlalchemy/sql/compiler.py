@@ -446,12 +446,14 @@ class SQLCompiler(engine.Compiled):
         if clause.value is not None:
             x += clause.value._compiler_dispatch(self, **kwargs) + " "
         for cond, result in clause.whens:
-            x += "WHEN " + cond._compiler_dispatch(self, **kwargs) + \
-                            " THEN " + \
-                            result._compiler_dispatch(self, **kwargs) + " "
+            x += "WHEN " + cond._compiler_dispatch(
+                            self, **kwargs
+                            ) + " THEN " + result._compiler_dispatch(
+                                            self, **kwargs) + " "
         if clause.else_ is not None:
-            x += "ELSE " + clause.else_._compiler_dispatch(self, **kwargs) + \
-                                        " "
+            x += "ELSE " + clause.else_._compiler_dispatch(
+                                self, **kwargs
+                            ) + " "
         x += "END"
         return x
 
@@ -459,6 +461,19 @@ class SQLCompiler(engine.Compiled):
         return "CAST(%s AS %s)" % \
                     (cast.clause._compiler_dispatch(self, **kwargs),
                     cast.typeclause._compiler_dispatch(self, **kwargs))
+
+    def visit_over(self, over, **kwargs):
+        x ="%s OVER (" % over.func._compiler_dispatch(self, **kwargs)
+        if over.partition_by is not None:
+            x += "PARTITION BY %s" % \
+                over.partition_by._compiler_dispatch(self, **kwargs)
+            if over.order_by is not None:
+                x += ", "
+        if over.order_by is not None:
+            x += "ORDER BY %s" % \
+                over.order_by._compiler_dispatch(self, **kwargs)
+        x += ")"
+        return x
 
     def visit_extract(self, extract, **kwargs):
         field = self.extract_map.get(extract.field, extract.field)

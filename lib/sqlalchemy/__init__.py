@@ -39,6 +39,7 @@ from sqlalchemy.sql import (
     or_,
     outerjoin,
     outparam,
+    over,
     select,
     subquery,
     text,

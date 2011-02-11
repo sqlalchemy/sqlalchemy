@@ -791,6 +791,14 @@ class Connectable(object):
         raise NotImplementedError()
 
     def execute(self, object, *multiparams, **params):
+        """Executes the given construct and returns a :class:`.ResultProxy`."""
+        raise NotImplementedError()
+
+    def scalar(self, object, *multiparams, **params):
+        """Executes and returns the first column of the first row.
+
+        The underlying cursor is closed after execution.
+        """
         raise NotImplementedError()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
