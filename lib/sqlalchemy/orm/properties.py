@@ -119,7 +119,8 @@ class ColumnProperty(StrategizedProperty):
                         active_history=self.active_history,
                         *self.columns)
 
-    def _getcommitted(self, state, dict_, column, passive=False):
+    def _getcommitted(self, state, dict_, column, 
+                    passive=attributes.PASSIVE_OFF):
         return state.get_impl(self.key).\
                     get_committed_value(state, dict_, passive=passive)
 
@@ -964,8 +965,8 @@ class RelationshipProperty(StrategizedProperty):
             elif manytoone_fk:
                 self.direction = MANYTOONE
             if not self.direction:
-                raise sa_exc.ArgumentError("Can't determine relationshi"
-                        "p direction for relationship '%s' - foreign "
+                raise sa_exc.ArgumentError("Can't determine relationship"
+                        " direction for relationship '%s' - foreign "
                         "key columns are present in both the parent "
                         "and the child's mapped tables.  Specify "
                         "'foreign_keys' argument." % self)
@@ -979,7 +980,8 @@ class RelationshipProperty(StrategizedProperty):
                       % self)
         if self.direction is MANYTOONE and self.passive_deletes:
             util.warn("On %s, 'passive_deletes' is normally configured "
-                      "on one-to-many, one-to-one, many-to-many relationships only."
+                      "on one-to-many, one-to-one, many-to-many "
+                      "relationships only."
                        % self)
 
     def _determine_local_remote_pairs(self):

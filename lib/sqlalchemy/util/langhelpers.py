@@ -665,6 +665,7 @@ class _symbol(object):
         return symbol, (self.name,)
     def __repr__(self):
         return "<symbol '%s>" % self.name
+
 _symbol.__name__ = 'symbol'
 
 

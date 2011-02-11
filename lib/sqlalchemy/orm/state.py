@@ -107,8 +107,8 @@ class InstanceState(object):
             manager.dispatch.init_failure(self, args, kwargs)
             raise
 
-    def get_history(self, key, **kwargs):
-        return self.manager[key].impl.get_history(self, self.dict, **kwargs)
+    def get_history(self, key, passive):
+        return self.manager[key].impl.get_history(self, self.dict, passive)
 
     def get_impl(self, key):
         return self.manager[key].impl

@@ -8,7 +8,7 @@
 between instances based on join conditions.
 """
 
-from sqlalchemy.orm import exc, util as mapperutil
+from sqlalchemy.orm import exc, util as mapperutil, attributes
 
 def populate(source, source_mapper, dest, dest_mapper, 
                         synchronize_pairs, uowcommit, flag_cascaded_pks):
@@ -19,7 +19,8 @@ def populate(source, source_mapper, dest, dest_mapper,
         try:
             # inline of source_mapper._get_state_attr_by_column
             prop = source_mapper._columntoproperty[l]
-            value = source.manager[prop.key].impl.get(source, source_dict, False)
+            value = source.manager[prop.key].impl.get(source, source_dict, 
+                                                    attributes.PASSIVE_OFF)
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, dest_mapper, r)
 
@@ -82,7 +83,8 @@ def source_modified(uowcommit, source, source_mapper, synchronize_pairs):
             prop = source_mapper._columntoproperty[l]
         except exc.UnmappedColumnError:
             _raise_col_to_prop(False, source_mapper, l, None, r)
-        history = uowcommit.get_attribute_history(source, prop.key, passive=True)
+        history = uowcommit.get_attribute_history(source, prop.key, 
+                                        attributes.PASSIVE_NO_INITIALIZE)
         return bool(history.deleted)
     else:
         return False

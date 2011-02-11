@@ -1554,7 +1554,7 @@ class Session(object):
             raise
 
 
-    def is_modified(self, instance, include_collections=True, passive=False):
+    def is_modified(self, instance, include_collections=True, passive=attributes.PASSIVE_OFF):
         """Return ``True`` if instance has modified attributes.
 
         This method retrieves a history instance for each instrumented

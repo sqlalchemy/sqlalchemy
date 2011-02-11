@@ -28,14 +28,11 @@ ATTR_EMPTY = util.symbol('ATTR_EMPTY')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
-# "passive" get settings
-# TODO: the True/False values need to be factored out
-PASSIVE_NO_INITIALIZE = True #util.symbol('PASSIVE_NO_INITIALIZE')
+PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE')
 """Symbol indicating that loader callables should
    not be fired off, and a non-initialized attribute 
    should remain that way."""
 
-# this is used by backrefs.
 PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH')
 """Symbol indicating that loader callables should not emit SQL.
    Non-initialized attributes should be initialized to an empty value."""
@@ -57,7 +54,7 @@ persistent objects.
 Loads of "previous" values during change events use this flag.
 """
 
-PASSIVE_OFF = False #util.symbol('PASSIVE_OFF')
+PASSIVE_OFF = util.symbol('PASSIVE_OFF')
 """Symbol indicating that loader callables should be executed."""
 
 
@@ -88,9 +85,9 @@ class QueryableAttribute(interfaces.PropComparator):
     def _supports_population(self):
         return self.impl.supports_population
 
-    def get_history(self, instance, **kwargs):
+    def get_history(self, instance, passive=PASSIVE_OFF):
         return self.impl.get_history(instance_state(instance),
-                                        instance_dict(instance), **kwargs)
+                                        instance_dict(instance), passive)
 
     def __selectable__(self):
         # TODO: conditionally attach this method based on clause_element ?
@@ -386,7 +383,6 @@ class AttributeImpl(object):
         passive is False, the callable will be executed and the
         resulting value will be set as the new value for this attribute.
         """
-
         if self.key in dict_:
             return dict_[self.key]
         else:
@@ -1101,7 +1097,7 @@ class History(tuple):
 
 HISTORY_BLANK = History(None, None, None)
 
-def get_history(obj, key, **kwargs):
+def get_history(obj, key, passive=PASSIVE_OFF):
     """Return a :class:`.History` record for the given object 
     and attribute key.
 
@@ -1110,17 +1106,16 @@ def get_history(obj, key, **kwargs):
 
     :param key: string attribute name.
 
-    :param kwargs: Optional keyword arguments currently
-      include the ``passive`` flag, which indicates if the attribute should be
+    :param passive: indicates if the attribute should be
       loaded from the database if not already present (:attr:`PASSIVE_NO_FETCH`), and
       if the attribute should be not initialized to a blank value otherwise
       (:attr:`PASSIVE_NO_INITIALIZE`). Default is :attr:`PASSIVE_OFF`.
 
     """
-    return get_state_history(instance_state(obj), key, **kwargs)
+    return get_state_history(instance_state(obj), key, passive)
 
-def get_state_history(state, key, **kwargs):
-    return state.get_history(key, **kwargs)
+def get_state_history(state, key, passive=PASSIVE_OFF):
+    return state.get_history(key, passive)
 
 
 def has_parent(cls, obj, key, optimistic=False):

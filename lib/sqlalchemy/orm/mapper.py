@@ -1264,7 +1264,7 @@ class Mapper(object):
         manager = state.manager
         return self._identity_class, tuple([
             manager[self._columntoproperty[col].key].\
-                impl.get(state, dict_, False)
+                impl.get(state, dict_, attributes.PASSIVE_OFF)
             for col in self.primary_key
         ])
 
@@ -1281,11 +1281,12 @@ class Mapper(object):
         manager = state.manager
         return [
             manager[self._columntoproperty[col].key].\
-                impl.get(state, dict_, False)
+                impl.get(state, dict_, attributes.PASSIVE_OFF)
             for col in self.primary_key
         ]
 
-    def _get_state_attr_by_column(self, state, dict_, column, passive=False):
+    def _get_state_attr_by_column(self, state, dict_, column, 
+                                    passive=attributes.PASSIVE_OFF):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
@@ -1298,8 +1299,8 @@ class Mapper(object):
         dict_ = attributes.instance_dict(obj)
         return self._get_committed_state_attr_by_column(state, dict_, column)
 
-    def _get_committed_state_attr_by_column(self, state, dict_, column,
-                                                    passive=False):
+    def _get_committed_state_attr_by_column(self, state, dict_, 
+                        column, passive=attributes.PASSIVE_OFF):
 
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.\
@@ -1337,16 +1338,18 @@ class Mapper(object):
 
             if leftcol.table not in tables:
                 leftval = self._get_committed_state_attr_by_column(
-                                                    state, state.dict, 
-                                                    leftcol, passive=True)
+                                    state, state.dict, 
+                                    leftcol, 
+                                    passive=attributes.PASSIVE_NO_INITIALIZE)
                 if leftval is attributes.PASSIVE_NO_RESULT or leftval is None:
                     raise ColumnsNotAvailable()
                 binary.left = sql.bindparam(None, leftval,
                                             type_=binary.right.type)
             elif rightcol.table not in tables:
                 rightval = self._get_committed_state_attr_by_column(
-                                                    state, state.dict, 
-                                                    rightcol, passive=True)
+                                    state, state.dict, 
+                                    rightcol, 
+                                    passive=attributes.PASSIVE_NO_INITIALIZE)
                 if rightval is attributes.PASSIVE_NO_RESULT or rightval is None:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval,
@@ -1395,7 +1398,8 @@ class Mapper(object):
         visited_states = set()
         prp, mpp = object(), object()
 
-        visitables = deque([(deque(self._props.values()), prp, state, state.dict)])
+        visitables = deque([(deque(self._props.values()), prp, 
+                                state, state.dict)])
 
         while visitables:
             iterator, item_type, parent_state, parent_dict = visitables[-1]
@@ -1414,9 +1418,11 @@ class Mapper(object):
             elif item_type is mpp:
                 instance, instance_mapper, corresponding_state, \
                                 corresponding_dict = iterator.popleft()
-                yield instance, instance_mapper, corresponding_state, corresponding_dict
+                yield instance, instance_mapper, \
+                        corresponding_state, corresponding_dict
                 visitables.append((deque(instance_mapper._props.values()), 
-                                        prp, corresponding_state, corresponding_dict))
+                                        prp, corresponding_state, 
+                                        corresponding_dict))
 
     @_memoized_configured_property
     def _compiled_cache(self):
@@ -1523,7 +1529,8 @@ class Mapper(object):
                     elif col in post_update_cols:
                         prop = mapper._columntoproperty[col]
                         history = attributes.get_state_history(
-                                        state, prop.key, passive=True)
+                                    state, prop.key, 
+                                    attributes.PASSIVE_NO_INITIALIZE)
                         if history.added:
                             value = history.added[0]
                             params[col.key] = value
@@ -1701,7 +1708,8 @@ class Mapper(object):
 
                             prop = mapper._columntoproperty[col]
                             history = attributes.get_state_history(
-                                state, prop.key, passive=True
+                                state, prop.key, 
+                                attributes.PASSIVE_NO_INITIALIZE
                             )
                             if history.added:
                                 params[col.key] = history.added[0]
@@ -1718,14 +1726,15 @@ class Mapper(object):
                                 for prop in mapper._columntoproperty.\
                                                         itervalues():
                                     history = attributes.get_state_history(
-                                                    state, prop.key, 
-                                                    passive=True)
+                                            state, prop.key, 
+                                            attributes.PASSIVE_NO_INITIALIZE)
                                     if history.added:
                                         hasdata = True
                         else:
                             prop = mapper._columntoproperty[col]
                             history = attributes.get_state_history(
-                                            state, prop.key, passive=True)
+                                            state, prop.key, 
+                                            attributes.PASSIVE_NO_INITIALIZE)
                             if history.added:
                                 if isinstance(history.added[0],
                                                 sql.ClauseElement):

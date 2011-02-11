@@ -35,8 +35,9 @@ class DescriptorProperty(MapperProperty):
                 self.key = key
 
             if hasattr(prop, 'get_history'):
-                def get_history(self, state, dict_, **kw):
-                    return prop.get_history(state, dict_, **kw)
+                def get_history(self, state, dict_, 
+                        passive=attributes.PASSIVE_OFF):
+                    return prop.get_history(state, dict_, passive)
 
         if self.descriptor is None:
             desc = getattr(mapper.class_, self.key, None)
@@ -222,7 +223,7 @@ class CompositeProperty(DescriptorProperty):
             prop.key for prop in self.props
         ]
 
-    def get_history(self, state, dict_, **kw):
+    def get_history(self, state, dict_, passive=attributes.PASSIVE_OFF):
         """Provided for userland code that uses attributes.get_history()."""
 
         added = []

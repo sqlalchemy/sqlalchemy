@@ -56,20 +56,20 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             self.query_class = mixin_user_query(query_class)
 
-    def get(self, state, dict_, passive=False):
-        if passive:
+    def get(self, state, dict_, passive=attributes.PASSIVE_OFF):
+        if passive is not attributes.PASSIVE_OFF:
             return self._get_collection_history(state,
-                    passive=True).added_items
+                    attributes.PASSIVE_NO_INITIALIZE).added_items
         else:
             return self.query_class(self, state)
 
-    def get_collection(self, state, dict_, user_data=None, passive=True):
-        if passive:
+    def get_collection(self, state, dict_, user_data=None, 
+                            passive=attributes.PASSIVE_NO_INITIALIZE):
+        if passive is not attributes.PASSIVE_OFF:
             return self._get_collection_history(state,
-                    passive=passive).added_items
+                    passive).added_items
         else:
-            history = self._get_collection_history(state,
-                    passive=passive)
+            history = self._get_collection_history(state, passive)
             return history.added_items + history.unchanged_items
 
     def fire_append_event(self, state, dict_, value, initiator):
@@ -132,7 +132,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         raise NotImplementedError("Dynamic attributes don't support "
                                   "collection population.")
 
-    def get_history(self, state, dict_, passive=False):
+    def get_history(self, state, dict_, passive=attributes.PASSIVE_OFF):
         c = self._get_collection_history(state, passive)
         return attributes.History(c.added_items, c.unchanged_items,
                                   c.deleted_items)
@@ -145,22 +145,24 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
                 c.added_items + c.unchanged_items + c.deleted_items
             ]
 
-    def _get_collection_history(self, state, passive=False):
+    def _get_collection_history(self, state, passive=attributes.PASSIVE_OFF):
         if self.key in state.committed_state:
             c = state.committed_state[self.key]
         else:
             c = CollectionHistory(self, state)
 
-        if not passive:
+        if passive is attributes.PASSIVE_OFF:
             return CollectionHistory(self, state, apply_to=c)
         else:
             return c
 
-    def append(self, state, dict_, value, initiator, passive=False):
+    def append(self, state, dict_, value, initiator, 
+                            passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_append_event(state, dict_, value, initiator)
 
-    def remove(self, state, dict_, value, initiator, passive=False):
+    def remove(self, state, dict_, value, initiator, 
+                            passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_remove_event(state, dict_, value, initiator)
 
@@ -225,7 +227,7 @@ class AppenderMixin(object):
         if sess is None:
             return iter(self.attr._get_collection_history(
                 attributes.instance_state(self.instance),
-                passive=True).added_items)
+                attributes.PASSIVE_NO_INITIALIZE).added_items)
         else:
             return iter(self._clone(sess))
 
@@ -234,7 +236,8 @@ class AppenderMixin(object):
         if sess is None:
             return self.attr._get_collection_history(
                 attributes.instance_state(self.instance),
-                passive=True).added_items.__getitem__(index)
+                attributes.PASSIVE_NO_INITIALIZE).added_items.\
+                    __getitem__(index)
         else:
             return self._clone(sess).__getitem__(index)
 
@@ -243,7 +246,7 @@ class AppenderMixin(object):
         if sess is None:
             return len(self.attr._get_collection_history(
                 attributes.instance_state(self.instance),
-                passive=True).added_items)
+                attributes.PASSIVE_NO_INITIALIZE).added_items)
         else:
             return self._clone(sess).count()
 

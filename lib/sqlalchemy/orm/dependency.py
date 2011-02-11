@@ -26,9 +26,15 @@ class DependencyProcessor(object):
         self.passive_deletes = prop.passive_deletes
         self.passive_updates = prop.passive_updates
         self.enable_typechecks = prop.enable_typechecks
-        self._passive_delete_flag = self.passive_deletes and \
-                                    attributes.PASSIVE_NO_INITIALIZE or \
-                                    attributes.PASSIVE_OFF
+        if self.passive_deletes:
+            self._passive_delete_flag = attributes.PASSIVE_NO_INITIALIZE
+        else:
+            self._passive_delete_flag = attributes.PASSIVE_OFF
+        if self.passive_updates:
+            self._passive_update_flag = attributes.PASSIVE_NO_INITIALIZE
+        else:
+            self._passive_update_flag= attributes.PASSIVE_OFF
+
         self.key = prop.key
         if not self.prop.synchronize_pairs:
             raise sa_exc.ArgumentError(
@@ -233,7 +239,7 @@ class DependencyProcessor(object):
             history = uowcommit.get_attribute_history(
                                             s, 
                                             self.key, 
-                                            passive=passive)
+                                            passive)
             if history and not history.empty():
                 return True
         else:
@@ -398,7 +404,7 @@ class OneToManyDP(DependencyProcessor):
             history = uowcommit.get_attribute_history(
                                             state, 
                                             self.key, 
-                                            passive=self._passive_delete_flag)
+                                            self._passive_delete_flag)
             if history:
                 for child in history.deleted:
                     if child is not None and self.hasparent(child) is False:
@@ -421,11 +427,15 @@ class OneToManyDP(DependencyProcessor):
         for state in states:
             pks_changed = self._pks_changed(uowcommit, state)
 
+            if not pks_changed or self.passive_updates:
+                passive = attributes.PASSIVE_NO_INITIALIZE
+            else:
+                passive = attributes.PASSIVE_OFF
+
             history = uowcommit.get_attribute_history(
                                             state, 
                                             self.key, 
-                                            passive=not pks_changed 
-                                                    or self.passive_updates)
+                                            passive)
             if history:
                 for child in history.added:
                     if child is not None:
@@ -474,7 +484,7 @@ class OneToManyDP(DependencyProcessor):
                 history = uowcommit.get_attribute_history(
                                             state, 
                                             self.key, 
-                                            passive=self._passive_delete_flag)
+                                            self._passive_delete_flag)
                 if history:
                     for child in history.deleted:
                         if child is not None and \
@@ -508,9 +518,10 @@ class OneToManyDP(DependencyProcessor):
 
     def process_saves(self, uowcommit, states):
         for state in states:
-            history = uowcommit.get_attribute_history(state, 
-                                                      self.key,
-                                                      passive=True)
+            history = uowcommit.get_attribute_history(
+                                      state,
+                                      self.key,
+                                      attributes.PASSIVE_NO_INITIALIZE)
             if history:
                 for child in history.added:
                     self._synchronize(state, child, None, 
@@ -654,7 +665,7 @@ class ManyToOneDP(DependencyProcessor):
                 history = uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
-                                        passive=self._passive_delete_flag)
+                                        self._passive_delete_flag)
                 if history:
                     if self.cascade.delete_orphan:
                         todelete = history.sum()
@@ -677,7 +688,7 @@ class ManyToOneDP(DependencyProcessor):
                 history = uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
-                                        passive=self._passive_delete_flag)
+                                        self._passive_delete_flag)
                 if history:
                     ret = True
                     for child in history.deleted:
@@ -705,15 +716,16 @@ class ManyToOneDP(DependencyProcessor):
                     history = uowcommit.get_attribute_history(
                                                 state, 
                                                 self.key, 
-                                                passive=self._passive_delete_flag)
+                                                self._passive_delete_flag)
                     if history:
                         self._post_update(state, uowcommit, history.sum())
 
     def process_saves(self, uowcommit, states):
         for state in states:
-            history = uowcommit.get_attribute_history(state, 
-                                                        self.key,
-                                                        passive=True)
+            history = uowcommit.get_attribute_history(
+                                    state, 
+                                    self.key,
+                                    attributes.PASSIVE_NO_INITIALIZE)
             if history:
                 for child in history.added:
                     self._synchronize(state, child, None, False, 
@@ -834,7 +846,7 @@ class DetectKeySwitch(DependencyProcessor):
                     continue
                 dict_ = state.dict
                 related = state.get_impl(self.key).get(state, dict_,
-                        passive=self.passive_updates)
+                        passive=self._passive_update_flag)
                 if related is not attributes.PASSIVE_NO_RESULT and \
                     related is not None:
                     related_state = attributes.instance_state(dict_[self.key])
@@ -914,7 +926,7 @@ class ManyToManyDP(DependencyProcessor):
                 history = uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
-                                        passive=self._passive_delete_flag)
+                                        self._passive_delete_flag)
 
     def presort_saves(self, uowcommit, states):
         if not self.passive_updates:
@@ -926,7 +938,7 @@ class ManyToManyDP(DependencyProcessor):
                     history = uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
-                                        False)
+                                        attributes.PASSIVE_OFF)
 
         if not self.cascade.delete_orphan:
             return
@@ -937,7 +949,7 @@ class ManyToManyDP(DependencyProcessor):
             history = uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
-                                        passive=True)
+                                        attributes.PASSIVE_NO_INITIALIZE)
             if history:
                 for child in history.deleted:
                     if self.hasparent(child) is False:
@@ -962,7 +974,7 @@ class ManyToManyDP(DependencyProcessor):
             history = uowcommit.get_attribute_history(
                                     state, 
                                     self.key, 
-                                    passive=self._passive_delete_flag)
+                                    self._passive_delete_flag)
             if history:
                 for child in history.non_added():
                     if child is None or \
@@ -997,8 +1009,12 @@ class ManyToManyDP(DependencyProcessor):
         for state in states:
             need_cascade_pks = not self.passive_updates and \
                                 self._pks_changed(uowcommit, state) 
+            if need_cascade_pks:
+                passive = attributes.PASSIVE_OFF
+            else:
+                passive = attributes.PASSIVE_NO_INITIALIZE
             history = uowcommit.get_attribute_history(state, self.key,
-                                                passive=not need_cascade_pks)
+                                                passive)
             if history:
                 for child in history.added:
                     if child is None or \

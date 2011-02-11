@@ -254,7 +254,7 @@ class LoadDeferredColumns(object):
         self.state = state
         self.key = key
 
-    def __call__(self, passive=False):
+    def __call__(self, passive=attributes.PASSIVE_OFF):
         state, key = self.state, self.key
 
         localparent = state.manager.mapper
@@ -636,7 +636,7 @@ class LoadLazyAttribute(object):
         self.state = state
         self.key = key
 
-    def __call__(self, passive=False):
+    def __call__(self, passive=attributes.PASSIVE_OFF):
         state, key = self.state, self.key
         instance_mapper = state.manager.mapper
         prop = instance_mapper._props[key]

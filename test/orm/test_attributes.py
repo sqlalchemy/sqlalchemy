@@ -972,7 +972,9 @@ class PendingBackrefTest(_base.ORMTest):
         p4 = Post("post 5")
         p4.blog = b
         assert called[0] == 0
-        eq_(attributes.instance_state(b).get_history('posts'), ([p, p4], [p1, p2, p3], []))
+        eq_(attributes.instance_state(b).
+                get_history('posts', attributes.PASSIVE_OFF), 
+                            ([p, p4], [p1, p2, p3], []))
         assert called[0] == 1
 
     def test_lazy_remove(self):

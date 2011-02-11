@@ -149,7 +149,8 @@ class UOWTransaction(object):
 
         self.states[state] = (isdelete, True)
 
-    def get_attribute_history(self, state, key, passive=attributes.PASSIVE_NO_INITIALIZE):
+    def get_attribute_history(self, state, key, 
+                            passive=attributes.PASSIVE_NO_INITIALIZE):
         """facade to attributes.get_state_history(), including caching of results."""
 
         hashkey = ("history", state, key)
@@ -162,9 +163,11 @@ class UOWTransaction(object):
             history, state_history, cached_passive = self.attributes[hashkey]
             # if the cached lookup was "passive" and now 
             # we want non-passive, do a non-passive lookup and re-cache
-            if cached_passive and not passive:
+            if cached_passive is not attributes.PASSIVE_OFF \
+                and passive is attributes.PASSIVE_OFF:
                 impl = state.manager[key].impl
-                history = impl.get_history(state, state.dict, passive=False)
+                history = impl.get_history(state, state.dict, 
+                                    attributes.PASSIVE_OFF)
                 if history and impl.uses_objects:
                     state_history = history.as_state()
                 else:
@@ -174,7 +177,7 @@ class UOWTransaction(object):
             impl = state.manager[key].impl
             # TODO: store the history as (state, object) tuples
             # so we don't have to keep converting here
-            history = impl.get_history(state, state.dict, passive=passive)
+            history = impl.get_history(state, state.dict, passive)
             if history and impl.uses_objects:
                 state_history = history.as_state()
             else:
