@@ -331,6 +331,12 @@ CHANGES
   - oursql dialect accepts the same "ssl" arguments in 
     create_engine() as that of MySQLdb.  [ticket:2047]
 
+- declarative
+  - Added an explicit check for the case that the name
+    'metadata' is used for a column attribute on a 
+    declarative class. [ticket:2050]
+
+
 0.6.6
 =====
 - orm
