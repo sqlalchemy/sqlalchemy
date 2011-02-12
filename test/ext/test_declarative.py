@@ -126,6 +126,27 @@ class DeclarativeTest(DeclarativeTestBase):
 
         decl.instrument_declarative(User,{},Base.metadata)
 
+    def test_reserved_identifiers(self):
+        def go1():
+            class User1(Base):
+                __tablename__ = 'user1'
+                id = Column(Integer, primary_key=True)
+                metadata = Column(Integer)
+
+        def go2():
+            class User2(Base):
+                __tablename__ = 'user2'
+                id = Column(Integer, primary_key=True)
+                metadata = relationship("Address")
+
+        for go in (go1, go2):
+            assert_raises_message(
+                exc.InvalidRequestError,
+                "Attribute name 'metadata' is reserved "
+                "for the MetaData instance when using a "
+                "declarative base class.",
+                go
+            )
 
     def test_undefer_column_name(self):
         # TODO: not sure if there was an explicit
