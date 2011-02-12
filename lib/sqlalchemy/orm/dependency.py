@@ -8,8 +8,7 @@
 
 """
 
-from sqlalchemy import sql, util
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import sql, util, exc as sa_exc
 from sqlalchemy.orm import attributes, exc, sync, unitofwork, \
                                         util as mapperutil
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY

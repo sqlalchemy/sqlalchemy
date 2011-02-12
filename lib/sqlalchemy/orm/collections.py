@@ -108,9 +108,8 @@ import operator
 import sys
 import weakref
 
-import sqlalchemy.exceptions as sa_exc
 from sqlalchemy.sql import expression
-from sqlalchemy import schema, util
+from sqlalchemy import schema, util, exc as sa_exc
 
 
 __all__ = ['collection', 'collection_adapter',

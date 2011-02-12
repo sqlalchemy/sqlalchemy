@@ -19,6 +19,13 @@ CHANGES
   - Setup no longer installs a Nose plugin
     [ticket:1949]
 
+  - The "sqlalchemy.exceptions" alias in sys.modules
+    has been removed.   Base SQLA exceptions are 
+    available via "from sqlalchemy import exc".
+    The "exceptions" alias for "exc" remains in 
+    "sqlalchemy" for now, it's just not patched into 
+    sys.modules.
+
 - orm
   - More succinct form of query.join(target, onclause)
     [ticket:1923]

@@ -18,7 +18,7 @@ classes within should be considered mostly private.
 
 from itertools import chain
 
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import log, util, event
 from sqlalchemy.sql import expression
 deque = util.importlater('collections').deque

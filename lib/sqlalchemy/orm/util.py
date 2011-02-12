@@ -4,8 +4,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sqlalchemy.exceptions as sa_exc
-from sqlalchemy import sql, util, event
+
+from sqlalchemy import sql, util, event, exc as sa_exc
 from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
                                 PropComparator, MapperProperty

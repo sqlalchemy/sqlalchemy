@@ -16,9 +16,9 @@ defines a large part of the ORM's interactivity.
 import operator
 from operator import itemgetter
 
-from sqlalchemy import util, event
+from sqlalchemy import util, event, exc as sa_exc
 from sqlalchemy.orm import interfaces, collections, events
-import sqlalchemy.exceptions as sa_exc
+
 
 mapperutil = util.importlater("sqlalchemy.orm", "util")
 

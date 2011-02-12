@@ -34,7 +34,7 @@ from sqlalchemy import event, events
 
 sqlutil = util.importlater("sqlalchemy.sql", "util")
 url = util.importlater("sqlalchemy.engine", "url")
-
+sqltypes = util.importlater("sqlalchemy", "types")
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
            'ForeignKeyConstraint', 'PrimaryKeyConstraint', 'CheckConstraint',
@@ -318,7 +318,7 @@ class Table(SchemaItem, expression.TableClause):
     def _autoincrement_column(self):
         for col in self.primary_key:
             if col.autoincrement and \
-                issubclass(col.type._type_affinity, types.Integer) and \
+                issubclass(col.type._type_affinity, sqltypes.Integer) and \
                 not col.foreign_keys and \
                 isinstance(col.default, (type(None), Sequence)) and \
                 (col.server_default is None or col.server_default.reflected):
@@ -679,9 +679,9 @@ class Column(SchemaItem, expression.ColumnClause):
         if args:
             coltype = args[0]
 
-            if (isinstance(coltype, types.TypeEngine) or
+            if (isinstance(coltype, sqltypes.TypeEngine) or
                 (isinstance(coltype, type) and
-                 issubclass(coltype, types.TypeEngine))):
+                 issubclass(coltype, sqltypes.TypeEngine))):
                 if type_ is not None:
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword.")
@@ -709,7 +709,7 @@ class Column(SchemaItem, expression.ColumnClause):
         if '_proxies' in kwargs:
             self.proxies = kwargs.pop('_proxies')
         # otherwise, add DDL-related events
-        elif isinstance(self.type, types.SchemaType):
+        elif isinstance(self.type, sqltypes.SchemaType):
             self.type._set_parent_with_dispatch(self)
 
         if self.default is not None:
@@ -1185,7 +1185,7 @@ class ForeignKey(SchemaItem):
             _column = self._colspec
 
         # propagate TypeEngine to parent if it didn't have one
-        if isinstance(self.parent.type, types.NullType):
+        if isinstance(self.parent.type, sqltypes.NullType):
             self.parent.type = _column.type
         return _column
 

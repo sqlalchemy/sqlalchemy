@@ -11,8 +11,7 @@ mapped attributes.
 
 """
 
-from sqlalchemy import sql, util, log
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import sql, util, log, exc as sa_exc
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
     join_condition
 from sqlalchemy.sql import operators, expression

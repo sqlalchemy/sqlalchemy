@@ -2,7 +2,7 @@ import inspect
 import sys
 import types
 import sqlalchemy as sa
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
 from test.lib import config, testing
 from test.lib.testing import resolve_artifact_names, adict
 from test.lib.engines import drop_all_tables

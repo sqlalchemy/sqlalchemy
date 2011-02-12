@@ -367,7 +367,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
                             class_mapper, relationship, session,\
                             object_session, attributes
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE
-from sqlalchemy.exceptions import SQLAlchemyError, InvalidRequestError, ArgumentError
+from sqlalchemy.exc import SQLAlchemyError, InvalidRequestError, ArgumentError
 from sqlalchemy.sql import expression
 
 

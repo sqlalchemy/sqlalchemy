@@ -8,7 +8,6 @@ import inspect
 import sys
 
 import sqlalchemy.exc as exceptions
-sys.modules['sqlalchemy.exceptions'] = exceptions
 
 from sqlalchemy.sql import (
     alias,

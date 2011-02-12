@@ -14,7 +14,7 @@ the source distrbution.
 
 """
 
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import util
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query

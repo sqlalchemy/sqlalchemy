@@ -26,8 +26,6 @@ import codecs
 
 from sqlalchemy import exc, schema
 from sqlalchemy.sql import expression, operators
-import sys
-schema.types = expression.sqltypes = sys.modules['sqlalchemy.types']
 from sqlalchemy.util import pickle
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.sql.visitors import Visitable

@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sqlalchemy.exceptions as sa_exc
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.util import ScopedRegistry, ThreadLocalRegistry, warn
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import exc as orm_exc

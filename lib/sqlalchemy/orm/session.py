@@ -8,8 +8,7 @@
 
 import weakref
 from itertools import chain
-import sqlalchemy.exceptions as sa_exc
-from sqlalchemy import util, sql, engine, log
+from sqlalchemy import util, sql, engine, log, exc as sa_exc
 from sqlalchemy.sql import util as sql_util, expression
 from sqlalchemy.orm import (
     SessionExtension, attributes, exc, query, unitofwork, util as mapperutil, state
