@@ -323,6 +323,16 @@ def monkeypatch_proxied_specials(into_cls, from_cls, skip=None, only=None,
             pass
         setattr(into_cls, method, env[method])
 
+
+def methods_equivalent(meth1, meth2):
+    """Return True if the two methods are the same implementation."""
+
+    # Py3k
+    #return getattr(meth1, '__func__', meth1) is getattr(meth2, '__func__', meth2)
+    # Py2K
+    return getattr(meth1, 'im_func', meth1) is getattr(meth2, 'im_func', meth2)
+    # end Py2K
+
 def as_interface(obj, cls=None, methods=None, required=None):
     """Ensure basic interface compliance for an instance or dict of callables.
 

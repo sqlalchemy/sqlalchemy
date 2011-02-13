@@ -181,7 +181,9 @@ class InstanceEvents(event.Events):
          instead be the :class:`.InstanceState` state-management
          object associated with the instance.
         :param context: the :class:`.QueryContext` corresponding to the
-         current :class:`.Query` in progress.
+         current :class:`.Query` in progress.  This argument may be
+         ``None`` if the load does not correspond to a :class:`.Query`,
+         such as during :meth:`.Session.merge`.
 
         """
 

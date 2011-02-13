@@ -3,6 +3,18 @@
 =======
 CHANGES
 =======
+0.7.0b2
+========
+- orm
+  - Fixed bug whereby Session.merge() would call the
+    load() event with one too few arguments.
+    [ticket:2053]
+
+  - Added logic which prevents the generation of 
+    events from a MapperExtension or SessionExtension 
+    from generating do-nothing events for all the methods 
+    not overridden. [ticket:2052]
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 

@@ -124,6 +124,27 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
              'before_update', 'after_update', 'before_delete', 'after_delete'])
 
     @testing.resolve_artifact_names
+    def test_merge(self):
+        mapper(User, users)
+
+        canary =[]
+        def load(obj, ctx):
+            canary.append('load')
+        event.listen(mapper, 'load', load)
+
+        s = Session()
+        u = User(name='u1')
+        s.add(u)
+        s.commit()
+        s = Session()
+        u2 = s.merge(u)
+        s = Session()
+        u2 = s.merge(User(name='u2'))
+        s.commit()
+        s.query(User).first()
+        eq_(canary,['load', 'load', 'load'])
+
+    @testing.resolve_artifact_names
     def test_inheritance(self):
         class AdminUser(User):
             pass
@@ -864,6 +885,19 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.expunge_all()
         assert sess.query(User).first()
 
+    @testing.resolve_artifact_names
+    def test_unnecessary_methods_not_evented(self):
+        class MyExtension(sa.orm.MapperExtension):
+            def before_insert(self, mapper, connection, instance):
+                pass
+
+        class Foo(object):
+            pass
+        m = mapper(Foo, users, extension=MyExtension())
+        assert not m.class_manager.dispatch.load
+        assert not m.dispatch.before_update
+        assert len(m.dispatch.before_insert) == 1
+
 
 class AttributeExtensionTest(_base.MappedTest):
     @classmethod
@@ -1028,4 +1062,14 @@ class SessionExtensionTest(_fixtures.FixtureTest):
             'before_commit_one',
             'before_commit_two',
             ]
+
+    @testing.resolve_artifact_names
+    def test_unnecessary_methods_not_evented(self):
+        class MyExtension(sa.orm.session.SessionExtension):
+            def before_commit(self, session):
+                pass
+
+        s = Session(extension=MyExtension())
+        assert not s.dispatch.after_commit
+        assert len(s.dispatch.before_commit) == 1
 
