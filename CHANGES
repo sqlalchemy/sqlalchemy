@@ -29,6 +29,12 @@ CHANGES
     collection (i.e. the reverse of the 'typical'
     association proxy use case)  [ticket:2054]
 
+- examples
+  - Beaker example now takes into account 'limit'
+    and 'offset', bind params within embedded
+    FROM clauses (like when you use union() or 
+    from_self()) when generating a cache key.
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 
