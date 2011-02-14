@@ -15,6 +15,13 @@ CHANGES
     from generating do-nothing events for all the methods 
     not overridden. [ticket:2052]
 
+- sql
+  - The Sequence() construct, when passed a MetaData() 
+    object via its 'metadata' argument, will be 
+    included in CREATE/DROP statements within
+    metadata.create_all() and metadata.drop_all(), 
+    including "checkfirst" logic.  [ticket:2055]
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 

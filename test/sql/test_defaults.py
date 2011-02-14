@@ -536,63 +536,39 @@ class AutoIncrementTest(_base.TablesTest):
 
         nonai.insert().execute(id=1, data='row 1')
 
+class SequenceDDLTest(testing.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
 
-class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
-
-    @classmethod
-    @testing.requires.sequences
-    def setup_class(cls):
-        global cartitems, sometable, metadata
-        metadata = MetaData(testing.db)
-        cartitems = Table("cartitems", metadata,
-            Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
-            Column("description", String(40)),
-            Column("createdate", sa.DateTime())
-        )
-        sometable = Table( 'Manager', metadata,
-               Column('obj_id', Integer, Sequence('obj_id_seq'), ),
-               Column('name', String(128)),
-               Column('id', Integer, Sequence('Manager_id_seq', optional=True),
-                      primary_key=True),
-           )
-
-        metadata.create_all()
-
-
-    def test_compile(self):
+    def test_create_drop_ddl(self):
         self.assert_compile(
             CreateSequence(Sequence('foo_seq')),
             "CREATE SEQUENCE foo_seq",
-            use_default_dialect=True,
         )
 
         self.assert_compile(
             CreateSequence(Sequence('foo_seq', start=5)),
             "CREATE SEQUENCE foo_seq START WITH 5",
-            use_default_dialect=True,
         )
 
         self.assert_compile(
             CreateSequence(Sequence('foo_seq', increment=2)),
             "CREATE SEQUENCE foo_seq INCREMENT BY 2",
-            use_default_dialect=True,
         )
 
         self.assert_compile(
             CreateSequence(Sequence('foo_seq', increment=2, start=5)),
             "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 5",
-            use_default_dialect=True,
         )
 
         self.assert_compile(
             DropSequence(Sequence('foo_seq')),
             "DROP SEQUENCE foo_seq",
-            use_default_dialect=True,
         )
 
+class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
+    __requires__ = ('sequences',)
 
     @testing.fails_on('firebird', 'no FB support for start/increment')
-    @testing.requires.sequences
     def test_start_increment(self):
         for seq in (
                 Sequence('foo_seq'), 
@@ -610,7 +586,130 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
             finally:
                 seq.drop(testing.db)
 
-    @testing.requires.sequences
+    @testing.fails_on('maxdb', 'FIXME: unknown')
+    # maxdb db-api seems to double-execute NEXTVAL 
+    # internally somewhere,
+    # throwing off the numbers for these tests...
+    @testing.provide_metadata
+    def test_implicit_sequence_exec(self):
+        s = Sequence("my_sequence", metadata=metadata)
+        metadata.create_all()
+        x = s.execute()
+        eq_(x, 1)
+
+    def _has_sequence(self, name):
+        return testing.db.dialect.has_sequence(testing.db, name)
+
+    @testing.fails_on('maxdb', 'FIXME: unknown')
+    def teststandalone_explicit(self):
+        s = Sequence("my_sequence")
+        s.create(bind=testing.db)
+        try:
+            x = s.execute(testing.db)
+            eq_(x, 1)
+        finally:
+            s.drop(testing.db)
+
+    def test_checkfirst_sequence(self):
+        s = Sequence("my_sequence")
+        s.create(testing.db, checkfirst=False)
+        assert self._has_sequence('my_sequence')
+        s.create(testing.db, checkfirst=True)
+        s.drop(testing.db, checkfirst=False)
+        assert not self._has_sequence('my_sequence')
+        s.drop(testing.db, checkfirst=True)
+
+    def test_checkfirst_metadata(self):
+        m = MetaData()
+        s = Sequence("my_sequence", metadata=m)
+        m.create_all(testing.db, checkfirst=False)
+        assert self._has_sequence('my_sequence')
+        m.create_all(testing.db, checkfirst=True)
+        m.drop_all(testing.db, checkfirst=False)
+        assert not self._has_sequence('my_sequence')
+        m.drop_all(testing.db, checkfirst=True)
+
+    def test_checkfirst_table(self):
+        m = MetaData()
+        s = Sequence("my_sequence")
+        t = Table('t', m, Column('c', Integer, s, primary_key=True))
+        t.create(testing.db, checkfirst=False)
+        assert self._has_sequence('my_sequence')
+        t.create(testing.db, checkfirst=True)
+        t.drop(testing.db, checkfirst=False)
+        assert not self._has_sequence('my_sequence')
+        t.drop(testing.db, checkfirst=True)
+
+    @testing.provide_metadata
+    def test_table_overrides_metadata_create(self):
+        s1 = Sequence("s1", metadata=metadata)
+        s2 = Sequence("s2", metadata=metadata)
+        s3 = Sequence("s3")
+        t = Table('t', metadata, 
+                    Column('c', Integer, s3, primary_key=True))
+        assert s3.metadata is metadata
+
+
+        t.create(testing.db)
+        s3.drop(testing.db)
+
+        # 't' is created, and 's3' won't be
+        # re-created since it's linked to 't'.
+        # 's1' and 's2' are, however.
+        metadata.create_all(testing.db)
+        assert self._has_sequence('s1')
+        assert self._has_sequence('s2')
+        assert not self._has_sequence('s3')
+
+        s2.drop(testing.db)
+        assert self._has_sequence('s1')
+        assert not self._has_sequence('s2')
+
+        metadata.drop_all(testing.db)
+        assert not self._has_sequence('s1')
+        assert not self._has_sequence('s2')
+
+
+class TableBoundSequenceTest(testing.TestBase):
+    __requires__ = ('sequences',)
+
+    @classmethod
+    def setup_class(cls):
+        global cartitems, sometable, metadata
+        metadata = MetaData(testing.db)
+        cartitems = Table("cartitems", metadata,
+            Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
+            Column("description", String(40)),
+            Column("createdate", sa.DateTime())
+        )
+        sometable = Table( 'Manager', metadata,
+               Column('obj_id', Integer, Sequence('obj_id_seq'), ),
+               Column('name', String(128)),
+               Column('id', Integer, Sequence('Manager_id_seq', optional=True),
+                      primary_key=True),
+           )
+
+        metadata.create_all()
+
+    @classmethod
+    def teardown_class(cls):
+        metadata.drop_all()
+
+    def test_insert_via_seq(self):
+        cartitems.insert().execute(description='hi')
+        cartitems.insert().execute(description='there')
+        r = cartitems.insert().execute(description='lala')
+
+        assert r.inserted_primary_key and r.inserted_primary_key[0] is not None
+        id_ = r.inserted_primary_key[0]
+
+        eq_(1,
+            sa.select([func.count(cartitems.c.cart_id)],
+                      sa.and_(cartitems.c.description == 'lala',
+                              cartitems.c.cart_id == id_)).scalar())
+
+        cartitems.select().execute().fetchall()
+
     def test_seq_nonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
 
@@ -630,65 +729,6 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
              (2, "someother", 2),
              (3, "name3", 3),
              (4, "name4", 4)])
-
-    @testing.requires.sequences
-    def test_sequence(self):
-        cartitems.insert().execute(description='hi')
-        cartitems.insert().execute(description='there')
-        r = cartitems.insert().execute(description='lala')
-
-        assert r.inserted_primary_key and r.inserted_primary_key[0] is not None
-        id_ = r.inserted_primary_key[0]
-
-        eq_(1,
-            sa.select([func.count(cartitems.c.cart_id)],
-                      sa.and_(cartitems.c.description == 'lala',
-                              cartitems.c.cart_id == id_)).scalar())
-
-        cartitems.select().execute().fetchall()
-
-    @testing.fails_on('maxdb', 'FIXME: unknown')
-    # maxdb db-api seems to double-execute NEXTVAL internally somewhere,
-    # throwing off the numbers for these tests...
-    @testing.requires.sequences
-    def test_implicit_sequence_exec(self):
-        s = Sequence("my_sequence", metadata=MetaData(testing.db))
-        s.create()
-        try:
-            x = s.execute()
-            eq_(x, 1)
-        finally:
-            s.drop()
-
-    @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.requires.sequences
-    def teststandalone_explicit(self):
-        s = Sequence("my_sequence")
-        s.create(bind=testing.db)
-        try:
-            x = s.execute(testing.db)
-            eq_(x, 1)
-        finally:
-            s.drop(testing.db)
-
-    @testing.requires.sequences
-    def test_checkfirst(self):
-        s = Sequence("my_sequence")
-        s.create(testing.db, checkfirst=False)
-        s.create(testing.db, checkfirst=True)
-        s.drop(testing.db, checkfirst=False)
-        s.drop(testing.db, checkfirst=True)
-
-    @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.requires.sequences
-    def teststandalone2(self):
-        x = cartitems.c.cart_id.default.execute()
-        self.assert_(1 <= x <= 4)
-
-    @classmethod
-    @testing.requires.sequences
-    def teardown_class(cls):
-        metadata.drop_all()
 
 
 class SpecialTypePKTest(testing.TestBase):

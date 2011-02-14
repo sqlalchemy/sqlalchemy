@@ -1285,8 +1285,10 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_checksfor_sequence(self):
         meta1 = MetaData(testing.db)
+        seq = Sequence('fooseq')
         t = Table('mytable', meta1, Column('col1', Integer,
-                  Sequence('fooseq')))
+                  seq))
+        seq.drop()
         try:
             testing.db.execute('CREATE SEQUENCE fooseq')
             t.create(checkfirst=True)

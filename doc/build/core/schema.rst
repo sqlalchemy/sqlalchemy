@@ -801,8 +801,8 @@ executed standalone like a SQL expression, which has the effect of calling its
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
 
-Default Geneation API Constructs
---------------------------------
+Default Generation API Constructs
+---------------------------------
 
 .. autoclass:: ColumnDefault
     :show-inheritance:
