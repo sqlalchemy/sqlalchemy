@@ -23,6 +23,7 @@ class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
         Base = decl.declarative_base(testing.db)
 
     def teardown(self):
+        Session.close_all()
         clear_mappers()
         Base.metadata.drop_all()
 
