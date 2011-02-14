@@ -35,6 +35,14 @@ CHANGES
     FROM clauses (like when you use union() or 
     from_self()) when generating a cache key.
 
+- declarative
+  - Fixed regression whereby composite() with 
+    Column objects placed inline would fail
+    to initialize.  The Column objects can now
+    be inline with the composite() or external
+    and pulled in via name or object ref. 
+    [ticket:2058]
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 

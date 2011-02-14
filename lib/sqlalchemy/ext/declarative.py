@@ -977,16 +977,17 @@ def _as_declarative(cls, classname, dict_):
     our_stuff.sort(key=lambda key: our_stuff[key]._creation_order)
 
     # extract columns from the class dict
-    cols = []
+    cols = set()
     for key, c in our_stuff.iteritems():
         if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
-                if isinstance(col, Column) and col.table is None:
+                if isinstance(col, Column) and \
+                    col.table is None:
                     _undefer_column_name(key, col)
-                    cols.append(col)
+                    cols.add(col)
         elif isinstance(c, Column):
             _undefer_column_name(key, c)
-            cols.append(c)
+            cols.add(c)
             # if the column is the same name as the key, 
             # remove it from the explicit properties dict.
             # the normal rules for assigning column-based properties
@@ -994,6 +995,7 @@ def _as_declarative(cls, classname, dict_):
             # in multi-column ColumnProperties.
             if key == c.key:
                 del our_stuff[key]
+    cols = sorted(cols, key=lambda c:c._creation_order)
 
     table = None
     if '__table__' not in dict_:
