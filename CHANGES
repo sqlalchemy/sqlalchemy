@@ -43,6 +43,9 @@ CHANGES
     and pulled in via name or object ref. 
     [ticket:2058]
 
+  - the dictionary at the end of the __table_args__
+    tuple is now optional.  [ticket:1468]
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 

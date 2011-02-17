@@ -262,9 +262,18 @@ dictionary::
         __tablename__ = 'sometable'
         __table_args__ = {'mysql_engine':'InnoDB'}
 
-The other, a tuple of the form
-``(arg1, arg2, ..., {kwarg1:value, ...})``, which allows positional
-arguments to be specified as well (usually constraints):: 
+The other, a tuple, where each argument is positional
+(usually constraints)::
+
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        __table_args__ = (
+                ForeignKeyConstraint(['id'], ['remote_table.id']),
+                UniqueConstraint('foo'),
+                )
+
+Keyword arguments can be specified with the above form by 
+specifying the last argument as a dictionary::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -273,9 +282,6 @@ arguments to be specified as well (usually constraints)::
                 UniqueConstraint('foo'),
                 {'autoload':True}
                 )
-
-Note that the keyword parameters dictionary is required in the tuple
-form even if empty.
 
 Using a Hybrid Approach with __table__
 =======================================
@@ -1004,14 +1010,10 @@ def _as_declarative(cls, classname, dict_):
             if isinstance(table_args, dict):
                 args, table_kw = (), table_args
             elif isinstance(table_args, tuple):
-                args = table_args[0:-1]
-                table_kw = table_args[-1]
-                if len(table_args) < 2 or not isinstance(table_kw, dict):
-                    raise exc.ArgumentError(
-                        "Tuple form of __table_args__ is "
-                        "(arg1, arg2, arg3, ..., {'kw1':val1, "
-                        "'kw2':val2, ...})"
-                    )
+                if isinstance(table_args[-1], dict):
+                    args, table_kw = table_args[0:-1], table_args[-1]
+                else:
+                    args, table_kw = table_args, {}
             else:
                 args, table_kw = (), {}
 

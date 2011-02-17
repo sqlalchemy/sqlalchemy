@@ -672,18 +672,16 @@ class DeclarativeTest(DeclarativeTestBase):
                               'Mapper Mapper|User|users could not '
                               'assemble any primary key', define)
 
-    def test_table_args_bad_format(self):
+    def test_table_args_no_dict(self):
 
-        def err():
-            class Foo1(Base):
+        class Foo1(Base):
 
-                __tablename__ = 'foo'
-                __table_args__ = ForeignKeyConstraint(['id'], ['foo.id'
-                        ]),
-                id = Column('id', Integer, primary_key=True)
+            __tablename__ = 'foo'
+            __table_args__ = ForeignKeyConstraint(['id'], ['foo.bar']),
+            id = Column('id', Integer, primary_key=True)
+            bar = Column('bar', Integer)
 
-        assert_raises_message(sa.exc.ArgumentError,
-                              'Tuple form of __table_args__ is ', err)
+        assert Foo1.__table__.c.id.references(Foo1.__table__.c.bar)
 
     def test_table_args_type(self):
         def err():
