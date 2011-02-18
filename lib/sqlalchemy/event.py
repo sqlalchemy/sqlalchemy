@@ -78,20 +78,17 @@ class _Dispatch(object):
         self._parent_cls = _parent_cls
 
     def __reduce__(self):
-
         return _UnpickleDispatch(), (self._parent_cls, )
-
-    @property
-    def _descriptors(self):
-        return (getattr(self, k) for k in dir(self) if _is_event_name(k))
 
     def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
             object."""
 
-        for ls in other._descriptors:
+        for ls in _event_descriptors(other):
             getattr(self, ls.name)._update(ls, only_propagate=only_propagate)
 
+def _event_descriptors(target):
+    return [getattr(target, k) for k in dir(target) if _is_event_name(k)]
 
 class _EventMeta(type):
     """Intercept new Event subclasses and create 

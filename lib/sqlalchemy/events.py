@@ -279,8 +279,8 @@ class PoolEvents(event.Events):
 
         """
 
-class EngineEvents(event.Events):
-    """Available events for :class:`.Engine`.
+class ConnectionEvents(event.Events):
+    """Available events for :class:`.Connection`.
 
     The methods here define the name of an event as well as the names of members that are passed to listener functions.
 
@@ -307,12 +307,7 @@ class EngineEvents(event.Events):
 
     @classmethod
     def _listen(cls, target, identifier, fn, retval=False):
-        from sqlalchemy.engine.base import Connection, \
-            _listener_connection_cls
-        if target.Connection is Connection:
-            target.Connection = _listener_connection_cls(
-                                        Connection, 
-                                        target.dispatch)
+        target._has_events = True
 
         if not retval:
             if identifier == 'before_execute':

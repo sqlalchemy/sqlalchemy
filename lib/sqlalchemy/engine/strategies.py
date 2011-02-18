@@ -151,6 +151,13 @@ class DefaultEngineStrategy(EngineStrategy):
 
             def first_connect(dbapi_connection, connection_record):
                 c = base.Connection(engine, connection=dbapi_connection)
+
+                # TODO: removing this allows the on connect activities
+                # to generate events.  tests currently assume these aren't
+                # sent.  do we want users to get all the initial connect
+                # activities as events ?
+                c._has_events = False
+
                 dialect.initialize(c)
             event.listen(pool, 'first_connect', first_connect)
 
