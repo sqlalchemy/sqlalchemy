@@ -34,6 +34,12 @@ CHANGES
     given column exactly, not just it's parent
     table.  [ticket:2064]
 
+- postgresql
+  - Fixed regression from 0.6 where SMALLINT and
+    BIGINT types would both generate SERIAL
+    on an integer PK column, instead of 
+    SMALLINT and BIGSERIAL [ticket:2065]
+
 - ext
   - Association proxy now has correct behavior for
     any(), has(), and contains() when proxying

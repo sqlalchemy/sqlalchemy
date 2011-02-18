@@ -1495,6 +1495,23 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                     : Numeric})
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
 
+    def test_serial_integer(self):
+        for type_, expected in [
+            (Integer, 'SERIAL'),
+            (BigInteger, 'BIGSERIAL'),
+            (SmallInteger, 'SMALLINT'),
+            (postgresql.INTEGER, 'SERIAL'),
+            (postgresql.BIGINT, 'BIGSERIAL'),
+        ]:
+            m = MetaData()
+
+            t = Table('t', m, Column('c', type_, primary_key=True))
+            ddl_compiler = testing.db.dialect.ddl_compiler(testing.db.dialect, schema.CreateTable(t))
+            eq_(
+                ddl_compiler.get_column_specification(t.c.c),
+                "c %s NOT NULL" % expected
+            )
+
 class TimezoneTest(TestBase):
 
     """Test timezone-aware datetimes.
