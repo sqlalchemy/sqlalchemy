@@ -16,6 +16,13 @@ CHANGES
     not overridden. [ticket:2052]
 
 - sql
+  - Renamed the EngineEvents event class to 
+    ConnectionEvents.  As these classes are never
+    accessed directly by end-user code, this strictly
+    is a documentation change for end users.  Also
+    simplified how events get linked to engines
+    and connections internally. [ticket:2059]
+
   - The Sequence() construct, when passed a MetaData() 
     object via its 'metadata' argument, will be 
     included in CREATE/DROP statements within
