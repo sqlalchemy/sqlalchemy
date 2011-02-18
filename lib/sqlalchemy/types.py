@@ -1007,9 +1007,6 @@ class SmallInteger(Integer):
 
     __visit_name__ = 'small_integer'
 
-    @property
-    def _type_affinity(self):
-        return SmallInteger
 
 class BigInteger(Integer):
     """A type for bigger ``int`` integers.
@@ -1021,9 +1018,6 @@ class BigInteger(Integer):
 
     __visit_name__ = 'big_integer'
 
-    @property
-    def _type_affinity(self):
-        return BigInteger
 
 class Numeric(_DateAffinity, TypeEngine):
     """A type for fixed precision numbers.
