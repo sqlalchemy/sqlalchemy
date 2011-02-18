@@ -29,6 +29,11 @@ CHANGES
     metadata.create_all() and metadata.drop_all(), 
     including "checkfirst" logic.  [ticket:2055]
 
+  - The Column.references() method now returns True
+    if it has a foreign key referencing the
+    given column exactly, not just it's parent
+    table.  [ticket:2064]
+
 - ext
   - Association proxy now has correct behavior for
     any(), has(), and contains() when proxying

@@ -766,7 +766,7 @@ class Column(SchemaItem, expression.ColumnClause):
         key."""
 
         for fk in self.foreign_keys:
-            if fk.references(column.table):
+            if fk.column.proxy_set.intersection(column.proxy_set):
                 return True
         else:
             return False
