@@ -910,7 +910,7 @@ def _as_declarative(cls, classname, dict_):
                     if obj.foreign_keys:
                         raise exc.InvalidRequestError(
                         "Columns with foreign keys to other columns "
-                        "must be declared as @classproperty callables "
+                        "must be declared as @declared_attr callables "
                         "on declarative mixin classes. ")
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
@@ -925,7 +925,7 @@ def _as_declarative(cls, classname, dict_):
                     raise exc.InvalidRequestError(
                         "Mapper properties (i.e. deferred,"
                         "column_property(), relationship(), etc.) must "
-                        "be declared as @classproperty callables "
+                        "be declared as @declared_attr callables "
                         "on declarative mixin classes.")
                 elif isinstance(obj, declarative_props):
                     dict_[name] = ret = \

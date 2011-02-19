@@ -404,6 +404,8 @@ CHANGES
     'metadata' is used for a column attribute on a 
     declarative class. [ticket:2050]
 
+  - Fix error message referencing old @classproperty
+    name to reference @declared_attr [ticket:2061]
 
 0.6.6
 =====
