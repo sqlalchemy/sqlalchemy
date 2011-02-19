@@ -1,8 +1,8 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, assert_raises_message, config
 import re
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
-    bindparam, select, event, TypeDecorator
+    bindparam, select, event, TypeDecorator, create_engine
 from sqlalchemy.sql import column, literal
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
@@ -10,6 +10,7 @@ from test.lib import TestBase, testing, engines
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import base, default
+from sqlalchemy.engine.base import Connection, Engine
 
 users, metadata = None, None
 class ExecuteTest(TestBase):
@@ -514,6 +515,8 @@ class AlternateResultProxyTest(TestBase):
         self._test_proxy(base.BufferedColumnResultProxy)
 
 class EngineEventsTest(TestBase):
+    def tearDown(self):
+        Engine.dispatch._clear()
 
     def _assert_stmts(self, expected, received):
         for stmt, params, posn in expected:
@@ -527,6 +530,64 @@ class EngineEventsTest(TestBase):
                 if teststmt.startswith(stmt) and (testparams
                         == params or testparams == posn):
                     break
+
+    def test_per_engine_independence(self):
+        e1 = create_engine(config.db_url)
+        e2 = create_engine(config.db_url)
+
+        canary = []
+        def before_exec(conn, stmt, *arg):
+            canary.append(stmt)
+        event.listen(e1, "before_execute", before_exec)
+        s1 = select([1])
+        s2 = select([2])
+        e1.execute(s1)
+        e2.execute(s2)
+        eq_(canary, [s1])
+        event.listen(e2, "before_execute", before_exec)
+        e1.execute(s1)
+        e2.execute(s2)
+        eq_(canary, [s1, s1, s2])
+
+    def test_per_engine_plus_global(self):
+        canary = []
+        def be1(conn, stmt, *arg):
+            canary.append('be1')
+        def be2(conn, stmt, *arg):
+            canary.append('be2')
+        def be3(conn, stmt, *arg):
+            canary.append('be3')
+
+        event.listen(Engine, "before_execute", be1)
+        e1 = create_engine(config.db_url)
+        e2 = create_engine(config.db_url)
+
+        event.listen(e1, "before_execute", be2)
+
+        event.listen(Engine, "before_execute", be3)
+        e1.connect()
+        e2.connect()
+        canary[:] = []
+        e1.execute(select([1]))
+        e2.execute(select([1]))
+
+        eq_(canary, ['be1', 'be3', 'be2', 'be1', 'be3'])
+
+    def test_argument_format_execute(self):
+        def before_execute(conn, clauseelement, multiparams, params):
+            assert isinstance(multiparams, (list, tuple))
+            assert isinstance(params, dict)
+        def after_execute(conn, clauseelement, multiparams, params, result):
+            assert isinstance(multiparams, (list, tuple))
+            assert isinstance(params, dict)
+        e1 = create_engine(config.db_url)
+        event.listen(e1, 'before_execute', before_execute)
+        event.listen(e1, 'after_execute', after_execute)
+
+        e1.execute(select([1]))
+        e1.execute(select([1]).compile(dialect=e1.dialect).statement)
+        e1.execute(select([1]).compile(dialect=e1.dialect))
+        e1._execute_compiled(select([1]).compile(dialect=e1.dialect), [], {})
 
     @testing.fails_on('firebird', 'Data type unknown')
     def test_execute_events(self):
@@ -647,8 +708,6 @@ class EngineEventsTest(TestBase):
         eq_(
             canary, ['execute', 'cursor_execute']
         )
-
-
 
     def test_transactional(self):
         canary = []

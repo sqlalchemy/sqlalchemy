@@ -164,6 +164,10 @@ class CompositeProperty(DescriptorProperty):
                 prop = attr.property
             props.append(prop)
 
+    @property
+    def columns(self):
+        return [a for a in self.attrs if isinstance(a, schema.Column)]
+
     def _setup_arguments_on_columns(self):
         """Propagate configuration arguments made on this composite
         to the target columns, for those that apply.

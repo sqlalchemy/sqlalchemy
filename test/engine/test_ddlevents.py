@@ -479,10 +479,10 @@ class DDLTest(TestBase, AssertsCompiledSQL):
         assert DDL('').execute_if(dialect=target)._should_execute(tbl, cx)
         assert not DDL('').execute_if(dialect='bogus').\
                         _should_execute(tbl, cx)
-        assert DDL('').execute_if(callable_=lambda d, y,z: True).\
+        assert DDL('').execute_if(callable_=lambda d, y,z, **kw: True).\
                         _should_execute(tbl, cx)
         assert(DDL('').execute_if(
-                        callable_=lambda d, y,z: z.engine.name 
+                        callable_=lambda d, y,z, **kw: z.engine.name 
                         != 'bogus').
                _should_execute(tbl, cx))
 

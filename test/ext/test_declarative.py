@@ -10,7 +10,8 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, \
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
-    polymorphic_union, deferred, column_property
+    polymorphic_union, deferred, column_property, composite,\
+    Session
 from test.lib.testing import eq_
 from sqlalchemy.util import classproperty
 from test.orm._base import ComparableEntity, MappedTest
@@ -22,6 +23,7 @@ class DeclarativeTestBase(testing.TestBase, testing.AssertsExecutionResults):
         Base = decl.declarative_base(testing.db)
 
     def teardown(self):
+        Session.close_all()
         clear_mappers()
         Base.metadata.drop_all()
 
@@ -670,18 +672,16 @@ class DeclarativeTest(DeclarativeTestBase):
                               'Mapper Mapper|User|users could not '
                               'assemble any primary key', define)
 
-    def test_table_args_bad_format(self):
+    def test_table_args_no_dict(self):
 
-        def err():
-            class Foo1(Base):
+        class Foo1(Base):
 
-                __tablename__ = 'foo'
-                __table_args__ = ForeignKeyConstraint(['id'], ['foo.id'
-                        ]),
-                id = Column('id', Integer, primary_key=True)
+            __tablename__ = 'foo'
+            __table_args__ = ForeignKeyConstraint(['id'], ['foo.bar']),
+            id = Column('id', Integer, primary_key=True)
+            bar = Column('bar', Integer)
 
-        assert_raises_message(sa.exc.ArgumentError,
-                              'Tuple form of __table_args__ is ', err)
+        assert Foo1.__table__.c.id.references(Foo1.__table__.c.bar)
 
     def test_table_args_type(self):
         def err():
@@ -894,6 +894,66 @@ class DeclarativeTest(DeclarativeTestBase):
             eq_(u1.name, 'u1')
 
         self.assert_sql_count(testing.db, go, 1)
+
+    def test_composite_inline(self):
+        class AddressComposite(ComparableEntity):
+            def __init__(self, street, state):
+                self.street = street
+                self.state = state
+            def __composite_values__(self):
+                return [self.street, self.state]
+
+        class User(Base, ComparableEntity):
+            __tablename__ = 'user'
+            id = Column(Integer, primary_key=True, 
+                            test_needs_autoincrement=True)
+            address = composite(AddressComposite, 
+                Column('street', String(50)),
+                Column('state', String(2)),
+            )
+
+        Base.metadata.create_all()
+        sess = Session()
+        sess.add(User(
+                address=AddressComposite('123 anywhere street', 
+                                'MD')
+                ))
+        sess.commit()
+        eq_(
+            sess.query(User).all(), 
+            [User(address=AddressComposite('123 anywhere street', 
+                                'MD'))]
+        )
+
+    def test_composite_separate(self):
+        class AddressComposite(ComparableEntity):
+            def __init__(self, street, state):
+                self.street = street
+                self.state = state
+            def __composite_values__(self):
+                return [self.street, self.state]
+
+        class User(Base, ComparableEntity):
+            __tablename__ = 'user'
+            id = Column(Integer, primary_key=True, 
+                            test_needs_autoincrement=True)
+            street = Column(String(50))
+            state = Column(String(2))
+            address = composite(AddressComposite, 
+                street, state)
+
+        Base.metadata.create_all()
+        sess = Session()
+        sess.add(User(
+                address=AddressComposite('123 anywhere street', 
+                                'MD')
+                ))
+        sess.commit()
+        eq_(
+            sess.query(User).all(), 
+            [User(address=AddressComposite('123 anywhere street', 
+                                'MD'))]
+        )
 
     def test_mapping_to_join(self):
         users = Table('users', Base.metadata,

@@ -766,7 +766,7 @@ class Column(SchemaItem, expression.ColumnClause):
         key."""
 
         for fk in self.foreign_keys:
-            if fk.references(column.table):
+            if fk.column.proxy_set.intersection(column.proxy_set):
                 return True
         else:
             return False
@@ -1219,6 +1219,7 @@ class DefaultGenerator(SchemaItem):
 
     is_sequence = False
     is_server_default = False
+    column = None
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -1336,14 +1337,84 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%r)" % self.arg
 
 class Sequence(DefaultGenerator):
-    """Represents a named database sequence."""
+    """Represents a named database sequence.
+    
+    The :class:`.Sequence` object represents the name and configurational
+    parameters of a database sequence.   It also represents
+    a construct that can be "executed" by a SQLAlchemy :class:`.Engine`
+    or :class:`.Connection`, rendering the appropriate "next value" function
+    for the target database and returning a result.
+    
+    The :class:`.Sequence` is typically associated with a primary key column::
+    
+        some_table = Table('some_table', metadata,
+            Column('id', Integer, Sequence('some_table_seq'), primary_key=True)
+        )
+        
+    When CREATE TABLE is emitted for the above :class:`.Table`, if the
+    target platform supports sequences, a CREATE SEQUENCE statement will
+    be emitted as well.   For platforms that don't support sequences,
+    the :class:`.Sequence` construct is ignored.
+    
+    See also: :class:`.CreateSequence` :class:`.DropSequence`
+    
+    """
 
     __visit_name__ = 'sequence'
 
     is_sequence = True
 
     def __init__(self, name, start=None, increment=None, schema=None,
-                 optional=False, quote=None, metadata=None, for_update=False):
+                 optional=False, quote=None, metadata=None, 
+                 for_update=False):
+        """Construct a :class:`.Sequence` object.
+        
+        :param name: The name of the sequence.
+        :param start: the starting index of the sequence.  This value is
+         used when the CREATE SEQUENCE command is emitted to the database
+         as the value of the "START WITH" clause.   If ``None``, the 
+         clause is omitted, which on most platforms indicates a starting
+         value of 1.
+        :param increment: the increment value of the sequence.  This 
+         value is used when the CREATE SEQUENCE command is emitted to
+         the database as the value of the "INCREMENT BY" clause.  If ``None``,
+         the clause is omitted, which on most platforms indicates an
+         increment of 1.
+        :param schema: Optional schema name for the sequence, if located
+         in a schema other than the default.
+        :param optional: boolean value, when ``True``, indicates that this
+         :class:`.Sequence` object only needs to be explicitly generated
+         on backends that don't provide another way to generate primary
+         key identifiers.  Currently, it essentially means, "don't create
+         this sequence on the Postgresql backend, where the SERIAL keyword
+         creates a sequence for us automatically".
+        :param quote: boolean value, when ``True`` or ``False``, explicitly
+         forces quoting of the schema name on or off.  When left at its
+         default of ``None``, normal quoting rules based on casing and reserved
+         words take place.
+        :param metadata: optional :class:`.MetaData` object which will be 
+         associated with this :class:`.Sequence`.  A :class:`.Sequence`
+         that is associated with a :class:`.MetaData` gains access to the 
+         ``bind`` of that :class:`.MetaData`, meaning the :meth:`.Sequence.create`
+         and :meth:`.Sequence.drop` methods will make usage of that engine
+         automatically.   Additionally, the appropriate CREATE SEQUENCE/
+         DROP SEQUENCE DDL commands will be emitted corresponding to this
+         :class:`.Sequence` when :meth:`.MetaData.create_all` and 
+         :meth:`.MetaData.drop_all` are invoked (new in 0.7).
+         
+         Note that when a :class:`.Sequence` is applied to a :class:`.Column`, 
+         the :class:`.Sequence` is automatically associated with the 
+         :class:`.MetaData` object of that column's parent :class:`.Table`, 
+         when that association is made.   The :class:`.Sequence` will then
+         be subject to automatic CREATE SEQUENCE/DROP SEQUENCE corresponding 
+         to when the :class:`.Table` object itself is created or dropped,
+         rather than that of the :class:`.MetaData` object overall.
+        :param for_update: Indicates this :class:`.Sequence`, when associated
+         with a :class:`.Column`, should be invoked for UPDATE statements
+         on that column's table, rather than for INSERT statements, when
+         no value is otherwise present for that column in the statement.
+         
+        """
         super(Sequence, self).__init__(for_update=for_update)
         self.name = name
         self.start = start
@@ -1352,6 +1423,8 @@ class Sequence(DefaultGenerator):
         self.quote = quote
         self.schema = schema
         self.metadata = metadata
+        if metadata:
+            self._set_metadata(metadata)
 
     @util.memoized_property
     def is_callable(self):
@@ -1372,7 +1445,11 @@ class Sequence(DefaultGenerator):
         column._on_table_attach(self._set_table)
 
     def _set_table(self, column, table):
-        self.metadata = table.metadata
+        self._set_metadata(table.metadata)
+
+    def _set_metadata(self, metadata):
+        self.metadata = metadata
+        self.metadata._sequences.add(self)
 
     @property
     def bind(self):
@@ -1939,6 +2016,7 @@ class MetaData(SchemaItem):
         """
         self.tables = util.immutabledict()
         self._schemas = set()
+        self._sequences = set()
         self.bind = bind
         self.metadata = self
         if reflect:
@@ -2335,7 +2413,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         self.target = target
 
     @expression._generative
-    def execute_if(self, dialect=None, callable_=None):
+    def execute_if(self, dialect=None, callable_=None, state=None):
         """Return a callable that will execute this 
         DDLElement conditionally.
 
@@ -2375,10 +2453,22 @@ class DDLElement(expression.Executable, expression.ClauseElement):
               Optional keyword argument - a list of Table objects which are to
               be created/ dropped within a MetaData.create_all() or drop_all()
               method call.
+              
+            :state:
+              Optional keyword argument - will be the ``state`` argument
+              passed to this function.
 
+            :checkfirst:
+             Keyword argument, will be True if the 'checkfirst' flag was
+             set during the call to ``create()``, ``create_all()``, 
+             ``drop()``, ``drop_all()``.
+             
           If the callable returns a true value, the DDL statement will be
           executed.
 
+        :param state: any value which will be passed to the callable_ 
+          as the ``state`` keyword argument.
+          
         See also:
 
             :class:`.DDLEvents`
@@ -2388,6 +2478,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         """
         self.dialect = dialect
         self.callable_ = callable_
+        self.state = state
 
     def _should_execute(self, target, bind, **kw):
         if self.on is not None and \
@@ -2401,7 +2492,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
             if bind.engine.name not in self.dialect:
                 return False
         if self.callable_ is not None and \
-            not self.callable_(self, target, bind, **kw):
+            not self.callable_(self, target, bind, state=self.state, **kw):
             return False
 
         return True

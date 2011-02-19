@@ -3,6 +3,67 @@
 =======
 CHANGES
 =======
+0.7.0b2
+========
+- orm
+  - Fixed bug whereby Session.merge() would call the
+    load() event with one too few arguments.
+    [ticket:2053]
+
+  - Added logic which prevents the generation of 
+    events from a MapperExtension or SessionExtension 
+    from generating do-nothing events for all the methods 
+    not overridden. [ticket:2052]
+
+- sql
+  - Renamed the EngineEvents event class to 
+    ConnectionEvents.  As these classes are never
+    accessed directly by end-user code, this strictly
+    is a documentation change for end users.  Also
+    simplified how events get linked to engines
+    and connections internally. [ticket:2059]
+
+  - The Sequence() construct, when passed a MetaData() 
+    object via its 'metadata' argument, will be 
+    included in CREATE/DROP statements within
+    metadata.create_all() and metadata.drop_all(), 
+    including "checkfirst" logic.  [ticket:2055]
+
+  - The Column.references() method now returns True
+    if it has a foreign key referencing the
+    given column exactly, not just it's parent
+    table.  [ticket:2064]
+
+- postgresql
+  - Fixed regression from 0.6 where SMALLINT and
+    BIGINT types would both generate SERIAL
+    on an integer PK column, instead of 
+    SMALLINT and BIGSERIAL [ticket:2065]
+
+- ext
+  - Association proxy now has correct behavior for
+    any(), has(), and contains() when proxying
+    a many-to-one scalar attribute to a one-to-many
+    collection (i.e. the reverse of the 'typical'
+    association proxy use case)  [ticket:2054]
+
+- examples
+  - Beaker example now takes into account 'limit'
+    and 'offset', bind params within embedded
+    FROM clauses (like when you use union() or 
+    from_self()) when generating a cache key.
+
+- declarative
+  - Fixed regression whereby composite() with 
+    Column objects placed inline would fail
+    to initialize.  The Column objects can now
+    be inline with the composite() or external
+    and pulled in via name or object ref. 
+    [ticket:2058]
+
+  - the dictionary at the end of the __table_args__
+    tuple is now optional.  [ticket:1468]
+
 0.7.0b1
 =======
 - Detailed descriptions of each change below are 
@@ -343,6 +404,8 @@ CHANGES
     'metadata' is used for a column attribute on a 
     declarative class. [ticket:2050]
 
+  - Fix error message referencing old @classproperty
+    name to reference @declared_attr [ticket:2061]
 
 0.6.6
 =====

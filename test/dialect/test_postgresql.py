@@ -1285,8 +1285,10 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_checksfor_sequence(self):
         meta1 = MetaData(testing.db)
+        seq = Sequence('fooseq')
         t = Table('mytable', meta1, Column('col1', Integer,
-                  Sequence('fooseq')))
+                  seq))
+        seq.drop()
         try:
             testing.db.execute('CREATE SEQUENCE fooseq')
             t.create(checkfirst=True)
@@ -1492,6 +1494,23 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         stmt = text("select cast('hi' as char) as hi", typemap={'hi'
                     : Numeric})
         assert_raises(exc.InvalidRequestError, testing.db.execute, stmt)
+
+    def test_serial_integer(self):
+        for type_, expected in [
+            (Integer, 'SERIAL'),
+            (BigInteger, 'BIGSERIAL'),
+            (SmallInteger, 'SMALLINT'),
+            (postgresql.INTEGER, 'SERIAL'),
+            (postgresql.BIGINT, 'BIGSERIAL'),
+        ]:
+            m = MetaData()
+
+            t = Table('t', m, Column('c', type_, primary_key=True))
+            ddl_compiler = testing.db.dialect.ddl_compiler(testing.db.dialect, schema.CreateTable(t))
+            eq_(
+                ddl_compiler.get_column_specification(t.c.c),
+                "c %s NOT NULL" % expected
+            )
 
 class TimezoneTest(TestBase):
 

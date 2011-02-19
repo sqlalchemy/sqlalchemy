@@ -505,10 +505,10 @@ class PGCompiler(compiler.SQLCompiler):
 class PGDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
-        type_affinity = column.type._type_affinity
+        impl_type = column.type.dialect_impl(self.dialect)
         if column.primary_key and \
             column is column.table._autoincrement_column and \
-            not issubclass(type_affinity, sqltypes.SmallInteger) and \
+            not isinstance(impl_type, sqltypes.SmallInteger) and \
             (
                 column.default is None or 
                 (
@@ -516,7 +516,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     column.default.optional
                 )
             ):
-            if issubclass(type_affinity, sqltypes.BigInteger):
+            if isinstance(impl_type, sqltypes.BigInteger):
                 colspec += " BIGSERIAL"
             else:
                 colspec += " SERIAL"

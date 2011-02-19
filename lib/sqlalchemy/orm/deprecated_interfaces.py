@@ -83,10 +83,7 @@ class MapperExtension(object):
             me_meth = getattr(MapperExtension, meth)
             ls_meth = getattr(listener, meth)
 
-            # TODO: comparing self.methods to cls.method, 
-            # this comparison is probably moot
-
-            if me_meth is not ls_meth:
+            if not util.methods_equivalent(me_meth, ls_meth):
                 if meth == 'reconstruct_instance':
                     def go(ls_meth):
                         def reconstruct(instance, ctx):
@@ -401,16 +398,23 @@ class SessionExtension(object):
 
     @classmethod
     def _adapt_listener(cls, self, listener):
-        event.listen(self, 'before_commit', listener.before_commit)
-        event.listen(self, 'after_commit', listener.after_commit)
-        event.listen(self, 'after_rollback', listener.after_rollback)
-        event.listen(self, 'before_flush', listener.before_flush)
-        event.listen(self, 'after_flush', listener.after_flush)
-        event.listen(self, 'after_flush_postexec', listener.after_flush_postexec)
-        event.listen(self, 'after_begin', listener.after_begin)
-        event.listen(self, 'after_attach', listener.after_attach)
-        event.listen(self, 'after_bulk_update', listener.after_bulk_update)
-        event.listen(self, 'after_bulk_delete', listener.after_bulk_delete)
+        for meth in [
+            'before_commit',
+            'after_commit',
+            'after_rollback',
+            'before_flush',
+            'after_flush',
+            'after_flush_postexec',
+            'after_begin',
+            'after_attach',
+            'after_bulk_update',
+            'after_bulk_delete',
+        ]:
+            me_meth = getattr(SessionExtension, meth)
+            ls_meth = getattr(listener, meth)
+
+            if not util.methods_equivalent(me_meth, ls_meth):
+                event.listen(self, meth, getattr(listener, meth))
 
     def before_commit(self, session):
         """Execute right before commit is called.

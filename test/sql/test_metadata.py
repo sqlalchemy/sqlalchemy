@@ -500,6 +500,52 @@ class TableTest(TestBase, AssertsCompiledSQL):
             assign
         )
 
+class ConstraintTest(TestBase):
+    def _single_fixture(self):
+        m = MetaData()
+
+        t1 = Table('t1', m, 
+            Column('a', Integer),
+            Column('b', Integer)
+        )
+
+        t2 = Table('t2', m, 
+            Column('a', Integer, ForeignKey('t1.a'))
+        )
+
+        t3 = Table('t3', m, 
+            Column('a', Integer)
+        )
+        return t1, t2, t3
+
+    def test_table_references(self):
+        t1, t2, t3 = self._single_fixture()
+        assert list(t2.c.a.foreign_keys)[0].references(t1)
+        assert not list(t2.c.a.foreign_keys)[0].references(t3)
+
+    def test_column_references(self):
+        t1, t2, t3 = self._single_fixture()
+        assert t2.c.a.references(t1.c.a)
+        assert not t2.c.a.references(t3.c.a)
+        assert not t2.c.a.references(t1.c.b)
+
+    def test_column_references_derived(self):
+        t1, t2, t3 = self._single_fixture()
+        s1 = tsa.select([tsa.select([t1]).alias()])
+        assert t2.c.a.references(s1.c.a)
+        assert not t2.c.a.references(s1.c.b)
+
+    def test_copy_doesnt_reference(self):
+        t1, t2, t3 = self._single_fixture()
+        a2 = t2.c.a.copy()
+        assert not a2.references(t1.c.a)
+        assert not a2.references(t1.c.b)
+
+    def test_derived_column_references(self):
+        t1, t2, t3 = self._single_fixture()
+        s1 = tsa.select([tsa.select([t2]).alias()])
+        assert s1.c.a.references(t1.c.a)
+        assert not s1.c.a.references(t1.c.b)
 
 class ColumnDefinitionTest(TestBase):
     """Test Column() construction."""

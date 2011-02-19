@@ -43,20 +43,6 @@ class ObjectCollection(object):
         return iter(self.values)
 
 
-class Parent(object):
-    kids = association_proxy('children', 'name')
-    def __init__(self, name):
-        self.name = name
-
-class Child(object):
-    def __init__(self, name):
-        self.name = name
-
-class KVChild(object):
-    def __init__(self, name, value):
-        self.name = name
-        self.value = value
-
 class _CollectionOperations(TestBase):
     def setup(self):
         collection_class = self.collection_class
@@ -909,6 +895,19 @@ class LazyLoadTest(TestBase):
         self.assert_(p._children is not None)
 
 
+class Parent(object):
+    def __init__(self, name):
+        self.name = name
+
+class Child(object):
+    def __init__(self, name):
+        self.name = name
+
+class KVChild(object):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
 class ReconstitutionTest(TestBase):
 
     def setup(self):
@@ -928,6 +927,7 @@ class ReconstitutionTest(TestBase):
         self.metadata = metadata
         self.parents = parents
         self.children = children
+        Parent.kids = association_proxy('children', 'name')
 
     def teardown(self):
         self.metadata.drop_all()
@@ -1015,15 +1015,26 @@ class ComparatorTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('userkeywords', metadata, Column('keyword_id', Integer,
-              ForeignKey('keywords.id'), primary_key=True),
-              Column('user_id', Integer, ForeignKey('users.id')))
-        Table('users', metadata, Column('id', Integer,
+        Table('userkeywords', metadata, 
+          Column('keyword_id', Integer,ForeignKey('keywords.id'), primary_key=True),
+          Column('user_id', Integer, ForeignKey('users.id'))
+        )
+        Table('users', metadata, 
+            Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
-              Column('name', String(64)))
-        Table('keywords', metadata, Column('id', Integer,
+            Column('name', String(64)),
+            Column('singular_id', Integer, ForeignKey('singular.id'))
+        )
+        Table('keywords', metadata, 
+            Column('id', Integer,
               primary_key=True, test_needs_autoincrement=True),
-              Column('keyword', String(64)))
+            Column('keyword', String(64)),
+            Column('singular_id', Integer, ForeignKey('singular.id'))
+        )
+        Table('singular', metadata,
+            Column('id', Integer,
+              primary_key=True, test_needs_autoincrement=True),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -1031,13 +1042,21 @@ class ComparatorTest(_base.MappedTest):
             def __init__(self, name):
                 self.name = name
 
+            # o2m -> m2o
+            # uselist -> nonuselist
             keywords = association_proxy('user_keywords', 'keyword',
                     creator=lambda k: UserKeyword(keyword=k))
+
+            # m2o -> o2m
+            # nonuselist -> uselist
+            singular_keywords = association_proxy('singular', 'keywords')
 
         class Keyword(_base.ComparableEntity):
             def __init__(self, keyword):
                 self.keyword = keyword
 
+            # o2o -> m2o
+            # nonuselist -> nonuselist
             user = association_proxy('user_keyword', 'user')
 
         class UserKeyword(_base.ComparableEntity):
@@ -1045,34 +1064,45 @@ class ComparatorTest(_base.MappedTest):
                 self.user = user
                 self.keyword = keyword
 
+        class Singular(_base.ComparableEntity):
+            def __init__(self, value=None):
+                self.value = value
+
     @classmethod
     @testing.resolve_artifact_names
     def setup_mappers(cls):
-        mapper(User, users)
-        mapper(Keyword, keywords, properties={'user_keyword'
-               : relationship(UserKeyword, uselist=False)})
-        mapper(UserKeyword, userkeywords, properties={'user'
-               : relationship(User, backref='user_keywords'), 'keyword'
-               : relationship(Keyword)})
+        mapper(User, users, properties={
+            'singular':relationship(Singular)
+        })
+        mapper(Keyword, keywords, properties={
+            'user_keyword':relationship(UserKeyword, uselist=False)
+        })
+
+        mapper(UserKeyword, userkeywords, properties={
+            'user' : relationship(User, backref='user_keywords'), 
+            'keyword' : relationship(Keyword)
+        })
+        mapper(Singular, singular, properties={
+            'keywords': relationship(Keyword)
+        })
 
     @classmethod
     @testing.resolve_artifact_names
     def insert_data(cls):
         session = sessionmaker()()
         words = (
-            'quick',
-            'brown',
-            'fox',
-            'jumped',
-            'over',
-            'the',
-            'lazy',
+            'quick', 'brown',
+            'fox', 'jumped', 'over',
+            'the', 'lazy',
             )
         for ii in range(4):
             user = User('user%d' % ii)
+            user.singular = Singular()
             session.add(user)
             for jj in words[ii:ii + 3]:
-                user.keywords.append(Keyword(jj))
+                k = Keyword(jj)
+                user.keywords.append(k)
+                user.singular.keywords.append(k)
         orphan = Keyword('orphan')
         orphan.user_keyword = UserKeyword(keyword=orphan, user=None)
         session.add(orphan)
@@ -1085,7 +1115,7 @@ class ComparatorTest(_base.MappedTest):
         eq_(q_proxy.all(), q_direct.all())
 
     @testing.resolve_artifact_names
-    def test_filter_any_kwarg(self):
+    def test_filter_any_kwarg_ul_nul(self):
         self._equivalent(self.session.query(User).
                     filter(User.keywords.any(keyword='jumped'
                          )),
@@ -1095,7 +1125,7 @@ class ComparatorTest(_base.MappedTest):
                          ))))
 
     @testing.resolve_artifact_names
-    def test_filter_has_kwarg(self):
+    def test_filter_has_kwarg_nul_nul(self):
         self._equivalent(self.session.query(Keyword).
                     filter(Keyword.user.has(name='user2'
                          )),
@@ -1105,7 +1135,20 @@ class ComparatorTest(_base.MappedTest):
                          ))))
 
     @testing.resolve_artifact_names
-    def test_filter_any_criterion(self):
+    def test_filter_has_kwarg_nul_ul(self):
+        self._equivalent(
+            self.session.query(User).\
+                        filter(User.singular_keywords.any(keyword='jumped')),
+            self.session.query(User).\
+                        filter(
+                            User.singular.has(
+                                Singular.keywords.any(keyword='jumped')
+                            )
+                        )
+        )
+
+    @testing.resolve_artifact_names
+    def test_filter_any_criterion_ul_nul(self):
         self._equivalent(self.session.query(User).
                     filter(User.keywords.any(Keyword.keyword
                          == 'jumped')),
@@ -1115,7 +1158,7 @@ class ComparatorTest(_base.MappedTest):
                          == 'jumped'))))
 
     @testing.resolve_artifact_names
-    def test_filter_has_criterion(self):
+    def test_filter_has_criterion_nul_nul(self):
         self._equivalent(self.session.query(Keyword).
                 filter(Keyword.user.has(User.name
                          == 'user2')),
@@ -1125,28 +1168,54 @@ class ComparatorTest(_base.MappedTest):
                          == 'user2'))))
 
     @testing.resolve_artifact_names
-    def test_filter_contains(self):
+    def test_filter_any_criterion_nul_ul(self):
+        self._equivalent(
+            self.session.query(User).\
+                        filter(User.singular_keywords.any(Keyword.keyword=='jumped')),
+            self.session.query(User).\
+                        filter(
+                            User.singular.has(
+                                Singular.keywords.any(Keyword.keyword=='jumped')
+                            )
+                        )
+        )
+
+    @testing.resolve_artifact_names
+    def test_filter_contains_ul_nul(self):
         self._equivalent(self.session.query(User).
         filter(User.keywords.contains(self.kw)),
                          self.session.query(User).
                          filter(User.user_keywords.any(keyword=self.kw)))
 
     @testing.resolve_artifact_names
-    def test_filter_eq(self):
+    def test_filter_contains_nul_ul(self):
+        self._equivalent(
+            self.session.query(User).filter(
+                            User.singular_keywords.contains(self.kw)
+            ),
+            self.session.query(User).filter(
+                            User.singular.has(
+                                Singular.keywords.contains(self.kw)
+                            )
+            ),
+        )
+
+    @testing.resolve_artifact_names
+    def test_filter_eq_nul_nul(self):
         self._equivalent(self.session.query(Keyword).filter(Keyword.user
                          == self.u),
                          self.session.query(Keyword).
                          filter(Keyword.user_keyword.has(user=self.u)))
 
     @testing.resolve_artifact_names
-    def test_filter_ne(self):
+    def test_filter_ne_nul_nul(self):
         self._equivalent(self.session.query(Keyword).filter(Keyword.user
                          != self.u),
                          self.session.query(Keyword).
                          filter(not_(Keyword.user_keyword.has(user=self.u))))
 
     @testing.resolve_artifact_names
-    def test_filter_eq_null(self):
+    def test_filter_eq_null_nul_nul(self):
         self._equivalent(self.session.query(Keyword).filter(Keyword.user
                          == None),
                          self.session.query(Keyword).
@@ -1154,26 +1223,26 @@ class ComparatorTest(_base.MappedTest):
                          == None)))
 
     @testing.resolve_artifact_names
-    def test_filter_scalar_contains_fails(self):
+    def test_filter_scalar_contains_fails_nul_nul(self):
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       Keyword.user.contains(self.u))
 
     @testing.resolve_artifact_names
-    def test_filter_scalar_any_fails(self):
+    def test_filter_scalar_any_fails_nul_nul(self):
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       Keyword.user.any(name='user2'))
 
     @testing.resolve_artifact_names
-    def test_filter_collection_has_fails(self):
+    def test_filter_collection_has_fails_ul_nul(self):
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       User.keywords.has(keyword='quick'))
 
     @testing.resolve_artifact_names
-    def test_filter_collection_eq_fails(self):
+    def test_filter_collection_eq_fails_ul_nul(self):
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       User.keywords == self.kw)
 
     @testing.resolve_artifact_names
-    def test_filter_collection_ne_fails(self):
+    def test_filter_collection_ne_fails_ul_nul(self):
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       User.keywords != self.kw)

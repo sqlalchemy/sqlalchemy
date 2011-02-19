@@ -262,9 +262,18 @@ dictionary::
         __tablename__ = 'sometable'
         __table_args__ = {'mysql_engine':'InnoDB'}
 
-The other, a tuple of the form
-``(arg1, arg2, ..., {kwarg1:value, ...})``, which allows positional
-arguments to be specified as well (usually constraints):: 
+The other, a tuple, where each argument is positional
+(usually constraints)::
+
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        __table_args__ = (
+                ForeignKeyConstraint(['id'], ['remote_table.id']),
+                UniqueConstraint('foo'),
+                )
+
+Keyword arguments can be specified with the above form by 
+specifying the last argument as a dictionary::
 
     class MyClass(Base):
         __tablename__ = 'sometable'
@@ -273,9 +282,6 @@ arguments to be specified as well (usually constraints)::
                 UniqueConstraint('foo'),
                 {'autoload':True}
                 )
-
-Note that the keyword parameters dictionary is required in the tuple
-form even if empty.
 
 Using a Hybrid Approach with __table__
 =======================================
@@ -904,7 +910,7 @@ def _as_declarative(cls, classname, dict_):
                     if obj.foreign_keys:
                         raise exc.InvalidRequestError(
                         "Columns with foreign keys to other columns "
-                        "must be declared as @classproperty callables "
+                        "must be declared as @declared_attr callables "
                         "on declarative mixin classes. ")
                     if name not in dict_ and not (
                             '__table__' in dict_ and 
@@ -919,7 +925,7 @@ def _as_declarative(cls, classname, dict_):
                     raise exc.InvalidRequestError(
                         "Mapper properties (i.e. deferred,"
                         "column_property(), relationship(), etc.) must "
-                        "be declared as @classproperty callables "
+                        "be declared as @declared_attr callables "
                         "on declarative mixin classes.")
                 elif isinstance(obj, declarative_props):
                     dict_[name] = ret = \
@@ -977,16 +983,17 @@ def _as_declarative(cls, classname, dict_):
     our_stuff.sort(key=lambda key: our_stuff[key]._creation_order)
 
     # extract columns from the class dict
-    cols = []
+    cols = set()
     for key, c in our_stuff.iteritems():
         if isinstance(c, (ColumnProperty, CompositeProperty)):
             for col in c.columns:
-                if isinstance(col, Column) and col.table is None:
+                if isinstance(col, Column) and \
+                    col.table is None:
                     _undefer_column_name(key, col)
-                    cols.append(col)
+                    cols.add(col)
         elif isinstance(c, Column):
             _undefer_column_name(key, c)
-            cols.append(c)
+            cols.add(c)
             # if the column is the same name as the key, 
             # remove it from the explicit properties dict.
             # the normal rules for assigning column-based properties
@@ -994,6 +1001,7 @@ def _as_declarative(cls, classname, dict_):
             # in multi-column ColumnProperties.
             if key == c.key:
                 del our_stuff[key]
+    cols = sorted(cols, key=lambda c:c._creation_order)
 
     table = None
     if '__table__' not in dict_:
@@ -1002,14 +1010,10 @@ def _as_declarative(cls, classname, dict_):
             if isinstance(table_args, dict):
                 args, table_kw = (), table_args
             elif isinstance(table_args, tuple):
-                args = table_args[0:-1]
-                table_kw = table_args[-1]
-                if len(table_args) < 2 or not isinstance(table_kw, dict):
-                    raise exc.ArgumentError(
-                        "Tuple form of __table_args__ is "
-                        "(arg1, arg2, arg3, ..., {'kw1':val1, "
-                        "'kw2':val2, ...})"
-                    )
+                if isinstance(table_args[-1], dict):
+                    args, table_kw = table_args[0:-1], table_args[-1]
+                else:
+                    args, table_kw = table_args, {}
             else:
                 args, table_kw = (), {}
 

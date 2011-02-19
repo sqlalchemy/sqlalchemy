@@ -19,7 +19,7 @@ Connection Pool Events
 Connection Events
 -----------------------
 
-.. autoclass:: sqlalchemy.events.EngineEvents
+.. autoclass:: sqlalchemy.events.ConnectionEvents
     :members:
 
 Schema Events

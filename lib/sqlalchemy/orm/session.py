@@ -1318,7 +1318,7 @@ class Session(object):
             merged_state.commit_all(merged_dict, self.identity_map)
 
         if new_instance:
-            merged_state.manager.dispatch.load(merged_state)
+            merged_state.manager.dispatch.load(merged_state, None)
         return merged
 
     @classmethod

@@ -1007,6 +1007,7 @@ class SmallInteger(Integer):
 
     __visit_name__ = 'small_integer'
 
+
 class BigInteger(Integer):
     """A type for bigger ``int`` integers.
 
@@ -1016,6 +1017,7 @@ class BigInteger(Integer):
     """
 
     __visit_name__ = 'big_integer'
+
 
 class Numeric(_DateAffinity, TypeEngine):
     """A type for fixed precision numbers.
