@@ -322,6 +322,28 @@ class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
         factory = lambda **kw: CheckConstraint('a < b', **kw)
         self._test_deferrable(factory)
 
+    def test_multiple(self):
+        m = MetaData()
+        foo = Table("foo", m, 
+            Column('id', Integer, primary_key=True),
+            Column('bar', Integer, primary_key=True)
+        )
+        tb = Table("some_table", m,
+        Column('id', Integer, primary_key=True),
+        Column('foo_id', Integer, ForeignKey('foo.id')),
+        Column('foo_bar', Integer, ForeignKey('foo.bar')),
+        )
+        self.assert_compile(
+            schema.CreateTable(tb),
+            "CREATE TABLE some_table ("
+                "id INTEGER NOT NULL, "
+                "foo_id INTEGER, "
+                "foo_bar INTEGER, "
+                "PRIMARY KEY (id), "
+                "FOREIGN KEY(foo_id) REFERENCES foo (id), "
+                "FOREIGN KEY(foo_bar) REFERENCES foo (bar))"
+        )
+
     def test_deferrable_column_check(self):
         t = Table('tbl', MetaData(),
                   Column('a', Integer),

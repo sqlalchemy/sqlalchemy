@@ -1272,7 +1272,7 @@ class DDLCompiler(engine.Compiled):
         if table.primary_key:
             constraints.append(table.primary_key)
 
-        constraints.extend([c for c in table.constraints 
+        constraints.extend([c for c in table._sorted_constraints 
                                 if c is not table.primary_key])
 
         return ", \n\t".join(p for p in

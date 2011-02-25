@@ -265,6 +265,12 @@ class Table(SchemaItem, expression.TableClause):
         # allow user-overrides
         self._init_items(*args)
 
+    @property
+    def _sorted_constraints(self):
+        """Return the set of constraints as a list, sorted by creation order."""
+
+        return sorted(self.constraints, key=lambda c:c._creation_order)
+
     def _init_existing(self, *args, **kwargs):
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
@@ -1595,6 +1601,7 @@ class Constraint(SchemaItem):
         self.deferrable = deferrable
         self.initially = initially
         self._create_rule = _create_rule
+        util.set_creation_order(self)
 
     @property
     def table(self):

@@ -70,6 +70,25 @@ class TestEvents(TestBase):
         eq_(len(Target().dispatch.event_one), 2)
         eq_(len(t1.dispatch.event_one), 3)
 
+    def test_append_vs_insert(self):
+        def listen_one(x, y):
+            pass
+
+        def listen_two(x, y):
+            pass
+
+        def listen_three(x, y):
+            pass
+
+        event.listen(Target, "event_one", listen_one)
+        event.listen(Target, "event_one", listen_two)
+        event.listen(Target, "event_one", listen_three, insert=True)
+
+        eq_(
+            list(Target().dispatch.event_one),
+            [listen_three, listen_one, listen_two]
+        )
+
 class TestAcceptTargets(TestBase):
     """Test default target acceptance."""
 
