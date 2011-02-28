@@ -458,7 +458,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
-            "requries that its creation callable is a Session subclass.",
+            "requires that its creation callable is a Session subclass.",
             event.listen, scope, "before_flush", my_listener_one
         )
 
@@ -477,7 +477,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             "Session event listen on a ScopedSession "
-            "requries that its creation callable is a Session subclass.",
+            "requires that its creation callable is a Session subclass.",
             event.listen, scope, "before_flush", my_listener_one
         )
 
