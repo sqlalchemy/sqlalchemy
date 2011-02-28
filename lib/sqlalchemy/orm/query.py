@@ -272,7 +272,7 @@ class Query(object):
 
     @property
     def _mapper_entities(self):
-        # TODO: this is wrong, its hardcoded to "priamry entity" when
+        # TODO: this is wrong, its hardcoded to "primary entity" when
         # for the case of __all_equivs() it should not be
         # the name of this accessor is wrong too
         for ent in self._entities:
@@ -444,7 +444,7 @@ class Query(object):
         """Return the full SELECT statement represented by this :class:`.Query`, converted 
         to a scalar subquery with a label of the given name.
 
-        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
+        Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
 
         New in 0.6.5.
 
@@ -457,7 +457,7 @@ class Query(object):
         """Return the full SELECT statement represented by this :class:`.Query`, converted 
         to a scalar subquery.
 
-        Analagous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
+        Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
 
         New in 0.6.5.
 
@@ -856,12 +856,12 @@ class Query(object):
         self._setup_aliasizers(self._entities[l:])
 
     @util.pending_deprecation("0.7", 
-                ":meth:`.add_column` is superceded by :meth:`.add_columns`", 
+                ":meth:`.add_column` is superseded by :meth:`.add_columns`", 
                 False)
     def add_column(self, column):
         """Add a column expression to the list of result columns to be returned.
 
-        Pending deprecation: :meth:`.add_column` will be superceded by 
+        Pending deprecation: :meth:`.add_column` will be superseded by 
         :meth:`.add_columns`.
 
         """
@@ -1165,7 +1165,7 @@ class Query(object):
         A two-element form of \*props may also be passed.   In this form,
         the first element is a target class or selectable, the second
         is a string property name, class-mapped attribute, or clause
-        construct representing an "ON" clause.   This supercedes the
+        construct representing an "ON" clause.   This supersedes the
         previous "tuple" calling form - multiple join() calls should
         be used for multiple (target, onclause) pairs.
 
@@ -1235,7 +1235,7 @@ class Query(object):
 
     def outerjoin(self, *props, **kwargs):
         """Create a left outer join against this ``Query`` object's criterion
-        and apply generatively, retunring the newly resulting ``Query``.
+        and apply generatively, returning the newly resulting ``Query``.
 
         Usage is the same as the ``join()`` method.
 
@@ -2760,7 +2760,7 @@ class _ColumnEntity(_QueryEntity):
 
         # look for ORM entities represented within the
         # given expression.  Try to count only entities
-        # for columns whos FROM object is in the actual list
+        # for columns whose FROM object is in the actual list
         # of FROMs for the overall expression - this helps
         # subqueries which were built from ORM constructs from
         # leaking out their entities into the main select construct

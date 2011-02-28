@@ -1967,7 +1967,7 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
             @reconstructor
             def go(self):
                 # blow away 'id', no change event.
-                # this simulates a callable occuring
+                # this simulates a callable occurring
                 # before 'id' was even populated, i.e. a callable
                 # within an attribute_mapped_collection
                 self.__dict__.pop('id', None)
@@ -1999,7 +1999,7 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
         # and thing would right themselves.
         assert_raises_message(sa.orm.exc.FlushError,
                               'has a NULL identity key.  Check if this '
-                              'flush is occuring at an inappropriate '
+                              'flush is occurring at an inappropriate '
                               'time, such as during a load operation.',
                               sess.query(T1).first)
 

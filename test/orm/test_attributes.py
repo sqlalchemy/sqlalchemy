@@ -1333,7 +1333,7 @@ class HistoryTest(_base.ORMTest):
 
         # setting None on uninitialized is currently not a change for an
         # object attribute (this is different than scalar attribute).  a
-        # lazyload has occured so if its None, its really None
+        # lazyload has occurred so if its None, its really None
 
         f = Foo()
         eq_(attributes.get_state_history(attributes.instance_state(f),

@@ -800,7 +800,7 @@ class SessionEvents(event.Events):
                 not issubclass(target.session_factory, Session):
                 raise exc.ArgumentError(
                             "Session event listen on a ScopedSession "
-                            "requries that its creation callable "
+                            "requires that its creation callable "
                             "is a Session subclass.")
             return target.session_factory
         elif isinstance(target, type):
@@ -824,13 +824,13 @@ class SessionEvents(event.Events):
         transaction is ongoing."""
 
     def after_commit(self, session):
-        """Execute after a commit has occured.
+        """Execute after a commit has occurred.
 
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
 
     def after_rollback(self, session):
-        """Execute after a rollback has occured.
+        """Execute after a rollback has occurred.
 
         Note that this may not be per-flush if a longer running
         transaction is ongoing."""
@@ -855,7 +855,7 @@ class SessionEvents(event.Events):
 
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
-        occured, depending on whether or not the flush started its own
+        occurred, depending on whether or not the flush started its own
         transaction or participated in a larger transaction. """
 
     def after_begin( self, session, transaction, connection):

@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Descriptor proprerties are more "auxilliary" properties
+"""Descriptor properties are more "auxiliary" properties
 that exist as configurational elements, but don't participate
 as actively in the load/persist ORM loop.
 

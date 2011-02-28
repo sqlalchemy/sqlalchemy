@@ -117,7 +117,7 @@ class Pool(log.Identified):
           :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API
           connections are created, checked out and checked in to the
-          pool.  This has been superceded by 
+          pool.  This has been superseded by 
           :func:`~sqlalchemy.event.listen`.
 
         """

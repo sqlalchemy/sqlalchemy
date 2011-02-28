@@ -684,8 +684,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
 
 class MapperExtensionTest(_fixtures.FixtureTest):
-    """Superceded by MapperEventsTest - test backwards 
-    compatiblity of MapperExtension."""
+    """Superseded by MapperEventsTest - test backwards 
+    compatibility of MapperExtension."""
 
     run_inserts = None
 

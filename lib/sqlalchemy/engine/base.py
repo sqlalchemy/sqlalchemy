@@ -635,7 +635,7 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
     def handle_dbapi_exception(self, e):
-        """Receive a DBAPI exception which occured upon execute, result 
+        """Receive a DBAPI exception which occurred upon execute, result 
         fetch, etc."""
 
         raise NotImplementedError()

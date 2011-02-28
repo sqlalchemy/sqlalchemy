@@ -58,7 +58,7 @@ class DependencyProcessor(object):
         """establish actions and dependencies related to a flush.
 
         These actions will operate on all relevant states in
-        the aggreagte.
+        the aggregate.
 
         """
         uow.register_preprocessor(self, True)

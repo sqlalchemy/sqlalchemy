@@ -105,7 +105,7 @@ class ExpireTest(_fixtures.FixtureTest):
         s.rollback()
 
         assert u in s
-        # but now its back, rollback has occured, the _remove_newly_deleted
+        # but now its back, rollback has occurred, the _remove_newly_deleted
         # is reverted
         eq_(u.name, 'chuck')
 
@@ -1130,7 +1130,7 @@ class RefreshTest(_fixtures.FixtureTest):
     @testing.fails_on('maxdb', 'FIXME: unknown')
     @testing.resolve_artifact_names
     def test_refresh2(self):
-        """test a hang condition that was occuring on expire/refresh"""
+        """test a hang condition that was occurring on expire/refresh"""
 
         s = create_session()
         mapper(Address, addresses)

@@ -92,7 +92,7 @@ class TypeEngine(AbstractType):
         are serialized into strings are examples of "mutable" 
         column structures.
 
-        .. note:: This functionality is now superceded by the
+        .. note:: This functionality is now superseded by the
           ``sqlalchemy.ext.mutable`` extension described in 
           :ref:`mutable_toplevel`.
 
@@ -534,7 +534,7 @@ class TypeDecorator(TypeEngine):
         are serialized into strings are examples of "mutable" 
         column structures.
 
-        .. note:: This functionality is now superceded by the
+        .. note:: This functionality is now superseded by the
           ``sqlalchemy.ext.mutable`` extension described in 
           :ref:`mutable_toplevel`.
 
@@ -553,7 +553,7 @@ class MutableType(object):
     a mutable Python object type.   This functionality is used
     only by the ORM.
 
-    .. note:: :class:`.MutableType` is superceded as of SQLAlchemy 0.7
+    .. note:: :class:`.MutableType` is superseded as of SQLAlchemy 0.7
        by the ``sqlalchemy.ext.mutable`` extension described in
        :ref:`mutable_toplevel`.   This extension provides an event
        driven approach to in-place mutation detection that does not
@@ -1614,7 +1614,7 @@ class PickleType(MutableType, TypeDecorator):
           behavior. (default changed from ``True`` in 
           0.7.0).
 
-          .. note:: This functionality is now superceded by the
+          .. note:: This functionality is now superseded by the
              ``sqlalchemy.ext.mutable`` extension described in 
              :ref:`mutable_toplevel`.
 

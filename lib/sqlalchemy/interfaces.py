@@ -7,7 +7,7 @@
 
 """Interfaces and abstract types.
 
-This module is **deprecated** and is superceded by the
+This module is **deprecated** and is superseded by the
 event system.
 
 """

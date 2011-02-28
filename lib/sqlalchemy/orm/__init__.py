@@ -886,7 +886,7 @@ def synonym(name, map_column=False, descriptor=None,
                         comparator_factory=None, doc=None):
     """Denote an attribute name as a synonym to a mapped property.
 
-    .. note:: :func:`.synonym` is superceded as of 0.7 by 
+    .. note:: :func:`.synonym` is superseded as of 0.7 by 
        the :mod:`~sqlalchemy.ext.hybrid` extension.  See 
        the documentation for hybrids at :ref:`hybrids_toplevel`.
 
@@ -928,7 +928,7 @@ def comparable_property(comparator_factory, descriptor=None):
     """Provides a method of applying a :class:`.PropComparator` 
     to any Python descriptor attribute.
 
-    .. note:: :func:`.comparable_property` is superceded as of 0.7 by 
+    .. note:: :func:`.comparable_property` is superseded as of 0.7 by 
        the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example 
        at :ref:`hybrid_custom_comparators`.
        

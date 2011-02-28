@@ -465,7 +465,7 @@ class Mutable(MutableBase):
         is given, and that only columns which are declared specifically with that
         type instance receive additional instrumentation.
 
-        To associate a particular mutable type with all occurences of a 
+        To associate a particular mutable type with all occurrences of a 
         particular type, use the :meth:`.Mutable.associate_with` classmethod
         of the particular :meth:`.Mutable` subclass to establish a global
         assoiation.

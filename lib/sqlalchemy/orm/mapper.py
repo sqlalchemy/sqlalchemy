@@ -199,7 +199,7 @@ class Mapper(object):
         self.configured = False
 
         # prevent this mapper from being constructed
-        # while a configure_mappers() is occuring (and defer a configure_mappers()
+        # while a configure_mappers() is occurring (and defer a configure_mappers()
         # until construction succeeds)
         _COMPILE_MUTEX.acquire()
         try:
@@ -1686,7 +1686,7 @@ class Mapper(object):
                                     has_all_pks = False
                                 elif col.default is None and \
                                      col.server_default is None:
-                                     params[col.key] = value
+                                    params[col.key] = value
 
                             elif isinstance(value, sql.ClauseElement):
                                 value_params[col] = value

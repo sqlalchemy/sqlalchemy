@@ -543,7 +543,7 @@ def _reduce_path(path):
 
     This is used to allow more open ended selection of loader strategies, i.e.
     Mapper -> prop1 -> Subclass -> prop2, where Subclass is a sub-mapper
-    of the mapper referened by Mapper.prop1.
+    of the mapper referenced by Mapper.prop1.
 
     """
     return tuple([i % 2 != 0 and 

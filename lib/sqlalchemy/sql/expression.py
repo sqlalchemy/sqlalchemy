@@ -865,7 +865,7 @@ def bindparam(key, value=None, type_=None, unique=False, required=False, callabl
           will be called at statement execution time to determine the
           ultimate value.   Used for scenarios where the actual bind
           value cannot be determined at the point at which the clause
-          construct is created, but embeded bind values are still desirable.
+          construct is created, but embedded bind values are still desirable.
 
         :param type\_:
           A ``TypeEngine`` object that will be used to pre-process the
@@ -2331,7 +2331,7 @@ class FromClause(Selectable):
         return fromclause in self._cloned_set
 
     def replace_selectable(self, old, alias):
-        """replace all occurences of FromClause 'old' with the given Alias 
+        """replace all occurrences of FromClause 'old' with the given Alias 
         object, returning a copy of this :class:`FromClause`.
 
         """
@@ -2671,7 +2671,7 @@ class Executable(_Generative):
           
           Note that the ORM makes use of its own "compiled" caches for 
           some operations, including flush operations.  The caching
-          used by the ORM internally supercedes a cache dictionary
+          used by the ORM internally supersedes a cache dictionary
           specified here.
 
         See also:
