@@ -3,6 +3,15 @@
 =======
 CHANGES
 =======
+0.7.0b3
+=======
+- sql
+  - Added a fully descriptive error message for the
+    case where Column is subclassed and _make_proxy()
+    fails to make a copy due to TypeError on the
+    constructor.   The method _constructor should
+    be implemented in this case.
+
 0.7.0b2
 ========
 - orm

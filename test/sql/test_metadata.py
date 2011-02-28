@@ -547,10 +547,10 @@ class ConstraintTest(TestBase):
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
-class ColumnDefinitionTest(TestBase):
+class ColumnDefinitionTest(AssertsCompiledSQL, TestBase):
     """Test Column() construction."""
 
-    # flesh this out with explicit coverage...
+    __dialect__ = 'default'
 
     def columns(self):
         return [ Column(Integer),
@@ -598,6 +598,78 @@ class ColumnDefinitionTest(TestBase):
         assert_raises(exc.ArgumentError, Column, 'foo', Integer,
                           type_=Integer())
 
+    def test_custom_subclass_proxy(self):
+        """test proxy generation of a Column subclass, can be compiled."""
+
+        from sqlalchemy.schema import Column
+        from sqlalchemy.ext.compiler import compiles
+        from sqlalchemy.sql import select
+
+        class MyColumn(Column):
+            def _constructor(self, name, type, **kw):
+                kw['name'] = name
+                return MyColumn(type, **kw)
+
+            def __init__(self, type, **kw):
+                Column.__init__(self, type, **kw)
+
+            def my_goofy_thing(self):
+                return "hi"
+
+        @compiles(MyColumn)
+        def goofy(element, compiler, **kw):
+            s = compiler.visit_column(element, **kw)
+            return s + "-"
+
+        id = MyColumn(Integer, primary_key=True)
+        id.name = 'id'
+        name = MyColumn(String)
+        name.name = 'name'
+        t1 = Table('foo', MetaData(),
+            id,
+            name
+        )
+
+        # goofy thing
+        eq_(t1.c.name.my_goofy_thing(), "hi")
+
+        # create proxy
+        s = select([t1.select().alias()])
+
+        # proxy has goofy thing
+        eq_(s.c.name.my_goofy_thing(), "hi")
+
+        # compile works
+        self.assert_compile(
+            select([t1.select().alias()]),
+            "SELECT anon_1.id-, anon_1.name- FROM "
+            "(SELECT foo.id- AS id, foo.name- AS name "
+            "FROM foo) AS anon_1",
+        )
+
+    def test_custom_subclass_proxy_typeerror(self):
+        from sqlalchemy.schema import Column
+        from sqlalchemy.sql import select
+
+        class MyColumn(Column):
+            def __init__(self, type, **kw):
+                Column.__init__(self, type, **kw)
+
+        id = MyColumn(Integer, primary_key=True)
+        id.name = 'id'
+        name = MyColumn(String)
+        name.name = 'name'
+        t1 = Table('foo', MetaData(),
+            id,
+            name
+        )
+        assert_raises_message(
+            TypeError,
+            "Could not create a copy of this <class "
+            "'test.sql.test_metadata.MyColumn'> "
+            "object.  Ensure the class includes a _constructor()",
+            getattr, select([t1.select().alias()]), 'c'
+        )
 
 class ColumnOptionsTest(TestBase):
 

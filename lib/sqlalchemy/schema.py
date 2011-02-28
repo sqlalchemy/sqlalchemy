@@ -904,13 +904,32 @@ class Column(SchemaItem, expression.ColumnClause):
             raise exc.InvalidRequestError("Cannot initialize a sub-selectable"
                     " with this Column object until it's 'name' has "
                     "been assigned.")
-        c = self._constructor(
-            name or self.name, 
-            self.type, 
-            key = name or self.key, 
-            primary_key = self.primary_key, 
-            nullable = self.nullable, 
-            quote=self.quote, _proxies=[self], *fk)
+        try:
+            c = self._constructor(
+                name or self.name, 
+                self.type, 
+                key = name or self.key, 
+                primary_key = self.primary_key, 
+                nullable = self.nullable, 
+                quote=self.quote, _proxies=[self], *fk)
+        except TypeError, e:
+            # Py3K
+            #raise TypeError(
+            #    "Could not create a copy of this %r object.  "
+            #    "Ensure the class includes a _constructor() "
+            #    "attribute or method which accepts the "
+            #    "standard Column constructor arguments, or "
+            #    "references the Column class itself." % self.__class__) from e
+            # Py2K
+            raise TypeError(
+                "Could not create a copy of this %r object.  "
+                "Ensure the class includes a _constructor() "
+                "attribute or method which accepts the "
+                "standard Column constructor arguments, or "
+                "references the Column class itself. "
+                "Original error: %s" % (self.__class__, e))
+            # end Py2K
+
         c.table = selectable
         selectable._columns.add(c)
         if self.primary_key:
