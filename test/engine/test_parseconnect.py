@@ -2,7 +2,7 @@ from test.lib.testing import assert_raises, assert_raises_message, eq_
 import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
-from sqlalchemy import create_engine, engine_from_config
+from sqlalchemy import create_engine, engine_from_config, exc
 from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
 from test.lib import TestBase
@@ -177,7 +177,7 @@ pool_timeout=10
         assert e.pool._recycle == 472
 
     def test_badargs(self):
-        assert_raises(ImportError, create_engine, 'foobar://',
+        assert_raises(exc.ArgumentError, create_engine, 'foobar://',
                       module=mock_dbapi)
 
         # bad arg

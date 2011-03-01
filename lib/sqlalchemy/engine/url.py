@@ -112,7 +112,8 @@ class URL(object):
             if module is not None:
                 return module
             else:
-                raise
+                raise exc.ArgumentError(
+                    "Could not determine dialect for '%s'." % self.drivername)
 
     def _load_entry_point(self):
         """attempt to load this url's dialect from entry points, or return None
