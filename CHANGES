@@ -5,6 +5,18 @@ CHANGES
 =======
 0.7.0b3
 =======
+- orm
+  - some changes to the identity map regarding
+    rare weakref callbacks during iterations.
+    The mutex has been removed as it apparently 
+    can cause a reentrant (i.e. in one thread) deadlock,
+    perhaps when gc collects objects at the point of 
+    iteration in order to gain more memory.  It is hoped
+    that "dictionary changed during iteration" will
+    be exceedingly rare as iteration methods internally
+    acquire the full list of objects in a single values() 
+    call. [ticket:2087]
+
 - sql
   - Added a fully descriptive error message for the
     case where Column is subclassed and _make_proxy()

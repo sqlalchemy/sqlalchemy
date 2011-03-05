@@ -68,10 +68,7 @@ class InstanceState(object):
     def _cleanup(self, ref):
         instance_dict = self._instance_dict()
         if instance_dict:
-            try:
-                instance_dict.remove(self)
-            except AssertionError:
-                pass
+            instance_dict.discard(self)
 
         self.callables = {}
         self.session_id = None
@@ -516,10 +513,7 @@ class MutableAttrInstanceState(InstanceState):
         else:
             instance_dict = self._instance_dict()
             if instance_dict:
-                try:
-                    instance_dict.remove(self)
-                except AssertionError:
-                    pass
+                instance_dict.discard(self)
             self.dispose()
 
     def __resurrect(self):

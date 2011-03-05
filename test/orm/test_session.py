@@ -1280,7 +1280,7 @@ class DisposedStates(_base.MappedTest):
         sess.identity_map.all_states = lambda : all_states
         for obj in objs:
             state = attributes.instance_state(obj)
-            sess.identity_map.remove(state)
+            sess.identity_map.discard(state)
             state.dispose()
 
     def _test_session(self, **kwargs):
