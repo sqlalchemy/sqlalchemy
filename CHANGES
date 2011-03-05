@@ -363,6 +363,12 @@ CHANGES
 0.6.7
 =====
 - orm
+  - Tightened the iterate vs. remove mutex around the 
+    identity map iteration, attempting to reduce the 
+    chance of an (extremely rare) reentrant gc operation 
+    causing a deadlock.  Might remove the mutex in
+    0.7.  [ticket:2087]
+
   - Added a `name` argument to `Query.subquery()`, to allow
     a fixed name to be assigned to the alias object.
     [ticket:2030]
