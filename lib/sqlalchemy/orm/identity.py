@@ -140,7 +140,9 @@ class WeakInstanceDict(IdentityMap):
         self._remove_mutex.acquire()
         try:
             if dict.pop(self, state.key) is not state:
-                raise AssertionError("State %s is not present in this identity map" % state)
+                raise AssertionError(
+                        "State %s is not present in this identity map" % state
+                    )
         finally:
             self._remove_mutex.release()
 
@@ -162,49 +164,46 @@ class WeakInstanceDict(IdentityMap):
             return default
         return o
 
+    def _items(self):
+        values = self.all_states()
+        result = []
+        for state in values:
+            value = state.obj()
+            if value is not None:
+                result.append((state.key, value))
+        return result
 
-    def items(self):
+    def _values(self):
+        values = self.all_states()
+        result = []
+        for state in values:
+            value = state.obj()
+            if value is not None:
+                result.append(value)
+
+        return result
+
+    # Py3K
+    #def items(self):
+    #    return iter(self._items())
+    #
+    #def values(self):
+    #    return iter(self._values())
     # Py2K
-        return list(self.iteritems())
-
+    items = _items
     def iteritems(self):
-    # end Py2K
-        self._remove_mutex.acquire()
-        try:
-            result = []
-            for state in dict.values(self):
-                value = state.obj()
-                if value is not None:
-                    result.append((state.key, value))
+        return iter(self.items())
 
-            return iter(result)
-        finally:
-            self._remove_mutex.release()
-
-    def values(self):
-    # Py2K
-        return list(self.itervalues())
-
+    values = _values
     def itervalues(self):
+        return iter(self.values())
     # end Py2K
-        self._remove_mutex.acquire()
-        try:
-            result = []
-            for state in dict.values(self):
-                value = state.obj()
-                if value is not None:
-                    result.append(value)
-
-            return iter(result)
-        finally:
-            self._remove_mutex.release()
 
     def all_states(self):
         self._remove_mutex.acquire()
         try:
             # Py3K
             # return list(dict.values(self))
-
             # Py2K
             return dict.values(self)
             # end Py2K
