@@ -17,6 +17,18 @@ CHANGES
     acquire the full list of objects in a single values() 
     call. [ticket:2087]
 
+  - A tweak to the unit of work causes it to order
+    the flush along relationship() dependencies even if 
+    the given objects don't have any inter-attribute 
+    references in memory, which was the behavior in 
+    0.5 and earlier, so a flush of Parent/Child with
+    only foreign key/primary key set will succeed.  
+    This while still maintaining 0.6 and above's not 
+    generating a ton of useless internal dependency 
+    structures within the flush that don't correspond 
+    to state actually within the current flush.
+    [ticket:2082]
+
 - sql
   - Added a fully descriptive error message for the
     case where Column is subclassed and _make_proxy()

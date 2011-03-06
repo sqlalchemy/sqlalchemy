@@ -242,7 +242,9 @@ class DependencyProcessor(object):
             if history and not history.empty():
                 return True
         else:
-            return False
+            return states and \
+                not self.prop._is_self_referential() and \
+                self.mapper in uowcommit.mappers
 
     def _verify_canload(self, state):
         if state is not None and \

@@ -400,6 +400,77 @@ class RudimentaryFlushTest(UOWTest):
             ),
         )
 
+    def test_natural_ordering(self):
+        """test that unconnected items take relationship() into account regardless."""
+
+        mapper(User, users)
+        mapper(Address, addresses, properties={
+            'parent':relationship(User)
+        })
+
+        sess = create_session()
+
+        u1 = User(id=1, name='u1')
+        a1 = Address(id=1, user_id=1, email_address='a2')
+
+        sess.add_all([u1, a1])
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "INSERT INTO users (id, name) VALUES (:id, :name)", 
+                {'id':1, 'name':'u1'}),
+            CompiledSQL(
+                "INSERT INTO addresses (id, user_id, email_address) "
+                "VALUES (:id, :user_id, :email_address)",
+                {'email_address': 'a2', 'user_id': 1, 'id': 1}
+            )
+        )
+
+        sess.delete(u1)
+        sess.delete(a1)
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "DELETE FROM addresses WHERE addresses.id = :id",
+                [{'id': 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM users WHERE users.id = :id",
+                [{'id': 1}]
+            )
+        )
+
+    def test_natural_selfref(self):
+        """test that unconnected items take relationship() into account regardless."""
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node)
+        })
+
+        sess = create_session()
+
+        n1 = Node(id=1)
+        n2 = Node(id=2, parent_id=1)
+        n3 = Node(id=3, parent_id=2)
+
+        # insert order is determined from add order since they
+        # are the same class
+        sess.add_all([n1, n2, n3])
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "INSERT INTO nodes (id, parent_id, data) VALUES "
+                "(:id, :parent_id, :data)", 
+                [{'parent_id': None, 'data': None, 'id': 1}, 
+                {'parent_id': 1, 'data': None, 'id': 2}, 
+                {'parent_id': 2, 'data': None, 'id': 3}]
+                ),
+        )
+
     def test_many_to_many(self):
         mapper(Item, items, properties={
             'keywords':relationship(Keyword, secondary=item_keywords)
