@@ -6,6 +6,24 @@ CHANGES
 0.7.0b3
 =======
 - orm
+  - Changed the underlying approach to query.count().
+    query.count() is now in all cases exactly:
+
+        query.
+            from_self(func.count(literal_column('1'))).
+            scalar()
+
+    That is, "select count(1) from (<full query>)".
+    This produces a subquery in all cases, but 
+    vastly simplifies all the guessing count()
+    tried to do previously, which would still
+    fail in many scenarios particularly when
+    joined table inheritance and other joins
+    were involved.  If the subquery produced
+    for an otherwise very simple count is really 
+    an issue, use query(func.count()) as an 
+    optimization.  [ticket:2093]
+
   - some changes to the identity map regarding
     rare weakref callbacks during iterations.
     The mutex has been removed as it apparently 

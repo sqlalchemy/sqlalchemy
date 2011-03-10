@@ -625,6 +625,25 @@ def _produce_test(select_type):
             eq_(sess.query(Company).join(Company.employees.of_type(Engineer)).filter(Engineer.primary_language=='java').all(), [c1])
             eq_(sess.query(Company).join(Company.employees.of_type(Engineer), 'machines').filter(Machine.name.ilike("%thinkpad%")).all(), [c1])
 
+        def test_join_to_subclass_count(self):
+            sess = create_session()
+
+            eq_(sess.query(Company, Engineer).
+                    join(Company.employees.of_type(Engineer)).
+                    filter(Engineer.primary_language=='java').count(), 
+                1)
+
+            # test [ticket:2093]
+            eq_(sess.query(Company.company_id, Engineer).
+                    join(Company.employees.of_type(Engineer)).
+                    filter(Engineer.primary_language=='java').count(), 
+                1)
+
+            eq_(sess.query(Company).
+                    join(Company.employees.of_type(Engineer)).
+                    filter(Engineer.primary_language=='java').count(), 
+                1)
+
         def test_join_through_polymorphic(self):
 
             sess = create_session()
