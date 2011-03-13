@@ -1,103 +1,101 @@
-"""this is a modified version of the basic association example, which illustrates
-the usage of the associationproxy extension."""
+"""An extension to the basic_association.py example, which illustrates
+the usage of sqlalchemy.ext.associationproxy.
+
+"""
 
 from datetime import datetime
+
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
     String, DateTime, Float, ForeignKey, and_)
 from sqlalchemy.orm import mapper, relationship, Session
-from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.associationproxy import association_proxy
 
-engine = create_engine('sqlite://')
-#engine = create_engine('sqlite://', echo=True)
-metadata = MetaData(engine)
+Base = declarative_base()
 
-orders = Table('orders', metadata,
-    Column('order_id', Integer, primary_key=True),
-    Column('customer_name', String(30), nullable=False),
-    Column('order_date', DateTime, nullable=False, default=datetime.now))
+class Order(Base):
+    __tablename__ = 'order'
 
-items = Table('items', metadata,
-    Column('item_id', Integer, primary_key=True),
-    Column('description', String(30), nullable=False),
-    Column('price', Float, nullable=False))
+    order_id = Column(Integer, primary_key=True)
+    customer_name = Column(String(30), nullable=False)
+    order_date = Column(DateTime, nullable=False, default=datetime.now())
+    order_items = relationship("OrderItem", cascade="all, delete-orphan",
+                            backref='order')
+    items = association_proxy("order_items", "item")
 
-orderitems = Table('orderitems', metadata,
-    Column('order_id', Integer, ForeignKey('orders.order_id'),
-           primary_key=True),
-    Column('item_id', Integer, ForeignKey('items.item_id'),
-           primary_key=True),
-    Column('price', Float, nullable=False))
-
-metadata.create_all()
-
-class OrderItem(object):
-    def __init__(self, item, price=None):
-        self.item = item
-        self.price = price is None and item.price or price
-
-class Order(object):
     def __init__(self, customer_name):
         self.customer_name = customer_name
-    items = AssociationProxy('itemassociations', 'item',
-                             creator=OrderItem)
 
-class Item(object):
+class Item(Base):
+    __tablename__ = 'item'
+    item_id = Column(Integer, primary_key=True)
+    description = Column(String(30), nullable=False)
+    price = Column(Float, nullable=False)
+
     def __init__(self, description, price):
         self.description = description
         self.price = price
 
+    def __repr__(self):
+        return 'Item(%r, %r)' % (
+                    self.description, self.price
+                )
 
-mapper(Order, orders, properties={
-    'itemassociations':relationship(OrderItem, cascade="all, delete-orphan", lazy='joined')
-})
-mapper(Item, items)
-mapper(OrderItem, orderitems, properties={
-    'item':relationship(Item, lazy='joined')
-})
+class OrderItem(Base):
+    __tablename__ = 'orderitem'
+    order_id = Column(Integer, ForeignKey('order.order_id'), primary_key=True)
+    item_id = Column(Integer, ForeignKey('item.item_id'), primary_key=True)
+    price = Column(Float, nullable=False)
 
-session = Session()
+    def __init__(self, item, price=None):
+        self.item = item
+        self.price = price or item.price
+    item = relationship(Item, lazy='joined')
 
-# create our catalog
-session.add_all([Item('SA T-Shirt', 10.99),
-                 Item('SA Mug', 6.50),
-                 Item('SA Hat', 8.99),
-                 Item('MySQL Crowbar', 16.99)])
-session.commit()
+if __name__ == '__main__':
+    engine = create_engine('sqlite://')
+    Base.metadata.create_all(engine)
 
-# function to return items
-def item(name):
-    return session.query(Item).filter_by(description=name).one()
+    session = Session(engine)
 
-# create an order
-order = Order('john smith')
+    # create catalog
+    tshirt, mug, hat, crowbar = (
+        Item('SA T-Shirt', 10.99),
+        Item('SA Mug', 6.50),
+        Item('SA Hat', 8.99),
+        Item('MySQL Crowbar', 16.99)
+    )
+    session.add_all([tshirt, mug, hat, crowbar])
+    session.commit()
 
-# append an OrderItem association via the "itemassociations"
-# collection with a custom price.
-order.itemassociations.append(OrderItem(item('MySQL Crowbar'), 10.99))
+    # create an order
+    order = Order('john smith')
 
-# append two more Items via the transparent "items" proxy, which
-# will create OrderItems automatically using the default price.
-order.items.append(item('SA Mug'))
-order.items.append(item('SA Hat'))
+    # add items via the association proxy.
+    # the OrderItem is created automatically.
+    order.items.append(mug)
+    order.items.append(hat)
 
-session.add(order)
-session.commit()
+    # add an OrderItem explicitly.
+    order.order_items.append(OrderItem(crowbar, 10.99))
 
-# query the order, print items
-order = session.query(Order).filter_by(customer_name='john smith').one()
+    session.add(order)
+    session.commit()
 
-print "Order #%s:\n%s\n%s\n%s items.\n" % (
-    order.order_id, order.customer_name, order.order_date, len(order.items))
+    # query the order, print items
+    order = session.query(Order).filter_by(customer_name='john smith').one()
 
-# print items based on the OrderItem collection directly
-print [(assoc.item.description, assoc.price, assoc.item.price)
-       for assoc in order.itemassociations]
+    # print items based on the OrderItem collection directly
+    print [(assoc.item.description, assoc.price, assoc.item.price)
+           for assoc in order.order_items]
 
-# print items based on the "proxied" items collection
-print [(item.description, item.price)
-       for item in order.items]
+    # print items based on the "proxied" items collection
+    print [(item.description, item.price)
+           for item in order.items]
 
-# print customers who bought 'MySQL Crowbar' on sale
-orders = session.query(Order).join('itemassociations', 'item').filter(
-    and_(Item.description=='MySQL Crowbar', Item.price > OrderItem.price))
-print [order.customer_name for order in orders]
+    # print customers who bought 'MySQL Crowbar' on sale
+    orders = session.query(Order).\
+                    join('order_items', 'item').\
+                    filter(Item.description=='MySQL Crowbar').\
+                    filter(Item.price > OrderItem.price)
+    print [order.customer_name for order in orders]

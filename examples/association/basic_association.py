@@ -1,106 +1,94 @@
 """A basic example of using the association object pattern.
 
-The association object pattern is a richer form of a many-to-many
-relationship.
+The association object pattern is a form of many-to-many which
+associates additional data with each association between parent/child.
 
-The model will be an ecommerce example.  We will have an Order, which
-represents a set of Items purchased by a user.  Each Item has a price.
-However, the Order must store its own price for each Item, representing
-the price paid by the user for that particular order, which is independent
-of the price on each Item (since those can change).
+The example illustrates an "order", referencing a collection 
+of "items", with a particular price paid associated with each "item".
+
 """
 
 from datetime import datetime
 
 from sqlalchemy import (create_engine, MetaData, Table, Column, Integer,
-    String, DateTime, Numeric, ForeignKey, and_)
+    String, DateTime, Float, ForeignKey, and_)
 from sqlalchemy.orm import mapper, relationship, Session
+from sqlalchemy.ext.declarative import declarative_base
 
-# Uncomment these to watch database activity.
-#import logging
-#logging.basicConfig(format='%(message)s')
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+Base = declarative_base()
 
-engine = create_engine('sqlite:///')
-metadata = MetaData(engine)
+class Order(Base):
+    __tablename__ = 'order'
 
-orders = Table('orders', metadata, 
-    Column('order_id', Integer, primary_key=True),
-    Column('customer_name', String(30), nullable=False),
-    Column('order_date', DateTime, nullable=False, default=datetime.now()),
-    )
+    order_id = Column(Integer, primary_key=True)
+    customer_name = Column(String(30), nullable=False)
+    order_date = Column(DateTime, nullable=False, default=datetime.now())
+    order_items = relationship("OrderItem", cascade="all, delete-orphan",
+                            backref='order')
 
-items = Table('items', metadata,
-    Column('item_id', Integer, primary_key=True),
-    Column('description', String(30), nullable=False),
-    Column('price', Numeric(8, 2), nullable=False)
-    )
-
-orderitems = Table('orderitems', metadata,
-    Column('order_id', Integer, ForeignKey('orders.order_id'),
-           primary_key=True),
-    Column('item_id', Integer, ForeignKey('items.item_id'),
-           primary_key=True),
-    Column('price', Numeric(8, 2), nullable=False)
-    )
-metadata.create_all()
-
-class Order(object):
     def __init__(self, customer_name):
         self.customer_name = customer_name
 
-class Item(object):
+class Item(Base):
+    __tablename__ = 'item'
+    item_id = Column(Integer, primary_key=True)
+    description = Column(String(30), nullable=False)
+    price = Column(Float, nullable=False)
+
     def __init__(self, description, price):
         self.description = description
         self.price = price
-    def __repr__(self):
-        return 'Item(%s, %s)' % (repr(self.description), repr(self.price))
 
-class OrderItem(object):
+    def __repr__(self):
+        return 'Item(%r, %r)' % (
+                    self.description, self.price
+                )
+
+class OrderItem(Base):
+    __tablename__ = 'orderitem'
+    order_id = Column(Integer, ForeignKey('order.order_id'), primary_key=True)
+    item_id = Column(Integer, ForeignKey('item.item_id'), primary_key=True)
+    price = Column(Float, nullable=False)
+
     def __init__(self, item, price=None):
         self.item = item
         self.price = price or item.price
+    item = relationship(Item, lazy='joined')
 
-mapper(Order, orders, properties={
-    'order_items': relationship(OrderItem, cascade="all, delete-orphan",
-                            backref='order')
-})
-mapper(Item, items)
-mapper(OrderItem, orderitems, properties={
-    'item': relationship(Item, lazy='joined')
-})
+if __name__ == '__main__':
+    engine = create_engine('sqlite://')
+    Base.metadata.create_all(engine)
 
-session = Session()
+    session = Session(engine)
 
-# create our catalog
-session.add(Item('SA T-Shirt', 10.99))
-session.add(Item('SA Mug', 6.50))
-session.add(Item('SA Hat', 8.99))
-session.add(Item('MySQL Crowbar', 16.99))
-session.commit()
+    # create catalog
+    tshirt, mug, hat, crowbar = (
+        Item('SA T-Shirt', 10.99),
+        Item('SA Mug', 6.50),
+        Item('SA Hat', 8.99),
+        Item('MySQL Crowbar', 16.99)
+    )
+    session.add_all([tshirt, mug, hat, crowbar])
+    session.commit()
 
-# function to return items from the DB
-def item(name):
-    return session.query(Item).filter_by(description=name).one()
+    # create an order
+    order = Order('john smith')
 
-# create an order
-order = Order('john smith')
+    # add three OrderItem associations to the Order and save
+    order.order_items.append(OrderItem(mug))
+    order.order_items.append(OrderItem(crowbar, 10.99))
+    order.order_items.append(OrderItem(hat))
+    session.add(order)
+    session.commit()
 
-# add three OrderItem associations to the Order and save
-order.order_items.append(OrderItem(item('SA Mug')))
-order.order_items.append(OrderItem(item('MySQL Crowbar'), 10.99))
-order.order_items.append(OrderItem(item('SA Hat')))
-session.add(order)
-session.commit()
+    # query the order, print items
+    order = session.query(Order).filter_by(customer_name='john smith').one()
+    print [(order_item.item.description, order_item.price) 
+           for order_item in order.order_items]
 
-# query the order, print items
-order = session.query(Order).filter_by(customer_name='john smith').one()
-print [(order_item.item.description, order_item.price) 
-       for order_item in order.order_items]
+    # print customers who bought 'MySQL Crowbar' on sale
+    q = session.query(Order).join('order_items', 'item')
+    q = q.filter(and_(Item.description == 'MySQL Crowbar',
+                      Item.price > OrderItem.price))
 
-# print customers who bought 'MySQL Crowbar' on sale
-q = session.query(Order).join('order_items', 'item')
-q = q.filter(and_(Item.description == 'MySQL Crowbar',
-                  Item.price > OrderItem.price))
-
-print [order.customer_name for order in q]
+    print [order.customer_name for order in q]

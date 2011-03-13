@@ -54,6 +54,12 @@ CHANGES
     constructor.   The method _constructor should
     be implemented in this case.
 
+- examples
+  - Updated the association, association proxy examples
+    to use declarative, added a new example 
+    dict_of_sets_with_default.py, a "pushing the envelope" 
+    example of association proxy.
+
 0.7.0b2
 ========
 - orm
