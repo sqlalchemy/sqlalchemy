@@ -474,6 +474,10 @@ CHANGES
   - Fix error message referencing old @classproperty
     name to reference @declared_attr [ticket:2061]
 
+  - Arguments in __mapper_args__ that aren't "hashable"
+    aren't mistaken for always-hashable, possibly-column
+    arguments.  [ticket:2091]
+
 0.6.6
 =====
 - orm
