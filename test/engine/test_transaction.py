@@ -444,7 +444,7 @@ class ExplicitAutoCommitTest(TestBase):
         eq_(conn2.execute(select([foo.c.data])).fetchall(), [('data1',
             )])
 
-        # connection supercedes statement
+        # connection supersedes statement
 
         conn1.execution_options(autocommit=False).\
             execute(select([func.insert_foo('data2'

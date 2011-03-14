@@ -2216,7 +2216,7 @@ class FromClause(Selectable):
         return fromclause in self._cloned_set
 
     def replace_selectable(self, old, alias):
-        """replace all occurences of FromClause 'old' with the given Alias 
+        """replace all occurrences of FromClause 'old' with the given Alias 
         object, returning a copy of this :class:`FromClause`.
 
         """

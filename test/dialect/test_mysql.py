@@ -384,7 +384,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             meta.drop_all()
 
     def test_boolean(self):
-        """Test BOOL/TINYINT(1) compatability and reflection."""
+        """Test BOOL/TINYINT(1) compatibility and reflection."""
 
         meta = MetaData(testing.db)
         bool_table = Table(

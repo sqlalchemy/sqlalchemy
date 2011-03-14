@@ -39,7 +39,7 @@ class CompileError(SQLAlchemyError):
 class IdentifierError(SQLAlchemyError):
     """Raised when a schema name is beyond the max character limit"""
 
-# Moved to orm.exc; compatability definition installed by orm import until 0.6
+# Moved to orm.exc; compatibility definition installed by orm import until 0.6
 ConcurrentModificationError = None
 
 class DisconnectionError(SQLAlchemyError):
@@ -51,7 +51,7 @@ class DisconnectionError(SQLAlchemyError):
     """
 
 
-# Moved to orm.exc; compatability definition installed by orm import until 0.6
+# Moved to orm.exc; compatibility definition installed by orm import until 0.6
 FlushError = None
 
 class TimeoutError(SQLAlchemyError):

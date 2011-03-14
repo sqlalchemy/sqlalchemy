@@ -1300,7 +1300,7 @@ class _ClassInstrumentationAdapter(ClassManager):
 
 class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,
-    representing the changes which have occured on an instrumented
+    representing the changes which have occurred on an instrumented
     attribute.
 
     Each tuple member is an iterable sequence.

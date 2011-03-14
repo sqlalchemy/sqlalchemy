@@ -915,7 +915,7 @@ class Session(object):
     def expire_all(self):
         """Expires all persistent instances within this Session.
 
-        When any attributes on a persitent instance is next accessed, 
+        When any attributes on a persistent instance is next accessed, 
         a query will be issued using the
         :class:`.Session` object's current transactional context in order to
         load all expired attributes for the given instance.   Note that
@@ -1046,7 +1046,7 @@ class Session(object):
                 not mapper.allow_partial_pks or \
                 _none_set.issuperset(instance_key[1]):
                 raise exc.FlushError('Instance %s has a NULL identity '
-                        'key.  Check if this flush is occuring at an '
+                        'key.  Check if this flush is occurring at an '
                         'inappropriate time, such as during a load '
                         'operation.' % mapperutil.state_str(state))
 

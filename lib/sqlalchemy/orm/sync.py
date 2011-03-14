@@ -23,7 +23,7 @@ def populate(source, source_mapper, dest, dest_mapper,
         except exc.UnmappedColumnError:
             _raise_col_to_prop(True, source_mapper, l, dest_mapper, r)
 
-        # techically the "r.primary_key" check isn't
+        # technically the "r.primary_key" check isn't
         # needed here, but we check for this condition to limit
         # how often this logic is invoked for memory/performance
         # reasons, since we only need this info for a primary key

@@ -334,7 +334,7 @@ class Annotated(object):
             # detect immutable, don't change anything
             return self
         else:
-            # update the clone with any changes that have occured
+            # update the clone with any changes that have occurred
             # to this object's __dict__.
             clone.__dict__.update(self.__dict__)
             return Annotated(clone, self._annotations)

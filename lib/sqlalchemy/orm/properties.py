@@ -966,7 +966,7 @@ class RelationshipProperty(StrategizedProperty):
                 if inheriting is not self.parent \
                     and inheriting.has_property(self.key):
                     util.warn("Warning: relationship '%s' on mapper "
-                              "'%s' supercedes the same relationship "
+                              "'%s' supersedes the same relationship "
                               "on inherited mapper '%s'; this can "
                               "cause dependency issues during flush"
                               % (self.key, self.parent, inheriting))
@@ -1038,7 +1038,7 @@ class RelationshipProperty(StrategizedProperty):
 
     def _sync_pairs_from_join(self, join_condition, primary):
         """Given a join condition, figure out what columns are foreign
-        and are part of a binary "equated" condition to their referecned
+        and are part of a binary "equated" condition to their referenced
         columns, and convert into a list of tuples of (primary col->foreign col).
 
         Make several attempts to determine if cols are compared using 
@@ -1433,7 +1433,7 @@ class RelationshipProperty(StrategizedProperty):
 
         # adjust the join condition for single table inheritance,
         # in the case that the join is to a subclass
-        # this is analgous to the "_adjust_for_single_table_inheritance()"
+        # this is analogous to the "_adjust_for_single_table_inheritance()"
         # method in Query.
 
         dest_mapper = of_type or self.mapper
