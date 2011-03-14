@@ -5,7 +5,7 @@ from sqlalchemy.sql import select, text, literal_column
 import sqlalchemy as sa
 from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
-                Sequence, func, literal
+                Sequence, func, literal, Unicode
 from sqlalchemy.types import TypeDecorator
 from test.lib.schema import Table, Column
 from test.lib.testing import eq_
@@ -934,3 +934,29 @@ class ServerDefaultsOnPKTest(testing.TestBase):
             [(5, 'data')]
         )
 
+class UnicodeDefaultsTest(testing.TestBase):
+    def test_no_default(self):
+        c = Column(Unicode(32))
+
+    def test_unicode_default(self):
+        # Py3K
+        #default = 'foo'
+        # Py2K
+        default = u'foo'
+        # end Py2K
+        c = Column(Unicode(32), default=default)
+
+    
+    def test_nonunicode_default(self):
+        # Py3K
+        #default = b'foo'
+        # Py2K
+        default = 'foo'
+        # end Py2K
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "Unicode column received non-unicode default value.",
+            Column,
+            Unicode(32),
+            default=default
+        )
