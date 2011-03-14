@@ -895,7 +895,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # this is the first test where we are joining "backwards" - from AdAlias to User even though
         # the query is against User
         q = sess.query(User, AdAlias)
-        l = q.join(AdAlias.user).filter(User.name=='ed')
+        l = q.join(AdAlias.user).filter(User.name=='ed').order_by(User.id, AdAlias.id)
         eq_(l.all(), [(user8, address2),(user8, address3),(user8, address4),])
 
         q = sess.query(User, AdAlias).select_from(join(AdAlias, User, AdAlias.user)).filter(User.name=='ed')
