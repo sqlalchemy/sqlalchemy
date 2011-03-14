@@ -1270,7 +1270,28 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert 'inherits' not in Person.__mapper_args__
         assert class_mapper(Engineer).polymorphic_identity is None
         assert class_mapper(Engineer).polymorphic_on is Person.__table__.c.type
+        
+    def test_we_must_only_copy_column_mapper_args(self):
 
+        class Person(Base):
+
+            __tablename__ = 'people'
+            id = Column(Integer, primary_key=True)
+            a=Column(Integer)
+            b=Column(Integer)
+            c=Column(Integer)
+            d=Column(Integer)
+            discriminator = Column('type', String(50))
+            __mapper_args__ = {'polymorphic_on': discriminator,
+                               'polymorphic_identity': 'person',
+                               'version_id_col': 'a',
+                               'column_prefix': 'bar',
+                               'include_properties': ['id', 'a', 'b'],
+                               }
+        assert class_mapper(Person).version_id_col == 'a'
+        assert class_mapper(Person).include_properties == set(['id', 'a', 'b'])
+        
+        
     def test_custom_join_condition(self):
 
         class Foo(Base):
