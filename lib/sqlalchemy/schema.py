@@ -722,6 +722,14 @@ class Column(SchemaItem, expression.ColumnClause):
             if isinstance(self.default, (ColumnDefault, Sequence)):
                 args.append(self.default)
             else:
+                if getattr(self.type, '_warn_on_bytestring', False):
+                    # Py3K
+                    #if isinstance(self.default, bytes):
+                    # Py2K
+                    if isinstance(self.default, str):
+                    # end Py2K
+                        util.warn("Unicode column received non-unicode "
+                                  "default value.")                    
                 args.append(ColumnDefault(self.default))
 
         if self.server_default is not None:
