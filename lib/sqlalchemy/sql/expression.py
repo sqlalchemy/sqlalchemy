@@ -4424,7 +4424,7 @@ class Select(_SelectBase):
     def locate_all_froms(self):
         """return a Set of all FromClause elements referenced by this Select.
 
-         This set is a superset of that returned by the ``froms`` property,
+        This set is a superset of that returned by the ``froms`` property,
         which is specifically for those FromClause elements that would
         actually be rendered.
 
