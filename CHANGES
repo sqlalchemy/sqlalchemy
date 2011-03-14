@@ -54,6 +54,10 @@ CHANGES
     constructor.   The method _constructor should
     be implemented in this case.
 
+- dialect
+  - Changed exception raised to ArgumentError when an
+    invalid dialect is specified. [ticket:2060]
+
 - examples
   - Updated the association, association proxy examples
     to use declarative, added a new example 
