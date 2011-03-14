@@ -980,9 +980,10 @@ def _as_declarative(cls, classname, dict_):
 
     # make sure that column copies are used rather 
     # than the original columns from any mixins
-    for k, v in mapper_args.iteritems():
-        mapper_args[k] = column_copies.get(v,v)
-
+    for k in ('version_id_col', 'polymorphic_on',):
+        if k in mapper_args:
+            v = mapper_args[k]
+            mapper_args[k] = column_copies.get(v,v)
 
     if classname in cls._decl_class_registry:
         util.warn("The classname %r is already in the registry of this"
@@ -1159,6 +1160,7 @@ def _as_declarative(cls, classname, dict_):
                     # append() in mapper._configure_property().
                     # change this ordering when we do [ticket:1892]
                     our_stuff[k] = p.columns + [col]
+
 
     cls.__mapper__ = mapper_cls(cls, 
                                 table, 
