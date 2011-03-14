@@ -547,7 +547,7 @@ class ReflectionTest(TestBase, ComparesTables):
             )
 
         assert_raises_message(sa.exc.InvalidRequestError,
-                            "Foreign key assocated with column 'slots.pkg_id' "
+                            "Foreign key associated with column 'slots.pkg_id' "
                             "could not find table 'pkgs' with which to generate "
                             "a foreign key to target column 'pkg_id'",
                               metadata.create_all)
