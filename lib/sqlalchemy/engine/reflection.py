@@ -381,6 +381,8 @@ class Inspector(object):
         found_table = False
         for col_d in self.get_columns(table_name, schema, **tblkw):
             found_table = True
+            table.dispatch.column_reflect(table, col_d)
+
             name = col_d['name']
             if include_columns and name not in include_columns:
                 continue
@@ -389,10 +391,9 @@ class Inspector(object):
             col_kw = {
                 'nullable':col_d['nullable'],
             }
-            if 'autoincrement' in col_d:
-                col_kw['autoincrement'] = col_d['autoincrement']
-            if 'quote' in col_d:
-                col_kw['quote'] = col_d['quote']
+            for k in ('autoincrement', 'quote', 'info', 'key'):
+                if k in col_d:
+                    col_kw[k] = col_d[k]
 
             colargs = []
             if col_d.get('default') is not None:

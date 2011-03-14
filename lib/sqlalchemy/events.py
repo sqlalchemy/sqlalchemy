@@ -159,6 +159,56 @@ class DDLEvents(event.Events):
         
         """
 
+    def column_reflect(self, table, column_info):
+        """Called for each unit of 'column info' retrieved when
+        a :class:`.Table` is being reflected.   
+        
+        The dictionary of column information as returned by the
+        dialect is passed, and can be modified.  The dictionary
+        is that returned in each element of the list returned 
+        by :meth:`.reflection.Inspector.get_columns`. 
+        
+        The event is called before any action is taken against
+        this dictionary, and the contents can be modified.
+        The :class:`.Column` specific arguments `info`, `key`,
+        and `quote` can also be added to the dictionary and
+        will be passed to the constructor of :class:`.Column`.
+
+        Note that this event is only meaningful if either
+        associated with the :class:`.Table` class across the 
+        board, e.g.::
+        
+            from sqlalchemy.schema import Table
+            from sqlalchemy import event
+
+            def listen_for_reflect(table, column_info):
+                "receive a column_reflect event"
+                # ...
+                
+            event.listen(
+                    Table, 
+                    'column_reflect', 
+                    listen_for_reflect)
+                
+        ...or with a specific :class:`.Table` instance using
+        the ``listeners`` argument::
+        
+            def listen_for_reflect(table, column_info):
+                "receive a column_reflect event"
+                # ...
+                
+            t = Table(
+                'sometable', 
+                autoload=True,
+                listeners=[
+                    ('column_reflect', listen_for_reflect)
+                ])
+        
+        This because the reflection process initiated by ``autoload=True``
+        completes within the scope of the constructor for :class:`.Table`.
+        
+        """
+
 class SchemaEventTarget(object):
     """Base class for elements that are the targets of :class:`.DDLEvents` events.
     

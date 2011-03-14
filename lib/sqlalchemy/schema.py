@@ -141,6 +141,23 @@ class Table(SchemaItem, expression.TableClause):
     :param info: A dictionary which defaults to ``{}``.  A space to store
         application specific data. This must be a dictionary.
 
+    :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
+        which will be passed to :func:`.event.listen` upon construction. 
+        This alternate hook to :func:`.event.listen` allows the establishment
+        of a listener function specific to this :class:`.Table` before 
+        the "autoload" process begins.  Particularly useful for
+        the :meth:`.events.column_reflect` event::
+        
+            def listen_for_reflect(table, column_info):
+                # ...
+                
+            t = Table(
+                'sometable', 
+                autoload=True,
+                listeners=[
+                    ('column_reflect', listen_for_reflect)
+                ])
+
     :param mustexist: When ``True``, indicates that this Table must already 
         be present in the given :class:`MetaData`` collection.
 
@@ -240,6 +257,10 @@ class Table(SchemaItem, expression.TableClause):
         self.quote_schema = kwargs.pop('quote_schema', None)
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
+        if 'listeners' in kwargs:
+            listeners = kwargs.pop('listeners')
+            for evt, fn in listeners:
+                event.listen(self, evt, fn)
 
         self._prefixes = kwargs.pop('prefixes', [])
 
