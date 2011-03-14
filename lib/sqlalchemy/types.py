@@ -334,7 +334,7 @@ class TypeDecorator(TypeEngine):
           def copy(self):
               return MyType(self.impl.length)
 
-    The class-level "impl" variable is required, and can reference any
+    The class-level "impl" attribute is required, and can reference any
     TypeEngine class.  Alternatively, the load_dialect_impl() method
     can be used to provide different type classes based on the dialect
     given; in this case, the "impl" variable can reference
@@ -390,6 +390,7 @@ class TypeDecorator(TypeEngine):
     __visit_name__ = "type_decorator"
 
     def __init__(self, *args, **kwargs):
+        """#todo"""
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations "
                                  "require a class-level variable "
@@ -399,6 +400,9 @@ class TypeDecorator(TypeEngine):
 
 
     def _gen_dialect_impl(self, dialect):
+        """
+        #todo
+        """
         adapted = dialect.type_descriptor(self)
         if adapted is not self:
             return adapted
@@ -418,6 +422,9 @@ class TypeDecorator(TypeEngine):
 
     @util.memoized_property
     def _type_affinity(self):
+        """
+        #todo
+        """
         return self.impl._type_affinity
 
     def type_engine(self, dialect):
@@ -444,16 +451,69 @@ class TypeDecorator(TypeEngine):
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying
         implementation."""
-
         return getattr(self.impl, key)
 
     def process_bind_param(self, value, dialect):
+        """Subclasses should implement this method to operate on
+        the value before loading it to the database.
+
+        The operation could be anything desired to perform custom
+        behavior, such as transforming or serializing data. 
+        This could also be used as a hook for validating logic.
+
+        This operation should be designed with the reverse operation
+        in mind, which would be the process_result_value method of
+        this class.
+
+        If processing is not necessary, the method should
+        return ``None``.
+
+        :param value: Data to operate upon, of any type expected by
+                      this method in the subclass.
+        :param dialect: Dialect instance in use.
+        """
+        #can we remove this raise given the behavior of self.bind_processor?
         raise NotImplementedError()
 
     def process_result_value(self, value, dialect):
+        """Subclasses should implement this method to operate on data
+        fetched from the database.
+
+        The operation could be anything desired to perform custom
+        behavior, such as transforming or serializing data. 
+        This could also be used as a hook for validating logic.
+
+        This operation should be designed to be reversible by
+        the "process_bind_param" method of this class.
+
+        If processing is not necessary, the method should
+        return ``None``."""
+        #can we remove this raise given the behavior of self.result_processor?
         raise NotImplementedError()
 
     def bind_processor(self, dialect):
+        """Returns the appropriate callable to handle the conversion of
+        values *before* being sent to the database.
+        
+        "Appropriate" in this case means that the callable will know
+        the dialect (baked in as a closure), and will know which result
+        processor to call, based on the following rule:
+
+            * If this class's process_result_value is implemented,
+              it will be as the result processor. 
+
+            * If this class's process_result_value is *not* implemented,
+              then the normal result_processor method from the underlying
+              datatype will be used. (The data type which this class is
+              wrapping, as defined in the class attribute "impl".)
+
+        This instance method with the following parameters:
+
+            :param dialect: Dialect instance in use.
+
+        This method is the reverse counterpart to the
+        :meth:`result_processor` method of this class.
+        """
         if self.__class__.process_bind_param.func_code \
             is not TypeDecorator.process_bind_param.func_code:
             process_param = self.process_bind_param
@@ -471,6 +531,28 @@ class TypeDecorator(TypeEngine):
             return self.impl.bind_processor(dialect)
 
     def result_processor(self, dialect, coltype):
+        """Returns the appropriate callable to handle the conversion of
+        values *after* being sent to the database.
+        
+        "Appropriate" in this case means that the callable will know
+        the dialect and coltype (baked in as a closure), and will know
+        which result processor to call, based on the following rule:
+        
+            * If this class's process_result_value is implemented,
+              it will be as the result processor.
+
+            * If this class's process_result_value is *not*
+              implemented,  then the normal result_processor method
+              from the underlying datatype will be used. (The data type
+              which this class is wrapping, as defined in the class
+              attribute "impl".)
+
+            :param dialect: Dialect instance in use.
+            :param coltype: An SQLAlchemy data type
+
+        This method is the reverse counterpart to the
+        :meth:`bind_processor` method of this class.
+        """
         if self.__class__.process_result_value.func_code \
             is not TypeDecorator.process_result_value.func_code:
             process_value = self.process_result_value
@@ -512,17 +594,30 @@ class TypeDecorator(TypeEngine):
         return self.coerce_compared_value(op, value)
 
     def copy(self):
+        """Clone this instance using the same class, copying all state."""
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
         return instance
 
     def get_dbapi_type(self, dbapi):
+        """Simply calls the same method of the wrapped data type
+        as specified in the class attribute "impl", with no
+        additional functionality. Parameters pass through
+        unchanged."""
         return self.impl.get_dbapi_type(dbapi)
 
     def copy_value(self, value):
+        """Simply calls the same method of the wrapped data type
+        as specified in the class attribute "impl", with no
+        additional functionality. Parameters pass through
+        unchanged."""
         return self.impl.copy_value(value)
 
     def compare_values(self, x, y):
+        """Simply calls the same method of the wrapped data type
+        as specified in the class attribute "impl", with no
+        additional functionality. Parameters pass through
+        unchanged."""
         return self.impl.compare_values(x, y)
 
     def is_mutable(self):
@@ -542,6 +637,9 @@ class TypeDecorator(TypeEngine):
         return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
+        """
+        #todo
+        """
         op, typ =self.impl._adapt_expression(op, othertype)
         if typ is self.impl:
             return op, self

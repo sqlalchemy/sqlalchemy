@@ -388,6 +388,23 @@ for defining entirely new database types:
    :inherited-members:
    :show-inheritance:
 
+Customizing Existing Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Subclassing existing types is not recommended;
+instead, create a ::class:: TypeDecorator subclass
+to wrap existing types using a decorator.
+Override ::meth:: process_bind_param and meth:: process_result_value 
+to define custom behavior for how data gets converted
+going to and from the database.
+
+.. autoclass:: TypeDecorator
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :show-inheritance:
+
+
 Base Type API
 --------------
 
