@@ -2,7 +2,7 @@ from sqlalchemy.util import topological
 from test.lib import TestBase
 from test.lib.testing import assert_raises, eq_
 from test.lib.util import conforms_partial_ordering
-from sqlalchemy import exc, util
+from sqlalchemy import exc
 
 class DependencySortTest(TestBase):
 
