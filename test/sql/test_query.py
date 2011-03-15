@@ -1025,6 +1025,7 @@ class PercentSchemaNamesTest(TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.skip_if(lambda: testing.against('postgresql'), "psycopg2 2.4 no longer accepts % in bind placeholders")
     def test_single_roundtrip(self):
         percent_table.insert().execute(
             {'percent%':5, 'spaces % more spaces':12},
@@ -1040,6 +1041,7 @@ class PercentSchemaNamesTest(TestBase):
         )
         self._assert_table()
 
+    @testing.skip_if(lambda: testing.against('postgresql'), "psycopg2 2.4 no longer accepts % in bind placeholders")
     @testing.crashes('mysql+mysqldb', 'MySQLdb handles executemany() inconsistently vs. execute()')
     def test_executemany_roundtrip(self):
         percent_table.insert().execute(
