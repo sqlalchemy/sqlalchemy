@@ -11,6 +11,7 @@ modules, classes, hierarchies, attributes, functions, and methods.
 import itertools
 import inspect
 import operator
+import sys
 import types
 import warnings
 from compat import update_wrapper, set_types, threading

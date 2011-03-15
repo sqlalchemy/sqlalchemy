@@ -6,7 +6,7 @@ from sqlalchemy import exc
 import sqlalchemy as sa
 from test.lib import testing
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
-    ForeignKeyConstraint, asc, Index
+    ForeignKeyConstraint, Index
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \

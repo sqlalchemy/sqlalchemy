@@ -101,6 +101,24 @@ from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
         DATE, BOOLEAN
 
+RESERVED_WORDS = set(
+    ["all", "analyse", "analyze", "and", "any", "array", "as", "asc",
+    "asymmetric", "both", "case", "cast", "check", "collate", "column",
+    "constraint", "create", "current_catalog", "current_date",
+    "current_role", "current_time", "current_timestamp", "current_user",
+    "default", "deferrable", "desc", "distinct", "do", "else", "end",
+    "except", "false", "fetch", "for", "foreign", "from", "grant", "group",
+    "having", "in", "initially", "intersect", "into", "leading", "limit",
+    "localtime", "localtimestamp", "new", "not", "null", "off", "offset",
+    "old", "on", "only", "or", "order", "placing", "primary", "references",
+    "returning", "select", "session_user", "some", "symmetric", "table",
+    "then", "to", "trailing", "true", "union", "unique", "user", "using",
+    "variadic", "when", "where", "window", "with", "authorization",
+    "between", "binary", "cross", "current_schema", "freeze", "full",
+    "ilike", "inner", "is", "isnull", "join", "left", "like", "natural",
+    "notnull", "outer", "over", "overlaps", "right", "similar", "verbose"
+    ])
+
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
@@ -649,6 +667,9 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
+
+    reserved_words = RESERVED_WORDS
+
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
             value = value[1:-1].\

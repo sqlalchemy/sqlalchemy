@@ -220,6 +220,16 @@ class CompileTest(TestBase, AssertsCompiledSQL):
                                     'anon_1 FROM t' % (field,
                                     compiled_expr))
 
+    def test_reserved_words(self):
+        table = Table("pg_table", MetaData(),
+            Column("col1", Integer),
+            Column("variadic", Integer))
+        x = select([table.c.col1, table.c.variadic])
+
+        self.assert_compile(x, 
+            '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
+
+
 class FloatCoercionTest(TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
     __dialect__ = postgresql.dialect()
