@@ -1,7 +1,7 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 import StringIO, unicodedata
 from sqlalchemy import types as sql_types
-from sqlalchemy import schema
+from sqlalchemy import schema, events, event
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData
 from test.lib.schema import Table, Column
@@ -1430,4 +1430,60 @@ class ComponentReflectionTest(TestBase):
     def test_get_table_oid_with_schema(self):
         self._test_get_table_oid('users', schema='test_schema')
 
+class ColumnEventsTest(TestBase):
+    @classmethod
+    def setup_class(cls):
+        cls.metadata = MetaData()
+        cls.to_reflect = Table(
+            'to_reflect',
+            cls.metadata,
+            Column('x', sa.Integer, primary_key=True),
+        )
+        cls.metadata.create_all(testing.db)
 
+    @classmethod
+    def teardown_class(cls):
+        cls.metadata.drop_all(testing.db)
+
+    def teardown(self):
+        events.SchemaEventTarget.dispatch._clear()
+
+    def _do_test(self, col, update, assert_):
+        # load the actual Table class, not the test
+        # wrapper
+        from sqlalchemy.schema import Table
+
+        m = MetaData(testing.db)
+        def column_reflect(table, column_info):
+            if column_info['name'] == col:
+                column_info.update(update)
+
+        t = Table('to_reflect', m, autoload=True, listeners=[
+            ('column_reflect', column_reflect),
+        ])
+        assert_(t)
+
+        m = MetaData(testing.db)
+        event.listen(Table, 'column_reflect', column_reflect)
+        t2 = Table('to_reflect', m, autoload=True)
+        assert_(t2)
+
+    def test_override_key(self):
+        self._do_test(
+            "x", {"key":"YXZ"},
+            lambda table: eq_(table.c.YXZ.name, "x")
+        )
+
+    def test_override_type(self):
+        def assert_(table):
+            assert isinstance(table.c.x.type, sa.String)
+        self._do_test(
+            "x", {"type":sa.String},
+            assert_
+        )
+
+    def test_override_info(self):
+        self._do_test(
+            "x", {"info":{"a":"b"}},
+            lambda table: eq_(table.c.x.info, {"a":"b"})
+        )

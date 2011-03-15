@@ -54,6 +54,21 @@ CHANGES
     constructor.   The method _constructor should
     be implemented in this case.
 
+  - Added new event "column_reflect" for Table objects.
+    Receives the info dictionary about a Column before
+    the object is generated within reflection, and allows
+    modification to the dictionary for control over
+    most aspects of the resulting Column including 
+    key, name, type, info dictionary.  [ticket:2095]
+
+  - To help with the "column_reflect" event being used
+    with specific Table objects instead of all instances
+    of Table, listeners can be added to a Table object 
+    inline with its construction using a new argument 
+    "listeners", a list of tuples of the form 
+    (<eventname>, <fn>), which are applied to the Table 
+    before the reflection process begins.
+
 - dialect
   - Changed exception raised to ArgumentError when an
     invalid dialect is specified. [ticket:2060]
