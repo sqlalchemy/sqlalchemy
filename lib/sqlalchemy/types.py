@@ -390,7 +390,17 @@ class TypeDecorator(TypeEngine):
     __visit_name__ = "type_decorator"
 
     def __init__(self, *args, **kwargs):
-        """#todo"""
+        """Initialize the instance accepting the same kind of parameters
+        as the type being wrapped (as specified in the 'impl' class
+        attribute).
+        
+        Assuming the class level 'impl' is a callable (the common case),
+        it will be instantiated and assigned to a self.impl instance
+        attribute (thus overriding the class attribute of the same name).
+        
+        If the class level 'impl' is not a callable (the unusual case),
+        it will be assigned to the same instance attribute 'as-is'.
+        """
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations "
                                  "require a class-level variable "
