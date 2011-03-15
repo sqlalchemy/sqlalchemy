@@ -165,6 +165,18 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(x,
             '''SELECT "SomeLabel" FROM (SELECT 'FooCol' AS "SomeLabel" FROM "ImATable")''')
 
+    def test_reserved_words(self):
+        metadata = MetaData()
+        table = Table("ImATable", metadata,
+            Column("col1", Integer),
+            Column("from", Integer, key="morf"),
+            Column("louisville", Integer),
+            Column("order", Integer))
+        x = select([table.c.col1, table.c.morf, table.c.louisville, table.c.order])
+
+        self.assert_compile(x, 
+            '''SELECT "ImATable".col1, "ImATable"."from", "ImATable".louisville, "ImATable"."order" FROM "ImATable"''')
+        
 
 class PreparerTest(TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""

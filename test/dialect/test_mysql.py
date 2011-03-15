@@ -558,6 +558,18 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             meta.drop_all()
 
+class CompileTest(TestBase, AssertsCompiledSQL):
+
+    __dialect__ = mysql.dialect()
+
+    def test_reserved_words(self):
+        table = Table("mysql_table", MetaData(),
+            Column("col1", Integer),
+            Column("master_ssl_verify_server_cert", Integer))
+        x = select([table.c.col1, table.c.master_ssl_verify_server_cert])
+
+        self.assert_compile(x, 
+            '''SELECT mysql_table.col1, mysql_table.`master_ssl_verify_server_cert` FROM mysql_table''')
 
     def test_set(self):
         """Exercise the SET type."""

@@ -20,6 +20,124 @@ from sqlalchemy.sql import compiler, text
 from sqlalchemy.engine import default, reflection
 from sqlalchemy import types as sqltypes
 
+RESERVED_WORDS = set(
+    ["abs", "absolute", "access", "access_method", "acos", "active", "add",
+    "address", "add_months", "admin", "after", "aggregate", "alignment",
+    "all", "allocate", "all_rows", "altere", "and", "ansi", "any", "append",
+    "array", "as", "asc", "ascii", "asin", "at", "atan", "atan2", "attach",
+    "attributes", "audit", "authentication", "authid", "authorization",
+    "authorized", "auto", "autofree", "auto_reprepare", "auto_stat_mode",
+    "avg", "avoid_execute", "avoid_fact", "avoid_full", "avoid_hash",
+    "avoid_index", "avoid_index_sj", "avoid_multi_index", "avoid_nl",
+    "avoid_star_join", "avoid_subqf", "based", "before", "begin",
+    "between", "bigint", "bigserial", "binary", "bitand", "bitandnot",
+    "bitnot", "bitor", "bitxor", "blob", "blobdir", "boolean", "both",
+    "bound_impl_pdq", "buffered", "builtin", "by", "byte", "cache", "call",
+    "cannothash", "cardinality", "cascade", "case", "cast", "ceil", "char",
+    "character", "character_length", "char_length", "check", "class",
+    "class_origin", "client", "clob", "clobdir", "close", "cluster",
+    "clustersize", "cobol", "codeset", "collation", "collection",
+    "column", "columns", "commit", "committed", "commutator", "component",
+    "components", "concat", "concurrent", "connect", "connection",
+    "connection_name", "connect_by_iscycle", "connect_by_isleaf",
+    "connect_by_rootconst", "constraint", "constraints", "constructor",
+    "context", "continue", "copy", "cos", "costfunc", "count", "crcols",
+    "create", "cross", "current", "current_role", "currval", "cursor",
+    "cycle", "database", "datafiles", "dataskip", "date", "datetime",
+    "day", "dba", "dbdate", "dbinfo", "dbpassword", "dbsecadm",
+    "dbservername", "deallocate", "debug", "debugmode", "debug_env", "dec",
+    "decimal", "declare", "decode", "decrypt_binary", "decrypt_char",
+    "dec_t", "default", "default_role", "deferred", "deferred_prepare",
+    "define", "delay", "delete", "deleting", "delimited", "delimiter",
+    "deluxe", "desc", "describe", "descriptor", "detach", "diagnostics",
+    "directives", "dirty", "disable", "disabled", "disconnect", "disk",
+    "distinct", "distributebinary", "distributesreferences",
+    "distributions", "document", "domain", "donotdistribute", "dormant",
+    "double", "drop", "dtime_t", "each", "elif", "else", "enabled",
+    "encryption", "encrypt_aes", "encrypt_tdes", "end", "enum",
+    "environment", "error", "escape", "exception", "exclusive", "exec",
+    "execute", "executeanywhere", "exemption", "exists", "exit", "exp",
+    "explain", "explicit", "express", "expression", "extdirectives",
+    "extend", "extent", "external", "fact", "false", "far", "fetch",
+    "file", "filetoblob", "filetoclob", "fillfactor", "filtering", "first",
+    "first_rows", "fixchar", "fixed", "float", "floor", "flush", "for",
+    "force", "forced", "force_ddl_exec", "foreach", "foreign", "format",
+    "format_units", "fortran", "found", "fraction", "fragment",
+    "fragments", "free", "from", "full", "function", "general", "get",
+    "gethint", "global", "go", "goto", "grant", "greaterthan",
+    "greaterthanorequal", "group", "handlesnulls", "hash", "having", "hdr",
+    "hex", "high", "hint", "hold", "home", "hour", "idslbacreadarray",
+    "idslbacreadset", "idslbacreadtree", "idslbacrules",
+    "idslbacwritearray", "idslbacwriteset", "idslbacwritetree",
+    "idssecuritylabel", "if", "ifx_auto_reprepare", "ifx_batchedread_table",
+    "ifx_int8_t", "ifx_lo_create_spec_t", "ifx_lo_stat_t", "immediate",
+    "implicit", "implicit_pdq", "in", "inactive", "increment", "index",
+    "indexes", "index_all", "index_sj", "indicator", "informix", "init",
+    "initcap", "inline", "inner", "inout", "insert", "inserting", "instead",
+    "int", "int8", "integ", "integer", "internal", "internallength",
+    "interval", "into", "intrvl_t", "is", "iscanonical", "isolation",
+    "item", "iterator", "java", "join", "keep", "key", "label", "labeleq",
+    "labelge", "labelglb", "labelgt", "labelle", "labellt", "labellub",
+    "labeltostring", "language", "last", "last_day", "leading", "left",
+    "length", "lessthan", "lessthanorequal", "let", "level", "like",
+    "limit", "list", "listing", "load", "local", "locator", "lock", "locks",
+    "locopy", "loc_t", "log", "log10", "logn", "long", "loop", "lotofile",
+    "low", "lower", "lpad", "ltrim", "lvarchar", "matched", "matches",
+    "max", "maxerrors", "maxlen", "maxvalue", "mdy", "median", "medium",
+    "memory", "memory_resident", "merge", "message_length", "message_text",
+    "middle", "min", "minute", "minvalue", "mod", "mode", "moderate",
+    "modify", "module", "money", "month", "months_between", "mounting",
+    "multiset", "multi_index", "name", "nchar", "negator", "new", "next",
+    "nextval", "next_day", "no", "nocache", "nocycle", "nomaxvalue",
+    "nomigrate", "nominvalue", "none", "non_dim", "non_resident", "noorder",
+    "normal", "not", "notemplatearg", "notequal", "null", "nullif",
+    "numeric", "numrows", "numtodsinterval", "numtoyminterval", "nvarchar",
+    "nvl", "octet_length", "of", "off", "old", "on", "online", "only",
+    "opaque", "opclass", "open", "optcompind", "optical", "optimization",
+    "option", "or", "order", "ordered", "out", "outer", "output",
+    "override", "page", "parallelizable", "parameter", "partition",
+    "pascal", "passedbyvalue", "password", "pdqpriority", "percaltl_cos",
+    "pipe", "pli", "pload", "policy", "pow", "power", "precision",
+    "prepare", "previous", "primary", "prior", "private", "privileges",
+    "procedure", "properties", "public", "put", "raise", "range", "raw",
+    "read", "real", "recordend", "references", "referencing", "register",
+    "rejectfile", "relative", "release", "remainder", "rename",
+    "reoptimization", "repeatable", "replace", "replication", "reserve",
+    "resolution", "resource", "restart", "restrict", "resume", "retain",
+    "retainupdatelocks", "return", "returned_sqlstate", "returning",
+    "returns", "reuse", "revoke", "right", "robin", "role", "rollback",
+    "rollforward", "root", "round", "routine", "row", "rowid", "rowids",
+    "rows", "row_count", "rpad", "rtrim", "rule", "sameas", "samples",
+    "sampling", "save", "savepoint", "schema", "scroll", "seclabel_by_comp",
+    "seclabel_by_name", "seclabel_to_char", "second", "secondary",
+    "section", "secured", "security", "selconst", "select", "selecting",
+    "selfunc", "selfuncargs", "sequence", "serial", "serial8",
+    "serializable", "serveruuid", "server_name", "session", "set",
+    "setsessionauth", "share", "short", "siblings", "signed", "sin",
+    "sitename", "size", "skall", "skinhibit", "skip", "skshow",
+    "smallfloat", "smallint", "some", "specific", "sql", "sqlcode",
+    "sqlcontext", "sqlerror", "sqlstate", "sqlwarning", "sqrt",
+    "stability", "stack", "standard", "start", "star_join", "statchange",
+    "statement", "static", "statistics", "statlevel", "status", "stdev",
+    "step", "stop", "storage", "store", "strategies", "string",
+    "stringtolabel", "struct", "style", "subclass_origin", "substr",
+    "substring", "sum", "support", "sync", "synonym", "sysdate",
+    "sysdbclose", "sysdbopen", "system", "sys_connect_by_path", "table",
+    "tables", "tan", "task", "temp", "template", "test", "text", "then",
+    "time", "timeout", "to", "today", "to_char", "to_date",
+    "to_dsinterval", "to_number", "to_yminterval", "trace", "trailing",
+    "transaction", "transition", "tree", "trigger", "triggers", "trim",
+    "true", "trunc", "truncate", "trusted", "type", "typedef", "typeid",
+    "typename", "typeof", "uid", "uncommitted", "under", "union",
+    "unique", "units", "unknown", "unload", "unlock", "unsigned",
+    "update", "updating", "upon", "upper", "usage", "use",
+    "uselastcommitted", "user", "use_hash", "use_nl", "use_subqf",
+    "using", "value", "values", "var", "varchar", "variable", "variance",
+    "variant", "varying", "vercols", "view", "violations", "void",
+    "volatile", "wait", "warning", "weekday", "when", "whenever", "where",
+    "while", "with", "without", "work", "write", "writedown", "writeup",
+    "xadatasource", "xid", "xload", "xunload", "year"
+    ])
 
 class InfoDateTime(sqltypes.DateTime):
     def bind_processor(self, dialect):
@@ -213,6 +331,10 @@ class InfoDDLCompiler(compiler.DDLCompiler):
             text += "CONSTRAINT %s " % self.preparer.format_constraint(constraint)
         return text
 
+class InformixIdentifierPreparer(compiler.IdentifierPreparer):
+
+    reserved_words = RESERVED_WORDS
+
 
 class InformixDialect(default.DefaultDialect):
     name = 'informix'
@@ -224,6 +346,7 @@ class InformixDialect(default.DefaultDialect):
     ddl_compiler = InfoDDLCompiler
     colspecs = colspecs
     ischema_names = ischema_names
+    preparer = InformixIdentifierPreparer
     default_paramstyle = 'qmark'
 
     def __init__(self, has_transactions=True, *args, **kwargs):
