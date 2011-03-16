@@ -13,7 +13,9 @@ from testing import \
      skip_if,\
      only_on,\
      fails_on,\
-     fails_on_everything_except
+     fails_on_everything_except,\
+     fails_if
+from sqlalchemy import util
 
 import testing
 import sys
@@ -213,7 +215,7 @@ def offset(fn):
 def window_functions(fn):
     return _chain_decorators_on(
         fn,
-        only_on(('postgresql', 'mssql', 'oracle'), 
+        only_on(('postgresql', 'mssql', 'oracle'),
                 "Backend does not support window functions"),
     )
 
@@ -288,7 +290,8 @@ def dbapi_lastrowid(fn):
     return _chain_decorators_on(
         fn,
         fails_on_everything_except('mysql+mysqldb', 'mysql+oursql',
-                                   'sqlite+pysqlite', 'mysql+pymysql')
+                                   'sqlite+pysqlite', 'mysql+pymysql'),
+        fails_if(lambda: util.pypy),
     )
 
 def sane_multi_rowcount(fn):
@@ -303,7 +306,7 @@ def nullsordering(fn):
         fn,
         fails_on_everything_except('postgresql', 'oracle', 'firebird')
     )
- 
+
 def reflects_pk_names(fn):
     """Target driver reflects the name of primary key constraints."""
     return _chain_decorators_on(

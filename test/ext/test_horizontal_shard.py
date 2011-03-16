@@ -203,8 +203,8 @@ class ShardTest(TestBase):
 
         sess.query(WeatherLocation).all()
         eq_(
-            canary, 
-            ['asia', 'north_america', 'north_america', 
-            'europe', 'europe', 'south_america', 
+            canary,
+            ['asia', 'north_america', 'north_america',
+            'europe', 'europe', 'south_america',
             'south_america']
         )
