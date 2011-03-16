@@ -3,7 +3,7 @@ from sqlalchemy import pool, interfaces, create_engine, select, event
 import sqlalchemy as tsa
 from test.lib import TestBase, testing
 from test.lib.util import gc_collect, lazy_gc
-from test.lib.testing import eq_
+from test.lib.testing import eq_, assert_raises
 
 mcid = 1
 class MockDBAPI(object):
@@ -939,6 +939,24 @@ class SingletonThreadPoolTest(PoolTestBase):
         for th in threads:
             th.join()
         assert len(p._all_conns) == 3
+
+class AssertionPoolTest(PoolTestBase):
+    def test_connect_error(self):
+        dbapi = MockDBAPI()
+        p = pool.AssertionPool(creator = lambda: dbapi.connect('foo.db'))
+        c1 = p.connect()
+        assert_raises(AssertionError, p.connect)
+
+    def test_connect_multiple(self):
+        dbapi = MockDBAPI()
+        p = pool.AssertionPool(creator = lambda: dbapi.connect('foo.db'))
+        c1 = p.connect()
+        c1.close()
+        c2 = p.connect()
+        c2.close()
+
+        c3 = p.connect()
+        assert_raises(AssertionError, p.connect)
 
 class NullPoolTest(PoolTestBase):
     def test_reconnect(self):

@@ -78,6 +78,9 @@ CHANGES
     (<eventname>, <fn>), which are applied to the Table 
     before the reflection process begins.
 
+- engine
+  - Fixed AssertionPool regression bug.  [ticket:2097]
+
 - dialect
   - Changed exception raised to ArgumentError when an
     invalid dialect is specified. [ticket:2060]

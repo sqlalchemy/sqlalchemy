@@ -60,8 +60,6 @@ def clear_managers():
 class Pool(log.Identified):
     """Abstract base class for connection pools."""
 
-    _no_finalize = False
-
     def __init__(self, 
                     creator, recycle=-1, echo=None, 
                     use_threadlocal=False,
@@ -323,9 +321,6 @@ class _ConnectionRecord(object):
 
 def _finalize_fairy(connection, connection_record, pool, ref, echo):
     _refs.discard(connection_record)
-
-    if pool._no_finalize:
-        return
 
     if ref is not None and \
                 connection_record.fairy is not ref:
@@ -826,8 +821,6 @@ class AssertionPool(Pool):
     than desired.
 
     """
-    _no_finalize = True
-
     def __init__(self, *args, **kw):
         self._conn = None
         self._checked_out = False
