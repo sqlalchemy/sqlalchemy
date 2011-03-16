@@ -482,6 +482,9 @@ CHANGES
 
   - Added RESERVED_WORDS for postgresql dialect. [ticket:2092]
 
+  - Fixed the BIT type to allow a "length" parameter, "varying"
+    parameter.  Reflection also fixed.  [ticket:2073]
+
 - informix
 
 - Added RESERVED_WORDS informix dialect. [ticket:2092]

@@ -1617,11 +1617,11 @@ class TimePrecisionTest(TestBase, AssertsCompiledSQL):
             self.assert_compile(type_, expected)
 
     @testing.only_on('postgresql', 'DB specific feature')
+    @testing.provide_metadata
     def test_reflection(self):
-        m1 = MetaData(testing.db)
         t1 = Table(
             't1',
-            m1,
+            metadata,
             Column('c1', postgresql.TIME()),
             Column('c2', postgresql.TIME(precision=5)),
             Column('c3', postgresql.TIME(timezone=True, precision=5)),
@@ -1631,23 +1631,20 @@ class TimePrecisionTest(TestBase, AssertsCompiledSQL):
                    precision=5)),
             )
         t1.create()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('t1', m2, autoload=True)
-            eq_(t2.c.c1.type.precision, None)
-            eq_(t2.c.c2.type.precision, 5)
-            eq_(t2.c.c3.type.precision, 5)
-            eq_(t2.c.c4.type.precision, None)
-            eq_(t2.c.c5.type.precision, 5)
-            eq_(t2.c.c6.type.precision, 5)
-            eq_(t2.c.c1.type.timezone, False)
-            eq_(t2.c.c2.type.timezone, False)
-            eq_(t2.c.c3.type.timezone, True)
-            eq_(t2.c.c4.type.timezone, False)
-            eq_(t2.c.c5.type.timezone, False)
-            eq_(t2.c.c6.type.timezone, True)
-        finally:
-            t1.drop()
+        m2 = MetaData(testing.db)
+        t2 = Table('t1', m2, autoload=True)
+        eq_(t2.c.c1.type.precision, None)
+        eq_(t2.c.c2.type.precision, 5)
+        eq_(t2.c.c3.type.precision, 5)
+        eq_(t2.c.c4.type.precision, None)
+        eq_(t2.c.c5.type.precision, 5)
+        eq_(t2.c.c6.type.precision, 5)
+        eq_(t2.c.c1.type.timezone, False)
+        eq_(t2.c.c2.type.timezone, False)
+        eq_(t2.c.c3.type.timezone, True)
+        eq_(t2.c.c4.type.timezone, False)
+        eq_(t2.c.c5.type.timezone, False)
+        eq_(t2.c.c6.type.timezone, True)
 
 class ArrayTest(TestBase, AssertsExecutionResults):
 
@@ -1966,7 +1963,7 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         finally:
             test_table.drop(checkfirst=True)
 
-class SpecialTypesTest(TestBase, ComparesTables):
+class SpecialTypesTest(TestBase, ComparesTables, AssertsCompiledSQL):
     """test DDL and reflection of PG-specific types """
 
     __only_on__ = 'postgresql'
@@ -1988,11 +1985,12 @@ class SpecialTypesTest(TestBase, ComparesTables):
                 return "INTERVAL DAY TO SECOND"
 
         table = Table('sometable', metadata,
-            Column('id', postgresql.PGUuid, primary_key=True),
-            Column('flag', postgresql.PGBit),
-            Column('addr', postgresql.PGInet),
-            Column('addr2', postgresql.PGMacAddr),
-            Column('addr3', postgresql.PGCidr),
+            Column('id', postgresql.UUID, primary_key=True),
+            Column('flag', postgresql.BIT),
+            Column('bitstring', postgresql.BIT(4)),
+            Column('addr', postgresql.INET),
+            Column('addr2', postgresql.MACADDR),
+            Column('addr3', postgresql.CIDR),
             Column('doubleprec', postgresql.DOUBLE_PRECISION),
             Column('plain_interval', postgresql.INTERVAL),
             Column('year_interval', y2m()),
@@ -2018,6 +2016,36 @@ class SpecialTypesTest(TestBase, ComparesTables):
         self.assert_tables_equal(table, t, strict_types=True)
         assert t.c.plain_interval.type.precision is None
         assert t.c.precision_interval.type.precision == 3
+        assert t.c.bitstring.type.length == 4
+
+    def test_bit_compile(self):
+        pairs = [(postgresql.BIT(), 'BIT(1)'),
+                 (postgresql.BIT(5), 'BIT(5)'),
+                 (postgresql.BIT(varying=True), 'BIT VARYING'),
+                 (postgresql.BIT(5, varying=True), 'BIT VARYING(5)'),
+                ]
+        for type_, expected in pairs:
+            self.assert_compile(type_, expected)
+
+    @testing.provide_metadata
+    def test_bit_reflection(self):
+        t1 = Table('t1', metadata,
+        Column('bit1', postgresql.BIT()),
+        Column('bit5', postgresql.BIT(5)),
+        Column('bitvarying', postgresql.BIT(varying=True)),
+        Column('bitvarying5', postgresql.BIT(5, varying=True)),
+        )
+        t1.create()
+        m2 = MetaData(testing.db)
+        t2 = Table('t1', m2, autoload=True)
+        eq_(t2.c.bit1.type.length, 1)
+        eq_(t2.c.bit1.type.varying, False)
+        eq_(t2.c.bit5.type.length, 5)
+        eq_(t2.c.bit5.type.varying, False)
+        eq_(t2.c.bitvarying.type.length, None)
+        eq_(t2.c.bitvarying.type.varying, True)
+        eq_(t2.c.bitvarying5.type.length, 5)
+        eq_(t2.c.bitvarying5.type.varying, True)
 
 class UUIDTest(TestBase):
     """Test the bind/return values of the UUID type."""
@@ -2211,4 +2239,3 @@ class TupleTest(TestBase):
                 ).scalar(),
                 exp
             )
-

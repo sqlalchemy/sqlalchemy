@@ -178,8 +178,14 @@ PGInterval = INTERVAL
 
 class BIT(sqltypes.TypeEngine):
     __visit_name__ = 'BIT'
-    def __init__(self, length=1):
-        self.length= length
+    def __init__(self, length=None, varying=False):
+        if not varying:
+            # BIT without VARYING defaults to length 1
+            self.length = length or 1
+        else:
+            # but BIT VARYING can be unlimited-length, so no default
+            self.length = length
+        self.varying = varying
 
 PGBit = BIT
 
@@ -404,7 +410,8 @@ ischema_names = {
     'inet': INET,
     'cidr': CIDR,
     'uuid': UUID,
-    'bit':BIT,
+    'bit': BIT,
+    'bit varying': BIT,
     'macaddr': MACADDR,
     'double precision' : DOUBLE_PRECISION,
     'timestamp' : TIMESTAMP,
@@ -648,7 +655,13 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             return "INTERVAL"
 
     def visit_BIT(self, type_):
-        return "BIT(%d)" % type_.length
+        if type_.varying:
+            compiled = "BIT VARYING"
+            if type_.length is not None:
+                compiled += "(%d)" % type_.length
+        else:
+            compiled = "BIT(%d)" % type_.length
+        return compiled
 
     def visit_UUID(self, type_):
         return "UUID"
@@ -1124,6 +1137,7 @@ class PGDialect(default.DefaultDialect):
             if charlen:
                 charlen = charlen.group(1)
             kwargs = {}
+            args = None
 
             if attype == 'numeric':
                 if charlen:
@@ -1147,6 +1161,12 @@ class PGDialect(default.DefaultDialect):
                 if charlen:
                     kwargs['precision'] = int(charlen)
                 args = ()
+            elif attype == 'bit varying':
+                kwargs['varying'] = True
+                if charlen:
+                    args = (int(charlen),)
+                else:
+                    args = ()
             elif attype in ('interval','interval year to month',
                                 'interval day to second'):
                 if charlen:
