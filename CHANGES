@@ -465,6 +465,9 @@ CHANGES
     of an insert()/update() statement will also use the new
     compilation rules. [ticket:2042]
 
+  - Added accessors to ResultProxy "returns_rows", "is_insert"
+    [ticket:2089]
+
 - postgresql
   - When explicit sequence execution derives the name 
     of the auto-generated sequence of a SERIAL column, 
