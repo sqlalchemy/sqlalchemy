@@ -17,7 +17,10 @@ if jython:
     # "lazy" gc, for VM's that don't GC on refcount == 0
     lazy_gc = gc_collect
 elif pypy:
-    lazy_gc = gc_collect = gc.collect
+    def gc_collect(*args):
+        gc.collect()
+        gc.collect()
+    lazy_gc = gc_collect
 else:
     # assume CPython - straight gc.collect, lazy_gc() is a pass
     gc_collect = gc.collect

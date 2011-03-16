@@ -11,6 +11,7 @@ from sqlalchemy import Integer, String, Sequence
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
     exc as orm_exc, object_session
+from sqlalchemy.util import pypy
 from test.engine import _base as engine_base
 from test.orm import _base, _fixtures
 
@@ -1100,6 +1101,7 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(users.select().execute().fetchall(), [(user.id, 'u2')])
 
     @testing.uses_deprecated()
+    @testing.fails_if(lambda: pypy, "pypy has a real GC")
     @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
     @testing.resolve_artifact_names
     def test_prune(self):
