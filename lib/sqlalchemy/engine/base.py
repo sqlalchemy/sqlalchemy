@@ -2322,6 +2322,8 @@ class ResultProxy(object):
         :meth:`~.ResultProxy.fetchone`, 
         :meth:`~.ResultProxy.fetchmany`
         :meth:`~.ResultProxy.fetchall`.
+        
+        New in 0.6.7.
 
         """
         return self._metadata is not None
@@ -2336,6 +2338,8 @@ class ResultProxy(object):
         :attr:`inserted_primary_key` attribute is accessible,
         assuming the statement did not include
         a user defined "returning" construct.
+
+        New in 0.6.7.
         
         """
         return self.context.isinsert
