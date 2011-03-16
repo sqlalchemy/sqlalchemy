@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Routines to help with the creation, loading and introspection of 
+"""Routines to help with the creation, loading and introspection of
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
@@ -61,7 +61,7 @@ def get_cls_kwargs(cls):
     pass along unrecognized keywords to it's base classes, and the collection
     process is repeated recursively on each of the bases.
 
-    Uses a subset of inspect.getargspec() to cut down on method overhead. 
+    Uses a subset of inspect.getargspec() to cut down on method overhead.
     No anonymous tuple arguments please !
 
     """
@@ -77,7 +77,9 @@ def get_cls_kwargs(cls):
     while stack:
         class_ = stack.pop()
         ctr = class_.__dict__.get('__init__', False)
-        if not ctr or not isinstance(ctr, types.FunctionType):
+        if (not ctr or
+            not isinstance(ctr, types.FunctionType) or
+            not isinstance(ctr.func_code, types.CodeType)):
             stack.update(class_.__bases__)
             continue
 
@@ -270,10 +272,10 @@ def class_hierarchy(cls):
     return list(hier)
 
 def iterate_attributes(cls):
-    """iterate all the keys and attributes associated 
+    """iterate all the keys and attributes associated
        with a class, without using getattr().
 
-       Does not use getattr() so that class-sensitive 
+       Does not use getattr() so that class-sensitive
        descriptors (i.e. property.__get__()) are not called.
 
     """
@@ -498,13 +500,13 @@ class importlater(object):
     @memoized_property
     def module(self):
         if self._il_addtl:
-            m = __import__(self._il_path, globals(), locals(), 
+            m = __import__(self._il_path, globals(), locals(),
                                 [self._il_addtl])
             try:
                 return getattr(m, self._il_addtl)
             except AttributeError:
                 raise ImportError(
-                        "Module %s has no attribute '%s'" % 
+                        "Module %s has no attribute '%s'" %
                         (self._il_path, self._il_addtl)
                     )
         else:
@@ -518,7 +520,7 @@ class importlater(object):
             attr = getattr(self.module, key)
         except AttributeError:
             raise AttributeError(
-                        "Module %s has no attribute '%s'" % 
+                        "Module %s has no attribute '%s'" %
                         (self._il_path, key)
                     )
         self.__dict__[key] = attr
@@ -537,7 +539,7 @@ def asbool(obj):
     return bool(obj)
 
 def bool_or_str(*text):
-    """Return a callable that will evaulate a string as 
+    """Return a callable that will evaulate a string as
     boolean, or one of a set of "alternate" string values.
 
     """
@@ -610,11 +612,11 @@ def assert_arg_type(arg, argtype, name):
     else:
         if isinstance(argtype, tuple):
             raise exc.ArgumentError(
-                            "Argument '%s' is expected to be one of type %s, got '%s'" % 
+                            "Argument '%s' is expected to be one of type %s, got '%s'" %
                             (name, ' or '.join("'%s'" % a for a in argtype), type(arg)))
         else:
             raise exc.ArgumentError(
-                            "Argument '%s' is expected to be of type '%s', got '%s'" % 
+                            "Argument '%s' is expected to be of type '%s', got '%s'" %
                             (name, argtype, type(arg)))
 
 
@@ -653,7 +655,7 @@ class classproperty(property):
     on classes rather than instances.
 
     The decorator is currently special when using the declarative
-    module, but note that the 
+    module, but note that the
     :class:`~.sqlalchemy.ext.declarative.declared_attr`
     decorator should be used for this purpose with declarative.
 
@@ -699,9 +701,9 @@ class symbol(object):
     is strictly so that Sphinx autoattr picks up the docstring we want
     (it doesn't appear to pick up the in-module docstring if the datamember
     is in a different module - autoattribute also blows up completely).
-    If Sphinx fixes/improves this then we would no longer need 
+    If Sphinx fixes/improves this then we would no longer need
     ``doc`` here.
-    
+
     """
     symbols = {}
     _lock = threading.Lock()
@@ -741,11 +743,11 @@ def warn_exception(func, *args, **kwargs):
 def warn(msg, stacklevel=3):
     """Issue a warning.
 
-    If msg is a string, :class:`.exc.SAWarning` is used as 
+    If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
     .. note:: This function is swapped out when the test suite
-       runs, with a compatible version that uses 
+       runs, with a compatible version that uses
        warnings.warn_explicit, so that the warnings registry can
        be controlled.
 

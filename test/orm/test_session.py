@@ -70,13 +70,13 @@ class SessionTest(_fixtures.FixtureTest):
     def test_object_session_raises(self):
         assert_raises(
             orm_exc.UnmappedInstanceError,
-            object_session, 
+            object_session,
             object()
         )
 
         assert_raises(
             orm_exc.UnmappedInstanceError,
-            object_session, 
+            object_session,
             User()
         )
 
@@ -270,7 +270,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.add(u1)
         assert u1 in sess.new
 
-        # test expired attributes 
+        # test expired attributes
         # get unexpired
         u1 = sess.query(User).first()
         sess.expire(u1)
@@ -327,7 +327,7 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
-        """test that an expression which is dependent on object state is 
+        """test that an expression which is dependent on object state is
         evaluated after the session autoflushes.   This is the lambda
         inside of strategies.py lazy_clause.
 
@@ -828,10 +828,10 @@ class SessionTest(_fixtures.FixtureTest):
         assert sess.connection(mapper=Address, bind=e1).engine is e1
         assert sess.connection(mapper=Address).engine is e2
         assert sess.connection(clause=addresses.select()).engine is e2
-        assert sess.connection(mapper=User, 
+        assert sess.connection(mapper=User,
                                 clause=addresses.select()).engine is e1
-        assert sess.connection(mapper=User, 
-                                clause=addresses.select(), 
+        assert sess.connection(mapper=User,
+                                clause=addresses.select(),
                                 bind=e2).engine is e2
 
         sess.close()
