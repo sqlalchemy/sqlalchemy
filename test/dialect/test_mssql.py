@@ -5,7 +5,7 @@ import os
 import re
 import warnings
 from sqlalchemy import *
-from sqlalchemy import types, exc, schema
+from sqlalchemy import types, exc, schema, event
 from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
@@ -15,6 +15,7 @@ from test.lib import *
 from test.lib.testing import eq_, emits_warning_on, \
     assert_raises_message
 from sqlalchemy.util.compat import decimal
+from sqlalchemy.engine.reflection import Inspector
 
 class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -1664,3 +1665,36 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         stream = fp.read(len)
         fp.close()
         return stream
+
+
+class ReflectHugeViewTest(TestBase):
+    def setup(self):
+        self.col_num = 150
+
+        self.metadata = MetaData(testing.db)
+        t = Table('base_table', self.metadata,
+                *[
+                    Column("long_named_column_number_%d" % i, Integer)
+                    for i in xrange(self.col_num)
+                ]
+        )
+        self.view_str = view_str = \
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
+            ",".join("long_named_column_number_%d" % i 
+                        for i in xrange(self.col_num))
+            )
+        assert len(view_str) > 4000
+
+        event.listen(t, 'after_create', DDL(view_str) )
+        event.listen(t, 'before_drop', DDL("DROP VIEW huge_named_view") )
+
+        self.metadata.create_all()
+
+    def teardown(self):
+        self.metadata.drop_all()
+
+    def test_inspect_view_definition(self):
+        inspector = Inspector.from_engine(testing.db)
+        view_def = inspector.get_view_definition("huge_named_view")
+        eq_(view_def, self.view_str)
+

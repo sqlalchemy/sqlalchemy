@@ -498,6 +498,13 @@ CHANGES
 
   - Added RESERVED_WORDS informix dialect. [ticket:2092]
 
+- mssql
+  - Rewrote the query used to get the definition of a view,
+    typically when using the Inspector interface, to
+    use sys.sql_modules instead of the information schema,
+    thereby allowing views definitions longer than 4000 
+    characters to be fully returned.  [ticket:2071]
+
 - mysql
   - oursql dialect accepts the same "ssl" arguments in 
     create_engine() as that of MySQLdb.  [ticket:2047]

@@ -130,14 +130,14 @@ which has triggers::
         # ...,
         implicit_returning=False
     )
-    
+
 Declarative form::
 
     class MyClass(Base):
         # ...
         __table_args__ = {'implicit_returning':False}
-        
-        
+
+
 This option can also be specified engine-wide using the
 ``implicit_returning=False`` argument on :func:`.create_engine`.
 
@@ -1225,14 +1225,25 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     def get_view_definition(self, connection, viewname, schema=None, **kw):
         current_schema = schema or self.default_schema_name
-        views = ischema.views
-        s = sql.select([views.c.view_definition],
-            sql.and_(
-                views.c.table_schema == current_schema,
-                views.c.table_name == viewname
-            ),
+
+        rp = connection.execute(
+            sql.text(
+                "select definition from sys.sql_modules as mod, "
+                "sys.views as views, "
+                "sys.schemas as sch"
+                " where "
+                "mod.object_id=views.object_id and "
+                "views.schema_id=sch.schema_id and "
+                "views.name=:viewname and sch.name=:schname",
+                bindparams=[
+                    sql.bindparam('viewname', viewname, 
+                            sqltypes.String(convert_unicode=True)),
+                    sql.bindparam('schname', current_schema, 
+                            sqltypes.String(convert_unicode=True))
+                ]
+            )
         )
-        rp = connection.execute(s)
+
         if rp:
             view_def = rp.scalar()
             return view_def
