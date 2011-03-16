@@ -112,7 +112,11 @@ class MapperTest(_fixtures.FixtureTest):
             'user':relationship(User)
         })
 
-        hasattr(Address.user, 'property')
+        try:
+            hasattr(Address.user, 'property')
+        except sa.orm.exc.UnmappedClassError:
+            assert util.compat.py32
+
         for i in range(3):
             assert_raises_message(sa.exc.InvalidRequestError,
                                   "^One or more mappers failed to "

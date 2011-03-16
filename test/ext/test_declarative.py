@@ -419,11 +419,13 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __tablename__ = 'users'
             id = Column('id', Integer, primary_key=True)
-            addresses = relationship('Addresss')
+            addresses = relationship('Address')
 
         # hasattr() on a compile-loaded attribute
-
-        hasattr(User.addresses, 'property')
+        try:
+            hasattr(User.addresses, 'property')
+        except exc.InvalidRequestError:
+            assert sa.util.compat.py32
 
         # the exception is preserved.  Remains the 
         # same through repeated calls.

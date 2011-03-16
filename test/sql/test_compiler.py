@@ -69,13 +69,28 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         assert hasattr(table1.select(), 'c')
         assert not hasattr(table1.c.myid.self_group(), 'columns')
         assert hasattr(table1.select().self_group(), 'columns')
-        assert not hasattr(select([table1.c.myid]).as_scalar().self_group(), 'columns')
         assert not hasattr(table1.c.myid, 'columns')
         assert not hasattr(table1.c.myid, 'c')
         assert not hasattr(table1.select().c.myid, 'c')
         assert not hasattr(table1.select().c.myid, 'columns')
         assert not hasattr(table1.alias().c.myid, 'columns')
         assert not hasattr(table1.alias().c.myid, 'c')
+        if util.compat.py32:
+            assert_raises_message(
+                exc.InvalidRequestError,
+                'Scalar Select expression has no '
+                'columns; use this object directly within a '
+                'column-level expression.',
+                lambda: hasattr(select([table1.c.myid]).as_scalar().self_group(), 'columns'))
+            assert_raises_message(
+                exc.InvalidRequestError,
+                'Scalar Select expression has no '
+                'columns; use this object directly within a '
+                'column-level expression.',
+                lambda: hasattr(select([table1.c.myid]).as_scalar(), 'columns'))
+        else:
+            assert not hasattr(select([table1.c.myid]).as_scalar().self_group(), 'columns')
+            assert not hasattr(select([table1.c.myid]).as_scalar(), 'columns')
 
     def test_table_select(self):
         self.assert_compile(table1.select(), 
