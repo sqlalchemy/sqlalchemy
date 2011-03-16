@@ -21,60 +21,6 @@ from sqlalchemy.orm.query import Query
 
 __all__ = ['ShardedSession', 'ShardedQuery']
 
-
-class ShardedSession(Session):
-    def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None, **kwargs):
-        """Construct a ShardedSession.
-
-        :param shard_chooser: A callable which, passed a Mapper, a mapped instance, and possibly a
-          SQL clause, returns a shard ID.  This id may be based off of the
-          attributes present within the object, or on some round-robin
-          scheme. If the scheme is based on a selection, it should set
-          whatever state on the instance to mark it in the future as
-          participating in that shard.
-
-        :param id_chooser: A callable, passed a query and a tuple of identity values, which
-          should return a list of shard ids where the ID might reside.  The
-          databases will be queried in the order of this listing.
-
-        :param query_chooser: For a given Query, returns the list of shard_ids where the query
-          should be issued.  Results from all shards returned will be combined
-          together into a single listing.
-
-        :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.base.Engine`
-          objects.
-
-        """
-        super(ShardedSession, self).__init__(**kwargs)
-        self.shard_chooser = shard_chooser
-        self.id_chooser = id_chooser
-        self.query_chooser = query_chooser
-        self.__binds = {}
-        self.connection_callable = self.connection
-        self._query_cls = ShardedQuery
-        if shards is not None:
-            for k in shards:
-                self.bind_shard(k, shards[k])
-
-    def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
-        if shard_id is None:
-            shard_id = self.shard_chooser(mapper, instance)
-
-        if self.transaction is not None:
-            return self.transaction.connection(mapper, shard_id=shard_id)
-        else:
-            return self.get_bind(mapper, 
-                                shard_id=shard_id, 
-                                instance=instance).contextual_connect(**kwargs)
-
-    def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):
-        if shard_id is None:
-            shard_id = self.shard_chooser(mapper, instance, clause=clause)
-        return self.__binds[shard_id]
-
-    def bind_shard(self, shard_id, bind):
-        self.__binds[shard_id] = bind
-
 class ShardedQuery(Query):
     def __init__(self, *args, **kwargs):
         super(ShardedQuery, self).__init__(*args, **kwargs)
@@ -124,4 +70,58 @@ class ShardedQuery(Query):
                     return o
             else:
                 return None
+
+class ShardedSession(Session):
+    def __init__(self, shard_chooser, id_chooser, query_chooser, shards=None, 
+                 query_cls=ShardedQuery, **kwargs):
+        """Construct a ShardedSession.
+
+        :param shard_chooser: A callable which, passed a Mapper, a mapped instance, and possibly a
+          SQL clause, returns a shard ID.  This id may be based off of the
+          attributes present within the object, or on some round-robin
+          scheme. If the scheme is based on a selection, it should set
+          whatever state on the instance to mark it in the future as
+          participating in that shard.
+
+        :param id_chooser: A callable, passed a query and a tuple of identity values, which
+          should return a list of shard ids where the ID might reside.  The
+          databases will be queried in the order of this listing.
+
+        :param query_chooser: For a given Query, returns the list of shard_ids where the query
+          should be issued.  Results from all shards returned will be combined
+          together into a single listing.
+
+        :param shards: A dictionary of string shard names to :class:`~sqlalchemy.engine.base.Engine`
+          objects.
+
+        """
+        super(ShardedSession, self).__init__(query_cls=query_cls, **kwargs)
+        self.shard_chooser = shard_chooser
+        self.id_chooser = id_chooser
+        self.query_chooser = query_chooser
+        self.__binds = {}
+        self.connection_callable = self.connection
+        if shards is not None:
+            for k in shards:
+                self.bind_shard(k, shards[k])
+
+    def connection(self, mapper=None, instance=None, shard_id=None, **kwargs):
+        if shard_id is None:
+            shard_id = self.shard_chooser(mapper, instance)
+
+        if self.transaction is not None:
+            return self.transaction.connection(mapper, shard_id=shard_id)
+        else:
+            return self.get_bind(mapper, 
+                                shard_id=shard_id, 
+                                instance=instance).contextual_connect(**kwargs)
+
+    def get_bind(self, mapper, shard_id=None, instance=None, clause=None, **kw):
+        if shard_id is None:
+            shard_id = self.shard_chooser(mapper, instance, clause=clause)
+        return self.__binds[shard_id]
+
+    def bind_shard(self, shard_id, bind):
+        self.__binds[shard_id] = bind
+
 

@@ -101,9 +101,9 @@ class CachingQuery(Query):
         cache, cache_key = _get_cache_parameters(self)
         cache.put(cache_key, value)
 
-def query_callable(manager):
+def query_callable(manager, query_cls=CachingQuery):
     def query(*arg, **kw):
-        return CachingQuery(manager, *arg, **kw)
+        return query_cls(manager, *arg, **kw)
     return query
 
 def _get_cache_parameters(query):

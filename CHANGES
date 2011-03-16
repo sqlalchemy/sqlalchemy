@@ -503,6 +503,12 @@ CHANGES
   - The "implicit_returning" flag on create_engine() is
     honored if set to False.  [ticket:2083]
 
+- ext
+  - The horizontal_shard ShardedSession class accepts the common
+    Session argument "query_cls" as a constructor argument,
+    to enable further subclassing of ShardedQuery.
+    [ticket:2090]
+
 - declarative
   - Added an explicit check for the case that the name
     'metadata' is used for a column attribute on a 
@@ -514,6 +520,11 @@ CHANGES
   - Arguments in __mapper_args__ that aren't "hashable"
     aren't mistaken for always-hashable, possibly-column
     arguments.  [ticket:2091]
+
+- examples
+
+  - The Beaker caching example allows a "query_cls" argument
+    to the query_callable() function.  [ticket:2090]
 
 0.6.6
 =====
