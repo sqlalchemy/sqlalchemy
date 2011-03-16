@@ -357,7 +357,6 @@ class FBDialect(default.DefaultDialect):
     requires_name_normalize = True
     supports_empty_insert = False
 
-
     statement_compiler = FBCompiler
     ddl_compiler = FBDDLCompiler
     preparer = FBIdentifierPreparer
@@ -382,8 +381,9 @@ class FBDialect(default.DefaultDialect):
             self.colspecs = {
                 sqltypes.DateTime: sqltypes.DATE
             }
-        else:
-            self.implicit_returning = True
+
+        self.implicit_returning = self._version_two  and \
+                            self.__dict__.get('implicit_returning', True)
 
     def normalize_name(self, name):
         # Remove trailing spaces: FB uses a CHAR() type,
