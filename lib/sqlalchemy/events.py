@@ -170,8 +170,8 @@ class DDLEvents(event.Events):
         
         The event is called before any action is taken against
         this dictionary, and the contents can be modified.
-        The :class:`.Column` specific arguments `info`, `key`,
-        and `quote` can also be added to the dictionary and
+        The :class:`.Column` specific arguments ``info``, ``key``,
+        and ``quote`` can also be added to the dictionary and
         will be passed to the constructor of :class:`.Column`.
 
         Note that this event is only meaningful if either
