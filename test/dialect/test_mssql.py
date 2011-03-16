@@ -14,6 +14,7 @@ from sqlalchemy.engine import url
 from sqlalchemy.test import *
 from sqlalchemy.test.testing import eq_, emits_warning_on, \
     assert_raises_message
+from sqlalchemy.engine.reflection import Inspector
 
 class CompileTest(TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
@@ -1622,3 +1623,36 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         stream = fp.read(len)
         fp.close()
         return stream
+
+
+class ReflectHugeViewTest(TestBase):
+    def setup(self):
+        self.col_num = 150
+
+        self.metadata = MetaData(testing.db)
+        t = Table('base_table', self.metadata,
+                *[
+                    Column("long_named_column_number_%d" % i, Integer)
+                    for i in xrange(self.col_num)
+                ]
+        )
+        self.view_str = view_str = \
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
+            ",".join("long_named_column_number_%d" % i 
+                        for i in xrange(self.col_num))
+            )
+        assert len(view_str) > 4000
+
+        DDL(view_str).execute_at('after-create', t)
+        DDL("DROP VIEW huge_named_view").execute_at('before-drop', t)
+
+        self.metadata.create_all()
+
+    def teardown(self):
+        self.metadata.drop_all()
+
+    def test_inspect_view_definition(self):
+        inspector = Inspector.from_engine(testing.db)
+        view_def = inspector.get_view_definition("huge_named_view")
+        eq_(view_def, self.view_str)
+
