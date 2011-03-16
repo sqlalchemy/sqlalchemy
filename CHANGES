@@ -487,11 +487,15 @@ CHANGES
 
 - informix
 
-- Added RESERVED_WORDS informix dialect. [ticket:2092]
+  - Added RESERVED_WORDS informix dialect. [ticket:2092]
 
 - mysql
   - oursql dialect accepts the same "ssl" arguments in 
     create_engine() as that of MySQLdb.  [ticket:2047]
+
+- firebird
+  - The "implicit_returning" flag on create_engine() is
+    honored if set to False.  [ticket:2083]
 
 - declarative
   - Added an explicit check for the case that the name

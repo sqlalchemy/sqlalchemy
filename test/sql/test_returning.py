@@ -5,7 +5,7 @@ from test.lib.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
 
 class ReturningTest(TestBase, AssertsExecutionResults):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
+    __requires__ = 'returning',
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -142,7 +142,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         eq_(result2.fetchall(), [(2,False),])
 
 class SequenceReturningTest(TestBase):
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access', 'mssql')
+    __requires__ = 'returning',
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -165,7 +165,7 @@ class SequenceReturningTest(TestBase):
 class KeyReturningTest(TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
 
-    __unsupported_on__ = ('sqlite', 'mysql', 'maxdb', 'sybase', 'access')
+    __requires__ = 'returning',
 
     def setup(self):
         meta = MetaData(testing.db)
@@ -191,3 +191,33 @@ class KeyReturningTest(TestBase, AssertsExecutionResults):
         assert row[table.c.foo_id] == row['id'] == 1
 
 
+class ImplicitReturningFlag(TestBase):
+    def test_flag_turned_off(self):
+        e = engines.testing_engine(options={'implicit_returning':False})
+        assert e.dialect.implicit_returning is False
+        c = e.connect()
+        assert e.dialect.implicit_returning is False
+
+    def test_flag_turned_on(self):
+        e = engines.testing_engine(options={'implicit_returning':True})
+        assert e.dialect.implicit_returning is True
+        c = e.connect()
+        assert e.dialect.implicit_returning is True
+
+    def test_flag_turned_default(self):
+        supports = [False]
+        def go():
+            supports[0] = True
+        testing.requires.returning(go)()
+        e = engines.testing_engine()
+
+        # starts as False.  This is because all of Firebird,
+        # Postgresql, Oracle, SQL Server started supporting RETURNING
+        # as of a certain version, and the flag is not set until
+        # version detection occurs.  If some DB comes along that has 
+        # RETURNING in all cases, this test can be adjusted.
+        assert e.dialect.implicit_returning is False 
+
+        # version detection on connect sets it
+        c = e.connect()
+        assert e.dialect.implicit_returning is supports[0]
