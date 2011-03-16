@@ -2,7 +2,7 @@ from test.lib.testing import assert_raises, assert_raises_message
 import copy, threading
 from sqlalchemy import util, sql, exc
 from test.lib import TestBase
-from test.lib.testing import eq_, is_, ne_
+from test.lib.testing import eq_, is_, ne_, fails_if
 from test.lib.util import gc_collect, picklers
 from sqlalchemy.util import classproperty
 
@@ -860,6 +860,7 @@ class TestFormatArgspec(TestBase):
             'apply_kw': 'a=a, b=b', 'apply_pos': 'a, b' },
            grouped=False)
 
+    @fails_if(lambda: util.pypy, "object.__init__ is introspectable")
     def test_init_grouped(self):
         object_spec = {
             'args': '(self)', 'self_arg': 'self',
@@ -875,6 +876,7 @@ class TestFormatArgspec(TestBase):
         self._test_init(None, object_spec, wrapper_spec, custom_spec)
         self._test_init(True, object_spec, wrapper_spec, custom_spec)
 
+    @fails_if(lambda: util.pypy,  "object.__init__ can be introspected")
     def test_init_bare(self):
         object_spec = {
             'args': 'self', 'self_arg': 'self',

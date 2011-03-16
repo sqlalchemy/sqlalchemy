@@ -5,6 +5,9 @@ CHANGES
 =======
 0.7.0b3
 =======
+- general
+  - Lots of fixes to unit tests when run under Pypy.
+
 - orm
   - Changed the underlying approach to query.count().
     query.count() is now in all cases exactly:
