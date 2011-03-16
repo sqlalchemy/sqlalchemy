@@ -6,7 +6,7 @@ from sqlalchemy import Integer, String, ForeignKey, desc, select, func
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
-from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message
+from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message, assert_raises
 from test.orm import _base, _fixtures
 
 
@@ -503,11 +503,12 @@ class SessionTest(_fixtures.FixtureTest):
 
         eq_(Address(email_address='c'), u.addresses[2])
 
-        try:
+        def go():
             del u.addresses[3]
-            assert False
-        except TypeError, e:
-            assert "doesn't support item deletion" in str(e), str(e)
+        assert_raises(
+            TypeError,
+            go
+        )
 
         for a in u.addresses.filter(Address.email_address.in_(['c', 'e', 'f'])):
             u.addresses.remove(a)
