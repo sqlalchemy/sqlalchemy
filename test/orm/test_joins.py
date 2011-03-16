@@ -1179,7 +1179,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
-        global t1, t2, t1t2_1, t1t2_2
         t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30))
@@ -1199,6 +1198,7 @@ class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
             Column('t2id', Integer, ForeignKey('t2.id'))
             )
 
+    @testing.resolve_artifact_names
     def test_basic(self):
         class T1(object):pass
         class T2(object):pass
@@ -1309,28 +1309,29 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def define_tables(cls, metadata):
-        global nodes
-        nodes = Table('nodes', metadata,
+        Table('nodes', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('nodes.id')),
             Column('data', String(30)))
 
     @classmethod
-    def insert_data(cls):
-        # TODO: somehow using setup_classes()
-        # here normally is screwing up the other tests.
+    def setup_classes(cls):
+       class Node(Base):
+           def append(self, node):
+               self.children.append(node)
 
-        global Node, Sub
-        class Node(Base):
-            def append(self, node):
-                self.children.append(node)
-
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
         mapper(Node, nodes, properties={
             'children':relationship(Node, lazy='select', join_depth=3,
                 backref=backref('parent', remote_side=[nodes.c.id])
             ),
         })
 
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
         sess = create_session()
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
@@ -1647,7 +1648,6 @@ class SelfReferentialM2MTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global nodes, node_to_nodes
         nodes = Table('nodes', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(30)))
@@ -1658,11 +1658,13 @@ class SelfReferentialM2MTest(_base.MappedTest):
             )
 
     @classmethod
-    def insert_data(cls):
-        global Node
-
+    def setup_classes(cls):
         class Node(Base):
             pass
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def insert_data(cls):
 
         mapper(Node, nodes, properties={
             'children':relationship(Node, lazy='select', secondary=node_to_nodes,
@@ -1690,22 +1692,31 @@ class SelfReferentialM2MTest(_base.MappedTest):
         sess.flush()
         sess.close()
 
+    @testing.resolve_artifact_names
     def test_any(self):
         sess = create_session()
-        eq_(sess.query(Node).filter(Node.children.any(Node.data=='n3')).all(), [Node(data='n1'), Node(data='n2')])
+        eq_(sess.query(Node).filter(Node.children.any(Node.data == 'n3'
+            )).all(), [Node(data='n1'), Node(data='n2')])
 
+    @testing.resolve_artifact_names
     def test_contains(self):
         sess = create_session()
         n4 = sess.query(Node).filter_by(data='n4').one()
 
-        eq_(sess.query(Node).filter(Node.children.contains(n4)).order_by(Node.data).all(), [Node(data='n1'), Node(data='n3')])
-        eq_(sess.query(Node).filter(not_(Node.children.contains(n4))).order_by(Node.data).all(), [Node(data='n2'), Node(data='n4'), Node(data='n5'), Node(data='n6'), Node(data='n7')])
+        eq_(sess.query(Node).filter(Node.children.contains(n4)).order_by(Node.data).all(),
+            [Node(data='n1'), Node(data='n3')])
+        eq_(sess.query(Node).filter(not_(Node.children.contains(n4))).order_by(Node.data).all(),
+            [Node(data='n2'), Node(data='n4'), Node(data='n5'),
+            Node(data='n6'), Node(data='n7')])
 
+    @testing.resolve_artifact_names
     def test_explicit_join(self):
         sess = create_session()
 
         n1 = aliased(Node)
         eq_(
-            sess.query(Node).select_from(join(Node, n1, 'children')).filter(n1.data.in_(['n3', 'n7'])).order_by(Node.id).all(),
+            sess.query(Node).select_from(join(Node, n1, 'children'
+             )).filter(n1.data.in_(['n3', 'n7'
+             ])).order_by(Node.id).all(),
             [Node(data='n1'), Node(data='n2')]
         )

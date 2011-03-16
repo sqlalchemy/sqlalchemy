@@ -885,8 +885,6 @@ class PolymorphicExpireTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global people, engineers, Person, Engineer
-
         people = Table('people', metadata,
            Column('person_id', Integer, primary_key=True,
                   test_needs_autoincrement=True),

@@ -1677,7 +1677,6 @@ class ExternalColumnsTest(QueryTest):
 class TestOverlyEagerEquivalentCols(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global base, sub1, sub2
         base = Table('base', metadata, 
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', String(50))
@@ -1693,6 +1692,7 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
             Column('data', String(50))
         )
 
+    @testing.resolve_artifact_names
     def test_equivs(self):
         class Base(_base.ComparableEntity):
             pass
