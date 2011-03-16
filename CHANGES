@@ -47,6 +47,12 @@ CHANGES
     to state actually within the current flush.
     [ticket:2082]
 
+  - Improvements to the error messages emitted when
+    querying against column-only entities in conjunction
+    with (typically incorrectly) using loader options, 
+    where the parent entity is not fully present.  
+    [ticket:2069]
+
 - sql
   - Added a fully descriptive error message for the
     case where Column is subclassed and _make_proxy()

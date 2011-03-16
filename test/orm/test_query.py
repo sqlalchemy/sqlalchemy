@@ -2137,3 +2137,74 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(Address.user, User.addresses)
         self._assert_path_result(opt, q, [], [])
 
+class OptionsNoPropTest(_base.MappedTest):
+    """test the error messages emitted when using property
+    options in conjunection with column-only entities.
+    
+    """
+
+    @testing.resolve_artifact_names
+    def test_option_with_mapper_using_basestring(self):
+        self._assert_option([Item], 'keywords')
+
+    @testing.resolve_artifact_names
+    def test_option_with_mapper_using_PropCompatator(self):
+        self._assert_option([Item], Item.keywords)
+
+    @testing.resolve_artifact_names
+    def test_option_with_mapper_then_column_using_basestring(self):
+        self._assert_option([Item, Item.id], 'keywords')
+
+    @testing.resolve_artifact_names
+    def test_option_with_mapper_then_column_using_PropComparator(self):
+        self._assert_option([Item, Item.id], Item.keywords)
+
+    @testing.resolve_artifact_names
+    def test_option_with_column_then_mapper_using_basestring(self):
+        self._assert_option([Item.id, Item], 'keywords')
+
+    @testing.resolve_artifact_names
+    def test_option_with_column_then_mapper_using_PropComparator(self):
+        self._assert_option([Item.id, Item], Item.keywords)
+
+    @testing.resolve_artifact_names
+    def test_option_with_column_using_basestring(self):
+        message = \
+            "Can't find property named 'keywords' on the first mapped "\
+            "entity in this Query. Consider using an attribute object "\
+            "instead of a string name to target a specific entity."
+        self._assert_eager_with_just_column_exception(Item.id,
+                'keywords', message)
+
+    @testing.resolve_artifact_names
+    def test_option_with_column_using_PropComparator(self):
+        message = \
+            "Can't find property 'keywords' on any entity specified "\
+            "in this Query\."
+        self._assert_eager_with_just_column_exception(Item.id,
+                Item.keywords, message)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        pass
+
+    @classmethod
+    @testing.resolve_artifact_names
+    def setup_mappers(cls):
+        mapper(Keyword, keywords)
+        mapper(Item, items,
+               properties=dict(keywords=relationship(Keyword,
+               secondary=item_keywords)))
+
+    @testing.resolve_artifact_names
+    def _assert_option(self, entity_list, option):
+        q = create_session().query(*entity_list).\
+                            options(eagerload(option))
+        key = ('loaderstrategy', (class_mapper(Item), 'keywords'))
+        assert key in q._attributes
+
+    def _assert_eager_with_just_column_exception(self, column,
+            eager_option, message):
+        assert_raises_message(sa.exc.ArgumentError, message,
+                              create_session().query(column).options,
+                              eagerload(eager_option))

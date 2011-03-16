@@ -1493,8 +1493,8 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r"Can't find entity Mapper\|Order\|orders in Query.  "
-            r"Current list: \['Mapper\|User\|users'\]",
+            "Can't find property 'items' on any entity "
+            "specified in this Query.",
             sess.query(User).options, sa.orm.joinedload(Order.items))
 
         # joinedload "keywords" on items.  it will lazy load "orders", then
