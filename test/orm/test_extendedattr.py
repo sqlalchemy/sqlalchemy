@@ -64,10 +64,8 @@ class MyClass(object):
     __sa_instrumentation_manager__ = staticmethod(__sa_instrumentation_manager__)
 
     # This proves SA can handle a class with non-string dict keys
-    try:
+    if not util.pypy and not util.jython:
         locals()[42] = 99   # Don't remove this line!
-    except:
-        pass
 
     def __init__(self, **kwargs):
         for k in kwargs:
