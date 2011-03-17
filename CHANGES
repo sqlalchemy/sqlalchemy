@@ -469,6 +469,12 @@ CHANGES
     in the session.  This will be an exception in 0.7.
     [ticket:2046]
 
+  - Fixed bug in query.options() whereby a path 
+    applied to a lazyload using string keys could 
+    overlap a same named attribute on the wrong 
+    entity.  Note 0.7 has an updated version of this
+    fix.  [ticket:2098]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
