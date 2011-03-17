@@ -839,8 +839,11 @@ class PropertyOption(MapperOption):
                     path_element = entity.path_entity
                     mapper = entity.mapper
                 mappers.append(mapper)
-                prop = mapper.get_property(token,
+                if mapper is not None:
+                    prop = mapper.get_property(token,
                         resolve_synonyms=True, raiseerr=raiseerr)
+                else:
+                    prop = None
                 key = token
             elif isinstance(token, PropComparator):
                 prop = token.property
