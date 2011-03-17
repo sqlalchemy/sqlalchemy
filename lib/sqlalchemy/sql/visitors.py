@@ -65,8 +65,8 @@ def _generate_dispatch(cls):
         visit_name = cls.__visit_name__
         if isinstance(visit_name, str):
             # There is an optimization opportunity here because the
-            # the string name of is known at this early stage (import time)
-            # so it can be pre-constructed.
+            # the string name of the class's __visit_name__ is known at
+            # this early stage (import time) so it can be pre-constructed.
             getter = operator.attrgetter("visit_%s" % visit_name)
             def _compiler_dispatch(self, visitor, **kw):
                 return getter(visitor)(self, **kw)
