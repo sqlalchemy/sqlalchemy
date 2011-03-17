@@ -1956,6 +1956,16 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(User.addresses)
         self._assert_path_result(opt, q, [(User, 'addresses')], [User])
 
+    def test_path_on_entity_but_doesnt_match_currentpath(self):
+        # ensure "current path" is fully consumed before
+        # matching against current entities.
+        # see [ticket:2098]
+        sess = Session()
+        q = sess.query(User)
+        opt = self._option_fixture('email_address', 'id')
+        q = sess.query(Address)._with_current_path([class_mapper(User), 'addresses'])
+        self._assert_path_result(opt, q, [], [])
+
     def test_get_path_one_level_with_unrelated(self):
         sess = Session()
         q = sess.query(Order)

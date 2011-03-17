@@ -465,9 +465,8 @@ class PropertyOption(MapperOption):
         l = []
         mappers = []
 
-        # _current_path implies we're in a secondary load with an
-        # existing path
-
+        # _current_path implies we're in a 
+        # secondary load with an existing path
         current_path = list(query._current_path)
 
         tokens = deque(self.key)
@@ -477,13 +476,21 @@ class PropertyOption(MapperOption):
                 sub_tokens = token.split(".", 1)
                 token = sub_tokens[0]
                 tokens.extendleft(sub_tokens[1:])
+
+                # exhaust current_path before
+                # matching tokens to entities
+                if current_path:
+                    if current_path[1] == token:
+                        current_path = current_path[2:]
+                        continue
+                    else:
+                        return [], []
+
                 if not entity:
-                    if current_path:
-                        if current_path[1] == token:
-                            current_path = current_path[2:]
-                            continue
-                    entity = self._find_entity_basestring(query, 
-                            token, raiseerr)
+                    entity = self._find_entity_basestring(
+                                        query, 
+                                        token, 
+                                        raiseerr)
                     path_element = entity.path_entity
                     mapper = entity.mapper
                 mappers.append(mapper)
@@ -493,22 +500,32 @@ class PropertyOption(MapperOption):
                     prop = None
             elif isinstance(token, PropComparator):
                 prop = token.property
+
+                # exhaust current_path before
+                # matching tokens to entities
+                if current_path:
+                    if current_path[0:2] == \
+                            [token.parententity, prop.key]:
+                        current_path = current_path[2:]
+                        continue
+                    else:
+                        return [], []
+
                 if not entity:
-                    if current_path:
-                        if current_path[0:2] == [token.parententity,
-                                prop.key]:
-                            current_path = current_path[2:]
-                            continue
-                    entity = self._find_entity_prop_comparator(query,
-                            prop.key, token.parententity, raiseerr)
+                    entity = self._find_entity_prop_comparator(
+                                            query,
+                                            prop.key, 
+                                            token.parententity, 
+                                            raiseerr)
                     if not entity:
                         return [], []
                     path_element = entity.path_entity
                     mapper = entity.mapper
                 mappers.append(prop.parent)
             else:
-                raise sa_exc.ArgumentError('mapper option expects '
-                        'string key or list of attributes')
+                raise sa_exc.ArgumentError(
+                        "mapper option expects "
+                        "string key or list of attributes")
             if prop is None:
                 return [], []
             path = build_path(path_element, prop.key, path)
@@ -521,7 +538,11 @@ class PropertyOption(MapperOption):
                 path_element = path_element
 
         if current_path:
+            # ran out of tokens before 
+            # current_path was exhausted.
+            assert not tokens
             return [], []
+
         return l, mappers
 
 

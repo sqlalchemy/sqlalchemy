@@ -268,15 +268,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ((joinedload("orders.items"), ), 10),
             ((
                 joinedload(User.orders, ), 
-                joinedload(User.orders, Order.items), 
+               joinedload(User.orders, Order.items), 
                 joinedload(User.orders, Order.items, Item.keywords), 
-            ), 1),
+           ), 1),
             ((
                 joinedload(User.orders, Order.items, Item.keywords), 
             ), 10),
             ((
-                joinedload(User.orders, Order.items), 
-                joinedload(User.orders, Order.items, Item.keywords), 
+               joinedload(User.orders, Order.items), 
+               joinedload(User.orders, Order.items, Item.keywords), 
             ), 5),
         ]:
             sess = create_session()

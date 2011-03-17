@@ -56,6 +56,12 @@ CHANGES
     where the parent entity is not fully present.  
     [ticket:2069]
 
+  - Fixed bug in query.options() whereby a path 
+    applied to a lazyload using string keys could 
+    overlap a same named attribute on the wrong 
+    entity.  Note 0.6 has a more conservative fix 
+    to this.  [ticket:2098]
+
 - sql
   - Added a fully descriptive error message for the
     case where Column is subclassed and _make_proxy()
