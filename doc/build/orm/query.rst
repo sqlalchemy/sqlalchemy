@@ -1,7 +1,7 @@
 .. _query_api_toplevel:
 
-Querying
-========
+API Documentation - Querying
+============================
 
 This section provides API documentation for the :class:`.Query` object and related constructs.
 
@@ -17,7 +17,7 @@ The Query Object
 
     q = session.query(SomeMappedClass)
 
-Following is the full interface for the :class:`Query` object.
+Following is the full interface for the :class:`.Query` object.
 
 .. autoclass:: sqlalchemy.orm.query.Query
    :members:

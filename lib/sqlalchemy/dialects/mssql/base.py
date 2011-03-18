@@ -56,7 +56,7 @@ MSNVarchar, MSText, and MSNText. For example::
     from sqlalchemy.dialects.mssql import VARCHAR
     Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
 
-When such a column is associated with a :class:`Table`, the
+When such a column is associated with a :class:`.Table`, the
 CREATE TABLE statement for this column will yield::
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL

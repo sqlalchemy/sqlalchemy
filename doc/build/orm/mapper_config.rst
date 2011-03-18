@@ -2,6 +2,7 @@
 
 .. _mapper_config_toplevel:
 
+====================
 Mapper Configuration
 ====================
 
@@ -38,14 +39,14 @@ with the class definition. These are usable as is within ``__mapper_args__``::
 
 
 Customizing Column Properties
-------------------------------
+==============================
 
 The default behavior of :func:`~.orm.mapper` is to assemble all the columns in
 the mapped :class:`.Table` into mapped object attributes. This behavior can be
 modified in several ways, as well as enhanced by SQL expressions.
 
 Mapping a Subset of Table Columns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 To reference a subset of columns referenced by a table as mapped attributes,
 use the ``include_properties`` or ``exclude_properties`` arguments. For
@@ -89,7 +90,7 @@ occurs below the level of the ORM.
 
 
 Attribute Names for Mapped Columns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 To change the name of the attribute mapped to a particular column, place the
 :class:`~sqlalchemy.schema.Column` object in the ``properties`` dictionary
@@ -123,7 +124,7 @@ The above will place attribute names such as ``_user_id``, ``_user_name``,
 
 
 Mapping Multiple Columns to a Single Attribute
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------------
 
 To place multiple columns which are known to be "synonymous" based on foreign
 key relationship or join condition into the same mapped attribute, put them
@@ -142,8 +143,8 @@ together using a list, as below where we map to a :func:`~.expression.join`::
 
 For further examples on this particular use case, see :ref:`maptojoin`.
 
-column_property API
-~~~~~~~~~~~~~~~~~~~
+API Documentation - column_property
+------------------------------------
 
 The establishment of a :class:`.Column` on a :func:`.mapper` can be further
 customized using the :func:`.column_property` function, as specified
@@ -172,7 +173,7 @@ Further examples of :func:`.column_property` are at :ref:`mapper_sql_expressions
 .. _deferred:
 
 Deferred Column Loading
-------------------------
+========================
 
 This feature allows particular columns of a table to not be loaded by default,
 instead being loaded later on when first referenced. It is essentially
@@ -251,6 +252,9 @@ to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
 
+API Documentation - Column Deferral
+-----------------------------------
+
 .. autofunction:: deferred
 
 .. autofunction:: defer
@@ -262,7 +266,7 @@ to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using
 .. _mapper_sql_expressions:
 
 SQL Expressions as Mapped Attributes
--------------------------------------
+=====================================
 
 Any SQL expression that relates to the primary mapped selectable can be mapped as a 
 read-only attribute which will be bundled into the SELECT emitted
@@ -330,10 +334,10 @@ built-in feature of SQLAlchemy in a future release.
 
 
 Changing Attribute Behavior
-----------------------------
+============================
 
 Simple Validators
-~~~~~~~~~~~~~~~~~~
+-----------------
 
 A quick way to add a "validation" routine to an attribute is to use the
 :func:`~sqlalchemy.orm.validates` decorator. An attribute validator can raise
@@ -374,7 +378,7 @@ Validators also receive collection events, when items are added to a collection:
 .. _synonyms:
 
 Using Descriptors
-~~~~~~~~~~~~~~~~~~
+-----------------
 
 A more comprehensive way to produce modified behavior for an attribute is to
 use descriptors. These are commonly used in Python using the ``property()``
@@ -485,7 +489,7 @@ a SQL function is rendered which produces the same effect:
 Read more about Hybrids at :ref:`hybrids_toplevel`.
 
 Synonyms
-~~~~~~~~
+--------
 
 Synonyms are a mapper-level construct that applies expression behavior to a descriptor
 based attribute.  The functionality of synonym is superceded as of 0.7 by hybrid attributes.
@@ -495,7 +499,7 @@ based attribute.  The functionality of synonym is superceded as of 0.7 by hybrid
 .. _custom_comparators:
 
 Custom Comparators
-~~~~~~~~~~~~~~~~~~~
+------------------
 
 The expressions returned by comparison operations, such as
 ``User.name=='ed'``, can be customized, by implementing an object that
@@ -552,7 +556,7 @@ or aliasing that has been applied in the context of the generated SQL statement.
 .. _mapper_composite:
 
 Composite Column Types
------------------------
+=======================
 
 Sets of columns can be associated with a single user-defined datatype. The ORM
 provides a single attribute which represents the group of columns using the
@@ -641,7 +645,7 @@ scalar attributes::
 .. autofunction:: composite
 
 Tracking In-Place Mutations on Composites
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------
 
 As of SQLAlchemy 0.7, in-place changes to an existing composite value are 
 not tracked automatically.  Instead, the composite class needs to provide
@@ -651,7 +655,7 @@ to associate each user-defined composite object with all parent associations.
 Please see the example in :ref:`mutable_composites`.
 
 Redefining Comparison Operations for Composites
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------------
 
 The "equals" comparison operation by default produces an AND of all
 corresponding columns equated to one another. This can be changed using
@@ -680,7 +684,7 @@ the same expression that the base "greater than" does::
 .. _maptojoin:
 
 Mapping a Class against Multiple Tables
-----------------------------------------
+========================================
 
 Mappers can be constructed against arbitrary relational units (called
 ``Selectables``) as well as plain ``Tables``. For example, The ``join``
@@ -754,7 +758,7 @@ value.
 
 
 Mapping a Class against Arbitrary Selects
-------------------------------------------
+=========================================
 
 Similar to mapping against a join, a plain select() object can be used with a mapper as well.  Below, an example select which contains two aggregate functions and a group_by is mapped to a class:
 
@@ -776,7 +780,7 @@ Similar to mapping against a join, a plain select() object can be used with a ma
 Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary key columns of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.
 
 Multiple Mappers for One Class
--------------------------------
+==============================
 
 The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well on the "load side" - these are called **secondary mappers**.   This is a mapper that must be constructed with the keyword argument ``non_primary=True``, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new :func:`~sqlalchemy.orm.relationship` objects to a non-primary mapper. To use this mapper with the Session, specify it to the :class:`~sqlalchemy.orm.session.Session.query` method:
 
@@ -796,14 +800,14 @@ example:
 The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the :class:`~sqlalchemy.orm.query.Query` object can produce any kind of query that's desired.  It's recommended that a straight :class:`~sqlalchemy.orm.query.Query` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a :func:`~sqlalchemy.orm.relationship` of a parent mapper.
 
 Multiple "Persistence" Mappers for One Class
----------------------------------------------
+=============================================
 
 The non_primary mapper defines alternate mappers for the purposes of loading objects.  What if we want the same class to be *persisted* differently, such as to different tables ?   SQLAlchemy
 refers to this as the "entity name" pattern, and in Python one can use a recipe which creates
 anonymous subclasses which are distinctly mapped.  See the recipe at `Entity Name <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
 
 Constructors and Object Initialization
----------------------------------------
+=======================================
 
 Mapping imposes no restrictions or requirements on the constructor (``__init__``) method for the class. You are free to require any arguments for the function
 that you wish, assign attributes to the instance that are unknown to the ORM, and generally do anything else you would normally do when writing a constructor
@@ -842,8 +846,8 @@ the ORM, allowing mappers to be compiled automatically and will fire a :func:`~s
 
 .. autofunction:: reconstructor
 
-The :func:`mapper` API
-----------------------
+API Documentation - Class Mapping
+=================================
 
 .. autofunction:: mapper
 

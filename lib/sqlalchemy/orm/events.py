@@ -919,7 +919,7 @@ class AttributeEvents(event.Events):
         listen(UserContact.phone, 'set', validate_phone, retval=True)
 
     A validation function like the above can also raise an exception
-    such as :class:`ValueError` to halt the operation.
+    such as :class:`.ValueError` to halt the operation.
 
     Several modifiers are available to the :func:`~.event.listen` function.
 

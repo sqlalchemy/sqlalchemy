@@ -96,9 +96,9 @@ class Table(SchemaItem, expression.TableClause):
     :param name: The name of this table as represented in the database. 
 
         This property, along with the *schema*, indicates the *singleton
-        identity* of this table in relation to its parent :class:`MetaData`.
-        Additional calls to :class:`Table` with the same name, metadata,
-        and schema name will return the same :class:`Table` object.
+        identity* of this table in relation to its parent :class:`.MetaData`.
+        Additional calls to :class:`.Table` with the same name, metadata,
+        and schema name will return the same :class:`.Table` object.
 
         Names which contain no upper case characters
         will be treated as case insensitive names, and will not be quoted
@@ -107,17 +107,17 @@ class Table(SchemaItem, expression.TableClause):
         behavior applies even for databases which standardize upper 
         case names as case insensitive such as Oracle.
 
-    :param metadata: a :class:`MetaData` object which will contain this 
+    :param metadata: a :class:`.MetaData` object which will contain this 
         table.  The metadata is used as a point of association of this table
         with other tables which are referenced via foreign key.  It also
         may be used to associate this table with a particular 
         :class:`~sqlalchemy.engine.base.Connectable`.
 
     :param \*args: Additional positional arguments are used primarily
-        to add the list of :class:`Column` objects contained within this
+        to add the list of :class:`.Column` objects contained within this
         table. Similar to the style of a CREATE TABLE statement, other
         :class:`.SchemaItem` constructs may be added here, including
-        :class:`PrimaryKeyConstraint`, and :class:`ForeignKeyConstraint`.
+        :class:`.PrimaryKeyConstraint`, and :class:`.ForeignKeyConstraint`.
 
     :param autoload: Defaults to False: the Columns for this table should 
         be reflected from the database. Usually there will be no Column
@@ -159,7 +159,7 @@ class Table(SchemaItem, expression.TableClause):
                 ])
 
     :param mustexist: When ``True``, indicates that this Table must already 
-        be present in the given :class:`MetaData`` collection.
+        be present in the given :class:`.MetaData`` collection.
 
     :param prefixes:
         A list of strings to insert after CREATE in the CREATE TABLE
@@ -180,10 +180,10 @@ class Table(SchemaItem, expression.TableClause):
         for the engine's database connection. Defaults to ``None``.
 
     :param useexisting: When ``True``, indicates that if this Table is already
-        present in the given :class:`MetaData`, apply further arguments within
-        the constructor to the existing :class:`Table`. If this flag is not
+        present in the given :class:`.MetaData`, apply further arguments within
+        the constructor to the existing :class:`.Table`. If this flag is not
         set, an error is raised when the parameters of an existing
-        :class:`Table` are overwritten.
+        :class:`.Table` are overwritten.
 
     """
 
@@ -453,8 +453,8 @@ class Table(SchemaItem, expression.TableClause):
 
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA):
-        """Return a copy of this :class:`Table` associated with a different
-        :class:`MetaData`.
+        """Return a copy of this :class:`.Table` associated with a different
+        :class:`.MetaData`.
 
         E.g.::
 
@@ -522,7 +522,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
           The name field may be omitted at construction time and applied
           later, at any time before the Column is associated with a 
-          :class:`Table`.  This is to support convenient
+          :class:`.Table`.  This is to support convenient
           usage within the :mod:`~sqlalchemy.ext.declarative` extension.
 
         :param type\_: The column's type, indicated using an instance which 
@@ -540,7 +540,7 @@ class Column(SchemaItem, expression.ColumnClause):
           or specified by keyword.
 
           There is partial support for automatic detection of the 
-          type based on that of a :class:`ForeignKey` associated 
+          type based on that of a :class:`.ForeignKey` associated 
           with this column, if the type is specified as ``None``. 
           However, this feature is not fully implemented and 
           may not function in all cases.
@@ -548,8 +548,8 @@ class Column(SchemaItem, expression.ColumnClause):
         :param \*args: Additional positional arguments include various 
           :class:`.SchemaItem` derived constructs which will be applied 
           as options to the column.  These include instances of 
-          :class:`Constraint`, :class:`ForeignKey`, :class:`ColumnDefault`, 
-          and :class:`Sequence`.  In some cases an equivalent keyword 
+          :class:`.Constraint`, :class:`.ForeignKey`, :class:`.ColumnDefault`, 
+          and :class:`.Sequence`.  In some cases an equivalent keyword 
           argument is available such as ``server_default``, ``default``
           and ``unique``.
 
@@ -600,7 +600,7 @@ class Column(SchemaItem, expression.ColumnClause):
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing the
             *default value* for this column, which will be invoked upon insert
             if this column is otherwise not specified in the VALUES clause of
-            the insert. This is a shortcut to using :class:`ColumnDefault` as
+            the insert. This is a shortcut to using :class:`.ColumnDefault` as
             a positional argument.
 
             Contrast this argument to ``server_default`` which creates a 
@@ -611,15 +611,15 @@ class Column(SchemaItem, expression.ColumnClause):
             comments (a future attribute 'comment' will achieve that).
 
         :param key: An optional string identifier which will identify this
-            ``Column`` object on the :class:`Table`. When a key is provided,
+            ``Column`` object on the :class:`.Table`. When a key is provided,
             this is the only identifier referencing the ``Column`` within the
             application, including ORM attribute mapping; the ``name`` field
             is used only when rendering SQL.
 
         :param index: When ``True``, indicates that the column is indexed.
-            This is a shortcut for using a :class:`Index` construct on the
+            This is a shortcut for using a :class:`.Index` construct on the
             table. To specify indexes with explicit names or indexes that
-            contain multiple columns, use the :class:`Index` construct
+            contain multiple columns, use the :class:`.Index` construct
             instead.
 
         :param info: A dictionary which defaults to ``{}``. A space to store
@@ -635,16 +635,16 @@ class Column(SchemaItem, expression.ColumnClause):
             default value to be applied to the column within UPDATE
             statements, which wil be invoked upon update if this column is not
             present in the SET clause of the update. This is a shortcut to
-            using :class:`ColumnDefault` as a positional argument with
+            using :class:`.ColumnDefault` as a positional argument with
             ``for_update=True``.
 
         :param primary_key: If ``True``, marks this column as a primary key
             column. Multiple columns can have this flag set to specify
             composite primary keys. As an alternative, the primary key of a
-            :class:`Table` can be specified via an explicit
-            :class:`PrimaryKeyConstraint` object.
+            :class:`.Table` can be specified via an explicit
+            :class:`.PrimaryKeyConstraint` object.
 
-        :param server_default: A :class:`FetchedValue` instance, str, Unicode
+        :param server_default: A :class:`.FetchedValue` instance, str, Unicode
             or :func:`~sqlalchemy.sql.expression.text` construct representing
             the DDL DEFAULT value for the column.
 
@@ -661,16 +661,16 @@ class Column(SchemaItem, expression.ColumnClause):
 
                 y DATETIME DEFAULT NOW()
 
-            Strings and text() will be converted into a :class:`DefaultClause`
+            Strings and text() will be converted into a :class:`.DefaultClause`
             object upon initialization.
 
-            Use :class:`FetchedValue` to indicate that an already-existing
+            Use :class:`.FetchedValue` to indicate that an already-existing
             column will generate a default value on the database side which
             will be available to SQLAlchemy for post-fetch after inserts. This
             construct does not specify any DDL and the implementation is left
             to the database, such as via a trigger.
 
-        :param server_onupdate:   A :class:`FetchedValue` instance
+        :param server_onupdate:   A :class:`.FetchedValue` instance
              representing a database-side default generation function. This
              indicates to SQLAlchemy that a newly generated value will be
              available after updates. This construct does not specify any DDL
@@ -687,10 +687,10 @@ class Column(SchemaItem, expression.ColumnClause):
 
         :param unique: When ``True``, indicates that this column contains a
              unique constraint, or if ``index`` is ``True`` as well, indicates
-             that the :class:`Index` should be created with the unique flag.
+             that the :class:`.Index` should be created with the unique flag.
              To specify multiple columns in the constraint/index or to specify
-             an explicit name, use the :class:`UniqueConstraint` or
-             :class:`Index` constructs explicitly.
+             an explicit name, use the :class:`.UniqueConstraint` or
+             :class:`.Index` constructs explicitly.
 
         """
 
@@ -978,7 +978,7 @@ class Column(SchemaItem, expression.ColumnClause):
 class ForeignKey(SchemaItem):
     """Defines a dependency between two columns.
 
-    ``ForeignKey`` is specified as an argument to a :class:`Column` object,
+    ``ForeignKey`` is specified as an argument to a :class:`.Column` object,
     e.g.::
 
         t = Table("remote_table", metadata, 
@@ -987,24 +987,24 @@ class ForeignKey(SchemaItem):
 
     Note that ``ForeignKey`` is only a marker object that defines
     a dependency between two columns.   The actual constraint
-    is in all cases represented by the :class:`ForeignKeyConstraint`
+    is in all cases represented by the :class:`.ForeignKeyConstraint`
     object.   This object will be generated automatically when
-    a ``ForeignKey`` is associated with a :class:`Column` which 
-    in turn is associated with a :class:`Table`.   Conversely,
-    when :class:`ForeignKeyConstraint` is applied to a :class:`Table`,
+    a ``ForeignKey`` is associated with a :class:`.Column` which 
+    in turn is associated with a :class:`.Table`.   Conversely,
+    when :class:`.ForeignKeyConstraint` is applied to a :class:`.Table`,
     ``ForeignKey`` markers are automatically generated to be
-    present on each associated :class:`Column`, which are also
+    present on each associated :class:`.Column`, which are also
     associated with the constraint object.
 
     Note that you cannot define a "composite" foreign key constraint,
     that is a constraint between a grouping of multiple parent/child
     columns, using ``ForeignKey`` objects.   To define this grouping,
-    the :class:`ForeignKeyConstraint` object must be used, and applied
-    to the :class:`Table`.   The associated ``ForeignKey`` objects
+    the :class:`.ForeignKeyConstraint` object must be used, and applied
+    to the :class:`.Table`.   The associated ``ForeignKey`` objects
     are created automatically.
 
     The ``ForeignKey`` objects associated with an individual 
-    :class:`Column` object are available in the `foreign_keys` collection
+    :class:`.Column` object are available in the `foreign_keys` collection
     of that column.
 
     Further examples of foreign key configuration are in
@@ -1020,12 +1020,12 @@ class ForeignKey(SchemaItem):
         """
         Construct a column-level FOREIGN KEY.
 
-        The :class:`ForeignKey` object when constructed generates a
-        :class:`ForeignKeyConstraint` which is associated with the parent
-        :class:`Table` object's collection of constraints.
+        The :class:`.ForeignKey` object when constructed generates a
+        :class:`.ForeignKeyConstraint` which is associated with the parent
+        :class:`.Table` object's collection of constraints.
 
         :param column: A single target column for the key relationship. A
-            :class:`Column` object or a column name as a string:
+            :class:`.Column` object or a column name as a string:
             ``tablename.columnkey`` or ``schema.tablename.columnkey``.
             ``columnkey`` is the ``key`` which has been assigned to the column
             (defaults to the column name itself), unless ``link_to_name`` is
@@ -1053,7 +1053,7 @@ class ForeignKey(SchemaItem):
             assigned ``key``.
 
         :param use_alter: passed to the underlying
-            :class:`ForeignKeyConstraint` to indicate the constraint should be
+            :class:`.ForeignKeyConstraint` to indicate the constraint should be
             generated/dropped externally from the CREATE TABLE/ DROP TABLE
             statement. See that classes' constructor for details.
 
@@ -1081,16 +1081,16 @@ class ForeignKey(SchemaItem):
         return "ForeignKey(%r)" % self._get_colspec()
 
     def copy(self, schema=None):
-        """Produce a copy of this :class:`ForeignKey` object.
+        """Produce a copy of this :class:`.ForeignKey` object.
 
-        The new :class:`ForeignKey` will not be bound
-        to any :class:`Column`.
+        The new :class:`.ForeignKey` will not be bound
+        to any :class:`.Column`.
 
         This method is usually used by the internal
-        copy procedures of :class:`Column`, :class:`Table`,
-        and :class:`MetaData`.
+        copy procedures of :class:`.Column`, :class:`.Table`,
+        and :class:`.MetaData`.
 
-        :param schema: The returned :class:`ForeignKey` will
+        :param schema: The returned :class:`.ForeignKey` will
           reference the original table and column name, qualified
           by the given string schema name.
 
@@ -1110,7 +1110,7 @@ class ForeignKey(SchemaItem):
         return fk
 
     def _get_colspec(self, schema=None):
-        """Return a string based 'column specification' for this :class:`ForeignKey`.
+        """Return a string based 'column specification' for this :class:`.ForeignKey`.
 
         This is usually the equivalent of the string-based "tablename.colname"
         argument first passed to the object's constructor.
@@ -1131,16 +1131,16 @@ class ForeignKey(SchemaItem):
     target_fullname = property(_get_colspec)
 
     def references(self, table):
-        """Return True if the given :class:`Table` is referenced by this :class:`ForeignKey`."""
+        """Return True if the given :class:`.Table` is referenced by this :class:`.ForeignKey`."""
 
         return table.corresponding_column(self.column) is not None
 
     def get_referent(self, table):
         """Return the :class:`.Column` in the given :class:`.Table` 
-        referenced by this :class:`ForeignKey`.
+        referenced by this :class:`.ForeignKey`.
 
-        Returns None if this :class:`ForeignKey` does not reference the given
-        :class:`Table`.
+        Returns None if this :class:`.ForeignKey` does not reference the given
+        :class:`.Table`.
 
         """
 
@@ -1150,7 +1150,7 @@ class ForeignKey(SchemaItem):
     def column(self):
         """Return the target :class:`.Column` referenced by this :class:`.ForeignKey`.
 
-        If this :class:`ForeignKey` was created using a
+        If this :class:`.ForeignKey` was created using a
         string-based target column specification, this
         attribute will on first access initiate a resolution
         process to locate the referenced remote
@@ -1789,8 +1789,8 @@ class ForeignKeyConstraint(Constraint):
 
     Defines a single column or composite FOREIGN KEY ... REFERENCES
     constraint. For a no-frills, single column foreign key, adding a
-    :class:`ForeignKey` to the definition of a :class:`Column` is a shorthand
-    equivalent for an unnamed, single column :class:`ForeignKeyConstraint`.
+    :class:`.ForeignKey` to the definition of a :class:`.Column` is a shorthand
+    equivalent for an unnamed, single column :class:`.ForeignKeyConstraint`.
 
     Examples of foreign key configuration are in :ref:`metadata_foreignkeys`.
 
@@ -1835,7 +1835,7 @@ class ForeignKeyConstraint(Constraint):
           ALTER TABLE statement issued after the full collection of tables
           have been created, and drop it via an ALTER TABLE statement before
           the full collection of tables are dropped. This is shorthand for the
-          usage of :class:`AddConstraint` and :class:`DropConstraint` applied
+          usage of :class:`.AddConstraint` and :class:`.DropConstraint` applied
           as "after-create" and "before-drop" events on the MetaData object.
           This is normally used to generate/drop constraints on objects that
           are mutually dependent on each other.
@@ -2446,7 +2446,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
         A DDLElement instance can be linked to any number of schema items. 
 
         ``execute_at`` builds on the ``append_ddl_listener`` interface of
-        :class:`MetaData` and :class:`Table` objects.
+        :class:`.MetaData` and :class:`.Table` objects.
 
         Caveat: Creating or dropping a Table in isolation will also trigger
         any DDL set to ``execute_at`` that Table's MetaData.  This may change

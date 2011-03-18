@@ -4,7 +4,7 @@ SQLAlchemy ORM
 ===============
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     tutorial
     mapper_config
@@ -19,4 +19,4 @@ SQLAlchemy ORM
     examples
     interfaces
     exceptions
-
+    internals

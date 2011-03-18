@@ -316,8 +316,8 @@ Alternatively, the ``bind`` attribute of :class:`~sqlalchemy.schema.MetaData`
 is *confusing* if:
 
 * Your application talks to multiple database engines at different times,
-  which use the *same* set of :class:`Table` objects. It's usually confusing
-  and unnecessary to begin to create "copies" of :class:`Table` objects just
+  which use the *same* set of :class:`.Table` objects. It's usually confusing
+  and unnecessary to begin to create "copies" of :class:`.Table` objects just
   so that different engines can be used for different operations. An example
   is an application that writes data to a "master" database while performing
   read-only operations from a "read slave". A global
@@ -335,7 +335,9 @@ is *confusing* if:
 Specifying the Schema Name
 ---------------------------
 
-Some databases support the concept of multiple schemas.  A :class:`~sqlalchemy.schema.Table` can reference this by specifying the ``schema`` keyword argument::
+Some databases support the concept of multiple schemas. A
+:class:`~sqlalchemy.schema.Table` can reference this by specifying the
+``schema`` keyword argument::
 
     financial_info = Table('financial_info', meta,
         Column('id', Integer, primary_key=True),
@@ -343,16 +345,27 @@ Some databases support the concept of multiple schemas.  A :class:`~sqlalchemy.s
         schema='remote_banks'
     )
 
-Within the :class:`~sqlalchemy.schema.MetaData` collection, this table will be identified by the combination of ``financial_info`` and ``remote_banks``.  If another table called ``financial_info`` is referenced without the ``remote_banks`` schema, it will refer to a different :class:`~sqlalchemy.schema.Table`.  :class:`~sqlalchemy.schema.ForeignKey` objects can specify references to columns in this table using the form ``remote_banks.financial_info.id``.
+Within the :class:`~sqlalchemy.schema.MetaData` collection, this table will be
+identified by the combination of ``financial_info`` and ``remote_banks``. If
+another table called ``financial_info`` is referenced without the
+``remote_banks`` schema, it will refer to a different
+:class:`~sqlalchemy.schema.Table`. :class:`~sqlalchemy.schema.ForeignKey`
+objects can specify references to columns in this table using the form
+``remote_banks.financial_info.id``.
 
-The ``schema`` argument should be used for any name qualifiers required, including Oracle's "owner" attribute and similar.  It also can accommodate a dotted name for longer schemes::
+The ``schema`` argument should be used for any name qualifiers required,
+including Oracle's "owner" attribute and similar. It also can accommodate a
+dotted name for longer schemes::
 
     schema="dbo.scott"
 
 Backend-Specific Options
 ------------------------
 
-:class:`~sqlalchemy.schema.Table` supports database-specific options.   For example, MySQL has different table backend types, including "MyISAM" and "InnoDB".   This can be expressed with :class:`~sqlalchemy.schema.Table` using ``mysql_engine``::
+:class:`~sqlalchemy.schema.Table` supports database-specific options. For
+example, MySQL has different table backend types, including "MyISAM" and
+"InnoDB". This can be expressed with :class:`~sqlalchemy.schema.Table` using
+``mysql_engine``::
 
     addresses = Table('engine_email_addresses', meta,
         Column('address_id', Integer, primary_key = True),
@@ -361,10 +374,11 @@ Backend-Specific Options
         mysql_engine='InnoDB'
     )
 
-Other backends may support table-level options as well - these would be described in the individual documentation sections for each dialect.
+Other backends may support table-level options as well - these would be
+described in the individual documentation sections for each dialect.
 
-Schema API Constructs
----------------------
+API Documenation - Column, Table, MetaData
+-------------------------------------------
 
 .. autoclass:: Column
     :members:
@@ -801,8 +815,8 @@ executed standalone like a SQL expression, which has the effect of calling its
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
 
-Default Generation API Constructs
----------------------------------
+API Documentation - Default Objects
+-----------------------------------
 
 .. autoclass:: ColumnDefault
     :show-inheritance:
@@ -981,17 +995,6 @@ Note that these clauses are not supported on SQLite, and require ``InnoDB``
 tables when used with MySQL. They may also not be supported on other
 databases.
 
-Foreign Key API Constructs
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: ForeignKey
-    :members:
-    :show-inheritance:
-
-.. autoclass:: ForeignKeyConstraint
-    :members:
-    :show-inheritance:
-
 
 UNIQUE Constraint
 -----------------
@@ -1015,9 +1018,6 @@ unique constraints and/or those with multiple columns are created via the
         # explicit/composite unique constraint.  'name' is optional.
         UniqueConstraint('col2', 'col3', name='uix_1')
         )
-
-.. autoclass:: UniqueConstraint
-    :show-inheritance:
 
 CHECK Constraint
 ----------------
@@ -1055,20 +1055,31 @@ MySQL.
         CONSTRAINT check1  CHECK (col2 > col3 + 5)
     ){stop}
 
-.. autoclass:: CheckConstraint
+API Documentation - Constraints
+--------------------------------
+.. autoclass:: Constraint
     :show-inheritance:
 
-Other Constraint Classes
-------------------------
-
-.. autoclass:: Constraint
+.. autoclass:: CheckConstraint
     :show-inheritance:
 
 .. autoclass:: ColumnCollectionConstraint
     :show-inheritance:
 
+.. autoclass:: ForeignKey
+    :members:
+    :show-inheritance:
+
+.. autoclass:: ForeignKeyConstraint
+    :members:
+    :show-inheritance:
+
 .. autoclass:: PrimaryKeyConstraint
     :show-inheritance:
+
+.. autoclass:: UniqueConstraint
+    :show-inheritance:
+
 
 Indexes
 -------
@@ -1370,8 +1381,8 @@ details.
 
 .. _schema_api_ddl:
 
-DDL API
--------
+API Documentation - DDL Expression Constructs
+---------------------------------------------
 
 .. autoclass:: DDLElement
     :members:

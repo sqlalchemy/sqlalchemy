@@ -16,7 +16,7 @@ class MakoBridge(TemplateBridge):
         self.layout = builder.config.html_context.get('mako_layout', 'html')
 
         self.lookup = TemplateLookup(directories=builder.config.templates_path,
-            format_exceptions=True, 
+            #format_exceptions=True, 
             imports=[
                 "from builder import util"
             ]

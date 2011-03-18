@@ -1000,7 +1000,7 @@ class History(tuple):
         return self != HISTORY_BLANK
 
     def empty(self):
-        """Return True if this :class:`History` has no changes
+        """Return True if this :class:`.History` has no changes
         and no existing, unchanged state.
 
         """
@@ -1030,7 +1030,7 @@ class History(tuple):
                 (self.deleted or [])
 
     def has_changes(self):
-        """Return True if this :class:`History` has changes."""
+        """Return True if this :class:`.History` has changes."""
 
         return bool(self.added or self.deleted)
 

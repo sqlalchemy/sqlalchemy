@@ -19,7 +19,7 @@ from sqlalchemy.sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')
 
 class DescriptorProperty(MapperProperty):
-    """:class:`MapperProperty` which proxies access to a 
+    """:class:`.MapperProperty` which proxies access to a 
         user-defined descriptor."""
 
     doc = None
@@ -290,7 +290,7 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 class ConcreteInheritedProperty(DescriptorProperty):
-    """A 'do nothing' :class:`MapperProperty` that disables 
+    """A 'do nothing' :class:`.MapperProperty` that disables 
     an attribute on a concrete subclass that is only present
     on the inherited mapper, not the concrete classes' mapper.
 

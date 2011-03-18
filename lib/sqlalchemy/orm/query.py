@@ -696,7 +696,7 @@ class Query(object):
 
     @_generative()
     def populate_existing(self):
-        """Return a :class:`Query` that will expire and refresh all instances 
+        """Return a :class:`.Query` that will expire and refresh all instances 
         as they are loaded, or reused from the current :class:`.Session`.
 
         :meth:`.populate_existing` does not improve behavior when 
@@ -900,12 +900,12 @@ class Query(object):
     @_generative()
     def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given entity or selectable to 
-        this :class:`Query`.
+        this :class:`.Query`.
 
         Functionality is passed straight through to 
         :meth:`~sqlalchemy.sql.expression.Select.with_hint`, 
         with the addition that ``selectable`` can be a 
-        :class:`Table`, :class:`Alias`, or ORM entity / mapped class 
+        :class:`.Table`, :class:`.Alias`, or ORM entity / mapped class 
         /etc.
         """
         mapper, selectable, is_aliased_class = _entity_info(selectable)
@@ -1755,7 +1755,7 @@ class Query(object):
     @property
     def column_descriptions(self):
         """Return metadata about the columns which would be 
-        returned by this :class:`Query`.
+        returned by this :class:`.Query`.
 
         Format is a list of dictionaries::
 

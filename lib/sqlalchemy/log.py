@@ -168,7 +168,7 @@ class InstanceLogger(object):
         return level
 
 def instance_logger(instance, echoflag=None):
-    """create a logger for an instance that implements :class:`Identified`."""
+    """create a logger for an instance that implements :class:`.Identified`."""
 
     if instance.logging_name:
         name = "%s.%s.%s" % (instance.__class__.__module__,

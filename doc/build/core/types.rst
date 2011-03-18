@@ -253,7 +253,7 @@ section :ref:`type_compilation_extension`, a subsection of
 Augmenting Existing Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`TypeDecorator` allows the creation of custom types which
+The :class:`.TypeDecorator` allows the creation of custom types which
 add bind-parameter and result-processing behavior to an existing
 type object.  It is used when additional in-Python marshalling of data
 to and from the database is required.
@@ -379,7 +379,7 @@ extension - see the example in :ref:`mutable_toplevel`.
 Creating New Types
 ~~~~~~~~~~~~~~~~~~
 
-The :class:`UserDefinedType` class is provided as a simple base class
+The :class:`.UserDefinedType` class is provided as a simple base class
 for defining entirely new database types:
 
 .. autoclass:: UserDefinedType

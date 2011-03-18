@@ -4,7 +4,7 @@ SQLAlchemy Core
 ===============
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     tutorial
     expression_api
@@ -19,4 +19,4 @@ SQLAlchemy Core
     serializer
     interfaces
     exceptions
-
+    internals

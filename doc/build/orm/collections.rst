@@ -390,8 +390,8 @@ authoring custom types. See the :mod:`sqlalchemy.orm.collections` package for
 more information and discussion of advanced usage and Python 2.3-compatible
 decoration options.
 
-Collections API
-~~~~~~~~~~~~~~~
+API Documentation - Collections
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autofunction:: attribute_mapped_collection
 

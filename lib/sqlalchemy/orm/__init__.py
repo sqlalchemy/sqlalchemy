@@ -114,7 +114,7 @@ def scoped_session(session_factory, scopefunc=None):
     :class:`.ScopedSession`.
 
     :param session_factory: a callable function that produces
-      :class:`Session` instances, such as :func:`sessionmaker`.
+      :class:`.Session` instances, such as :func:`sessionmaker`.
 
     :param scopefunc: Optional "scope" function which would be
       passed to the :class:`.ScopedRegistry`.  If None, the
@@ -153,7 +153,7 @@ def create_session(bind=None, **kwargs):
       :class:`~sqlalchemy.orm.session.Session`.
 
     :param \*\*kwargs: optional, passed through to the
-      :class:`Session` constructor.
+      :class:`.Session` constructor.
 
     :returns: an :class:`~sqlalchemy.orm.session.Session` instance
 
@@ -183,7 +183,7 @@ def relationship(argument, secondary=None, **kwargs):
        :func:`relation` prior to version 0.6.
 
     This corresponds to a parent-child or associative table relationship.  The
-    constructed class is an instance of :class:`RelationshipProperty`.
+    constructed class is an instance of :class:`.RelationshipProperty`.
 
     A typical :func:`relationship`::
 
@@ -192,7 +192,7 @@ def relationship(argument, secondary=None, **kwargs):
        })
 
     :param argument:
-      a class or :class:`Mapper` instance, representing the target of
+      a class or :class:`.Mapper` instance, representing the target of
       the relationship.
 
     :param secondary:
@@ -283,7 +283,7 @@ def relationship(argument, secondary=None, **kwargs):
       :ref:`custom_collections`.
 
     :param comparator_factory:
-      a class which extends :class:`RelationshipProperty.Comparator` which
+      a class which extends :class:`.RelationshipProperty.Comparator` which
       provides custom SQL clause generation for comparison operations.
 
     :param doc:
@@ -539,7 +539,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
     """Construct a dynamically-loading mapper property.
 
     This property is similar to :func:`relationship`, except read
-    operations return an active :class:`Query` object which reads from
+    operations return an active :class:`.Query` object which reads from
     the database when accessed.  Items may be appended to the
     attribute via ``append()``, or removed via ``remove()``; changes
     will be persisted to the database during a :meth:`Sesion.flush`.
@@ -550,7 +550,7 @@ def dynamic_loader(argument, secondary=None, primaryjoin=None,
     here.
 
     :param argument:
-      a class or :class:`Mapper` instance, representing the target of
+      a class or :class:`.Mapper` instance, representing the target of
       the relationship.
 
     :param secondary:
@@ -688,7 +688,7 @@ def backref(name, **kwargs):
     return (name, kwargs)
 
 def deferred(*columns, **kwargs):
-    """Return a :class:`DeferredColumnProperty`, which indicates this
+    """Return a :class:`.DeferredColumnProperty`, which indicates this
     object attributes should only be loaded from its corresponding
     table column when first accessed.
 
@@ -777,7 +777,7 @@ def mapper(class_, local_table=None, *args, **params):
            condition contains no ForeignKey columns, specify the "foreign"
            columns of the join condition in this list. else leave as None.
 
-        :param non_primary: Construct a :class:`Mapper` that will define only
+        :param non_primary: Construct a :class:`.Mapper` that will define only
            the selection of instances, not their persistence. Any number of
            non_primary mappers may be created for a particular class.
 
@@ -845,7 +845,7 @@ def mapper(class_, local_table=None, *args, **params):
            that will be used to keep a running version id of mapped entities
            in the database. this is used during save operations to ensure that
            no other thread or process has updated the instance during the
-           lifetime of the entity, else a :class:`StaleDataError` exception is
+           lifetime of the entity, else a :class:`.StaleDataError` exception is
            thrown.
 
         :param version_id_generator: A callable which defines the algorithm

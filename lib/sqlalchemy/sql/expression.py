@@ -7,12 +7,12 @@
 """Defines the base components of SQL expression trees.
 
 All components are derived from a common base class
-:class:`ClauseElement`.  Common behaviors are organized
+:class:`.ClauseElement`.  Common behaviors are organized
 based on class hierarchies, in some cases via mixins.
 
 All object construction from this package occurs via functions which
-in some cases will construct composite :class:`ClauseElement` structures
-together, and in other cases simply return a single :class:`ClauseElement`
+in some cases will construct composite :class:`.ClauseElement` structures
+together, and in other cases simply return a single :class:`.ClauseElement`
 constructed directly.  The function interface affords a more "DSL-ish"
 feel to constructing SQL expressions and also allows future class
 reorganizations.
@@ -95,10 +95,10 @@ def asc(column):
 def outerjoin(left, right, onclause=None):
     """Return an ``OUTER JOIN`` clause element.
 
-    The returned object is an instance of :class:`Join`.
+    The returned object is an instance of :class:`.Join`.
 
     Similar functionality is also available via the :func:`outerjoin()`
-    method on any :class:`FromClause`.
+    method on any :class:`.FromClause`.
 
     left
       The left side of the join.
@@ -112,7 +112,7 @@ def outerjoin(left, right, onclause=None):
       otherwise.
 
     To chain joins together, use the :func:`join()` or :func:`outerjoin()`
-    methods on the resulting :class:`Join` object.
+    methods on the resulting :class:`.Join` object.
 
     """
     return Join(left, right, onclause, isouter=True)
@@ -120,10 +120,10 @@ def outerjoin(left, right, onclause=None):
 def join(left, right, onclause=None, isouter=False):
     """Return a ``JOIN`` clause element (regular inner join).
 
-    The returned object is an instance of :class:`Join`.
+    The returned object is an instance of :class:`.Join`.
 
     Similar functionality is also available via the :func:`join()` method
-    on any :class:`FromClause`.
+    on any :class:`.FromClause`.
 
     left
       The left side of the join.
@@ -137,7 +137,7 @@ def join(left, right, onclause=None, isouter=False):
       otherwise.
 
     To chain joins together, use the :func:`join()` or :func:`outerjoin()`
-    methods on the resulting :class:`Join` object.
+    methods on the resulting :class:`.Join` object.
 
     """
     return Join(left, right, onclause, isouter)
@@ -146,20 +146,20 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     """Returns a ``SELECT`` clause element.
 
     Similar functionality is also available via the :func:`select()`
-    method on any :class:`FromClause`.
+    method on any :class:`.FromClause`.
 
-    The returned object is an instance of :class:`Select`.
+    The returned object is an instance of :class:`.Select`.
 
-    All arguments which accept :class:`ClauseElement` arguments also accept
+    All arguments which accept :class:`.ClauseElement` arguments also accept
     string arguments, which will be converted as appropriate into
     either :func:`text()` or :func:`literal_column()` constructs.
 
     :param columns:
-      A list of :class:`ClauseElement` objects, typically
-      :class:`ColumnElement` objects or subclasses, which will form the
+      A list of :class:`.ClauseElement` objects, typically
+      :class:`.ColumnElement` objects or subclasses, which will form the
       columns clause of the resulting statement. For all members which are
-      instances of :class:`Selectable`, the individual :class:`ColumnElement`
-      members of the :class:`Selectable` will be added individually to the
+      instances of :class:`.Selectable`, the individual :class:`.ColumnElement`
+      members of the :class:`.Selectable` will be added individually to the
       columns clause. For example, specifying a
       :class:`~sqlalchemy.schema.Table` instance will result in all the
       contained :class:`~sqlalchemy.schema.Column` objects within to be added
@@ -169,17 +169,17 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       available on :class:`~sqlalchemy.schema.Table`.
 
     :param whereclause:
-      A :class:`ClauseElement` expression which will be used to form the
+      A :class:`.ClauseElement` expression which will be used to form the
       ``WHERE`` clause.
 
     :param from_obj:
-      A list of :class:`ClauseElement` objects which will be added to the
+      A list of :class:`.ClauseElement` objects which will be added to the
       ``FROM`` clause of the resulting statement. Note that "from" objects are
       automatically located within the columns and whereclause ClauseElements.
       Use this parameter to explicitly specify "from" objects which are not
       automatically locatable. This could include
       :class:`~sqlalchemy.schema.Table` objects that aren't otherwise present,
-      or :class:`Join` objects whose presence will supercede that of the
+      or :class:`.Join` objects whose presence will supercede that of the
       :class:`~sqlalchemy.schema.Table` objects already located in the other
       clauses.
 
@@ -196,10 +196,10 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       :class:`.ClauseElement` members.
 
     :param correlate=True:
-      indicates that this :class:`Select` object should have its
-      contained :class:`FromClause` elements "correlated" to an enclosing
-      :class:`Select` object.  This means that any :class:`ClauseElement`
-      instance within the "froms" collection of this :class:`Select`
+      indicates that this :class:`.Select` object should have its
+      contained :class:`.FromClause` elements "correlated" to an enclosing
+      :class:`.Select` object.  This means that any :class:`.ClauseElement`
+      instance within the "froms" collection of this :class:`.Select`
       which is also present in the "froms" collection of an
       enclosing select will not be rendered in the ``FROM`` clause
       of this select statement.
@@ -229,11 +229,11 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       NOWAIT``.
 
     :param group_by:
-      a list of :class:`ClauseElement` objects which will comprise the
+      a list of :class:`.ClauseElement` objects which will comprise the
       ``GROUP BY`` clause of the resulting select.
 
     :param having:
-      a :class:`ClauseElement` that will comprise the ``HAVING`` clause
+      a :class:`.ClauseElement` that will comprise the ``HAVING`` clause
       of the resulting select when ``GROUP BY`` is used.
 
     :param limit=None:
@@ -249,11 +249,11 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       functionality.
 
     :param order_by:
-      a scalar or list of :class:`ClauseElement` objects which will
+      a scalar or list of :class:`.ClauseElement` objects which will
       comprise the ``ORDER BY`` clause of the resulting select.
 
     :param prefixes:
-      a list of strings or :class:`ClauseElement` objects to include
+      a list of strings or :class:`.ClauseElement` objects to include
       directly after the SELECT keyword in the generated statement,
       for dialect-specific query features.  ``prefixes`` is
       also available via the :meth:`~.Select.prefix_with`
@@ -265,7 +265,7 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       column with its parent table's (or aliases) name so that name
       conflicts between columns in different tables don't occur.
       The format of the label is <tablename>_<column>.  The "c"
-      collection of the resulting :class:`Select` object will use these
+      collection of the resulting :class:`.Select` object will use these
       names as well for targeting column members.
       
       use_labels is also available via the :meth:`~._SelectBase.apply_labels`
@@ -276,8 +276,8 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
                   **kwargs)
 
 def subquery(alias, *args, **kwargs):
-    """Return an :class:`Alias` object derived 
-    from a :class:`Select`.
+    """Return an :class:`.Alias` object derived 
+    from a :class:`.Select`.
 
     name
       alias name
@@ -291,7 +291,7 @@ def subquery(alias, *args, **kwargs):
     return Select(*args, **kwargs).alias(alias)
 
 def insert(table, values=None, inline=False, **kwargs):
-    """Return an :class:`Insert` clause element.
+    """Return an :class:`.Insert` clause element.
 
     Similar functionality is available via the :func:`insert()` method on
     :class:`~sqlalchemy.schema.Table`.
@@ -332,14 +332,14 @@ def insert(table, values=None, inline=False, **kwargs):
     return Insert(table, values, inline=inline, **kwargs)
 
 def update(table, whereclause=None, values=None, inline=False, **kwargs):
-    """Return an :class:`Update` clause element.
+    """Return an :class:`.Update` clause element.
 
     Similar functionality is available via the :func:`update()` method on
     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be updated.
 
-    :param whereclause: A :class:`ClauseElement` describing the ``WHERE``
+    :param whereclause: A :class:`.ClauseElement` describing the ``WHERE``
      condition of the ``UPDATE`` statement. Note that the
      :meth:`~Update.where()` generative method may also be used for this.
 
@@ -382,14 +382,14 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
             **kwargs)
 
 def delete(table, whereclause = None, **kwargs):
-    """Return a :class:`Delete` clause element.
+    """Return a :class:`.Delete` clause element.
 
     Similar functionality is available via the :func:`delete()` method on
     :class:`~sqlalchemy.schema.Table`.
 
     :param table: The table to be updated.
 
-    :param whereclause: A :class:`ClauseElement` describing the ``WHERE``
+    :param whereclause: A :class:`.ClauseElement` describing the ``WHERE``
       condition of the ``UPDATE`` statement. Note that the
       :meth:`~Delete.where()` generative method may be used instead.
 
@@ -534,7 +534,7 @@ def collate(expression, collation):
         operators.collate, type_=expr.type)
 
 def exists(*args, **kwargs):
-    """Return an ``EXISTS`` clause as applied to a :class:`Select` object.
+    """Return an ``EXISTS`` clause as applied to a :class:`.Select` object.
 
     Calling styles are of the following forms::
 
@@ -556,13 +556,13 @@ def union(*selects, **kwargs):
     """Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     A similar :func:`union()` method is available on all
-    :class:`FromClause` subclasses.
+    :class:`.FromClause` subclasses.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
        available keyword arguments are the same as those of
@@ -575,13 +575,13 @@ def union_all(*selects, **kwargs):
     """Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     A similar :func:`union_all()` method is available on all
-    :class:`FromClause` subclasses.
+    :class:`.FromClause` subclasses.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
@@ -594,10 +594,10 @@ def except_(*selects, **kwargs):
     """Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
@@ -610,10 +610,10 @@ def except_all(*selects, **kwargs):
     """Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
@@ -626,10 +626,10 @@ def intersect(*selects, **kwargs):
     """Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
@@ -642,10 +642,10 @@ def intersect_all(*selects, **kwargs):
     """Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
-    :class:`CompoundSelect`.
+    :class:`.CompoundSelect`.
 
     \*selects
-      a list of :class:`Select` instances.
+      a list of :class:`.Select` instances.
 
     \**kwargs
       available keyword arguments are the same as those of
@@ -694,7 +694,7 @@ def alias(selectable, name=None):
 def literal(value, type_=None):
     """Return a literal clause, bound to a bind parameter.
 
-    Literal clauses are created automatically when non- :class:`ClauseElement`
+    Literal clauses are created automatically when non- :class:`.ClauseElement`
     objects (such as strings, ints, dates, etc.) are used in a comparison
     operation with a :class:`_CompareMixin`
     subclass, such as a :class:`~sqlalchemy.schema.Column` object. Use this function to force the
@@ -772,19 +772,19 @@ def type_coerce(expr, type_):
 
 def label(name, obj):
     """Return a :class:`_Label` object for the
-    given :class:`ColumnElement`.
+    given :class:`.ColumnElement`.
 
     A label changes the name of an element in the columns clause of a
     ``SELECT`` statement, typically via the ``AS`` SQL keyword.
 
     This functionality is more conveniently available via the
-    :func:`label()` method on :class:`ColumnElement`.
+    :func:`label()` method on :class:`.ColumnElement`.
 
     name
       label name
 
     obj
-      a :class:`ColumnElement`.
+      a :class:`.ColumnElement`.
 
     """
     return _Label(name, obj)
@@ -794,7 +794,7 @@ def column(text, type_=None):
     ``SELECT`` statement.
 
     The object returned is an instance of
-    :class:`ColumnClause`, which represents the
+    :class:`.ColumnClause`, which represents the
     "syntactical" portion of the schema-level
     :class:`~sqlalchemy.schema.Column` object.
 
@@ -836,7 +836,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 def table(name, *columns):
-    """Return a :class:`TableClause` object.
+    """Return a :class:`.TableClause` object.
 
     This is a primitive version of the :class:`~sqlalchemy.schema.Table` object,
     which is a subclass of this object.
@@ -876,7 +876,7 @@ def bindparam(key, value=None, type_=None, unique=False, required=False, callabl
           if True, the key name of this BindParamClause will be
           modified if another :class:`_BindParamClause` of the same name
           already has been located within the containing
-          :class:`ClauseElement`.
+          :class:`.ClauseElement`.
 
         :param required:
           a value is required at execution time.
@@ -957,7 +957,7 @@ def text(text, bind=None, *args, **kwargs):
 
     Using :func:`text` explicitly usually implies the construction
     of a full, standalone statement.   As such, SQLAlchemy refers
-    to it as an :class:`Executable` object, and it supports
+    to it as an :class:`.Executable` object, and it supports
     the :meth:`Executable.execution_options` method.  For example,
     a :func:`text` construct that should be subject to "autocommit"
     can be set explicitly so using the ``autocommit`` option::
@@ -1038,7 +1038,7 @@ def null():
     return _Null()
 
 class _FunctionGenerator(object):
-    """Generate :class:`Function` objects based on getattr calls."""
+    """Generate :class:`.Function` objects based on getattr calls."""
 
     def __init__(self, **opts):
         self.__names = []
@@ -1262,7 +1262,7 @@ def _generative(fn, *args, **kw):
 
 
 def is_column(col):
-    """True if ``col`` is an instance of :class:`ColumnElement`."""
+    """True if ``col`` is an instance of :class:`.ColumnElement`."""
 
     return isinstance(col, ColumnElement)
 
@@ -1406,7 +1406,7 @@ class ClauseElement(Visitable):
 
         \**kw are arguments consumed by subclass compare() methods and
         may be used to modify the criteria for comparison.
-        (see :class:`ColumnElement`)
+        (see :class:`.ColumnElement`)
 
         """
         return self is other
@@ -1421,7 +1421,7 @@ class ClauseElement(Visitable):
         pass
 
     def get_children(self, **kwargs):
-        """Return immediate child elements of this :class:`ClauseElement`.
+        """Return immediate child elements of this :class:`.ClauseElement`.
 
         This is used for visit traversal.
 
@@ -1466,7 +1466,7 @@ class ClauseElement(Visitable):
                               ':class:`.Executable` may provide the '
                               ':func:`.execute` method.')
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`.
+        """Compile and execute this :class:`.ClauseElement`.
 
         """
         e = self.bind
@@ -1481,7 +1481,7 @@ class ClauseElement(Visitable):
                               ':class:`.Executable` may provide the '
                               ':func:`.scalar` method.')
     def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`ClauseElement`, returning
+        """Compile and execute this :class:`.ClauseElement`, returning
         the result's scalar representation.
 
         """
@@ -1499,7 +1499,7 @@ class ClauseElement(Visitable):
 
         :param bind: An ``Engine`` or ``Connection`` from which a
             ``Compiled`` will be acquired. This argument takes precedence over
-            this :class:`ClauseElement`'s bound engine, if any.
+            this :class:`.ClauseElement`'s bound engine, if any.
 
         :param column_keys: Used for INSERT and UPDATE statements, a list of
             column names which should be present in the VALUES clause of the
@@ -1508,7 +1508,7 @@ class ClauseElement(Visitable):
 
         :param dialect: A ``Dialect`` instance frmo which a ``Compiled``
             will be acquired. This argument takes precedence over the `bind`
-            argument as well as this :class:`ClauseElement`'s bound engine, if
+            argument as well as this :class:`.ClauseElement`'s bound engine, if
             any.
 
         :param inline: Used for INSERT statements, for a dialect which does
@@ -1715,7 +1715,7 @@ class ColumnOperators(Operators):
         return self.reverse_operate(operators.truediv, other)
 
 class _CompareMixin(ColumnOperators):
-    """Defines comparison and math operations for :class:`ClauseElement`
+    """Defines comparison and math operations for :class:`.ClauseElement`
     instances."""
 
     def __compare(self, op, obj, negate=None, reverse=False,
@@ -1961,7 +1961,7 @@ class _CompareMixin(ColumnOperators):
           somecolumn * 5
 
         :param operator: a string which will be output as the infix operator
-          between this :class:`ClauseElement` and the expression passed to the
+          between this :class:`.ClauseElement` and the expression passed to the
           generated function.
 
         This function can also be used to make bitwise operators explicit. For
@@ -2003,17 +2003,17 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
     This includes columns associated with tables, aliases, and
     subqueries, expressions, function calls, SQL keywords such as
-    ``NULL``, literals, etc.  :class:`ColumnElement` is the ultimate base
+    ``NULL``, literals, etc.  :class:`.ColumnElement` is the ultimate base
     class for all such elements.
 
-    :class:`ColumnElement` supports the ability to be a *proxy* element,
-    which indicates that the :class:`ColumnElement` may be associated with
-    a :class:`Selectable` which was derived from another :class:`Selectable`.
-    An example of a "derived" :class:`Selectable` is an :class:`Alias` of a
+    :class:`.ColumnElement` supports the ability to be a *proxy* element,
+    which indicates that the :class:`.ColumnElement` may be associated with
+    a :class:`.Selectable` which was derived from another :class:`.Selectable`.
+    An example of a "derived" :class:`.Selectable` is an :class:`.Alias` of a
     :class:`~sqlalchemy.schema.Table`.
 
-    A :class:`ColumnElement`, by subclassing the :class:`_CompareMixin` mixin
-    class, provides the ability to generate new :class:`ClauseElement`
+    A :class:`.ColumnElement`, by subclassing the :class:`_CompareMixin` mixin
+    class, provides the ability to generate new :class:`.ClauseElement`
     objects using Python expressions.  See the :class:`_CompareMixin`
     docstring for more details.
 
@@ -2043,14 +2043,14 @@ class ColumnElement(ClauseElement, _CompareMixin):
         return s
 
     def shares_lineage(self, othercolumn):
-        """Return True if the given :class:`ColumnElement` 
-        has a common ancestor to this :class:`ColumnElement`."""
+        """Return True if the given :class:`.ColumnElement` 
+        has a common ancestor to this :class:`.ColumnElement`."""
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
     def _make_proxy(self, selectable, name=None):
-        """Create a new :class:`ColumnElement` representing this
-        :class:`ColumnElement` as it appears in the select list of a
+        """Create a new :class:`.ColumnElement` representing this
+        :class:`.ColumnElement` as it appears in the select list of a
         descending selectable.
 
         """
@@ -2278,7 +2278,7 @@ class FromClause(Selectable):
 
     def count(self, whereclause=None, **params):
         """return a SELECT COUNT generated against this
-        :class:`FromClause`."""
+        :class:`.FromClause`."""
 
         if self.primary_key:
             col = list(self.primary_key)[0]
@@ -2291,19 +2291,19 @@ class FromClause(Selectable):
                     **params)
 
     def select(self, whereclause=None, **params):
-        """return a SELECT of this :class:`FromClause`."""
+        """return a SELECT of this :class:`.FromClause`."""
 
         return select([self], whereclause, **params)
 
     def join(self, right, onclause=None, isouter=False):
-        """return a join of this :class:`FromClause` against another
-        :class:`FromClause`."""
+        """return a join of this :class:`.FromClause` against another
+        :class:`.FromClause`."""
 
         return Join(self, right, onclause, isouter)
 
     def outerjoin(self, right, onclause=None):
-        """return an outer join of this :class:`FromClause` against another
-        :class:`FromClause`."""
+        """return an outer join of this :class:`.FromClause` against another
+        :class:`.FromClause`."""
 
         return Join(self, right, onclause, True)
 
@@ -2332,7 +2332,7 @@ class FromClause(Selectable):
 
     def replace_selectable(self, old, alias):
         """replace all occurrences of FromClause 'old' with the given Alias 
-        object, returning a copy of this :class:`FromClause`.
+        object, returning a copy of this :class:`.FromClause`.
 
         """
 
@@ -2352,20 +2352,20 @@ class FromClause(Selectable):
         return col
 
     def corresponding_column(self, column, require_embedded=False):
-        """Given a :class:`ColumnElement`, return the exported
-        :class:`ColumnElement` object from this :class:`Selectable`
+        """Given a :class:`.ColumnElement`, return the exported
+        :class:`.ColumnElement` object from this :class:`.Selectable`
         which corresponds to that original
         :class:`~sqlalchemy.schema.Column` via a common anscestor
         column.
 
-        :param column: the target :class:`ColumnElement` to be matched
+        :param column: the target :class:`.ColumnElement` to be matched
 
         :param require_embedded: only return corresponding columns for
-        the given :class:`ColumnElement`, if the given
-        :class:`ColumnElement` is actually present within a sub-element
-        of this :class:`FromClause`.  Normally the column will match if
+        the given :class:`.ColumnElement`, if the given
+        :class:`.ColumnElement` is actually present within a sub-element
+        of this :class:`.FromClause`.  Normally the column will match if
         it merely shares a common anscestor with one of the exported
-        columns of this :class:`FromClause`.
+        columns of this :class:`.FromClause`.
 
         """
 
@@ -2521,7 +2521,7 @@ class _BindParamClause(ColumnElement):
           if True, the key name of this BindParamClause will be
           modified if another :class:`_BindParamClause` of the same name
           already has been located within the containing
-          :class:`ClauseElement`.
+          :class:`.ClauseElement`.
 
         :param required:
           a value is required at execution time.
@@ -2620,7 +2620,7 @@ class _Generative(object):
 class Executable(_Generative):
     """Mark a ClauseElement as supporting execution.
 
-    :class:`Executable` is a superclass for all "statement" types
+    :class:`.Executable` is a superclass for all "statement" types
     of objects, including :func:`select`, :func:`delete`, :func:`update`,
     :func:`insert`, :func:`text`.
 
@@ -2894,7 +2894,7 @@ class ClauseList(ClauseElement):
             return self
 
     def compare(self, other, **kw):
-        """Compare this :class:`ClauseList` to the given :class:`ClauseList`,
+        """Compare this :class:`.ClauseList` to the given :class:`.ClauseList`,
         including a comparison of all the clause items.
 
         """
@@ -3064,7 +3064,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     def select(self):
         """Produce a :func:`~.expression.select` construct 
-        against this :class:`FunctionElement`.
+        against this :class:`.FunctionElement`.
         
         This is shorthand for::
         
@@ -3207,7 +3207,7 @@ class _UnaryExpression(ColumnElement):
 
     def compare(self, other, **kw):
         """Compare this :class:`_UnaryExpression` against the given
-        :class:`ClauseElement`."""
+        :class:`.ClauseElement`."""
 
         return (
             isinstance(other, _UnaryExpression) and
@@ -3347,12 +3347,12 @@ class _Exists(_UnaryExpression):
         return e
 
 class Join(FromClause):
-    """represent a ``JOIN`` construct between two :class:`FromClause`
+    """represent a ``JOIN`` construct between two :class:`.FromClause`
     elements.
 
-    The public constructor function for :class:`Join` is the module-level
+    The public constructor function for :class:`.Join` is the module-level
     :func:`join()` function, as well as the :func:`join()` method available
-    off all :class:`FromClause` subclasses.
+    off all :class:`.FromClause` subclasses.
 
     """
     __visit_name__ = 'join'
@@ -3420,7 +3420,7 @@ class Join(FromClause):
         return sqlutil.join_condition(left, right, a_subset=left_right)
 
     def select(self, whereclause=None, fold_equivalents=False, **kwargs):
-        """Create a :class:`Select` from this :class:`Join`.
+        """Create a :class:`.Select` from this :class:`.Join`.
         
         The equivalent long-hand form, given a :class:`.Join` object
         ``j``, is::
@@ -3437,7 +3437,7 @@ class Join(FromClause):
           :class:`.Join`, do not include
           repeat column names in the column list of the resulting
           select, for columns that are calculated to be "equivalent"
-          based on the join criterion of this :class:`Join`. This will
+          based on the join criterion of this :class:`.Join`. This will
           recursively apply to any joins directly nested by this one
           as well.
 
@@ -3714,7 +3714,7 @@ class _Label(ColumnElement):
 
     This object is constructed from the :func:`label()` module level
     function as well as the :func:`label()` method available on all
-    :class:`ColumnElement` subclasses.
+    :class:`.ColumnElement` subclasses.
 
     """
 
@@ -3782,7 +3782,7 @@ class ColumnClause(_Immutable, ColumnElement):
 
     This includes columns associated with tables, aliases and select
     statements, but also any arbitrary text.  May or may not be bound
-    to an underlying :class:`Selectable`.  :class:`ColumnClause` is usually
+    to an underlying :class:`.Selectable`.  :class:`.ColumnClause` is usually
     created publically via the :func:`column()` function or the
     :func:`literal_column()` function.
 
@@ -3793,15 +3793,15 @@ class ColumnClause(_Immutable, ColumnElement):
       parent selectable.
 
     type
-      ``TypeEngine`` object which can associate this :class:`ColumnClause`
+      ``TypeEngine`` object which can associate this :class:`.ColumnClause`
       with a type.
 
     is_literal
-      if True, the :class:`ColumnClause` is assumed to be an exact
+      if True, the :class:`.ColumnClause` is assumed to be an exact
       expression that will be delivered to the output with no quoting
       rules applied regardless of case sensitive settings.  the
       :func:`literal_column()` function is usually used to create such a
-      :class:`ColumnClause`.
+      :class:`.ColumnClause`.
 
     """
     __visit_name__ = 'column'
@@ -3931,7 +3931,7 @@ class TableClause(_Immutable, FromClause):
 
     def count(self, whereclause=None, **params):
         """return a SELECT COUNT generated against this
-        :class:`TableClause`."""
+        :class:`.TableClause`."""
 
         if self.primary_key:
             col = list(self.primary_key)[0]
@@ -3964,7 +3964,7 @@ class TableClause(_Immutable, FromClause):
         return [self]
 
 class _SelectBase(Executable, FromClause):
-    """Base class for :class:`Select` and ``CompoundSelects``."""
+    """Base class for :class:`.Select` and ``CompoundSelects``."""
 
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
@@ -4385,7 +4385,7 @@ class Select(_SelectBase):
     @_generative
     def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given selectable to this
-        :class:`Select`.
+        :class:`.Select`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -4857,7 +4857,7 @@ class ValuesBase(UpdateBase):
 class Insert(ValuesBase):
     """Represent an INSERT construct.
 
-    The :class:`Insert` object is created using the :func:`insert()` function.
+    The :class:`.Insert` object is created using the :func:`insert()` function.
 
     """
     __visit_name__ = 'insert'
@@ -4907,7 +4907,7 @@ class Insert(ValuesBase):
 class Update(ValuesBase):
     """Represent an Update construct.
 
-    The :class:`Update` object is created using the :func:`update()` function.
+    The :class:`.Update` object is created using the :func:`update()` function.
 
     """
     __visit_name__ = 'update'
@@ -4959,7 +4959,7 @@ class Update(ValuesBase):
 class Delete(UpdateBase):
     """Represent a DELETE construct.
 
-    The :class:`Delete` object is created using the :func:`delete()` function.
+    The :class:`.Delete` object is created using the :func:`delete()` function.
 
     """
 

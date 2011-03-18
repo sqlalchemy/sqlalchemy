@@ -36,7 +36,7 @@ class TLConnection(base.Connection):
 class TLEngine(base.Engine):
     """An Engine that includes support for thread-local managed transactions."""
 
-    TLConnection = TLConnection
+    _tl_connection_cls = TLConnection
 
     def __init__(self, *args, **kwargs):
         super(TLEngine, self).__init__(*args, **kwargs)
@@ -52,7 +52,7 @@ class TLEngine(base.Engine):
         if connection is None or connection.closed:
             # guards against pool-level reapers, if desired.
             # or not connection.connection.is_valid:
-            connection = self.TLConnection(self, self.pool.connect(), **kw)
+            connection = self._tl_connection_cls(self, self.pool.connect(), **kw)
             self._connections.conn = conn = weakref.ref(connection)
 
         return connection._increment_connect()

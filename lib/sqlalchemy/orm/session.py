@@ -961,7 +961,7 @@ class Session(object):
         To expire individual objects and individual attributes 
         on those objects, use :meth:`Session.expire`.
 
-        The :class:`Session` object's default behavior is to 
+        The :class:`.Session` object's default behavior is to 
         expire all state whenever the :meth:`Session.rollback`
         or :meth:`Session.commit` methods are called, so that new
         state can be loaded for the new transaction.   For this reason,
@@ -986,7 +986,7 @@ class Session(object):
         To expire all objects in the :class:`.Session` simultaneously,
         use :meth:`Session.expire_all`.
 
-        The :class:`Session` object's default behavior is to 
+        The :class:`.Session` object's default behavior is to 
         expire all state whenever the :meth:`Session.rollback`
         or :meth:`Session.commit` methods are called, so that new
         state can be loaded for the new transaction.   For this reason,

@@ -787,7 +787,7 @@ class RelationshipProperty(StrategizedProperty):
         Make several attempts to determine if cols are compared using 
         "=" or other comparators (in which case suggest viewonly), 
         columns are present but not part of the expected mappings, columns
-        don't have any :class:`ForeignKey` information on them, or 
+        don't have any :class:`.ForeignKey` information on them, or 
         the ``foreign_keys`` attribute is being used incorrectly.
 
         """

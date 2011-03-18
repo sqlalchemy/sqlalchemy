@@ -79,7 +79,7 @@ class Dialect(object):
      initial connection to the database.
 
     execution_ctx_cls
-      a :class:`ExecutionContext` class used to handle statement execution
+      a :class:`.ExecutionContext` class used to handle statement execution
 
     execute_sequence_format
       either the 'tuple' or 'list' type, depending on what cursor.execute()
@@ -213,7 +213,7 @@ class Dialect(object):
     def reflecttable(self, connection, table, include_columns=None):
         """Load table description from the database.
 
-        Given a :class:`~sqlalchemy.engine.Connection` and a
+        Given a :class:`.Connection` and a
         :class:`~sqlalchemy.schema.Table` object, reflect its columns and
         properties from the database.  If include_columns (a list or
         set) is specified, limit the autoload to the given column
@@ -222,7 +222,7 @@ class Dialect(object):
         The default implementation uses the 
         :class:`~sqlalchemy.engine.reflection.Inspector` interface to 
         provide the output, building upon the granular table/column/
-        constraint etc. methods of :class:`Dialect`.
+        constraint etc. methods of :class:`.Dialect`.
 
         """
 
@@ -231,7 +231,7 @@ class Dialect(object):
     def get_columns(self, connection, table_name, schema=None, **kw):
         """Return information about columns in `table_name`.
 
-        Given a :class:`~sqlalchemy.engine.Connection`, a string
+        Given a :class:`.Connection`, a string
         `table_name`, and an optional string `schema`, return column
         information as a list of dictionaries with these keys:
 
@@ -262,7 +262,7 @@ class Dialect(object):
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
-        Given a :class:`~sqlalchemy.engine.Connection`, a string
+        Given a :class:`.Connection`, a string
         `table_name`, and an optional string `schema`, return primary
         key information as a list of column names.
 
@@ -288,7 +288,7 @@ class Dialect(object):
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         """Return information about foreign_keys in `table_name`.
 
-        Given a :class:`~sqlalchemy.engine.Connection`, a string
+        Given a :class:`.Connection`, a string
         `table_name`, and an optional string `schema`, return foreign
         key information as a list of dicts with these keys:
 
@@ -328,7 +328,7 @@ class Dialect(object):
     def get_view_definition(self, connection, view_name, schema=None, **kw):
         """Return view definition.
 
-        Given a :class:`~sqlalchemy.engine.Connection`, a string
+        Given a :class:`.Connection`, a string
         `view_name`, and an optional string `schema`, return the view
         definition.
         """
@@ -338,7 +338,7 @@ class Dialect(object):
     def get_indexes(self, connection, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
 
-        Given a :class:`~sqlalchemy.engine.Connection`, a string
+        Given a :class:`.Connection`, a string
         `table_name` and an optional string `schema`, return index
         information as a list of dictionaries with these keys:
 
@@ -377,7 +377,7 @@ class Dialect(object):
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
-        Given a :class:`~sqlalchemy.engine.Connection` object and a string
+        Given a :class:`.Connection` object and a string
         `table_name`, return True if the given table (possibly within
         the specified `schema`) exists in the database, False
         otherwise.
@@ -388,7 +388,7 @@ class Dialect(object):
     def has_sequence(self, connection, sequence_name, schema=None):
         """Check the existence of a particular sequence in the database.
 
-        Given a :class:`~sqlalchemy.engine.Connection` object and a string
+        Given a :class:`.Connection` object and a string
         `sequence_name`, return True if the given sequence exists in
         the database, False otherwise.
         """
@@ -767,11 +767,11 @@ class TypeCompiler(object):
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
-    The two implementations of ``Connectable`` are :class:`Connection` and
-    :class:`Engine`.
+    The two implementations of ``Connectable`` are :class:`.Connection` and
+    :class:`.Engine`.
 
     Connectable must also implement the 'dialect' member which references a
-    :class:`Dialect` instance.
+    :class:`.Dialect` instance.
     """
 
     def contextual_connect(self):
@@ -864,7 +864,7 @@ class Connection(Connectable):
         usually an INSERT statement.
         """
 
-        return self.engine.Connection(
+        return self.engine._connection_cls(
                                 self.engine, 
                                 self.__connection, _branch=True)
 
@@ -880,10 +880,10 @@ class Connection(Connectable):
         """ Set non-SQL options for the connection which take effect 
         during execution.
 
-        The method returns a copy of this :class:`Connection` which references
+        The method returns a copy of this :class:`.Connection` which references
         the same underlying DBAPI connection, but also defines the given
         execution options which will take effect for a call to
-        :meth:`execute`. As the new :class:`Connection` references the same
+        :meth:`execute`. As the new :class:`.Connection` references the same
         underlying resource, it is probably best to ensure that the copies
         would be discarded immediately, which is implicit if used as in::
 
@@ -1241,7 +1241,7 @@ class Connection(Connectable):
         * a textual SQL string
         * any :class:`.ClauseElement` construct that is also
           a subclass of :class:`.Executable`, such as a 
-          :func:`.select` construct
+          :func:`expression.select` construct
         * a :class:`.FunctionElement`, such as that generated
           by :attr:`.func`, will be automatically wrapped in
           a SELECT statement, which is then executed.
@@ -1827,14 +1827,14 @@ class Engine(Connectable, log.Identified):
     :class:`~sqlalchemy.engine.base.Dialect` together to provide a source 
     of database connectivity and behavior.
 
-    An :class:`Engine` object is instantiated publically using the 
+    An :class:`.Engine` object is instantiated publically using the 
     :func:`~sqlalchemy.create_engine` function.
 
     """
 
     _execution_options = util.immutabledict()
     _has_events = False
-    Connection = Connection
+    _connection_cls = Connection
 
     def __init__(self, pool, dialect, url, 
                         logging_name=None, echo=None, proxy=None,
@@ -1863,7 +1863,7 @@ class Engine(Connectable, log.Identified):
     dispatch = event.dispatcher(events.ConnectionEvents)
 
     def update_execution_options(self, **opt):
-        """update the execution_options dictionary of this :class:`Engine`.
+        """update the execution_options dictionary of this :class:`.Engine`.
 
         For details on execution_options, see
         :meth:`Connection.execution_options` as well as
@@ -1893,7 +1893,7 @@ class Engine(Connectable, log.Identified):
         return 'Engine(%s)' % str(self.url)
 
     def dispose(self):
-        """Dispose of the connection pool used by this :class:`Engine`.
+        """Dispose of the connection pool used by this :class:`.Engine`.
 
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
@@ -2039,7 +2039,7 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self.Connection(self, **kwargs)
+        return self._connection_cls(self, **kwargs)
 
     def contextual_connect(self, close_with_result=False, **kwargs):
         """Return a :class:`.Connection` object which may be part of some ongoing context.
@@ -2056,7 +2056,7 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self.Connection(self, 
+        return self._connection_cls(self, 
                                     self.pool.connect(), 
                                     close_with_result=close_with_result, 
                                     **kwargs)

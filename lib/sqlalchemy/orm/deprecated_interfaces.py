@@ -521,7 +521,7 @@ class AttributeExtension(object):
             'bar':relationship(Bar, extension=MyAttrExt())
         })
 
-    Note that the :class:`AttributeExtension` methods
+    Note that the :class:`.AttributeExtension` methods
     :meth:`~.AttributeExtension.append` and
     :meth:`~.AttributeExtension.set` need to return the
     ``value`` parameter. The returned value is used as the

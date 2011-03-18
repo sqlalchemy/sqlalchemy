@@ -36,7 +36,7 @@ def manage(module, **params):
     :param module: a DB-API 2.0 database module
 
     :param poolclass: the class used by the pool module to provide
-      pooling.  Defaults to :class:`QueuePool`.
+      pooling.  Defaults to :class:`.QueuePool`.
 
     :param \*\*params: will be passed through to *poolclass*
 
@@ -491,7 +491,7 @@ class SingletonThreadPool(Pool):
     Maintains one connection per each thread, never moving a connection to a
     thread other than the one which it was created in.
 
-    Options are the same as those of :class:`Pool`, as well as:
+    Options are the same as those of :class:`.Pool`, as well as:
 
     :param pool_size: The number of threads in which to maintain connections 
         at once.  Defaults to five.
@@ -560,7 +560,7 @@ class SingletonThreadPool(Pool):
         return c
 
 class QueuePool(Pool):
-    """A :class:`Pool` that imposes a limit on the number of open connections.
+    """A :class:`.Pool` that imposes a limit on the number of open connections.
 
     :class:`.QueuePool` is the default pooling implementation used for 
     all :class:`.Engine` objects, unless the SQLite dialect is in use.

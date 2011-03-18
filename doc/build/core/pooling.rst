@@ -22,12 +22,12 @@ Connection Pool Configuration
 -----------------------------
 
 The :class:`~sqlalchemy.engine.Engine` returned by the
-:func:`~sqlalchemy.create_engine` function in most cases has a :class:`QueuePool`
+:func:`~sqlalchemy.create_engine` function in most cases has a :class:`.QueuePool`
 integrated, pre-configured with reasonable pooling defaults.  If
 you're reading this section to simply enable pooling- congratulations!
 You're already done.
 
-The most common :class:`QueuePool` tuning parameters can be passed
+The most common :class:`.QueuePool` tuning parameters can be passed
 directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
@@ -148,8 +148,8 @@ Connection pools support an event interface that allows hooks to execute
 upon first connect, upon each new connection, and upon checkout and 
 checkin of connections.   See :class:`.PoolListener` for details.
 
-Builtin Pool Implementations
-----------------------------
+API Documentation - Available Pool Implementations
+---------------------------------------------------
 
 .. autoclass:: sqlalchemy.pool.Pool
 
@@ -200,7 +200,7 @@ This produces a :class:`_DBProxy` object which supports the same
 connection, a connection proxy object is returned, which delegates its
 calls to a real DB-API connection object.  This connection object is
 stored persistently within a connection pool (an instance of
-:class:`Pool`) that corresponds to the exact connection arguments sent
+:class:`.Pool`) that corresponds to the exact connection arguments sent
 to the ``connect()`` function.
 
 The connection proxy supports all of the methods on the original
