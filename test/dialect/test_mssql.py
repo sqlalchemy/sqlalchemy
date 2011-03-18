@@ -1626,6 +1626,8 @@ class BinaryTest(TestBase, AssertsExecutionResults):
 
 
 class ReflectHugeViewTest(TestBase):
+    __only_on__ = 'mssql'
+
     def setup(self):
         self.col_num = 150
 
