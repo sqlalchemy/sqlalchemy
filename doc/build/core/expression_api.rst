@@ -1,7 +1,7 @@
 .. _expression_api_toplevel:
 
-API Documentation - SQL Statements and Expressions
-==================================================
+SQL Statements and Expressions API
+==================================
 
 .. module:: sqlalchemy.sql.expression
 

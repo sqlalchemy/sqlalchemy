@@ -377,8 +377,8 @@ example, MySQL has different table backend types, including "MyISAM" and
 Other backends may support table-level options as well - these would be
 described in the individual documentation sections for each dialect.
 
-API Documenation - Column, Table, MetaData
--------------------------------------------
+Column, Table, MetaData API
+---------------------------
 
 .. autoclass:: Column
     :members:
@@ -815,8 +815,8 @@ executed standalone like a SQL expression, which has the effect of calling its
     seq = Sequence('some_sequence')
     nextid = connection.execute(seq)
 
-API Documentation - Default Objects
------------------------------------
+Default Objects API
+-------------------
 
 .. autoclass:: ColumnDefault
     :show-inheritance:
@@ -1055,8 +1055,8 @@ MySQL.
         CONSTRAINT check1  CHECK (col2 > col3 + 5)
     ){stop}
 
-API Documentation - Constraints
---------------------------------
+Constraints API
+---------------
 .. autoclass:: Constraint
     :show-inheritance:
 
@@ -1381,8 +1381,8 @@ details.
 
 .. _schema_api_ddl:
 
-API Documentation - DDL Expression Constructs
----------------------------------------------
+DDL Expression Constructs API
+-----------------------------
 
 .. autoclass:: DDLElement
     :members:

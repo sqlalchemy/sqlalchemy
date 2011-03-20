@@ -104,7 +104,7 @@ class Mapper(object):
 
         self.class_manager = None
 
-        self.primary_key_argument = util.to_list(primary_key)
+        self._primary_key_argument = util.to_list(primary_key)
         self.non_primary = non_primary
 
         if order_by is not False:
@@ -216,6 +216,218 @@ class Mapper(object):
             self._expire_memoizations()
         finally:
             _COMPILE_MUTEX.release()
+
+    # major attributes initialized at the classlevel so that
+    # they can be Sphinx-documented.
+
+    local_table = None
+    """The :class:`.Selectable` which this :class:`.Mapper` manages.
+    
+    Typically is an instance of :class:`.Table` or :class:`.Alias`. 
+    May also be ``None``. 
+    
+    The "local" table is the
+    selectable that the :class:`.Mapper` is directly responsible for 
+    managing from an attribute access and flush perspective.   For
+    non-inheriting mappers, the local table is the same as the
+    "mapped" table.   For joined-table inheritance mappers, local_table
+    will be the particular sub-table of the overall "join" which
+    this :class:`.Mapper` represents.  If this mapper is a 
+    single-table inheriting mapper, local_table will be ``None``.
+
+    See also :attr:`~.Mapper.mapped_table`.
+    
+    """
+
+    mapped_table = None
+    """The :class:`.Selectable` to which this :class:`.Mapper` is mapped.
+    
+    Typically an instance of :class:`.Table`, :class:`.Join`, or 
+    :class:`.Alias`.  
+    
+    The "mapped" table is the selectable that 
+    the mapper selects from during queries.   For non-inheriting 
+    mappers, the mapped table is the same as the "local" table.
+    For joined-table inheritance mappers, mapped_table references the
+    full :class:`.Join` representing full rows for this particular
+    subclass.  For single-table inheritance mappers, mapped_table
+    references the base table.
+    
+    See also :attr:`~.Mapper.local_table`.
+    
+    """
+
+    inherits = None
+    """References the :class:`.Mapper` which this :class:`.Mapper` 
+    inherits from, if any.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    configured = None
+    """Represent ``True`` if this :class:`.Mapper` has been configured.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    See also :func:`.configure_mappers`.
+    
+    """
+
+    concrete = None
+    """Represent ``True`` if this :class:`.Mapper` is a concrete 
+    inheritance mapper.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    tables = None
+    """An iterable containing the collection of :class:`.Table` objects
+    which this :class:`.Mapper` is aware of.
+    
+    If the mapper is mapped to a :class:`.Join`, or an :class:`.Alias`
+    representing a :class:`.Select`, the individual :class:`.Table`
+    objects that comprise the full construct will be represented here.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    primary_key = None
+    """An iterable containing the collection of :class:`.Column` objects
+    which comprise the 'primary key' of the mapped table, from the 
+    perspective of this :class:`.Mapper`.
+    
+    This list is against the selectable in :attr:`~.Mapper.mapped_table`.  In the
+    case of inheriting mappers, some columns may be managed by a superclass
+    mapper.  For example, in the case of a :class:`.Join`, the primary
+    key is determined by all of the primary key columns across all tables
+    referenced by the :class:`.Join`.
+    
+    The list is also not necessarily the same as the primary key column
+    collection associated with the underlying tables; the :class:`.Mapper` 
+    features a ``primary_key`` argument that can override what the
+    :class:`.Mapper` considers as primary key columns.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    class_ = None
+    """The Python class which this :class:`.Mapper` maps.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    class_manager = None
+    """The :class:`.ClassManager` which maintains event listeners
+    and class-bound descriptors for this :class:`.Mapper`.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+
+    """
+
+    single = None
+    """Represent ``True`` if this :class:`.Mapper` is a single table 
+    inheritance mapper.   
+    
+    :attr:`~.Mapper.local_table` will be ``None`` if this flag is set.
+    
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    non_primary = None
+    """Represent ``True`` if this :class:`.Mapper` is a "non-primary" 
+    mapper, e.g. a mapper that is used only to selet rows but not for 
+    persistence management.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    polymorphic_on = None
+    """The :class:`.Column` specified as the ``polymorphic_on`` column
+    for this :class:`.Mapper`, within an inheritance scenario.
+    
+    This attribute may also be of other types besides :class:`.Column`
+    in a future SQLAlchemy release.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    polymorphic_map = None
+    """A mapping of "polymorphic identity" identifiers mapped to :class:`.Mapper`
+    instances, within an inheritance scenario.
+    
+    The identifiers can be of any type which is comparable to the 
+    type of column represented by :attr:`~.Mapper.polymorphic_on`.
+    
+    An inheritance chain of mappers will all reference the same 
+    polymorphic map object.  The object is used to correlate incoming
+    result rows to target mappers.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+
+    """
+
+    polymorphic_identity = None
+    """Represent an identifier which is matched against the :attr:`~.Mapper.polymorphic_on`
+    column during result row loading.
+    
+    Used only with inheritance, this object can be of any type which is
+    comparable to the type of column represented by :attr:`~.Mapper.polymorphic_on`.
+    
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    base_mapper = None
+    """The base-most :class:`.Mapper` in an inheritance chain.
+    
+    In a non-inheriting scenario, this attribute will always be this
+    :class:`.Mapper`.   In an inheritance scenario, it references
+    the :class:`.Mapper` which is parent to all other :class:`.Mapper`
+    objects in the inheritance chain.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    columns = None
+    """A collection of :class:`.Column` or other scalar expression 
+    objects maintained by this :class:`.Mapper`.
+    
+    The collection behaves the same as that of the ``c`` attribute on 
+    any :class:`.Table` object, except that only those columns included in
+    this mapping are present, and are keyed based on the attribute name
+    defined in the mapping, not necessarily the ``key`` attribute of the
+    :class:`.Column` itself.   Additionally, scalar expressions mapped
+    by :func:`.column_property` are also present here.
+
+    This is a *read only* attribute determined during mapper construction.  
+    Behavior is undefined if directly modified.
+    
+    """
+
+    c = None
+    """A synonym for :attr:`~.Mapper.columns`."""
 
     dispatch = event.dispatcher(events.MapperEvents)
 
@@ -493,8 +705,8 @@ class Mapper(object):
 
         # if explicit PK argument sent, add those columns to the 
         # primary key mappings
-        if self.primary_key_argument:
-            for k in self.primary_key_argument:
+        if self._primary_key_argument:
+            for k in self._primary_key_argument:
                 if k.table not in self._pks_by_table:
                     self._pks_by_table[k.table] = util.OrderedSet()
                 self._pks_by_table[k.table].add(k)
@@ -515,17 +727,17 @@ class Mapper(object):
 
         if self.inherits and \
                 not self.concrete and \
-                not self.primary_key_argument:
+                not self._primary_key_argument:
             # if inheriting, the "primary key" for this mapper is 
             # that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
         else:
             # determine primary key from argument or mapped_table pks - 
             # reduce to the minimal set of columns
-            if self.primary_key_argument:
+            if self._primary_key_argument:
                 primary_key = sqlutil.reduce_columns(
                     [self.mapped_table.corresponding_column(c) for c in
-                    self.primary_key_argument],
+                    self._primary_key_argument],
                     ignore_nonexistent_tables=True)
             else:
                 primary_key = sqlutil.reduce_columns(
@@ -745,9 +957,8 @@ class Mapper(object):
                         break
                     path.append(m)
 
-            # otherwise, col might not be present! the selectable given 
-            # to the mapper need not include "deferred"
-            # columns (included in zblog tests)
+            # subquery expression, column not present in the mapped 
+            # selectable.
             if col is None:
                 col = prop.columns[0]
 
@@ -2468,7 +2679,7 @@ def validates(*names):
     case of a collection, the value to be added to the collection.  The function
     can then raise validation exceptions to halt the process from continuing
     (where Python's built-in ``ValueError`` and ``AssertionError`` exceptions are
-    reasonable choices), or can modify or replace the value before proceeding.   
+    reasonable choices), or can modify or replace the value before proceeding.
     The function should otherwise return the given value.
 
     Note that a validator for a collection **cannot** issue a load of that

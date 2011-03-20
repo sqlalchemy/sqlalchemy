@@ -143,8 +143,8 @@ together using a list, as below where we map to a :func:`~.expression.join`::
 
 For further examples on this particular use case, see :ref:`maptojoin`.
 
-API Documentation - column_property
-------------------------------------
+Using column_property for column level options
+-----------------------------------------------
 
 The establishment of a :class:`.Column` on a :func:`.mapper` can be further
 customized using the :func:`.column_property` function, as specified
@@ -252,8 +252,8 @@ to :func:`~sqlalchemy.orm.deferred()`, can be undeferred using
     query = session.query(Book)
     query.options(undefer_group('photos')).all()
 
-API Documentation - Column Deferral
------------------------------------
+Column Deferral API
+-------------------
 
 .. autofunction:: deferred
 
@@ -327,11 +327,9 @@ transactional context from which to emit a statement::
                         where(addresses_table.c.user_id==self.user_id)
                 )
 
-On the subject of object-level methods, be sure to see the :mod:`.derived_attributes` example,
-which provides a simple method of reusing instance-level expressions simultaneously
-as SQL expressions.   The :mod:`.derived_attributes` example is slated to become a
-built-in feature of SQLAlchemy in a future release.
-
+See also :ref:`synonyms` for details on building expression-enabled
+descriptors on mapped classes, which are invoked independently of the
+mapping.
 
 Changing Attribute Behavior
 ============================
@@ -846,8 +844,8 @@ the ORM, allowing mappers to be compiled automatically and will fire a :func:`~s
 
 .. autofunction:: reconstructor
 
-API Documentation - Class Mapping
-=================================
+Class Mapping API
+=================
 
 .. autofunction:: mapper
 
@@ -856,6 +854,8 @@ API Documentation - Class Mapping
 .. autofunction:: class_mapper
 
 .. autofunction:: compile_mappers
+
+.. autofunction:: configure_mappers
 
 .. autofunction:: clear_mappers
 

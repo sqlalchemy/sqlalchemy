@@ -1396,8 +1396,8 @@ its connections to the pool and removes any existing transactional context.
 Doing nothing is an option too, if individual controller methods take responsibility
 for ensuring that no transactions remain open after a request ends.
 
-API Documentation - Contextual Session
---------------------------------------
+Contextual Session API
+----------------------
 
 .. autofunction:: sqlalchemy.orm.scoped_session
 
@@ -1438,8 +1438,8 @@ tables) across multiple databases.
 
 See the "sharding" example: :ref:`examples_sharding`.
 
-API Documentation - Sessions
-============================
+Sessions API
+============
 
 Session and sessionmaker()
 ---------------------------

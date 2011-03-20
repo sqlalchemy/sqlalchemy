@@ -782,8 +782,8 @@ unit of work searches only through the current identity
 map for objects that may be referencing the one with a
 mutating primary key, not throughout the database.
 
-API Documentation - Relationships
-----------------------------------
+Relationships API
+-----------------
 
 .. autofunction:: relationship
 

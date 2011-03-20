@@ -1,7 +1,7 @@
 .. _query_api_toplevel:
 
-API Documentation - Querying
-============================
+Querying
+========
 
 This section provides API documentation for the :class:`.Query` object and related constructs.
 

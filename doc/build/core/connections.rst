@@ -102,27 +102,6 @@ The :meth:`~.Connection.execute` method can of course accommodate more than
 that, including the variety of SQL expression constructs described
 in :ref:`sqlexpression_toplevel`.
 
-API Documentation - Connection, Engine, result objects
-=======================================================
-
-.. autoclass:: Connection
-   :show-inheritance:
-   :members:
-
-.. autoclass:: Connectable
-   :show-inheritance:
-   :members:
-
-.. autoclass:: Engine
-   :show-inheritance:
-   :members:
-
-.. autoclass:: sqlalchemy.engine.base.ResultProxy
-    :members:
-
-.. autoclass:: sqlalchemy.engine.base.RowProxy
-    :members:
-
 Using Transactions
 ==================
 
@@ -197,9 +176,6 @@ one exists.
 
 .. index::
    single: thread safety; transactions
-
-.. autoclass:: Transaction
-    :members:
 
 
 Understanding Autocommit
@@ -375,3 +351,28 @@ call :meth:`.Engine.contextual_connect`::
 Calling :meth:`~.Connection.close` on the "contextual" connection does not release 
 its resources until all other usages of that resource are closed as well, including
 that any ongoing transactions are rolled back or committed.
+
+Connection / Engine API
+=======================
+
+.. autoclass:: Connection
+   :show-inheritance:
+   :members:
+
+.. autoclass:: Connectable
+   :show-inheritance:
+   :members:
+
+.. autoclass:: Engine
+   :show-inheritance:
+   :members:
+
+.. autoclass:: sqlalchemy.engine.base.ResultProxy
+    :members:
+
+.. autoclass:: sqlalchemy.engine.base.RowProxy
+    :members:
+
+.. autoclass:: Transaction
+    :members:
+

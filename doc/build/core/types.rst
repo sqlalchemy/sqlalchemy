@@ -264,6 +264,8 @@ to and from the database is required.
    :inherited-members:
    :show-inheritance:
 
+TypeDecorator Recipes
+~~~~~~~~~~~~~~~~~~~~~
 A few key :class:`.TypeDecorator` recipes follow.
 
 Rounding Numerics

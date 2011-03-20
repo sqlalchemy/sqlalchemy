@@ -131,8 +131,8 @@ Further detail on dialects is available at :ref:`dialect_toplevel`.
 
 .. _create_engine_args:
 
-API Documentation - Creating Engines
-=====================================
+Engine Creation API
+===================
 
 Keyword options can also be specified to :func:`~sqlalchemy.create_engine`,
 following the string URL as follows:
