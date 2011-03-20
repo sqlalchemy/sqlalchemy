@@ -30,8 +30,8 @@ loading of child items both at load time as well as deletion time.
 Dynamic Relationship Loaders
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The most useful by far is the :func:`~sqlalchemy.orm.dynamic_loader`
-relationship. This is a variant of :func:`~sqlalchemy.orm.relationship` which
+A key feature to enable management of a large collection is the so-called "dynamic"
+relationship.  This is an optional form of :func:`~sqlalchemy.orm.relationship` which
 returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection
 when accessed. :func:`~sqlalchemy.orm.query.Query.filter` criterion may be
 applied as well as limits and offsets, either explicitly or via array slices:
@@ -39,7 +39,7 @@ applied as well as limits and offsets, either explicitly or via array slices:
 .. sourcecode:: python+sql
 
     mapper(User, users_table, properties={
-        'posts': dynamic_loader(Post)
+        'posts': relationship(Post, lazy="dynamic")
     })
 
     jack = session.query(User).get(id)
@@ -65,7 +65,8 @@ enabled on the :class:`.Session` in use, this will occur
 automatically each time the collection is about to emit a 
 query.
 
-To place a dynamic relationship on a backref, use ``lazy='dynamic'``:
+To place a dynamic relationship on a backref, use the :func:`~.orm.backref`
+function in conjunction with ``lazy='dynamic'``:
 
 .. sourcecode:: python+sql
 
@@ -75,7 +76,9 @@ To place a dynamic relationship on a backref, use ``lazy='dynamic'``:
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
 
-.. autofunction:: dynamic_loader
+.. note:: The :func:`~.orm.dynamic_loader` function is essentially the same
+   as :func:`~.orm.relationship` with the ``lazy='dynamic'`` argument specified.
+
 
 Setting Noload
 ~~~~~~~~~~~~~~~

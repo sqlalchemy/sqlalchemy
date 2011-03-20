@@ -791,4 +791,6 @@ Relationships API
 
 .. autofunction:: relation
 
+.. autofunction:: dynamic_loader
+
 
