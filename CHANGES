@@ -84,6 +84,20 @@ CHANGES
     (<eventname>, <fn>), which are applied to the Table 
     before the reflection process begins.
 
+  - Added new generic function "next_value()", accepts
+    a Sequence object as its argument and renders the
+    appropriate "next value" generation string on the
+    target platform, if supported.  Also provides
+    ".next_value()" method on Sequence itself.   
+    [ticket:2085]
+
+  - func.next_value() or other SQL expression can
+    be embedded directly into an insert() construct,
+    and if implicit or explicit "returning" is used
+    in conjunction with a primary key column, 
+    the newly generated value will be present in
+    result.inserted_primary_key. [ticket:2084]
+
 - engine
   - Fixed AssertionPool regression bug.  [ticket:2097]
 

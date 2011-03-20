@@ -392,7 +392,8 @@ class OracleCompiler(compiler.SQLCompiler):
             return ""
 
     def default_from(self):
-        """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
+        """Called when a ``SELECT`` statement has no froms, 
+        and no ``FROM`` clause is to be appended.
 
         The Oracle compiler tacks a "FROM DUAL" to the statement.
         """

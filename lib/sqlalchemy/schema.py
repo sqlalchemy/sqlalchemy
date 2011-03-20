@@ -750,7 +750,7 @@ class Column(SchemaItem, expression.ColumnClause):
                     if isinstance(self.default, str):
                     # end Py2K
                         util.warn("Unicode column received non-unicode "
-                                  "default value.")                    
+                                  "default value.")
                 args.append(ColumnDefault(self.default))
 
         if self.server_default is not None:
@@ -1266,7 +1266,16 @@ class ForeignKey(SchemaItem):
             self.constraint._set_parent_with_dispatch(table)
         table.foreign_keys.add(self)
 
-class DefaultGenerator(SchemaItem):
+class _NotAColumnExpr(object):
+    def _not_a_column_expr(self):
+        raise exc.InvalidRequestError(
+                "This %s cannot be used directly "
+                "as a column expression." % self.__class__.__name__)
+
+    __clause_element__ = self_group = lambda self: self._not_a_column_expr()
+    _from_objects = property(lambda self: self._not_a_column_expr())
+
+class DefaultGenerator(_NotAColumnExpr, SchemaItem):
     """Base class for column *default* values."""
 
     __visit_name__ = 'default_generator'
@@ -1392,26 +1401,26 @@ class ColumnDefault(DefaultGenerator):
 
 class Sequence(DefaultGenerator):
     """Represents a named database sequence.
-    
+
     The :class:`.Sequence` object represents the name and configurational
     parameters of a database sequence.   It also represents
     a construct that can be "executed" by a SQLAlchemy :class:`.Engine`
     or :class:`.Connection`, rendering the appropriate "next value" function
     for the target database and returning a result.
-    
+
     The :class:`.Sequence` is typically associated with a primary key column::
-    
+
         some_table = Table('some_table', metadata,
             Column('id', Integer, Sequence('some_table_seq'), primary_key=True)
         )
-        
+
     When CREATE TABLE is emitted for the above :class:`.Table`, if the
     target platform supports sequences, a CREATE SEQUENCE statement will
     be emitted as well.   For platforms that don't support sequences,
     the :class:`.Sequence` construct is ignored.
-    
+
     See also: :class:`.CreateSequence` :class:`.DropSequence`
-    
+
     """
 
     __visit_name__ = 'sequence'
@@ -1422,7 +1431,7 @@ class Sequence(DefaultGenerator):
                  optional=False, quote=None, metadata=None, 
                  for_update=False):
         """Construct a :class:`.Sequence` object.
-        
+
         :param name: The name of the sequence.
         :param start: the starting index of the sequence.  This value is
          used when the CREATE SEQUENCE command is emitted to the database
@@ -1455,7 +1464,7 @@ class Sequence(DefaultGenerator):
          DROP SEQUENCE DDL commands will be emitted corresponding to this
          :class:`.Sequence` when :meth:`.MetaData.create_all` and 
          :meth:`.MetaData.drop_all` are invoked (new in 0.7).
-         
+
          Note that when a :class:`.Sequence` is applied to a :class:`.Column`, 
          the :class:`.Sequence` is automatically associated with the 
          :class:`.MetaData` object of that column's parent :class:`.Table`, 
@@ -1467,7 +1476,7 @@ class Sequence(DefaultGenerator):
          with a :class:`.Column`, should be invoked for UPDATE statements
          on that column's table, rather than for INSERT statements, when
          no value is otherwise present for that column in the statement.
-         
+
         """
         super(Sequence, self).__init__(for_update=for_update)
         self.name = name
@@ -1487,6 +1496,14 @@ class Sequence(DefaultGenerator):
     @util.memoized_property
     def is_clause_element(self):
         return False
+
+    def next_value(self):
+        """Return a :class:`.next_value` function element
+        which will render the appropriate increment function
+        for this :class:`.Sequence` within any SQL expression.
+        
+        """
+        return expression.func.next_value(self, bind=self.bind)
 
     def __repr__(self):
         return "Sequence(%s)" % ', '.join(
@@ -1526,8 +1543,16 @@ class Sequence(DefaultGenerator):
             bind = _bind_or_error(self)
         bind.drop(self, checkfirst=checkfirst)
 
+    def _not_a_column_expr(self):
+        raise exc.InvalidRequestError(
+                "This %s cannot be used directly "
+                "as a column expression.  Use func.next_value(sequence) "
+                "to produce a 'next value' function that's usable "
+                "as a column element." 
+                % self.__class__.__name__)
 
-class FetchedValue(events.SchemaEventTarget):
+
+class FetchedValue(_NotAColumnExpr, events.SchemaEventTarget):
     """A marker for a transparent database-side default.
 
     Use :class:`.FetchedValue` when the database is configured
@@ -1544,6 +1569,7 @@ class FetchedValue(events.SchemaEventTarget):
     """
     is_server_default = True
     reflected = False
+    has_argument = False
 
     def __init__(self, for_update=False):
         self.for_update = for_update
@@ -1580,6 +1606,8 @@ class DefaultClause(FetchedValue):
         Column('foo', Integer, DefaultClause("50"))
 
     """
+
+    has_argument = True
 
     def __init__(self, arg, for_update=False, _reflected=False):
         util.assert_arg_type(arg, (basestring,
@@ -2508,7 +2536,7 @@ class DDLElement(expression.Executable, expression.ClauseElement):
               Optional keyword argument - a list of Table objects which are to
               be created/ dropped within a MetaData.create_all() or drop_all()
               method call.
-              
+
             :state:
               Optional keyword argument - will be the ``state`` argument
               passed to this function.
@@ -2517,13 +2545,13 @@ class DDLElement(expression.Executable, expression.ClauseElement):
              Keyword argument, will be True if the 'checkfirst' flag was
              set during the call to ``create()``, ``create_all()``, 
              ``drop()``, ``drop_all()``.
-             
+
           If the callable returns a true value, the DDL statement will be
           executed.
 
         :param state: any value which will be passed to the callable_ 
           as the ``state`` keyword argument.
-          
+
         See also:
 
             :class:`.DDLEvents`

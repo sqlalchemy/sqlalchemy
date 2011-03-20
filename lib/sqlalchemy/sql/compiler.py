@@ -492,6 +492,14 @@ class SQLCompiler(engine.Compiled):
             return ".".join(func.packagenames + [name]) % \
                             {'expr':self.function_argspec(func, **kwargs)}
 
+    def visit_next_value_func(self, next_value, **kw):
+        return self.visit_sequence(next_value.sequence)
+
+    def visit_sequence(self, sequence):
+        raise NotImplementedError(
+            "Dialect '%s' does not support sequence increments." % self.dialect.name
+        )
+
     def function_argspec(self, func, **kwargs):
         return func.clause_expr._compiler_dispatch(self, **kwargs)
 
@@ -926,9 +934,6 @@ class SQLCompiler(engine.Compiled):
             join.onclause._compiler_dispatch(self, **kwargs)
         )
 
-    def visit_sequence(self, seq):
-        return None
-
     def visit_insert(self, insert_stmt):
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
@@ -1075,6 +1080,9 @@ class SQLCompiler(engine.Compiled):
                 if sql._is_literal(value):
                     value = self._create_crud_bind_param(
                                     c, value, required=value is required)
+                elif c.primary_key and implicit_returning:
+                    self.returning.append(c)
+                    value = self.process(value.self_group())
                 else:
                     self.postfetch.append(c)
                     value = self.process(value.self_group())
@@ -1092,8 +1100,10 @@ class SQLCompiler(engine.Compiled):
                     if implicit_returning:
                         if c.default is not None:
                             if c.default.is_sequence:
-                                proc = self.process(c.default)
-                                if proc is not None:
+                                if self.dialect.supports_sequences and \
+                                    (not c.default.optional or \
+                                    not self.dialect.sequences_optional):
+                                    proc = self.process(c.default)
                                     values.append((c, proc))
                                 self.returning.append(c)
                             elif c.default.is_clause_element:
@@ -1124,8 +1134,10 @@ class SQLCompiler(engine.Compiled):
 
                 elif c.default is not None:
                     if c.default.is_sequence:
-                        proc = self.process(c.default)
-                        if proc is not None:
+                        if self.dialect.supports_sequences and \
+                            (not c.default.optional or \
+                            not self.dialect.sequences_optional):
+                            proc = self.process(c.default)
                             values.append((c, proc))
                             if not c.primary_key:
                                 self.postfetch.append(c)

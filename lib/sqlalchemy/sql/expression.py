@@ -1178,14 +1178,16 @@ def _column_as_key(element):
     return element.key
 
 def _literal_as_text(element):
-    if hasattr(element, '__clause_element__'):
+    if isinstance(element, Visitable):
+        return element
+    elif hasattr(element, '__clause_element__'):
         return element.__clause_element__()
     elif isinstance(element, basestring):
         return _TextClause(unicode(element))
-    elif not isinstance(element, Visitable):
-        raise exc.ArgumentError("SQL expression object or string expected.")
     else:
-        return element
+        raise exc.ArgumentError(
+            "SQL expression object or string expected."
+        )
 
 def _clause_element_as_expr(element):
     if hasattr(element, '__clause_element__'):

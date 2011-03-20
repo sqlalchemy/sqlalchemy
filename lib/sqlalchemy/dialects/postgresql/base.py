@@ -461,10 +461,7 @@ class PGCompiler(compiler.SQLCompiler):
         return value
 
     def visit_sequence(self, seq):
-        if seq.optional:
-            return None
-        else:
-            return "nextval('%s')" % self.preparer.format_sequence(seq)
+        return "nextval('%s')" % self.preparer.format_sequence(seq)
 
     def limit_clause(self, select):
         text = ""
@@ -717,23 +714,19 @@ class DropEnumType(schema._CreateDropBase):
 
 class PGExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq, type_):
-        if not seq.optional:
-            return self._execute_scalar(("select nextval('%s')" % \
-                    self.dialect.identifier_preparer.format_sequence(seq)), type_)
-        else:
-            return None
+        return self._execute_scalar(("select nextval('%s')" % \
+                self.dialect.identifier_preparer.format_sequence(seq)), type_)
 
     def get_insert_default(self, column):
         if column.primary_key and column is column.table._autoincrement_column:
-            if (isinstance(column.server_default, schema.DefaultClause) and
-                column.server_default.arg is not None):
+            if column.server_default and column.server_default.has_argument:
 
                 # pre-execute passive defaults on primary key columns
                 return self._execute_scalar("select %s" %
-                                        column.server_default.arg, column.type)
+                                    column.server_default.arg, column.type)
 
             elif (column.default is None or 
-                        (isinstance(column.default, schema.Sequence) and
+                        (column.default.is_sequence and
                         column.default.optional)):
 
                 # execute the sequence associated with a SERIAL primary 

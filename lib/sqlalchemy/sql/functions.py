@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types as sqltypes
+from sqlalchemy import types as sqltypes, schema
 from sqlalchemy.sql.expression import (
     ClauseList, Function, _literal_as_binds, text, _type_from_args
     )
@@ -29,6 +29,29 @@ class GenericFunction(Function):
         self.type = sqltypes.to_instance(
             type_ or getattr(self, '__return_type__', None))
 
+
+class next_value(Function):
+    """Represent the 'next value', given a :class:`.Sequence`
+    as it's single argument.
+    
+    Compiles into the appropriate function on each backend,
+    or will raise NotImplementedError if used on a backend
+    that does not provide support for sequences.
+    
+    """
+    type = sqltypes.Integer()
+    name = "next_value"
+
+    def __init__(self, seq, **kw):
+        assert isinstance(seq, schema.Sequence), \
+                "next_value() accepts a Sequence object as input."
+        self._bind = kw.get('bind', None)
+        self.sequence = seq
+
+    @property
+    def _from_objects(self):
+        return []
+
 class AnsiFunction(GenericFunction):
     def __init__(self, **kwargs):
         GenericFunction.__init__(self, **kwargs)
@@ -51,6 +74,7 @@ class min(ReturnTypeFromArgs):
 
 class sum(ReturnTypeFromArgs):
     pass
+
 
 class now(GenericFunction):
     __return_type__ = sqltypes.DateTime
