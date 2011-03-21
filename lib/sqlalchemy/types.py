@@ -241,10 +241,11 @@ class TypeEngine(AbstractType):
                         encode('ascii', 'backslashreplace')
         # end Py2K
 
-    def __init__(self):
-        # supports getargspec of the __init__ method
-        # used by generic __repr__
-        pass
+    def __init__(self, *args, **kwargs):
+        """Support implementations that were passing arguments"""
+        if args or kwargs:
+            util.warn_deprecated("Passing arguments to type object "
+                    "constructor %s is deprecated" % self.__class__)
 
     def __repr__(self):
         return "%s(%s)" % (

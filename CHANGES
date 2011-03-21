@@ -3,6 +3,14 @@
 =======
 CHANGES
 =======
+0.7.0b4
+=======
+- sql
+  - Restored the "catchall" constructor on the base
+    TypeEngine class, with a deprecation warning.
+    This so that code which does something like
+    Integer(11) still succeeds.
+
 0.7.0b3
 =======
 - general

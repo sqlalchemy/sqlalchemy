@@ -121,6 +121,14 @@ class AdaptTest(TestBase):
                         continue
                     eq_(getattr(t2, k), t1.__dict__[k])
 
+    def test_plain_init_deprecation_warning(self):
+        for typ in (Integer, Date, SmallInteger):
+            assert_raises_message(
+                exc.SADeprecationWarning,
+                "Passing arguments to type object "
+                "constructor %s is deprecated" % typ,
+                typ, 11
+            )
 
 class TypeAffinityTest(TestBase):
     def test_type_affinity(self):
