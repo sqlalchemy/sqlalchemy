@@ -11,6 +11,12 @@ CHANGES
     This so that code which does something like
     Integer(11) still succeeds.
 
+  - Fixed regression whereby MetaData() coming
+    back from unpickling did not keep track of 
+    new things it keeps track of now, i.e.
+    collection of Sequence objects, list
+    of schema names.  [ticket:2104]
+
 0.7.0b3
 =======
 - general

@@ -239,13 +239,15 @@ class MetaDataTest(TestBase, ComparesTables):
             meta3 = pickle.loads(pickle.dumps(meta2))
             assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
+
             return (meta3.tables['mytable'], meta3.tables['othertable'])
 
         meta.create_all(testing.db)
         try:
-            for test, has_constraints, reflect in (test_to_metadata,
-                    True, False), (test_pickle, True, False), \
-                (test_pickle_via_reflect, False, True):
+            for test, has_constraints, reflect in \
+                    (test_to_metadata, True, False), \
+                    (test_pickle, True, False), \
+                    (test_pickle_via_reflect, False, True):
                 table_c, table2_c = test()
                 self.assert_tables_equal(table, table_c)
                 self.assert_tables_equal(table2, table2_c)
@@ -281,8 +283,39 @@ class MetaDataTest(TestBase, ComparesTables):
                         assert False
                     assert c.columns.contains_column(table_c.c.name)
                     assert not c.columns.contains_column(table.c.name)
+
+
         finally:
             meta.drop_all(testing.db)
+
+    def test_pickle_metadata_sequence(self):
+        m1 = MetaData()
+        Table('a',m1,
+             Column('id',Integer,primary_key=True),
+             Column('x', Integer, Sequence("x_seq")))
+
+        m2 = pickle.loads(pickle.dumps(m1))
+
+        t2 = Table('a', m2, 
+             Column('id',Integer,primary_key=True),
+             Column('x', Integer, Sequence("x_seq")),
+             useexisting=True)
+
+        eq_(m2._sequences, set([t2.c.x.default]))
+
+    def test_pickle_metadata_schema(self):
+        m1 = MetaData()
+        Table('a',m1,
+             Column('id',Integer,primary_key=True),
+             Column('x', Integer, Sequence("x_seq")),
+             schema='y')
+
+        m2 = pickle.loads(pickle.dumps(m1))
+
+        t2 = Table('a', m2, schema='y',
+             useexisting=True)
+
+        eq_(m2._schemas, m1._schemas)
 
     def test_tometadata_with_schema(self):
         meta = MetaData()

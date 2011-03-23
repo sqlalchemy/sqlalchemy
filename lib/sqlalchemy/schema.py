@@ -2101,7 +2101,6 @@ class MetaData(SchemaItem):
         self._schemas = set()
         self._sequences = set()
         self.bind = bind
-        self.metadata = self
         if reflect:
             if not bind:
                 raise exc.ArgumentError(
@@ -2132,11 +2131,13 @@ class MetaData(SchemaItem):
                                 if t.schema is not None])
 
     def __getstate__(self):
-        return {'tables': self.tables}
+        return {'tables': self.tables, 'schemas':self._schemas}
 
     def __setstate__(self, state):
         self.tables = state['tables']
         self._bind = None
+        self._sequences = set()
+        self._schemas = state['schemas']
 
     def is_bound(self):
         """True if this MetaData is bound to an Engine or Connection."""
