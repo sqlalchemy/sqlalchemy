@@ -514,6 +514,15 @@ CHANGES
   - Added accessors to ResultProxy "returns_rows", "is_insert"
     [ticket:2089]
 
+- engine
+  - Fixed bug in QueuePool, SingletonThreadPool whereby
+    connections that were discarded via overflow or periodic
+    cleanup() were not explicitly closed, leaving garbage 
+    collection to the task instead.   This generally only
+    affects non-reference-counting backends like Jython
+    and Pypy.  Thanks to Jaimy Azle for spotting
+    this.  [ticket:2102]
+
 - postgresql
   - When explicit sequence execution derives the name 
     of the auto-generated sequence of a SERIAL column, 
