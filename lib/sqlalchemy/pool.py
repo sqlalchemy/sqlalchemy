@@ -580,7 +580,8 @@ class SingletonThreadPool(Pool):
 
     def cleanup(self):
         while len(self._all_conns) > self.size:
-            self._all_conns.pop()
+            c = self._all_conns.pop()
+            c.close()
 
     def status(self):
         return "SingletonThreadPool id:%d size: %d" % \
@@ -694,6 +695,7 @@ class QueuePool(Pool):
         try:
             self._pool.put(conn, False)
         except sqla_queue.Full:
+            conn.close()
             if self._overflow_lock is None:
                 self._overflow -= 1
             else:
