@@ -51,7 +51,7 @@ class SchemaGenerator(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in sql_util.sort_tables(tables) 
                         if self._can_create_table(t)]
-        seq_coll = [s for s in metadata._sequences 
+        seq_coll = [s for s in metadata._sequences.values() 
                         if s.column is None and self._can_create_sequence(s)]
 
         metadata.dispatch.before_create(metadata, self.connection,
@@ -112,7 +112,7 @@ class SchemaDropper(DDLBase):
             tables = metadata.tables.values()
         collection = [t for t in reversed(sql_util.sort_tables(tables)) 
                                 if self._can_drop_table(t)]
-        seq_coll = [s for s in metadata._sequences 
+        seq_coll = [s for s in metadata._sequences.values() 
                                 if s.column is None and self._can_drop_sequence(s)]
 
         metadata.dispatch.before_drop(metadata, self.connection,

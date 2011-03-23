@@ -1486,6 +1486,7 @@ class Sequence(DefaultGenerator):
         self.quote = quote
         self.schema = schema
         self.metadata = metadata
+        self._key = _get_table_key(name, schema)
         if metadata:
             self._set_metadata(metadata)
 
@@ -1520,7 +1521,7 @@ class Sequence(DefaultGenerator):
 
     def _set_metadata(self, metadata):
         self.metadata = metadata
-        self.metadata._sequences.add(self)
+        self.metadata._sequences[self._key] = self
 
     @property
     def bind(self):
@@ -2099,7 +2100,7 @@ class MetaData(SchemaItem):
         """
         self.tables = util.immutabledict()
         self._schemas = set()
-        self._sequences = set()
+        self._sequences = {}
         self.bind = bind
         if reflect:
             if not bind:
@@ -2131,12 +2132,13 @@ class MetaData(SchemaItem):
                                 if t.schema is not None])
 
     def __getstate__(self):
-        return {'tables': self.tables, 'schemas':self._schemas}
+        return {'tables': self.tables, 'schemas':self._schemas, 
+                'sequences':self._sequences}
 
     def __setstate__(self, state):
         self.tables = state['tables']
         self._bind = None
-        self._sequences = set()
+        self._sequences = state['sequences']
         self._schemas = state['schemas']
 
     def is_bound(self):

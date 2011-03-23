@@ -288,7 +288,7 @@ class MetaDataTest(TestBase, ComparesTables):
         finally:
             meta.drop_all(testing.db)
 
-    def test_pickle_metadata_sequence(self):
+    def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
         Table('a',m1,
              Column('id',Integer,primary_key=True),
@@ -296,12 +296,46 @@ class MetaDataTest(TestBase, ComparesTables):
 
         m2 = pickle.loads(pickle.dumps(m1))
 
+        s2 = Sequence("x_seq")
         t2 = Table('a', m2, 
              Column('id',Integer,primary_key=True),
-             Column('x', Integer, Sequence("x_seq")),
+             Column('x', Integer, s2),
              useexisting=True)
 
-        eq_(m2._sequences, set([t2.c.x.default]))
+        assert m2._sequences['x_seq'] is t2.c.x.default
+        assert m2._sequences['x_seq'] is s2
+
+
+    def test_sequence_restated_replaced(self):
+        """Test restatement of Sequence replaces."""
+
+        m1 = MetaData()
+        s1 = Sequence("x_seq")
+        t = Table('a', m1, 
+             Column('x', Integer, s1)
+        )
+        assert m1._sequences['x_seq'] is s1
+
+        s2 = Sequence('x_seq')
+        t2 = Table('a', m1,
+             Column('x', Integer, s2),
+             useexisting=True
+        )
+        assert t.c.x.default is s2
+        assert m1._sequences['x_seq'] is s2
+
+
+    def test_pickle_metadata_sequence_implicit(self):
+        m1 = MetaData()
+        Table('a',m1,
+             Column('id',Integer,primary_key=True),
+             Column('x', Integer, Sequence("x_seq")))
+
+        m2 = pickle.loads(pickle.dumps(m1))
+
+        t2 = Table('a', m2, useexisting=True)
+
+        eq_(m2._sequences, {'x_seq':t2.c.x.default})
 
     def test_pickle_metadata_schema(self):
         m1 = MetaData()
