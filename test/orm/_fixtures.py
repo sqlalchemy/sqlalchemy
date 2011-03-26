@@ -7,183 +7,6 @@ from test.orm import _base
 
 __all__ = ()
 
-fixture_metadata = MetaData()
-
-def fixture_table(table, columns, *rows):
-    def load_fixture(bind=None):
-        bind = bind or table.bind
-        if rows:
-            bind.execute(
-                table.insert(),
-                [dict(zip(columns, column_values)) for column_values in rows])
-    table.info[('fixture', 'loader')] = load_fixture
-    table.info[('fixture', 'columns')] = columns
-    table.info[('fixture', 'rows')] = rows
-    return table
-
-users = fixture_table(
-    Table('users', fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('name', String(30), nullable=False),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'name'),
-    (7, 'jack'),
-    (8, 'ed'),
-    (9, 'fred'),
-    (10, 'chuck'))
-
-addresses = fixture_table(
-    Table('addresses', fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('user_id', None, ForeignKey('users.id')),
-          Column('email_address', String(50), nullable=False),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'user_id', 'email_address'),
-    (1, 7, "jack@bean.com"),
-    (2, 8, "ed@wood.com"),
-    (3, 8, "ed@bettyboop.com"),
-    (4, 8, "ed@lala.com"),
-    (5, 9, "fred@fred.com"))
-
-email_bounces = fixture_table(
-    Table('email_bounces', fixture_metadata,
-          Column('id', Integer, ForeignKey('addresses.id')),
-          Column('bounces', Integer)),
-    ('id', 'bounces'),
-    (1, 1),
-    (2, 0),
-    (3, 5),
-    (4, 0),
-    (5, 0))
-
-orders = fixture_table(
-    Table('orders', fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('user_id', None, ForeignKey('users.id')),
-          Column('address_id', None, ForeignKey('addresses.id')),
-          Column('description', String(30)),
-          Column('isopen', Integer),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'user_id', 'description', 'isopen', 'address_id'),
-    (1, 7, 'order 1', 0, 1),
-    (2, 9, 'order 2', 0, 4),
-    (3, 7, 'order 3', 1, 1),
-    (4, 9, 'order 4', 1, 4),
-    (5, 7, 'order 5', 0, None))
-
-dingalings = fixture_table(
-    Table("dingalings", fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('address_id', None, ForeignKey('addresses.id')),
-          Column('data', String(30)),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'address_id', 'data'),
-    (1, 2, 'ding 1/2'),
-    (2, 5, 'ding 2/5'))
-
-items = fixture_table(
-    Table('items', fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('description', String(30), nullable=False),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'description'),
-    (1, 'item 1'),
-    (2, 'item 2'),
-    (3, 'item 3'),
-    (4, 'item 4'),
-    (5, 'item 5'))
-
-order_items = fixture_table(
-    Table('order_items', fixture_metadata,
-          Column('item_id', None, ForeignKey('items.id')),
-          Column('order_id', None, ForeignKey('orders.id')),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('item_id', 'order_id'),
-    (1, 1),
-    (2, 1),
-    (3, 1),
-
-    (1, 2),
-    (2, 2),
-    (3, 2),
-
-    (3, 3),
-    (4, 3),
-    (5, 3),
-
-    (1, 4),
-    (5, 4),
-
-    (5, 5))
-
-keywords = fixture_table(
-    Table('keywords', fixture_metadata,
-          Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-          Column('name', String(30), nullable=False),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('id', 'name'),
-    (1, 'blue'),
-    (2, 'red'),
-    (3, 'green'),
-    (4, 'big'),
-    (5, 'small'),
-    (6, 'round'),
-    (7, 'square'))
-
-item_keywords = fixture_table(
-    Table('item_keywords', fixture_metadata,
-          Column('item_id', None, ForeignKey('items.id')),
-          Column('keyword_id', None, ForeignKey('keywords.id')),
-          test_needs_acid=True,
-          test_needs_fk=True),
-    ('keyword_id', 'item_id'),
-    (2, 1),
-    (2, 2),
-    (4, 1),
-    (6, 1),
-    (5, 2),
-    (3, 3),
-    (4, 3),
-    (7, 2),
-    (6, 3))
-
-nodes = fixture_table(
-    Table('nodes', fixture_metadata,
-        Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-        Column('parent_id', Integer, ForeignKey('nodes.id')),
-        Column('data', String(30)),
-        test_needs_acid=True,
-        test_needs_fk=True
-    ),
-    ('id', 'parent_id', 'data')
-)
-
-composite_pk_table = fixture_table(
-    Table('composite_pk_table', fixture_metadata,
-        Column('i', Integer, primary_key=True),
-        Column('j', Integer, primary_key=True),
-        Column('k', Integer, nullable=False),
-    ),
-    ('i', 'j', 'k'),
-    (1, 2, 3),
-    (2, 1, 4),
-    (1, 1, 5),
-    (2, 2,6))
-
-
-def _load_fixtures():
-    for table in fixture_metadata.sorted_tables:
-        table.info[('fixture', 'loader')]()
-
-def run_inserts_for(table, bind=None):
-    table.info[('fixture', 'loader')](bind)
 
 class Base(_base.ComparableEntity):
     pass
@@ -236,7 +59,6 @@ class FixtureTest(_base.MappedTest):
     run_inserts = 'each'
     run_deletes = 'each'
 
-    metadata = fixture_metadata
     fixture_classes = dict(User=User,
                            Order=Order,
                            Item=Item,
@@ -246,7 +68,85 @@ class FixtureTest(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        pass
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('email_bounces', metadata,
+              Column('id', Integer, ForeignKey('addresses.id')),
+              Column('bounces', Integer)
+        )
+
+        Table('orders', metadata,
+                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                  Column('user_id', None, ForeignKey('users.id')),
+                  Column('address_id', None, ForeignKey('addresses.id')),
+                  Column('description', String(30)),
+                  Column('isopen', Integer),
+                  test_needs_acid=True,
+                  test_needs_fk=True
+        )
+
+        Table("dingalings", metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('address_id', None, ForeignKey('addresses.id')),
+              Column('data', String(30)),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('items', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('description', String(30), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('order_items', metadata,
+              Column('item_id', None, ForeignKey('items.id')),
+              Column('order_id', None, ForeignKey('orders.id')),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('keywords', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('item_keywords', metadata,
+              Column('item_id', None, ForeignKey('items.id')),
+              Column('keyword_id', None, ForeignKey('keywords.id')),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('nodes', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('parent_id', Integer, ForeignKey('nodes.id')),
+            Column('data', String(30)),
+            test_needs_acid=True,
+            test_needs_fk=True
+        )
+
+        Table('composite_pk_table', metadata,
+            Column('i', Integer, primary_key=True),
+            Column('j', Integer, primary_key=True),
+            Column('k', Integer, nullable=False),
+        )
 
     @classmethod
     def setup_classes(cls):
@@ -258,9 +158,114 @@ class FixtureTest(_base.MappedTest):
         pass
 
     @classmethod
-    def insert_data(cls):
-        _load_fixtures()
+    def fixtures(cls):
+        return dict(
+            users = (
+                ('id', 'name'),
+                (7, 'jack'),
+                (8, 'ed'),
+                (9, 'fred'),
+                (10, 'chuck')
+            ),
 
+            addresses = (
+                ('id', 'user_id', 'email_address'),
+                (1, 7, "jack@bean.com"),
+                (2, 8, "ed@wood.com"),
+                (3, 8, "ed@bettyboop.com"),
+                (4, 8, "ed@lala.com"),
+                (5, 9, "fred@fred.com")
+            ),
+
+            email_bounces = (
+                ('id', 'bounces'),
+                (1, 1),
+                (2, 0),
+                (3, 5),
+                (4, 0),
+                (5, 0)
+            ),
+
+            orders = (
+                ('id', 'user_id', 'description', 'isopen', 'address_id'),
+                (1, 7, 'order 1', 0, 1),
+                (2, 9, 'order 2', 0, 4),
+                (3, 7, 'order 3', 1, 1),
+                (4, 9, 'order 4', 1, 4),
+                (5, 7, 'order 5', 0, None)
+            ),
+
+            dingalings = (
+                ('id', 'address_id', 'data'),
+                (1, 2, 'ding 1/2'),
+                (2, 5, 'ding 2/5')
+            ),
+
+            items = (
+                ('id', 'description'),
+                (1, 'item 1'),
+                (2, 'item 2'),
+                (3, 'item 3'),
+                (4, 'item 4'),
+                (5, 'item 5')
+            ),
+
+            order_items = (
+                ('item_id', 'order_id'),
+                (1, 1),
+                (2, 1),
+                (3, 1),
+
+                (1, 2),
+                (2, 2),
+                (3, 2),
+
+                (3, 3),
+                (4, 3),
+                (5, 3),
+
+                (1, 4),
+                (5, 4),
+
+                (5, 5)
+            ),
+
+            keywords = (
+                ('id', 'name'),
+                (1, 'blue'),
+                (2, 'red'),
+                (3, 'green'),
+                (4, 'big'),
+                (5, 'small'),
+                (6, 'round'),
+                (7, 'square')
+            ),
+
+            item_keywords = (
+                ('keyword_id', 'item_id'),
+                (2, 1),
+                (2, 2),
+                (4, 1),
+                (6, 1),
+                (5, 2),
+                (3, 3),
+                (4, 3),
+                (7, 2),
+                (6, 3)
+            ),
+
+            nodes = (
+                ('id', 'parent_id', 'data')
+            ),
+
+            composite_pk_table = (
+                ('i', 'j', 'k'),
+                (1, 2, 3),
+                (2, 1, 4),
+                (1, 1, 5),
+                (2, 2,6)
+            )
+        )
 
 class CannedResults(object):
     """Built on demand, instances use mappers in effect at time of call."""
