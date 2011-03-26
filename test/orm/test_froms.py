@@ -255,8 +255,12 @@ class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
+        a, c, b, d = (cls.tables.a,
+                                cls.tables.c,
+                                cls.tables.b,
+                                cls.tables.d)
+
         class A(_fixtures.Base):
             pass
 
@@ -285,8 +289,11 @@ class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
         mapper(D, d, inherits=A, polymorphic_identity='d')
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        A, C, B = (cls.classes.A,
+                                cls.classes.C,
+                                cls.classes.B)
+
         sess = create_session()
         sess.add_all([
             B(name='b1'), 
@@ -296,8 +303,11 @@ class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
             ])
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_add_entity_equivalence(self):
+        A, C, B = (self.classes.A,
+                                self.classes.C,
+                                self.classes.B)
+
         sess = create_session()
 
         for q in [
@@ -1692,8 +1702,11 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
             Column('data', String(50))
         )
 
-    @testing.resolve_artifact_names
     def test_equivs(self):
+        base, sub2, sub1 = (self.tables.base,
+                                self.tables.sub2,
+                                self.tables.sub1)
+
         class Base(_base.ComparableEntity):
             pass
         class Sub1(_base.ComparableEntity):

@@ -18,8 +18,9 @@ from test.orm import _base, _fixtures
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_no_close_on_flush(self):
+        User, users = self.classes.User, self.tables.users
+
         """Flush() doesn't close a connection the session didn't open"""
         c = testing.db.connect()
         c.execute("select * from users")
@@ -30,8 +31,9 @@ class SessionTest(_fixtures.FixtureTest):
         s.flush()
         c.execute("select * from users")
 
-    @testing.resolve_artifact_names
     def test_close(self):
+        User, users = self.classes.User, self.tables.users
+
         """close() doesn't close a connection the session didn't open"""
         c = testing.db.connect()
         c.execute("select * from users")
@@ -44,8 +46,9 @@ class SessionTest(_fixtures.FixtureTest):
         s.close()
         c.execute("select * from users")
 
-    @testing.resolve_artifact_names
     def test_no_close_transaction_on_flulsh(self):
+        User, users = self.classes.User, self.tables.users
+
         c = testing.db.connect()
         try:
             mapper(User, users)
@@ -66,8 +69,9 @@ class SessionTest(_fixtures.FixtureTest):
         finally:
             c.close()
 
-    @testing.resolve_artifact_names
     def test_object_session_raises(self):
+        User = self.classes.User
+
         assert_raises(
             orm_exc.UnmappedInstanceError,
             object_session,
@@ -91,8 +95,12 @@ class SessionTest(_fixtures.FixtureTest):
             seq.drop(testing.db)
 
 
-    @testing.resolve_artifact_names
     def test_expunge_cascade(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relationship(Address,
@@ -118,8 +126,12 @@ class SessionTest(_fixtures.FixtureTest):
             assert sa.orm.attributes.instance_state(a).session_id is None
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_mapped_binds(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
 
         # ensure tables are unbound
         m2 = sa.MetaData()
@@ -157,8 +169,12 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_table_binds(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
 
         # ensure tables are unbound
         m2 = sa.MetaData()
@@ -194,8 +210,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_bind_from_metadata(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         session = create_session()
@@ -210,8 +227,9 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.requires.independent_connections
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_transaction(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
@@ -231,8 +249,9 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.requires.independent_connections
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_autoflush(self):
+        User, users = self.classes.User, self.tables.users
+
         bind = self.metadata.bind
         mapper(User, users)
         conn1 = bind.connect()
@@ -251,8 +270,9 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_make_transient(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         sess = create_session()
         sess.add(User(name='test'))
@@ -297,8 +317,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         assert u1 in sess
 
-    @testing.resolve_artifact_names
     def test_deleted_flag(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = sessionmaker()()
@@ -325,8 +346,12 @@ class SessionTest(_fixtures.FixtureTest):
 
         eq_(sess.query(User).count(), 1)
 
-    @testing.resolve_artifact_names
     def test_autoflush_expressions(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """test that an expression which is dependent on object state is
         evaluated after the session autoflushes.   This is the lambda
         inside of strategies.py lazy_clause.
@@ -355,8 +380,9 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.requires.independent_connections
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_autoflush_unbound(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         try:
             sess = create_session(autocommit=False, autoflush=True)
@@ -380,8 +406,9 @@ class SessionTest(_fixtures.FixtureTest):
             raise
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_autoflush_2(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
@@ -396,8 +423,12 @@ class SessionTest(_fixtures.FixtureTest):
                 ).scalar() == 1
         sess.commit()
 
-    @testing.resolve_artifact_names
     def test_autoflush_rollback(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relationship(Address)})
@@ -421,8 +452,9 @@ class SessionTest(_fixtures.FixtureTest):
         # pending objects dont get expired
         assert newad.email_address == 'a new address'
 
-    @testing.resolve_artifact_names
     def test_autocommit_doesnt_raise_on_pending(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         session = create_session(autocommit=True)
 
@@ -440,8 +472,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.rollback()
         assert not sess.is_active
 
-    @testing.resolve_artifact_names
     def test_textual_execute(self):
+        users = self.tables.users
+
         """test that Session.execute() converts to text()"""
 
         sess = create_session(bind=self.metadata.bind)
@@ -459,8 +492,9 @@ class SessionTest(_fixtures.FixtureTest):
             7)
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_subtransaction_on_external(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         conn = testing.db.connect()
         trans = conn.begin()
@@ -476,8 +510,9 @@ class SessionTest(_fixtures.FixtureTest):
 
     @testing.requires.savepoints
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_external_nested_transaction(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         try:
             conn = testing.db.connect()
@@ -500,8 +535,9 @@ class SessionTest(_fixtures.FixtureTest):
             raise
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_heavy_nesting(self):
+        users = self.tables.users
+
         session = create_session(bind=testing.db)
         session.begin()
         session.connection().execute(users.insert().values(name='user1'
@@ -522,8 +558,9 @@ class SessionTest(_fixtures.FixtureTest):
                 ).scalar() == 2
 
     @testing.requires.independent_connections
-    @testing.resolve_artifact_names
     def test_transactions_isolated(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         users.delete().execute()
 
@@ -536,8 +573,12 @@ class SessionTest(_fixtures.FixtureTest):
         assert s2.query(User).all() == []
 
     @testing.requires.two_phase_transactions
-    @testing.resolve_artifact_names
     def test_twophase(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         # TODO: mock up a failure condition here
         # to ensure a rollback succeeds
         mapper(User, users)
@@ -557,8 +598,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert users.count().scalar() == 1
         assert addresses.count().scalar() == 1
 
-    @testing.resolve_artifact_names
     def test_subtransaction_on_noautocommit(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         sess = create_session(autocommit=False, autoflush=True)
         sess.begin(subtransactions=True)
@@ -571,8 +613,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_nested_transaction(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         sess = create_session()
         sess.begin()
@@ -594,8 +637,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_nested_autotrans(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         sess = create_session(autocommit=False)
         u = User(name='u1')
@@ -615,8 +659,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_nested_transaction_connection_add(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = create_session(autocommit=True)
@@ -650,8 +695,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_mixed_transaction_control(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = create_session(autocommit=True)
@@ -681,8 +727,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @testing.resolve_artifact_names
     def test_mixed_transaction_close(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = create_session(autocommit=False)
@@ -701,8 +748,9 @@ class SessionTest(_fixtures.FixtureTest):
 
         eq_(len(sess.query(User).all()), 1)
 
-    @testing.resolve_artifact_names
     def test_error_on_using_inactive_session(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         sess = create_session(autocommit=True)
         sess.begin()
@@ -718,8 +766,9 @@ class SessionTest(_fixtures.FixtureTest):
                               sess.begin, subtransactions=True)
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_preserve_flush_error(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         sess = Session()
 
@@ -743,8 +792,9 @@ class SessionTest(_fixtures.FixtureTest):
         sess.commit()
 
 
-    @testing.resolve_artifact_names
     def test_no_autocommit_with_explicit_commit(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         session = create_session(autocommit=False)
         session.add(User(name='ed'))
@@ -753,8 +803,9 @@ class SessionTest(_fixtures.FixtureTest):
             'autocommit=False should start a new transaction'
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_bound_connection(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         c = testing.db.connect()
         sess = create_session(bind=c)
@@ -775,8 +826,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert len(sess.query(User).all()) == 0
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_bound_connection_transactional(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         c = testing.db.connect()
 
@@ -810,8 +862,12 @@ class SessionTest(_fixtures.FixtureTest):
         assert not c.in_transaction()
         assert c.scalar("select count(1) from users") == 1
 
-    @testing.resolve_artifact_names
     def test_bind_arguments(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users)
         mapper(Address, addresses)
 
@@ -837,8 +893,12 @@ class SessionTest(_fixtures.FixtureTest):
         sess.close()
 
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_add_delete(self):
+        User, Address, addresses, users = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users)
+
 
         s = create_session()
         mapper(User, users, properties={
@@ -892,8 +952,12 @@ class SessionTest(_fixtures.FixtureTest):
         assert user not in s
         assert s.query(User).count() == 0
 
-    @testing.resolve_artifact_names
     def test_is_modified(self):
+        User, Address, addresses, users = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users)
+
         s = create_session()
 
         mapper(User, users, properties={'addresses':relationship(Address)})
@@ -924,8 +988,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert s.is_modified(user)
         assert not s.is_modified(user, include_collections=False)
 
-    @testing.resolve_artifact_names
     def test_is_modified_syn(self):
+        User, users = self.classes.User, self.tables.users
+
         s = sessionmaker()()
 
         mapper(User, users, properties={'uname':sa.orm.synonym('name')})
@@ -935,8 +1000,9 @@ class SessionTest(_fixtures.FixtureTest):
         s.commit()
         assert not s.is_modified(u)
 
-    @testing.resolve_artifact_names
     def test_weak_ref(self):
+        users, User = self.tables.users, self.classes.User
+
         """test the weak-referencing identity map, which strongly-
         references modified items."""
 
@@ -968,8 +1034,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert user.name == 'fred'
         assert s.identity_map
 
-    @testing.resolve_artifact_names
     def test_weak_ref_pickled(self):
+        users, User = self.tables.users, self.classes.User
+
         s = create_session()
         mapper(User, users)
 
@@ -999,8 +1066,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert not s.identity_map
 
     @testing.uses_deprecated()
-    @testing.resolve_artifact_names
     def test_identity_conflict(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         for s in (
             create_session(),
@@ -1019,8 +1087,12 @@ class SessionTest(_fixtures.FixtureTest):
                           sa.orm.attributes.instance_state(u2))
 
 
-    @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2m(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         s = sessionmaker()()
         mapper(User, users, properties={
             "addresses":relationship(Address, backref="user")
@@ -1048,8 +1120,12 @@ class SessionTest(_fixtures.FixtureTest):
         user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
 
-    @testing.resolve_artifact_names
     def test_weakref_with_cycles_o2o(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         s = sessionmaker()()
         mapper(User, users, properties={
             "address":relationship(Address, backref="user", uselist=False)
@@ -1079,8 +1155,9 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(user, User(name="ed", address=Address(email_address="ed2")))
 
     @testing.uses_deprecated()
-    @testing.resolve_artifact_names
     def test_strong_ref(self):
+        users, User = self.tables.users, self.classes.User
+
         s = create_session(weak_identity_map=False)
         mapper(User, users)
 
@@ -1103,8 +1180,9 @@ class SessionTest(_fixtures.FixtureTest):
     @testing.uses_deprecated()
     @testing.fails_if(lambda: pypy, "pypy has a real GC")
     @testing.fails_on('+zxjdbc', 'http://www.sqlalchemy.org/trac/ticket/1473')
-    @testing.resolve_artifact_names
     def test_prune(self):
+        users, User = self.tables.users, self.classes.User
+
         s = create_session(weak_identity_map=False)
         mapper(User, users)
 
@@ -1153,8 +1231,9 @@ class SessionTest(_fixtures.FixtureTest):
         self.assert_(len(s.identity_map) == 0)
 
 
-    @testing.resolve_artifact_names
     def test_pickled_update(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         sess1 = create_session()
         sess2 = create_session()
@@ -1166,8 +1245,9 @@ class SessionTest(_fixtures.FixtureTest):
         u2 = pickle.loads(pickle.dumps(u1))
         sess2.add(u2)
 
-    @testing.resolve_artifact_names
     def test_duplicate_update(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         Session = sessionmaker()
         sess = Session()
@@ -1206,8 +1286,9 @@ class SessionTest(_fixtures.FixtureTest):
         u3 = sess.query(User).get(u1.id)
         assert u3 is not u1 and u3 is not u2 and u3.name == u1.name
 
-    @testing.resolve_artifact_names
     def test_no_double_save(self):
+        users = self.tables.users
+
         sess = create_session()
         class Foo(object):
             def __init__(self):
@@ -1223,8 +1304,9 @@ class SessionTest(_fixtures.FixtureTest):
         assert b in sess
         assert len(list(sess)) == 1
 
-    @testing.resolve_artifact_names
     def test_identity_map_mutate(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = Session()
@@ -1456,9 +1538,11 @@ class SessionInterface(testing.TestBase):
         self._test_class_guards(early)
 
 
-class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
+class TLTransactionTest(_base.MappedTest):
+    run_dispose_bind = 'once'
+
     @classmethod
-    def create_engine(cls):
+    def setup_bind(cls):
         return engines.testing_engine(options=dict(strategy='threadlocal'))
 
     @classmethod
@@ -1473,18 +1557,19 @@ class TLTransactionTest(engine_base.AltEngineTest, _base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        users, User = cls.tables.users, cls.classes.User
+
         mapper(User, users)
 
     @testing.exclude('mysql', '<', (5, 0, 3), 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_session_nesting(self):
-        sess = create_session(bind=self.engine)
-        self.engine.begin()
+        User = self.classes.User
+
+        sess = create_session(bind=self.bind)
+        self.bind.begin()
         u = User(name='ed')
         sess.add(u)
         sess.flush()
-        self.engine.commit()
-
+        self.bind.commit()
 

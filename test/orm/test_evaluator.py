@@ -34,12 +34,14 @@ class EvaluateTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        users, User = cls.tables.users, cls.classes.User
+
         mapper(User, users)
 
-    @testing.resolve_artifact_names
     def test_compare_to_value(self):
+        User = self.classes.User
+
         eval_eq(User.name == 'foo', testcases=[
             (User(name='foo'), True),
             (User(name='bar'), False),
@@ -52,15 +54,17 @@ class EvaluateTest(_base.MappedTest):
             (User(id=None), None),
         ])
 
-    @testing.resolve_artifact_names
     def test_compare_to_none(self):
+        User = self.classes.User
+
         eval_eq(User.name == None, testcases=[
             (User(name='foo'), False),
             (User(name=None), True),
         ])
 
-    @testing.resolve_artifact_names
     def test_boolean_ops(self):
+        User = self.classes.User
+
         eval_eq(and_(User.name == 'foo', User.id == 1), testcases=[
             (User(id=1, name='foo'), True),
             (User(id=2, name='foo'), False),
@@ -84,8 +88,9 @@ class EvaluateTest(_base.MappedTest):
             (User(id=None), None),
         ])
 
-    @testing.resolve_artifact_names
     def test_null_propagation(self):
+        User = self.classes.User
+
         eval_eq((User.name == 'foo') == (User.id == 1), testcases=[
             (User(id=1, name='foo'), True),
             (User(id=2, name='foo'), False),

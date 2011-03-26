@@ -450,8 +450,6 @@ def global_cleanup_assertions():
     testutil.lazy_gc()
     assert not pool._refs
 
-
-
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.
 
@@ -562,32 +560,6 @@ def provide_metadata(fn, *args, **kw):
         return rebound(*args, **kw)
     finally:
         metadata.drop_all()
-
-@decorator
-def resolve_artifact_names(fn, *args, **kw):
-    """Decorator, augment function globals with tables and classes.
-
-    Swaps out the function's globals at execution time. The 'global' statement
-    will not work as expected inside a decorated function.
-
-    """
-    # This could be automatically applied to framework and test_ methods in
-    # the MappedTest-derived test suites but... *some* explicitness for this
-    # magic is probably good.  Especially as 'global' won't work- these
-    # rebound functions aren't regular Python..
-    #
-    # Also: it's lame that CPython accepts a dict-subclass for globals, but
-    # only calls dict methods.  That would allow 'global' to pass through to
-    # the func_globals.
-    self = args[0]
-    context = dict(fn.func_globals)
-    for source in self._artifact_registries:
-        context.update(getattr(self, source))
-    # jython bug #1034
-    rebound = types.FunctionType(
-        fn.func_code, context, fn.func_name, fn.func_defaults,
-        fn.func_closure)
-    return rebound(*args, **kw)
 
 class adict(dict):
     """Dict keys available as attributes.  Shadows."""

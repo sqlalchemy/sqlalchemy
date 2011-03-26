@@ -82,12 +82,14 @@ class TriggerDefaultsTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Default, dt = cls.classes.Default, cls.tables.dt
+
         mapper(Default, dt)
 
-    @testing.resolve_artifact_names
     def test_insert(self):
+        Default = self.classes.Default
+
 
         d1 = Default(id=1)
 
@@ -106,8 +108,9 @@ class TriggerDefaultsTest(_base.MappedTest):
         # don't care which trigger fired
         assert d1.col4 in ('ins', 'up')
 
-    @testing.resolve_artifact_names
     def test_update(self):
+        Default = self.classes.Default
+
         d1 = Default(id=1)
 
         session = create_session()
@@ -129,8 +132,9 @@ class ExcludedDefaultsTest(_base.MappedTest):
                    Column('col1', String(20), default="hello"),
         )
 
-    @testing.resolve_artifact_names
     def test_exclude(self):
+        dt = self.tables.dt
+
         class Foo(_base.ComparableEntity):
             pass
         mapper(Foo, dt, exclude_properties=('col1',))

@@ -67,8 +67,12 @@ class QueryAlternativesTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        addresses_table, User, users_table, Address = (cls.tables.addresses_table,
+                                cls.classes.User,
+                                cls.tables.users_table,
+                                cls.classes.Address)
+
         mapper(User, users_table, properties=dict(
             addresses=relationship(Address, backref='user'),
             ))
@@ -94,8 +98,9 @@ class QueryAlternativesTest(_base.MappedTest):
 
     ######################################################################
 
-    @testing.resolve_artifact_names
     def test_override_get(self):
+        Address = self.classes.Address
+
         """MapperExtension.get()
 
         x = session.query.get(5)
@@ -117,8 +122,9 @@ class QueryAlternativesTest(_base.MappedTest):
         ad1 = session.query(Address).get(1)
         assert ad1 in cache.values()
 
-    @testing.resolve_artifact_names
     def test_load(self):
+        Address = self.classes.Address
+
         """x = session.query(Address).load(1)
 
             x = session.load(Address, 1)
@@ -130,8 +136,9 @@ class QueryAlternativesTest(_base.MappedTest):
         assert bool(ad1)
 
 
-    @testing.resolve_artifact_names
     def test_apply_max(self):
+        Address = self.classes.Address
+
         """Query.apply_max(col)
 
         max = session.query(Address).apply_max(Address.bounces)
@@ -147,8 +154,9 @@ class QueryAlternativesTest(_base.MappedTest):
         max = session.query(func.max(Address.bounces)).one()[0]
         assert max == 10
 
-    @testing.resolve_artifact_names
     def test_apply_min(self):
+        Address = self.classes.Address
+
         """Query.apply_min(col)
 
         min = session.query(Address).apply_min(Address.bounces)
@@ -164,8 +172,9 @@ class QueryAlternativesTest(_base.MappedTest):
         min = session.query(func.min(Address.bounces)).one()[0]
         assert min == 0
 
-    @testing.resolve_artifact_names
     def test_apply_avg(self):
+        Address = self.classes.Address
+
         """Query.apply_avg(col)
 
         avg = session.query(Address).apply_avg(Address.bounces)
@@ -180,8 +189,9 @@ class QueryAlternativesTest(_base.MappedTest):
         avg = session.query(func.avg(Address.bounces)).one()[0]
         assert avg > 0 and avg < 10
 
-    @testing.resolve_artifact_names
     def test_apply_sum(self):
+        Address = self.classes.Address
+
         """Query.apply_sum(col)
 
         avg = session.query(Address).apply_avg(Address.bounces)
@@ -196,8 +206,9 @@ class QueryAlternativesTest(_base.MappedTest):
         avg = session.query(func.sum(Address.bounces)).one()[0]
         assert avg == 11
 
-    @testing.resolve_artifact_names
     def test_count_by(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.count_by(*args, **params)
 
         num = session.query(Address).count_by(purpose='Personal')
@@ -215,8 +226,9 @@ class QueryAlternativesTest(_base.MappedTest):
                filter(Address.purpose=='Personal')).count()
         assert num == 3, num
 
-    @testing.resolve_artifact_names
     def test_count_whereclause(self):
+        Address = self.classes.Address
+
         """Query.count(whereclause=None, params=None, **kwargs)
 
         num = session.query(Address).count(address_table.c.bounces > 1)
@@ -227,8 +239,9 @@ class QueryAlternativesTest(_base.MappedTest):
         num = session.query(Address).filter(Address.bounces > 1).count()
         assert num == 1, num
 
-    @testing.resolve_artifact_names
     def test_execute(self):
+        User, users_table = self.classes.User, self.tables.users_table
+
         """Query.execute(clauseelement, params=None, *args, **kwargs)
 
         users = session.query(User).execute(users_table.select())
@@ -239,8 +252,9 @@ class QueryAlternativesTest(_base.MappedTest):
         users = session.query(User).from_statement(users_table.select()).all()
         assert len(users) == 4
 
-    @testing.resolve_artifact_names
     def test_get_by(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.get_by(*args, **params)
 
         user = session.query(User).get_by(name='ed')
@@ -262,8 +276,12 @@ class QueryAlternativesTest(_base.MappedTest):
             User.addresses.any(Address.email_address=='fred@the.fred')).first()
         assert user.name == 'fred'
 
-    @testing.resolve_artifact_names
     def test_instances_entities(self):
+        addresses_table, User, users_table, Address = (self.tables.addresses_table,
+                                self.classes.User,
+                                self.tables.users_table,
+                                self.classes.Address)
+
         """Query.instances(cursor, *mappers_or_columns, **kwargs)
 
         sel = users_table.join(addresses_table).select(use_labels=True)
@@ -279,7 +297,6 @@ class QueryAlternativesTest(_base.MappedTest):
         cola, colb = res[0]
         assert isinstance(cola, User) and isinstance(colb, Address)
 
-    @testing.resolve_artifact_names
     def test_join_by(self):
         """Query.join_by(*args, **params)
 
@@ -288,7 +305,6 @@ class QueryAlternativesTest(_base.MappedTest):
         session = create_session()
 
 
-    @testing.resolve_artifact_names
     def test_join_to(self):
         """Query.join_to(key)
 
@@ -297,7 +313,6 @@ class QueryAlternativesTest(_base.MappedTest):
         session = create_session()
 
 
-    @testing.resolve_artifact_names
     def test_join_via(self):
         """Query.join_via(keys)
 
@@ -306,8 +321,9 @@ class QueryAlternativesTest(_base.MappedTest):
         session = create_session()
 
 
-    @testing.resolve_artifact_names
     def test_list(self):
+        User = self.classes.User
+
         """Query.list()
 
         users = session.query(User).list()
@@ -318,8 +334,9 @@ class QueryAlternativesTest(_base.MappedTest):
         users = session.query(User).all()
         assert len(users) == 4
 
-    @testing.resolve_artifact_names
     def test_scalar(self):
+        User = self.classes.User
+
         """Query.scalar()
 
         user = session.query(User).filter(User.id==1).scalar()
@@ -330,8 +347,9 @@ class QueryAlternativesTest(_base.MappedTest):
         user = session.query(User).filter(User.id==1).first()
         assert user.id==1
 
-    @testing.resolve_artifact_names
     def test_select(self):
+        User = self.classes.User
+
         """Query.select(arg=None, **kwargs)
 
         users = session.query(User).select(users_table.c.name != None)
@@ -342,8 +360,9 @@ class QueryAlternativesTest(_base.MappedTest):
         users = session.query(User).filter(User.name != None).all()
         assert len(users) == 4
 
-    @testing.resolve_artifact_names
     def test_select_by(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.select_by(*args, **params)
 
         users = session.query(User).select_by(name='fred')
@@ -368,8 +387,9 @@ class QueryAlternativesTest(_base.MappedTest):
             Address.email_address == 'fred@the.fred')).all()
         assert len(users) == 1
 
-    @testing.resolve_artifact_names
     def test_selectfirst(self):
+        Address = self.classes.Address
+
         """Query.selectfirst(arg=None, **kwargs)
 
         bounced = session.query(Address).selectfirst(
@@ -381,8 +401,9 @@ class QueryAlternativesTest(_base.MappedTest):
         bounced = session.query(Address).filter(Address.bounces > 0).first()
         assert bounced.bounces > 0
 
-    @testing.resolve_artifact_names
     def test_selectfirst_by(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.selectfirst_by(*args, **params)
 
         onebounce = session.query(Address).selectfirst_by(bounces=1)
@@ -408,8 +429,9 @@ class QueryAlternativesTest(_base.MappedTest):
             Address.bounces == 1)).first()
         assert onebounce_user.name == 'jack'
 
-    @testing.resolve_artifact_names
     def test_selectone(self):
+        User = self.classes.User
+
         """Query.selectone(arg=None, **kwargs)
 
         ed = session.query(User).selectone(users_table.c.name == 'ed')
@@ -419,8 +441,9 @@ class QueryAlternativesTest(_base.MappedTest):
 
         ed = session.query(User).filter(User.name == 'jack').one()
 
-    @testing.resolve_artifact_names
     def test_selectone_by(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.selectone_by
 
         ed = session.query(User).selectone_by(name='ed')
@@ -441,8 +464,9 @@ class QueryAlternativesTest(_base.MappedTest):
         ed = session.query(User).filter(User.addresses.any(
             Address.email_address == 'ed@foo.bar')).one()
 
-    @testing.resolve_artifact_names
     def test_select_statement(self):
+        User, users_table = self.classes.User, self.tables.users_table
+
         """Query.select_statement(statement, **params)
 
         users = session.query(User).select_statement(users_table.select())
@@ -453,8 +477,9 @@ class QueryAlternativesTest(_base.MappedTest):
         users = session.query(User).from_statement(users_table.select()).all()
         assert len(users) == 4
 
-    @testing.resolve_artifact_names
     def test_select_text(self):
+        User = self.classes.User
+
         """Query.select_text(text, **params)
 
         users = session.query(User).select_text('SELECT * FROM users_table')
@@ -466,8 +491,9 @@ class QueryAlternativesTest(_base.MappedTest):
                  from_statement('SELECT * FROM users_table')).all()
         assert len(users) == 4
 
-    @testing.resolve_artifact_names
     def test_select_whereclause(self):
+        User = self.classes.User
+
         """Query.select_whereclause(whereclause=None, params=None, **kwargs)
 
 

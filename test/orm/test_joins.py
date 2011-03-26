@@ -103,8 +103,15 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             Column('person_id', Integer, ForeignKey('people.person_id')))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
+        paperwork, people, companies, boss, managers, machines, engineers = (cls.tables.paperwork,
+                                cls.tables.people,
+                                cls.tables.companies,
+                                cls.tables.boss,
+                                cls.tables.managers,
+                                cls.tables.machines,
+                                cls.tables.engineers)
+
         class Company(_fixtures.Base):
             pass
         class Person(_fixtures.Base):
@@ -141,8 +148,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
         mapper(Paperwork, paperwork)
 
-    @testing.resolve_artifact_names
     def test_single_prop(self):
+        Company = self.classes.Company
+
         sess = create_session()
 
         self.assert_compile(
@@ -152,8 +160,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             , use_default_dialect = True
         )
 
-    @testing.resolve_artifact_names
     def test_force_via_select_from(self):
+        Company, Engineer = self.classes.Company, self.classes.Engineer
+
         sess = create_session()
 
         self.assert_compile(
@@ -179,8 +188,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
 
         )
 
-    @testing.resolve_artifact_names
     def test_single_prop_of_type(self):
+        Company, Engineer = self.classes.Company, self.classes.Engineer
+
         sess = create_session()
 
         self.assert_compile(
@@ -197,8 +207,11 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             , use_default_dialect = True
         )
 
-    @testing.resolve_artifact_names
     def test_prop_with_polymorphic(self):
+        Person, Manager, Paperwork = (self.classes.Person,
+                                self.classes.Manager,
+                                self.classes.Paperwork)
+
         sess = create_session()
 
         self.assert_compile(
@@ -231,8 +244,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             , use_default_dialect=True
         )
 
-    @testing.resolve_artifact_names
     def test_explicit_polymorphic_join(self):
+        Company, Engineer = self.classes.Company, self.classes.Engineer
+
         sess = create_session()
 
         self.assert_compile(
@@ -271,8 +285,14 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             , use_default_dialect=True
         )
 
-    @testing.resolve_artifact_names
     def test_multiple_adaption(self):
+        people, Company, Machine, engineers, machines, Engineer = (self.tables.people,
+                                self.classes.Company,
+                                self.classes.Machine,
+                                self.tables.engineers,
+                                self.tables.machines,
+                                self.classes.Engineer)
+
         """test that multiple filter() adapters get chained together "
         and work correctly within a multiple-entry join()."""
 
@@ -1198,8 +1218,12 @@ class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
             Column('t2id', Integer, ForeignKey('t2.id'))
             )
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        t2, t1t2_1, t1t2_2, t1 = (self.tables.t2,
+                                self.tables.t1t2_1,
+                                self.tables.t1t2_2,
+                                self.tables.t1)
+
         class T1(object):pass
         class T2(object):pass
 
@@ -1241,8 +1265,11 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
+        nodes, assoc_table, sub_table = (cls.tables.nodes,
+                                cls.tables.assoc_table,
+                                cls.tables.sub_table)
+
         class Node(Base):
             pass
 
@@ -1261,8 +1288,9 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
         })
         mapper(Sub, sub_table)
 
-    @testing.resolve_artifact_names
     def test_o2m_aliased_plus_o2m(self):
+        Node, Sub = self.classes.Node, self.classes.Sub
+
         sess = create_session()
         n1 = aliased(Node)
 
@@ -1280,8 +1308,9 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
             "JOIN sub_table ON nodes.id = sub_table.node_id"
         )
 
-    @testing.resolve_artifact_names
     def test_m2m_aliased_plus_o2m(self):
+        Node, Sub = self.classes.Node, self.classes.Sub
+
         sess = create_session()
         n1 = aliased(Node)
 
@@ -1321,8 +1350,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                self.children.append(node)
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Node, nodes = cls.classes.Node, cls.tables.nodes
+
         mapper(Node, nodes, properties={
             'children':relationship(Node, lazy='select', join_depth=3,
                 backref=backref('parent', remote_side=[nodes.c.id])
@@ -1330,8 +1360,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         })
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        Node = cls.classes.Node
+
         sess = create_session()
         n1 = Node(data='n1')
         n1.append(Node(data='n11'))
@@ -1344,8 +1375,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_join(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         node = sess.query(Node).join('children', aliased=True).filter_by(data='n122').first()
@@ -1362,8 +1394,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'
 
-    @testing.resolve_artifact_names
     def test_string_or_prop_aliased(self):
+        Node = self.classes.Node
+
         """test that join('foo') behaves the same as join(Cls.foo) in a self
         referential scenario.
 
@@ -1411,8 +1444,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
                 use_default_dialect=True
             )
 
-    @testing.resolve_artifact_names
     def test_from_self_inside_excludes_outside(self):
+        Node = self.classes.Node
+
         """test the propagation of aliased() from inside to outside
         on a from_self()..
         """
@@ -1467,8 +1501,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-    @testing.resolve_artifact_names
     def test_explicit_join(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         n1 = aliased(Node)
@@ -1531,8 +1566,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
             filter(and_(Node.data=='n122', n1.data=='n12', n2.data=='n1')).values(Node.data, n1.data, n2.data)),
             [('n122', 'n12', 'n1')])
 
-    @testing.resolve_artifact_names
     def test_join_to_nonaliased(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         n1 = aliased(Node)
@@ -1550,8 +1586,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
 
-    @testing.resolve_artifact_names
     def test_multiple_explicit_entities(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         parent = aliased(Node)
@@ -1605,16 +1642,18 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
 
-    @testing.resolve_artifact_names
     def test_any(self):
+        Node = self.classes.Node
+
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n1')).all(), [])
         eq_(sess.query(Node).filter(Node.children.any(Node.data=='n12')).all(), [Node(data='n1')])
         eq_(sess.query(Node).filter(~Node.children.any()).order_by(Node.id).all(), 
                 [Node(data='n11'), Node(data='n13'),Node(data='n121'),Node(data='n122'),Node(data='n123'),])
 
-    @testing.resolve_artifact_names
     def test_has(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n12')).order_by(Node.id).all(), 
@@ -1622,8 +1661,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         eq_(sess.query(Node).filter(Node.parent.has(Node.data=='n122')).all(), [])
         eq_(sess.query(Node).filter(~Node.parent.has()).all(), [Node(data='n1')])
 
-    @testing.resolve_artifact_names
     def test_contains(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         n122 = sess.query(Node).filter(Node.data=='n122').one()
@@ -1632,8 +1672,9 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
         n13 = sess.query(Node).filter(Node.data=='n13').one()
         eq_(sess.query(Node).filter(Node.children.contains(n13)).all(), [Node(data='n1')])
 
-    @testing.resolve_artifact_names
     def test_eq_ne(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         n12 = sess.query(Node).filter(Node.data=='n12').one()
@@ -1663,8 +1704,11 @@ class SelfReferentialM2MTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        Node, nodes, node_to_nodes = (cls.classes.Node,
+                                cls.tables.nodes,
+                                cls.tables.node_to_nodes)
+
 
         mapper(Node, nodes, properties={
             'children':relationship(Node, lazy='select', secondary=node_to_nodes,
@@ -1692,14 +1736,16 @@ class SelfReferentialM2MTest(_base.MappedTest):
         sess.flush()
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_any(self):
+        Node = self.classes.Node
+
         sess = create_session()
         eq_(sess.query(Node).filter(Node.children.any(Node.data == 'n3'
             )).all(), [Node(data='n1'), Node(data='n2')])
 
-    @testing.resolve_artifact_names
     def test_contains(self):
+        Node = self.classes.Node
+
         sess = create_session()
         n4 = sess.query(Node).filter_by(data='n4').one()
 
@@ -1709,8 +1755,9 @@ class SelfReferentialM2MTest(_base.MappedTest):
             [Node(data='n2'), Node(data='n4'), Node(data='n5'),
             Node(data='n6'), Node(data='n7')])
 
-    @testing.resolve_artifact_names
     def test_explicit_join(self):
+        Node = self.classes.Node
+
         sess = create_session()
 
         n1 = aliased(Node)

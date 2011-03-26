@@ -33,8 +33,12 @@ class HistoryTest(_fixtures.FixtureTest):
         class Address(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_backref(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         am = mapper(Address, addresses)
         m = mapper(User, users, properties=dict(
             addresses = relationship(am, backref='user', lazy='joined')))
@@ -81,8 +85,9 @@ class UnicodeTest(_base.MappedTest):
         class Test2(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        Test, uni_t1 = self.classes.Test, self.tables.uni_t1
+
         mapper(Test, uni_t1)
 
         txt = u"\u0160\u0110\u0106\u010c\u017d"
@@ -95,8 +100,12 @@ class UnicodeTest(_base.MappedTest):
 
         self.assert_(t1.txt == txt)
 
-    @testing.resolve_artifact_names
     def test_relationship(self):
+        Test, uni_t2, uni_t1, Test2 = (self.classes.Test,
+                                self.tables.uni_t2,
+                                self.tables.uni_t1,
+                                self.classes.Test2)
+
         mapper(Test, uni_t1, properties={
             't2s': relationship(Test2)})
         mapper(Test2, uni_t2)
@@ -114,8 +123,10 @@ class UnicodeTest(_base.MappedTest):
         t1 = session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
-class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
+class UnicodeSchemaTest(_base.MappedTest):
     __requires__ = ('unicode_connections', 'unicode_ddl',)
+
+    run_dispose_bind = 'once'
 
     @classmethod
     def create_engine(cls):
@@ -150,8 +161,9 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
 
     @testing.fails_on('mssql+pyodbc',
                       'pyodbc returns a non unicode encoding of the results description.')
-    @testing.resolve_artifact_names
     def test_mapping(self):
+        t2, t1 = self.tables.t2, self.tables.t1
+
         class A(_base.ComparableEntity):
             pass
         class B(_base.ComparableEntity):
@@ -188,8 +200,9 @@ class UnicodeSchemaTest(engine_base.AltEngineTest, _base.MappedTest):
 
     @testing.fails_on('mssql+pyodbc',
                       'pyodbc returns a non unicode encoding of the results description.')
-    @testing.resolve_artifact_names
     def test_inheritance_mapping(self):
+        t2, t1 = self.tables.t2, self.tables.t1
+
         class A(_base.ComparableEntity):
             pass
         class B(A):
@@ -224,8 +237,9 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
         class Foo(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_binary_equality(self):
+        Foo, t1 = self.classes.Foo, self.tables.t1
+
 
         # Py3K
         #data = b"this is some data"
@@ -285,8 +299,9 @@ class PKTest(_base.MappedTest):
     # not supported on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys
     @testing.fails_on('sqlite', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_primary_key(self):
+        Entry, multipk1 = self.classes.Entry, self.tables.multipk1
+
         mapper(Entry, multipk1)
 
         e = Entry(name='entry1', value='this is entry 1', multi_rev=2)
@@ -303,8 +318,9 @@ class PKTest(_base.MappedTest):
         eq_(state.key, state2.key)
 
     # this one works with sqlite since we are manually setting up pk values
-    @testing.resolve_artifact_names
     def test_manual_pk(self):
+        Entry, multipk2 = self.classes.Entry, self.tables.multipk2
+
         mapper(Entry, multipk2)
 
         e = Entry(pk_col_1='pk1', pk_col_2='pk1_related', data='im the data')
@@ -313,8 +329,9 @@ class PKTest(_base.MappedTest):
         session.add(e)
         session.flush()
 
-    @testing.resolve_artifact_names
     def test_key_pks(self):
+        Entry, multipk3 = self.classes.Entry, self.tables.multipk3
+
         mapper(Entry, multipk3)
 
         e = Entry(primary= 'pk1', secondary='pk2',
@@ -347,8 +364,12 @@ class ForeignPKTest(_base.MappedTest):
         class PersonSite(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        peoplesites, PersonSite, Person, people = (self.tables.peoplesites,
+                                self.classes.PersonSite,
+                                self.classes.Person,
+                                self.tables.people)
+
         m1 = mapper(PersonSite, peoplesites)
         m2 = mapper(Person, people, properties={
             'sites' : relationship(PersonSite)})
@@ -386,12 +407,14 @@ class ClauseAttributesTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        User, users_t = cls.classes.User, cls.tables.users_t
+
         mapper(User, users_t)
 
-    @testing.resolve_artifact_names
     def test_update(self):
+        User = self.classes.User
+
         u = User(name='test')
 
         session = create_session()
@@ -406,8 +429,9 @@ class ClauseAttributesTest(_base.MappedTest):
             assert (u.counter == 2) is True  # ensure its not a ClauseElement
         self.sql_count_(1, go)
 
-    @testing.resolve_artifact_names
     def test_multi_update(self):
+        User = self.classes.User
+
         u = User(name='test')
 
         session = create_session()
@@ -429,8 +453,9 @@ class ClauseAttributesTest(_base.MappedTest):
         eq_(u.name, 'test2')
         eq_(u.counter,  2)
 
-    @testing.resolve_artifact_names
     def test_insert(self):
+        User = self.classes.User
+
         u = User(name='test', counter=sa.select([5]))
 
         session = create_session()
@@ -466,8 +491,12 @@ class PassiveDeletesTest(_base.MappedTest):
         class MyOtherClass(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children':relationship(MyOtherClass,
@@ -493,8 +522,12 @@ class PassiveDeletesTest(_base.MappedTest):
         assert myothertable.count().scalar() == 0
 
     @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
-    @testing.resolve_artifact_names
     def test_backwards_pd(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         """Test that passive_deletes=True disables a delete from an m2o.
 
         This is not the usual usage and it now raises a warning, but test
@@ -524,8 +557,12 @@ class PassiveDeletesTest(_base.MappedTest):
         assert mytable.count().scalar() == 1
         assert myothertable.count().scalar() == 0
 
-    @testing.resolve_artifact_names
     def test_aaa_m2o_emits_warning(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable, properties={
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
@@ -558,8 +595,9 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         class MyOtherClass(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_assertions(self):
+        myothertable, MyOtherClass = self.tables.myothertable, self.classes.MyOtherClass
+
         mapper(MyOtherClass, myothertable)
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -570,8 +608,12 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
                                     cascade="all"
         )
 
-    @testing.resolve_artifact_names
     def test_extra_passive(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
@@ -593,8 +635,12 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         session.delete(mc)
         assert_raises(sa.exc.DBAPIError, session.flush)
 
-    @testing.resolve_artifact_names
     def test_extra_passive_2(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
@@ -615,8 +661,12 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         mc.children[0].data = 'some new data'
         assert_raises(sa.exc.DBAPIError, session.flush)
 
-    @testing.resolve_artifact_names
     def test_dont_emit(self):
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable)
         mapper(MyClass, mytable, properties={
             'children': relationship(MyOtherClass,
@@ -644,8 +694,9 @@ class ColumnCollisionTest(_base.MappedTest):
             Column('title', String(50))
         )
 
-    @testing.resolve_artifact_names
     def test_naming(self):
+        book = self.tables.book
+
         class Book(_base.ComparableEntity):
             pass
 
@@ -689,8 +740,8 @@ class DefaultTest(_base.MappedTest):
             hohoval = 9
             althohoval = 15
 
-        cls.other_artifacts['hohoval'] = hohoval
-        cls.other_artifacts['althohoval'] = althohoval
+        cls.other['hohoval'] = hohoval
+        cls.other['althohoval'] = althohoval
 
         dt = Table('default_t', metadata,
             Column('id', Integer, primary_key=True,
@@ -726,8 +777,12 @@ class DefaultTest(_base.MappedTest):
             pass
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
-    @testing.resolve_artifact_names
     def test_insert(self):
+        althohoval, hohoval, default_t, Hoho = (self.other.althohoval,
+                                self.other.hohoval,
+                                self.tables.default_t,
+                                self.classes.Hoho)
+
         mapper(Hoho, default_t)
 
         h1 = Hoho(hoho=althohoval)
@@ -771,8 +826,11 @@ class DefaultTest(_base.MappedTest):
         eq_(h5.foober, 'im the new foober')
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
-    @testing.resolve_artifact_names
     def test_eager_defaults(self):
+        hohoval, default_t, Hoho = (self.other.hohoval,
+                                self.tables.default_t,
+                                self.classes.Hoho)
+
         mapper(Hoho, default_t, eager_defaults=True)
 
         h1 = Hoho()
@@ -783,8 +841,9 @@ class DefaultTest(_base.MappedTest):
 
         self.sql_count_(0, lambda: eq_(h1.hoho, hohoval))
 
-    @testing.resolve_artifact_names
     def test_insert_nopostfetch(self):
+        default_t, Hoho = self.tables.default_t, self.classes.Hoho
+
         # populates from the FetchValues explicitly so there is no
         # "post-update"
         mapper(Hoho, default_t)
@@ -801,8 +860,9 @@ class DefaultTest(_base.MappedTest):
         self.sql_count_(0, go)
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
-    @testing.resolve_artifact_names
     def test_update(self):
+        default_t, Hoho = self.tables.default_t, self.classes.Hoho
+
         mapper(Hoho, default_t)
 
         h1 = Hoho()
@@ -816,8 +876,13 @@ class DefaultTest(_base.MappedTest):
         eq_(h1.foober, 'im the update')
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
-    @testing.resolve_artifact_names
     def test_used_in_relationship(self):
+        Hoho, hohoval, default_t, secondary_table, Secondary = (self.classes.Hoho,
+                                self.other.hohoval,
+                                self.tables.default_t,
+                                self.tables.secondary_table,
+                                self.classes.Secondary)
+
         """A server-side default can be used as the target of a foreign key"""
 
         mapper(Hoho, default_t, properties={
@@ -868,21 +933,26 @@ class ColumnPropertyTest(_base.MappedTest):
         class Data(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_refreshes(self):
+        Data, data = self.classes.Data, self.tables.data
+
         mapper(Data, data, properties={
             'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b)
         })
         self._test()
 
-    @testing.resolve_artifact_names
     def test_refreshes_post_init(self):
+        Data, data = self.classes.Data, self.tables.data
+
         m = mapper(Data, data)
         m.add_property('aplusb', column_property(data.c.a + literal_column("' '") + data.c.b))
         self._test()
 
-    @testing.resolve_artifact_names
     def test_with_inheritance(self):
+        subdata, data, Data = (self.tables.subdata,
+                                self.tables.data,
+                                self.classes.Data)
+
         class SubData(Data):
             pass
         mapper(Data, data, properties={
@@ -896,8 +966,9 @@ class ColumnPropertyTest(_base.MappedTest):
         sess.flush()
         eq_(sd1.aplusb, "hello there")
 
-    @testing.resolve_artifact_names
     def _test(self):
+        Data = self.classes.Data
+
         sess = create_session()
 
         d1 = Data(a="hello", b="there")
@@ -918,8 +989,12 @@ class ColumnPropertyTest(_base.MappedTest):
 class OneToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_one_to_many_1(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """Basic save of one to many."""
 
         m = mapper(User, users, properties=dict(
@@ -958,8 +1033,12 @@ class OneToManyTest(_fixtures.FixtureTest):
             [addressid, userid, 'somethingnew@foo.com'])
         self.assert_(u.id == userid and a2.id == addressid)
 
-    @testing.resolve_artifact_names
     def test_one_to_many_2(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """Modifying the child items of an object."""
 
         m = mapper(User, users, properties=dict(
@@ -1001,8 +1080,12 @@ class OneToManyTest(_fixtures.FixtureTest):
              "WHERE addresses.id = :addresses_id",
              {'user_id': u1.id, 'addresses_id': a3.id})])
 
-    @testing.resolve_artifact_names
     def test_child_move(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """Moving a child from one parent to another, with a delete.
 
         Tests that deleting the first parent properly updates the child with
@@ -1032,8 +1115,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
 
-    @testing.resolve_artifact_names
     def test_child_move_2(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         m = mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='select')))
 
@@ -1055,8 +1142,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         u2 = session.query(User).get(u2.id)
         eq_(len(u2.addresses), 1)
 
-    @testing.resolve_artifact_names
     def test_o2m_delete_parent(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         m = mapper(User, users, properties=dict(
             address = relationship(mapper(Address, addresses),
                                lazy='select',
@@ -1078,8 +1169,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         assert sa.orm.attributes.instance_state(a).key in session.identity_map
         assert sa.orm.attributes.instance_state(u).key not in session.identity_map
 
-    @testing.resolve_artifact_names
     def test_one_to_one(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         m = mapper(User, users, properties=dict(
             address = relationship(mapper(Address, addresses),
                                lazy='select',
@@ -1098,8 +1193,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         u.address.email_address = 'imnew@foo.com'
         session.flush()
 
-    @testing.resolve_artifact_names
     def test_bidirectional(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         m1 = mapper(User, users)
         m2 = mapper(Address, addresses, properties=dict(
             user = relationship(m1, lazy='joined', backref='addresses')))
@@ -1114,8 +1213,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.delete(u)
         session.flush()
 
-    @testing.resolve_artifact_names
     def test_double_relationship(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         m2 = mapper(Address, addresses)
         m = mapper(User, users, properties={
             'boston_addresses' : relationship(m2, primaryjoin=
@@ -1138,8 +1241,9 @@ class OneToManyTest(_fixtures.FixtureTest):
 class SaveTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        User, users = self.classes.User, self.tables.users
+
         m = mapper(User, users)
 
         # save two users
@@ -1177,8 +1281,9 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(u2.id, userlist[1].id)
         eq_(userlist[1].name, 'savetester2')
 
-    @testing.resolve_artifact_names
     def test_synonym(self):
+        users = self.tables.users
+
         class SUser(_base.BasicEntity):
             def _get_name(self):
                 return "User:" + self.name
@@ -1201,8 +1306,12 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(SUser).first()
         eq_(u.syn_name, 'User:some name:User')
 
-    @testing.resolve_artifact_names
     def test_lazyattr_commit(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """Lazily loaded relationships.
 
         When a lazy-loaded list is unloaded, and a commit occurs, that the
@@ -1228,8 +1337,11 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
         eq_(len(u.addresses), 4)
 
-    @testing.resolve_artifact_names
     def test_inherits(self):
+        users, addresses, User = (self.tables.users,
+                                self.tables.addresses,
+                                self.classes.User)
+
         m1 = mapper(User, users)
 
         class AddressUser(User):
@@ -1251,8 +1363,9 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(au.user_id, rt.user_id)
         eq_(rt.id, rt.id)
 
-    @testing.resolve_artifact_names
     def test_deferred(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
         """Deferred column operations"""
 
         mapper(Order, orders, properties={
@@ -1295,8 +1408,9 @@ class SaveTest(_fixtures.FixtureTest):
     # why no support on oracle ?  because oracle doesn't save
     # "blank" strings; it saves a single space character.
     @testing.fails_on('oracle', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_dont_update_blanks(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
 
         u = User(name='')
@@ -1309,8 +1423,11 @@ class SaveTest(_fixtures.FixtureTest):
         u.name = ''
         self.sql_count_(0, session.flush)
 
-    @testing.resolve_artifact_names
     def test_multi_table_selectable(self):
+        addresses, users, User = (self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """Mapped selectables that span tables.
 
         Also tests redefinition of the keynames for the column properties.
@@ -1353,8 +1470,12 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(id)
         assert u.name == 'imnew'
 
-    @testing.resolve_artifact_names
     def test_history_get(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """The history lazy-fetches data when it wasn't otherwise loaded."""
         mapper(User, users, properties={
             'addresses':relationship(Address, cascade="all, delete-orphan")})
@@ -1374,8 +1495,9 @@ class SaveTest(_fixtures.FixtureTest):
         assert users.count().scalar() == 0
         assert addresses.count().scalar() == 0
 
-    @testing.resolve_artifact_names
     def test_batch_mode(self):
+        users, User = self.tables.users, self.classes.User
+
         """The 'batch=False' flag on mapper()"""
 
         names = []
@@ -1426,8 +1548,12 @@ class SaveTest(_fixtures.FixtureTest):
 class ManyToOneTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_m2o_one_to_one(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties=dict(
             user = relationship(mapper(User, users), lazy='select', uselist=False)))
@@ -1478,8 +1604,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
         eq_(l.first().values(),
             [a.user.id, 'asdf8d', a.id, a.user_id, 'theater@foo.com'])
 
-    @testing.resolve_artifact_names
     def test_many_to_one_1(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         m = mapper(Address, addresses, properties=dict(
             user = relationship(mapper(User, users), lazy='select')))
 
@@ -1503,8 +1633,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u1 = session.query(User).get(u1.id)
         assert a1.user is None
 
-    @testing.resolve_artifact_names
     def test_many_to_one_2(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         m = mapper(Address, addresses, properties=dict(
             user = relationship(mapper(User, users), lazy='select')))
 
@@ -1534,8 +1668,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
         assert a1.user is None
         assert a2.user is u1
 
-    @testing.resolve_artifact_names
     def test_many_to_one_3(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         m = mapper(Address, addresses, properties=dict(
             user = relationship(mapper(User, users), lazy='select')))
 
@@ -1562,8 +1700,12 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u2 = session.query(User).get(u2.id)
         assert a1.user is u2
 
-    @testing.resolve_artifact_names
     def test_bidirectional_no_load(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user', lazy='noload')})
         mapper(Address, addresses)
@@ -1590,8 +1732,13 @@ class ManyToOneTest(_fixtures.FixtureTest):
 class ManyToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_many_to_many(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties=dict(
@@ -1693,8 +1840,13 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.delete(objects[3])
         session.flush()
 
-    @testing.resolve_artifact_names
     def test_many_to_many_remove(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         """Setting a collection to empty deletes many-to-many rows.
 
         Tests that setting a list-based attribute to '[]' properly affects the
@@ -1721,8 +1873,13 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.flush()
         assert item_keywords.count().scalar() == 0
 
-    @testing.resolve_artifact_names
     def test_scalar(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         """sa.dependency won't delete an m2m relationship referencing None."""
 
         mapper(Keyword, keywords)
@@ -1737,8 +1894,13 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.delete(i)
         session.flush()
 
-    @testing.resolve_artifact_names
     def test_many_to_many_update(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         """Assorted history operations on a many to many"""
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
@@ -1767,8 +1929,13 @@ class ManyToManyTest(_fixtures.FixtureTest):
         item = session.query(Item).get(item.id)
         assert item.keywords == [k1, k2]
 
-    @testing.resolve_artifact_names
     def test_association(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         """Basic test of an association object"""
 
         class IKAssociation(_base.ComparableEntity):
@@ -1822,8 +1989,12 @@ class ManyToManyTest(_fixtures.FixtureTest):
 class SaveTest2(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_m2o_nonmatch(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users)
         mapper(Address, addresses, properties=dict(
             user = relationship(User, lazy='select', uselist=False)))
@@ -1877,8 +2048,13 @@ class SaveTest3(_base.MappedTest):
         class Item(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_manytomany_xtracol_delete(self):
+        keywords, items, assoc, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.assoc,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         """A many-to-many on a table that has an extra column can properly delete rows from the table without referencing the extra column"""
 
         mapper(Keyword, keywords)
@@ -1909,8 +2085,9 @@ class BooleanColTest(_base.MappedTest):
             Column('name', String(30)),
             Column('value', sa.Boolean))
 
-    @testing.resolve_artifact_names
     def test_boolean(self):
+        t1_t = self.tables.t1_t
+
         # use the regular mapper
         class T(_base.ComparableEntity):
             pass
@@ -1961,8 +2138,9 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
             Column('data', String(30)),
         )
 
-    @testing.resolve_artifact_names
     def test_flush_raises(self):
+        t1 = self.tables.t1
+
         class T1(_base.ComparableEntity):
             @reconstructor
             def go(self):
@@ -2040,8 +2218,12 @@ class RowSwitchTest(_base.MappedTest):
         class T7(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_onetomany(self):
+        t6, T6, t5, T5 = (self.tables.t6,
+                                self.classes.T6,
+                                self.tables.t5,
+                                self.classes.T5)
+
         mapper(T5, t5, properties={
             't6s':relationship(T6, cascade="all, delete-orphan")
         })
@@ -2082,8 +2264,13 @@ class RowSwitchTest(_base.MappedTest):
             [(3, 'third t6', 1), (4, 'fourth t6', 1)]
         )
 
-    @testing.resolve_artifact_names
     def test_manytomany(self):
+        t7, t5, t5t7, T5, T7 = (self.tables.t7,
+                                self.tables.t5,
+                                self.tables.t5t7,
+                                self.classes.T5,
+                                self.classes.T7)
+
         mapper(T5, t5, properties={
             't7s':relationship(T7, secondary=t5t7, cascade="all")
         })
@@ -2118,8 +2305,12 @@ class RowSwitchTest(_base.MappedTest):
         assert list(sess.execute(t5.select(), mapper=T5)) == [(1, 'some other t5')]
         assert list(sess.execute(t7.select(), mapper=T5)) == [(3, 'third t7'), (4, 'fourth t7')]
 
-    @testing.resolve_artifact_names
     def test_manytoone(self):
+        t6, T6, t5, T5 = (self.tables.t6,
+                                self.classes.T6,
+                                self.tables.t5,
+                                self.classes.T5)
+
 
         mapper(T6, t6, properties={
             't5':relationship(T5)
@@ -2167,8 +2358,12 @@ class InheritingRowSwitchTest(_base.MappedTest):
         class C(P):
             pass
 
-    @testing.resolve_artifact_names
     def test_row_switch_no_child_table(self):
+        P, C, parent, child = (self.classes.P,
+                                self.classes.C,
+                                self.tables.parent,
+                                self.tables.child)
+
         mapper(P, parent)
         mapper(C, child, inherits=P)
 
@@ -2226,13 +2421,18 @@ class TransactionTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        T2, T1, t2, t1 = (cls.classes.T2,
+                                cls.classes.T1,
+                                cls.tables.t2,
+                                cls.tables.t1)
+
         orm_mapper(T1, t1)
         orm_mapper(T2, t2)
 
-    @testing.resolve_artifact_names
     def test_close_transaction_on_commit_fail(self):
+        T2, t1 = self.classes.T2, self.tables.t1
+
         session = create_session(autocommit=True)
 
         # with a deferred constraint, this fails at COMMIT time instead

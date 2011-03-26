@@ -22,16 +22,18 @@ class BindTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        test_table, Foo = cls.tables.test_table, cls.classes.Foo
+
         meta = MetaData()
         test_table.tometadata(meta)
 
         assert meta.tables['test_table'].bind is None
         mapper(Foo, meta.tables['test_table'])
 
-    @testing.resolve_artifact_names
     def test_session_bind(self):
+        Foo = self.classes.Foo
+
         engine = self.metadata.bind
 
         for bind in (engine, engine.connect()):
@@ -46,8 +48,9 @@ class BindTest(_base.MappedTest):
                 if hasattr(bind, 'close'):
                     bind.close()
 
-    @testing.resolve_artifact_names
     def test_session_unbound(self):
+        Foo = self.classes.Foo
+
         sess = create_session()
         sess.add(Foo())
         assert_raises_message(

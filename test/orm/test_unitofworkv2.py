@@ -917,8 +917,9 @@ class SingleCyclePlusAttributeTest(_base.MappedTest,
             Column('parent_id', Integer, ForeignKey('nodes.id')),
         )
 
-    @testing.resolve_artifact_names
     def test_flush_size(self):
+        foobars, nodes = self.tables.foobars, self.tables.nodes
+
         class Node(Base):
             pass
         class FooBar(Base):
@@ -966,8 +967,9 @@ class SingleCycleM2MTest(_base.MappedTest,
                             ForeignKey('nodes.id'),primary_key=True),
             )
 
-    @testing.resolve_artifact_names
     def test_many_to_many_one(self):
+        nodes, node_to_nodes = self.tables.nodes, self.tables.node_to_nodes
+
         class Node(Base):
             pass
 
@@ -1087,8 +1089,9 @@ class RowswitchAccountingTest(_base.MappedTest):
             Column('id', Integer, ForeignKey('parent.id'), primary_key=True)
         )
 
-    @testing.resolve_artifact_names
     def test_accounting_for_rowswitch(self):
+        parent, child = self.tables.parent, self.tables.child
+
         class Parent(object):
             def __init__(self, id):
                 self.id = id
@@ -1139,8 +1142,9 @@ class BatchInsertsTest(_base.MappedTest, testing.AssertsExecutionResults):
             Column('def_', String(50), server_default='def1')
         )
 
-    @testing.resolve_artifact_names
     def test_batch_interaction(self):
+        t = self.tables.t
+
         """test batching groups same-structured, primary 
         key present statements together.
 

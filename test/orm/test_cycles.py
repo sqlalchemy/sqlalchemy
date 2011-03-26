@@ -41,8 +41,9 @@ class SelfReferentialTest(_base.MappedTest):
             def __init__(self, data=None):
                 self.data = data
 
-    @testing.resolve_artifact_names
     def test_single(self):
+        C1, t1 = self.classes.C1, self.tables.t1
+
         mapper(C1, t1, properties = {
             'c1s':relationship(C1, cascade="all"),
             'parent':relationship(C1,
@@ -59,8 +60,9 @@ class SelfReferentialTest(_base.MappedTest):
         sess.delete(a)
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_many_to_one_only(self):
+        C1, t1 = self.classes.C1, self.tables.t1
+
         """
 
         test that the circular dependency sort can assemble a many-to-one
@@ -86,8 +88,12 @@ class SelfReferentialTest(_base.MappedTest):
         sess.flush()
         assert c2.parent_c1==c1.c1
 
-    @testing.resolve_artifact_names
     def test_cycle(self):
+        C2, C1, t2, t1 = (self.classes.C2,
+                                self.classes.C1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(C1, t1, properties = {
             'c1s' : relationship(C1, cascade="all"),
             'c2s' : relationship(mapper(C2, t2), cascade="all, delete-orphan")})
@@ -106,8 +112,9 @@ class SelfReferentialTest(_base.MappedTest):
         sess.delete(a)
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_setnull_ondelete(self):
+        C1, t1 = self.classes.C1, self.tables.t1
+
         mapper(C1, t1, properties={
             'children':relationship(C1)
         })
@@ -145,16 +152,18 @@ class SelfReferentialNoPKTest(_base.MappedTest):
                 self.uuid = hex(id(self))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        item, TT = cls.tables.item, cls.classes.TT
+
         mapper(TT, item, properties={
             'children': relationship(
                 TT,
                 remote_side=[item.c.parent_uuid],
                 backref=backref('parent', remote_side=[item.c.uuid]))})
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        TT = self.classes.TT
+
         t1 = TT()
         t1.children.append(TT())
         t1.children.append(TT())
@@ -166,8 +175,9 @@ class SelfReferentialNoPKTest(_base.MappedTest):
         t = s.query(TT).filter_by(id=t1.id).one()
         eq_(t.children[0].parent_uuid, t1.uuid)
 
-    @testing.resolve_artifact_names
     def test_lazy_clause(self):
+        TT = self.classes.TT
+
         s = create_session()
         t1 = TT()
         t2 = TT()
@@ -211,16 +221,23 @@ class InheritTestOne(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        child1, child2, parent, Parent, Child1, Child2 = (cls.tables.child1,
+                                cls.tables.child2,
+                                cls.tables.parent,
+                                cls.classes.Parent,
+                                cls.classes.Child1,
+                                cls.classes.Child2)
+
         mapper(Parent, parent)
         mapper(Child1, child1, inherits=Parent)
         mapper(Child2, child2, inherits=Parent, properties=dict(
             child1=relationship(Child1,
                             primaryjoin=child2.c.child1_id == child1.c.id)))
 
-    @testing.resolve_artifact_names
     def test_many_to_one_only(self):
+        Child1, Child2 = self.classes.Child1, self.classes.Child2
+
         """test similar to SelfReferentialTest.testmanytooneonly"""
 
         session = create_session()
@@ -280,8 +297,14 @@ class InheritTestTwo(_base.MappedTest):
         class C(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_flush(self):
+        a, A, c, b, C, B = (self.tables.a,
+                                self.classes.A,
+                                self.tables.c,
+                                self.tables.b,
+                                self.classes.C,
+                                self.classes.B)
+
         mapper(A, a, properties={
             'cs':relationship(C, primaryjoin=a.c.cid==c.c.id)})
 
@@ -328,8 +351,14 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        t2, T2, T3, t1, t3, T1 = (cls.tables.t2,
+                                cls.classes.T2,
+                                cls.classes.T3,
+                                cls.tables.t1,
+                                cls.tables.t3,
+                                cls.classes.T1)
+
         mapper(T1, t1, properties={
             't2':relationship(T2, primaryjoin=t1.c.t2id == t2.c.id)})
         mapper(T2, t2, properties={
@@ -338,8 +367,11 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
             't1':relationship(T1),
             't2':relationship(T2)})
 
-    @testing.resolve_artifact_names
     def test_reflush(self):
+        T2, T3, T1 = (self.classes.T2,
+                                self.classes.T3,
+                                self.classes.T1)
+
         o1 = T1()
         o1.t2 = T2()
         sess = create_session()
@@ -357,8 +389,11 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
         sess.add(o3)
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_reflush_2(self):
+        T2, T3, T1 = (self.classes.T2,
+                                self.classes.T3,
+                                self.classes.T1)
+
         """A variant on test_reflush()"""
         o1 = T1()
         o1.t2 = T2()
@@ -410,8 +445,12 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
         class C2(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_cycle(self):
+        C2, C1, t2, t1 = (self.classes.C2,
+                                self.classes.C1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(C2, t2, properties={
             'c1s': relationship(C1,
                             primaryjoin=t2.c.c1 == t1.c.c2,
@@ -472,8 +511,14 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        t2, t1, C1Data, t1_data, C2, C1 = (cls.tables.t2,
+                                cls.tables.t1,
+                                cls.classes.C1Data,
+                                cls.tables.t1_data,
+                                cls.classes.C2,
+                                cls.classes.C1)
+
         mapper(C2, t2, properties={
             'c1s': relationship(C1,
                             primaryjoin=t2.c.c1 == t1.c.c2,
@@ -484,8 +529,11 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
                              uselist=True),
             'data': relationship(mapper(C1Data, t1_data))})
 
-    @testing.resolve_artifact_names
     def test_cycle(self):
+        C2, C1, C1Data = (self.classes.C2,
+                                self.classes.C1,
+                                self.classes.C1Data)
+
         a = C1()
         b = C2()
         c = C1()
@@ -539,8 +587,12 @@ class OneToManyManyToOneTest(_base.MappedTest):
         class Ball(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_cycle(self):
+        person, ball, Ball, Person = (self.tables.person,
+                                self.tables.ball,
+                                self.classes.Ball,
+                                self.classes.Person)
+
         """
         This test has a peculiar aspect in that it doesnt create as many
         dependent relationships as the other tests, and revealed a small
@@ -563,8 +615,12 @@ class OneToManyManyToOneTest(_base.MappedTest):
         sess.add(p)
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_post_update_m2o(self):
+        person, ball, Ball, Person = (self.tables.person,
+                                self.tables.ball,
+                                self.classes.Ball,
+                                self.classes.Person)
+
         """A cycle between two rows, with a post_update on the many-to-one"""
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
@@ -615,8 +671,12 @@ class OneToManyManyToOneTest(_base.MappedTest):
             ExactSQL("DELETE FROM person WHERE person.id = :id", lambda ctx:[{'id': p.id}])
         )
 
-    @testing.resolve_artifact_names
     def test_post_update_backref(self):
+        person, ball, Ball, Person = (self.tables.person,
+                                self.tables.ball,
+                                self.classes.Ball,
+                                self.classes.Person)
+
         """test bidirectional post_update."""
 
         mapper(Ball, ball)
@@ -661,8 +721,12 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
 
 
-    @testing.resolve_artifact_names
     def test_post_update_o2m(self):
+        person, ball, Ball, Person = (self.tables.person,
+                                self.tables.ball,
+                                self.classes.Ball,
+                                self.classes.Person)
+
         """A cycle between two rows, with a post_update on the one-to-many"""
 
         mapper(Ball, ball)
@@ -773,8 +837,9 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
             def __init__(self, path=''):
                 self.path = path
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        node, Node = self.tables.node, self.classes.Node
+
         """Post_update only fires off when needed.
 
         This test case used to produce many superfluous update statements,
@@ -910,8 +975,9 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
         class A(_base.BasicEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        A, a_table = self.classes.A, self.tables.a_table
+
         """
         Test that post_update remembers to be involved in update operations as
         well, since it replaces the normal dependency processing completely
@@ -972,8 +1038,12 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
             def __init__(self, name=''):
                 self.name = name
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        Child, Parent, parent, child = (self.classes.Child,
+                                self.classes.Parent,
+                                self.tables.parent,
+                                self.tables.child)
+
         mapper(Parent, parent, properties={
             'children':relationship(Child, primaryjoin=parent.c.id==child.c.parent_id),
             'child':relationship(Child, primaryjoin=parent.c.child_id==child.c.id, post_update=True)
@@ -1060,8 +1130,16 @@ class PostUpdateBatchingTest(_base.MappedTest):
             def __init__(self, name=''):
                 self.name = name
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        child1, child2, child3, Parent, parent, Child1, Child2, Child3 = (self.tables.child1,
+                                self.tables.child2,
+                                self.tables.child3,
+                                self.classes.Parent,
+                                self.tables.parent,
+                                self.classes.Child1,
+                                self.classes.Child2,
+                                self.classes.Child3)
+
         mapper(Parent, parent, properties={
             'c1s':relationship(Child1, primaryjoin=child1.c.parent_id==parent.c.id),
             'c2s':relationship(Child2, primaryjoin=child2.c.parent_id==parent.c.id),

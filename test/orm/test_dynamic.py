@@ -11,8 +11,12 @@ from test.orm import _base, _fixtures
 
 
 class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
-    @testing.resolve_artifact_names
     def test_basic(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -26,8 +30,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             q.filter(User.id==7).all())
         eq_(self.static.user_address_result, q.all())
 
-    @testing.resolve_artifact_names
     def test_statement(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """test that the .statement accessor returns the actual statement that
         would render, without any _clones called."""
 
@@ -45,8 +53,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-    @testing.resolve_artifact_names
     def test_order_by(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -58,8 +70,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
               Address(email_address=u'ed@bettyboop.com')]
             )
 
-    @testing.resolve_artifact_names
     def test_configured_order_by(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=desc(Address.email_address))
         })
@@ -79,8 +95,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             set([Address(email_address=u'ed@bettyboop.com'), Address(email_address=u'ed@lala.com'), Address(email_address=u'ed@wood.com')])
         )
 
-    @testing.resolve_artifact_names
     def test_count(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -88,8 +108,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         u = sess.query(User).first()
         eq_(u.addresses.count(), 1)
 
-    @testing.resolve_artifact_names
     def test_backref(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(Address, addresses, properties={
             'user':relationship(User, backref=backref('addresses', lazy='dynamic'))
         })
@@ -104,8 +128,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         u = sess.query(User).get(7)
         assert ad not in u.addresses
 
-    @testing.resolve_artifact_names
     def test_no_count(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -122,8 +150,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 q.filter(User.id==7).all())
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_no_populate(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -134,8 +166,13 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             attributes.set_committed_value, u1, 'addresses', []
         )
 
-    @testing.resolve_artifact_names
     def test_m2m(self):
+        items, Order, orders, order_items, Item = (self.tables.items,
+                                self.classes.Order,
+                                self.tables.orders,
+                                self.tables.order_items,
+                                self.classes.Item)
+
         mapper(Order, orders, properties={
             'items':relationship(Item, secondary=order_items, lazy="dynamic",
                              backref=backref('orders', lazy="dynamic"))
@@ -152,8 +189,13 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
 
-    @testing.resolve_artifact_names
     def test_association_nonaliased(self):
+        items, Order, orders, order_items, Item = (self.tables.items,
+                                self.classes.Order,
+                                self.tables.orders,
+                                self.tables.order_items,
+                                self.classes.Item)
+
         mapper(Order, orders, properties={
             'items':relationship(Item, secondary=order_items, 
                                 lazy="dynamic", 
@@ -180,8 +222,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
 
-    @testing.resolve_artifact_names
     def test_transient_detached(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -191,8 +237,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(u1.addresses.count(), 1)
         eq_(u1.addresses[0], Address())
 
-    @testing.resolve_artifact_names
     def test_custom_query(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         class MyQuery(Query):
             pass
 
@@ -216,8 +266,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert not hasattr(q, 'append')
         eq_(type(q).__name__, 'MyQuery')
 
-    @testing.resolve_artifact_names
     def test_custom_query_with_custom_mixin(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         class MyAppenderMixin(AppenderMixin):
             def add(self, items):
                 if isinstance(items, list):
@@ -258,8 +312,12 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_events(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -294,8 +352,12 @@ class SessionTest(_fixtures.FixtureTest):
             [(a2.id, u1.id, 'bar')])
 
 
-    @testing.resolve_artifact_names
     def test_merge(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=addresses.c.email_address)
         })
@@ -328,8 +390,12 @@ class SessionTest(_fixtures.FixtureTest):
             [a1, a3]
         )
 
-    @testing.resolve_artifact_names
     def test_flush(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -358,8 +424,12 @@ class SessionTest(_fixtures.FixtureTest):
             ],
             sess.query(User).all())
 
-    @testing.resolve_artifact_names
     def test_hasattr(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -369,8 +439,12 @@ class SessionTest(_fixtures.FixtureTest):
         u1.addresses = [Address(email_address='test')]
         assert 'addresses' in dir(u1)
 
-    @testing.resolve_artifact_names
     def test_collection_set(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=addresses.c.email_address)
         })
@@ -391,8 +465,12 @@ class SessionTest(_fixtures.FixtureTest):
         u1.addresses = []
         eq_(list(u1.addresses), [])
 
-    @testing.resolve_artifact_names
     def test_rollback(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))
         })
@@ -409,8 +487,12 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_delete_nocascade(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        backref='user')
@@ -445,8 +527,12 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(testing.db.scalar(addresses.count(addresses.c.user_id != None)), 0)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_delete_cascade(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        backref='user', cascade="all, delete-orphan")
@@ -481,8 +567,12 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(testing.db.scalar(addresses.count()), 0)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_remove_orphans(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), order_by=Address.id,
                                        cascade="all, delete-orphan", backref='user')
@@ -522,8 +612,12 @@ class SessionTest(_fixtures.FixtureTest):
         sess.delete(u)
         sess.close()
 
-    @testing.resolve_artifact_names
     def _backref_test(self, autoflush, saveuser):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses), backref='user')
         })
@@ -582,8 +676,9 @@ class DontDereferenceTest(_base.MappedTest):
               Column('user_id', Integer, ForeignKey('users.id')))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        users, addresses = cls.tables.users, cls.tables.addresses
+
         class User(_base.ComparableEntity):
             pass
 
@@ -595,8 +690,9 @@ class DontDereferenceTest(_base.MappedTest):
             })
         mapper(Address, addresses)
 
-    @testing.resolve_artifact_names
     def test_no_deref(self):
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
         user = User()
         user.name = 'joe'

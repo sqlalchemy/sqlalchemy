@@ -56,8 +56,9 @@ class NaturalPKTest(_base.MappedTest):
         class Item(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_entity(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = create_session()
@@ -80,8 +81,9 @@ class NaturalPKTest(_base.MappedTest):
         u1 = sess.query(User).get('ed')
         eq_(User(username='ed', fullname='jack'), u1)
 
-    @testing.resolve_artifact_names
     def test_load_after_expire(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         sess = create_session()
@@ -103,8 +105,9 @@ class NaturalPKTest(_base.MappedTest):
         assert sess.query(User).get('jack') is None
         assert sess.query(User).get('ed').fullname == 'jack'
 
-    @testing.resolve_artifact_names
     def test_flush_new_pk_after_expire(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
         sess = create_session()
         u1 = User(username='jack', fullname='jack')
@@ -128,8 +131,12 @@ class NaturalPKTest(_base.MappedTest):
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
 
-    @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, passive_updates=passive_updates)
         })
@@ -187,8 +194,12 @@ class NaturalPKTest(_base.MappedTest):
     def test_manytoone_nonpassive(self):
         self._test_manytoone(False)
 
-    @testing.resolve_artifact_names
     def _test_manytoone(self, passive_updates):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User, passive_updates=passive_updates)
@@ -231,8 +242,12 @@ class NaturalPKTest(_base.MappedTest):
     def test_onetoone_nonpassive(self):
         self._test_onetoone(False)
 
-    @testing.resolve_artifact_names
     def _test_onetoone(self, passive_updates):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             "address":relationship(Address, passive_updates=passive_updates,
                                                 uselist=False)
@@ -274,8 +289,12 @@ class NaturalPKTest(_base.MappedTest):
     def test_bidirectional_nonpassive(self):
         self._test_bidirectional(False)
 
-    @testing.resolve_artifact_names
     def _test_bidirectional(self, passive_updates):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User, passive_updates=passive_updates,
@@ -333,8 +352,13 @@ class NaturalPKTest(_base.MappedTest):
     def test_manytomany_nonpassive(self):
         self._test_manytomany(False)
 
-    @testing.resolve_artifact_names
     def _test_manytomany(self, passive_updates):
+        users, items, Item, User, users_to_items = (self.tables.users,
+                                self.tables.items,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.users_to_items)
+
         mapper(User, users, properties={
             'items':relationship(Item, secondary=users_to_items,
                             backref='users',
@@ -387,8 +411,12 @@ class NaturalPKTest(_base.MappedTest):
 class TransientExceptionTesst(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_transient_exception(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """An object that goes from a pk value to transient/pending
         doesn't count as a "pk" switch.
 
@@ -438,8 +466,9 @@ class ReversePKsTest(_base.MappedTest):
                 self.status = status
                 self.username = username
 
-    @testing.resolve_artifact_names
     def test_reverse(self):
+        user, User = self.tables.user, self.classes.User
+
         PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
 
         mapper(User, user)
@@ -498,8 +527,9 @@ class SelfReferentialTest(_base.MappedTest):
         class Node(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_one_to_many_on_m2o(self):
+        Node, nodes = self.classes.Node, self.tables.nodes
+
         mapper(Node, nodes, properties={
             'children': relationship(Node,
                                  backref=sa.orm.backref('parentnode',
@@ -523,8 +553,9 @@ class SelfReferentialTest(_base.MappedTest):
              for n in sess.query(Node).filter(
                  Node.name.in_(['n11', 'n12', 'n13']))])
 
-    @testing.resolve_artifact_names
     def test_one_to_many_on_o2m(self):
+        Node, nodes = self.classes.Node, self.tables.nodes
+
         mapper(Node, nodes, properties={
             'children': relationship(Node,
                                  backref=sa.orm.backref('parentnode',
@@ -556,8 +587,9 @@ class SelfReferentialTest(_base.MappedTest):
     def test_many_to_one_nonpassive(self):
         self._test_many_to_one(False)
 
-    @testing.resolve_artifact_names
     def _test_many_to_one(self, passive):
+        Node, nodes = self.classes.Node, self.tables.nodes
+
         mapper(Node, nodes, properties={
             'parentnode':relationship(Node, 
                             remote_side=nodes.c.name, 
@@ -620,8 +652,12 @@ class NonPKCascadeTest(_base.MappedTest):
     def test_onetomany_nonpassive(self):
         self._test_onetomany(False)
 
-    @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         mapper(User, users, properties={
             'addresses':relationship(Address,
                                 passive_updates=passive_updates)})
@@ -731,8 +767,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_o2m_change_nonpassive(self):
         self._test_o2m_change(False)
 
-    @testing.resolve_artifact_names
     def _test_o2m_change(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         """Change the PK of a related entity to another.
 
         "on update cascade" is not involved here, so the mapper has 
@@ -761,8 +801,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_o2m_move_nonpassive(self):
         self._test_o2m_move(False)
 
-    @testing.resolve_artifact_names
     def _test_o2m_move(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         """Move the related entity to a different collection,
         changing its PK.
 
@@ -794,8 +838,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_change_m2o_nonpassive(self):
         self._test_change_m2o(False)
 
-    @testing.resolve_artifact_names
     def _test_change_m2o(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User, passive_updates=passive_updates)
@@ -820,8 +868,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
     def test_move_m2o_nonpassive(self):
         self._test_move_m2o(False)
 
-    @testing.resolve_artifact_names
     def _test_move_m2o(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         # tests [ticket:1856]
         mapper(User, users)
         mapper(Address, addresses, properties={
@@ -839,8 +891,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
         sess.flush()
 
 
-    @testing.resolve_artifact_names
     def test_rowswitch_doesntfire(self):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         mapper(User, users)
         mapper(Address, addresses, properties={
             'user':relationship(User, passive_updates=True)
@@ -877,8 +933,12 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
                     )
 
 
-    @testing.resolve_artifact_names
     def _test_onetomany(self, passive_updates):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         """Change the PK of a related entity via foreign key cascade.
 
         For databases that require "on update cascade", the mapper 
@@ -977,8 +1037,14 @@ class JoinedInheritanceTest(_base.MappedTest):
     def test_fk_nonpassive(self):
         self._test_fk(False)
 
-    @testing.resolve_artifact_names
     def _test_pk(self, passive_updates):
+        Person, Manager, person, manager, Engineer, engineer = (self.classes.Person,
+                                self.classes.Manager,
+                                self.tables.person,
+                                self.tables.manager,
+                                self.classes.Engineer,
+                                self.tables.engineer)
+
         mapper(Person, person, polymorphic_on=person.c.type, 
                 polymorphic_identity='person',
                 passive_updates=passive_updates)
@@ -1001,8 +1067,14 @@ class JoinedInheritanceTest(_base.MappedTest):
         e1.primary_language = 'c++'
         sess.commit()
 
-    @testing.resolve_artifact_names
     def _test_fk(self, passive_updates):
+        Person, Manager, person, manager, Engineer, engineer = (self.classes.Person,
+                                self.classes.Manager,
+                                self.tables.person,
+                                self.tables.manager,
+                                self.classes.Engineer,
+                                self.tables.engineer)
+
         mapper(Person, person, polymorphic_on=person.c.type, 
                 polymorphic_identity='person',
                         passive_updates=passive_updates)

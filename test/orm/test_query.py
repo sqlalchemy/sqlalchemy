@@ -1463,15 +1463,20 @@ class ImmediateTest(_fixtures.FixtureTest):
     run_deletes = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
         mapper(Address, addresses)
 
         mapper(User, users, properties=dict(
             addresses=relationship(Address)))
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = create_session()
 
         assert_raises(sa.orm.exc.NoResultFound,
@@ -1532,8 +1537,9 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_getslice(self):
         assert False
 
-    @testing.resolve_artifact_names
     def test_scalar(self):
+        User = self.classes.User
+
         sess = create_session()
 
         eq_(sess.query(User.id).filter_by(id=7).scalar(), 7)
@@ -1545,8 +1551,9 @@ class ImmediateTest(_fixtures.FixtureTest):
         assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User).scalar)
         assert_raises(sa.orm.exc.MultipleResultsFound, sess.query(User.id, User.name).scalar)
 
-    @testing.resolve_artifact_names
     def test_value(self):
+        User = self.classes.User
+
         sess = create_session()
 
         eq_(sess.query(User).filter_by(id=7).value(User.id), 7)
@@ -1578,8 +1585,9 @@ class UpdateDeleteTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        users = cls.tables.users
+
         users.insert().execute([
             dict(id=1, name='john', age=25),
             dict(id=2, name='jack', age=47),
@@ -1587,8 +1595,9 @@ class UpdateDeleteTest(_base.MappedTest):
             dict(id=4, name='jane', age=37),
         ])
 
-    @testing.resolve_artifact_names
     def insert_documents(self):
+        documents = self.tables.documents
+
         documents.insert().execute([
             dict(id=1, user_id=1, title='foo'),
             dict(id=2, user_id=1, title='bar'),
@@ -1596,16 +1605,21 @@ class UpdateDeleteTest(_base.MappedTest):
         ])
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        documents, Document, User, users = (cls.tables.documents,
+                                cls.classes.Document,
+                                cls.classes.User,
+                                cls.tables.users)
+
         mapper(User, users)
         mapper(Document, documents, properties={
             'user': relationship(User, lazy='joined', 
                         backref=backref('documents', lazy='select'))
         })
 
-    @testing.resolve_artifact_names
     def test_illegal_operations(self):
+        User = self.classes.User
+
         s = create_session()
 
         for q, mname in (
@@ -1620,8 +1634,9 @@ class UpdateDeleteTest(_base.MappedTest):
             assert_raises_message(sa_exc.InvalidRequestError, r"Can't call Query.delete\(\) when %s\(\) has been called" % mname, q.delete)
 
 
-    @testing.resolve_artifact_names
     def test_delete(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1631,8 +1646,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
-    @testing.resolve_artifact_names
     def test_delete_with_bindparams(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1641,8 +1657,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
 
-    @testing.resolve_artifact_names
     def test_delete_rollback(self):
+        User = self.classes.User
+
         sess = sessionmaker()()
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='evaluate')
@@ -1650,8 +1667,9 @@ class UpdateDeleteTest(_base.MappedTest):
         sess.rollback()
         assert john in sess and jill in sess
 
-    @testing.resolve_artifact_names
     def test_delete_rollback_with_fetch(self):
+        User = self.classes.User
+
         sess = sessionmaker()()
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
         sess.query(User).filter(or_(User.name == 'john', User.name == 'jill')).delete(synchronize_session='fetch')
@@ -1659,8 +1677,9 @@ class UpdateDeleteTest(_base.MappedTest):
         sess.rollback()
         assert john in sess and jill in sess
 
-    @testing.resolve_artifact_names
     def test_delete_without_session_sync(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1670,8 +1689,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
-    @testing.resolve_artifact_names
     def test_delete_with_fetch_strategy(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1682,8 +1702,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(sess.query(User).order_by(User.id).all(), [jack,jane])
 
     @testing.fails_on('mysql', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_delete_invalid_evaluation(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1698,8 +1719,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack,jill,jane])
 
-    @testing.resolve_artifact_names
     def test_update(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1720,7 +1742,6 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [15,27,19,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([15,27,19,27]))
 
-    @testing.resolve_artifact_names
     @testing.provide_metadata
     def test_update_attr_names(self):
         data = Table('data', metadata,
@@ -1749,8 +1770,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(d1.cnt, 2)
         sess.close()
 
-    @testing.resolve_artifact_names
     def test_update_with_bindparams(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1760,8 +1782,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
-    @testing.resolve_artifact_names
     def test_update_changes_resets_dirty(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False, autoflush=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1785,8 +1808,9 @@ class UpdateDeleteTest(_base.MappedTest):
         assert not sess.is_modified(john)
         assert not sess.is_modified(jack)
 
-    @testing.resolve_artifact_names
     def test_update_changes_with_autoflush(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False, autoflush=True)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1810,8 +1834,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
 
 
-    @testing.resolve_artifact_names
     def test_update_with_expire_strategy(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1821,8 +1846,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
     @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
-    @testing.resolve_artifact_names
     def test_update_returns_rowcount(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         rowcount = sess.query(User).filter(User.age > 29).update({'age': User.age + 0})
@@ -1832,15 +1858,17 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_(rowcount, 2)
 
     @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
-    @testing.resolve_artifact_names
     def test_delete_returns_rowcount(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         rowcount = sess.query(User).filter(User.age > 26).delete(synchronize_session=False)
         eq_(rowcount, 3)
 
-    @testing.resolve_artifact_names
     def test_update_with_eager_relationships(self):
+        Document = self.classes.Document
+
         self.insert_documents()
 
         sess = create_session(bind=testing.db, autocommit=False)
@@ -1851,8 +1879,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
         eq_(sess.query(Document.title).order_by(Document.id).all(), zip(['foofoo','barbar', 'baz']))
 
-    @testing.resolve_artifact_names
     def test_update_with_explicit_joinedload(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1861,8 +1890,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
 
-    @testing.resolve_artifact_names
     def test_delete_with_eager_relationships(self):
+        Document = self.classes.Document
+
         self.insert_documents()
 
         sess = create_session(bind=testing.db, autocommit=False)
@@ -1871,8 +1901,9 @@ class UpdateDeleteTest(_base.MappedTest):
 
         eq_(sess.query(Document.title).all(), zip(['baz']))
 
-    @testing.resolve_artifact_names
     def test_update_all(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -1881,8 +1912,9 @@ class UpdateDeleteTest(_base.MappedTest):
         eq_([john.age, jack.age, jill.age, jane.age], [42,42,42,42])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([42,42,42,42]))
 
-    @testing.resolve_artifact_names
     def test_delete_all(self):
+        User = self.classes.User
+
         sess = create_session(bind=testing.db, autocommit=False)
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
@@ -2153,31 +2185,24 @@ class OptionsNoPropTest(_base.MappedTest):
     
     """
 
-    @testing.resolve_artifact_names
     def test_option_with_mapper_using_basestring(self):
         self._assert_option([Item], 'keywords')
 
-    @testing.resolve_artifact_names
     def test_option_with_mapper_using_PropCompatator(self):
         self._assert_option([Item], Item.keywords)
 
-    @testing.resolve_artifact_names
     def test_option_with_mapper_then_column_using_basestring(self):
         self._assert_option([Item, Item.id], 'keywords')
 
-    @testing.resolve_artifact_names
     def test_option_with_mapper_then_column_using_PropComparator(self):
         self._assert_option([Item, Item.id], Item.keywords)
 
-    @testing.resolve_artifact_names
     def test_option_with_column_then_mapper_using_basestring(self):
         self._assert_option([Item.id, Item], 'keywords')
 
-    @testing.resolve_artifact_names
     def test_option_with_column_then_mapper_using_PropComparator(self):
         self._assert_option([Item.id, Item], Item.keywords)
 
-    @testing.resolve_artifact_names
     def test_option_with_column_using_basestring(self):
         message = \
             "Can't find property named 'keywords' on the first mapped "\
@@ -2186,7 +2211,6 @@ class OptionsNoPropTest(_base.MappedTest):
         self._assert_eager_with_just_column_exception(Item.id,
                 'keywords', message)
 
-    @testing.resolve_artifact_names
     def test_option_with_column_using_PropComparator(self):
         message = \
             "Can't find property 'keywords' on any entity specified "\
@@ -2199,14 +2223,12 @@ class OptionsNoPropTest(_base.MappedTest):
         pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Keyword, keywords)
         mapper(Item, items,
                properties=dict(keywords=relationship(Keyword,
                secondary=item_keywords)))
 
-    @testing.resolve_artifact_names
     def _assert_option(self, entity_list, option):
         q = create_session().query(*entity_list).\
                             options(eagerload(option))

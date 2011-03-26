@@ -81,8 +81,13 @@ class M2MTest(_base.MappedTest):
                                  repr(self.inputs),
                                  repr(self.outputs)))
 
-    @testing.resolve_artifact_names
     def test_error(self):
+        place, Transition, place_input, Place, transition = (self.tables.place,
+                                self.classes.Transition,
+                                self.tables.place_input,
+                                self.classes.Place,
+                                self.tables.transition)
+
         mapper(Place, place, properties={
             'transitions':relationship(Transition, secondary=place_input, backref='places')
         })
@@ -92,8 +97,11 @@ class M2MTest(_base.MappedTest):
         assert_raises_message(sa.exc.ArgumentError, "Error creating backref",
                                  sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_circular(self):
+        place, Place, place_place = (self.tables.place,
+                                self.classes.Place,
+                                self.tables.place_place)
+
         """test a many-to-many relationship from a table to itself."""
 
         mapper(Place, place, properties={
@@ -143,8 +151,11 @@ class M2MTest(_base.MappedTest):
         [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_circular_mutation(self):
+        place, Place, place_place = (self.tables.place,
+                                self.classes.Place,
+                                self.tables.place_place)
+
         """Test that a mutation in a self-ref m2m of both sides succeeds."""
 
         mapper(Place, place, properties={
@@ -171,8 +182,16 @@ class M2MTest(_base.MappedTest):
         assert p2 in p1.parent_places
 
 
-    @testing.resolve_artifact_names
     def test_double(self):
+        place_input, transition, Transition, PlaceThingy, place, place_thingy, Place, place_output = (self.tables.place_input,
+                                self.tables.transition,
+                                self.classes.Transition,
+                                self.classes.PlaceThingy,
+                                self.tables.place,
+                                self.tables.place_thingy,
+                                self.classes.Place,
+                                self.tables.place_output)
+
         """test that a mapper can have two eager relationships to the same table, via
         two different association tables.  aliases are required."""
 
@@ -202,8 +221,14 @@ class M2MTest(_base.MappedTest):
             'outputs': (Place, [{'name':'place2'}, {'name':'place3'}])
             })
 
-    @testing.resolve_artifact_names
     def test_bidirectional(self):
+        place_input, transition, Transition, Place, place, place_output = (self.tables.place_input,
+                                self.tables.transition,
+                                self.classes.Transition,
+                                self.classes.Place,
+                                self.tables.place,
+                                self.tables.place_output)
+
         """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
@@ -234,8 +259,13 @@ class M2MTest(_base.MappedTest):
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
     @testing.requires.sane_multi_rowcount
-    @testing.resolve_artifact_names
     def test_stale_conditions(self):
+        Place, Transition, place_input, place, transition = (self.classes.Place,
+                                self.classes.Transition,
+                                self.tables.place_input,
+                                self.tables.place,
+                                self.tables.transition)
+
         mapper(Place, place, properties={
             'transitions':relationship(Transition, secondary=place_input, 
                                             passive_updates=False)
@@ -298,8 +328,13 @@ class M2MTest2(_base.MappedTest):
             def __init__(self, name=''):
                 self.name = name
 
-    @testing.resolve_artifact_names
     def test_circular(self):
+        course, enroll, Student, student, Course = (self.tables.course,
+                                self.tables.enroll,
+                                self.classes.Student,
+                                self.tables.student,
+                                self.classes.Course)
+
 
         mapper(Student, student)
         mapper(Course, course, properties={
@@ -324,8 +359,13 @@ class M2MTest2(_base.MappedTest):
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
 
-    @testing.resolve_artifact_names
     def test_dupliates_raise(self):
+        course, enroll, Student, student, Course = (self.tables.course,
+                                self.tables.enroll,
+                                self.classes.Student,
+                                self.tables.student,
+                                self.classes.Course)
+
         """test constraint error is raised for dupe entries in a list"""
 
         mapper(Student, student)
@@ -340,8 +380,13 @@ class M2MTest2(_base.MappedTest):
         sess.add(s1)
         assert_raises(sa.exc.DBAPIError, sess.flush)
 
-    @testing.resolve_artifact_names
     def test_delete(self):
+        course, enroll, Student, student, Course = (self.tables.course,
+                                self.tables.enroll,
+                                self.classes.Student,
+                                self.tables.student,
+                                self.classes.Course)
+
         """A many-to-many table gets cleared out with deletion from the backref side"""
 
         mapper(Student, student)
@@ -388,8 +433,13 @@ class M2MTest3(_base.MappedTest):
             Column('a1', Integer, ForeignKey('a.a1')),
             Column('b2', sa.Boolean))
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        a, c, b, c2a1, c2a2 = (self.tables.a,
+                                self.tables.c,
+                                self.tables.b,
+                                self.tables.c2a1,
+                                self.tables.c2a2)
+
         class C(object):pass
         class A(object):pass
         class B(object):pass
@@ -428,8 +478,11 @@ class M2MTest4(_base.MappedTest):
             Column('t2', Integer, ForeignKey('table2.col1')),
             )
 
-    @testing.resolve_artifact_names
     def test_delete_parent(self):
+        table2, table3, table1 = (self.tables.table2,
+                                self.tables.table3,
+                                self.tables.table1)
+
         class A(_base.ComparableEntity):
             pass
         class B(_base.ComparableEntity):

@@ -85,8 +85,9 @@ class PolymorphicOnNotLocalTest(_base.MappedTest):
                 Column('y', String(10)), 
                 Column('xid', ForeignKey('t1.id')))
 
-    @testing.resolve_artifact_names
     def test_bad_polymorphic_on(self):
+        t2, t1 = self.tables.t2, self.tables.t1
+
         class InterfaceBase(object):
             pass
 
@@ -224,8 +225,11 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
         )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
+        table_b, table_c, table_a = (cls.tables.table_b,
+                                cls.tables.table_c,
+                                cls.tables.table_a)
+
         class A(_base.ComparableEntity):
             pass
         class B(A):
@@ -242,8 +246,11 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
         mapper(C, table_c, inherits=B, 
                         polymorphic_identity='c')
 
-    @testing.resolve_artifact_names
     def test_poly_configured_immediate(self):
+        A, C, B = (self.classes.A,
+                                self.classes.C,
+                                self.classes.B)
+
         a = A()
         b = B()
         c = C()
@@ -251,8 +258,11 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
         eq_(b.class_name, 'b')
         eq_(c.class_name, 'c')
 
-    @testing.resolve_artifact_names
     def test_base_class(self):
+        A, C, B = (self.classes.A,
+                                self.classes.C,
+                                self.classes.B)
+
         sess = Session()
         c1 = C()
         sess.add(c1)
@@ -264,8 +274,9 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
 
         assert isinstance(sess.query(A).first(), C)
 
-    @testing.resolve_artifact_names
     def test_assignment(self):
+        C, B = self.classes.C, self.classes.B
+
         sess = Session()
         b1 = B()
         b1.class_name = 'c'
@@ -362,8 +373,11 @@ class M2OUseGetTest(_base.MappedTest):
             Column('sub_id', Integer, ForeignKey('sub.id')),
         )
 
-    @testing.resolve_artifact_names
     def test_use_get(self):
+        base, sub, related = (self.tables.base,
+                                self.tables.sub,
+                                self.tables.related)
+
         # test [ticket:1186]
         class Base(_base.BasicEntity):
             pass
@@ -435,8 +449,14 @@ class GetTest(_base.MappedTest):
     def test_get_nonpolymorphic(self):
         self._do_get_test(False)
 
-    @testing.resolve_artifact_names
     def _do_get_test(self, polymorphic):
+        foo, Bar, Blub, blub, bar, Foo = (self.tables.foo,
+                                self.classes.Bar,
+                                self.classes.Blub,
+                                self.tables.blub,
+                                self.tables.bar,
+                                self.classes.Foo)
+
         if polymorphic:
             mapper(Foo, foo, polymorphic_on=foo.c.type, polymorphic_identity='foo')
             mapper(Bar, bar, inherits=Foo, polymorphic_identity='bar')
@@ -559,8 +579,9 @@ class EagerTargetingTest(_base.MappedTest):
            Column('b_data', String(50)),
         )
 
-    @testing.resolve_artifact_names
     def test_adapt_stringency(self):
+        b_table, a_table = self.tables.b_table, self.tables.a_table
+
         class A(_base.ComparableEntity):
             pass
         class B(A):
@@ -623,8 +644,12 @@ class FlushTest(_base.MappedTest):
             Column('user_id', Integer, ForeignKey('users.id'))
         )
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        admins, users, roles, user_roles = (self.tables.admins,
+                                self.tables.users,
+                                self.tables.roles,
+                                self.tables.user_roles)
+
         class User(object):pass
         class Role(object):pass
         class Admin(User):pass
@@ -651,8 +676,12 @@ class FlushTest(_base.MappedTest):
 
         assert user_roles.count().scalar() == 1
 
-    @testing.resolve_artifact_names
     def test_two(self):
+        admins, users, roles, user_roles = (self.tables.admins,
+                                self.tables.users,
+                                self.tables.roles,
+                                self.tables.user_roles)
+
         class User(object):
             def __init__(self, email=None, password=None):
                 self.email = email
@@ -709,8 +738,11 @@ class VersioningTest(_base.MappedTest):
 
     @testing.emits_warning(r".*updated rowcount")
     @engines.close_open_connections
-    @testing.resolve_artifact_names
     def test_save_update(self):
+        subtable, base, stuff = (self.tables.subtable,
+                                self.tables.base,
+                                self.tables.stuff)
+
         class Base(_fixtures.Base):
             pass
         class Sub(Base):
@@ -759,8 +791,9 @@ class VersioningTest(_base.MappedTest):
         sess2.flush()
 
     @testing.emits_warning(r".*updated rowcount")
-    @testing.resolve_artifact_names
     def test_delete(self):
+        subtable, base = self.tables.subtable, self.tables.base
+
         class Base(_fixtures.Base):
             pass
         class Sub(Base):
@@ -1200,8 +1233,9 @@ class OptimizedLoadTest(_base.MappedTest):
             Column('b', String(10))
         )
 
-    @testing.resolve_artifact_names
     def test_optimized_passes(self):
+        base, sub = self.tables.base, self.tables.sub
+
         """"test that the 'optimized load' routine doesn't crash when 
         a column in the join condition is not available."""
 
@@ -1230,8 +1264,9 @@ class OptimizedLoadTest(_base.MappedTest):
         s1 = sess.query(Base).first()
         assert s1.sub == 's1sub'
 
-    @testing.resolve_artifact_names
     def test_column_expression(self):
+        base, sub = self.tables.base, self.tables.sub
+
         class Base(_base.BasicEntity):
             pass
         class Sub(Base):
@@ -1248,8 +1283,9 @@ class OptimizedLoadTest(_base.MappedTest):
         s1 = sess.query(Base).first()
         assert s1.concat == 's1sub|s1sub'
 
-    @testing.resolve_artifact_names
     def test_column_expression_joined(self):
+        base, sub = self.tables.base, self.tables.sub
+
         class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
@@ -1278,8 +1314,9 @@ class OptimizedLoadTest(_base.MappedTest):
             ]
         )
 
-    @testing.resolve_artifact_names
     def test_composite_column_joined(self):
+        base, with_comp = self.tables.base, self.tables.with_comp
+
         class Base(_base.ComparableEntity):
             pass
         class WithComp(Base):
@@ -1308,8 +1345,9 @@ class OptimizedLoadTest(_base.MappedTest):
         eq_(s1test.comp, Comp('ham', 'cheese'))
         eq_(s2test.comp, Comp('bacon', 'eggs'))
 
-    @testing.resolve_artifact_names
     def test_load_expired_on_pending(self):
+        base, sub = self.tables.base, self.tables.sub
+
         class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
@@ -1344,8 +1382,9 @@ class OptimizedLoadTest(_base.MappedTest):
             ),
         )
 
-    @testing.resolve_artifact_names
     def test_dont_generate_on_none(self):
+        base, sub = self.tables.base, self.tables.sub
+
         class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
@@ -1370,8 +1409,11 @@ class OptimizedLoadTest(_base.MappedTest):
         assert m._optimized_get_statement(attributes.instance_state(s1), 
                                 ['counter2']) is not None
 
-    @testing.resolve_artifact_names
     def test_load_expired_on_pending_twolevel(self):
+        base, sub, subsub = (self.tables.base,
+                                self.tables.sub,
+                                self.tables.subsub)
+
         class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
@@ -1477,8 +1519,9 @@ class PKDiscriminatorTest(_base.MappedTest):
                         Column('type', Integer,primary_key=True),
                         Column('name', String(60)))
 
-    @testing.resolve_artifact_names
     def test_pk_as_discriminator(self):
+        parents, children = self.tables.parents, self.tables.children
+
         class Parent(object):
                 def __init__(self, name=None):
                     self.name = name
@@ -1539,37 +1582,53 @@ class NoPolyIdentInMiddleTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        A, C, B, E, D, base = (cls.classes.A,
+                                cls.classes.C,
+                                cls.classes.B,
+                                cls.classes.E,
+                                cls.classes.D,
+                                cls.tables.base)
+
         mapper(A, base, polymorphic_on=base.c.type)
         mapper(B, inherits=A, )
         mapper(C, inherits=B, polymorphic_identity='c')
         mapper(D, inherits=B, polymorphic_identity='d')
         mapper(E, inherits=A, polymorphic_identity='e')
 
-    @testing.resolve_artifact_names
     def test_load_from_middle(self):
+        C, B = self.classes.C, self.classes.B
+
         s = Session()
         s.add(C())
         o = s.query(B).first()
         eq_(o.type, 'c')
         assert isinstance(o, C)
 
-    @testing.resolve_artifact_names
     def test_load_from_base(self):
+        A, C = self.classes.A, self.classes.C
+
         s = Session()
         s.add(C())
         o = s.query(A).first()
         eq_(o.type, 'c')
         assert isinstance(o, C)
 
-    @testing.resolve_artifact_names
     def test_discriminator(self):
+        C, B, base = (self.classes.C,
+                                self.classes.B,
+                                self.tables.base)
+
         assert class_mapper(B).polymorphic_on is base.c.type
         assert class_mapper(C).polymorphic_on is base.c.type
 
-    @testing.resolve_artifact_names
     def test_load_multiple_from_middle(self):
+        C, B, E, D, base = (self.classes.C,
+                                self.classes.B,
+                                self.classes.E,
+                                self.classes.D,
+                                self.tables.base)
+
         s = Session()
         s.add_all([C(), D(), E()])
         eq_(

@@ -1435,8 +1435,12 @@ class DictHelpersTest(_base.MappedTest):
                 self.b = b
                 self.c = c
 
-    @testing.resolve_artifact_names
     def _test_scalar_mapped(self, collection_class):
+        parents, children, Parent, Child = (self.tables.parents,
+                                self.tables.children,
+                                self.classes.Parent,
+                                self.classes.Child)
+
         mapper(Child, children)
         mapper(Parent, parents, properties={
             'children': relationship(Child, collection_class=collection_class,
@@ -1494,8 +1498,12 @@ class DictHelpersTest(_base.MappedTest):
         self.assert_(len(list(collections.collection_adapter(p.children))) == 0)
 
 
-    @testing.resolve_artifact_names
     def _test_composite_mapped(self, collection_class):
+        parents, children, Parent, Child = (self.tables.parents,
+                                self.tables.children,
+                                self.classes.Parent,
+                                self.classes.Child)
+
         mapper(Child, children)
         mapper(Parent, parents, properties={
             'children': relationship(Child, collection_class=collection_class,
@@ -1563,7 +1571,6 @@ class DictHelpersTest(_base.MappedTest):
         eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
         eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
 
-    @testing.resolve_artifact_names
     def test_column_mapped_assertions(self):
         assert_raises_message(sa_exc.ArgumentError,
                               "Column-based expression object expected "
@@ -1576,14 +1583,16 @@ class DictHelpersTest(_base.MappedTest):
                               text('a'))
 
 
-    @testing.resolve_artifact_names
     def test_column_mapped_collection(self):
+        children = self.tables.children
+
         collection_class = collections.column_mapped_collection(
             children.c.a)
         self._test_scalar_mapped(collection_class)
 
-    @testing.resolve_artifact_names
     def test_column_mapped_collection2(self):
+        children = self.tables.children
+
         collection_class = collections.column_mapped_collection(
             (children.c.a, children.c.b))
         self._test_composite_mapped(collection_class)
@@ -1618,8 +1627,9 @@ class CustomCollectionsTest(_base.MappedTest):
                      ForeignKey('sometable.col1')),
               Column('data', String(20)))
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         class MyList(list):
             pass
         class Foo(object):
@@ -1634,8 +1644,9 @@ class CustomCollectionsTest(_base.MappedTest):
         f = Foo()
         assert isinstance(f.bars, MyList)
 
-    @testing.resolve_artifact_names
     def test_lazyload(self):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         """test that a 'set' can be used as a collection and can lazyload."""
         class Foo(object):
             pass
@@ -1656,8 +1667,9 @@ class CustomCollectionsTest(_base.MappedTest):
         assert len(list(f.bars)) == 2
         f.bars.clear()
 
-    @testing.resolve_artifact_names
     def test_dict(self):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         """test that a 'dict' can be used as a collection and can lazyload."""
 
         class Foo(object):
@@ -1688,8 +1700,9 @@ class CustomCollectionsTest(_base.MappedTest):
         assert len(list(f.bars)) == 2
         f.bars.clear()
 
-    @testing.resolve_artifact_names
     def test_dict_wrapper(self):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
 
         class Foo(object):
@@ -1763,8 +1776,9 @@ class CustomCollectionsTest(_base.MappedTest):
 
         self._test_list(ListLike)
 
-    @testing.resolve_artifact_names
     def _test_list(self, listcls):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         class Parent(object):
             pass
         class Child(object):
@@ -1885,8 +1899,9 @@ class CustomCollectionsTest(_base.MappedTest):
         assert control == p.children
         assert control == list(p.children)
 
-    @testing.resolve_artifact_names
     def test_custom(self):
+        someothertable, sometable = self.tables.someothertable, self.tables.sometable
+
         class Parent(object):
             pass
         class Child(object):

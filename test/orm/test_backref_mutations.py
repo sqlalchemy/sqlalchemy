@@ -23,15 +23,20 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relationship(Address, backref="user"),
         ))
 
-    @testing.resolve_artifact_names
     def test_collection_move_hitslazy(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
@@ -49,8 +54,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
             u2.addresses.append(a3)
         self.assert_sql_count(testing.db, go, 0)
 
-    @testing.resolve_artifact_names
     def test_collection_move_preloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', addresses=[a1])
@@ -73,8 +79,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_collection_move_notloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', addresses=[a1])
@@ -93,8 +100,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_collection_move_commitfirst(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', addresses=[a1])
@@ -117,8 +125,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_scalar_move_preloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
 
         u1 = User(name='jack')
@@ -141,8 +150,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_plain_load_passive(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """test that many-to-one set doesn't load the old value."""
 
         sess = sessionmaker()()
@@ -163,8 +173,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_set_none(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         u1 = User(name='jack')
         a1 = Address(email_address='a1')
@@ -181,8 +192,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
 
 
-    @testing.resolve_artifact_names
     def test_scalar_move_notloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
 
         u1 = User(name='jack')
@@ -200,8 +212,9 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
 
-    @testing.resolve_artifact_names
     def test_scalar_move_commitfirst(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
 
         u1 = User(name='jack')
@@ -227,15 +240,20 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties = {
             'address':relationship(Address, backref=backref("user"), uselist=False)
         })
 
-    @testing.resolve_artifact_names
     def test_collection_move_preloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', address=a1)
@@ -259,8 +277,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert u1.address is a1
         assert u2.address is a1
 
-    @testing.resolve_artifact_names
     def test_scalar_move_preloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
@@ -282,8 +301,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert a1.user is u1
         assert a2.user is u1
 
-    @testing.resolve_artifact_names
     def test_collection_move_notloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', address=a1)
@@ -303,8 +323,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert u1.address is None
         assert u2.address is a1
 
-    @testing.resolve_artifact_names
     def test_scalar_move_notloaded(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
@@ -323,8 +344,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert a1.user is u1
         assert a2.user is u1
 
-    @testing.resolve_artifact_names
     def test_collection_move_commitfirst(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', address=a1)
@@ -349,8 +371,9 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert u1.address is None
         assert u2.address is a1
 
-    @testing.resolve_artifact_names
     def test_scalar_move_commitfirst(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
@@ -381,15 +404,20 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties = {
             'address':relationship(Address, uselist=False)
         })
 
-    @testing.resolve_artifact_names
     def test_collection_move_commitfirst(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', address=a1)
@@ -415,8 +443,12 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties = {
             'address':relationship(Address, uselist=False, 
@@ -424,8 +456,9 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
                                     cascade="all, delete-orphan"))
         })
 
-    @testing.resolve_artifact_names
     def test_m2o_event(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = sessionmaker()()
         a1 = Address(email_address="address1")
         u1 = User(name='jack', address=a1)
@@ -446,15 +479,21 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
+                                cls.tables.items,
+                                cls.tables.item_keywords,
+                                cls.classes.Keyword,
+                                cls.classes.Item)
+
         mapper(Item, items, properties={
             'keyword':relationship(Keyword, secondary=item_keywords, uselist=False, backref=backref("item", uselist=False))
         })
         mapper(Keyword, keywords)
 
-    @testing.resolve_artifact_names
     def test_collection_move_preloaded(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
         sess = sessionmaker()()
 
         k1 = Keyword(name='k1')
@@ -475,8 +514,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         assert i1.keyword is k1
         assert i2.keyword is k1
 
-    @testing.resolve_artifact_names
     def test_collection_move_notloaded(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
         sess = sessionmaker()()
 
         k1 = Keyword(name='k1')
@@ -493,8 +533,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         assert i1.keyword is None
         assert i2.keyword is k1
 
-    @testing.resolve_artifact_names
     def test_collection_move_commit(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
         sess = sessionmaker()()
 
         k1 = Keyword(name='k1')

@@ -4,14 +4,13 @@ import types
 import sqlalchemy as sa
 from sqlalchemy import exc as sa_exc
 from test.lib import config, testing
-from test.lib.testing import resolve_artifact_names, adict
-from test.lib.engines import drop_all_tables
+from test.lib.testing import adict
 from test.lib.entities import BasicEntity, ComparableEntity
+from test.engine._base import TablesTest
 
 Entity = BasicEntity
 
-
-class ORMTest(testing.TestBase, testing.AssertsExecutionResults):
+class _ORMTest(object):
     __requires__ = ('subqueries',)
 
     @classmethod
@@ -21,126 +20,86 @@ class ORMTest(testing.TestBase, testing.AssertsExecutionResults):
         # TODO: ensure mapper registry is empty
         # TODO: ensure instrumentation registry is empty
 
-class MappedTest(ORMTest):
-    # 'once', 'each', None
-    run_define_tables = 'once'
+class ORMTest(_ORMTest, testing.TestBase):
+    pass
 
+class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
     # 'once', 'each', None
     run_setup_classes = 'once'
 
     # 'once', 'each', None
     run_setup_mappers = 'each'
 
-    # 'once', 'each', None
-    run_inserts = 'each'
-
-    # 'each', None
-    run_deletes = 'each'
-
-    metadata = None
-
-    _artifact_registries = ('tables', 'classes', 'other_artifacts')
-    tables = None
     classes = None
-    other_artifacts = None
 
     @classmethod
     def setup_class(cls):
-        if cls.run_setup_classes == 'each':
-            assert cls.run_setup_mappers != 'once'
+        cls._init_class()
 
-        assert cls.run_deletes in (None, 'each')
-        if cls.run_inserts == 'once':
-            assert cls.run_deletes is None
-
-        assert not hasattr(cls, 'keep_mappers')
-        assert not hasattr(cls, 'keep_data')
-
-        if cls.tables is None:
-            cls.tables = adict()
         if cls.classes is None:
             cls.classes = adict()
-        if cls.other_artifacts is None:
-            cls.other_artifacts = adict()
 
-        if cls.metadata is None:
-            setattr(cls, 'metadata', sa.MetaData())
+        cls._setup_once_tables()
 
-        if cls.metadata.bind is None:
-            cls.metadata.bind = getattr(cls, 'engine', config.db)
+        cls._setup_once_classes()
 
-        if cls.run_define_tables == 'once':
-            cls.define_tables(cls.metadata)
-            cls.metadata.create_all()
-            cls.tables.update(cls.metadata.tables)
+        cls._setup_once_mappers()
 
+        cls._setup_once_inserts()
+
+    @classmethod
+    def _setup_once_classes(cls):
         if cls.run_setup_classes == 'once':
             baseline = subclasses(BasicEntity)
             cls.setup_classes()
             cls._register_new_class_artifacts(baseline)
 
+    @classmethod
+    def _setup_once_mappers(cls):
         if cls.run_setup_mappers == 'once':
             baseline = subclasses(BasicEntity)
             cls.setup_mappers()
             cls._register_new_class_artifacts(baseline)
 
-        if cls.run_inserts == 'once':
-            cls._load_fixtures()
-            cls.insert_data()
-
-    def setup(self):
-        if self.run_define_tables == 'each':
-            self.tables.clear()
-            drop_all_tables(self.metadata)
-            self.metadata.clear()
-            self.define_tables(self.metadata)
-            self.metadata.create_all()
-            self.tables.update(self.metadata.tables)
-
+    def _setup_each_classes(self):
         if self.run_setup_classes == 'each':
             self.classes.clear()
             baseline = subclasses(BasicEntity)
             self.setup_classes()
             self._register_new_class_artifacts(baseline)
 
+    def _setup_each_mappers(self):
         if self.run_setup_mappers == 'each':
             baseline = subclasses(BasicEntity)
             self.setup_mappers()
             self._register_new_class_artifacts(baseline)
 
-        if self.run_inserts == 'each':
-            self._load_fixtures()
-            self.insert_data()
-
-    def teardown(self):
-        sa.orm.session.Session.close_all()
-
+    def _teardown_each_mappers(self):
         # some tests create mappers in the test bodies
         # and will define setup_mappers as None - 
         # clear mappers in any case
         if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
 
-        # no need to run deletes if tables are recreated on setup
-        if self.run_define_tables != 'each' and self.run_deletes:
-            for table in reversed(self.metadata.sorted_tables):
-                try:
-                    table.delete().execute().close()
-                except sa.exc.DBAPIError, ex:
-                    print >> sys.stderr, "Error emptying table %s: %r" % (
-                        table, ex)
+    def setup(self):
+        self._setup_each_tables()
+        self._setup_each_classes()
+
+        self._setup_each_mappers()
+        self._setup_each_inserts()
+
+    def teardown(self):
+        sa.orm.session.Session.close_all()
+        self._teardown_each_mappers()
+        self._teardown_each_tables()
+        self._teardown_each_bind()
 
     @classmethod
     def teardown_class(cls):
         for cl in cls.classes.values():
             cls.unregister_class(cl)
-        ORMTest.teardown_class()
-        drop_all_tables(cls.metadata)
-        cls.metadata.bind = None
-
-    @classmethod
-    def define_tables(cls, metadata):
-        raise NotImplementedError()
+        _ORMTest.teardown_class()
+        cls._teardown_once_metadata_bind()
 
     @classmethod
     def setup_classes(cls):
@@ -149,21 +108,6 @@ class MappedTest(ORMTest):
     @classmethod
     def setup_mappers(cls):
         pass
-
-    @classmethod
-    def fixtures(cls):
-        return {}
-
-    @classmethod
-    def insert_data(cls):
-        pass
-
-    def sql_count_(self, count, fn):
-        self.assert_sql_count(self.metadata.bind, fn, count)
-
-    def sql_eq_(self, callable_, statements, with_sequences=None):
-        self.assert_sql(self.metadata.bind,
-                        callable_, statements, with_sequences)
 
     @classmethod
     def _register_new_class_artifacts(cls, baseline):

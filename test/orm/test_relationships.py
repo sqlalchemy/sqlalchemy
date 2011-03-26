@@ -55,8 +55,16 @@ class DependencyTwoParentTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        A, C, B, D, tbl_b, tbl_c, tbl_a, tbl_d = (cls.classes.A,
+                                cls.classes.C,
+                                cls.classes.B,
+                                cls.classes.D,
+                                cls.tables.tbl_b,
+                                cls.tables.tbl_c,
+                                cls.tables.tbl_a,
+                                cls.tables.tbl_d)
+
         mapper(A, tbl_a, properties=dict(
             c_rows=relationship(C, cascade="all, delete-orphan", 
                                     backref="a_row")))
@@ -68,8 +76,12 @@ class DependencyTwoParentTest(_base.MappedTest):
             b_row=relationship(B)))
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        A, C, B, D = (cls.classes.A,
+                                cls.classes.C,
+                                cls.classes.B,
+                                cls.classes.D)
+
         session = create_session()
         a = A(name='a1')
         b = B(name='b1')
@@ -82,16 +94,18 @@ class DependencyTwoParentTest(_base.MappedTest):
         session.add(b)
         session.flush()
 
-    @testing.resolve_artifact_names
     def testDeleteRootTable(self):
+        A = self.classes.A
+
         session = create_session()
         a = session.query(A).filter_by(name='a1').one()
 
         session.delete(a)
         session.flush()
 
-    @testing.resolve_artifact_names
     def testDeleteMiddleTable(self):
+        C = self.classes.C
+
         session = create_session()
         c = session.query(C).filter_by(name='c1').one()
 
@@ -152,8 +166,12 @@ class CompositeSelfRefFKTest(_base.MappedTest):
                 self.emp_id = emp_id
                 self.reports_to = reports_to
 
-    @testing.resolve_artifact_names
     def test_explicit(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                self.classes.Company,
+                                self.tables.employee_t,
+                                self.tables.company_t)
+
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relationship(Company, 
@@ -172,8 +190,12 @@ class CompositeSelfRefFKTest(_base.MappedTest):
 
         self._test()
 
-    @testing.resolve_artifact_names
     def test_implicit(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                self.classes.Company,
+                                self.tables.employee_t,
+                                self.tables.company_t)
+
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relationship(Company, backref='employees'),
@@ -186,8 +208,12 @@ class CompositeSelfRefFKTest(_base.MappedTest):
 
         self._test()
 
-    @testing.resolve_artifact_names
     def test_very_implicit(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                self.classes.Company,
+                                self.tables.employee_t,
+                                self.tables.company_t)
+
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relationship(Company, backref='employees'),
@@ -199,8 +225,12 @@ class CompositeSelfRefFKTest(_base.MappedTest):
 
         self._test()
 
-    @testing.resolve_artifact_names
     def test_very_explicit(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                self.classes.Company,
+                                self.tables.employee_t,
+                                self.tables.company_t)
+
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
             'company':relationship(Company, backref='employees'),
@@ -216,8 +246,9 @@ class CompositeSelfRefFKTest(_base.MappedTest):
 
         self._test()
 
-    @testing.resolve_artifact_names
     def _test(self):
+        Employee, Company = self.classes.Employee, self.classes.Company
+
         sess = create_session()
         c1 = Company()
         c2 = Company()
@@ -287,8 +318,12 @@ class ComplexPostUpdateTest(_base.MappedTest):
                   ["pages.jobno", "pages.pagename"]))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        pageversions, pagecomments, jobs, pages = (cls.tables.pageversions,
+                                cls.tables.pagecomments,
+                                cls.tables.jobs,
+                                cls.tables.pages)
+
         class Job(_base.Entity):
             def create_page(self, pagename):
                 return Page(job=self, pagename=pagename)
@@ -352,8 +387,9 @@ class ComplexPostUpdateTest(_base.MappedTest):
                                   cascade="all, delete-orphan",
                                   order_by=pagecomments.c.comment_id))})
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        Job = self.classes.Job
+
         """A combination of complicated join conditions with post_update."""
 
         j1 = Job(jobno=u'somejob')
@@ -411,8 +447,12 @@ class FKsAsPksTest(_base.MappedTest):
         class B(_base.Entity):
             pass
 
-    @testing.resolve_artifact_names
     def test_onetoone_switch(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         """test that active history is enabled on a 
         one-to-many/one that has use_get==True"""
 
@@ -433,8 +473,12 @@ class FKsAsPksTest(_base.MappedTest):
         a1.b = B()
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_no_delete_PK_AtoB(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         """A cant be deleted without B because B would have no PK value."""
         mapper(A, tableA, properties={
             'bs':relationship(B, cascade="save-update")})
@@ -455,8 +499,12 @@ class FKsAsPksTest(_base.MappedTest):
                         "Dependency rule tried to blank-out "
                         "primary key column 'tableB.id' on instance ")
 
-    @testing.resolve_artifact_names
     def test_no_delete_PK_BtoA(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         mapper(B, tableB, properties={
             'a':relationship(A, cascade="save-update")})
         mapper(A, tableA)
@@ -477,8 +525,9 @@ class FKsAsPksTest(_base.MappedTest):
                         "primary key column 'tableB.id' on instance ")
 
     @testing.fails_on_everything_except('sqlite', 'mysql')
-    @testing.resolve_artifact_names
     def test_nullPKsOK_BtoA(self):
+        A, tableA = self.classes.A, self.tables.tableA
+
         # postgresql cant handle a nullable PK column...?
         tableC = Table('tablec', tableA.metadata,
             Column('id', Integer, primary_key=True),
@@ -501,8 +550,12 @@ class FKsAsPksTest(_base.MappedTest):
         # test that no error is raised.
         sess.flush()
 
-    @testing.resolve_artifact_names
     def test_delete_cascade_BtoA(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         """No 'blank the PK' error when the child is to 
         be deleted as part of a cascade"""
 
@@ -527,8 +580,12 @@ class FKsAsPksTest(_base.MappedTest):
             sess.expunge_all()
             sa.orm.clear_mappers()
 
-    @testing.resolve_artifact_names
     def test_delete_cascade_AtoB(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         """No 'blank the PK' error when the child is to 
         be deleted as part of a cascade"""
 
@@ -554,8 +611,12 @@ class FKsAsPksTest(_base.MappedTest):
             sess.expunge_all()
             sa.orm.clear_mappers()
 
-    @testing.resolve_artifact_names
     def test_delete_manual_AtoB(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         mapper(A, tableA, properties={
             'bs':relationship(B, cascade="none")})
         mapper(B, tableB)
@@ -575,8 +636,12 @@ class FKsAsPksTest(_base.MappedTest):
         assert b1 not in sess
         sess.expunge_all()
 
-    @testing.resolve_artifact_names
     def test_delete_manual_BtoA(self):
+        tableB, A, B, tableA = (self.tables.tableB,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.tableA)
+
         mapper(B, tableB, properties={
             'a':relationship(A, cascade="none")})
         mapper(A, tableA)
@@ -622,8 +687,12 @@ class UniqueColReferenceSwitchTest(_base.MappedTest):
         class B(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_switch_parent(self):
+        A, B, table_b, table_a = (self.classes.A,
+                                self.classes.B,
+                                self.tables.table_b,
+                                self.tables.table_a)
+
         mapper(A, table_a)
         mapper(B, table_b, properties={"a": relationship(A, backref="bs")})
 
@@ -657,8 +726,9 @@ class RelationshipToSelectableTest(_base.MappedTest):
               Column('item_id', Integer, primary_key=True,
                      key='id', autoincrement=False))
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        items = self.tables.items
+
         class Container(_base.Entity):
             pass
         class LineItem(_base.Entity):
@@ -729,8 +799,9 @@ class FKEquatedToConstantTest(_base.MappedTest):
             Column("data", String(50)),
         )
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        tag_foo, tags = self.tables.tag_foo, self.tables.tags
+
         class Tag(_base.ComparableEntity):
             pass
         class TagInstance(_base.ComparableEntity):
@@ -789,8 +860,12 @@ class BackrefPropagatesForwardsArgs(_base.MappedTest):
         class Address(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_backref(self):
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
 
         mapper(User, users, properties={
             'addresses':relationship(Address, 
@@ -835,8 +910,9 @@ class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
                  )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        subscriber, address = cls.tables.subscriber, cls.tables.address
+
         subscriber_and_address = subscriber.join(address, 
             and_(address.c.subscriber_id==subscriber.c.id, 
                 address.c.type.in_(['A', 'B', 'C'])))
@@ -855,8 +931,9 @@ class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
                 backref=backref("customer"))
            })
 
-    @testing.resolve_artifact_names
     def test_mapping(self):
+        Subscriber, Address = self.classes.Subscriber, self.classes.Address
+
         from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
         sess = create_session()
         assert Subscriber.addresses.property.direction is ONETOMANY
@@ -893,8 +970,12 @@ class ManualBackrefTest(_fixtures.FixtureTest):
 
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_o2m(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, back_populates='user')
         })
@@ -917,8 +998,12 @@ class ManualBackrefTest(_fixtures.FixtureTest):
         assert a1.user is u1
         assert a1 in u1.addresses
 
-    @testing.resolve_artifact_names
     def test_invalid_key(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, back_populates='userr')
         })
@@ -929,8 +1014,14 @@ class ManualBackrefTest(_fixtures.FixtureTest):
 
         assert_raises(sa.exc.InvalidRequestError, configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_invalid_target(self):
+        addresses, Dingaling, User, dingalings, Address, users = (self.tables.addresses,
+                                self.classes.Dingaling,
+                                self.classes.User,
+                                self.tables.dingalings,
+                                self.classes.Address,
+                                self.tables.users)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, back_populates='dingaling'),
         })
@@ -1106,8 +1197,11 @@ class TypeMatchTest(_base.MappedTest):
               Column("a_id", Integer, ForeignKey("a.aid")),
               Column('data', String(30)))
 
-    @testing.resolve_artifact_names
     def test_o2m_oncascade(self):
+        a, c, b = (self.tables.a,
+                                self.tables.c,
+                                self.tables.b)
+
         class A(_base.Entity): pass
         class B(_base.Entity): pass
         class C(_base.Entity): pass
@@ -1129,8 +1223,11 @@ class TypeMatchTest(_base.MappedTest):
                 "Attribute 'bs' on class '%s' doesn't handle "
                 "objects of type '%s'" % (A, C))
 
-    @testing.resolve_artifact_names
     def test_o2m_onflush(self):
+        a, c, b = (self.tables.a,
+                                self.tables.c,
+                                self.tables.b)
+
         class A(_base.Entity): pass
         class B(_base.Entity): pass
         class C(_base.Entity): pass
@@ -1151,8 +1248,11 @@ class TypeMatchTest(_base.MappedTest):
                                  "Attempting to flush an item", 
                                  sess.flush)
 
-    @testing.resolve_artifact_names
     def test_o2m_nopoly_onflush(self):
+        a, c, b = (self.tables.a,
+                                self.tables.c,
+                                self.tables.b)
+
         class A(_base.Entity): pass
         class B(_base.Entity): pass
         class C(B): pass
@@ -1173,8 +1273,11 @@ class TypeMatchTest(_base.MappedTest):
                                  "Attempting to flush an item", 
                                  sess.flush)
 
-    @testing.resolve_artifact_names
     def test_m2o_nopoly_onflush(self):
+        a, b, d = (self.tables.a,
+                                self.tables.b,
+                                self.tables.d)
+
         class A(_base.Entity): pass
         class B(A): pass
         class D(_base.Entity): pass
@@ -1191,8 +1294,11 @@ class TypeMatchTest(_base.MappedTest):
                                  "Attempting to flush an item", 
                                  sess.flush)
 
-    @testing.resolve_artifact_names
     def test_m2o_oncascade(self):
+        a, b, d = (self.tables.a,
+                                self.tables.b,
+                                self.tables.d)
+
         class A(_base.Entity): pass
         class B(_base.Entity): pass
         class D(_base.Entity): pass
@@ -1228,8 +1334,11 @@ class TypedAssociationTable(_base.MappedTest):
               Column('t1c1', MySpecialType(30), ForeignKey('t1.col1')),
               Column('t2c1', MySpecialType(30), ForeignKey('t2.col1')))
 
-    @testing.resolve_artifact_names
     def testm2m(self):
+        t2, t3, t1 = (self.tables.t2,
+                                self.tables.t3,
+                                self.tables.t1)
+
         """Many-to-many tables with special types for candidate keys."""
 
         class T1(_base.Entity): pass
@@ -1274,8 +1383,11 @@ class ViewOnlyM2MBackrefTest(_base.MappedTest):
             Column('t2id', Integer, ForeignKey('t2.id'), primary_key=True),
         )
 
-    @testing.resolve_artifact_names
     def test_viewonly(self):
+        t1t2, t2, t1 = (self.tables.t1t2,
+                                self.tables.t2,
+                                self.tables.t1)
+
         class A(_base.ComparableEntity):pass
         class B(_base.ComparableEntity):pass
 
@@ -1318,8 +1430,11 @@ class ViewOnlyOverlappingNames(_base.MappedTest):
             Column('data', String(40)),
             Column('t2id', Integer, ForeignKey('t2.id')))
 
-    @testing.resolve_artifact_names
     def test_three_table_view(self):
+        t2, t3, t1 = (self.tables.t2,
+                                self.tables.t3,
+                                self.tables.t1)
+
         """A three table join with overlapping PK names.
 
         A third table is pulled into the primary join condition using
@@ -1381,8 +1496,11 @@ class ViewOnlyUniqueNames(_base.MappedTest):
             Column('data', String(40)),
             Column('t2id_ref', Integer, ForeignKey('t2.t2id')))
 
-    @testing.resolve_artifact_names
     def test_three_table_view(self):
+        t2, t3, t1 = (self.tables.t2,
+                                self.tables.t3,
+                                self.tables.t1)
+
         """A three table join with overlapping PK names.
 
         A third table is pulled into the primary join condition using unique
@@ -1466,8 +1584,9 @@ class ViewOnlyNonEquijoin(_base.MappedTest):
                      Column('id', Integer, primary_key=True),
                      Column('fid', Integer))
 
-    @testing.resolve_artifact_names
     def test_viewonly_join(self):
+        bars, foos = self.tables.bars, self.tables.foos
+
         class Foo(_base.ComparableEntity):
             pass
         class Bar(_base.ComparableEntity):
@@ -1511,8 +1630,9 @@ class ViewOnlyRepeatedRemoteColumn(_base.MappedTest):
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('data', String(50)))
 
-    @testing.resolve_artifact_names
     def test_relationship_on_or(self):
+        bars, foos = self.tables.bars, self.tables.foos
+
         class Foo(_base.ComparableEntity):
             pass
         class Bar(_base.ComparableEntity):
@@ -1561,8 +1681,9 @@ class ViewOnlyRepeatedLocalColumn(_base.MappedTest):
               Column('fid2', Integer, ForeignKey('foos.id')),
               Column('data', String(50)))
 
-    @testing.resolve_artifact_names
     def test_relationship_on_or(self):
+        bars, foos = self.tables.bars, self.tables.foos
+
         class Foo(_base.ComparableEntity):
             pass
         class Bar(_base.ComparableEntity):
@@ -1626,8 +1747,15 @@ class ViewOnlyComplexJoin(_base.MappedTest):
         class T3(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        T1, t2, T2, T3, t3, t2tot3, t1 = (self.classes.T1,
+                                self.tables.t2,
+                                self.classes.T2,
+                                self.classes.T3,
+                                self.tables.t3,
+                                self.tables.t2tot3,
+                                self.tables.t1)
+
         mapper(T1, t1, properties={
             't3s':relationship(T3, primaryjoin=sa.and_(
                 t1.c.id==t2.c.t1id,
@@ -1651,8 +1779,15 @@ class ViewOnlyComplexJoin(_base.MappedTest):
         eq_(a.t3s, [T3(data='t3')])
 
 
-    @testing.resolve_artifact_names
     def test_remote_side_escalation(self):
+        T1, t2, T2, T3, t3, t2tot3, t1 = (self.classes.T1,
+                                self.tables.t2,
+                                self.classes.T2,
+                                self.classes.T3,
+                                self.tables.t3,
+                                self.tables.t2tot3,
+                                self.tables.t1)
+
         mapper(T1, t1, properties={
             't3s':relationship(T3,
                            primaryjoin=sa.and_(t1.c.id==t2.c.t1id,
@@ -1685,15 +1820,18 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
             Column('t1id', String(50)))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
         class T1(_base.ComparableEntity):
             pass
         class T2(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_onetomany_funcfk(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         # use a function within join condition.  but specifying
         # local_remote_pairs overrides all parsing of the join condition.
         mapper(T1, t1, properties={
@@ -1718,8 +1856,12 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
                T2(data='b1', t1id='NuMbEr1'),
                T2(data='b2', t1id='Number1')]))
 
-    @testing.resolve_artifact_names
     def test_manytoone_funcfk(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(T1, t1)
         mapper(T2, t2, properties={
             't1':relationship(T1,
@@ -1742,8 +1884,12 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
             [T2(data='b1', t1=[T1(id='number1', data='a1')]),
              T2(data='b2', t1=[T1(id='number1', data='a1')])])
 
-    @testing.resolve_artifact_names
     def test_onetomany_func_referent(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(T1, t1, properties={
             't2s':relationship(T2,
                            primaryjoin=sa.func.lower(t1.c.id)==t2.c.t1id,
@@ -1766,8 +1912,12 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
               T2(data='b1', t1id='number1'),
               T2(data='b2', t1id='number1')]))
 
-    @testing.resolve_artifact_names
     def test_manytoone_func_referent(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(T1, t1)
         mapper(T2, t2, properties={
             't1':relationship(T1,
@@ -1789,8 +1939,12 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
             [T2(data='b1', t1=[T1(id='NuMbeR1', data='a1')]),
              T2(data='b2', t1=[T1(id='NuMbeR1', data='a1')])])
 
-    @testing.resolve_artifact_names
     def test_escalation_1(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(T1, t1, properties={
             't2s':relationship(T2,
                            primaryjoin=t1.c.id==sa.func.lower(t2.c.t1id),
@@ -1800,8 +1954,12 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
         mapper(T2, t2)
         assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_escalation_2(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
         mapper(T1, t1, properties={
             't2s':relationship(T2,
                            primaryjoin=t1.c.id==sa.func.lower(t2.c.t1id),
@@ -1819,13 +1977,13 @@ class InvalidRemoteSideTest(_base.MappedTest):
             )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
         class T1(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_o2m_backref(self):
+        T1, t1 = self.classes.T1, self.tables.t1
+
         mapper(T1, t1, properties={
             't1s':relationship(T1, backref='parent')
         })
@@ -1836,8 +1994,9 @@ class InvalidRemoteSideTest(_base.MappedTest):
             "mean to set remote_side on the many-to-one side ?", 
             configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_m2o_backref(self):
+        T1, t1 = self.classes.T1, self.tables.t1
+
         mapper(T1, t1, properties={
             't1s':relationship(T1, 
                         backref=backref('parent', remote_side=t1.c.id), 
@@ -1850,8 +2009,9 @@ class InvalidRemoteSideTest(_base.MappedTest):
             "mean to set remote_side on the many-to-one side ?", 
             configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_o2m_explicit(self):
+        T1, t1 = self.classes.T1, self.tables.t1
+
         mapper(T1, t1, properties={
             't1s':relationship(T1, back_populates='parent'),
             'parent':relationship(T1, back_populates='t1s'),
@@ -1863,8 +2023,9 @@ class InvalidRemoteSideTest(_base.MappedTest):
             "mean to set remote_side on the many-to-one side ?", 
             configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_m2o_explicit(self):
+        T1, t1 = self.classes.T1, self.tables.t1
+
         mapper(T1, t1, properties={
             't1s':relationship(T1, back_populates='parent', 
                                 remote_side=t1.c.id),
@@ -1904,8 +2065,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
         class Bar(_base.Entity):
             pass
 
-    @testing.resolve_artifact_names
     def test_no_join(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar)})
         mapper(Bar, bars)
@@ -1915,8 +2080,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "Could not determine join condition between parent/child "
             "tables on relationship", sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_join_self_ref(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo)})
         mapper(Bar, bars)
@@ -1926,8 +2095,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "Could not determine join condition between parent/child "
             "tables on relationship", sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id>bars.c.fid)})
@@ -1939,8 +2112,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "for primaryjoin condition",
             configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated_fks(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id>bars.c.fid,
@@ -1956,8 +2133,13 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "conditions, the relationship may be marked as viewonly=True.",
             sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated_wo_fks_works_on_relaxed(self):
+        foos_with_fks, Foo, Bar, bars_with_fks, foos = (self.tables.foos_with_fks,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.bars_with_fks,
+                                self.tables.foos)
+
         # very unique - the join between parent/child 
         # has no fks, but there is an fk join between two other
         # tables in the join condition, for those users that try creating
@@ -1987,8 +2169,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
              "may be marked as viewonly=True.", 
             sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_ambiguous_fks(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id==bars.c.fid,
@@ -2010,8 +2196,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                               r"'foreign_keys' is usually unnecessary\)\?"
                               , sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_ambiguous_remoteside_o2m(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id==bars.c.fid,
@@ -2026,8 +2216,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                 "could not determine any local/remote column pairs",
                 sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_ambiguous_remoteside_m2o(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id==bars.c.fid,
@@ -2043,8 +2237,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
                 sa.orm.configure_mappers)
 
 
-    @testing.resolve_artifact_names
     def test_no_equated_self_ref(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id>foos.c.fid)})
@@ -2056,8 +2254,12 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "condition",
             configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated_self_ref(self):
+        bars, Foo, Bar, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id>foos.c.fid,
@@ -2073,8 +2275,14 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             "conditions, the relationship may be marked as viewonly=True.",
             sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated_viewonly(self):
+        bars, Bar, bars_with_fks, foos_with_fks, Foo, foos = (self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.bars_with_fks,
+                                self.tables.foos_with_fks,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id>bars.c.fid,
@@ -2094,8 +2302,14 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
         mapper(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
-    @testing.resolve_artifact_names
     def test_no_equated_self_ref_viewonly(self):
+        bars, Bar, bars_with_fks, foos_with_fks, Foo, foos = (self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.bars_with_fks,
+                                self.tables.foos_with_fks,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id>foos.c.fid,
@@ -2120,8 +2334,9 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
         mapper(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
-    @testing.resolve_artifact_names
     def test_no_equated_self_ref_viewonly_fks(self):
+        Foo, foos = self.classes.Foo, self.tables.foos
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id>foos.c.fid,
@@ -2131,8 +2346,14 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
         sa.orm.configure_mappers()
         eq_(Foo.foos.property.local_remote_pairs, [(foos.c.id, foos.c.fid)])
 
-    @testing.resolve_artifact_names
     def test_equated(self):
+        bars, Bar, bars_with_fks, foos_with_fks, Foo, foos = (self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.bars_with_fks,
+                                self.tables.foos_with_fks,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             primaryjoin=foos.c.id==bars.c.fid)})
@@ -2151,8 +2372,9 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
         mapper(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
-    @testing.resolve_artifact_names
     def test_equated_self_ref(self):
+        Foo, foos = self.classes.Foo, self.tables.foos
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id==foos.c.fid)})
@@ -2164,8 +2386,11 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
             configure_mappers)
 
 
-    @testing.resolve_artifact_names
     def test_equated_self_ref_wrong_fks(self):
+        bars, Foo, foos = (self.tables.bars,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'foos':relationship(Foo,
                             primaryjoin=foos.c.id==foos.c.fid,
@@ -2204,15 +2429,19 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
               )
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_classes(cls):
         class Foo(_base.Entity):
             pass
         class Bar(_base.Entity):
             pass
 
-    @testing.resolve_artifact_names
     def test_no_join(self):
+        foobars, bars, Foo, Bar, foos = (self.tables.foobars,
+                                self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars': relationship(Bar, secondary=foobars)})
         mapper(Bar, bars)
@@ -2222,8 +2451,13 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
             "Could not determine join condition between parent/child tables "
             "on relationship", sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_secondaryjoin(self):
+        foobars, bars, Foo, Bar, foos = (self.tables.foobars,
+                                self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars': relationship(Bar,
                             secondary=foobars,
@@ -2236,8 +2470,14 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
             "on relationship",
             sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_fks_warning_1(self):
+        foobars_with_many_columns, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_many_columns,
+                                self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.foobars,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars': relationship(Bar, secondary=foobars, 
                                 primaryjoin=foos.c.id==foobars.c.fid,
@@ -2279,8 +2519,14 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
                               sa.orm.configure_mappers)
 
     @testing.emits_warning(r'No ForeignKey objects.*')
-    @testing.resolve_artifact_names
     def test_no_fks_warning_2(self):
+        foobars_with_many_columns, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_many_columns,
+                                self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.foobars,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars': relationship(Bar, secondary=foobars, 
                                 primaryjoin=foos.c.id==foobars.c.fid,
@@ -2316,8 +2562,14 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
         )
 
 
-    @testing.resolve_artifact_names
     def test_bad_primaryjoin(self):
+        foobars_with_fks, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_fks,
+                                self.tables.bars,
+                                self.classes.Bar,
+                                self.tables.foobars,
+                                self.classes.Foo,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars': relationship(Bar,
                              secondary=foobars,
@@ -2361,8 +2613,13 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
         mapper(Bar, bars)
         sa.orm.configure_mappers()
 
-    @testing.resolve_artifact_names
     def test_bad_secondaryjoin(self):
+        foobars, bars, Foo, Bar, foos = (self.tables.foobars,
+                                self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             secondary=foobars,
@@ -2386,8 +2643,13 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
                               r"'foreign_keys' is usually unnecessary\)?"
                               , sa.orm.configure_mappers)
 
-    @testing.resolve_artifact_names
     def test_no_equated_secondaryjoin(self):
+        foobars, bars, Foo, Bar, foos = (self.tables.foobars,
+                                self.tables.bars,
+                                self.classes.Foo,
+                                self.classes.Bar,
+                                self.tables.foos)
+
         mapper(Foo, foos, properties={
             'bars':relationship(Bar,
                             secondary=foobars,
@@ -2420,8 +2682,9 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
             ([newvalue,], (), [oldvalue,])
         )
 
-    @testing.resolve_artifact_names
     def test_column_property_flag(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users, properties={
             'name':column_property(users.c.name, 
                                 active_history=True)
@@ -2429,8 +2692,12 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
         u1 = User(name='jack')
         self._test_attribute(u1, 'name', 'ed')
 
-    @testing.resolve_artifact_names
     def test_relationship_property_flag(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses, properties={
             'user':relationship(User, active_history=True)
         })
@@ -2440,8 +2707,9 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
         a1 = Address(email_address='a1', user=u1)
         self._test_attribute(a1, 'user', u2)
 
-    @testing.resolve_artifact_names
     def test_composite_property_flag(self):
+        Order, orders = self.classes.Order, self.tables.orders
+
         class MyComposite(object):
             def __init__(self, description, isopen):
                 self.description = description
@@ -2507,8 +2775,12 @@ class RelationDeprecationTest(_base.MappedTest):
             (3, 2, 'ed@foo.bar', 'Personal', 0),
             (4, 3, 'fred@the.fred', 'Personal', 10)))
 
-    @testing.resolve_artifact_names
     def test_relation(self):
+        addresses_table, User, users_table, Address = (self.tables.addresses_table,
+                                self.classes.User,
+                                self.tables.users_table,
+                                self.classes.Address)
+
         mapper(User, users_table, properties=dict(
             addresses=relation(Address, backref='user'),
             ))

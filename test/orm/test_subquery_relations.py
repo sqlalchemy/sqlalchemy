@@ -15,8 +15,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     run_inserts = 'once'
     run_deletes = None
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(
                             mapper(Address, addresses),
@@ -42,8 +46,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_from_aliased(self):
+        users, Dingaling, User, dingalings, Address, addresses = (self.tables.users,
+                                self.classes.Dingaling,
+                                self.classes.User,
+                                self.tables.dingalings,
+                                self.classes.Address,
+                                self.tables.addresses)
+
         mapper(Dingaling, dingalings)
         mapper(Address, addresses, properties={
             'dingalings':relationship(Dingaling, order_by=Dingaling.id)
@@ -95,8 +105,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 3)
 
 
-    @testing.resolve_artifact_names
     def test_from_get(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(
                             mapper(Address, addresses),
@@ -114,8 +128,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_from_params(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(
                             mapper(Address, addresses),
@@ -133,8 +151,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_disable_dynamic(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         """test no subquery option on a dynamic."""
 
         mapper(User, users, properties={
@@ -151,8 +173,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             sess.query(User).options(subqueryload(User.addresses)).first,
         )
 
-    @testing.resolve_artifact_names
     def test_many_to_many_plain(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
                 keywords = relationship(Keyword, secondary=item_keywords,
@@ -163,8 +190,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(self.static.item_keyword_result, q.all())
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_many_to_many_with_join(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
                 keywords = relationship(Keyword, secondary=item_keywords,
@@ -176,8 +208,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 q.join('keywords').filter(Keyword.name == 'red').all())
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_many_to_many_with_join_alias(self):
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
                 keywords = relationship(Keyword, secondary=item_keywords,
@@ -190,8 +227,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                  filter(Keyword.name == 'red')).all())
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_orderby(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties = {
             'addresses':relationship(mapper(Address, addresses),
                         lazy='subquery', order_by=addresses.c.email_address),
@@ -212,8 +253,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             User(id=10, addresses=[])
         ], q.order_by(User.id).all())
 
-    @testing.resolve_artifact_names
     def test_orderby_multi(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties = {
             'addresses':relationship(mapper(Address, addresses),
                             lazy='subquery',
@@ -237,8 +282,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             User(id=10, addresses=[])
         ], q.order_by(User.id).all())
 
-    @testing.resolve_artifact_names
     def test_orderby_related(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """A regular mapper select on a single table can
             order by a relationship to a second table"""
 
@@ -267,8 +316,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ]),
         ], l)
 
-    @testing.resolve_artifact_names
     def test_orderby_desc(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
             addresses = relationship(Address, lazy='subquery',
@@ -310,8 +363,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def test_mapper_pathing(self):
         self._do_mapper_test(self._pathing_runs)
 
-    @testing.resolve_artifact_names
     def _do_options_test(self, configs):
+        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (self.tables.users,
+                                self.classes.Keyword,
+                                self.tables.orders,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.keywords,
+                                self.tables.item_keywords)
+
         mapper(User, users, properties={
             'orders':relationship(Order, order_by=orders.c.id), # o2m, m2o
         })
@@ -342,8 +405,18 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
             self._do_query_tests(options, count)
 
-    @testing.resolve_artifact_names
     def _do_mapper_test(self, configs):
+        users, Keyword, orders, items, order_items, Order, Item, User, keywords, item_keywords = (self.tables.users,
+                                self.classes.Keyword,
+                                self.tables.orders,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.classes.Order,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.tables.keywords,
+                                self.tables.item_keywords)
+
         opts = {
             'lazyload':'select',
             'joinedload':'joined',
@@ -371,8 +444,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             finally:
                 clear_mappers()
 
-    @testing.resolve_artifact_names
     def _do_query_tests(self, opts, count):
+        Order, User = self.classes.Order, self.classes.User
+
         sess = create_session()
         def go():
             eq_(
@@ -396,8 +470,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
 
-    @testing.resolve_artifact_names
     def test_cyclical(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         """A circular eager relationship breaks the cycle with a lazy loader"""
 
         mapper(Address, addresses)
@@ -412,8 +490,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = create_session()
         eq_(self.static.user_address_result, sess.query(User).order_by(User.id).all())
 
-    @testing.resolve_artifact_names
     def test_double(self):
+        users, orders, User, Address, Order, addresses = (self.tables.users,
+                                self.tables.orders,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.classes.Order,
+                                self.tables.addresses)
+
         """Eager loading with two relationships simultaneously,
             from the same table, using aliases."""
 
@@ -467,8 +551,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ], q.all())
         self.assert_sql_count(testing.db, go, 4)
 
-    @testing.resolve_artifact_names
     def test_double_same_mappers(self):
+        addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.tables.orders,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.classes.Order,
+                                self.tables.users)
+
         """Eager loading with two relationships simulatneously,
         from the same table, using aliases."""
 
@@ -535,8 +628,17 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 6)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_limit(self):
+        users, items, order_items, orders, Item, User, Address, Order, addresses = (self.tables.users,
+                                self.tables.items,
+                                self.tables.order_items,
+                                self.tables.orders,
+                                self.classes.Item,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.classes.Order,
+                                self.tables.addresses)
+
         """Limit operations combined with lazy-load relationships."""
 
         mapper(Item, items)
@@ -561,8 +663,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         l = q.order_by(sa.desc(User.id)).limit(2).offset(2).all()
         eq_(list(reversed(self.static.user_all_result[0:2])), l)
 
-    @testing.resolve_artifact_names
     def test_one_to_many_scalar(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(User, users, properties = dict(
             address = relationship(mapper(Address, addresses),
                                     lazy='subquery', uselist=False)
@@ -575,8 +681,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_many_to_one(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(Address, addresses, properties = dict(
             user = relationship(mapper(User, users), lazy='subquery')
         ))
@@ -590,8 +700,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             is_(a.user, u1)
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.resolve_artifact_names
     def test_double_with_aggregate(self):
+        User, users, orders, Order = (self.classes.User,
+                                self.tables.users,
+                                self.tables.orders,
+                                self.classes.Order)
+
         max_orders_by_user = sa.select([sa.func.max(orders.c.id).label('order_id')],
                                        group_by=[orders.c.user_id]
                                      ).alias('max_orders_by_user')
@@ -627,8 +741,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ], q.order_by(User.id).all())
         self.assert_sql_count(testing.db, go, 3)
 
-    @testing.resolve_artifact_names
     def test_uselist_false_warning(self):
+        User, users, orders, Order = (self.classes.User,
+                                self.tables.users,
+                                self.tables.orders,
+                                self.classes.Order)
+
         """test that multiple rows received by a
         uselist=False raises a warning."""
 
@@ -676,8 +794,11 @@ class OrderBySecondaryTest(_base.MappedTest):
                  (3, 1, 2),
                  (5, 2, 3)))
 
-    @testing.resolve_artifact_names
     def test_ordering(self):
+        a, m2m, b = (self.tables.a,
+                                self.tables.m2m,
+                                self.tables.b)
+
         class A(_base.ComparableEntity):pass
         class B(_base.ComparableEntity):pass
 
@@ -703,8 +824,9 @@ class SelfReferentialTest(_base.MappedTest):
             Column('data', String(30)))
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_basic(self):
+        nodes = self.tables.nodes
+
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -754,8 +876,9 @@ class SelfReferentialTest(_base.MappedTest):
 
 
 
-    @testing.resolve_artifact_names
     def test_lazy_fallback_doesnt_affect_eager(self):
+        nodes = self.tables.nodes
+
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -787,8 +910,9 @@ class SelfReferentialTest(_base.MappedTest):
             ], list(n12.children))
         self.assert_sql_count(testing.db, go, 4)
 
-    @testing.resolve_artifact_names
     def test_with_deferred(self):
+        nodes = self.tables.nodes
+
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -829,8 +953,9 @@ class SelfReferentialTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 3)
 
 
-    @testing.resolve_artifact_names
     def test_options(self):
+        nodes = self.tables.nodes
+
         class Node(_base.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
@@ -864,8 +989,9 @@ class SelfReferentialTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 3)
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_no_depth(self):
+        nodes = self.tables.nodes
+
         """no join depth is set, so no eager loading occurs."""
         class Node(_base.ComparableEntity):
             def append(self, node):

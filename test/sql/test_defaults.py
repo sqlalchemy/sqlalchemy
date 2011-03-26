@@ -413,8 +413,9 @@ class PKDefaultTest(_base.TablesTest):
     def test_regular(self):
         self._test(False)
 
-    @testing.resolve_artifact_names
     def _test(self, returning):
+        t2, t1 = self.tables.t2, self.tables.t1
+
         if not returning and not testing.db.dialect.implicit_returning:
             engine = testing.db
         else:
@@ -440,8 +441,9 @@ class PKIncrementTest(_base.TablesTest):
 
     # TODO: add coverage for increment on a secondary column in a key
     @testing.fails_on('firebird', 'Data type unknown')
-    @testing.resolve_artifact_names
     def _test_autoincrement(self, bind):
+        aitable = self.tables.aitable
+
         ids = set()
         rs = bind.execute(aitable.insert(), int1=1)
         last = rs.inserted_primary_key[0]
@@ -472,11 +474,9 @@ class PKIncrementTest(_base.TablesTest):
         eq_(list(bind.execute(aitable.select().order_by(aitable.c.id))),
             [(1, 1, None), (2, None, 'row 2'), (3, 3, 'row 3'), (4, 4, None)])
 
-    @testing.resolve_artifact_names
     def test_autoincrement_autocommit(self):
         self._test_autoincrement(testing.db)
 
-    @testing.resolve_artifact_names
     def test_autoincrement_transaction(self):
         con = testing.db.connect()
         tx = con.begin()

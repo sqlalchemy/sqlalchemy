@@ -37,15 +37,24 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Employee, Manager, JuniorEngineer, employees, Engineer = (cls.classes.Employee,
+                                cls.classes.Manager,
+                                cls.classes.JuniorEngineer,
+                                cls.tables.employees,
+                                cls.classes.Engineer)
+
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Manager, inherits=Employee, polymorphic_identity='manager')
         mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
         mapper(JuniorEngineer, inherits=Engineer, polymorphic_identity='juniorengineer')
 
-    @testing.resolve_artifact_names
     def test_single_inheritance(self):
+        Employee, JuniorEngineer, Manager, Engineer = (self.classes.Employee,
+                                self.classes.JuniorEngineer,
+                                self.classes.Manager,
+                                self.classes.Engineer)
+
 
         session = create_session()
 
@@ -68,8 +77,11 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         assert row.name == 'Kurt'
         assert row.employee_id == e1.employee_id
 
-    @testing.resolve_artifact_names
     def test_multi_qualification(self):
+        JuniorEngineer, Manager, Engineer = (self.classes.JuniorEngineer,
+                                self.classes.Manager,
+                                self.classes.Engineer)
+
         session = create_session()
 
         m1 = Manager(name='Tom', manager_data='knows how to manage things')
@@ -116,8 +128,9 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         #    []
         # )
 
-    @testing.resolve_artifact_names
     def test_from_self(self):
+        Engineer = self.classes.Engineer
+
         sess = create_session()
         self.assert_compile(sess.query(Engineer).from_self(),
                             'SELECT anon_1.employees_employee_id AS '
@@ -141,8 +154,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
                             '(:type_1, :type_2)',
                             use_default_dialect=True)
 
-    @testing.resolve_artifact_names
     def test_select_from(self):
+        Manager, JuniorEngineer, employees, Engineer = (self.classes.Manager,
+                                self.classes.JuniorEngineer,
+                                self.tables.employees,
+                                self.classes.Engineer)
+
         sess = create_session()
         m1 = Manager(name='Tom', manager_data='data1')
         m2 = Manager(name='Tom2', manager_data='data2')
@@ -156,8 +173,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
             [m1, m2]
         )
 
-    @testing.resolve_artifact_names
     def test_count(self):
+        Employee, JuniorEngineer, Manager, Engineer = (self.classes.Employee,
+                                self.classes.JuniorEngineer,
+                                self.classes.Manager,
+                                self.classes.Engineer)
+
         sess = create_session()
         m1 = Manager(name='Tom', manager_data='data1')
         m2 = Manager(name='Tom2', manager_data='data2')
@@ -173,8 +194,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         eq_(sess.query(Manager).filter(Manager.name.like('%m%')).count(), 2)
         eq_(sess.query(Employee).filter(Employee.name.like('%m%')).count(), 3)
 
-    @testing.resolve_artifact_names
     def test_type_filtering(self):
+        Employee, Manager, reports, Engineer = (self.classes.Employee,
+                                self.classes.Manager,
+                                self.tables.reports,
+                                self.classes.Engineer)
+
         class Report(ComparableEntity): pass
 
         mapper(Report, reports, properties={
@@ -190,8 +215,12 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         assert len(rq.filter(Report.employee.of_type(Manager).has()).all()) == 1
         assert len(rq.filter(Report.employee.of_type(Engineer).has()).all()) == 0
 
-    @testing.resolve_artifact_names
     def test_type_joins(self):
+        Employee, Manager, reports, Engineer = (self.classes.Employee,
+                                self.classes.Manager,
+                                self.tables.reports,
+                                self.classes.Engineer)
+
         class Report(ComparableEntity): pass
 
         mapper(Report, reports, properties={
@@ -232,8 +261,13 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
         class Stuff(ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_subquery_load(self):
+        employee, employee_stuff, Employee, Stuff, Manager = (self.tables.employee,
+                                self.tables.employee_stuff,
+                                self.classes.Employee,
+                                self.classes.Stuff,
+                                self.classes.Manager)
+
         mapper(Employee, employee, polymorphic_on=employee.c.type, polymorphic_identity='employee')
         mapper(Manager, inherits=Employee, polymorphic_identity='manager', properties={
             'stuff':relationship(Stuff)
@@ -290,8 +324,15 @@ class RelationshipToSingleTest(MappedTest):
         class JuniorEngineer(Engineer):
             pass
 
-    @testing.resolve_artifact_names
     def test_of_type(self):
+        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (self.classes.JuniorEngineer,
+                                self.classes.Company,
+                                self.tables.companies,
+                                self.classes.Manager,
+                                self.classes.Employee,
+                                self.tables.employees,
+                                self.classes.Engineer)
+
         mapper(Company, companies, properties={
             'employees':relationship(Employee, backref='company')
         })
@@ -326,8 +367,15 @@ class RelationshipToSingleTest(MappedTest):
         )
 
 
-    @testing.resolve_artifact_names
     def test_relationship_to_subclass(self):
+        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (self.classes.JuniorEngineer,
+                                self.classes.Company,
+                                self.tables.companies,
+                                self.classes.Manager,
+                                self.classes.Employee,
+                                self.tables.employees,
+                                self.classes.Engineer)
+
         mapper(Company, companies, properties={
             'engineers':relationship(Engineer)
         })

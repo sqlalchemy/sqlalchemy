@@ -189,8 +189,9 @@ class AliasedClassTest(TestBase):
 class IdentityKeyTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_identity_key_1(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
 
         key = util.identity_key(User, [1])
@@ -198,8 +199,9 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         key = util.identity_key(User, ident=[1])
         eq_(key, (User, (1,)))
 
-    @testing.resolve_artifact_names
     def test_identity_key_2(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         s = create_session()
         u = User(name='u1')
@@ -208,8 +210,9 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         key = util.identity_key(instance=u)
         eq_(key, (User, (u.id,)))
 
-    @testing.resolve_artifact_names
     def test_identity_key_3(self):
+        User, users = self.classes.User, self.tables.users
+
         mapper(User, users)
 
         row = {users.c.id: 1, users.c.name: "Frank"}

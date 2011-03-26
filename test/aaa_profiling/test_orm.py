@@ -30,21 +30,27 @@ class MergeTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Child, Parent, parent, child = (cls.classes.Child,
+                                cls.classes.Parent,
+                                cls.tables.parent,
+                                cls.tables.child)
+
         mapper(Parent, parent, properties={'children'
                : relationship(Child, backref='parent')})
         mapper(Child, child)
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        parent, child = cls.tables.parent, cls.tables.child
+
         parent.insert().execute({'id': 1, 'data': 'p1'})
         child.insert().execute({'id': 1, 'data': 'p1c1', 'parent_id'
                                : 1})
 
-    @testing.resolve_artifact_names
     def test_merge_no_load(self):
+        Parent = self.classes.Parent
+
         sess = sessionmaker()()
         sess2 = sessionmaker()()
         p1 = sess.query(Parent).get(1)
@@ -68,8 +74,9 @@ class MergeTest(_base.MappedTest):
         p3 = go()
 
     @testing.only_on('sqlite', 'Call counts tailored to pysqlite')
-    @testing.resolve_artifact_names
     def test_merge_load(self):
+        Parent = self.classes.Parent
+
         sess = sessionmaker()()
         sess2 = sessionmaker()()
         p1 = sess.query(Parent).get(1)
@@ -133,15 +140,20 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
             pass
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Child, Parent, parent, child = (cls.classes.Child,
+                                cls.classes.Parent,
+                                cls.tables.parent,
+                                cls.tables.child)
+
         mapper(Parent, parent, properties={
             'child': relationship(Child)})
         mapper(Child, child)
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        parent, child = cls.tables.parent, cls.tables.child
+
         child.insert().execute([
             {'id':i, 'data':'c%d' % i}
             for i in xrange(1, 251)
@@ -155,8 +167,9 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
             for i in xrange(1, 1000)
         ])
 
-    @testing.resolve_artifact_names
     def test_many_to_one_load_no_identity(self):
+        Parent = self.classes.Parent
+
         sess = Session()
         parents = sess.query(Parent).all()
 
@@ -167,8 +180,9 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
                 p.child
         go()
 
-    @testing.resolve_artifact_names
     def test_many_to_one_load_identity(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+
         sess = Session()
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()

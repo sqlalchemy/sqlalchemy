@@ -27,22 +27,25 @@ class GenerativeQueryTest(_base.MappedTest):
         return dict(foo=foo_data)
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        foo = cls.tables.foo
+
         class Foo(_base.BasicEntity):
             pass
 
         mapper(Foo, foo)
 
-    @testing.resolve_artifact_names
     def test_selectby(self):
+        Foo = self.classes.Foo
+
         res = create_session().query(Foo).filter_by(range=5)
         assert res.order_by(Foo.bar)[0].bar == 5
         assert res.order_by(sa.desc(Foo.bar))[0].bar == 95
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
-    @testing.resolve_artifact_names
     def test_slice(self):
+        Foo = self.classes.Foo
+
         sess = create_session()
         query = sess.query(Foo).order_by(Foo.id)
         orig = query.all()
@@ -65,8 +68,9 @@ class GenerativeQueryTest(_base.MappedTest):
         assert query[10:20][5] == orig[10:20][5]
 
     @testing.uses_deprecated('Call to deprecated function apply_max')
-    @testing.resolve_artifact_names
     def test_aggregate(self):
+        foo, Foo = self.tables.foo, self.classes.Foo
+
         sess = create_session()
         query = sess.query(Foo)
         assert query.count() == 100
@@ -84,23 +88,26 @@ class GenerativeQueryTest(_base.MappedTest):
     @testing.fails_if(lambda:testing.against('mysql+mysqldb') and
             testing.db.dialect.dbapi.version_info[:4] == (1, 2, 1, 'gamma'),
             "unknown incompatibility")
-    @testing.resolve_artifact_names
     def test_aggregate_1(self):
+        foo = self.tables.foo
+
 
         query = create_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar<30).one() == (435,)
 
     @testing.fails_on('firebird', 'FIXME: unknown')
     @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
-    @testing.resolve_artifact_names
     def test_aggregate_2(self):
+        foo = self.tables.foo
+
         query = create_session().query(func.avg(foo.c.bar))
         avg = query.filter(foo.c.bar < 30).one()[0]
         eq_(float(round(avg, 1)), 14.5)
 
     @testing.fails_on('mssql', 'AVG produces an average as the original column type on mssql.')
-    @testing.resolve_artifact_names
     def test_aggregate_3(self):
+        foo, Foo = self.tables.foo, self.classes.Foo
+
         query = create_session().query(Foo)
 
         # Py3K
@@ -117,27 +124,31 @@ class GenerativeQueryTest(_base.MappedTest):
         # end Py2K
         assert float(round(avg_o, 1)) == 14.5
 
-    @testing.resolve_artifact_names
     def test_filter(self):
+        Foo = self.classes.Foo
+
         query = create_session().query(Foo)
         assert query.count() == 100
         assert query.filter(Foo.bar < 30).count() == 30
         res2 = query.filter(Foo.bar < 30).filter(Foo.bar > 10)
         assert res2.count() == 19
 
-    @testing.resolve_artifact_names
     def test_order_by(self):
+        Foo = self.classes.Foo
+
         query = create_session().query(Foo)
         assert query.order_by(Foo.bar)[0].bar == 0
         assert query.order_by(sa.desc(Foo.bar))[0].bar == 99
 
-    @testing.resolve_artifact_names
     def test_offset(self):
+        Foo = self.classes.Foo
+
         query = create_session().query(Foo)
         assert list(query.order_by(Foo.bar).offset(10))[0].bar == 10
 
-    @testing.resolve_artifact_names
     def test_offset(self):
+        Foo = self.classes.Foo
+
         query = create_session().query(Foo)
         assert len(list(query.limit(10))) == 10
 
@@ -146,33 +157,34 @@ class GenerativeTest2(_base.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('Table1', metadata,
+        Table('table1', metadata,
               Column('id', Integer, primary_key=True))
-        Table('Table2', metadata,
-              Column('t1id', Integer, ForeignKey("Table1.id"),
+        Table('table2', metadata,
+              Column('t1id', Integer, ForeignKey("table1.id"),
                      primary_key=True),
               Column('num', Integer, primary_key=True))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        table2, table1 = cls.tables.table2, cls.tables.table1
+
         class Obj1(_base.BasicEntity):
             pass
         class Obj2(_base.BasicEntity):
             pass
 
-        mapper(Obj1, Table1)
-        mapper(Obj2, Table2)
+        mapper(Obj1, table1)
+        mapper(Obj2, table2)
 
     @classmethod
     def fixtures(cls):
         return dict(
-            Table1=(('id',),
+            table1=(('id',),
                     (1,),
                     (2,),
                     (3,),
                     (4,)),
-            Table2=(('num', 't1id'),
+            table2=(('num', 't1id'),
                     (1, 1),
                     (2, 1),
                     (3, 1),
@@ -180,16 +192,19 @@ class GenerativeTest2(_base.MappedTest):
                     (5, 2),
                     (6, 3)))
 
-    @testing.resolve_artifact_names
     def test_distinct_count(self):
+        table2, Obj1, table1 = (self.tables.table2,
+                                self.classes.Obj1,
+                                self.tables.table1)
+
         query = create_session().query(Obj1)
         eq_(query.count(), 4)
 
-        res = query.filter(sa.and_(Table1.c.id == Table2.c.t1id,
-                                   Table2.c.t1id == 1))
+        res = query.filter(sa.and_(table1.c.id == table2.c.t1id,
+                                   table2.c.t1id == 1))
         eq_(res.count(), 3)
-        res = query.filter(sa.and_(Table1.c.id == Table2.c.t1id,
-                                   Table2.c.t1id == 1)).distinct()
+        res = query.filter(sa.and_(table1.c.id == table2.c.t1id,
+                                   table2.c.t1id == 1)).distinct()
         eq_(res.count(), 1)
 
 
@@ -199,15 +214,22 @@ class RelationshipsTest(_fixtures.FixtureTest):
     run_deletes = None
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        addresses, Order, User, Address, orders, users = (cls.tables.addresses,
+                                cls.classes.Order,
+                                cls.classes.User,
+                                cls.classes.Address,
+                                cls.tables.orders,
+                                cls.tables.users)
+
         mapper(User, users, properties={
             'orders':relationship(mapper(Order, orders, properties={
                 'addresses':relationship(mapper(Address, addresses))}))})
 
 
-    @testing.resolve_artifact_names
     def test_join(self):
+        User, Address = self.classes.User, self.classes.Address
+
         """Query.join"""
 
         session = create_session()
@@ -215,8 +237,11 @@ class RelationshipsTest(_fixtures.FixtureTest):
              filter(Address.id == 1))
         eq_([User(id=7)], q.all())
 
-    @testing.resolve_artifact_names
     def test_outer_join(self):
+        Order, User, Address = (self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
         """Query.outerjoin"""
 
         session = create_session()
@@ -225,8 +250,11 @@ class RelationshipsTest(_fixtures.FixtureTest):
         eq_(set([User(id=7), User(id=8), User(id=10)]),
             set(q.all()))
 
-    @testing.resolve_artifact_names
     def test_outer_join_count(self):
+        Order, User, Address = (self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
         """test the join and outerjoin functions on Query"""
 
         session = create_session()
@@ -235,8 +263,14 @@ class RelationshipsTest(_fixtures.FixtureTest):
              filter(sa.or_(Order.id == None, Address.id == 1)))
         eq_(q.count(), 4)
 
-    @testing.resolve_artifact_names
     def test_from(self):
+        users, Order, User, Address, orders, addresses = (self.tables.users,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.tables.orders,
+                                self.tables.addresses)
+
         session = create_session()
 
         sel = users.outerjoin(orders).outerjoin(
@@ -259,8 +293,9 @@ class CaseSensitiveTest(_base.MappedTest):
               Column('NUM', Integer, primary_key=True))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        Table2, Table1 = cls.tables.Table2, cls.tables.Table1
+
         class Obj1(_base.BasicEntity):
             pass
         class Obj2(_base.BasicEntity):
@@ -285,8 +320,11 @@ class CaseSensitiveTest(_base.MappedTest):
                     (5, 2),
                     (6, 3)))
 
-    @testing.resolve_artifact_names
     def test_distinct_count(self):
+        Table2, Obj1, Table1 = (self.tables.Table2,
+                                self.classes.Obj1,
+                                self.tables.Table1)
+
         q = create_session(bind=testing.db).query(Obj1)
         assert q.count() == 4
         res = q.filter(sa.and_(Table1.c.ID==Table2.c.T1ID,Table2.c.T1ID==1))

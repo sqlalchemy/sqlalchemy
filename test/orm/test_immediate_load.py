@@ -10,8 +10,12 @@ class ImmediateTest(_fixtures.FixtureTest):
     run_inserts = 'once'
     run_deletes = None
 
-    @testing.resolve_artifact_names
     def test_basic_option(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relationship(Address)
@@ -29,8 +33,12 @@ class ImmediateTest(_fixtures.FixtureTest):
         )
 
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(Address, addresses)
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy='immediate')

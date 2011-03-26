@@ -25,8 +25,9 @@ class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
         class Subset(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_no_tables(self):
+        Subset = self.classes.Subset
+
 
         selectable = select(["x", "y", "z"]).alias()
         mapper(Subset, selectable, primary_key=[selectable.c.x])
@@ -37,8 +38,9 @@ class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-    @testing.resolve_artifact_names
     def test_no_table_needs_pl(self):
+        Subset = self.classes.Subset
+
 
         selectable = select(["x", "y", "z"]).alias()
         assert_raises_message(
@@ -47,13 +49,15 @@ class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
             mapper, Subset, selectable
         )
 
-    @testing.resolve_artifact_names
     def test_no_selects(self):
+        Subset, common = self.classes.Subset, self.tables.common
+
         subset_select = select([common.c.id, common.c.data])
         assert_raises(sa.exc.InvalidRequestError, mapper, Subset, subset_select)
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        Subset, common = self.classes.Subset, self.tables.common
+
         subset_select = select([common.c.id, common.c.data]).alias()
         subset_mapper = mapper(Subset, subset_select)
 

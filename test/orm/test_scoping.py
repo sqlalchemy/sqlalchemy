@@ -40,8 +40,9 @@ class ScopedSessionTest(_base.MappedTest):
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
               Column('someid', None, ForeignKey('table1.id')))
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        table2, table1 = self.tables.table2, self.tables.table1
+
         Session = scoped_session(sa.orm.sessionmaker())
 
         class CustomQuery(query.Query):

@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from test.lib import testing
 from test.lib.testing import adict
+from test.lib.engines import drop_all_tables
 
 
 class TablesTest(testing.TestBase):
@@ -21,25 +22,26 @@ class TablesTest(testing.TestBase):
     # 'once', 'each', None
     run_dispose_bind = None
 
-    _artifact_registries = ('tables', 'other_artifacts')
-
     bind = None
     metadata = None
     tables = None
-    other_artifacts = None
+    other = None
 
     @classmethod
     def setup_class(cls):
-        if cls.run_setup_bind is None:
-            assert cls.bind is not None
-        assert cls.run_deletes in (None, 'each')
-        if cls.run_inserts == 'once':
-            assert cls.run_deletes is None
+        cls._init_class()
+
+        cls._setup_once_tables()
+
+        cls._setup_once_inserts()
+
+    @classmethod
+    def _init_class(cls):
+        if cls.other is None:
+            cls.other = adict()
 
         if cls.tables is None:
             cls.tables = adict()
-        if cls.other_artifacts is None:
-            cls.other_artifacts = adict()
 
         if cls.bind is None:
             setattr(cls, 'bind', cls.setup_bind())
@@ -50,34 +52,34 @@ class TablesTest(testing.TestBase):
         if cls.metadata.bind is None:
             cls.metadata.bind = cls.bind
 
+    @classmethod
+    def _setup_once_inserts(cls):
+        if cls.run_inserts == 'once':
+            cls._load_fixtures()
+            cls.insert_data()
+
+    @classmethod
+    def _setup_once_tables(cls):
         if cls.run_define_tables == 'once':
             cls.define_tables(cls.metadata)
             cls.metadata.create_all()
             cls.tables.update(cls.metadata.tables)
 
-        if cls.run_inserts == 'once':
-            cls._load_fixtures()
-            cls.insert_data()
-
-    def setup(self):
-        cls = self.__class__
-
-        if self.setup_bind == 'each':
-            setattr(cls, 'bind', self.setup_bind())
-
+    def _setup_each_tables(self):
         if self.run_define_tables == 'each':
             self.tables.clear()
-            self.metadata.drop_all()
+            drop_all_tables(self.metadata)
             self.metadata.clear()
             self.define_tables(self.metadata)
             self.metadata.create_all()
             self.tables.update(self.metadata.tables)
 
+    def _setup_each_inserts(self):
         if self.run_inserts == 'each':
             self._load_fixtures()
             self.insert_data()
 
-    def teardown(self):
+    def _teardown_each_tables(self):
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != 'each' and self.run_deletes:
             for table in reversed(self.metadata.sorted_tables):
@@ -87,20 +89,38 @@ class TablesTest(testing.TestBase):
                     print >> sys.stderr, "Error emptying table %s: %r" % (
                         table, ex)
 
+    def _setup_each_bind(self):
+        if self.setup_bind == 'each':
+            setattr(cls, 'bind', self.setup_bind())
+
+    def _teardown_each_bind(self):
         if self.run_dispose_bind == 'each':
             self.dispose_bind(self.bind)
 
+    def setup(self):
+        self._setup_each_bind()
+        self._setup_each_tables()
+        self._setup_each_inserts()
+
+    def teardown(self):
+        self._teardown_each_tables()
+        self._teardown_each_bind()
+
     @classmethod
-    def teardown_class(cls):
+    def _teardown_once_metadata_bind(cls):
         cls.metadata.drop_all()
 
-        if cls.dispose_bind:
+        if cls.run_dispose_bind == 'once':
             cls.dispose_bind(cls.bind)
 
         cls.metadata.bind = None
 
         if cls.run_setup_bind is not None:
             cls.bind = None
+
+    @classmethod
+    def teardown_class(cls):
+        cls._teardown_once_metadata_bind()
 
     @classmethod
     def setup_bind(cls):
@@ -115,7 +135,7 @@ class TablesTest(testing.TestBase):
 
     @classmethod
     def define_tables(cls, metadata):
-        raise NotImplementedError()
+        pass
 
     @classmethod
     def fixtures(cls):
@@ -148,20 +168,3 @@ class TablesTest(testing.TestBase):
                  for column_values in rows[table]])
 
 
-class AltEngineTest(testing.TestBase):
-    engine = None
-
-    @classmethod
-    def setup_class(cls):
-        cls.engine = cls.create_engine()
-        super(AltEngineTest, cls).setup_class()
-
-    @classmethod
-    def teardown_class(cls):
-        cls.engine.dispose()
-        cls.engine = None
-        super(AltEngineTest, cls).teardown_class()
-
-    @classmethod
-    def create_engine(cls):
-        raise NotImplementedError

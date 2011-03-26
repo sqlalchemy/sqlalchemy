@@ -48,8 +48,11 @@ class AssociationTest(_base.MappedTest):
                     self.item_id, self.keyword, self.data)
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        KeywordAssociation, Item, Keyword = (cls.classes.KeywordAssociation,
+                                cls.classes.Item,
+                                cls.classes.Keyword)
+
         items, item_keywords, keywords = cls.tables.get_all(
             'items', 'item_keywords', 'keywords')
 
@@ -64,8 +67,11 @@ class AssociationTest(_base.MappedTest):
                                   cascade="all, delete-orphan")
         })
 
-    @testing.resolve_artifact_names
     def test_insert(self):
+        KeywordAssociation, Item, Keyword = (self.classes.KeywordAssociation,
+                                self.classes.Item,
+                                self.classes.Keyword)
+
         sess = create_session()
         item1 = Item('item1')
         item2 = Item('item2')
@@ -80,8 +86,11 @@ class AssociationTest(_base.MappedTest):
         loaded = repr(l)
         eq_(saved, loaded)
 
-    @testing.resolve_artifact_names
     def test_replace(self):
+        KeywordAssociation, Item, Keyword = (self.classes.KeywordAssociation,
+                                self.classes.Item,
+                                self.classes.Keyword)
+
         sess = create_session()
         item1 = Item('item1')
         item1.keywords.append(KeywordAssociation(Keyword('blue'), 'blue_assoc'))
@@ -99,8 +108,11 @@ class AssociationTest(_base.MappedTest):
         loaded = repr(l)
         eq_(saved, loaded)
 
-    @testing.resolve_artifact_names
     def test_modify(self):
+        KeywordAssociation, Item, Keyword = (self.classes.KeywordAssociation,
+                                self.classes.Item,
+                                self.classes.Keyword)
+
         sess = create_session()
         item1 = Item('item1')
         item2 = Item('item2')
@@ -126,8 +138,12 @@ class AssociationTest(_base.MappedTest):
         loaded = repr(l)
         eq_(saved, loaded)
 
-    @testing.resolve_artifact_names
     def test_delete(self):
+        KeywordAssociation, Item, item_keywords, Keyword = (self.classes.KeywordAssociation,
+                                self.classes.Item,
+                                self.tables.item_keywords,
+                                self.classes.Keyword)
+
         sess = create_session()
         item1 = Item('item1')
         item2 = Item('item2')

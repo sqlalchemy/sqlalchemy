@@ -49,8 +49,9 @@ class _MutableDictTestBase(object):
                 self.changed()
         return MutationDict
 
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        foo = cls.tables.foo
+
         mapper(Foo, foo)
 
     def teardown(self):
@@ -59,7 +60,6 @@ class _MutableDictTestBase(object):
         ClassManager.dispatch._clear()
         super(_MutableDictTestBase, self).teardown()
 
-    @testing.resolve_artifact_names
     def test_in_place_mutation(self):
         sess = Session()
 
@@ -72,7 +72,6 @@ class _MutableDictTestBase(object):
 
         eq_(f1.data, {'a':'c'})
 
-    @testing.resolve_artifact_names
     def test_pickle_parent(self):
         sess = Session()
 
@@ -89,7 +88,6 @@ class _MutableDictTestBase(object):
             f2.data['a'] = 'c'
             assert f2 in sess.dirty
 
-    @testing.resolve_artifact_names
     def _test_non_mutable(self):
         sess = Session()
 
@@ -243,15 +241,15 @@ class MutableCompositesTest(_CompositeTestBase, _base.MappedTest):
         return Point
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
+        foo = cls.tables.foo
+
         Point = cls._type_fixture()
 
         mapper(Foo, foo, properties={
             'data':composite(Point, foo.c.x, foo.c.y)
         })
 
-    @testing.resolve_artifact_names
     def test_in_place_mutation(self):
         sess = Session()
         d = Point(3, 4)
@@ -264,7 +262,6 @@ class MutableCompositesTest(_CompositeTestBase, _base.MappedTest):
 
         eq_(f1.data, Point(3, 5))
 
-    @testing.resolve_artifact_names
     def test_pickle_of_parent(self):
         sess = Session()
         d = Point(3, 4)

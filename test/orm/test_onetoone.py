@@ -22,7 +22,6 @@ class O2OTest(_base.MappedTest):
               Column('jack_id', Integer, ForeignKey("jack.id")))
 
     @classmethod
-    @testing.resolve_artifact_names
     def setup_mappers(cls):
         class Jack(_base.BasicEntity):
             pass
@@ -30,8 +29,12 @@ class O2OTest(_base.MappedTest):
             pass
 
 
-    @testing.resolve_artifact_names
     def test_basic(self):
+        Port, port, jack, Jack = (self.classes.Port,
+                                self.tables.port,
+                                self.tables.jack,
+                                self.classes.Jack)
+
         mapper(Port, port)
         mapper(Jack, jack,
                order_by=[jack.c.number],

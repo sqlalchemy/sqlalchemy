@@ -20,8 +20,12 @@ User, EmailUser = None, None
 class PickleTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    @testing.resolve_artifact_names
     def test_transient(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -39,8 +43,9 @@ class PickleTest(_fixtures.FixtureTest):
 
         eq_(u1, sess.query(User).get(u2.id))
 
-    @testing.resolve_artifact_names
     def test_no_mappers(self):
+        users, User = self.tables.users, self.classes.User
+
 
         umapper = mapper(User, users)
         u1 = User(name='ed')
@@ -53,8 +58,9 @@ class PickleTest(_fixtures.FixtureTest):
             "Cannot deserialize object of type <class 'test.orm._fixtures.User'> - no mapper()",
             pickle.loads, u1_pickled)
 
-    @testing.resolve_artifact_names
     def test_no_instrumentation(self):
+        users, User = self.tables.users, self.classes.User
+
 
         umapper = mapper(User, users)
         u1 = User(name='ed')
@@ -69,8 +75,12 @@ class PickleTest(_fixtures.FixtureTest):
         # compiles the mapper
         eq_(str(u1), "User(name='ed')")
 
-    @testing.resolve_artifact_names
     def test_serialize_path(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         umapper = mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -98,8 +108,12 @@ class PickleTest(_fixtures.FixtureTest):
             p3
         )
 
-    @testing.resolve_artifact_names
     def test_class_deferred_cols(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'name':sa.orm.deferred(users.c.name),
             'addresses':relationship(Address, backref="user")
@@ -129,8 +143,12 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2.name, 'ed')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
-    @testing.resolve_artifact_names
     def test_instance_lazy_relation_loaders(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy='noload')
         })
@@ -156,8 +174,12 @@ class PickleTest(_fixtures.FixtureTest):
         sess.add(u2)
         assert u2.addresses
 
-    @testing.resolve_artifact_names
     def test_instance_deferred_cols(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -201,8 +223,12 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(ad.email_address, 'ed@bar.com')
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
-    @testing.resolve_artifact_names
     def test_pickle_protocols(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -221,8 +247,12 @@ class PickleTest(_fixtures.FixtureTest):
             u2 = loads(dumps(u1))
             eq_(u1, u2)
 
-    @testing.resolve_artifact_names
     def test_options_with_descriptors(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -318,8 +348,12 @@ class PolymorphicDeferredTest(_base.MappedTest):
         User, EmailUser = None, None
         super(PolymorphicDeferredTest, cls).teardown_class()
 
-    @testing.resolve_artifact_names
     def test_polymorphic_deferred(self):
+        EmailUser, email_users, users, User = (self.classes.EmailUser,
+                                self.tables.email_users,
+                                self.tables.users,
+                                self.classes.User)
+
         mapper(User, users, polymorphic_identity='user', polymorphic_on=users.c.type)
         mapper(EmailUser, email_users, inherits=User, polymorphic_identity='emailuser')
 
@@ -337,8 +371,9 @@ class PolymorphicDeferredTest(_base.MappedTest):
         eq_(eu2.email_address, 'foo@bar.com')
 
 class CustomSetupTeardownTest(_fixtures.FixtureTest):
-    @testing.resolve_artifact_names
     def test_rebuild_state(self):
+        User, users = self.classes.User, self.tables.users
+
         """not much of a 'test', but illustrate how to 
         remove instance-level state before pickling.
 
@@ -357,8 +392,12 @@ class UnpickleSA05Test(_fixtures.FixtureTest):
 
     __requires__ = ('python2',)
 
-    @testing.resolve_artifact_names
     def test_one(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
@@ -370,8 +409,12 @@ class UnpickleSA05Test(_fixtures.FixtureTest):
         result = list(sess.query(User).merge_result(pickle.loads(data)))
         eq_(result, self.static.user_address_result)
 
-    @testing.resolve_artifact_names
     def test_two(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })

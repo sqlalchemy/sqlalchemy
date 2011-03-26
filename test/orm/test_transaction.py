@@ -581,8 +581,9 @@ class NaturalPKRollbackTest(_base.MappedTest):
         class User(_base.ComparableEntity):
             pass
 
-    @testing.resolve_artifact_names
     def test_rollback_recover(self):
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
 
         session = sessionmaker()()

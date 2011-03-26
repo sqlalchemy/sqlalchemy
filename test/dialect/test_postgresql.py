@@ -242,8 +242,9 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
         )
 
     @classmethod
-    @testing.resolve_artifact_names
     def insert_data(cls):
+        data_table = cls.tables.data_table
+
         data_table.insert().execute(
             {'data':3},
             {'data':5},
@@ -257,8 +258,9 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             {'data':9},
         )
 
-    @testing.resolve_artifact_names
     def test_float_coercion(self):
+        data_table = self.tables.data_table
+
         for type_, result in [
             (Numeric, decimal.Decimal('140.381230939')),
             (Float, 140.381230939),
