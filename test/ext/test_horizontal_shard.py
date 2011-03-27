@@ -163,6 +163,7 @@ class ShardTest(fixtures.TestBase):
             ]:
             sess.add(c)
         sess.commit()
+        sess.close()
         return sess
 
     def test_roundtrip(self):
