@@ -107,6 +107,14 @@ CHANGES
   - The "implicit_returning" flag on create_engine() is
     honored if set to False.  [ticket:2083]
 
+- oracle
+  - Using column names that would require quotes
+    for the column itself or for a name-generated
+    bind parameter, such as names with special
+    characters, underscores, non-ascii characters,
+    now properly translate bind parameter keys when
+    talking to cx_oracle.  [ticket:2100]
+
 - ext
   - The horizontal_shard ShardedSession class accepts the common
     Session argument "query_cls" as a constructor argument,
