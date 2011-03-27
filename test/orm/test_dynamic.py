@@ -32,13 +32,14 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(self.static.user_address_result, q.all())
 
     def test_statement(self):
+        """test that the .statement accessor returns the actual statement that
+        would render, without any _clones called."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that the .statement accessor returns the actual statement that
-        would render, without any _clones called."""
 
         mapper(User, users, properties={
             'addresses':dynamic_loader(mapper(Address, addresses))

@@ -148,6 +148,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         where the "UPPERCASE" column of "LaLa" doesnt exist.
         """
+
         x = table1.select(distinct=True).alias("LaLa").select().scalar()
 
     def testlabels2(self):

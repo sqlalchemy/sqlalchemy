@@ -1235,10 +1235,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
     def test_optimized_passes(self):
-        base, sub = self.tables.base, self.tables.sub
-
         """"test that the 'optimized load' routine doesn't crash when 
         a column in the join condition is not available."""
+
+        base, sub = self.tables.base, self.tables.sub
+
 
         class Base(fixtures.ComparableEntity):
             pass

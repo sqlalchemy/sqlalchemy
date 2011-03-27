@@ -119,6 +119,7 @@ class TestAcceptTargets(fixtures.TestBase):
         collection based on the type of target given.
 
         """
+
         def listen_one(x, y):
             pass
 

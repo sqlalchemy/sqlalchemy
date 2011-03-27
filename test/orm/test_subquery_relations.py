@@ -153,12 +153,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 2)
 
     def test_disable_dynamic(self):
+        """test no subquery option on a dynamic."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test no subquery option on a dynamic."""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy="dynamic")
@@ -284,13 +285,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ], q.order_by(User.id).all())
 
     def test_orderby_related(self):
+        """A regular mapper select on a single table can
+            order by a relationship to a second table"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A regular mapper select on a single table can
-            order by a relationship to a second table"""
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
@@ -472,12 +474,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
 
     def test_cyclical(self):
+        """A circular eager relationship breaks the cycle with a lazy loader"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A circular eager relationship breaks the cycle with a lazy loader"""
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
@@ -492,6 +495,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(self.static.user_address_result, sess.query(User).order_by(User.id).all())
 
     def test_double(self):
+        """Eager loading with two relationships simultaneously,
+            from the same table, using aliases."""
+
         users, orders, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.orders,
                                 self.classes.User,
@@ -499,8 +505,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -553,6 +557,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 4)
 
     def test_double_same_mappers(self):
+        """Eager loading with two relationships simulatneously,
+        from the same table, using aliases."""
+
         addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -563,8 +570,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.users)
 
-        """Eager loading with two relationships simulatneously,
-        from the same table, using aliases."""
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={
@@ -630,6 +635,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit(self):
+        """Limit operations combined with lazy-load relationships."""
+
         users, items, order_items, orders, Item, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -640,7 +647,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """Limit operations combined with lazy-load relationships."""
 
         mapper(Item, items)
         mapper(Order, orders, properties={
@@ -743,13 +749,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_uselist_false_warning(self):
+        """test that multiple rows received by a
+        uselist=False raises a warning."""
+
         User, users, orders, Order = (self.classes.User,
                                 self.tables.users,
                                 self.tables.orders,
                                 self.classes.Order)
 
-        """test that multiple rows received by a
-        uselist=False raises a warning."""
 
         mapper(User, users, properties={
             'order':relationship(Order, uselist=False)
@@ -991,9 +998,10 @@ class SelfReferentialTest(fixtures.MappedTest):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_no_depth(self):
+        """no join depth is set, so no eager loading occurs."""
+
         nodes = self.tables.nodes
 
-        """no join depth is set, so no eager loading occurs."""
         class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)

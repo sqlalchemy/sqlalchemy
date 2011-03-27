@@ -121,13 +121,14 @@ class MutableTypesTest(fixtures.MappedTest):
         assert session.query(Foo).one().data == pickleable.Bar(4, 19)
 
     def test_mutated_plus_scalar_state_change_resurrected(self):
-        Foo = self.classes.Foo
-
         """test that a non-mutable attribute event subsequent to
         a mutable event prevents the object from falling into
         resurrected state.
 
          """
+
+        Foo = self.classes.Foo
+
         f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
         session = Session()
         session.add(f1)
@@ -164,12 +165,13 @@ class MutableTypesTest(fixtures.MappedTest):
         assert not attributes.instance_state(f1).modified
 
     def test_scalar_no_net_change_no_update(self):
-        Foo = self.classes.Foo
-
         """Test that a no-net-change on a scalar attribute event
         doesn't cause an UPDATE for a mutable state.
 
          """
+
+        Foo = self.classes.Foo
+
 
         f1 = Foo(val=u'hi')
 
@@ -183,12 +185,13 @@ class MutableTypesTest(fixtures.MappedTest):
         self.sql_count_(0, session.commit)
 
     def test_expire_attribute_set(self):
-        Foo = self.classes.Foo
-
         """test no SELECT emitted when assigning to an expired
         mutable attribute.
 
         """
+
+        Foo = self.classes.Foo
+
 
         f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
         session = Session()
@@ -204,10 +207,11 @@ class MutableTypesTest(fixtures.MappedTest):
         eq_(f1.data.x, 10)
 
     def test_expire_mutate(self):
-        Foo = self.classes.Foo
-
         """test mutations are detected on an expired mutable
         attribute."""
+
+        Foo = self.classes.Foo
+
 
         f1 = Foo(data = pickleable.Bar(4, 5), val=u'some val')
         session = Session()
@@ -223,12 +227,13 @@ class MutableTypesTest(fixtures.MappedTest):
         eq_(f1.data.x, 10)
 
     def test_deferred_attribute_set(self):
-        mutable_t, Foo = self.tables.mutable_t, self.classes.Foo
-
         """test no SELECT emitted when assigning to a deferred
         mutable attribute.
 
         """
+
+        mutable_t, Foo = self.tables.mutable_t, self.classes.Foo
+
         sa.orm.clear_mappers()
         mapper(Foo, mutable_t, properties={
             'data':sa.orm.deferred(mutable_t.c.data)
@@ -250,10 +255,11 @@ class MutableTypesTest(fixtures.MappedTest):
         eq_(f1.data.x, 10)
 
     def test_deferred_mutate(self):
-        mutable_t, Foo = self.tables.mutable_t, self.classes.Foo
-
         """test mutations are detected on a deferred mutable
         attribute."""
+
+        mutable_t, Foo = self.tables.mutable_t, self.classes.Foo
+
 
         sa.orm.clear_mappers()
         mapper(Foo, mutable_t, properties={
@@ -300,9 +306,10 @@ class PickledDictsTest(fixtures.MappedTest):
         mapper(Foo, mutable_t)
 
     def test_dicts(self):
+        """Dictionaries may not pickle the same way twice."""
+
         Foo = self.classes.Foo
 
-        """Dictionaries may not pickle the same way twice."""
 
         f1 = Foo()
         f1.data = [ {

@@ -203,6 +203,7 @@ class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
                      'behavior of default displayed in pragma '
                      'table_info()')
     def test_default_reflection_2(self):
+
         db = testing.db
         m = MetaData(db)
         expected = ['my_default', '0']
@@ -210,7 +211,7 @@ class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
             """CREATE TABLE r_defaults (
             data VARCHAR(40) DEFAULT 'my_default',
             val INTEGER NOT NULL DEFAULT 0
-        )"""
+            )"""
         try:
             db.execute(table)
             rt = Table('r_defaults', m, autoload=True)

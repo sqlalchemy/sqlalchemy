@@ -330,8 +330,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_override_composite_fk(self):
-        metadata = self.metadata
         """Test double-remove of composite foreign key, when replaced."""
+
+        metadata = self.metadata
 
         a = Table('a',
             metadata,
@@ -399,6 +400,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         column in its reflection.
 
         """
+
         meta = MetaData(testing.db)
         a1 = Table('a', meta,
             Column('x', sa.Integer, primary_key=True),

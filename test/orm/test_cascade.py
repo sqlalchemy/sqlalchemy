@@ -116,10 +116,11 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         assert_raises(sa_exc.DBAPIError, sess.flush)
 
     def test_save_update_sends_pending(self):
-        Order, User = self.classes.Order, self.classes.User
-
         """test that newly added and deleted collection items are
         cascaded on save-update"""
+
+        Order, User = self.classes.Order, self.classes.User
+
 
         sess = sessionmaker(expire_on_commit=False)()
         o1, o2, o3 = Order(description='o1'), Order(description='o2'), \
@@ -171,13 +172,14 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         assert orders.count().scalar() == 0
 
     def test_delete_unloaded_collections(self):
+        """Unloaded collections are still included in a delete-cascade
+        by default."""
+
         User, addresses, users, Address = (self.classes.User,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.Address)
 
-        """Unloaded collections are still included in a delete-cascade
-        by default."""
         sess = create_session()
         u = User(name='jack',
                  addresses=[Address(email_address="address1"),
@@ -197,13 +199,14 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         assert users.count().scalar() == 0
 
     def test_cascades_onlycollection(self):
+        """Cascade only reaches instances that are still part of the
+        collection, not those that have been removed"""
+
         User, Order, users, orders = (self.classes.User,
                                 self.classes.Order,
                                 self.tables.users,
                                 self.tables.orders)
 
-        """Cascade only reaches instances that are still part of the
-        collection, not those that have been removed"""
 
         sess = create_session()
         u = User(name='jack',
@@ -230,12 +233,13 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
                   orders=[Order(description='someorder')])])
 
     def test_cascade_nosideeffects(self):
+        """test that cascade leaves the state of unloaded
+        scalars/collections unchanged."""
+
         Dingaling, User, Address = (self.classes.Dingaling,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test that cascade leaves the state of unloaded
-        scalars/collections unchanged."""
 
         sess = create_session()
         u = User(name='jack')
@@ -1066,9 +1070,10 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         assert extra.count().scalar() == 2
 
     def test_cascade_on_deleted(self):
+        """test a bug introduced by r6711"""
+
         Foo, User = self.classes.Foo, self.classes.User
 
-        """test a bug introduced by r6711"""
 
         sess = sessionmaker(expire_on_commit=True)()
 
@@ -1092,10 +1097,11 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         sess.commit()
 
     def test_save_update_sends_pending(self):
-        Pref, User = self.classes.Pref, self.classes.User
-
         """test that newly added and deleted scalar items are cascaded
         on save-update"""
+
+        Pref, User = self.classes.Pref, self.classes.User
+
 
         sess = sessionmaker(expire_on_commit=False)()
         p1, p2 = Pref(data='p1'), Pref(data='p2')
@@ -1151,9 +1157,10 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
             [Pref(data="someotherpref")])
 
     def test_double_assignment(self):
+        """Double assignment will not accidentally reset the 'parent' flag."""
+
         Pref, User = self.classes.Pref, self.classes.User
 
-        """Double assignment will not accidentally reset the 'parent' flag."""
 
         sess = create_session()
         jack = sess.query(User).filter_by(name="jack").one()
@@ -1627,13 +1634,14 @@ class M2MCascadeTest(fixtures.MappedTest):
             )
 
     def test_single_parent_backref(self):
+        """test that setting m2m via a uselist=False backref bypasses the single_parent raise"""
+
         a, A, B, b, atob = (self.tables.a,
                                 self.classes.A,
                                 self.classes.B,
                                 self.tables.b,
                                 self.tables.atob)
 
-        """test that setting m2m via a uselist=False backref bypasses the single_parent raise"""
 
         mapper(A, a, properties={
             'bs':relationship(B, 
@@ -1799,13 +1807,6 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
             pass
 
     def test_pending_standalone_orphan(self):
-        users, orders, User, Address, Order, addresses = (self.tables.users,
-                                self.tables.orders,
-                                self.classes.User,
-                                self.classes.Address,
-                                self.classes.Order,
-                                self.tables.addresses)
-
         """Standalone 'orphan' objects can now be persisted, if the underlying 
         constraints of the database allow it.
 
@@ -1813,6 +1814,14 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
         values alone.
 
         """
+
+        users, orders, User, Address, Order, addresses = (self.tables.users,
+                                self.tables.orders,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.classes.Order,
+                                self.tables.addresses)
+
 
         mapper(Order, orders)
         mapper(Address, addresses)
@@ -1847,13 +1856,14 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
 
 
     def test_pending_collection_expunge(self):
+        """Removing a pending item from a collection expunges it from
+        the session."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Removing a pending item from a collection expunges it from
-        the session."""
 
         mapper(Address, addresses)
         mapper(User, users, properties=dict(
@@ -2019,12 +2029,13 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
                    ForeignKey('accounts.account_id')))
 
     def test_double_parent_expunge_o2m(self):
+        """test the delete-orphan uow event for multiple delete-orphan
+        parent relationships."""
+
         sales_reps, customers, accounts = (self.tables.sales_reps,
                                 self.tables.customers,
                                 self.tables.accounts)
 
-        """test the delete-orphan uow event for multiple delete-orphan
-        parent relationships."""
 
         class Customer(fixtures.ComparableEntity):
             pass
@@ -2063,12 +2074,13 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
             'Should expunge customer when both parents are gone'
 
     def test_double_parent_expunge_o2o(self):
+        """test the delete-orphan uow event for multiple delete-orphan
+        parent relationships."""
+
         sales_reps, customers, accounts = (self.tables.sales_reps,
                                 self.tables.customers,
                                 self.tables.accounts)
 
-        """test the delete-orphan uow event for multiple delete-orphan
-        parent relationships."""
 
         class Customer(fixtures.ComparableEntity):
             pass
@@ -2138,12 +2150,13 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
         )
 
     def test_non_orphan(self):
+        """test that an entity can have two parent delete-orphan
+        cascades, and persists normally."""
+
         homes, businesses, addresses = (self.tables.homes,
                                 self.tables.businesses,
                                 self.tables.addresses)
 
-        """test that an entity can have two parent delete-orphan
-        cascades, and persists normally."""
 
         class Address(fixtures.ComparableEntity):
             pass
@@ -2175,13 +2188,14 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             address=Address(street='address2')))
 
     def test_orphan(self):
+        """test that an entity can have two parent delete-orphan
+        cascades, and is detected as an orphan when saved without a
+        parent."""
+
         homes, businesses, addresses = (self.tables.homes,
                                 self.tables.businesses,
                                 self.tables.addresses)
 
-        """test that an entity can have two parent delete-orphan
-        cascades, and is detected as an orphan when saved without a
-        parent."""
 
         class Address(fixtures.ComparableEntity):
             pass
@@ -2492,11 +2506,12 @@ class PartialFlushTest(fixtures.MappedTest):
 
     @testing.uses_deprecated()
     def test_circular_sort(self):
+        """test ticket 1306"""
+
         base, inh_child, parent = (self.tables.base,
                                 self.tables.inh_child,
                                 self.tables.parent)
 
-        """test ticket 1306"""
 
         class Base(fixtures.ComparableEntity):
             pass

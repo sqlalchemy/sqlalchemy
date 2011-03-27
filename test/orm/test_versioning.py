@@ -126,8 +126,6 @@ class VersioningTest(fixtures.MappedTest):
 
     @testing.emits_warning(r'.*does not support updated rowcount')
     def test_bump_version(self):
-        Foo = self.classes.Foo
-
         """test that version number can be bumped.
 
         Ensures that the UPDATE or DELETE is against the 
@@ -135,6 +133,9 @@ class VersioningTest(fixtures.MappedTest):
         state.
 
         """
+
+        Foo = self.classes.Foo
+
         s1 = self._fixture()
         f1 = Foo(value='f1')
         s1.add(f1)
@@ -159,9 +160,10 @@ class VersioningTest(fixtures.MappedTest):
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     def test_versioncheck(self):
+        """query.with_lockmode performs a 'version check' on an already loaded instance"""
+
         Foo = self.classes.Foo
 
-        """query.with_lockmode performs a 'version check' on an already loaded instance"""
 
         s1 = self._fixture()
         f1s1 = Foo(value='f1 value')
@@ -196,9 +198,10 @@ class VersioningTest(fixtures.MappedTest):
     @engines.close_open_connections
     @testing.requires.update_nowait
     def test_versioncheck_for_update(self):
+        """query.with_lockmode performs a 'version check' on an already loaded instance"""
+
         Foo = self.classes.Foo
 
-        """query.with_lockmode performs a 'version check' on an already loaded instance"""
 
         s1 = self._fixture()
         f1s1 = Foo(value='f1 value')
@@ -223,9 +226,10 @@ class VersioningTest(fixtures.MappedTest):
     @testing.emits_warning(r'.*does not support updated rowcount')
     @engines.close_open_connections
     def test_noversioncheck(self):
+        """test query.with_lockmode works when the mapper has no version id col"""
+
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        """test query.with_lockmode works when the mapper has no version id col"""
         s1 = create_session(autocommit=False)
         mapper(Foo, version_table)
         f1s1 = Foo(value="foo", version_id=0)

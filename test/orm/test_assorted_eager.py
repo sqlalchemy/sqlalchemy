@@ -113,11 +113,12 @@ class EagerTest(fixtures.MappedTest):
         session.flush()
 
     def test_noorm(self):
+        """test the control case"""
+
         tests, options, categories = (self.tables.tests,
                                 self.tables.options,
                                 self.tables.categories)
 
-        """test the control case"""
         # I want to display a list of tests owned by owner 1
         # if someoption is false or he hasn't specified it yet (null)
         # but not if he set it to true (example someoption is for hiding)
@@ -160,16 +161,17 @@ class EagerTest(fixtures.MappedTest):
         eq_(result, [u'1 Some Category', u'3 Some Category'])
 
     def test_withjoinedload(self):
-        Thing, tests, options = (self.classes.Thing,
-                                self.tables.tests,
-                                self.tables.options)
-
         """
         Test that an joinedload locates the correct "from" clause with which to
         attach to, when presented with a query that already has a complicated
         from clause.
 
         """
+
+        Thing, tests, options = (self.classes.Thing,
+                                self.tables.tests,
+                                self.tables.options)
+
         s = create_session()
         q=s.query(Thing).options(sa.orm.joinedload('category'))
 
@@ -186,11 +188,12 @@ class EagerTest(fixtures.MappedTest):
         eq_(result, [u'1 Some Category', u'3 Some Category'])
 
     def test_dslish(self):
+        """test the same as withjoinedload except using generative"""
+
         Thing, tests, options = (self.classes.Thing,
                                 self.tables.tests,
                                 self.tables.options)
 
-        """test the same as withjoinedload except using generative"""
         s = create_session()
         q = s.query(Thing).options(sa.orm.joinedload('category'))
         l = q.filter (
@@ -285,16 +288,17 @@ class EagerTest2(fixtures.MappedTest):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_eager_terminate(self):
-        Middle, Right, Left = (self.classes.Middle,
-                                self.classes.Right,
-                                self.classes.Left)
-
         """Eager query generation does not include the same mapper's table twice.
 
         Or, that bi-directional eager loads dont include each other in eager
         query generation.
 
         """
+
+        Middle, Right, Left = (self.classes.Middle,
+                                self.classes.Right,
+                                self.classes.Left)
+
         p = Middle('m1')
         p.left.append(Left('l1'))
         p.right.append(Right('r1'))
@@ -663,13 +667,6 @@ class EagerTest7(fixtures.MappedTest):
             pass
 
     def test_load_m2o_attached_to_o2(self):
-        addresses, invoices, Company, companies, Invoice, Address = (self.tables.addresses,
-                                self.tables.invoices,
-                                self.classes.Company,
-                                self.tables.companies,
-                                self.classes.Invoice,
-                                self.classes.Address)
-
         """
         Tests eager load of a many-to-one attached to a one-to-many.  this
         testcase illustrated the bug, which is that when the single Company is
@@ -677,6 +674,14 @@ class EagerTest7(fixtures.MappedTest):
         the Company's second Address object.
 
         """
+
+        addresses, invoices, Company, companies, Invoice, Address = (self.tables.addresses,
+                                self.tables.invoices,
+                                self.classes.Company,
+                                self.tables.companies,
+                                self.classes.Invoice,
+                                self.classes.Address)
+
         mapper(Address, addresses)
 
         mapper(Company, companies, properties={

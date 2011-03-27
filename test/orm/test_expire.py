@@ -117,9 +117,10 @@ class ExpireTest(_fixtures.FixtureTest):
         eq_(u.name, 'chuck')
 
     def test_deferred(self):
+        """test that unloaded, deferred attributes aren't included in the expiry list."""
+
         Order, orders = self.classes.Order, self.tables.orders
 
-        """test that unloaded, deferred attributes aren't included in the expiry list."""
 
         mapper(Order, orders, properties={'description':deferred(orders.c.description)})
 
@@ -159,13 +160,14 @@ class ExpireTest(_fixtures.FixtureTest):
         ])
 
     def test_refresh_collection_exception(self):
+        """test graceful failure for currently unsupported 
+        immediate refresh of a collection"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test graceful failure for currently unsupported 
-        immediate refresh of a collection"""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, order_by=addresses.c.email_address)
@@ -269,9 +271,10 @@ class ExpireTest(_fixtures.FixtureTest):
 
 
     def test_expire_preserves_changes(self):
+        """test that the expire load operation doesn't revert post-expire changes"""
+
         Order, orders = self.classes.Order, self.tables.orders
 
-        """test that the expire load operation doesn't revert post-expire changes"""
 
         mapper(Order, orders)
         sess = create_session()
@@ -315,9 +318,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert o.description == 'another new description'
 
     def test_expire_committed(self):
+        """test that the committed state of the attribute receives the most recent DB data"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """test that the committed state of the attribute receives the most recent DB data"""
         mapper(Order, orders)
 
         sess = create_session()
@@ -830,9 +834,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert len(list(sess)) == 9
 
     def test_state_change_col_to_deferred(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
         users, User = self.tables.users, self.classes.User
 
-        """Behavioral test to verify the current activity of loader callables."""
 
         mapper(User, users)
 
@@ -878,9 +883,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'name' in attributes.instance_state(u1).callables
 
     def test_state_deferred_to_col(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
         users, User = self.tables.users, self.classes.User
 
-        """Behavioral test to verify the current activity of loader callables."""
 
         mapper(User, users, properties={'name':deferred(users.c.name)})
 
@@ -919,12 +925,13 @@ class ExpireTest(_fixtures.FixtureTest):
                 )
 
     def test_state_noload_to_lazy(self):
+        """Behavioral test to verify the current activity of loader callables."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Behavioral test to verify the current activity of loader callables."""
 
         mapper(User, users, properties={'addresses':relationship(Address, lazy='noload')})
         mapper(Address, addresses)
@@ -1193,14 +1200,15 @@ class RefreshTest(_fixtures.FixtureTest):
         assert u.name == 'jack'
 
     def test_refresh_with_lazy(self):
+        """test that when a lazy loader is set as a trigger on an object's attribute
+        (at the attribute level, not the class level), a refresh() operation doesnt
+        fire the lazy loader or create any problems"""
+
         User, Address, addresses, users = (self.classes.User,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users)
 
-        """test that when a lazy loader is set as a trigger on an object's attribute
-        (at the attribute level, not the class level), a refresh() operation doesnt
-        fire the lazy loader or create any problems"""
 
         s = create_session()
         mapper(User, users, properties={'addresses':relationship(mapper(Address, addresses))})
@@ -1211,12 +1219,13 @@ class RefreshTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_refresh_with_eager(self):
+        """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
 
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), lazy='joined')
@@ -1236,12 +1245,13 @@ class RefreshTest(_fixtures.FixtureTest):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_refresh2(self):
+        """test a hang condition that was occurring on expire/refresh"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """test a hang condition that was occurring on expire/refresh"""
 
         s = create_session()
         mapper(Address, addresses)

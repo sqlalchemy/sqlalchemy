@@ -61,8 +61,6 @@ class SelfReferentialTest(fixtures.MappedTest):
         sess.flush()
 
     def test_many_to_one_only(self):
-        C1, t1 = self.classes.C1, self.tables.t1
-
         """
 
         test that the circular dependency sort can assemble a many-to-one
@@ -70,6 +68,9 @@ class SelfReferentialTest(fixtures.MappedTest):
         actually in the list of modified objects.
 
         """
+
+        C1, t1 = self.classes.C1, self.tables.t1
+
         mapper(C1, t1, properties={
             'parent':relationship(C1,
                               primaryjoin=t1.c.parent_c1 == t1.c.c1,
@@ -236,9 +237,10 @@ class InheritTestOne(fixtures.MappedTest):
                             primaryjoin=child2.c.child1_id == child1.c.id)))
 
     def test_many_to_one_only(self):
+        """test similar to SelfReferentialTest.testmanytooneonly"""
+
         Child1, Child2 = self.classes.Child1, self.classes.Child2
 
-        """test similar to SelfReferentialTest.testmanytooneonly"""
 
         session = create_session()
 
@@ -390,11 +392,12 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
         sess.flush()
 
     def test_reflush_2(self):
+        """A variant on test_reflush()"""
+
         T2, T3, T1 = (self.classes.T2,
                                 self.classes.T3,
                                 self.classes.T1)
 
-        """A variant on test_reflush()"""
         o1 = T1()
         o1.t2 = T2()
         sess = create_session()
@@ -588,17 +591,18 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             pass
 
     def test_cycle(self):
-        person, ball, Ball, Person = (self.tables.person,
-                                self.tables.ball,
-                                self.classes.Ball,
-                                self.classes.Person)
-
         """
         This test has a peculiar aspect in that it doesnt create as many
         dependent relationships as the other tests, and revealed a small
         glitch in the circular dependency sorting.
 
         """
+
+        person, ball, Ball, Person = (self.tables.person,
+                                self.tables.ball,
+                                self.classes.Ball,
+                                self.classes.Person)
+
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
             balls=relationship(Ball,
@@ -616,12 +620,13 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         sess.flush()
 
     def test_post_update_m2o(self):
+        """A cycle between two rows, with a post_update on the many-to-one"""
+
         person, ball, Ball, Person = (self.tables.person,
                                 self.tables.ball,
                                 self.classes.Ball,
                                 self.classes.Person)
 
-        """A cycle between two rows, with a post_update on the many-to-one"""
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
             balls=relationship(Ball,
@@ -672,12 +677,13 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         )
 
     def test_post_update_backref(self):
+        """test bidirectional post_update."""
+
         person, ball, Ball, Person = (self.tables.person,
                                 self.tables.ball,
                                 self.classes.Ball,
                                 self.classes.Person)
 
-        """test bidirectional post_update."""
 
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
@@ -722,12 +728,13 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
 
 
     def test_post_update_o2m(self):
+        """A cycle between two rows, with a post_update on the one-to-many"""
+
         person, ball, Ball, Person = (self.tables.person,
                                 self.tables.ball,
                                 self.classes.Ball,
                                 self.classes.Person)
 
-        """A cycle between two rows, with a post_update on the one-to-many"""
 
         mapper(Ball, ball)
         mapper(Person, person, properties=dict(
@@ -838,14 +845,15 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
                 self.path = path
 
     def test_one(self):
-        node, Node = self.tables.node, self.classes.Node
-
         """Post_update only fires off when needed.
 
         This test case used to produce many superfluous update statements,
         particularly upon delete
 
         """
+
+        node, Node = self.tables.node, self.classes.Node
+
 
         mapper(Node, node, properties={
             'children': relationship(
@@ -976,14 +984,15 @@ class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
             pass
 
     def test_one(self):
-        A, a_table = self.classes.A, self.tables.a_table
-
         """
         Test that post_update remembers to be involved in update operations as
         well, since it replaces the normal dependency processing completely
         [ticket:413]
 
         """
+
+        A, a_table = self.classes.A, self.tables.a_table
+
 
         mapper(A, a_table, properties={
             'foo': relationship(A,

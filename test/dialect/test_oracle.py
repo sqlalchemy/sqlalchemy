@@ -406,6 +406,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_default_flags(self):
         """test with no initialization or server version info"""
+
         dialect = oracle.dialect(dbapi=testing.db.dialect.dbapi)
         assert dialect._supports_char_length
         assert dialect._supports_nchar
@@ -805,12 +806,13 @@ class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):
-        metadata = self.metadata
         """Numeric scenarios where Oracle type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
 
         """
+
+        metadata = self.metadata
 
         # this test requires cx_oracle 5
 

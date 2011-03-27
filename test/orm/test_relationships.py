@@ -389,9 +389,10 @@ class ComplexPostUpdateTest(fixtures.MappedTest):
                                   order_by=pagecomments.c.comment_id))})
 
     def test_basic(self):
+        """A combination of complicated join conditions with post_update."""
+
         Job = self.classes.Job
 
-        """A combination of complicated join conditions with post_update."""
 
         j1 = Job(jobno=u'somejob')
         j1.create_page(u'page1')
@@ -449,13 +450,14 @@ class FKsAsPksTest(fixtures.MappedTest):
             pass
 
     def test_onetoone_switch(self):
+        """test that active history is enabled on a 
+        one-to-many/one that has use_get==True"""
+
         tableB, A, B, tableA = (self.tables.tableB,
                                 self.classes.A,
                                 self.classes.B,
                                 self.tables.tableA)
 
-        """test that active history is enabled on a 
-        one-to-many/one that has use_get==True"""
 
         mapper(A, tableA, properties={
             'b':relationship(B, cascade="all,delete-orphan", uselist=False)})
@@ -475,12 +477,13 @@ class FKsAsPksTest(fixtures.MappedTest):
         sess.flush()
 
     def test_no_delete_PK_AtoB(self):
+        """A cant be deleted without B because B would have no PK value."""
+
         tableB, A, B, tableA = (self.tables.tableB,
                                 self.classes.A,
                                 self.classes.B,
                                 self.tables.tableA)
 
-        """A cant be deleted without B because B would have no PK value."""
         mapper(A, tableA, properties={
             'bs':relationship(B, cascade="save-update")})
         mapper(B, tableB)
@@ -552,13 +555,14 @@ class FKsAsPksTest(fixtures.MappedTest):
         sess.flush()
 
     def test_delete_cascade_BtoA(self):
+        """No 'blank the PK' error when the child is to 
+        be deleted as part of a cascade"""
+
         tableB, A, B, tableA = (self.tables.tableB,
                                 self.classes.A,
                                 self.classes.B,
                                 self.tables.tableA)
 
-        """No 'blank the PK' error when the child is to 
-        be deleted as part of a cascade"""
 
         for cascade in ("save-update, delete",
                         #"save-update, delete-orphan",
@@ -582,13 +586,14 @@ class FKsAsPksTest(fixtures.MappedTest):
             sa.orm.clear_mappers()
 
     def test_delete_cascade_AtoB(self):
+        """No 'blank the PK' error when the child is to 
+        be deleted as part of a cascade"""
+
         tableB, A, B, tableA = (self.tables.tableB,
                                 self.classes.A,
                                 self.classes.B,
                                 self.tables.tableA)
 
-        """No 'blank the PK' error when the child is to 
-        be deleted as part of a cascade"""
 
         for cascade in ("save-update, delete",
                         #"save-update, delete-orphan",
@@ -1336,11 +1341,12 @@ class TypedAssociationTable(fixtures.MappedTest):
               Column('t2c1', MySpecialType(30), ForeignKey('t2.col1')))
 
     def testm2m(self):
+        """Many-to-many tables with special types for candidate keys."""
+
         t2, t3, t1 = (self.tables.t2,
                                 self.tables.t3,
                                 self.tables.t1)
 
-        """Many-to-many tables with special types for candidate keys."""
 
         class T1(fixtures.BasicEntity): pass
         class T2(fixtures.BasicEntity): pass
@@ -1432,10 +1438,6 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
             Column('t2id', Integer, ForeignKey('t2.id')))
 
     def test_three_table_view(self):
-        t2, t3, t1 = (self.tables.t2,
-                                self.tables.t3,
-                                self.tables.t1)
-
         """A three table join with overlapping PK names.
 
         A third table is pulled into the primary join condition using
@@ -1443,6 +1445,11 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
         error.
 
         """
+
+        t2, t3, t1 = (self.tables.t2,
+                                self.tables.t3,
+                                self.tables.t1)
+
         class C1(fixtures.BasicEntity): pass
         class C2(fixtures.BasicEntity): pass
         class C3(fixtures.BasicEntity): pass
@@ -1498,16 +1505,17 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
             Column('t2id_ref', Integer, ForeignKey('t2.t2id')))
 
     def test_three_table_view(self):
-        t2, t3, t1 = (self.tables.t2,
-                                self.tables.t3,
-                                self.tables.t1)
-
         """A three table join with overlapping PK names.
 
         A third table is pulled into the primary join condition using unique
         PK column names and should not produce 'mapper has no columnX' error.
 
         """
+
+        t2, t3, t1 = (self.tables.t2,
+                                self.tables.t3,
+                                self.tables.t1)
+
         class C1(fixtures.BasicEntity): pass
         class C2(fixtures.BasicEntity): pass
         class C3(fixtures.BasicEntity): pass

@@ -510,6 +510,7 @@ class AttributesTest(fixtures.ORMTest):
 
     def test_inheritance(self):
         """tests that attributes are polymorphic"""
+
         class Foo(object):pass
         class Bar(Foo):pass
 
@@ -886,6 +887,7 @@ class BackrefTest(fixtures.ORMTest):
         since we use distinct objects in an inheritance scenario.
 
         """
+
         class Parent(object):
             pass
         class Child(object):

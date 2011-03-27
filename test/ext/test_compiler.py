@@ -110,6 +110,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         decorated class' compiler.
 
         """
+
         t1 = table('t1', column('c1'), column('c2'))
 
         dispatch = Select._compiler_dispatch

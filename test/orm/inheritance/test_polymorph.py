@@ -60,6 +60,7 @@ class InsertOrderTest(PolymorphTest):
     def test_insert_order(self):
         """test that classes of multiple types mix up mapper inserts
         so that insert order of individual tables is maintained"""
+
         person_join = polymorphic_union(
             {
                 'engineer':people.join(engineers),

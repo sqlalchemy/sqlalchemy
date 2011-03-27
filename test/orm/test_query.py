@@ -190,10 +190,11 @@ class GetTest(QueryTest):
         assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
 
     def test_get_null_pk(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
         """test that a mapping which can have None in a 
         PK (i.e. map to an outerjoin) works with get()."""
+
+        users, addresses = self.tables.users, self.tables.addresses
+
 
         s = users.outerjoin(addresses)
 
@@ -211,9 +212,10 @@ class GetTest(QueryTest):
         )
 
     def test_no_criterion(self):
+        """test that get()/load() does not use preexisting filter/etc. criterion"""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that get()/load() does not use preexisting filter/etc. criterion"""
 
         s = create_session()
 
@@ -408,9 +410,10 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         assert_raises(sa_exc.InvalidRequestError, q.add_column, object())
 
     def test_distinct(self):
+        """test that a distinct() call is not valid before 'clauseelement' conditions."""
+
         User = self.classes.User
 
-        """test that a distinct() call is not valid before 'clauseelement' conditions."""
 
         s = create_session()
         q = s.query(User).distinct()
@@ -419,9 +422,10 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
 
     def test_order_by(self):
+        """test that an order_by() call is not valid before 'clauseelement' conditions."""
+
         User = self.classes.User
 
-        """test that an order_by() call is not valid before 'clauseelement' conditions."""
 
         s = create_session()
         q = s.query(User).order_by(User.id)
@@ -862,8 +866,6 @@ class SliceTest(QueryTest):
 
     @testing.only_on('sqlite', 'testing execution but db-specific syntax')
     def test_limit_offset_applies(self):
-        User = self.classes.User
-
         """Test that the expected LIMIT/OFFSET is applied for slices.
 
         The LIMIT/OFFSET syntax differs slightly on all databases, and
@@ -871,6 +873,9 @@ class SliceTest(QueryTest):
         SQL strings using sqlite's syntax.
 
         """
+
+        User = self.classes.User
+
         sess = create_session()
         q = sess.query(User)
 
@@ -938,9 +943,10 @@ class FilterTest(QueryTest):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
 
     def test_contains(self):
+        """test comparing a collection to an object instance."""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test comparing a collection to an object instance."""
 
         sess = create_session()
         address = sess.query(Address).get(3)
@@ -1024,13 +1030,14 @@ class FilterTest(QueryTest):
 
 
     def test_comparison(self):
+        """test scalar comparison to an object instance"""
+
         Item, Order, Dingaling, User, Address = (self.classes.Item,
                                 self.classes.Order,
                                 self.classes.Dingaling,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test scalar comparison to an object instance"""
 
         sess = create_session()
         user = sess.query(User).get(8)
@@ -1134,9 +1141,10 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_statement_labels(self):
+        """test that label conflicts don't occur with joins etc."""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that label conflicts don't occur with joins etc."""
 
         s = create_session()
         q1 = s.query(User, Address).join(User.addresses).\
@@ -1154,10 +1162,11 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_union_literal_expressions_compile(self):
-        User = self.classes.User
-
         """test that column expressions translate during 
             the _from_statement() portion of union(), others"""
+
+        User = self.classes.User
+
 
         s = Session()
         q1 = s.query(User, literal("x"))
@@ -1351,9 +1360,10 @@ class CountTest(QueryTest):
         eq_(q.count(), 5)
 
     def test_cols(self):
+        """test that column-based queries always nest."""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that column-based queries always nest."""
 
         s = create_session()
 
@@ -1388,9 +1398,10 @@ class DistinctTest(QueryTest):
         ) 
 
     def test_joined(self):
+        """test that orderbys from a joined table get placed into the columns clause when DISTINCT is used"""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that orderbys from a joined table get placed into the columns clause when DISTINCT is used"""
 
         sess = create_session()
         q = sess.query(User).join('addresses').distinct().order_by(desc(Address.email_address))

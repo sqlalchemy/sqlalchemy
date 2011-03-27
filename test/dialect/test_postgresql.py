@@ -1458,9 +1458,10 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_index_reflection(self):
-        metadata = self.metadata
         """ Reflecting partial & expression-based indexes should warn
         """
+
+        metadata = self.metadata
 
         t1 = Table('party', metadata, Column('id', String(10),
                    nullable=False), Column('name', String(20),

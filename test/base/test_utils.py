@@ -206,6 +206,7 @@ class FlattenIteratorTest(fixtures.TestBase):
         PyPy) is not interpreted as an iterable.
 
         """
+
         class IterString(str):
             def __iter__(self):
                 return iter(self + '')

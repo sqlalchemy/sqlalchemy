@@ -85,8 +85,9 @@ class AliasedClassTest(fixtures.TestBase):
         assert Point.max_x is alias.max_x
 
     def test_descriptors(self):
+        """Tortured..."""
+
         class descriptor(object):
-            """Tortured..."""
             def __init__(self, fn):
                 self.fn = fn
             def __get__(self, obj, owner):

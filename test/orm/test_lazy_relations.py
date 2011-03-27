@@ -34,12 +34,13 @@ class LazyTest(_fixtures.FixtureTest):
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
 
     def test_needs_parent(self):
+        """test the error raised when parent object is not bound."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test the error raised when parent object is not bound."""
 
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), lazy='select')
@@ -76,12 +77,13 @@ class LazyTest(_fixtures.FixtureTest):
         ] == q.all()
 
     def test_orderby_secondary(self):
+        """tests that a regular mapper select on a single table can order by a relationship to a second table"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """tests that a regular mapper select on a single table can order by a relationship to a second table"""
 
         mapper(Address, addresses)
 
@@ -132,12 +134,13 @@ class LazyTest(_fixtures.FixtureTest):
         ] == sess.query(User).all()
 
     def test_no_orphan(self):
+        """test that a lazily loaded child object is not marked as an orphan"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that a lazily loaded child object is not marked as an orphan"""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, cascade="all,delete-orphan", lazy='select')
@@ -150,6 +153,8 @@ class LazyTest(_fixtures.FixtureTest):
         assert not sa.orm.class_mapper(Address)._is_orphan(attributes.instance_state(user.addresses[0]))
 
     def test_limit(self):
+        """test limit operations combined with lazy-load relationships."""
+
         users, items, order_items, orders, Item, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -160,7 +165,6 @@ class LazyTest(_fixtures.FixtureTest):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """test limit operations combined with lazy-load relationships."""
 
         mapper(Item, items)
         mapper(Order, orders, properties={
@@ -211,12 +215,13 @@ class LazyTest(_fixtures.FixtureTest):
         eq_(self.static.user_all_result, l)
 
     def test_uselist_false_warning(self):
+        """test that multiple rows received by a uselist=False raises a warning."""
+
         User, users, orders, Order = (self.classes.User,
                                 self.tables.users,
                                 self.tables.orders,
                                 self.classes.Order)
 
-        """test that multiple rows received by a uselist=False raises a warning."""
 
         mapper(User, users, properties={
             'order':relationship(Order, uselist=False)
@@ -265,6 +270,8 @@ class LazyTest(_fixtures.FixtureTest):
 
 
     def test_double(self):
+        """tests lazy loading with two relationships simulatneously, from the same table, using aliases.  """
+
         users, orders, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.orders,
                                 self.classes.User,
@@ -272,7 +279,6 @@ class LazyTest(_fixtures.FixtureTest):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """tests lazy loading with two relationships simulatneously, from the same table, using aliases.  """
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -337,12 +343,13 @@ class LazyTest(_fixtures.FixtureTest):
         assert self.static.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
 
     def test_uses_get(self):
+        """test that a simple many-to-one lazyload optimizes to use query.get()."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """test that a simple many-to-one lazyload optimizes to use query.get()."""
 
         for pj in (
             None,
@@ -368,9 +375,10 @@ class LazyTest(_fixtures.FixtureTest):
             sa.orm.clear_mappers()
 
     def test_uses_get_compatible_types(self):
+        """test the use_get optimization with compatible but non-identical types"""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test the use_get optimization with compatible but non-identical types"""
 
         class IntDecorator(TypeDecorator):
             impl = Integer
@@ -481,12 +489,13 @@ class M2OGetTest(_fixtures.FixtureTest):
     run_deletes = None
 
     def test_m2o_noload(self):
+        """test that a NULL foreign key doesn't trigger a lazy load"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that a NULL foreign key doesn't trigger a lazy load"""
         mapper(User, users)
 
         mapper(Address, addresses, properties={

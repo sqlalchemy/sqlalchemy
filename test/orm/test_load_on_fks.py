@@ -183,6 +183,7 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         using the "current" state in all cases except during flush.
 
         """
+
         for loadfk in (True, False):
             for loadrel in (True, False):
                 for autoflush in (True, False):

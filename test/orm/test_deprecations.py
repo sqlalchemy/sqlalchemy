@@ -32,6 +32,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
         output = session.query(User).deprecatedmethod(inputs)
 
         """
+
         # 0.4+
         output = session.query(User).newway(inputs)
         assert output is correct
@@ -99,13 +100,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
     ######################################################################
 
     def test_override_get(self):
-        Address = self.classes.Address
-
         """MapperExtension.get()
 
         x = session.query.get(5)
 
         """
+
+        Address = self.classes.Address
+
         from sqlalchemy.orm.query import Query
         cache = {}
         class MyQuery(Query):
@@ -123,13 +125,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert ad1 in cache.values()
 
     def test_load(self):
-        Address = self.classes.Address
-
         """x = session.query(Address).load(1)
 
             x = session.load(Address, 1)
 
         """
+
+        Address = self.classes.Address
+
 
         session = create_session()
         ad1 = session.query(Address).populate_existing().get(1)
@@ -137,13 +140,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
 
     def test_apply_max(self):
-        Address = self.classes.Address
-
         """Query.apply_max(col)
 
         max = session.query(Address).apply_max(Address.bounces)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         # 0.5.0
@@ -155,13 +159,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert max == 10
 
     def test_apply_min(self):
-        Address = self.classes.Address
-
         """Query.apply_min(col)
 
         min = session.query(Address).apply_min(Address.bounces)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         # 0.5.0
@@ -173,13 +178,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert min == 0
 
     def test_apply_avg(self):
-        Address = self.classes.Address
-
         """Query.apply_avg(col)
 
         avg = session.query(Address).apply_avg(Address.bounces)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         avgs = list(session.query(Address).values(func.avg(Address.bounces)))
@@ -190,13 +196,14 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert avg > 0 and avg < 10
 
     def test_apply_sum(self):
-        Address = self.classes.Address
-
         """Query.apply_sum(col)
 
         avg = session.query(Address).apply_avg(Address.bounces)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         avgs = list(session.query(Address).values(func.sum(Address.bounces)))
@@ -207,8 +214,6 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert avg == 11
 
     def test_count_by(self):
-        User, Address = self.classes.User, self.classes.Address
-
         """Query.count_by(*args, **params)
 
         num = session.query(Address).count_by(purpose='Personal')
@@ -217,6 +222,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         num = session.query(User).count_by(purpose='Personal')
 
         """
+
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
 
         num = session.query(Address).filter_by(purpose='Personal').count()
@@ -227,34 +235,34 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert num == 3, num
 
     def test_count_whereclause(self):
-        Address = self.classes.Address
-
         """Query.count(whereclause=None, params=None, **kwargs)
 
         num = session.query(Address).count(address_table.c.bounces > 1)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         num = session.query(Address).filter(Address.bounces > 1).count()
         assert num == 1, num
 
     def test_execute(self):
-        User, users_table = self.classes.User, self.tables.users_table
-
         """Query.execute(clauseelement, params=None, *args, **kwargs)
 
         users = session.query(User).execute(users_table.select())
 
         """
+
+        User, users_table = self.classes.User, self.tables.users_table
+
         session = create_session()
 
         users = session.query(User).from_statement(users_table.select()).all()
         assert len(users) == 4
 
     def test_get_by(self):
-        User, Address = self.classes.User, self.classes.Address
-
         """Query.get_by(*args, **params)
 
         user = session.query(User).get_by(name='ed')
@@ -263,6 +271,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         user = session.query(User).get_by(email_addresss='fred@the.fred')
 
         """
+
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
 
         user = session.query(User).filter_by(name='ed').first()
@@ -277,17 +288,18 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert user.name == 'fred'
 
     def test_instances_entities(self):
-        addresses_table, User, users_table, Address = (self.tables.addresses_table,
-                                self.classes.User,
-                                self.tables.users_table,
-                                self.classes.Address)
-
         """Query.instances(cursor, *mappers_or_columns, **kwargs)
 
         sel = users_table.join(addresses_table).select(use_labels=True)
         res = session.query(User).instances(sel.execute(), Address)
 
         """
+
+        addresses_table, User, users_table, Address = (self.tables.addresses_table,
+                                self.classes.User,
+                                self.tables.users_table,
+                                self.classes.Address)
+
         session = create_session()
 
         sel = users_table.join(addresses_table).select(use_labels=True)
@@ -302,6 +314,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
         TODO
         """
+
         session = create_session()
 
 
@@ -310,6 +323,7 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
         TODO
         """
+
         session = create_session()
 
 
@@ -318,51 +332,53 @@ class QueryAlternativesTest(fixtures.MappedTest):
 
         TODO
         """
+
         session = create_session()
 
 
     def test_list(self):
-        User = self.classes.User
-
         """Query.list()
 
         users = session.query(User).list()
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         users = session.query(User).all()
         assert len(users) == 4
 
     def test_scalar(self):
-        User = self.classes.User
-
         """Query.scalar()
 
         user = session.query(User).filter(User.id==1).scalar()
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         user = session.query(User).filter(User.id==1).first()
         assert user.id==1
 
     def test_select(self):
-        User = self.classes.User
-
         """Query.select(arg=None, **kwargs)
 
         users = session.query(User).select(users_table.c.name != None)
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         users = session.query(User).filter(User.name != None).all()
         assert len(users) == 4
 
     def test_select_by(self):
-        User, Address = self.classes.User, self.classes.Address
-
         """Query.select_by(*args, **params)
 
         users = session.query(User).select_by(name='fred')
@@ -371,6 +387,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         users = session.query(User).select_by(email_address='fred@the.fred')
 
         """
+
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
 
         users = session.query(User).filter_by(name='fred').all()
@@ -388,22 +407,21 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 1
 
     def test_selectfirst(self):
-        Address = self.classes.Address
-
         """Query.selectfirst(arg=None, **kwargs)
 
         bounced = session.query(Address).selectfirst(
           addresses_table.c.bounces > 0)
 
         """
+
+        Address = self.classes.Address
+
         session = create_session()
 
         bounced = session.query(Address).filter(Address.bounces > 0).first()
         assert bounced.bounces > 0
 
     def test_selectfirst_by(self):
-        User, Address = self.classes.User, self.classes.Address
-
         """Query.selectfirst_by(*args, **params)
 
         onebounce = session.query(Address).selectfirst_by(bounces=1)
@@ -412,6 +430,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         onebounce_user = session.query(User).selectfirst_by(bounces=1)
 
         """
+
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
 
         onebounce = session.query(Address).filter_by(bounces=1).first()
@@ -430,20 +451,19 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert onebounce_user.name == 'jack'
 
     def test_selectone(self):
-        User = self.classes.User
-
         """Query.selectone(arg=None, **kwargs)
 
         ed = session.query(User).selectone(users_table.c.name == 'ed')
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         ed = session.query(User).filter(User.name == 'jack').one()
 
     def test_selectone_by(self):
-        User, Address = self.classes.User, self.classes.Address
-
         """Query.selectone_by
 
         ed = session.query(User).selectone_by(name='ed')
@@ -452,6 +472,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         ed = session.query(User).selectone_by(email_address='ed@foo.bar')
 
         """
+
+        User, Address = self.classes.User, self.classes.Address
+
         session = create_session()
 
         ed = session.query(User).filter_by(name='jack').one()
@@ -465,26 +488,28 @@ class QueryAlternativesTest(fixtures.MappedTest):
             Address.email_address == 'ed@foo.bar')).one()
 
     def test_select_statement(self):
-        User, users_table = self.classes.User, self.tables.users_table
-
         """Query.select_statement(statement, **params)
 
         users = session.query(User).select_statement(users_table.select())
 
         """
+
+        User, users_table = self.classes.User, self.tables.users_table
+
         session = create_session()
 
         users = session.query(User).from_statement(users_table.select()).all()
         assert len(users) == 4
 
     def test_select_text(self):
-        User = self.classes.User
-
         """Query.select_text(text, **params)
 
         users = session.query(User).select_text('SELECT * FROM users_table')
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         users = (session.query(User).
@@ -492,8 +517,6 @@ class QueryAlternativesTest(fixtures.MappedTest):
         assert len(users) == 4
 
     def test_select_whereclause(self):
-        User = self.classes.User
-
         """Query.select_whereclause(whereclause=None, params=None, **kwargs)
 
 
@@ -501,6 +524,9 @@ class QueryAlternativesTest(fixtures.MappedTest):
         users = session.query(User).select_whereclause("name='ed'")
 
         """
+
+        User = self.classes.User
+
         session = create_session()
 
         users = session.query(User).filter(User.name=='ed').all()

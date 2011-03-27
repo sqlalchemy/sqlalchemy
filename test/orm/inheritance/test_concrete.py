@@ -477,6 +477,9 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         assert sess.query(B).filter(B.bname == 'b1').one() is b1
 
     def test_polymorphic_backref(self):
+        """test multiple backrefs to the same polymorphically-loading
+        attribute."""
+
         A, C, B, c_table, b_table, a_table, Dest, dest_table = (self.classes.A,
                                 self.classes.C,
                                 self.classes.B,
@@ -486,8 +489,6 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                                 self.classes.Dest,
                                 self.tables.dest_table)
 
-        """test multiple backrefs to the same polymorphically-loading
-        attribute."""
 
         ajoin = polymorphic_union({'a': a_table, 'b': b_table, 'c':c_table}, 
                                 'type','ajoin')

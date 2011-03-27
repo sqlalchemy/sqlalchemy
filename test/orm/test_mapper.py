@@ -19,12 +19,13 @@ from test.lib.assertsql import CompiledSQL
 class MapperTest(_fixtures.FixtureTest):
 
     def test_prop_shadow(self):
+        """A backref name may not shadow an existing property name."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A backref name may not shadow an existing property name."""
 
         mapper(Address, addresses)
         mapper(User, users,
@@ -34,9 +35,10 @@ class MapperTest(_fixtures.FixtureTest):
         assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
     def test_update_attr_keys(self):
+        """test that update()/insert() use the correct key when given InstrumentedAttributes."""
+
         User, users = self.classes.User, self.tables.users
 
-        """test that update()/insert() use the correct key when given InstrumentedAttributes."""
 
         mapper(User, users, properties={
             'foobar':users.c.name
@@ -111,15 +113,16 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(str(User.addresses), "User.addresses")
 
     def test_exceptions_sticky(self):
-        Address, addresses, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
         """test preservation of mapper compile errors raised during hasattr(),
         as well as for redundant mapper compile calls.  Test that 
         repeated calls don't stack up error messages.
 
         """
+
+        Address, addresses, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
 
         mapper(Address, addresses, properties={
             'user':relationship(User)
@@ -166,13 +169,14 @@ class MapperTest(_fixtures.FixtureTest):
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     def test_reconfigure_on_other_mapper(self):
+        """A configure trigger on an already-configured mapper 
+        still triggers a check against all mappers."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """A configure trigger on an already-configured mapper 
-        still triggers a check against all mappers."""
         mapper(User, users)
         sa.orm.configure_mappers()
         assert sa.orm.mapperlib._new_mappers is False
@@ -194,9 +198,10 @@ class MapperTest(_fixtures.FixtureTest):
         session.connection(m)
 
     def test_incomplete_columns(self):
+        """Loading from a select which does not contain all columns"""
+
         addresses, Address = self.tables.addresses, self.classes.Address
 
-        """Loading from a select which does not contain all columns"""
         mapper(Address, addresses)
         s = create_session()
         a = s.query(Address).from_statement(
@@ -218,10 +223,11 @@ class MapperTest(_fixtures.FixtureTest):
                               : addresses.c.user_id})
 
     def test_constructor_exc(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
         """TypeError is raised for illegal constructor args, 
         whether or not explicit __init__ is present [ticket:908]."""
+
+        users, addresses = self.tables.users, self.tables.addresses
+
 
         class Foo(object):
             def __init__(self):
@@ -615,11 +621,12 @@ class MapperTest(_fixtures.FixtureTest):
 
 
     def test_mapping_to_join_raises(self):
+        """Test implicit merging of two cols raises."""
+
         addresses, users, User = (self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """Test implicit merging of two cols raises."""
 
         usersaddresses = sa.join(users, addresses,
                                  users.c.id == addresses.c.user_id)
@@ -630,11 +637,12 @@ class MapperTest(_fixtures.FixtureTest):
         )
 
     def test_mapping_to_join_explicit_prop(self):
+        """Mapping to a join"""
+
         User, addresses, users = (self.classes.User,
                                 self.tables.addresses,
                                 self.tables.users)
 
-        """Mapping to a join"""
 
         usersaddresses = sa.join(users, addresses, users.c.id
                                  == addresses.c.user_id)
@@ -645,11 +653,12 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(l, self.static.user_result[:3])
 
     def test_mapping_to_join_exclude_prop(self):
+        """Mapping to a join"""
+
         User, addresses, users = (self.classes.User,
                                 self.tables.addresses,
                                 self.tables.users)
 
-        """Mapping to a join"""
 
         usersaddresses = sa.join(users, addresses, users.c.id
                                  == addresses.c.user_id)
@@ -681,11 +690,12 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(email_bounces.count().scalar(), 5)
 
     def test_mapping_to_outerjoin(self):
+        """Mapping to an outer join with a nullable composite primary key."""
+
         users, addresses, User = (self.tables.users,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Mapping to an outer join with a nullable composite primary key."""
 
 
         mapper(User, users.outerjoin(addresses),
@@ -705,11 +715,12 @@ class MapperTest(_fixtures.FixtureTest):
             User(id=10, address_id=None)])
 
     def test_mapping_to_outerjoin_no_partial_pks(self):
+        """test the allow_partial_pks=False flag."""
+
         users, addresses, User = (self.tables.users,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test the allow_partial_pks=False flag."""
 
 
         mapper(User, users.outerjoin(addresses),
@@ -747,6 +758,8 @@ class MapperTest(_fixtures.FixtureTest):
 
 
     def test_custom_join(self):
+        """select_from totally replace the FROM parameters."""
+
         users, items, order_items, orders, Item, User, Order = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -755,7 +768,6 @@ class MapperTest(_fixtures.FixtureTest):
                                 self.classes.User,
                                 self.classes.Order)
 
-        """select_from totally replace the FROM parameters."""
 
         mapper(Item, items)
 
@@ -796,11 +808,12 @@ class MapperTest(_fixtures.FixtureTest):
     # 'Raises a "expression evaluation not supported" error at prepare time
     @testing.fails_on('firebird', 'FIXME: unknown')
     def test_function(self):
+        """Mapping to a SELECT statement that has functions in it."""
+
         addresses, users, User = (self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """Mapping to a SELECT statement that has functions in it."""
 
         s = sa.select([users,
                        (users.c.id * 2).label('concat'),
@@ -817,9 +830,10 @@ class MapperTest(_fixtures.FixtureTest):
             eq_(l[idx].concat, total)
 
     def test_count(self):
+        """The count function on Query."""
+
         User, users = self.classes.User, self.tables.users
 
-        """The count function on Query."""
 
         mapper(User, users)
 
@@ -852,12 +866,13 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(q.count(), 2)
 
     def test_override_1(self):
+        """Overriding a column raises an error."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """Overriding a column raises an error."""
         def go():
             mapper(User, users,
                    properties=dict(
@@ -866,12 +881,13 @@ class MapperTest(_fixtures.FixtureTest):
         assert_raises(sa.exc.ArgumentError, go)
 
     def test_override_2(self):
+        """exclude_properties cancels the error."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """exclude_properties cancels the error."""
 
         mapper(User, users,
                exclude_properties=['name'],
@@ -881,12 +897,13 @@ class MapperTest(_fixtures.FixtureTest):
         assert bool(User.name)
 
     def test_override_3(self):
+        """The column being named elsewhere also cancels the error,"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """The column being named elsewhere also cancels the error,"""
         mapper(User, users,
                properties=dict(
                    name=relationship(mapper(Address, addresses)),
@@ -978,11 +995,12 @@ class MapperTest(_fixtures.FixtureTest):
             go)
 
     def test_column_synonyms(self):
+        """Synonyms which automatically instrument properties, set up aliased column, etc."""
+
         addresses, users, Address = (self.tables.addresses,
                                 self.tables.users,
                                 self.classes.Address)
 
-        """Synonyms which automatically instrument properties, set up aliased column, etc."""
 
 
         assert_col = []
@@ -1404,12 +1422,13 @@ class OptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_eager_options(self):
+        """A lazy relationship can be upgraded to an eager relationship."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A lazy relationship can be upgraded to an eager relationship."""
         mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses),
                                  order_by=addresses.c.id)))
@@ -1470,13 +1489,14 @@ class OptionsTest(_fixtures.FixtureTest):
         self.sql_count_(1, go)
 
     def test_eager_degrade(self):
+        """An eager relationship automatically degrades to a lazy relationship 
+        if eager columns are not available"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """An eager relationship automatically degrades to a lazy relationship 
-        if eager columns are not available"""
         mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), 
                                 lazy='joined', order_by=addresses.c.id)))
@@ -1556,12 +1576,13 @@ class OptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 6)
 
     def test_lazy_options(self):
+        """An eager relationship can be upgraded to a lazy relationship."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """An eager relationship can be upgraded to a lazy relationship."""
         mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='joined')
         ))
@@ -1643,9 +1664,10 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_deep_options_2(self):
+        """test (joined|subquery)load_all() options"""
+
         User = self.classes.User
 
-        """test (joined|subquery)load_all() options"""
 
         sess = create_session()
 
@@ -1855,9 +1877,10 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 class DeferredTest(_fixtures.FixtureTest):
 
     def test_basic(self):
+        """A basic deferred load."""
+
         Order, orders = self.classes.Order, self.tables.orders
 
-        """A basic deferred load."""
 
         mapper(Order, orders, order_by=orders.c.id, properties={
             'description': deferred(orders.c.description)})
@@ -1882,9 +1905,10 @@ class DeferredTest(_fixtures.FixtureTest):
              {'param_1':3})])
 
     def test_unsaved(self):
+        """Deferred loading does not kick in when just PK cols are set."""
+
         Order, orders = self.classes.Order, self.tables.orders
 
-        """Deferred loading does not kick in when just PK cols are set."""
 
         mapper(Order, orders, properties={
             'description': deferred(orders.c.description)})
@@ -1923,9 +1947,10 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_unsaved_group(self):
+        """Deferred loading doesnt kick in when just PK cols are set"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """Deferred loading doesnt kick in when just PK cols are set"""
 
         mapper(Order, orders, order_by=orders.c.id, properties=dict(
             description=deferred(orders.c.description, group='primary'),
@@ -1965,9 +1990,10 @@ class DeferredTest(_fixtures.FixtureTest):
         sess.flush()
 
     def test_group(self):
+        """Deferred load with a group"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """Deferred load with a group"""
         mapper(Order, orders, properties=util.OrderedDict([
             ('userident', deferred(orders.c.user_id, group='primary')),
             ('addrident', deferred(orders.c.address_id, group='primary')),
@@ -2003,9 +2029,10 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_preserve_changes(self):
+        """A deferred load operation doesn't revert modifications on attributes"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """A deferred load operation doesn't revert modifications on attributes"""
         mapper(Order, orders, properties = {
             'userident': deferred(orders.c.user_id, group='primary'),
             'description': deferred(orders.c.description, group='primary'),
@@ -2023,13 +2050,14 @@ class DeferredTest(_fixtures.FixtureTest):
         assert o in sess.dirty
 
     def test_commits_state(self):
-        orders, Order = self.tables.orders, self.classes.Order
-
         """
         When deferred elements are loaded via a group, they get the proper
         CommittedState and don't result in changes being committed
 
         """
+
+        orders, Order = self.tables.orders, self.classes.Order
+
         mapper(Order, orders, properties = {
             'userident':deferred(orders.c.user_id, group='primary'),
             'description':deferred(orders.c.description, group='primary'),
@@ -2047,9 +2075,10 @@ class DeferredTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, sess.flush, 0)
 
     def test_options(self):
+        """Options on a mapper to create deferred and undeferred columns"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """Options on a mapper to create deferred and undeferred columns"""
 
         mapper(Order, orders)
 
@@ -2109,9 +2138,10 @@ class DeferredTest(_fixtures.FixtureTest):
              {})])
 
     def test_locates_col(self):
+        """Manually adding a column to the result undefers the column."""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """Manually adding a column to the result undefers the column."""
 
         mapper(Order, orders, properties={
             'description':deferred(orders.c.description)})
@@ -2131,12 +2161,13 @@ class DeferredTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_map_selectable_wo_deferred(self):
-        Order, orders = self.classes.Order, self.tables.orders
-
         """test mapping to a selectable with deferred cols,
         the selectable doesn't include the deferred col.
         
         """
+
+        Order, orders = self.classes.Order, self.tables.orders
+
 
         order_select = sa.select([
                         orders.c.id, 
@@ -2472,12 +2503,13 @@ class NoLoadTest(_fixtures.FixtureTest):
     run_deletes = None
 
     def test_basic(self):
+        """A basic one-to-many lazy load"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A basic one-to-many lazy load"""
         m = mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='noload')
         ))
@@ -2562,13 +2594,6 @@ class RequirementsTest(fixtures.MappedTest):
     # end Py2K
 
     def test_comparison_overrides(self):
-        ht6, ht5, ht4, ht3, ht2, ht1 = (self.tables.ht6,
-                                self.tables.ht5,
-                                self.tables.ht4,
-                                self.tables.ht3,
-                                self.tables.ht2,
-                                self.tables.ht1)
-
         """Simple tests to ensure users can supply comparison __methods__.
 
         The suite-level test --options are better suited to detect
@@ -2577,6 +2602,14 @@ class RequirementsTest(fixtures.MappedTest):
         through the ORM to catch basic regressions early in a standard
         test run.
         """
+
+        ht6, ht5, ht4, ht3, ht2, ht1 = (self.tables.ht6,
+                                self.tables.ht5,
+                                self.tables.ht4,
+                                self.tables.ht3,
+                                self.tables.ht2,
+                                self.tables.ht1)
+
 
         # adding these methods directly to each class to avoid decoration
         # by the testlib decorators.

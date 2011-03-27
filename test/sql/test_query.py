@@ -251,6 +251,7 @@ class QueryTest(fixtures.TestBase):
         ORDER BY.
 
         """
+
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'},
@@ -446,6 +447,7 @@ class QueryTest(fixtures.TestBase):
         This should be run for DB-APIs with both positional and named
         paramstyles.
         """
+
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
 
@@ -520,6 +522,7 @@ class QueryTest(fixtures.TestBase):
     @testing.exclude('mysql', '<', (5, 0, 37), 'database bug')
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propagated to the result set."""
+
         # mysql and/or mysqldb has a bug here, type isn't propagated for scalar
         # subquery.
         datetable = Table('datetable', metadata,
@@ -980,6 +983,7 @@ class QueryTest(fixtures.TestBase):
         generate ? = ?.
 
         """
+
         users.insert().execute(user_id = 7, user_name = 'jack')
         users.insert().execute(user_id = 8, user_name = 'fred')
         users.insert().execute(user_id = 9, user_name = None)
@@ -1329,6 +1333,7 @@ class CompoundTest(fixtures.TestBase):
         more palatable to a wider variety of engines.
 
         """
+
         u = union(
             select([t1.c.col3]),
             select([t1.c.col3]),

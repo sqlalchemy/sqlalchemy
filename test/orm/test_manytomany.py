@@ -361,13 +361,14 @@ class M2MTest2(fixtures.MappedTest):
         self.assert_(len(s.courses) == 2)
 
     def test_dupliates_raise(self):
+        """test constraint error is raised for dupe entries in a list"""
+
         course, enroll, Student, student, Course = (self.tables.course,
                                 self.tables.enroll,
                                 self.classes.Student,
                                 self.tables.student,
                                 self.classes.Course)
 
-        """test constraint error is raised for dupe entries in a list"""
 
         mapper(Student, student)
         mapper(Course, course, properties={
@@ -382,13 +383,14 @@ class M2MTest2(fixtures.MappedTest):
         assert_raises(sa.exc.DBAPIError, sess.flush)
 
     def test_delete(self):
+        """A many-to-many table gets cleared out with deletion from the backref side"""
+
         course, enroll, Student, student, Course = (self.tables.course,
                                 self.tables.enroll,
                                 self.classes.Student,
                                 self.tables.student,
                                 self.classes.Course)
 
-        """A many-to-many table gets cleared out with deletion from the backref side"""
 
         mapper(Student, student)
         mapper(Course, course, properties = {

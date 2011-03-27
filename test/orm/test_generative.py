@@ -229,9 +229,10 @@ class RelationshipsTest(_fixtures.FixtureTest):
 
 
     def test_join(self):
+        """Query.join"""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """Query.join"""
 
         session = create_session()
         q = (session.query(User).join('orders', 'addresses').
@@ -239,11 +240,12 @@ class RelationshipsTest(_fixtures.FixtureTest):
         eq_([User(id=7)], q.all())
 
     def test_outer_join(self):
+        """Query.outerjoin"""
+
         Order, User, Address = (self.classes.Order,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """Query.outerjoin"""
 
         session = create_session()
         q = (session.query(User).outerjoin('orders', 'addresses').
@@ -252,11 +254,12 @@ class RelationshipsTest(_fixtures.FixtureTest):
             set(q.all()))
 
     def test_outer_join_count(self):
+        """test the join and outerjoin functions on Query"""
+
         Order, User, Address = (self.classes.Order,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test the join and outerjoin functions on Query"""
 
         session = create_session()
 

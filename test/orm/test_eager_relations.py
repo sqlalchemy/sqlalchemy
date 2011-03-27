@@ -59,12 +59,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
 
     def test_no_orphan(self):
+        """An eagerly loaded child object is not marked as an orphan"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """An eagerly loaded child object is not marked as an orphan"""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, cascade="all,delete-orphan", lazy='joined')
@@ -132,13 +133,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ], q.order_by(User.id).all())
 
     def test_orderby_related(self):
+        """A regular mapper select on a single table can 
+            order by a relationship to a second table"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A regular mapper select on a single table can 
-            order by a relationship to a second table"""
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
@@ -333,12 +335,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.assert_sql_count(testing.db, go, count)
 
     def test_disable_dynamic(self):
+        """test no joined option on a dynamic."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test no joined option on a dynamic."""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy="dynamic")
@@ -402,12 +405,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
 
     def test_cyclical(self):
+        """A circular eager relationship breaks the cycle with a lazy loader"""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """A circular eager relationship breaks the cycle with a lazy loader"""
 
         mapper(Address, addresses)
         mapper(User, users, properties = dict(
@@ -422,6 +426,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(self.static.user_address_result, sess.query(User).order_by(User.id).all())
 
     def test_double(self):
+        """Eager loading with two relationships simultaneously, 
+            from the same table, using aliases."""
+
         users, orders, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.orders,
                                 self.classes.User,
@@ -429,8 +436,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """Eager loading with two relationships simultaneously, 
-            from the same table, using aliases."""
 
         openorders = sa.alias(orders, 'openorders')
         closedorders = sa.alias(orders, 'closedorders')
@@ -482,6 +487,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_double_same_mappers(self):
+        """Eager loading with two relationships simulatneously, 
+        from the same table, using aliases."""
+
         addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -492,8 +500,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.users)
 
-        """Eager loading with two relationships simulatneously, 
-        from the same table, using aliases."""
 
         mapper(Address, addresses)
         mapper(Order, orders, properties={
@@ -558,6 +564,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_no_false_hits(self):
+        """Eager loaders don't interpret main table columns as 
+        part of their eager load."""
+
         addresses, orders, User, Address, Order, users = (self.tables.addresses,
                                 self.tables.orders,
                                 self.classes.User,
@@ -565,8 +574,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.users)
 
-        """Eager loaders don't interpret main table columns as 
-        part of their eager load."""
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy='joined'),
@@ -588,6 +595,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit(self):
+        """Limit operations combined with lazy-load relationships."""
+
         users, items, order_items, orders, Item, User, Address, Order, addresses = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -598,7 +607,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.addresses)
 
-        """Limit operations combined with lazy-load relationships."""
 
         mapper(Item, items)
         mapper(Order, orders, properties={
@@ -664,6 +672,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_limit_3(self):
+        """test that the ORDER BY is propagated from the inner 
+        select to the outer select, when using the
+        'wrapped' select statement resulting from the combination of 
+        eager loading and limit/offset clauses."""
+
         addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -674,10 +687,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.Order,
                                 self.tables.users)
 
-        """test that the ORDER BY is propagated from the inner 
-        select to the outer select, when using the
-        'wrapped' select statement resulting from the combination of 
-        eager loading and limit/offset clauses."""
 
         mapper(Item, items)
         mapper(Order, orders, properties = dict(
@@ -741,13 +750,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     def test_useget_cancels_eager(self):
+        """test that a one to many lazyload cancels the unnecessary
+        eager many-to-one join on the other side."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that a one to many lazyload cancels the unnecessary
-        eager many-to-one join on the other side."""
 
         mapper(User, users)
         mapper(Address, addresses, properties={
@@ -769,6 +779,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
 
     def test_manytoone_limit(self):
+        """test that the subquery wrapping only occurs with 
+        limit/offset and m2m or o2m joins present."""
+
         users, items, order_items, Order, Item, User, Address, orders, addresses = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -779,8 +792,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.tables.orders,
                                 self.tables.addresses)
 
-        """test that the subquery wrapping only occurs with 
-        limit/offset and m2m or o2m joins present."""
 
         mapper(User, users, properties=odict(
             orders=relationship(Order, backref='user')
@@ -924,15 +935,16 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_many_to_one_null(self):
+        """test that a many-to-one eager load which loads None does
+        not later trigger a lazy load.
+
+        """
+
         Order, Address, addresses, orders = (self.classes.Order,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.orders)
 
-        """test that a many-to-one eager load which loads None does
-        not later trigger a lazy load.
-
-        """
 
         # use a primaryjoin intended to defeat SA's usage of 
         # query.get() for a many-to-one lazyload
@@ -959,6 +971,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_one_and_many(self):
+        """tests eager load for a parent object with a child object that
+        contains a many-to-many relationship to a third object."""
+
         users, items, order_items, orders, Item, User, Order = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -967,8 +982,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.User,
                                 self.classes.Order)
 
-        """tests eager load for a parent object with a child object that
-        contains a many-to-many relationship to a third object."""
 
         mapper(User, users, properties={
             'orders':relationship(Order, lazy='joined', order_by=orders.c.id)
@@ -1028,13 +1041,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_uselist_false_warning(self):
+        """test that multiple rows received by a 
+        uselist=False raises a warning."""
+
         User, users, orders, Order = (self.classes.User,
                                 self.tables.users,
                                 self.tables.orders,
                                 self.classes.Order)
 
-        """test that multiple rows received by a 
-        uselist=False raises a warning."""
 
         mapper(User, users, properties={
             'order':relationship(Order, uselist=False)
@@ -1067,6 +1081,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(self.static.user_all_result, q.order_by(User.id).all())
 
     def test_against_select(self):
+        """test eager loading of a mapper which is against a select"""
+
         users, items, order_items, orders, Item, User, Order = (self.tables.users,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -1075,7 +1091,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                                 self.classes.User,
                                 self.classes.Order)
 
-        """test eager loading of a mapper which is against a select"""
 
         s = sa.select([orders], orders.c.isopen==1).alias('openorders')
 
@@ -1097,13 +1112,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         ], q.all())
 
     def test_aliasing(self):
+        """test that eager loading uses aliases to insulate the eager 
+        load from regular criterion against those tables."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """test that eager loading uses aliases to insulate the eager 
-        load from regular criterion against those tables."""
 
         mapper(User, users, properties = dict(
             addresses = relationship(mapper(Address, addresses), 
@@ -2062,8 +2078,6 @@ class SubqueryTest(fixtures.MappedTest):
         )
 
     def test_label_anonymizing(self):
-        tags_table, users_table = self.tables.tags_table, self.tables.users_table
-
         """Eager loading works with subqueries with labels,
 
         Even if an explicit labelname which conflicts with a label on the
@@ -2076,6 +2090,9 @@ class SubqueryTest(fixtures.MappedTest):
         that type.
 
         """
+
+        tags_table, users_table = self.tables.tags_table, self.tables.users_table
+
         class User(fixtures.ComparableEntity):
             @property
             def prop_score(self):

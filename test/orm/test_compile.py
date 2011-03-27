@@ -74,6 +74,7 @@ class CompileTest(fixtures.ORMTest):
 
     def test_conflicting_backref_one(self):
         """test that conflicting backrefs raises an exception"""
+
         metadata = MetaData(testing.db)
 
         order = Table('orders', metadata,

@@ -293,6 +293,9 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_multiple_adaption(self):
+        """test that multiple filter() adapters get chained together "
+        and work correctly within a multiple-entry join()."""
+
         people, Company, Machine, engineers, machines, Engineer = (self.tables.people,
                                 self.classes.Company,
                                 self.classes.Machine,
@@ -300,8 +303,6 @@ class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
                                 self.tables.machines,
                                 self.classes.Engineer)
 
-        """test that multiple filter() adapters get chained together "
-        and work correctly within a multiple-entry join()."""
 
         sess = create_session()
 
@@ -388,15 +389,16 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multi_tuple_form(self):
-        Item, Order, User = (self.classes.Item,
-                                self.classes.Order,
-                                self.classes.User)
-
         """test the 'tuple' form of join, now superseded by the two-element join() form.
 
         Not deprecating this style as of yet.
 
         """
+
+        Item, Order, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User)
+
 
         sess = create_session()
 
@@ -627,9 +629,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_join_nonmapped_column(self):
+        """test that the search for a 'left' doesn't trip on non-mapped cols"""
+
         Order, User = self.classes.Order, self.classes.User
 
-        """test that the search for a 'left' doesn't trip on non-mapped cols"""
         sess = create_session()
 
         # intentionally join() with a non-existent "left" side
@@ -779,11 +782,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_replace_multiple_from_clause(self):
+        """test adding joins onto multiple FROM clauses"""
+
         User, Order, Address = (self.classes.User,
                                 self.classes.Order,
                                 self.classes.Address)
 
-        """test adding joins onto multiple FROM clauses"""
 
         sess = create_session()
 
@@ -1158,12 +1162,13 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert [User(id=7, name='jack')] == result
 
     def test_aliased(self):
+        """test automatic generation of aliased joins."""
+
         Item, Order, User, Address = (self.classes.Item,
                                 self.classes.Order,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test automatic generation of aliased joins."""
 
         sess = create_session()
 
@@ -1248,11 +1253,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_select_from(self):
+        """Test that the left edge of the join can be set reliably with select_from()."""
+
         Item, Order, User = (self.classes.Item,
                                 self.classes.Order,
                                 self.classes.User)
 
-        """Test that the left edge of the join can be set reliably with select_from()."""
 
         sess = create_session()
         self.assert_compile(
@@ -1276,11 +1282,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_from_self_resets_joinpaths(self):
-        Item, Keyword = self.classes.Item, self.classes.Keyword
-
         """test a join from from_self() doesn't confuse joins inside the subquery
         with the outside.
         """
+
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
         sess = create_session()
 
         self.assert_compile(
@@ -1496,12 +1503,13 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert node.data == 'n122'
 
     def test_string_or_prop_aliased(self):
-        Node = self.classes.Node
-
         """test that join('foo') behaves the same as join(Cls.foo) in a self
         referential scenario.
 
         """
+
+        Node = self.classes.Node
+
 
         sess = create_session()
         nalias = aliased(Node, sess.query(Node).filter_by(data='n1').subquery())
@@ -1546,11 +1554,12 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             )
 
     def test_from_self_inside_excludes_outside(self):
-        Node = self.classes.Node
-
         """test the propagation of aliased() from inside to outside
         on a from_self()..
         """
+
+        Node = self.classes.Node
+
         sess = create_session()
 
         n1 = aliased(Node)

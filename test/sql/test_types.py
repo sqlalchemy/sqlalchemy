@@ -1146,6 +1146,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         for default compilation.
 
         """
+
         for type_, expected in (
             (String(), "VARCHAR"),
             (Integer(), "INTEGER"),

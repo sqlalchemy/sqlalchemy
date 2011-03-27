@@ -50,6 +50,7 @@ class TransactionTest(fixtures.TestBase):
 
     def test_rollback(self):
         """test a basic rollback"""
+
         connection = testing.db.connect()
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name='user1')

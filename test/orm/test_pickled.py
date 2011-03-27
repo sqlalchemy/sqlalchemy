@@ -440,12 +440,13 @@ class CustomSetupTeardownTest(fixtures.MappedTest):
               test_needs_fk=True
         )
     def test_rebuild_state(self):
-        users = self.tables.users
-
         """not much of a 'test', but illustrate how to 
         remove instance-level state before pickling.
 
         """
+
+        users = self.tables.users
+
         mapper(User, users)
 
         u1 = User()

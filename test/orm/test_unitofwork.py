@@ -524,17 +524,18 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
     @testing.emits_warning(r".*'passive_deletes' is normally configured on one-to-many")
     def test_backwards_pd(self):
-        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
-                                self.classes.MyClass,
-                                self.classes.MyOtherClass,
-                                self.tables.mytable)
-
         """Test that passive_deletes=True disables a delete from an m2o.
 
         This is not the usual usage and it now raises a warning, but test
         that it works nonetheless.
 
         """
+
+        myothertable, MyClass, MyOtherClass, mytable = (self.tables.myothertable,
+                                self.classes.MyClass,
+                                self.classes.MyOtherClass,
+                                self.tables.mytable)
+
         mapper(MyOtherClass, myothertable, properties={
             'myclass':relationship(MyClass, cascade="all, delete", passive_deletes=True)
         })
@@ -878,13 +879,14 @@ class DefaultTest(fixtures.MappedTest):
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
     def test_used_in_relationship(self):
+        """A server-side default can be used as the target of a foreign key"""
+
         Hoho, hohoval, default_t, secondary_table, Secondary = (self.classes.Hoho,
                                 self.other.hohoval,
                                 self.tables.default_t,
                                 self.tables.secondary_table,
                                 self.classes.Secondary)
 
-        """A server-side default can be used as the target of a foreign key"""
 
         mapper(Hoho, default_t, properties={
             'secondaries':relationship(Secondary, order_by=secondary_table.c.id)})
@@ -991,12 +993,13 @@ class OneToManyTest(_fixtures.FixtureTest):
     run_inserts = None
 
     def test_one_to_many_1(self):
+        """Basic save of one to many."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """Basic save of one to many."""
 
         m = mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='select')
@@ -1035,12 +1038,13 @@ class OneToManyTest(_fixtures.FixtureTest):
         self.assert_(u.id == userid and a2.id == addressid)
 
     def test_one_to_many_2(self):
+        """Modifying the child items of an object."""
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """Modifying the child items of an object."""
 
         m = mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='select')))
@@ -1082,11 +1086,6 @@ class OneToManyTest(_fixtures.FixtureTest):
              {'user_id': u1.id, 'addresses_id': a3.id})])
 
     def test_child_move(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
         """Moving a child from one parent to another, with a delete.
 
         Tests that deleting the first parent properly updates the child with
@@ -1094,6 +1093,12 @@ class OneToManyTest(_fixtures.FixtureTest):
         module.
 
         """
+
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         m = mapper(User, users, properties=dict(
             addresses = relationship(mapper(Address, addresses), lazy='select')))
 
@@ -1308,17 +1313,18 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(u.syn_name, 'User:some name:User')
 
     def test_lazyattr_commit(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
         """Lazily loaded relationships.
 
         When a lazy-loaded list is unloaded, and a commit occurs, that the
         'passive' call on that list does not blow away its value
 
         """
+
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties = {
             'addresses': relationship(mapper(Address, addresses))})
 
@@ -1339,6 +1345,8 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(len(u.addresses), 4)
 
     def test_inherits(self):
+        """a user object that also has the users mailing address."""
+
         users, addresses, User = (self.tables.users,
                                 self.tables.addresses,
                                 self.classes.User)
@@ -1346,7 +1354,6 @@ class SaveTest(_fixtures.FixtureTest):
         m1 = mapper(User, users)
 
         class AddressUser(User):
-            """a user object that also has the users mailing address."""
             pass
 
         # define a mapper for AddressUser that inherits the User.mapper, and
@@ -1365,9 +1372,10 @@ class SaveTest(_fixtures.FixtureTest):
         eq_(rt.id, rt.id)
 
     def test_deferred(self):
+        """Deferred column operations"""
+
         orders, Order = self.tables.orders, self.classes.Order
 
-        """Deferred column operations"""
 
         mapper(Order, orders, properties={
             'description': sa.orm.deferred(orders.c.description)})
@@ -1425,15 +1433,16 @@ class SaveTest(_fixtures.FixtureTest):
         self.sql_count_(0, session.flush)
 
     def test_multi_table_selectable(self):
-        addresses, users, User = (self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
         """Mapped selectables that span tables.
 
         Also tests redefinition of the keynames for the column properties.
 
         """
+
+        addresses, users, User = (self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
         usersaddresses = sa.join(users, addresses,
                                  users.c.id == addresses.c.user_id)
 
@@ -1472,12 +1481,13 @@ class SaveTest(_fixtures.FixtureTest):
         assert u.name == 'imnew'
 
     def test_history_get(self):
+        """The history lazy-fetches data when it wasn't otherwise loaded."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """The history lazy-fetches data when it wasn't otherwise loaded."""
         mapper(User, users, properties={
             'addresses':relationship(Address, cascade="all, delete-orphan")})
         mapper(Address, addresses)
@@ -1497,9 +1507,10 @@ class SaveTest(_fixtures.FixtureTest):
         assert addresses.count().scalar() == 0
 
     def test_batch_mode(self):
+        """The 'batch=False' flag on mapper()"""
+
         users, User = self.tables.users, self.classes.User
 
-        """The 'batch=False' flag on mapper()"""
 
         names = []
         class Events(object):
@@ -1842,18 +1853,19 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.flush()
 
     def test_many_to_many_remove(self):
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
-                                self.tables.items,
-                                self.tables.item_keywords,
-                                self.classes.Keyword,
-                                self.classes.Item)
-
         """Setting a collection to empty deletes many-to-many rows.
 
         Tests that setting a list-based attribute to '[]' properly affects the
         history and allows the many-to-many rows to be deleted
 
         """
+
+        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+                                self.tables.items,
+                                self.tables.item_keywords,
+                                self.classes.Keyword,
+                                self.classes.Item)
+
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords = relationship(Keyword, item_keywords, lazy='joined'),
@@ -1875,13 +1887,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
         assert item_keywords.count().scalar() == 0
 
     def test_scalar(self):
+        """sa.dependency won't delete an m2m relationship referencing None."""
+
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """sa.dependency won't delete an m2m relationship referencing None."""
 
         mapper(Keyword, keywords)
 
@@ -1896,13 +1909,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.flush()
 
     def test_many_to_many_update(self):
+        """Assorted history operations on a many to many"""
+
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """Assorted history operations on a many to many"""
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(
             keywords=relationship(Keyword,
@@ -1931,13 +1945,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
         assert item.keywords == [k1, k2]
 
     def test_association(self):
+        """Basic test of an association object"""
+
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """Basic test of an association object"""
 
         class IKAssociation(fixtures.ComparableEntity):
             pass
@@ -2050,13 +2065,14 @@ class SaveTest3(fixtures.MappedTest):
             pass
 
     def test_manytomany_xtracol_delete(self):
+        """A many-to-many on a table that has an extra column can properly delete rows from the table without referencing the extra column"""
+
         keywords, items, assoc, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.assoc,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """A many-to-many on a table that has an extra column can properly delete rows from the table without referencing the extra column"""
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties=dict(

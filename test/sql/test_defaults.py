@@ -307,6 +307,7 @@ class DefaultTest(fixtures.TestBase):
         """Using a DefaultGenerator, Sequence, DefaultClause
         in the columns, where clause of a select, or in the values 
         clause of insert, update, raises an informative error"""
+
         for const in (
             sa.Sequence('y'),
             sa.ColumnDefault('y'),
@@ -604,6 +605,7 @@ class SequenceExecTest(fixtures.TestBase):
 
     def _assert_seq_result(self, ret):
         """asserts return of next_value is an int"""
+
         assert isinstance(ret, (int, long))
         assert ret > 0
 
@@ -989,6 +991,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         like this.   Testing that all backends do the same thing here.
 
         """
+
         metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', String(10), server_default='key_one', primary_key=True),
@@ -1007,6 +1010,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_string_default_on_insert_with_returning(self):
         """With implicit_returning, we get a string PK default back no problem."""
+
         metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', String(10), server_default='key_one', primary_key=True),

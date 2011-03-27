@@ -47,9 +47,10 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(sess.query(User).first(), User(id=7, name='fred'))
 
     def test_transient_to_pending_no_pk(self):
+        """test that a transient object with no PK attribute doesn't trigger a needless load."""
+
         User, users = self.classes.User, self.tables.users
 
-        """test that a transient object with no PK attribute doesn't trigger a needless load."""
         mapper(User, users)
         sess = create_session()
         u = User(name='fred')
@@ -216,12 +217,13 @@ class MergeTest(_fixtures.FixtureTest):
                 Address(id=3, email_address='fred3')])))
 
     def test_unsaved_cascade(self):
+        """Merge of a transient entity with two child transient entities, with a bidirectional relationship."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Merge of a transient entity with two child transient entities, with a bidirectional relationship."""
 
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses),
@@ -343,12 +345,13 @@ class MergeTest(_fixtures.FixtureTest):
         assert u1.addresses.keys() == ['foo@bar.com']
 
     def test_attribute_cascade(self):
+        """Merge of a persistent entity with two child persistent entities."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Merge of a persistent entity with two child persistent entities."""
 
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), backref='user')
@@ -443,14 +446,15 @@ class MergeTest(_fixtures.FixtureTest):
         eq_(load.called, 21)
 
     def test_no_relationship_cascade(self):
+        """test that merge doesn't interfere with a relationship()
+           target that specifically doesn't include 'merge' cascade.
+        """
+
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users,
                                 self.classes.User)
 
-        """test that merge doesn't interfere with a relationship()
-           target that specifically doesn't include 'merge' cascade.
-        """
         mapper(Address, addresses, properties={
             'user':relationship(User, cascade="save-update")
         })
@@ -705,12 +709,13 @@ class MergeTest(_fixtures.FixtureTest):
         go()
 
     def test_no_load_with_backrefs(self):
+        """load=False populates relationships in both directions without requiring a load"""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """load=False populates relationships in both directions without requiring a load"""
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses), backref='user')
         })
@@ -740,11 +745,6 @@ class MergeTest(_fixtures.FixtureTest):
 
 
     def test_dontload_with_eager(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
         """
 
         This test illustrates that with load=False, we can't just copy the
@@ -757,6 +757,12 @@ class MergeTest(_fixtures.FixtureTest):
         'dirty'.
 
         """
+
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses))
         })
@@ -781,13 +787,14 @@ class MergeTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_no_load_disallows_dirty(self):
-        users, User = self.tables.users, self.classes.User
-
         """load=False doesnt support 'dirty' objects right now
 
         (see test_no_load_with_eager()). Therefore lets assert it.
 
         """
+
+        users, User = self.tables.users, self.classes.User
+
         mapper(User, users)
         sess = create_session()
         u = User()
@@ -846,11 +853,6 @@ class MergeTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_no_load_preserves_parents(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
         """Merge with load=False does not trigger a 'delete-orphan' operation.
 
         merge with load=False sets attributes without using events.  this means
@@ -862,6 +864,12 @@ class MergeTest(_fixtures.FixtureTest):
         mapper._is_orphan().)
 
         """
+
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(mapper(Address, addresses),
                                  backref='user', cascade="all, delete-orphan")})
@@ -947,12 +955,13 @@ class MergeTest(_fixtures.FixtureTest):
         sess.merge(u)
 
     def test_cascade_doesnt_blowaway_manytoone(self):
+        """a merge test that was fixed by [ticket:1202]"""
+
         User, Address, addresses, users = (self.classes.User,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users)
 
-        """a merge test that was fixed by [ticket:1202]"""
 
         s = create_session(autoflush=True, autocommit=False)
         mapper(User, users, properties={
@@ -1014,9 +1023,10 @@ class MergeTest(_fixtures.FixtureTest):
         sess.commit()
 
     def test_dont_expire_pending(self):
+        """test that pending instances aren't expired during a merge."""
+
         users, User = self.tables.users, self.classes.User
 
-        """test that pending instances aren't expired during a merge."""
 
         mapper(User, users)
         u = User(id=7)
@@ -1028,12 +1038,13 @@ class MergeTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 0)
 
     def test_option_state(self):
-        users, User = self.tables.users, self.classes.User
-
         """test that the merged takes on the MapperOption characteristics
         of that which is merged.
 
         """
+
+        users, User = self.tables.users, self.classes.User
+
         class Option(MapperOption):
             propagate_to_loaders = True
 

@@ -284,6 +284,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         essentially tests the ANONYMOUS_LABEL regex.
 
         """
+
         s1 = table1.select()
         s2 = s1.alias()
         s3 = select([s2], use_labels=True)

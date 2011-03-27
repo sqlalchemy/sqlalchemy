@@ -148,9 +148,10 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_no_joinedload(self):
+        """test that joinedloads are pushed outwards and not rendered in subqueries."""
+
         User = self.classes.User
 
-        """test that joinedloads are pushed outwards and not rendered in subqueries."""
 
         s = create_session()
 
@@ -166,9 +167,10 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_aliases(self):
+        """test that aliased objects are accessible externally to a from_self() call."""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that aliased objects are accessible externally to a from_self() call."""
 
         s = create_session()
 
@@ -618,11 +620,12 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_chaining(self):
+        """test that contains_eager() 'chains' by default."""
+
         Dingaling, User, Address = (self.classes.Dingaling,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test that contains_eager() 'chains' by default."""
 
         sess = create_session()
         q = sess.query(User).\
@@ -651,12 +654,13 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager_chaining_aliased_endpoint(self):
+        """test that contains_eager() 'chains' by default and supports
+        an alias at the end."""
+
         Dingaling, User, Address = (self.classes.Dingaling,
                                 self.classes.User,
                                 self.classes.Address)
 
-        """test that contains_eager() 'chains' by default and supports
-        an alias at the end."""
 
         sess = create_session()
         da = aliased(Dingaling, name="foob")
@@ -847,10 +851,11 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                       "zxjdbc parses the SQL itself before passing on "
                       "to PG, doesn't parse this")
     def test_values_with_boolean_selects(self):
-        User = self.classes.User
-
         """Tests a values clause that works with select boolean
         evaluations"""
+
+        User = self.classes.User
+
         sess = create_session()
 
         q = sess.query(User)
@@ -864,14 +869,15 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_correlated_subquery(self):
-        Address, users, User = (self.classes.Address,
-                                self.tables.users,
-                                self.classes.User)
-
         """test that a subquery constructed from ORM attributes doesn't leak out 
         those entities to the outermost query.
 
         """
+
+        Address, users, User = (self.classes.Address,
+                                self.tables.users,
+                                self.classes.User)
+
         sess = create_session()
 
         subq = select([func.count()]).\
@@ -1214,9 +1220,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         assert_raises(sa_exc.InvalidRequestError, sess.query(User).add_column, object())
 
     def test_add_multi_columns(self):
+        """test that add_column accepts a FROM clause."""
+
         users, User = self.tables.users, self.classes.User
 
-        """test that add_column accepts a FROM clause."""
 
         sess = create_session()
 
@@ -1226,12 +1233,13 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multi_columns_2(self):
+        """test aliased/nonalised joins with the usage of add_column()"""
+
         User, Address, addresses, users = (self.classes.User,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.tables.users)
 
-        """test aliased/nonalised joins with the usage of add_column()"""
         sess = create_session()
 
         (user7, user8, user9, user10) = sess.query(User).all()
@@ -1350,9 +1358,10 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_join_mapper_order_by(self):
+        """test that mapper-level order_by is adapted to a selectable."""
+
         User, users = self.classes.User, self.tables.users
 
-        """test that mapper-level order_by is adapted to a selectable."""
 
         mapper(User, users, order_by=users.c.id)
 
@@ -1366,9 +1375,10 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_differentiate_self_external(self):
+        """test some different combinations of joining a table to a subquery of itself."""
+
         users, User = self.tables.users, self.classes.User
 
-        """test some different combinations of joining a table to a subquery of itself."""
 
         mapper(User, users)
 
@@ -1621,6 +1631,8 @@ class CustomJoinTest(QueryTest):
     run_setup_mappers = None
 
     def test_double_same_mappers(self):
+        """test aliasing of joins with a custom join condition"""
+
         addresses, items, order_items, orders, Item, User, Address, Order, users = (self.tables.addresses,
                                 self.tables.items,
                                 self.tables.order_items,
@@ -1631,7 +1643,6 @@ class CustomJoinTest(QueryTest):
                                 self.classes.Order,
                                 self.tables.users)
 
-        """test aliasing of joins with a custom join condition"""
         mapper(Address, addresses)
         mapper(Order, orders, properties={
             'items':relationship(Item, secondary=order_items, lazy='select', order_by=items.c.id),
@@ -1665,12 +1676,13 @@ class ExternalColumnsTest(QueryTest):
         clear_mappers()
 
     def test_external_columns(self):
+        """test querying mappings that reference external columns or selectables."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test querying mappings that reference external columns or selectables."""
 
         mapper(User, users, properties={
             'concat': column_property((users.c.id * 2)),

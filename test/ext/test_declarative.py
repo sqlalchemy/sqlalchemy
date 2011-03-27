@@ -1518,6 +1518,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         See [ticket:1892].
 
         """
+
         class Booking(Base):
             __tablename__ = 'booking'
             id = Column(Integer, primary_key=True)
@@ -1583,6 +1584,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         See [ticket:1892].
 
         """
+
         class Booking(Base):
             __tablename__ = 'booking'
             id = Column(Integer, primary_key=True)
@@ -2609,6 +2611,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         of the superclass checks that the superclass property is a column.
 
         """
+
         class General(Base):
             __tablename__ = 'test'
             id = Column(Integer, primary_key=True)
@@ -2628,6 +2631,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         of the superclass checks that the subclass property is a column.
 
         """
+
         def go():
             class General(Base):
                 __tablename__ = 'test'

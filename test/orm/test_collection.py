@@ -1645,9 +1645,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
         assert isinstance(f.bars, MyList)
 
     def test_lazyload(self):
+        """test that a 'set' can be used as a collection and can lazyload."""
+
         someothertable, sometable = self.tables.someothertable, self.tables.sometable
 
-        """test that a 'set' can be used as a collection and can lazyload."""
         class Foo(object):
             pass
         class Bar(object):
@@ -1668,9 +1669,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f.bars.clear()
 
     def test_dict(self):
+        """test that a 'dict' can be used as a collection and can lazyload."""
+
         someothertable, sometable = self.tables.someothertable, self.tables.sometable
 
-        """test that a 'dict' can be used as a collection and can lazyload."""
 
         class Foo(object):
             pass
@@ -1701,9 +1703,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f.bars.clear()
 
     def test_dict_wrapper(self):
+        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
+
         someothertable, sometable = self.tables.someothertable, self.tables.sometable
 
-        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
 
         class Foo(object):
             pass

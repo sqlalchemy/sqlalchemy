@@ -438,12 +438,13 @@ class RudimentaryFlushTest(UOWTest):
         )
 
     def test_natural_ordering(self):
+        """test that unconnected items take relationship() into account regardless."""
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """test that unconnected items take relationship() into account regardless."""
 
         mapper(User, users)
         mapper(Address, addresses, properties={
@@ -485,9 +486,10 @@ class RudimentaryFlushTest(UOWTest):
         )
 
     def test_natural_selfref(self):
+        """test that unconnected items take relationship() into account regardless."""
+
         Node, nodes = self.classes.Node, self.tables.nodes
 
-        """test that unconnected items take relationship() into account regardless."""
 
         mapper(Node, nodes, properties={
             'children':relationship(Node)
@@ -1223,12 +1225,13 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         )
 
     def test_batch_interaction(self):
-        t = self.tables.t
-
         """test batching groups same-structured, primary 
         key present statements together.
 
         """
+
+        t = self.tables.t
+
         class T(fixtures.ComparableEntity):
             pass
         mapper(T, t)

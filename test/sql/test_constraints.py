@@ -121,6 +121,7 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
     def test_index_create_camelcase(self):
         """test that mixed-case index identifiers are legal"""
+
         employees = Table('companyEmployees', metadata,
                           Column('id', Integer, primary_key=True),
                           Column('firstName', String(30)),

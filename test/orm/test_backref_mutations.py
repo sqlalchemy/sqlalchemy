@@ -152,9 +152,10 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         assert a1 in u2.addresses
 
     def test_plain_load_passive(self):
+        """test that many-to-one set doesn't load the old value."""
+
         User, Address = self.classes.User, self.classes.Address
 
-        """test that many-to-one set doesn't load the old value."""
 
         sess = sessionmaker()()
         u1 = User(name='jack')

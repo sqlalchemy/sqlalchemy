@@ -413,15 +413,16 @@ class TransientExceptionTesst(_fixtures.FixtureTest):
     run_inserts = None
 
     def test_transient_exception(self):
+        """An object that goes from a pk value to transient/pending
+        doesn't count as a "pk" switch.
+
+        """
+
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """An object that goes from a pk value to transient/pending
-        doesn't count as a "pk" switch.
-
-        """
         mapper(User, users)
         mapper(Address, addresses, properties={'user':relationship(User)})
 
@@ -769,17 +770,18 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self._test_o2m_change(False)
 
     def _test_o2m_change(self, passive_updates):
-        User, Address, users, addresses = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.users,
-                                self.tables.addresses)
-
         """Change the PK of a related entity to another.
 
         "on update cascade" is not involved here, so the mapper has 
         to do the UPDATE itself.
 
         """
+
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         mapper(User, users, properties={
             'addresses':relationship(Address,
                             passive_updates=passive_updates)})
@@ -803,15 +805,16 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self._test_o2m_move(False)
 
     def _test_o2m_move(self, passive_updates):
+        """Move the related entity to a different collection,
+        changing its PK.
+
+        """
+
         User, Address, users, addresses = (self.classes.User,
                                 self.classes.Address,
                                 self.tables.users,
                                 self.tables.addresses)
 
-        """Move the related entity to a different collection,
-        changing its PK.
-
-        """
         mapper(User, users, properties={
             'addresses':relationship(Address,
                             passive_updates=passive_updates)})
@@ -935,11 +938,6 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
 
     def _test_onetomany(self, passive_updates):
-        User, Address, users, addresses = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.users,
-                                self.tables.addresses)
-
         """Change the PK of a related entity via foreign key cascade.
 
         For databases that require "on update cascade", the mapper 
@@ -947,6 +945,12 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         it does the update.
 
         """
+
+        User, Address, users, addresses = (self.classes.User,
+                                self.classes.Address,
+                                self.tables.users,
+                                self.tables.addresses)
+
         mapper(User, users, properties={
             'addresses':relationship(Address,
                                 passive_updates=passive_updates)})

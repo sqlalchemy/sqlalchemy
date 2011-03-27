@@ -28,9 +28,10 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
 
     def test_instance_event_listen(self):
+        """test listen targets for instance events"""
+
         users, addresses = self.tables.users, self.tables.addresses
 
-        """test listen targets for instance events"""
 
         canary = []
         class A(object):
@@ -189,16 +190,17 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'after_delete'])
 
     def test_before_after_only_collection(self):
+        """before_update is called on parent for collection modifications,
+        after_update is called even if no columns were updated.
+
+        """
+
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """before_update is called on parent for collection modifications,
-        after_update is called even if no columns were updated.
-
-        """
 
         mapper(Item, items, properties={
             'keywords': relationship(Keyword, secondary=item_keywords)})
@@ -790,9 +792,10 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         return Ext, methods
 
     def test_basic(self):
+        """test that common user-defined methods get called."""
+
         User, users = self.classes.User, self.tables.users
 
-        """test that common user-defined methods get called."""
         Ext, methods = self.extension()
 
         mapper(User, users, extension=Ext())
@@ -847,16 +850,17 @@ class MapperExtensionTest(_fixtures.FixtureTest):
              'after_delete'])
 
     def test_before_after_only_collection(self):
+        """before_update is called on parent for collection modifications,
+        after_update is called even if no columns were updated.
+
+        """
+
         keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
                                 self.classes.Item)
 
-        """before_update is called on parent for collection modifications,
-        after_update is called even if no columns were updated.
-
-        """
 
         Ext1, methods1 = self.extension()
         Ext2, methods2 = self.extension()
@@ -887,11 +891,12 @@ class MapperExtensionTest(_fixtures.FixtureTest):
 
 
     def test_inheritance_with_dupes(self):
+        """Inheritance with the same extension instance on both mappers."""
+
         users, addresses, User = (self.tables.users,
                                 self.tables.addresses,
                                 self.classes.User)
 
-        """Inheritance with the same extension instance on both mappers."""
         Ext, methods = self.extension()
 
         class AdminUser(User):

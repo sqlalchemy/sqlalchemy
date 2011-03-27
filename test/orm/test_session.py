@@ -21,9 +21,10 @@ class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
 
     def test_no_close_on_flush(self):
+        """Flush() doesn't close a connection the session didn't open"""
+
         User, users = self.classes.User, self.tables.users
 
-        """Flush() doesn't close a connection the session didn't open"""
         c = testing.db.connect()
         c.execute("select * from users")
 
@@ -34,9 +35,10 @@ class SessionTest(_fixtures.FixtureTest):
         c.execute("select * from users")
 
     def test_close(self):
+        """close() doesn't close a connection the session didn't open"""
+
         User, users = self.classes.User, self.tables.users
 
-        """close() doesn't close a connection the session didn't open"""
         c = testing.db.connect()
         c.execute("select * from users")
 
@@ -320,16 +322,17 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(sess.query(User).count(), 1)
 
     def test_autoflush_expressions(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
         """test that an expression which is dependent on object state is
         evaluated after the session autoflushes.   This is the lambda
         inside of strategies.py lazy_clause.
 
         """
+
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")})
         mapper(Address, addresses)
@@ -418,9 +421,10 @@ class SessionTest(_fixtures.FixtureTest):
         assert not sess.is_active
 
     def test_textual_execute(self):
+        """test that Session.execute() converts to text()"""
+
         users = self.tables.users
 
-        """test that Session.execute() converts to text()"""
 
         sess = create_session(bind=self.metadata.bind)
         users.insert().execute(id=7, name='jack')
@@ -946,10 +950,11 @@ class SessionTest(_fixtures.FixtureTest):
         assert not s.is_modified(u)
 
     def test_weak_ref(self):
-        users, User = self.tables.users, self.classes.User
-
         """test the weak-referencing identity map, which strongly-
         references modified items."""
+
+        users, User = self.tables.users, self.classes.User
+
 
         s = create_session()
         mapper(User, users)

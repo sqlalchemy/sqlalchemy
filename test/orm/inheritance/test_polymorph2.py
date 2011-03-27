@@ -441,6 +441,7 @@ class RelationshipTest5(fixtures.MappedTest):
     def test_eager_empty(self):
         """test parent object with child relationship to an inheriting mapper, using eager loads,
         works when there are no child objects present"""
+
         class Person(object):
             def __init__(self, **kwargs):
                 for key, value in kwargs.iteritems():
@@ -550,6 +551,7 @@ class RelationshipTest7(fixtures.MappedTest):
     @testing.uses_deprecated("fold_equivalents is deprecated.")
     def test_manytoone_lazyload(self):
         """test that lazy load clause to a polymorphic child mapper generates correctly [ticket:493]"""
+
         class PersistentObject(object):
             def __init__(self, **kwargs):
                 for key, value in kwargs.iteritems():
@@ -902,6 +904,7 @@ class ManyToManyPolyTest(fixtures.MappedTest):
     def test_pjoin_compile(self):
         """test that remote_side columns in the secondary join table arent attempted to be
         matched to the target polymorphic selectable"""
+
         class BaseItem(object): pass
         class Item(BaseItem): pass
         class Collection(object): pass
