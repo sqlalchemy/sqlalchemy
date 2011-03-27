@@ -294,10 +294,15 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         quoted_bind_names = \
             getattr(self.compiled, '_quoted_bind_names', None)
         if quoted_bind_names:
-            if not self.dialect.supports_unicode_binds:
+            if not self.dialect.supports_unicode_statements:
+                # if DBAPI doesn't accept unicode statements, 
+                # keys in self.parameters would have been encoded
+                # here.  so convert names in quoted_bind_names
+                # to encoded as well.
                 quoted_bind_names = \
                                 dict(
-                                    (fromname, toname.encode(self.dialect.encoding)) 
+                                    (fromname.encode(self.dialect.encoding), 
+                                    toname.encode(self.dialect.encoding)) 
                                     for fromname, toname in 
                                     quoted_bind_names.items()
                                 )

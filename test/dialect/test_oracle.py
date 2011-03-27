@@ -1323,3 +1323,39 @@ class ExecuteTest(fixtures.TestBase):
         )
 
 
+class UnicodeSchemaTest(fixtures.TestBase):
+    __only_on__ = 'oracle'
+
+    @testing.provide_metadata
+    def test_quoted_column_non_unicode(self):
+        metadata = self.metadata
+        table=Table("atable", metadata,
+            Column("_underscorecolumn", Unicode(255), primary_key=True),
+        )
+        metadata.create_all()
+
+        table.insert().execute(
+            {'_underscorecolumn': u'’é'},
+        )
+        result = testing.db.execute(
+            table.select().where(table.c._underscorecolumn==u'’é')
+        ).scalar()
+        eq_(result, u'’é')
+
+    @testing.provide_metadata
+    def test_quoted_column_unicode(self):
+        metadata = self.metadata
+        table=Table("atable", metadata,
+            Column(u"méil", Unicode(255), primary_key=True),
+        )
+        metadata.create_all()
+
+        table.insert().execute(
+            {u'méil': u'’é'},
+        )
+        result = testing.db.execute(
+            table.select().where(table.c[u'méil']==u'’é')
+        ).scalar()
+        eq_(result, u'’é')
+
+

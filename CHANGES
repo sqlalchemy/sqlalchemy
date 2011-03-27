@@ -41,6 +41,15 @@ CHANGES
     collection of Sequence objects, list
     of schema names.  [ticket:2104]
 
+- oracle
+  - Using column names that would require quotes
+    for the column itself or for a name-generated
+    bind parameter, such as names with special
+    characters, underscores, non-ascii characters,
+    now properly translate bind parameter keys when
+    talking to cx_oracle.  [ticket:2100]  (Also
+    in 0.6.7)
+
 0.7.0b3
 =======
 - general
