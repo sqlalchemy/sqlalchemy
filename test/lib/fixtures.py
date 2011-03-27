@@ -263,17 +263,21 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         the "classes" registry.
         
         """
-        class Base(object):
+        cls_registry = cls.classes
+        class FindFixture(type):
+            def __init__(cls, classname, bases, dict_):
+                cls_registry[classname] = cls
+                return type.__init__(cls, classname, bases, dict_)
+
+        class _Base(object):
+            __metaclass__ = FindFixture
+        class Basic(BasicEntity, _Base):
             pass
-        class Basic(BasicEntity, Base):
-            pass
-        class Comparable(ComparableEntity, Base):
+        class Comparable(ComparableEntity, _Base):
             pass
         cls.Basic = Basic
         cls.Comparable = Comparable
         fn()
-        for class_ in subclasses(Base):
-            cls.classes[class_.__name__] = class_
 
     def _teardown_each_mappers(self):
         # some tests create mappers in the test bodies
@@ -308,13 +312,4 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
                 [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])
 
-
-def subclasses(cls):
-    subs, process = set(), set(cls.__subclasses__())
-    while process:
-        cls = process.pop()
-        if cls not in subs:
-            subs.add(cls)
-            process |= set(cls.__subclasses__())
-    return subs
 
