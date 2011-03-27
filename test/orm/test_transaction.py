@@ -280,6 +280,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_savepoint_rollback(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         u2 = User(name='jack')
@@ -303,6 +304,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_savepoint_delete(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
@@ -316,6 +318,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_savepoint_commit(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         u2 = User(name='jack')
@@ -406,6 +409,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_expunge_pending_on_rollback(self):
+        User = self.classes.User
         sess = self.session()
 
         sess.begin_nested()
@@ -417,6 +421,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_update_deleted_on_rollback(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
