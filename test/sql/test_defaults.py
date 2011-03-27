@@ -652,6 +652,7 @@ class SequenceExecTest(testing.TestBase):
     def test_func_embedded_whereclause(self):
         """test can use next_value() in whereclause"""
 
+        metadata = self.metadata
         t1 = Table('t', metadata,
             Column('x', Integer)
         )
@@ -669,6 +670,7 @@ class SequenceExecTest(testing.TestBase):
     def test_func_embedded_valuesbase(self):
         """test can use next_value() in values() of _ValuesBase"""
 
+        metadata = self.metadata
         t1 = Table('t', metadata,
             Column('x', Integer)
         )
@@ -686,6 +688,7 @@ class SequenceExecTest(testing.TestBase):
         """test inserted_primary_key contains [None] when 
         pk_col=next_value(), implicit returning is not used."""
 
+        metadata = self.metadata
         e = engines.testing_engine(options={'implicit_returning':False})
         s = Sequence("my_sequence")
         metadata.bind = e
@@ -704,6 +707,7 @@ class SequenceExecTest(testing.TestBase):
         """test inserted_primary_key contains the result when 
         pk_col=next_value(), when implicit returning is used."""
 
+        metadata = self.metadata
         e = engines.testing_engine(options={'implicit_returning':True})
         s = Sequence("my_sequence")
         metadata.bind = e
@@ -800,6 +804,7 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_table_overrides_metadata_create(self):
+        metadata = self.metadata
         s1 = Sequence("s1", metadata=metadata)
         s2 = Sequence("s2", metadata=metadata)
         s3 = Sequence("s3")
@@ -915,6 +920,7 @@ class SpecialTypePKTest(testing.TestBase):
 
     @testing.provide_metadata
     def _run_test(self, *arg, **kw):
+        metadata = self.metadata
         implicit_returning = kw.pop('implicit_returning', True)
         kw['primary_key'] = True
         if kw.get('autoincrement', True):
@@ -983,6 +989,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
         like this.   Testing that all backends do the same thing here.
 
         """
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', String(10), server_default='key_one', primary_key=True),
                 Column('data', String(10)),
@@ -1000,6 +1007,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
     @testing.provide_metadata
     def test_string_default_on_insert_with_returning(self):
         """With implicit_returning, we get a string PK default back no problem."""
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', String(10), server_default='key_one', primary_key=True),
                 Column('data', String(10))
@@ -1014,6 +1022,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
 
     @testing.provide_metadata
     def test_int_default_none_on_insert(self):
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', Integer, 
                         server_default='5', primary_key=True),
@@ -1036,6 +1045,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
             )
     @testing.provide_metadata
     def test_autoincrement_reflected_from_server_default(self):
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', Integer, 
                         server_default='5', primary_key=True),
@@ -1051,6 +1061,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
 
     @testing.provide_metadata
     def test_int_default_none_on_insert_reflected(self):
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', Integer, 
                         server_default='5', primary_key=True),
@@ -1078,6 +1089,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
     @testing.requires.returning
     @testing.provide_metadata
     def test_int_default_on_insert_with_returning(self):
+        metadata = self.metadata
         t = Table('x', metadata, 
                 Column('y', Integer, 
                         server_default='5', primary_key=True),

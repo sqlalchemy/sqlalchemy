@@ -384,6 +384,7 @@ class ResultProxyTest(TestBase):
 
     @testing.provide_metadata
     def test_no_rowcount_on_selects_inserts(self):
+        metadata = self.metadata
         """assert that rowcount is only called on deletes and updates.
 
         This because cursor.rowcount can be expensive on some dialects

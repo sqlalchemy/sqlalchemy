@@ -485,6 +485,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_identity(self):
+        metadata = self.metadata
         table = Table(
             'identity_test', metadata,
             Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
@@ -501,6 +502,7 @@ class ReflectionTest(TestBase, ComparesTables):
     @testing.emits_warning("Did not recognize")
     @testing.provide_metadata
     def test_skip_types(self):
+        metadata = self.metadata
         testing.db.execute("""
             create table foo (id integer primary key, data xml)
         """)
@@ -510,6 +512,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_indexes_cols(self):
+        metadata = self.metadata
 
         t1 = Table('t', metadata, Column('x', Integer), Column('y', Integer))
         Index('foo', t1.c.x, t1.c.y)
@@ -525,6 +528,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_indexes_cols_with_commas(self):
+        metadata = self.metadata
 
         t1 = Table('t', metadata, 
                         Column('x, col', Integer, key='x'), 
@@ -543,6 +547,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_indexes_cols_with_spaces(self):
+        metadata = self.metadata
 
         t1 = Table('t', metadata, Column('x col', Integer, key='x'), 
                                     Column('y', Integer))

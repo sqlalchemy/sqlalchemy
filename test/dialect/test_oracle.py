@@ -702,6 +702,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_rowid(self):
+        metadata = self.metadata
         t = Table('t1', metadata,
             Column('x', Integer)
         )
@@ -804,6 +805,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):
+        metadata = self.metadata
         """Numeric scenarios where Oracle type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
@@ -1076,6 +1078,7 @@ class EuroNumericTest(TestBase):
 
     @testing.provide_metadata
     def test_output_type_handler(self):
+        metadata = self.metadata
         for stmt, exp, kw in [
             ("SELECT 0.1 FROM DUAL", decimal.Decimal("0.1"), {}),
             ("SELECT 15 FROM DUAL", 15, {}),
@@ -1285,6 +1288,7 @@ class ExecuteTest(TestBase):
 
     @testing.provide_metadata
     def test_limit_offset_for_update(self):
+        metadata = self.metadata
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
 

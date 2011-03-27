@@ -71,18 +71,18 @@ class TablesTest(testing.TestBase):
         if cls.run_define_tables == 'once':
             cls.define_tables(cls.metadata)
             if cls.run_create_tables == 'once':
-                cls.metadata.create_all()
+                cls.metadata.create_all(cls.bind)
             cls.tables.update(cls.metadata.tables)
 
     def _setup_each_tables(self):
         if self.run_define_tables == 'each':
             self.tables.clear()
             if self.run_create_tables == 'each':
-                drop_all_tables(self.metadata)
+                drop_all_tables(self.metadata, self.bind)
             self.metadata.clear()
             self.define_tables(self.metadata)
             if self.run_create_tables == 'each':
-                self.metadata.create_all()
+                self.metadata.create_all(self.bind)
             self.tables.update(self.metadata.tables)
 
     def _setup_each_inserts(self):
@@ -120,7 +120,7 @@ class TablesTest(testing.TestBase):
     @classmethod
     def _teardown_once_metadata_bind(cls):
         if cls.run_create_tables:
-            cls.metadata.drop_all()
+            drop_all_tables(cls.metadata, cls.bind)
 
         if cls.run_dispose_bind == 'once':
             cls.dispose_bind(cls.bind)
@@ -174,7 +174,7 @@ class TablesTest(testing.TestBase):
         for table in self.metadata.sorted_tables:
             if table not in headers:
                 continue
-            table.bind.execute(
+            self.bind.execute(
                 table.insert(),
                 [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])

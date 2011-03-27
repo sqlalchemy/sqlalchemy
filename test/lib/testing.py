@@ -536,30 +536,20 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
 def fail(msg):
     assert False, msg
 
-def fixture(table, columns, *rows):
-    """Insert data into table after creation."""
-    def onload(event, schema_item, connection):
-        insert = table.insert()
-        column_names = [col.key for col in columns]
-        connection.execute(insert, [dict(zip(column_names, column_values))
-                                    for column_values in rows])
-    table.append_ddl_listener('after-create', onload)
 
 @decorator
 def provide_metadata(fn, *args, **kw):
-    """Provides a bound MetaData object for a single test, 
-    drops it afterwards."""
+    """Provide bound MetaData for a single test, dropping afterwards."""
+
     metadata = schema.MetaData(db)
-    context = dict(fn.func_globals)
-    context['metadata'] = metadata
-    # jython bug #1034
-    rebound = types.FunctionType(
-        fn.func_code, context, fn.func_name, fn.func_defaults,
-        fn.func_closure)
+    self = args[0]
+    prev_meta = getattr(self, 'metadata', None)
+    self.metadata = metadata
     try:
-        return rebound(*args, **kw)
+        return fn(*args, **kw)
     finally:
         metadata.drop_all()
+        self.metadata = prev_meta
 
 class adict(dict):
     """Dict keys available as attributes.  Shadows."""

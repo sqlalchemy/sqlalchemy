@@ -130,6 +130,7 @@ class MetaDataTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_dupe_tables(self):
+        metadata = self.metadata
         t1 = Table('table1', metadata, 
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))

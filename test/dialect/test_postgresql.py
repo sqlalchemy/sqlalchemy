@@ -32,6 +32,7 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
     @testing.only_on('postgresql', 'foo')
     @testing.provide_metadata
     def test_reverse_eng_name(self):
+        metadata = self.metadata
         engine = engines.testing_engine(options=dict(implicit_returning=False))
         for tname, cname in [
             ('tb1' * 30, 'abc'),
@@ -284,6 +285,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
 
     @testing.provide_metadata
     def test_arrays(self):
+        metadata = self.metadata
         t1 = Table('t', metadata, 
             Column('x', postgresql.ARRAY(Float)),
             Column('y', postgresql.ARRAY(postgresql.REAL)),
@@ -525,6 +527,7 @@ class NumericInterpretationTest(TestBase):
 
     @testing.provide_metadata
     def test_numeric_default(self):
+        metadata = self.metadata
         # pg8000 appears to fail when the value is 0, 
         # returns an int instead of decimal.
         t =Table('t', metadata, 
@@ -1207,6 +1210,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_date_reflection(self):
+        metadata = self.metadata
         t1 = Table('pgdate', metadata, Column('date1',
                    DateTime(timezone=True)), Column('date2',
                    DateTime(timezone=False)))
@@ -1309,6 +1313,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
+        metadata = self.metadata
         t = Table('t', metadata, Column('id', Integer, primary_key=True))
         metadata.create_all()
         m2 = MetaData(testing.db)
@@ -1454,6 +1459,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_index_reflection(self):
+        metadata = self.metadata
         """ Reflecting partial & expression-based indexes should warn
         """
 
@@ -1621,6 +1627,7 @@ class TimePrecisionTest(TestBase, AssertsCompiledSQL):
     @testing.only_on('postgresql', 'DB specific feature')
     @testing.provide_metadata
     def test_reflection(self):
+        metadata = self.metadata
         t1 = Table(
             't1',
             metadata,
@@ -1778,6 +1785,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
     @testing.provide_metadata
     def test_tuple_flag(self):
+        metadata = self.metadata
         assert_raises_message(
             exc.ArgumentError, 
             "mutable must be set to False if as_tuple is True.",
@@ -2031,6 +2039,7 @@ class SpecialTypesTest(TestBase, ComparesTables, AssertsCompiledSQL):
 
     @testing.provide_metadata
     def test_bit_reflection(self):
+        metadata = self.metadata
         t1 = Table('t1', metadata,
         Column('bit1', postgresql.BIT()),
         Column('bit5', postgresql.BIT(5)),

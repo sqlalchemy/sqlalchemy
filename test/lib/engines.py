@@ -42,9 +42,11 @@ class ConnectionKiller(object):
 
 testing_reaper = ConnectionKiller()
 
-def drop_all_tables(metadata):
+def drop_all_tables(metadata, bind):
     testing_reaper.close_all()
-    metadata.drop_all()
+    if hasattr(bind, 'close'):
+        bind.close()
+    metadata.drop_all(bind)
 
 @decorator
 def assert_conns_closed(fn, *args, **kw):

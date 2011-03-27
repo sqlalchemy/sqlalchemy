@@ -599,6 +599,7 @@ class MapperTest(_fixtures.FixtureTest):
             )
     @testing.provide_metadata
     def test_prop_filters_defaults(self):
+        metadata = self.metadata
         t = Table('t', metadata,
                Column('id', Integer(), primary_key=True, test_needs_autoincrement=True),
                Column('x', Integer(), nullable=False, server_default='0')

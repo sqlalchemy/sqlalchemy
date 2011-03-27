@@ -324,6 +324,7 @@ class TypesTest(TestBase):
 
     @testing.provide_metadata
     def test_infinite_float(self):
+        metadata = self.metadata
         t = Table('t', metadata, 
             Column('data', Float)
         )
@@ -339,6 +340,7 @@ class MiscTest(TestBase):
 
     @testing.provide_metadata
     def test_strlen(self):
+        metadata = self.metadata
 
         # On FB the length() function is implemented by an external UDF,
         # strlen().  Various SA tests fail because they pass a parameter
@@ -370,6 +372,7 @@ class MiscTest(TestBase):
 
     @testing.provide_metadata
     def test_rowcount_flag(self):
+        metadata = self.metadata
         engine = engines.testing_engine(options={'enable_rowcount'
                 : True})
         assert engine.dialect.supports_sane_rowcount

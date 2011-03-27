@@ -14,6 +14,7 @@ from test.lib import *
 from test.lib.util import picklers
 from sqlalchemy.util.compat import decimal
 from test.lib.util import round_decimal
+from test.engine import _base
 
 class AdaptTest(TestBase):
     def _all_dialect_modules(self):
@@ -182,12 +183,11 @@ class PickleMetadataTest(TestBase):
                 mt = loads(dumps(meta))
 
 
-class UserDefinedTest(TestBase, AssertsCompiledSQL):
+class UserDefinedTest(_base.TablesTest, AssertsCompiledSQL):
     """tests user-defined types."""
 
     def test_processing(self):
-
-        global users
+        users = self.tables.users
         users.insert().execute(
             user_id=2, goofy='jack', goofy2='jack', goofy4=u'jack',
             goofy7=u'jack', goofy8=12, goofy9=12)
@@ -270,6 +270,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
     def test_type_coerce(self):
         """test ad-hoc usage of custom types with type_coerce()."""
 
+        metadata = self.metadata
         class MyType(types.TypeDecorator):
             impl = String
 
@@ -323,9 +324,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         )
 
     @classmethod
-    def setup_class(cls):
-        global users, metadata
-
+    def define_tables(cls, metadata):
         class MyType(types.UserDefinedType):
             def get_col_spec(self):
                 return "VARCHAR(100)"
@@ -409,8 +408,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             def copy(self):
                 return MyUnicodeType(self.impl.length)
 
-        metadata = MetaData(testing.db)
-        users = Table('type_users', metadata,
+        Table('users', metadata,
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -424,11 +422,6 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
             Column('goofy9', MyNewIntSubClass, nullable = False),
         )
 
-        metadata.create_all()
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
 class UnicodeTest(TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
@@ -1465,6 +1458,7 @@ class NumericRawSQLTest(TestBase):
     @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
     @testing.provide_metadata
     def test_decimal_fp(self):
+        metadata = self.metadata
         t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
@@ -1473,6 +1467,7 @@ class NumericRawSQLTest(TestBase):
     @testing.fails_on('sqlite', "Doesn't provide Decimal results natively")
     @testing.provide_metadata
     def test_decimal_int(self):
+        metadata = self.metadata
         t = self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
@@ -1480,6 +1475,7 @@ class NumericRawSQLTest(TestBase):
 
     @testing.provide_metadata
     def test_ints(self):
+        metadata = self.metadata
         t = self._fixture(metadata, Integer, 45)
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, (int, long))
@@ -1487,6 +1483,7 @@ class NumericRawSQLTest(TestBase):
 
     @testing.provide_metadata
     def test_float(self):
+        metadata = self.metadata
         t = self._fixture(metadata, Float, 46.583)
         val = testing.db.execute("select val from t").scalar()
         assert isinstance(val, float)

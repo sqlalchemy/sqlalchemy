@@ -1960,6 +1960,7 @@ class UpdateDeleteTest(_base.MappedTest):
 
     @testing.provide_metadata
     def test_update_attr_names(self):
+        metadata = self.metadata
         data = Table('data', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('counter', Integer, nullable=False, default=0)

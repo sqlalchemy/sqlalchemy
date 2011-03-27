@@ -329,6 +329,7 @@ class ReflectionTest(TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_override_composite_fk(self):
+        metadata = self.metadata
         """Test double-remove of composite foreign key, when replaced."""
 
         a = Table('a',
@@ -764,6 +765,7 @@ class ReflectionTest(TestBase, ComparesTables):
     @testing.requires.views
     @testing.provide_metadata
     def test_views(self):
+        metadata = self.metadata
         users, addresses = createTables(metadata, None)
         try:
             metadata.create_all()
@@ -785,6 +787,7 @@ class ReflectionTest(TestBase, ComparesTables):
     @testing.requires.views
     @testing.provide_metadata
     def test_reflect_all_with_views(self):
+        metadata = self.metadata
         users, addresses = createTables(metadata, None)
         try:
             metadata.create_all()

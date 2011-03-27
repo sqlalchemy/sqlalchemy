@@ -101,6 +101,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
 
     @testing.provide_metadata
     def test_type_reflection(self):
+        metadata = self.metadata
 
         # (ask_for, roundtripped_as_if_different)
 
@@ -156,6 +157,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
     @testing.emits_warning('Did not recognize')
     @testing.provide_metadata
     def test_unknown_reflection(self):
+        metadata = self.metadata
         t = Table('t', metadata,
             Column('x', sqltypes.BINARY(16)),
             Column('y', sqltypes.BINARY())
