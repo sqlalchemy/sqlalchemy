@@ -281,8 +281,6 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         # clear mappers in any case
         if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
-        if self.run_setup_classes == 'each':
-            cls.classes.clear()
 
     @classmethod
     def setup_classes(cls):
