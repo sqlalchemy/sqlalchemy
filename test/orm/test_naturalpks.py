@@ -49,11 +49,11 @@ class NaturalPKTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
-        class Item(_base.ComparableEntity):
+        class Item(cls.Comparable):
             pass
 
     def test_entity(self):
@@ -460,7 +460,7 @@ class ReversePKsTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             def __init__(self, code, status, username):
                 self.code = code
                 self.status = status
@@ -524,7 +524,7 @@ class SelfReferentialTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Node(_base.ComparableEntity):
+        class Node(cls.Comparable):
             pass
 
     def test_one_to_many_on_m2o(self):
@@ -639,9 +639,9 @@ class NonPKCascadeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
@@ -746,9 +746,9 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
     @testing.fails_on('sqlite', 'sqlite doesnt support ON UPDATE CASCADE')
@@ -1009,7 +1009,7 @@ class JoinedInheritanceTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(_base.ComparableEntity):
+        class Person(cls.Comparable):
             pass
         class Engineer(Person):
             pass

@@ -60,18 +60,18 @@ class M2MTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Place(_base.BasicEntity):
+        class Place(cls.Basic):
             def __init__(self, name=None):
                 self.name = name
             def __str__(self):
                 return "(Place '%s')" % self.name
             __repr__ = __str__
 
-        class PlaceThingy(_base.BasicEntity):
+        class PlaceThingy(cls.Basic):
             def __init__(self, name=None):
                 self.name = name
 
-        class Transition(_base.BasicEntity):
+        class Transition(cls.Basic):
             def __init__(self, name=None):
                 self.name = name
                 self.inputs = []
@@ -321,10 +321,10 @@ class M2MTest2(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Student(_base.BasicEntity):
+        class Student(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
-        class Course(_base.BasicEntity):
+        class Course(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
 

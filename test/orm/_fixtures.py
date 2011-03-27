@@ -21,7 +21,7 @@ class FixtureTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
 
         class User(Base):

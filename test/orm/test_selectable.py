@@ -22,7 +22,7 @@ class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-        class Subset(_base.ComparableEntity):
+        class Subset(cls.Comparable):
             pass
 
     def test_no_tables(self):

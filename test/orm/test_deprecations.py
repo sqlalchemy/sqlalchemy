@@ -60,10 +60,10 @@ class QueryAlternativesTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.BasicEntity):
+        class User(cls.Basic):
             pass
 
-        class Address(_base.BasicEntity):
+        class Address(cls.Basic):
             pass
 
     @classmethod

@@ -26,20 +26,20 @@ class AssociationTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Item(_base.BasicEntity):
+        class Item(cls.Basic):
             def __init__(self, name):
                 self.name = name
             def __repr__(self):
                 return "Item id=%d name=%s keywordassoc=%r" % (
                     self.item_id, self.name, self.keywords)
 
-        class Keyword(_base.BasicEntity):
+        class Keyword(cls.Basic):
             def __init__(self, name):
                 self.name = name
             def __repr__(self):
                 return "Keyword id=%d name=%s" % (self.keyword_id, self.name)
 
-        class KeywordAssociation(_base.BasicEntity):
+        class KeywordAssociation(cls.Basic):
             def __init__(self, keyword, data):
                 self.keyword = keyword
                 self.data = data

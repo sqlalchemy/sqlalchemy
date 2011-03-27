@@ -30,7 +30,7 @@ class EvaluateTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
 
     @classmethod

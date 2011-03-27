@@ -617,7 +617,7 @@ class NaturalPKRollbackTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
 
     def test_rollback_recover(self):

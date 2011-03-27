@@ -28,9 +28,9 @@ class HistoryTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
     def test_backref(self):
@@ -80,9 +80,9 @@ class UnicodeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Test(_base.BasicEntity):
+        class Test(cls.Basic):
             pass
-        class Test2(_base.BasicEntity):
+        class Test2(cls.Basic):
             pass
 
     def test_basic(self):
@@ -234,7 +234,7 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.BasicEntity):
+        class Foo(cls.Basic):
             pass
 
     def test_binary_equality(self):
@@ -293,7 +293,7 @@ class PKTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Entry(_base.BasicEntity):
+        class Entry(cls.Basic):
             pass
 
     # not supported on sqlite since sqlite's auto-pk generation only works with
@@ -359,9 +359,9 @@ class ForeignPKTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(_base.BasicEntity):
+        class Person(cls.Basic):
             pass
-        class PersonSite(_base.BasicEntity):
+        class PersonSite(cls.Basic):
             pass
 
     def test_basic(self):
@@ -403,7 +403,7 @@ class ClauseAttributesTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
 
     @classmethod
@@ -486,9 +486,9 @@ class PassiveDeletesTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class MyClass(_base.BasicEntity):
+        class MyClass(cls.Basic):
             pass
-        class MyOtherClass(_base.BasicEntity):
+        class MyOtherClass(cls.Basic):
             pass
 
     def test_basic(self):
@@ -590,9 +590,9 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class MyClass(_base.BasicEntity):
+        class MyClass(cls.Basic):
             pass
-        class MyOtherClass(_base.BasicEntity):
+        class MyOtherClass(cls.Basic):
             pass
 
     def test_assertions(self):
@@ -771,9 +771,9 @@ class DefaultTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Hoho(_base.ComparableEntity):
+        class Hoho(cls.Comparable):
             pass
-        class Secondary(_base.ComparableEntity):
+        class Secondary(cls.Comparable):
             pass
 
     @testing.fails_on('firebird', 'Data type unknown on the parameter')
@@ -930,7 +930,7 @@ class ColumnPropertyTest(_base.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        class Data(_base.BasicEntity):
+        class Data(cls.Basic):
             pass
 
     def test_refreshes(self):
@@ -2043,9 +2043,9 @@ class SaveTest3(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Keyword(_base.BasicEntity):
+        class Keyword(cls.Basic):
             pass
-        class Item(_base.BasicEntity):
+        class Item(cls.Basic):
             pass
 
     def test_manytomany_xtracol_delete(self):
@@ -2209,13 +2209,13 @@ class RowSwitchTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T5(_base.ComparableEntity):
+        class T5(cls.Comparable):
             pass
 
-        class T6(_base.ComparableEntity):
+        class T6(cls.Comparable):
             pass
 
-        class T7(_base.ComparableEntity):
+        class T7(cls.Comparable):
             pass
 
     def test_onetomany(self):
@@ -2352,7 +2352,7 @@ class InheritingRowSwitchTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class P(_base.ComparableEntity):
+        class P(cls.Comparable):
             pass
 
         class C(P):
@@ -2414,10 +2414,10 @@ class TransactionTest(_base.MappedTest):
                    ))
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
 
-        class T2(_base.ComparableEntity):
+        class T2(cls.Comparable):
             pass
 
     @classmethod

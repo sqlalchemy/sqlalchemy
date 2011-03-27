@@ -23,9 +23,9 @@ class O2OTest(_base.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        class Jack(_base.BasicEntity):
+        class Jack(cls.Basic):
             pass
-        class Port(_base.BasicEntity):
+        class Port(cls.Basic):
             pass
 
 

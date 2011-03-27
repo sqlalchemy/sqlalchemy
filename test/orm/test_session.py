@@ -1552,7 +1552,7 @@ class TLTransactionTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.BasicEntity):
+        class User(cls.Basic):
             pass
 
     @classmethod

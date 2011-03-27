@@ -78,7 +78,7 @@ class TriggerDefaultsTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Default(_base.BasicEntity):
+        class Default(cls.Basic):
             pass
 
     @classmethod

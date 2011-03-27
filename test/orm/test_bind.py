@@ -18,7 +18,7 @@ class BindTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.BasicEntity):
+        class Foo(cls.Basic):
             pass
 
     @classmethod

@@ -2217,13 +2217,13 @@ class SecondaryOptionsTest(_base.MappedTest):
                                 cls.tables.base,
                                 cls.tables.related)
 
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
         class Child1(Base):
             pass
         class Child2(Base):
             pass
-        class Related(_base.ComparableEntity):
+        class Related(cls.Comparable):
             pass
         mapper(Base, base, polymorphic_on=base.c.type, properties={
             'related':relationship(Related, uselist=False)
@@ -2384,8 +2384,8 @@ class DeferredPopulationTest(_base.MappedTest):
     def setup_mappers(cls):
         thing, human = cls.tables.thing, cls.tables.human
 
-        class Human(_base.BasicEntity): pass
-        class Thing(_base.BasicEntity): pass
+        class Human(cls.Basic): pass
+        class Thing(cls.Basic): pass
 
         mapper(Human, human, properties={"thing": relationship(Thing)})
         mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
@@ -2709,10 +2709,10 @@ class MagicNamesTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Cartographer(_base.BasicEntity):
+        class Cartographer(cls.Basic):
             pass
 
-        class Map(_base.BasicEntity):
+        class Map(cls.Basic):
             pass
 
     def test_mappish(self):

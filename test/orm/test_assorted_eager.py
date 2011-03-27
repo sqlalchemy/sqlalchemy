@@ -54,16 +54,16 @@ class EagerTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Owner(_base.BasicEntity):
+        class Owner(cls.Basic):
             pass
 
-        class Category(_base.BasicEntity):
+        class Category(cls.Basic):
             pass
 
-        class Thing(_base.BasicEntity):
+        class Thing(cls.Basic):
             pass
 
-        class Option(_base.BasicEntity):
+        class Option(cls.Basic):
             pass
 
     @classmethod
@@ -251,15 +251,15 @@ class EagerTest2(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Left(_base.BasicEntity):
+        class Left(cls.Basic):
             def __init__(self, data):
                 self.data = data
 
-        class Middle(_base.BasicEntity):
+        class Middle(cls.Basic):
             def __init__(self, data):
                 self.data = data
 
-        class Right(_base.BasicEntity):
+        class Right(cls.Basic):
             def __init__(self, data):
                 self.data = data
 
@@ -326,13 +326,13 @@ class EagerTest3(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Data(_base.BasicEntity):
+        class Data(cls.Basic):
             pass
 
-        class Foo(_base.BasicEntity):
+        class Foo(cls.Basic):
             pass
 
-        class Stat(_base.BasicEntity):
+        class Stat(cls.Basic):
             pass
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -413,10 +413,10 @@ class EagerTest4(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Department(_base.BasicEntity):
+        class Department(cls.Basic):
             pass
 
-        class Employee(_base.BasicEntity):
+        class Employee(cls.Basic):
             pass
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -478,7 +478,7 @@ class EagerTest5(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Base(_base.BasicEntity):
+        class Base(cls.Basic):
             def __init__(self, uid, x):
                 self.uid = uid
                 self.x = x
@@ -495,7 +495,7 @@ class EagerTest5(_base.MappedTest):
                 self.x = x
                 self.z = z
 
-        class Comment(_base.BasicEntity):
+        class Comment(cls.Basic):
             def __init__(self, uid, comment):
                 self.uid = uid
                 self.comment = comment
@@ -573,16 +573,16 @@ class EagerTest6(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Part(_base.BasicEntity):
+        class Part(cls.Basic):
             pass
 
-        class Design(_base.BasicEntity):
+        class Design(cls.Basic):
             pass
 
-        class DesignType(_base.BasicEntity):
+        class DesignType(cls.Basic):
             pass
 
-        class InheritedPart(_base.BasicEntity):
+        class InheritedPart(cls.Basic):
             pass
 
     def test_one(self):
@@ -650,16 +650,16 @@ class EagerTest7(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Company(_base.ComparableEntity):
+        class Company(cls.Comparable):
             pass
 
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
-        class Phone(_base.ComparableEntity):
+        class Phone(cls.Comparable):
             pass
 
-        class Invoice(_base.ComparableEntity):
+        class Invoice(cls.Comparable):
             pass
 
     def test_load_m2o_attached_to_o2(self):
@@ -763,10 +763,10 @@ class EagerTest8(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Task_Type(_base.BasicEntity):
+        class Task_Type(cls.Basic):
             pass
 
-        class Joined(_base.ComparableEntity):
+        class Joined(cls.Comparable):
             pass
 
     @testing.fails_on('maxdb', 'FIXME: unknown')
@@ -830,13 +830,13 @@ class EagerTest9(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Account(_base.BasicEntity):
+        class Account(cls.Basic):
             pass
 
-        class Transaction(_base.BasicEntity):
+        class Transaction(cls.Basic):
             pass
 
-        class Entry(_base.BasicEntity):
+        class Entry(cls.Basic):
             pass
 
     @classmethod

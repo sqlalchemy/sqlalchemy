@@ -33,11 +33,11 @@ class SelfReferentialTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class C1(_base.BasicEntity):
+        class C1(cls.Basic):
             def __init__(self, data=None):
                 self.data = data
 
-        class C2(_base.BasicEntity):
+        class C2(cls.Basic):
             def __init__(self, data=None):
                 self.data = data
 
@@ -147,7 +147,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class TT(_base.BasicEntity):
+        class TT(cls.Basic):
             def __init__(self):
                 self.uuid = hex(id(self))
 
@@ -211,7 +211,7 @@ class InheritTestOne(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             pass
 
         class Child1(Parent):
@@ -288,13 +288,13 @@ class InheritTestTwo(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.BasicEntity):
+        class A(cls.Basic):
             pass
 
         class B(A):
             pass
 
-        class C(_base.BasicEntity):
+        class C(cls.Basic):
             pass
 
     def test_flush(self):
@@ -343,11 +343,11 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.BasicEntity):
+        class T1(cls.Basic):
             pass
-        class T2(_base.BasicEntity):
+        class T2(cls.Basic):
             pass
-        class T3(_base.BasicEntity):
+        class T3(cls.Basic):
             pass
 
     @classmethod
@@ -439,10 +439,10 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class C1(_base.BasicEntity):
+        class C1(cls.Basic):
             pass
 
-        class C2(_base.BasicEntity):
+        class C2(cls.Basic):
             pass
 
     def test_cycle(self):
@@ -501,13 +501,13 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class C1(_base.BasicEntity):
+        class C1(cls.Basic):
             pass
 
-        class C2(_base.BasicEntity):
+        class C2(cls.Basic):
             pass
 
-        class C1Data(_base.BasicEntity):
+        class C1Data(cls.Basic):
             pass
 
     @classmethod
@@ -581,10 +581,10 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(_base.ComparableEntity):
+        class Person(cls.Comparable):
             pass
 
-        class Ball(_base.ComparableEntity):
+        class Ball(cls.Comparable):
             pass
 
     def test_cycle(self):
@@ -833,7 +833,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Node(_base.BasicEntity):
+        class Node(cls.Basic):
             def __init__(self, path=''):
                 self.path = path
 
@@ -972,7 +972,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.BasicEntity):
+        class A(cls.Basic):
             pass
 
     def test_one(self):
@@ -1030,11 +1030,11 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
 
-        class Child(_base.BasicEntity):
+        class Child(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
 
@@ -1117,16 +1117,16 @@ class PostUpdateBatchingTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
-        class Child1(_base.BasicEntity):
+        class Child1(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
-        class Child2(_base.BasicEntity):
+        class Child2(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
-        class Child3(_base.BasicEntity):
+        class Child3(cls.Basic):
             def __init__(self, name=''):
                 self.name = name
 

@@ -980,7 +980,7 @@ class PolymorphicExpireTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(_base.ComparableEntity):
+        class Person(cls.Comparable):
             pass
         class Engineer(Person):
             pass

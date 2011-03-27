@@ -4,11 +4,11 @@ from sqlalchemy.orm import *
 
 from test.lib import testing
 from test.orm import _fixtures
-from test.orm._base import MappedTest, ComparableEntity
+from test.orm import _base
 from test.lib.schema import Table, Column
 
 
-class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
+class SingleInheritanceTest(testing.AssertsCompiledSQL, _base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -27,7 +27,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
     @classmethod
     def setup_classes(cls):
         global Employee, Manager, Engineer, JuniorEngineer
-        class Employee(ComparableEntity):
+        class Employee(cls.Comparable):
             pass
         class Manager(Employee):
             pass
@@ -200,7 +200,8 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
                                 self.tables.reports,
                                 self.classes.Engineer)
 
-        class Report(ComparableEntity): pass
+        class Report(_base.ComparableEntity):
+            pass
 
         mapper(Report, reports, properties={
             'employee': relationship(Employee, backref='reports')})
@@ -221,7 +222,8 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
                                 self.tables.reports,
                                 self.classes.Engineer)
 
-        class Report(ComparableEntity): pass
+        class Report(_base.ComparableEntity):
+            pass
 
         mapper(Report, reports, properties={
             'employee': relationship(Employee, backref='reports')})
@@ -237,7 +239,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, MappedTest):
         assert len(rq.join(Report.employee.of_type(Manager)).all()) == 1
         assert len(rq.join(Report.employee.of_type(Engineer)).all()) == 0
 
-class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
+class RelationshipFromSingleTest(testing.AssertsCompiledSQL, _base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employee', metadata,
@@ -254,11 +256,11 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Employee(ComparableEntity):
+        class Employee(cls.Comparable):
             pass
         class Manager(Employee):
             pass
-        class Stuff(ComparableEntity):
+        class Stuff(cls.Comparable):
             pass
 
     def test_subquery_load(self):
@@ -293,7 +295,7 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, MappedTest):
                             use_default_dialect=True
                             )
 
-class RelationshipToSingleTest(MappedTest):
+class RelationshipToSingleTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -312,10 +314,10 @@ class RelationshipToSingleTest(MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Company(ComparableEntity):
+        class Company(cls.Comparable):
             pass
 
-        class Employee(ComparableEntity):
+        class Employee(cls.Comparable):
             pass
         class Manager(Employee):
             pass
@@ -461,7 +463,7 @@ class RelationshipToSingleTest(MappedTest):
             )
         go()
 
-class SingleOnJoinedTest(MappedTest):
+class SingleOnJoinedTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global persons_table, employees_table
@@ -479,7 +481,7 @@ class SingleOnJoinedTest(MappedTest):
         )
 
     def test_single_on_joined(self):
-        class Person(ComparableEntity):
+        class Person(_base.ComparableEntity):
             pass
         class Employee(Person):
             pass

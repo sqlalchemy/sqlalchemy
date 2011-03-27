@@ -45,13 +45,13 @@ class DependencyTwoParentTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.Entity):
+        class A(cls.Basic):
             pass
-        class B(_base.Entity):
+        class B(cls.Basic):
             pass
-        class C(_base.Entity):
+        class C(cls.Basic):
             pass
-        class D(_base.Entity):
+        class D(cls.Basic):
             pass
 
     @classmethod
@@ -156,10 +156,10 @@ class CompositeSelfRefFKTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Company(_base.Entity):
+        class Company(cls.Basic):
             pass
 
-        class Employee(_base.Entity):
+        class Employee(cls.Basic):
             def __init__(self, name, company, emp_id, reports_to=None):
                 self.name = name
                 self.company = company
@@ -324,14 +324,14 @@ class ComplexPostUpdateTest(_base.MappedTest):
                                 cls.tables.jobs,
                                 cls.tables.pages)
 
-        class Job(_base.Entity):
+        class Job(cls.Basic):
             def create_page(self, pagename):
                 return Page(job=self, pagename=pagename)
-        class PageVersion(_base.Entity):
+        class PageVersion(cls.Basic):
             def __init__(self, page=None, version=None):
                 self.page = page
                 self.version = version
-        class Page(_base.Entity):
+        class Page(cls.Basic):
             def __init__(self, job=None, pagename=None):
                 self.job = job
                 self.pagename = pagename
@@ -351,7 +351,7 @@ class ComplexPostUpdateTest(_base.MappedTest):
                 self.comments.append(newcomment)
                 newcomment.created_version = self.currentversion.version
                 return newcomment
-        class PageComment(_base.Entity):
+        class PageComment(cls.Basic):
             pass
 
         mapper(Job, jobs)
@@ -441,10 +441,10 @@ class FKsAsPksTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.Entity):
+        class A(cls.Basic):
             pass
 
-        class B(_base.Entity):
+        class B(cls.Basic):
             pass
 
     def test_onetoone_switch(self):
@@ -535,7 +535,7 @@ class FKsAsPksTest(_base.MappedTest):
                    primary_key=True, autoincrement=False, nullable=True))
         tableC.create()
 
-        class C(_base.Entity):
+        class C(_base.BasicEntity):
             pass
         mapper(C, tableC, properties={
             'a':relationship(A, cascade="save-update")
@@ -682,9 +682,9 @@ class UniqueColReferenceSwitchTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
-        class B(_base.ComparableEntity):
+        class B(cls.Comparable):
             pass
 
     def test_switch_parent(self):
@@ -729,9 +729,9 @@ class RelationshipToSelectableTest(_base.MappedTest):
     def test_basic(self):
         items = self.tables.items
 
-        class Container(_base.Entity):
+        class Container(_base.BasicEntity):
             pass
-        class LineItem(_base.Entity):
+        class LineItem(_base.BasicEntity):
             pass
 
         container_select = sa.select(
@@ -855,9 +855,9 @@ class BackrefPropagatesForwardsArgs(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
     def test_backref(self):
@@ -917,10 +917,10 @@ class AmbiguousJoinInterpretedAsSelfRef(_base.MappedTest):
             and_(address.c.subscriber_id==subscriber.c.id, 
                 address.c.type.in_(['A', 'B', 'C'])))
 
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
-        class Subscriber(_base.ComparableEntity):
+        class Subscriber(cls.Comparable):
             pass
 
         mapper(Address, address)
@@ -1202,9 +1202,9 @@ class TypeMatchTest(_base.MappedTest):
                                 self.tables.c,
                                 self.tables.b)
 
-        class A(_base.Entity): pass
-        class B(_base.Entity): pass
-        class C(_base.Entity): pass
+        class A(_base.BasicEntity): pass
+        class B(_base.BasicEntity): pass
+        class C(_base.BasicEntity): pass
         mapper(A, a, properties={'bs':relationship(B)})
         mapper(B, b)
         mapper(C, c)
@@ -1228,9 +1228,9 @@ class TypeMatchTest(_base.MappedTest):
                                 self.tables.c,
                                 self.tables.b)
 
-        class A(_base.Entity): pass
-        class B(_base.Entity): pass
-        class C(_base.Entity): pass
+        class A(_base.BasicEntity): pass
+        class B(_base.BasicEntity): pass
+        class C(_base.BasicEntity): pass
         mapper(A, a, properties={'bs':relationship(B, cascade="none")})
         mapper(B, b)
         mapper(C, c)
@@ -1253,8 +1253,8 @@ class TypeMatchTest(_base.MappedTest):
                                 self.tables.c,
                                 self.tables.b)
 
-        class A(_base.Entity): pass
-        class B(_base.Entity): pass
+        class A(_base.BasicEntity): pass
+        class B(_base.BasicEntity): pass
         class C(B): pass
         mapper(A, a, properties={'bs':relationship(B, cascade="none")})
         mapper(B, b)
@@ -1278,9 +1278,9 @@ class TypeMatchTest(_base.MappedTest):
                                 self.tables.b,
                                 self.tables.d)
 
-        class A(_base.Entity): pass
+        class A(_base.BasicEntity): pass
         class B(A): pass
-        class D(_base.Entity): pass
+        class D(_base.BasicEntity): pass
         mapper(A, a)
         mapper(B, b, inherits=A)
         mapper(D, d, properties={"a":relationship(A, cascade="none")})
@@ -1299,9 +1299,9 @@ class TypeMatchTest(_base.MappedTest):
                                 self.tables.b,
                                 self.tables.d)
 
-        class A(_base.Entity): pass
-        class B(_base.Entity): pass
-        class D(_base.Entity): pass
+        class A(_base.BasicEntity): pass
+        class B(_base.BasicEntity): pass
+        class D(_base.BasicEntity): pass
         mapper(A, a)
         mapper(B, b)
         mapper(D, d, properties={"a":relationship(A)})
@@ -1341,8 +1341,8 @@ class TypedAssociationTable(_base.MappedTest):
 
         """Many-to-many tables with special types for candidate keys."""
 
-        class T1(_base.Entity): pass
-        class T2(_base.Entity): pass
+        class T1(_base.BasicEntity): pass
+        class T2(_base.BasicEntity): pass
         mapper(T2, t2)
         mapper(T1, t1, properties={
             't2s':relationship(T2, secondary=t3, backref='t1s')})
@@ -1442,9 +1442,9 @@ class ViewOnlyOverlappingNames(_base.MappedTest):
         error.
 
         """
-        class C1(_base.Entity): pass
-        class C2(_base.Entity): pass
-        class C3(_base.Entity): pass
+        class C1(_base.BasicEntity): pass
+        class C2(_base.BasicEntity): pass
+        class C3(_base.BasicEntity): pass
 
         mapper(C1, t1, properties={
             't2s':relationship(C2),
@@ -1507,9 +1507,9 @@ class ViewOnlyUniqueNames(_base.MappedTest):
         PK column names and should not produce 'mapper has no columnX' error.
 
         """
-        class C1(_base.Entity): pass
-        class C2(_base.Entity): pass
-        class C3(_base.Entity): pass
+        class C1(_base.BasicEntity): pass
+        class C2(_base.BasicEntity): pass
+        class C3(_base.BasicEntity): pass
 
         mapper(C1, t1, properties={
             't2s':relationship(C2),
@@ -1740,11 +1740,11 @@ class ViewOnlyComplexJoin(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
-        class T2(_base.ComparableEntity):
+        class T2(cls.Comparable):
             pass
-        class T3(_base.ComparableEntity):
+        class T3(cls.Comparable):
             pass
 
     def test_basic(self):
@@ -1821,9 +1821,9 @@ class ExplicitLocalRemoteTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
-        class T2(_base.ComparableEntity):
+        class T2(cls.Comparable):
             pass
 
     def test_onetomany_funcfk(self):
@@ -1978,7 +1978,7 @@ class InvalidRemoteSideTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
 
     def test_o2m_backref(self):
@@ -2060,9 +2060,9 @@ class InvalidRelationshipEscalationTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.Entity):
+        class Foo(cls.Basic):
             pass
-        class Bar(_base.Entity):
+        class Bar(cls.Basic):
             pass
 
     def test_no_join(self):
@@ -2430,9 +2430,9 @@ class InvalidRelationshipEscalationTestM2M(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.Entity):
+        class Foo(cls.Basic):
             pass
-        class Bar(_base.Entity):
+        class Bar(cls.Basic):
             pass
 
     def test_no_join(self):
@@ -2752,10 +2752,10 @@ class RelationDeprecationTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.BasicEntity):
+        class User(cls.Basic):
             pass
 
-        class Address(_base.BasicEntity):
+        class Address(cls.Basic):
             pass
 
     @classmethod

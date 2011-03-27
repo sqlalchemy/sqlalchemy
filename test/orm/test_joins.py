@@ -119,9 +119,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
                                 cls.tables.machines,
                                 cls.tables.engineers)
 
-        class Company(_base.ComparableEntity):
+        class Company(cls.Comparable):
             pass
-        class Person(_base.ComparableEntity):
+        class Person(cls.Comparable):
             pass
         class Engineer(Person):
             pass
@@ -129,9 +129,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             pass
         class Boss(Manager):
             pass
-        class Machine(_base.ComparableEntity):
+        class Machine(cls.Comparable):
             pass
-        class Paperwork(_base.ComparableEntity):
+        class Paperwork(cls.Comparable):
             pass
 
         mapper(Company, companies, properties={
@@ -1371,10 +1371,10 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
                                 cls.tables.assoc_table,
                                 cls.tables.sub_table)
 
-        class Node(_base.ComparableEntity):
+        class Node(cls.Comparable):
             pass
 
-        class Sub(_base.ComparableEntity):
+        class Sub(cls.Comparable):
             pass
 
         mapper(Node, nodes, properties={
@@ -1446,7 +1446,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-       class Node(_base.ComparableEntity):
+       class Node(cls.Comparable):
            def append(self, node):
                self.children.append(node)
 
@@ -1801,7 +1801,7 @@ class SelfReferentialM2MTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Node(_base.ComparableEntity):
+        class Node(cls.Comparable):
             pass
 
     @classmethod

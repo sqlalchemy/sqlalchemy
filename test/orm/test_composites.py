@@ -38,7 +38,7 @@ class PointTest(_base.MappedTest):
     def setup_mappers(cls):
         graphs, edges = cls.tables.graphs, cls.tables.edges
 
-        class Point(_base.BasicEntity):
+        class Point(cls.Basic):
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
@@ -53,9 +53,9 @@ class PointTest(_base.MappedTest):
                 return not isinstance(other, Point) or \
                         not self.__eq__(other)
 
-        class Graph(_base.BasicEntity):
+        class Graph(cls.Basic):
             pass
-        class Edge(_base.BasicEntity):
+        class Edge(cls.Basic):
             def __init__(self, *args):
                 if args:
                     self.start, self.end = args
@@ -233,7 +233,7 @@ class PrimaryKeyTest(_base.MappedTest):
     def setup_mappers(cls):
         graphs = cls.tables.graphs
 
-        class Version(_base.BasicEntity):
+        class Version(cls.Basic):
             def __init__(self, id, version):
                 self.id = id
                 self.version = version
@@ -247,7 +247,7 @@ class PrimaryKeyTest(_base.MappedTest):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
-        class Graph(_base.BasicEntity):
+        class Graph(cls.Basic):
             def __init__(self, version):
                 self.version = version
 
@@ -328,10 +328,10 @@ class DefaultsTest(_base.MappedTest):
     def setup_mappers(cls):
         foobars = cls.tables.foobars
 
-        class Foobar(_base.BasicEntity):
+        class Foobar(cls.Basic):
             pass
 
-        class FBComposite(_base.BasicEntity):
+        class FBComposite(cls.Basic):
             def __init__(self, x1, x2, x3, x4):
                 self.x1 = x1
                 self.x2 = x2
@@ -408,13 +408,13 @@ class MappedSelectTest(_base.MappedTest):
     def setup_mappers(cls):
         values, descriptions = cls.tables.values, cls.tables.descriptions
 
-        class Descriptions(_base.BasicEntity):
+        class Descriptions(cls.Basic):
             pass
 
-        class Values(_base.BasicEntity):
+        class Values(cls.Basic):
             pass
 
-        class CustomValues(_base.BasicEntity, list):
+        class CustomValues(cls.Basic, list):
             def __init__(self, *args):
                 self.extend(args)
 
@@ -490,12 +490,12 @@ class ManyToOneTest(_base.MappedTest):
     def setup_mappers(cls):
         a, b = cls.tables.a, cls.tables.b
 
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
-        class B(_base.ComparableEntity):
+        class B(cls.Comparable):
             pass
 
-        class C(_base.BasicEntity):
+        class C(cls.Basic):
             def __init__(self, b1, b2):
                 self.b1, self.b2 = b1, b2
 
@@ -557,7 +557,7 @@ class ConfigurationTest(_base.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        class Point(_base.BasicEntity):
+        class Point(cls.Basic):
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
@@ -571,7 +571,7 @@ class ConfigurationTest(_base.MappedTest):
                 return not isinstance(other, Point) or \
                     not self.__eq__(other)
 
-        class Edge(_base.ComparableEntity):
+        class Edge(cls.Comparable):
             pass
 
     def _test_roundtrip(self):

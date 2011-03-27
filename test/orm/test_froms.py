@@ -283,10 +283,10 @@ class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
                                 cls.tables.b,
                                 cls.tables.d)
 
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
 
-        class B(_base.ComparableEntity):
+        class B(cls.Comparable):
             pass
 
         class C(B):

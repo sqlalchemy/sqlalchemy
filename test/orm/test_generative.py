@@ -30,7 +30,7 @@ class GenerativeQueryTest(_base.MappedTest):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        class Foo(_base.BasicEntity):
+        class Foo(cls.Basic):
             pass
 
         mapper(Foo, foo)
@@ -168,9 +168,9 @@ class GenerativeTest2(_base.MappedTest):
     def setup_mappers(cls):
         table2, table1 = cls.tables.table2, cls.tables.table1
 
-        class Obj1(_base.BasicEntity):
+        class Obj1(cls.Basic):
             pass
-        class Obj2(_base.BasicEntity):
+        class Obj2(cls.Basic):
             pass
 
         mapper(Obj1, table1)
@@ -296,9 +296,9 @@ class CaseSensitiveTest(_base.MappedTest):
     def setup_mappers(cls):
         Table2, Table1 = cls.tables.Table2, cls.tables.Table1
 
-        class Obj1(_base.BasicEntity):
+        class Obj1(cls.Basic):
             pass
-        class Obj2(_base.BasicEntity):
+        class Obj2(cls.Basic):
             pass
 
         mapper(Obj1, Table1)

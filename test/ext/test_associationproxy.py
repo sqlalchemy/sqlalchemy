@@ -1038,7 +1038,7 @@ class ComparatorTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             def __init__(self, name):
                 self.name = name
 
@@ -1051,7 +1051,7 @@ class ComparatorTest(_base.MappedTest):
             # nonuselist -> uselist
             singular_keywords = association_proxy('singular', 'keywords')
 
-        class Keyword(_base.ComparableEntity):
+        class Keyword(cls.Comparable):
             def __init__(self, keyword):
                 self.keyword = keyword
 
@@ -1059,12 +1059,12 @@ class ComparatorTest(_base.MappedTest):
             # nonuselist -> nonuselist
             user = association_proxy('user_keyword', 'user')
 
-        class UserKeyword(_base.ComparableEntity):
+        class UserKeyword(cls.Comparable):
             def __init__(self, user=None, keyword=None):
                 self.user = user
                 self.keyword = keyword
 
-        class Singular(_base.ComparableEntity):
+        class Singular(cls.Comparable):
             def __init__(self, value=None):
                 self.value = value
 

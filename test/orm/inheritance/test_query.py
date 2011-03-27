@@ -1117,7 +1117,7 @@ class M2MFilterTest(_base.MappedTest):
                                 cls.tables.engineers,
                                 cls.tables.engineers_to_org)
 
-        class Organization(_base.ComparableEntity):
+        class Organization(cls.Comparable):
             pass
 
         mapper(Organization, organizations, properties={
@@ -1191,7 +1191,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             pass
         class Child1(Parent):
             pass
@@ -1344,16 +1344,16 @@ class EagerToSubclassTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.ComparableEntity):
+        class Parent(cls.Comparable):
             pass
 
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
 
         class Sub(Base):
             pass
 
-        class Related(_base.ComparableEntity):
+        class Related(cls.Comparable):
             pass
 
     @classmethod
@@ -1505,13 +1505,13 @@ class SubClassEagerToSubClassTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.ComparableEntity):
+        class Parent(cls.Comparable):
             pass
 
         class Subparent(Parent):
             pass
 
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
 
         class Sub(Base):

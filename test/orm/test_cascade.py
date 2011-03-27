@@ -38,13 +38,13 @@ class O2MCascadeDeleteOrphanTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
-        class Order(_base.ComparableEntity):
+        class Order(cls.Comparable):
             pass
-        class Dingaling(_base.ComparableEntity):
+        class Dingaling(cls.Comparable):
             pass
 
     @classmethod
@@ -319,9 +319,9 @@ class O2MCascadeDeleteNoOrphanTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Order(_base.ComparableEntity):
+        class Order(cls.Comparable):
             pass
 
     @classmethod
@@ -1007,13 +1007,13 @@ class M2OCascadeDeleteOrphanTestOne(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Pref(_base.ComparableEntity):
+        class Pref(cls.Comparable):
             pass
-        class Extra(_base.ComparableEntity):
+        class Extra(cls.Comparable):
             pass
-        class Foo(_base.ComparableEntity):
+        class Foo(cls.Comparable):
             pass
 
     @classmethod
@@ -1187,11 +1187,11 @@ class M2OCascadeDeleteOrphanTestTwo(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
-        class T2(_base.ComparableEntity):
+        class T2(cls.Comparable):
             pass
-        class T3(_base.ComparableEntity):
+        class T3(cls.Comparable):
             pass
 
     @classmethod
@@ -1328,11 +1328,11 @@ class M2OCascadeDeleteNoOrphanTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_base.ComparableEntity):
+        class T1(cls.Comparable):
             pass
-        class T2(_base.ComparableEntity):
+        class T2(cls.Comparable):
             pass
-        class T3(_base.ComparableEntity):
+        class T3(cls.Comparable):
             pass
 
     @classmethod
@@ -1489,11 +1489,11 @@ class M2MCascadeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
-        class B(_base.ComparableEntity):
+        class B(cls.Comparable):
             pass
-        class C(_base.ComparableEntity):
+        class C(cls.Comparable):
             pass
 
     def test_delete_orphan(self):
@@ -1790,11 +1790,11 @@ class PendingOrphanTestSingleLevel(_base.MappedTest):
         )
     @classmethod
     def setup_classes(cls):
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
-        class Order(_base.ComparableEntity):
+        class Order(cls.Comparable):
             pass
 
     def test_pending_standalone_orphan(self):
@@ -1922,11 +1922,11 @@ class PendingOrphanTestTwoLevel(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Order(_base.ComparableEntity):
+        class Order(cls.Comparable):
             pass
-        class Item(_base.ComparableEntity):
+        class Item(cls.Comparable):
             pass
-        class Attribute(_base.ComparableEntity):
+        class Attribute(cls.Comparable):
             pass
 
     def test_singlelevel_remove(self):
@@ -2272,9 +2272,9 @@ class O2MConflictTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.ComparableEntity):
+        class Parent(cls.Comparable):
             pass
-        class Child(_base.ComparableEntity):
+        class Child(cls.Comparable):
             pass
 
     def _do_move_test(self, delete_old):

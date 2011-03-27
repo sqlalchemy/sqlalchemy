@@ -397,7 +397,7 @@ class PropertyInheritanceTest(_base.MappedTest):
     @classmethod
     def setup_classes(cls):
 
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
 
         class B(A):
@@ -406,7 +406,7 @@ class PropertyInheritanceTest(_base.MappedTest):
         class C(A):
             pass
 
-        class Dest(_base.ComparableEntity):
+        class Dest(cls.Comparable):
             pass
 
     def test_noninherited_warning(self):
@@ -651,13 +651,13 @@ class ManyToManyTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
 
         class Sub(Base):
             pass
 
-        class Related(_base.ComparableEntity):
+        class Related(cls.Comparable):
             pass
 
 

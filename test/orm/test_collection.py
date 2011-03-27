@@ -1425,11 +1425,11 @@ class DictHelpersTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             def __init__(self, label=None):
                 self.label = label
 
-        class Child(_base.BasicEntity):
+        class Child(cls.Basic):
             def __init__(self, a=None, b=None, c=None):
                 self.a = a
                 self.b = b

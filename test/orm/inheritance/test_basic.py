@@ -230,7 +230,7 @@ class PolymorphicAttributeManagementTest(_base.MappedTest):
                                 cls.tables.table_c,
                                 cls.tables.table_a)
 
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
         class B(A):
             pass
@@ -434,7 +434,7 @@ class GetTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.BasicEntity):
+        class Foo(cls.Basic):
             pass
 
         class Bar(Foo):
@@ -1570,7 +1570,7 @@ class NoPolyIdentInMiddleTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
         class B(A):
             pass

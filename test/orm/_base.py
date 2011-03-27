@@ -8,8 +8,6 @@ from test.lib.testing import adict
 from test.lib.entities import BasicEntity, ComparableEntity
 from test.engine._base import TablesTest
 
-Entity = BasicEntity
-
 class _ORMTest(object):
     __requires__ = ('subqueries',)
 
@@ -17,8 +15,6 @@ class _ORMTest(object):
     def teardown_class(cls):
         sa.orm.session.Session.close_all()
         sa.orm.clear_mappers()
-        # TODO: ensure mapper registry is empty
-        # TODO: ensure instrumentation registry is empty
 
 class ORMTest(_ORMTest, testing.TestBase):
     pass
@@ -40,51 +36,18 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
             cls.classes = adict()
 
         cls._setup_once_tables()
-
         cls._setup_once_classes()
-
         cls._setup_once_mappers()
-
         cls._setup_once_inserts()
 
     @classmethod
-    def _setup_once_classes(cls):
-        if cls.run_setup_classes == 'once':
-            baseline = subclasses(BasicEntity)
-            cls.setup_classes()
-            cls._register_new_class_artifacts(baseline)
-
-    @classmethod
-    def _setup_once_mappers(cls):
-        if cls.run_setup_mappers == 'once':
-            baseline = subclasses(BasicEntity)
-            cls.setup_mappers()
-            cls._register_new_class_artifacts(baseline)
-
-    def _setup_each_classes(self):
-        if self.run_setup_classes == 'each':
-            self.classes.clear()
-            baseline = subclasses(BasicEntity)
-            self.setup_classes()
-            self._register_new_class_artifacts(baseline)
-
-    def _setup_each_mappers(self):
-        if self.run_setup_mappers == 'each':
-            baseline = subclasses(BasicEntity)
-            self.setup_mappers()
-            self._register_new_class_artifacts(baseline)
-
-    def _teardown_each_mappers(self):
-        # some tests create mappers in the test bodies
-        # and will define setup_mappers as None - 
-        # clear mappers in any case
-        if self.run_setup_mappers != 'once':
-            sa.orm.clear_mappers()
+    def teardown_class(cls):
+        cls.classes.clear()
+        _ORMTest.teardown_class()
+        cls._teardown_once_metadata_bind()
 
     def setup(self):
         self._setup_each_tables()
-        self._setup_each_classes()
-
         self._setup_each_mappers()
         self._setup_each_inserts()
 
@@ -95,11 +58,46 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         self._teardown_each_bind()
 
     @classmethod
-    def teardown_class(cls):
-        for cl in cls.classes.values():
-            cls.unregister_class(cl)
-        _ORMTest.teardown_class()
-        cls._teardown_once_metadata_bind()
+    def _setup_once_classes(cls):
+        if cls.run_setup_classes == 'once':
+            cls._with_register_classes(cls.setup_classes)
+
+    @classmethod
+    def _setup_once_mappers(cls):
+        if cls.run_setup_mappers == 'once':
+            cls._with_register_classes(cls.setup_mappers)
+
+    def _setup_each_mappers(self):
+        if self.run_setup_mappers == 'each':
+            self._with_register_classes(self.setup_mappers)
+
+    @classmethod
+    def _with_register_classes(cls, fn):
+        """Run a setup method, framing the operation with a Base class
+        that will catch new subclasses to be established within
+        the "classes" registry.
+        
+        """
+        class Base(object):
+            pass
+        class Basic(BasicEntity, Base):
+            pass
+        class Comparable(ComparableEntity, Base):
+            pass
+        cls.Basic = Basic
+        cls.Comparable = Comparable
+        fn()
+        for class_ in subclasses(Base):
+            cls.classes[class_.__name__] = class_
+
+    def _teardown_each_mappers(self):
+        # some tests create mappers in the test bodies
+        # and will define setup_mappers as None - 
+        # clear mappers in any case
+        if self.run_setup_mappers != 'once':
+            sa.orm.clear_mappers()
+        if self.run_setup_classes == 'each':
+            cls.classes.clear()
 
     @classmethod
     def setup_classes(cls):
@@ -110,26 +108,9 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         pass
 
     @classmethod
-    def _register_new_class_artifacts(cls, baseline):
-        for class_ in subclasses(BasicEntity) - baseline:
-            cls.register_class(class_)
-
-    @classmethod
-    def register_class(cls, class_):
-        name = class_.__name__
-        if name[0].isupper:
-            setattr(cls, name, class_)
-        cls.classes[name] = class_
-
-    @classmethod
-    def unregister_class(cls, class_):
-        name = class_.__name__
-        if name[0].isupper:
-            delattr(cls, name)
-        del cls.classes[name]
-
-    @classmethod
     def _load_fixtures(cls):
+        """Insert rows as represented by the fixtures() method."""
+
         headers, rows = {}, {}
         for table, data in cls.fixtures().iteritems():
             if isinstance(table, basestring):

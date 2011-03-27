@@ -44,7 +44,7 @@ class VersioningTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(_base.ComparableEntity):
+        class Foo(cls.Comparable):
             pass
 
     def _fixture(self):
@@ -330,9 +330,9 @@ class RowSwitchTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class P(_base.ComparableEntity):
+        class P(cls.Comparable):
             pass
-        class C(_base.ComparableEntity):
+        class C(cls.Comparable):
             pass
 
     @classmethod
@@ -395,9 +395,9 @@ class AlternateGeneratorTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class P(_base.ComparableEntity):
+        class P(cls.Comparable):
             pass
-        class C(_base.ComparableEntity):
+        class C(cls.Comparable):
             pass
 
     @classmethod
@@ -501,7 +501,7 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Base(_base.ComparableEntity):
+        class Base(cls.Comparable):
             pass
         class Sub(Base):
             pass

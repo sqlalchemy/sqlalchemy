@@ -679,10 +679,10 @@ class DontDereferenceTest(_base.MappedTest):
     def setup_mappers(cls):
         users, addresses = cls.tables.users, cls.tables.addresses
 
-        class User(_base.ComparableEntity):
+        class User(cls.Comparable):
             pass
 
-        class Address(_base.ComparableEntity):
+        class Address(cls.Comparable):
             pass
 
         mapper(User, users, properties={

@@ -23,10 +23,10 @@ class MergeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             pass
 
-        class Child(_base.BasicEntity):
+        class Child(cls.Basic):
             pass
 
     @classmethod
@@ -133,10 +133,10 @@ class LoadManyToOneFromIdentityTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Parent(_base.BasicEntity):
+        class Parent(cls.Basic):
             pass
 
-        class Child(_base.BasicEntity):
+        class Child(cls.Basic):
             pass
 
     @classmethod

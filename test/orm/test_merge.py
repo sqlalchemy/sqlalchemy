@@ -1095,7 +1095,7 @@ class MutableMergeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Data(_base.ComparableEntity):
+        class Data(cls.Comparable):
             pass
 
     def test_list(self):
@@ -1124,7 +1124,7 @@ class CompositeNullPksTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Data(_base.ComparableEntity):
+        class Data(cls.Comparable):
             pass
 
     def test_merge_allow_partial(self):

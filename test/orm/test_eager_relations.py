@@ -1738,9 +1738,9 @@ class MixedSelfReferentialEagerTest(_base.MappedTest):
     def setup_mappers(cls):
         b_table, a_table = cls.tables.b_table, cls.tables.a_table
 
-        class A(_base.ComparableEntity):
+        class A(cls.Comparable):
             pass
-        class B(_base.ComparableEntity):
+        class B(cls.Comparable):
             pass
 
         mapper(A,a_table)
