@@ -24,8 +24,6 @@ class TestBase(object):
     # skipped.
     __skip_if__ = None
 
-    _artifact_registries = ()
-
     def assert_(self, val, msg=None):
         assert val, msg
 
@@ -178,17 +176,19 @@ class TablesTest(TestBase):
         self.assert_sql(self.bind,
                         callable_, statements, with_sequences)
 
-    def _load_fixtures(self):
+    @classmethod
+    def _load_fixtures(cls):
+        """Insert rows as represented by the fixtures() method."""
         headers, rows = {}, {}
-        for table, data in self.fixtures().iteritems():
+        for table, data in cls.fixtures().iteritems():
             if isinstance(table, basestring):
-                table = self.tables[table]
+                table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
-        for table in self.metadata.sorted_tables:
+        for table in cls.metadata.sorted_tables:
             if table not in headers:
                 continue
-            self.bind.execute(
+            cls.bind.execute(
                 table.insert(),
                 [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])
@@ -293,23 +293,4 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
     @classmethod
     def setup_mappers(cls):
         pass
-
-    @classmethod
-    def _load_fixtures(cls):
-        """Insert rows as represented by the fixtures() method."""
-
-        headers, rows = {}, {}
-        for table, data in cls.fixtures().iteritems():
-            if isinstance(table, basestring):
-                table = cls.tables[table]
-            headers[table] = data[0]
-            rows[table] = data[1:]
-        for table in cls.metadata.sorted_tables:
-            if table not in headers:
-                continue
-            table.bind.execute(
-                table.insert(),
-                [dict(zip(headers[table], column_values))
-                 for column_values in rows[table]])
-
 

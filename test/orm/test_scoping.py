@@ -15,9 +15,6 @@ class _ScopedTest(fixtures.MappedTest):
 
     run_setup_mappers = 'once'
 
-    _artifact_registries = (
-        fixtures.MappedTest._artifact_registries + ('scoping',))
-
     @classmethod
     def setup_class(cls):
         cls.scoping = _base.adict()

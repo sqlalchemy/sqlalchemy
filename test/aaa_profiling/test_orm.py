@@ -88,7 +88,7 @@ class MergeTest(fixtures.MappedTest):
 
         @profiling.function_call_count(
                                 versions={'2.5':1050, '2.6':1050,
-                                        '2.6+cextension':1041, 
+                                        '2.6+cextension':988, 
                                         '2.7':1005,
                                         '3':1005}
                             )
