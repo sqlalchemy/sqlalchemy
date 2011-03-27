@@ -15,7 +15,7 @@ import datetime
 import os
 
 
-class OutParamTest(TestBase, AssertsExecutionResults):
+class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'oracle+cx_oracle'
 
     @classmethod
@@ -48,7 +48,7 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
          testing.db.execute("DROP PROCEDURE foo")
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = oracle.OracleDialect()
 
@@ -373,7 +373,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(fn, expected)
 
-class CompatFlagsTest(TestBase, AssertsCompiledSQL):
+class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
     def test_ora8_flags(self):
@@ -428,7 +428,7 @@ class CompatFlagsTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
 
 
-class MultiSchemaTest(TestBase, AssertsCompiledSQL):
+class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
     @classmethod
@@ -586,7 +586,7 @@ drop synonym test_schema.ptable;
         select([parent,
                child]).select_from(parent.join(child)).execute().fetchall()
 
-class ConstraintTest(TestBase):
+class ConstraintTest(fixtures.TestBase):
 
     __only_on__ = 'oracle'
 
@@ -611,7 +611,7 @@ class ConstraintTest(TestBase):
                     onupdate='CASCADE'))
         assert_raises(exc.SAWarning, bat.create)
 
-class TypesTest(TestBase, AssertsCompiledSQL):
+class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
     __dialect__ = oracle.OracleDialect()
 
@@ -1059,7 +1059,7 @@ class TypesTest(TestBase, AssertsCompiledSQL):
         finally:
             t.drop(engine)
 
-class EuroNumericTest(TestBase):
+class EuroNumericTest(fixtures.TestBase):
     """test the numeric output_type_handler when using non-US locale for NLS_LANG."""
 
     __only_on__ = 'oracle+cx_oracle'
@@ -1094,7 +1094,7 @@ class EuroNumericTest(TestBase):
             assert type(test_exp) is type(exp)
 
 
-class DontReflectIOTTest(TestBase):
+class DontReflectIOTTest(fixtures.TestBase):
     """test that index overflow tables aren't included in
     table_names."""
 
@@ -1125,7 +1125,7 @@ class DontReflectIOTTest(TestBase):
             set(['admin_docindex'])
         )
 
-class BufferedColumnTest(TestBase, AssertsCompiledSQL):
+class BufferedColumnTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'oracle'
 
     @classmethod
@@ -1159,7 +1159,7 @@ class BufferedColumnTest(TestBase, AssertsCompiledSQL):
         result = eng.execute(binary_table.select()).fetchall()
         eq_(result, [(i, stream) for i in range(1, 11)])
 
-class UnsupportedIndexReflectTest(TestBase):
+class UnsupportedIndexReflectTest(fixtures.TestBase):
     __only_on__ = 'oracle'
 
     def setup(self):
@@ -1179,7 +1179,7 @@ class UnsupportedIndexReflectTest(TestBase):
         m2 = MetaData(testing.db)
         t2 = Table('test_index_reflect', m2, autoload=True)
 
-class RoundTripIndexTest(TestBase):
+class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = 'oracle'
 
     def test_basic(self):
@@ -1253,7 +1253,7 @@ class RoundTripIndexTest(TestBase):
 
 
 
-class SequenceTest(TestBase, AssertsCompiledSQL):
+class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_basic(self):
         seq = Sequence('my_seq_no_schema')
@@ -1268,7 +1268,7 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
             == '"Some_Schema"."My_Seq"'
 
 
-class ExecuteTest(TestBase):
+class ExecuteTest(fixtures.TestBase):
 
     __only_on__ = 'oracle'
 

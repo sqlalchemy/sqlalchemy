@@ -7,7 +7,7 @@ from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
 from test.lib.testing import eq_
 
-class TraversalTest(TestBase, AssertsExecutionResults):
+class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its 
     ability to copy and modify a ClauseElement in place."""
 
@@ -166,7 +166,7 @@ class TraversalTest(TestBase, AssertsExecutionResults):
         s = set(ClauseVisitor().iterate(bin))
         assert set(ClauseVisitor().iterate(bin)) == set([foo, bar, bin])
 
-class ClauseTest(TestBase, AssertsCompiledSQL):
+class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     """test copy-in-place behavior of various ClauseElements."""
 
     __dialect__ = 'default'
@@ -472,7 +472,7 @@ class ClauseTest(TestBase, AssertsCompiledSQL):
                             ':col1_1) AS anon_1 WHERE table1.col1 = '
                             'anon_1.col1')
 
-class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
+class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     @classmethod
@@ -861,7 +861,7 @@ class ClauseAdapterTest(TestBase, AssertsCompiledSQL):
             "WHERE c.bid = anon_1.b_aid"
         )
 
-class SpliceJoinsTest(TestBase, AssertsCompiledSQL):
+class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     @classmethod
@@ -932,7 +932,7 @@ class SpliceJoinsTest(TestBase, AssertsCompiledSQL):
                             'table1.col3 = table4_1.col3')
 
 
-class SelectTest(TestBase, AssertsCompiledSQL):
+class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     """tests the generative capability of Select"""
 
     __dialect__ = 'default'
@@ -1088,7 +1088,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         s = text('select 42', execution_options=dict(foo='bar'))
         assert s._execution_options == dict(foo='bar')
 
-class InsertTest(TestBase, AssertsCompiledSQL):
+class InsertTest(fixtures.TestBase, AssertsCompiledSQL):
     """Tests the generative capability of Insert"""
 
     __dialect__ = 'default'

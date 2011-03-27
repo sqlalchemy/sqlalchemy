@@ -10,10 +10,10 @@ from sqlalchemy import Integer, String, ForeignKey, func
 from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, relation, create_session, sessionmaker
-from test.orm import _base
+from test.lib import fixtures
 
 
-class QueryAlternativesTest(_base.MappedTest):
+class QueryAlternativesTest(fixtures.MappedTest):
     '''Collects modern idioms for Queries
 
     The docstring for each test case serves as miniature documentation about

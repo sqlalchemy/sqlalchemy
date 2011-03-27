@@ -7,14 +7,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.engine import default
 
 from test.lib import AssertsCompiledSQL, testing
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from test.lib.testing import eq_
 from test.lib.schema import Table, Column
 
-class Company(_base.ComparableEntity):
+class Company(fixtures.ComparableEntity):
     pass
 
-class Person(_base.ComparableEntity):
+class Person(fixtures.ComparableEntity):
     pass
 class Engineer(Person):
     pass
@@ -23,14 +24,14 @@ class Manager(Person):
 class Boss(Manager):
     pass
 
-class Machine(_base.ComparableEntity):
+class Machine(fixtures.ComparableEntity):
     pass
 
-class Paperwork(_base.ComparableEntity):
+class Paperwork(fixtures.ComparableEntity):
     pass
 
 def _produce_test(select_type):
-    class PolymorphicQueryTest(_base.MappedTest, AssertsCompiledSQL):
+    class PolymorphicQueryTest(fixtures.MappedTest, AssertsCompiledSQL):
         run_inserts = 'once'
         run_setup_mappers = 'once'
         run_deletes = None
@@ -907,7 +908,7 @@ for select_type in ('', 'Polymorphic', 'Unions', 'AliasedJoins', 'Joins'):
 
 del testclass
 
-class SelfReferentialTestJoinedToBase(_base.MappedTest):
+class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     run_setup_mappers = 'once'
 
     @classmethod
@@ -968,7 +969,7 @@ class SelfReferentialTestJoinedToBase(_base.MappedTest):
             sess.query(Engineer).join('reports_to', aliased=True).filter(Person.name=='dogbert').first(), 
             Engineer(name='dilbert'))
 
-class SelfReferentialJ2JTest(_base.MappedTest):
+class SelfReferentialJ2JTest(fixtures.MappedTest):
     run_setup_mappers = 'once'
 
     @classmethod
@@ -1084,7 +1085,7 @@ class SelfReferentialJ2JTest(_base.MappedTest):
 
 
 
-class M2MFilterTest(_base.MappedTest):
+class M2MFilterTest(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -1171,7 +1172,7 @@ class M2MFilterTest(_base.MappedTest):
         eq_(sess.query(Organization).filter(Organization.engineers.any(Engineer.name
             == 'e1')).all(), [Organization(name='org1')])
 
-class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
+class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         Table('secondary', metadata,
@@ -1306,7 +1307,7 @@ class SelfReferentialM2MTest(_base.MappedTest, AssertsCompiledSQL):
         for row in session.query(Child1).options(subqueryload('left_child2')).all():
             assert row.left_child2
 
-class EagerToSubclassTest(_base.MappedTest):
+class EagerToSubclassTest(fixtures.MappedTest):
     """Test eager loads to subclass mappers"""
 
     run_setup_classes = 'once'
@@ -1472,7 +1473,7 @@ class EagerToSubclassTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 3)
 
-class SubClassEagerToSubClassTest(_base.MappedTest):
+class SubClassEagerToSubClassTest(fixtures.MappedTest):
     """Test joinedloads from subclass to subclass mappers"""
 
     run_setup_classes = 'once'

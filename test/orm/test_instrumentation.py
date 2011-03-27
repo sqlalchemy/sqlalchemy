@@ -8,7 +8,7 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from test.lib.testing import eq_, ne_
 from test.lib.util import decorator
-from test.orm import _base
+from test.lib import fixtures
 
 @decorator
 def modifies_instrumentation_finders(fn, *args, **kw):
@@ -30,7 +30,7 @@ def with_lookup_strategy(strategy):
     return decorate
 
 
-class InitTest(_base.ORMTest):
+class InitTest(fixtures.ORMTest):
     def fixture(self):
         return Table('t', MetaData(),
                      Column('id', Integer, primary_key=True),
@@ -436,7 +436,7 @@ class InitTest(_base.ORMTest):
         assert o.o is Y.outofscope
 
 
-class MapperInitTest(_base.ORMTest):
+class MapperInitTest(fixtures.ORMTest):
 
     def fixture(self):
         return Table('t', MetaData(),
@@ -464,7 +464,7 @@ class MapperInitTest(_base.ORMTest):
         # C is not mapped in the current implementation
         assert_raises(sa.orm.exc.UnmappedClassError, class_mapper, C)
 
-class InstrumentationCollisionTest(_base.ORMTest):
+class InstrumentationCollisionTest(fixtures.ORMTest):
     def test_none(self):
         class A(object): pass
         instrumentation.register_class(A)
@@ -536,7 +536,7 @@ class InstrumentationCollisionTest(_base.ORMTest):
 
         assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B1)
 
-class OnLoadTest(_base.ORMTest):
+class OnLoadTest(fixtures.ORMTest):
     """Check that Events.load is not hit in regular attributes operations."""
 
     def test_basic(self):
@@ -565,7 +565,7 @@ class OnLoadTest(_base.ORMTest):
         instrumentation._install_lookup_strategy(util.symbol('native'))
 
 
-class ExtendedEventsTest(_base.ORMTest):
+class ExtendedEventsTest(fixtures.ORMTest):
     """Allow custom Events implementations."""
 
     @modifies_instrumentation_finders
@@ -584,7 +584,7 @@ class ExtendedEventsTest(_base.ORMTest):
         assert issubclass(manager.dispatch._parent_cls.__dict__['dispatch'].events, MyEvents)
 
 
-class NativeInstrumentationTest(_base.ORMTest):
+class NativeInstrumentationTest(fixtures.ORMTest):
     @with_lookup_strategy(sa.util.symbol('native'))
     def test_register_reserved_attribute(self):
         class T(object): pass
@@ -623,7 +623,7 @@ class NativeInstrumentationTest(_base.ORMTest):
         assert_raises(KeyError, mapper, T, t)
 
 
-class MiscTest(_base.ORMTest):
+class MiscTest(fixtures.ORMTest):
     """Seems basic, but not directly covered elsewhere!"""
 
     def test_compileonattr(self):
@@ -718,7 +718,7 @@ class MiscTest(_base.ORMTest):
             assert b in session, 'base: %s' % base
 
 
-class FinderTest(_base.ORMTest):
+class FinderTest(fixtures.ORMTest):
     def test_standard(self):
         class A(object): pass
 

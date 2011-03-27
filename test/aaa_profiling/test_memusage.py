@@ -17,16 +17,16 @@ from test.lib.util import gc_collect
 from sqlalchemy.util.compat import decimal
 import gc
 import weakref
-from test.orm import _base
+from test.lib import fixtures
 
 if jython:
     from nose import SkipTest
     raise SkipTest("Profiling not supported on this platform")
 
 
-class A(_base.ComparableEntity):
+class A(fixtures.ComparableEntity):
     pass
-class B(_base.ComparableEntity):
+class B(fixtures.ComparableEntity):
     pass
 
 def profile_memory(func):
@@ -68,7 +68,7 @@ def assert_no_mappers():
     gc_collect()
     assert len(_mapper_registry) == 0
 
-class EnsureZeroed(_base.ORMTest):
+class EnsureZeroed(fixtures.ORMTest):
     def setup(self):
         _sessions.clear()
         _mapper_registry.clear()
@@ -388,7 +388,7 @@ class MemUsageTest(EnsureZeroed):
 
         @profile_memory
         def go():
-            class A(_base.ComparableEntity):
+            class A(fixtures.ComparableEntity):
                 pass
             class B(A):
                 pass
@@ -454,9 +454,9 @@ class MemUsageTest(EnsureZeroed):
 
         @profile_memory
         def go():
-            class A(_base.ComparableEntity):
+            class A(fixtures.ComparableEntity):
                 pass
-            class B(_base.ComparableEntity):
+            class B(fixtures.ComparableEntity):
                 pass
 
             mapper(A, table1, properties={

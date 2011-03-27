@@ -6,7 +6,7 @@ from sqlalchemy.sql import table, column
 from test.lib import *
 
 
-class DomainReflectionTest(TestBase, AssertsExecutionResults):
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     "Test Firebird domains"
 
     __only_on__ = 'firebird'
@@ -93,7 +93,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         assert isinstance(table.c.dt.type, DateTime)
 
 
-class BuggyDomainReflectionTest(TestBase, AssertsExecutionResults):
+class BuggyDomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     """Test Firebird domains (and some other reflection bumps), 
     see [ticket:1663] and http://tracker.firebirdsql.org/browse/CORE-356"""
 
@@ -231,7 +231,7 @@ ID DOM_ID /* INTEGER NOT NULL */ default 0 )
         eq_(table_b.c.id.server_default.arg.text, "0")
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = firebird.FBDialect()
 
@@ -319,7 +319,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         for type_, args, kw, res in columns:
             self.assert_compile(type_(*args, **kw), res)
 
-class TypesTest(TestBase):
+class TypesTest(fixtures.TestBase):
     __only_on__ = 'firebird'
 
     @testing.provide_metadata
@@ -334,7 +334,7 @@ class TypesTest(TestBase):
             [(float('inf'),)]
         )
 
-class MiscTest(TestBase):
+class MiscTest(fixtures.TestBase):
 
     __only_on__ = 'firebird'
 

@@ -13,8 +13,9 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, joinedload, \
     exc as orm_exc, object_session
 from sqlalchemy.util import pypy
-from test.engine import _base as engine_base
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 class SessionTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1319,7 +1320,7 @@ class SessionDataTest(_fixtures.FixtureTest):
         assert newad.email_address == 'a new address'
 
 
-class DisposedStates(_base.MappedTest):
+class DisposedStates(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -1405,7 +1406,7 @@ class DisposedStates(_base.MappedTest):
         sess.rollback()
 
 
-class SessionInterface(testing.TestBase):
+class SessionInterface(fixtures.TestBase):
     """Bogus args to Session methods produce actionable exceptions."""
 
     # TODO: expand with message body assertions.
@@ -1537,7 +1538,7 @@ class SessionInterface(testing.TestBase):
         self._test_class_guards(early)
 
 
-class TLTransactionTest(_base.MappedTest):
+class TLTransactionTest(fixtures.MappedTest):
     run_dispose_bind = 'once'
 
     @classmethod

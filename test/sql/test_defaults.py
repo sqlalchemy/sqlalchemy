@@ -9,10 +9,10 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
 from sqlalchemy.types import TypeDecorator
 from test.lib.schema import Table, Column
 from test.lib.testing import eq_
-from test.sql import _base
 from sqlalchemy.dialects import sqlite
+from test.lib import fixtures
 
-class DefaultTest(testing.TestBase):
+class DefaultTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -393,7 +393,7 @@ class DefaultTest(testing.TestBase):
         eq_(55, l['col3'])
 
 
-class PKDefaultTest(_base.TablesTest):
+class PKDefaultTest(fixtures.TablesTest):
     __requires__ = ('subqueries',)
 
     @classmethod
@@ -428,7 +428,7 @@ class PKDefaultTest(_base.TablesTest):
         r = engine.execute(t1.insert(), data='there')
         eq_([2], r.inserted_primary_key)
 
-class PKIncrementTest(_base.TablesTest):
+class PKIncrementTest(fixtures.TablesTest):
     run_define_tables = 'each'
 
     @classmethod
@@ -495,7 +495,7 @@ class PKIncrementTest(_base.TablesTest):
             con.close()
 
 
-class EmptyInsertTest(testing.TestBase):
+class EmptyInsertTest(fixtures.TestBase):
     @testing.exclude('sqlite', '<', (3, 3, 8), 'no empty insert support')
     @testing.fails_on('oracle', 'FIXME: unknown')
     def test_empty_insert(self):
@@ -511,7 +511,7 @@ class EmptyInsertTest(testing.TestBase):
         finally:
             metadata.drop_all()
 
-class AutoIncrementTest(_base.TablesTest):
+class AutoIncrementTest(fixtures.TablesTest):
     __requires__ = ('identity',)
     run_define_tables = 'each'
 
@@ -561,7 +561,7 @@ class AutoIncrementTest(_base.TablesTest):
 
         nonai.insert().execute(id=1, data='row 1')
 
-class SequenceDDLTest(testing.TestBase, testing.AssertsCompiledSQL):
+class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_create_drop_ddl(self):
@@ -590,7 +590,7 @@ class SequenceDDLTest(testing.TestBase, testing.AssertsCompiledSQL):
             "DROP SEQUENCE foo_seq",
         )
 
-class SequenceExecTest(testing.TestBase):
+class SequenceExecTest(fixtures.TestBase):
     __requires__ = ('sequences',)
 
     @classmethod
@@ -720,7 +720,7 @@ class SequenceExecTest(testing.TestBase):
         )
         self._assert_seq_result(r.inserted_primary_key[0])
 
-class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
+class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __requires__ = ('sequences',)
 
     @testing.fails_on('firebird', 'no FB support for start/increment')
@@ -833,7 +833,7 @@ class SequenceTest(testing.TestBase, testing.AssertsCompiledSQL):
         assert not self._has_sequence('s2')
 
 
-class TableBoundSequenceTest(testing.TestBase):
+class TableBoundSequenceTest(fixtures.TestBase):
     __requires__ = ('sequences',)
 
     @classmethod
@@ -894,7 +894,7 @@ class TableBoundSequenceTest(testing.TestBase):
              (4, "name4", 4)])
 
 
-class SpecialTypePKTest(testing.TestBase):
+class SpecialTypePKTest(fixtures.TestBase):
     """test process_result_value in conjunction with primary key columns.
 
     Also tests that "autoincrement" checks are against column.type._type_affinity,
@@ -978,7 +978,7 @@ class SpecialTypePKTest(testing.TestBase):
     def test_server_default_no_implicit_returning(self):
         self._run_test(server_default='1', autoincrement=False)
 
-class ServerDefaultsOnPKTest(testing.TestBase):
+class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_string_default_none_on_insert(self):
         """Test that without implicit returning, we return None for 
@@ -1104,7 +1104,7 @@ class ServerDefaultsOnPKTest(testing.TestBase):
             [(5, 'data')]
         )
 
-class UnicodeDefaultsTest(testing.TestBase):
+class UnicodeDefaultsTest(fixtures.TestBase):
     def test_no_default(self):
         c = Column(Unicode(32))
 

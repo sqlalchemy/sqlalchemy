@@ -6,14 +6,15 @@ from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
 from sqlalchemy.sql import column, literal
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
-from test.lib import TestBase, testing, engines
+from test.lib import testing, engines
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import base, default
 from sqlalchemy.engine.base import Connection, Engine
+from test.lib import fixtures
 
 users, metadata = None, None
-class ExecuteTest(TestBase):
+class ExecuteTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global users, users_autoinc, metadata
@@ -174,7 +175,7 @@ class ExecuteTest(TestBase):
         eq_(conn._execution_options['foo'], 'hoho')
 
 
-class CompiledCacheTest(TestBase):
+class CompiledCacheTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global users, metadata
@@ -206,7 +207,7 @@ class CompiledCacheTest(TestBase):
         assert len(cache) == 1
         eq_(conn.execute("select count(*) from users").scalar(), 3)
 
-class LoggingNameTest(TestBase):
+class LoggingNameTest(fixtures.TestBase):
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
         eng.execute(select([1]))
         for name in [b.name for b in self.buf.buffer]:
@@ -289,7 +290,7 @@ class LoggingNameTest(TestBase):
         eng = self._unnamed_engine(echo='debug', echo_pool='debug')
         self._assert_no_name_in_execute(eng)
 
-class EchoTest(TestBase):
+class EchoTest(fixtures.TestBase):
 
     def setup(self):
         self.level = logging.getLogger('sqlalchemy.engine').level
@@ -359,7 +360,7 @@ class EchoTest(TestBase):
         assert self.buf.buffer[2].getMessage().startswith("SELECT 6")
         assert len(self.buf.buffer) == 4
 
-class ResultProxyTest(TestBase):
+class ResultProxyTest(fixtures.TestBase):
     def test_nontuple_row(self):
         """ensure the C version of BaseRowProxy handles 
         duck-type-dependent rows."""
@@ -454,7 +455,7 @@ class ResultProxyTest(TestBase):
         writer.writerow(row)
         assert s.getvalue().strip() == '1,Test'
 
-class AlternateResultProxyTest(TestBase):
+class AlternateResultProxyTest(fixtures.TestBase):
     __requires__ = ('sqlite', )
 
     @classmethod
@@ -515,7 +516,7 @@ class AlternateResultProxyTest(TestBase):
     def test_buffered_column_result_proxy(self):
         self._test_proxy(base.BufferedColumnResultProxy)
 
-class EngineEventsTest(TestBase):
+class EngineEventsTest(fixtures.TestBase):
     def tearDown(self):
         Engine.dispatch._clear()
 
@@ -776,7 +777,7 @@ class EngineEventsTest(TestBase):
         )
 
 
-class ProxyConnectionTest(TestBase):
+class ProxyConnectionTest(fixtures.TestBase):
     """These are the same tests as EngineEventsTest, except using
     the deprecated ConnectionProxy interface.
 

@@ -6,10 +6,11 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
-class GenerativeQueryTest(_base.MappedTest):
+class GenerativeQueryTest(fixtures.MappedTest):
     run_inserts = 'once'
     run_deletes = None
 
@@ -153,7 +154,7 @@ class GenerativeQueryTest(_base.MappedTest):
         assert len(list(query.limit(10))) == 10
 
 
-class GenerativeTest2(_base.MappedTest):
+class GenerativeTest2(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -281,7 +282,7 @@ class RelationshipsTest(_fixtures.FixtureTest):
             set(q.all()))
 
 
-class CaseSensitiveTest(_base.MappedTest):
+class CaseSensitiveTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):

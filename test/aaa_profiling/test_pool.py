@@ -3,7 +3,7 @@ from test.lib import *
 from sqlalchemy.pool import QueuePool
 
 
-class QueuePoolTest(TestBase, AssertsExecutionResults):
+class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     class Connection(object):
         def rollback(self):
             pass

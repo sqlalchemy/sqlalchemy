@@ -3,7 +3,7 @@ from sqlalchemy.orm import *
 
 from test.lib import testing
 from test.lib.util import function_named
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.schema import Table, Column
 
 class BaseObject(object):
@@ -70,7 +70,7 @@ class ClassifiedPage(MagazinePage):
     pass
 
 
-class MagazineTest(_base.MappedTest):
+class MagazineTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global publication_table, issue_table, location_table, location_name_table, magazine_table, \

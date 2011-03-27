@@ -12,10 +12,9 @@ from test.lib import *
 from test.lib.util import round_decimal
 from sqlalchemy.sql import table, column
 from test.lib.testing import eq_
-from test.engine._base import TablesTest
 import logging
 
-class SequenceTest(TestBase, AssertsCompiledSQL):
+class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_format(self):
         seq = Sequence('my_seq_no_schema')
@@ -48,7 +47,7 @@ class SequenceTest(TestBase, AssertsCompiledSQL):
             r = engine.execute(t.insert())
             assert r.inserted_primary_key == [1]
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
 
@@ -231,7 +230,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
 
 
-class FloatCoercionTest(TablesTest, AssertsExecutionResults):
+class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
     __dialect__ = postgresql.dialect()
 
@@ -300,7 +299,7 @@ class FloatCoercionTest(TablesTest, AssertsExecutionResults):
             ([5], [5], [6], [decimal.Decimal("6.4")])
         )
 
-class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
     __dialect__ = postgresql.dialect()
@@ -507,7 +506,7 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
 
-class NumericInterpretationTest(TestBase):
+class NumericInterpretationTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
     def test_numeric_codes(self):
@@ -550,7 +549,7 @@ class NumericInterpretationTest(TestBase):
             (1, decimal.Decimal("1"), 1, decimal.Decimal("1"), 1)
         )
 
-class InsertTest(TestBase, AssertsExecutionResults):
+class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
 
@@ -991,7 +990,7 @@ class InsertTest(TestBase, AssertsExecutionResults):
         assert table.select().execute().fetchall() == [(30, 'd1'), (31,
                 'd2'), (32, 'd3'), (33, 'd4')]
 
-class DomainReflectionTest(TestBase, AssertsExecutionResults):
+class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     """Test PostgreSQL domains"""
 
@@ -1099,7 +1098,7 @@ class DomainReflectionTest(TestBase, AssertsExecutionResults):
         finally:
             postgresql.PGDialect.ischema_names = ischema_names
 
-class DistinctOnTest(TestBase, AssertsCompiledSQL):
+class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -1204,7 +1203,7 @@ class DistinctOnTest(TestBase, AssertsCompiledSQL):
             "t_1.a AS t_1_a, t_1.b AS t_1_b FROM t AS t_1"
         )
 
-class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
 
@@ -1530,7 +1529,7 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 "c %s NOT NULL" % expected
             )
 
-class TimezoneTest(TestBase):
+class TimezoneTest(fixtures.TestBase):
 
     """Test timezone-aware datetimes.
 
@@ -1605,7 +1604,7 @@ class TimezoneTest(TestBase):
         row = result.first()
         assert row[0] >= somedate
 
-class TimePrecisionTest(TestBase, AssertsCompiledSQL):
+class TimePrecisionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
 
@@ -1655,7 +1654,7 @@ class TimePrecisionTest(TestBase, AssertsCompiledSQL):
         eq_(t2.c.c5.type.timezone, False)
         eq_(t2.c.c6.type.timezone, True)
 
-class ArrayTest(TestBase, AssertsExecutionResults):
+class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
 
@@ -1819,7 +1818,7 @@ class ArrayTest(TestBase, AssertsExecutionResults):
 
 
 
-class TimestampTest(TestBase, AssertsExecutionResults):
+class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
 
     def test_timestamp(self):
@@ -1830,7 +1829,7 @@ class TimestampTest(TestBase, AssertsExecutionResults):
         result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
-class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
+class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql+psycopg2'
 
@@ -1973,7 +1972,7 @@ class ServerSideCursorsTest(TestBase, AssertsExecutionResults):
         finally:
             test_table.drop(checkfirst=True)
 
-class SpecialTypesTest(TestBase, ComparesTables, AssertsCompiledSQL):
+class SpecialTypesTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     """test DDL and reflection of PG-specific types """
 
     __only_on__ = 'postgresql'
@@ -2058,7 +2057,7 @@ class SpecialTypesTest(TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(t2.c.bitvarying5.type.length, 5)
         eq_(t2.c.bitvarying5.type.varying, True)
 
-class UUIDTest(TestBase):
+class UUIDTest(fixtures.TestBase):
     """Test the bind/return values of the UUID type."""
 
     __only_on__ = 'postgresql'
@@ -2118,7 +2117,7 @@ class UUIDTest(TestBase):
         eq_(r.fetchone(), None)
 
 
-class MatchTest(TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
     __excluded_on__ = ('postgresql', '<', (8, 3, 0)),
@@ -2222,7 +2221,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         eq_([1, 3, 5], [r.id for r in results])
 
 
-class TupleTest(TestBase):
+class TupleTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
     def test_tuple_containment(self):

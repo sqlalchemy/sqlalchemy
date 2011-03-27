@@ -6,11 +6,13 @@ from sqlalchemy import MetaData, Integer, String, event, exc, text
 from test.lib.schema import Table
 from test.lib.schema import Column
 import sqlalchemy as tsa
-from test.lib import TestBase, testing, engines
+from test.lib import testing, engines
 from test.lib.testing import AssertsCompiledSQL, eq_
 from nose import SkipTest
+from test.lib import fixtures
 
-class DDLEventTest(TestBase):
+
+class DDLEventTest(fixtures.TestBase):
     class Canary(object):
         def __init__(self, schema_item, bind):
             self.state = None
@@ -185,7 +187,7 @@ class DDLEventTest(TestBase):
                                         'blah', fn)
 
 
-class DDLExecutionTest(TestBase):
+class DDLExecutionTest(fixtures.TestBase):
     def setup(self):
         self.engine = engines.mock_engine()
         self.metadata = MetaData(self.engine)
@@ -427,7 +429,7 @@ class DDLExecutionTest(TestBase):
 
 
 
-class DDLTest(TestBase, AssertsCompiledSQL):
+class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     def mock_engine(self):
         executor = lambda *a, **kw: None
         engine = create_engine(testing.db.name + '://',

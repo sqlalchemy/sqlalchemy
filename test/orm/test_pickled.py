@@ -11,11 +11,12 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             clear_mappers, exc as orm_exc,\
                             configure_mappers, Session, lazyload_all,\
                             lazyload, aliased
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from test.lib.pickleable import User, Address, Order, Child1, Child2, Parent, Screen, EmailUser
 
 
-class PickleTest(_base.MappedTest):
+class PickleTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -318,7 +319,7 @@ class PickleTest(_base.MappedTest):
         screen2 = Screen(Child2(), screen1)
         pickle.loads(pickle.dumps(screen2))
 
-class PolymorphicDeferredTest(_base.MappedTest):
+class PolymorphicDeferredTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -421,7 +422,7 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 ret = sess.query(User, Address).join(User.addresses).all()
                 pickle.loads(pickle.dumps(ret, pickled))
 
-class CustomSetupTeardownTest(_base.MappedTest):
+class CustomSetupTeardownTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,

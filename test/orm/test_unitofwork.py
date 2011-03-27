@@ -15,8 +15,9 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
     column_property, attributes, Session, reconstructor, object_session
 from test.lib.testing import eq_, ne_
 from test.lib.util import gc_collect
-from test.orm import _base, _fixtures
-from test.engine import _base as engine_base
+from test.lib import fixtures
+from test.orm import _fixtures
+from test.lib import fixtures
 from test.lib.assertsql import AllOf, CompiledSQL
 import gc
 
@@ -58,7 +59,7 @@ class HistoryTest(_fixtures.FixtureTest):
         assert u.addresses[0].user == u
         session.close()
 
-class UnicodeTest(_base.MappedTest):
+class UnicodeTest(fixtures.MappedTest):
     __requires__ = ('unicode_connections',)
 
     @classmethod
@@ -123,7 +124,7 @@ class UnicodeTest(_base.MappedTest):
         t1 = session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
-class UnicodeSchemaTest(_base.MappedTest):
+class UnicodeSchemaTest(fixtures.MappedTest):
     __requires__ = ('unicode_connections', 'unicode_ddl',)
 
     run_dispose_bind = 'once'
@@ -164,9 +165,9 @@ class UnicodeSchemaTest(_base.MappedTest):
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(_base.ComparableEntity):
+        class A(fixtures.ComparableEntity):
             pass
-        class B(_base.ComparableEntity):
+        class B(fixtures.ComparableEntity):
             pass
 
         mapper(A, t1, properties={
@@ -203,7 +204,7 @@ class UnicodeSchemaTest(_base.MappedTest):
     def test_inheritance_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(_base.ComparableEntity):
+        class A(fixtures.ComparableEntity):
             pass
         class B(A):
             pass
@@ -224,7 +225,7 @@ class UnicodeSchemaTest(_base.MappedTest):
 
         eq_([A(b=5), B(e=7)], session.query(A).all())
 
-class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
+class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
@@ -270,7 +271,7 @@ class BinaryHistTest(_base.MappedTest, testing.AssertsExecutionResults):
 
 
 
-class PKTest(_base.MappedTest):
+class PKTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -342,7 +343,7 @@ class PKTest(_base.MappedTest):
         session.flush()
 
 
-class ForeignPKTest(_base.MappedTest):
+class ForeignPKTest(fixtures.MappedTest):
     """Detection of the relationship direction on PK joins."""
 
     @classmethod
@@ -391,7 +392,7 @@ class ForeignPKTest(_base.MappedTest):
         eq_(peoplesites.count(peoplesites.c.person=='im the key').scalar(), 1)
 
 
-class ClauseAttributesTest(_base.MappedTest):
+class ClauseAttributesTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -465,7 +466,7 @@ class ClauseAttributesTest(_base.MappedTest):
         assert (u.counter == 5) is True
 
 
-class PassiveDeletesTest(_base.MappedTest):
+class PassiveDeletesTest(fixtures.MappedTest):
     __requires__ = ('foreign_keys',)
 
     @classmethod
@@ -569,7 +570,7 @@ class PassiveDeletesTest(_base.MappedTest):
         mapper(MyClass, mytable)
         assert_raises(sa.exc.SAWarning, sa.orm.configure_mappers)
 
-class ExtraPassiveDeletesTest(_base.MappedTest):
+class ExtraPassiveDeletesTest(fixtures.MappedTest):
     __requires__ = ('foreign_keys',)
 
     @classmethod
@@ -683,7 +684,7 @@ class ExtraPassiveDeletesTest(_base.MappedTest):
         # no load for "children" should occur
         self.assert_sql_count(testing.db, session.flush, 1)
 
-class ColumnCollisionTest(_base.MappedTest):
+class ColumnCollisionTest(fixtures.MappedTest):
     """Ensure the mapper doesn't break bind param naming rules on flush."""
 
     @classmethod
@@ -697,7 +698,7 @@ class ColumnCollisionTest(_base.MappedTest):
     def test_naming(self):
         book = self.tables.book
 
-        class Book(_base.ComparableEntity):
+        class Book(fixtures.ComparableEntity):
             pass
 
         mapper(Book, book)
@@ -717,7 +718,7 @@ class ColumnCollisionTest(_base.MappedTest):
 
 
 
-class DefaultTest(_base.MappedTest):
+class DefaultTest(fixtures.MappedTest):
     """Exercise mappings on columns with DefaultGenerators.
 
     Tests that when saving objects whose table contains DefaultGenerators,
@@ -914,7 +915,7 @@ class DefaultTest(_base.MappedTest):
                     Secondary(data='s1'),
                     Secondary(data='s2')]))
 
-class ColumnPropertyTest(_base.MappedTest):
+class ColumnPropertyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('data', metadata, 
@@ -1284,7 +1285,7 @@ class SaveTest(_fixtures.FixtureTest):
     def test_synonym(self):
         users = self.tables.users
 
-        class SUser(_base.BasicEntity):
+        class SUser(fixtures.BasicEntity):
             def _get_name(self):
                 return "User:" + self.name
             def _set_name(self, name):
@@ -1938,7 +1939,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
         """Basic test of an association object"""
 
-        class IKAssociation(_base.ComparableEntity):
+        class IKAssociation(fixtures.ComparableEntity):
             pass
 
         mapper(Keyword, keywords)
@@ -2023,7 +2024,7 @@ class SaveTest2(_fixtures.FixtureTest):
              {'user_id': 2, 'email_address': 'a2'}),
         )
 
-class SaveTest3(_base.MappedTest):
+class SaveTest3(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('items', metadata,
@@ -2077,7 +2078,7 @@ class SaveTest3(_base.MappedTest):
         session.flush()
         assert assoc.count().scalar() == 0
 
-class BooleanColTest(_base.MappedTest):
+class BooleanColTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1_t', metadata,
@@ -2089,7 +2090,7 @@ class BooleanColTest(_base.MappedTest):
         t1_t = self.tables.t1_t
 
         # use the regular mapper
-        class T(_base.ComparableEntity):
+        class T(fixtures.ComparableEntity):
             pass
         orm_mapper(T, t1_t, order_by=t1_t.c.id)
 
@@ -2120,7 +2121,7 @@ class BooleanColTest(_base.MappedTest):
         sess.flush()
         eq_(sess.query(T).filter(T.value==True).all(), [T(value=True, name="t1"),T(value=True, name="t3")])
 
-class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
+class DontAllowFlushOnLoadingObjectTest(fixtures.MappedTest):
     """Test that objects with NULL identity keys aren't permitted to complete a flush.
 
     User-defined callables that execute during a load may modify state
@@ -2141,7 +2142,7 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
     def test_flush_raises(self):
         t1 = self.tables.t1
 
-        class T1(_base.ComparableEntity):
+        class T1(fixtures.ComparableEntity):
             @reconstructor
             def go(self):
                 # blow away 'id', no change event.
@@ -2183,7 +2184,7 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
 
 
 
-class RowSwitchTest(_base.MappedTest):
+class RowSwitchTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         # parent
@@ -2337,7 +2338,7 @@ class RowSwitchTest(_base.MappedTest):
         assert list(sess.execute(t5.select(), mapper=T5)) == [(2, 'some other t5')]
         assert list(sess.execute(t6.select(), mapper=T5)) == [(1, 'some other t6', 2)]
 
-class InheritingRowSwitchTest(_base.MappedTest):
+class InheritingRowSwitchTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
@@ -2394,7 +2395,7 @@ class InheritingRowSwitchTest(_base.MappedTest):
 
 
 
-class TransactionTest(_base.MappedTest):
+class TransactionTest(fixtures.MappedTest):
     __requires__ = ('deferrable_constraints',)
 
     __whitelist__ = ('sqlite',)

@@ -1,8 +1,9 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 from test.lib import testing
 from test.lib.schema import Table, Column
+from test.orm import _fixtures
+from test.lib import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
-from test.orm import _fixtures, _base
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes,\
                             Session
@@ -979,7 +980,7 @@ class SingleCycleTest(UOWTest):
 
 
 
-class SingleCyclePlusAttributeTest(_base.MappedTest,
+class SingleCyclePlusAttributeTest(fixtures.MappedTest,
                     testing.AssertsExecutionResults, AssertsUOW):
     @classmethod
     def define_tables(cls, metadata):
@@ -999,9 +1000,9 @@ class SingleCyclePlusAttributeTest(_base.MappedTest,
     def test_flush_size(self):
         foobars, nodes = self.tables.foobars, self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             pass
-        class FooBar(_base.ComparableEntity):
+        class FooBar(fixtures.ComparableEntity):
             pass
 
         mapper(Node, nodes, properties={
@@ -1026,7 +1027,7 @@ class SingleCyclePlusAttributeTest(_base.MappedTest,
 
         sess.flush()
 
-class SingleCycleM2MTest(_base.MappedTest, 
+class SingleCycleM2MTest(fixtures.MappedTest, 
                     testing.AssertsExecutionResults, AssertsUOW):
 
     @classmethod
@@ -1049,7 +1050,7 @@ class SingleCycleM2MTest(_base.MappedTest,
     def test_many_to_many_one(self):
         nodes, node_to_nodes = self.tables.nodes, self.tables.node_to_nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             pass
 
         mapper(Node, nodes, properties={
@@ -1158,7 +1159,7 @@ class SingleCycleM2MTest(_base.MappedTest,
             ),
         )
 
-class RowswitchAccountingTest(_base.MappedTest):
+class RowswitchAccountingTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
@@ -1211,7 +1212,7 @@ class RowswitchAccountingTest(_base.MappedTest):
 
         sess.flush()
 
-class BatchInsertsTest(_base.MappedTest, testing.AssertsExecutionResults):
+class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     @classmethod
     def define_tables(cls, metadata):
         Table('t', metadata,
@@ -1228,7 +1229,7 @@ class BatchInsertsTest(_base.MappedTest, testing.AssertsExecutionResults):
         key present statements together.
 
         """
-        class T(_base.ComparableEntity):
+        class T(fixtures.ComparableEntity):
             pass
         mapper(T, t)
         sess = Session()

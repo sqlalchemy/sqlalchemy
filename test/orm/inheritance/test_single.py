@@ -4,11 +4,11 @@ from sqlalchemy.orm import *
 
 from test.lib import testing
 from test.orm import _fixtures
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.schema import Table, Column
 
 
-class SingleInheritanceTest(testing.AssertsCompiledSQL, _base.MappedTest):
+class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -200,7 +200,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, _base.MappedTest):
                                 self.tables.reports,
                                 self.classes.Engineer)
 
-        class Report(_base.ComparableEntity):
+        class Report(fixtures.ComparableEntity):
             pass
 
         mapper(Report, reports, properties={
@@ -222,7 +222,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, _base.MappedTest):
                                 self.tables.reports,
                                 self.classes.Engineer)
 
-        class Report(_base.ComparableEntity):
+        class Report(fixtures.ComparableEntity):
             pass
 
         mapper(Report, reports, properties={
@@ -239,7 +239,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, _base.MappedTest):
         assert len(rq.join(Report.employee.of_type(Manager)).all()) == 1
         assert len(rq.join(Report.employee.of_type(Engineer)).all()) == 0
 
-class RelationshipFromSingleTest(testing.AssertsCompiledSQL, _base.MappedTest):
+class RelationshipFromSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employee', metadata,
@@ -295,7 +295,7 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, _base.MappedTest):
                             use_default_dialect=True
                             )
 
-class RelationshipToSingleTest(_base.MappedTest):
+class RelationshipToSingleTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -463,7 +463,7 @@ class RelationshipToSingleTest(_base.MappedTest):
             )
         go()
 
-class SingleOnJoinedTest(_base.MappedTest):
+class SingleOnJoinedTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global persons_table, employees_table
@@ -481,7 +481,7 @@ class SingleOnJoinedTest(_base.MappedTest):
         )
 
     def test_single_on_joined(self):
-        class Person(_base.ComparableEntity):
+        class Person(fixtures.ComparableEntity):
             pass
         class Employee(Person):
             pass

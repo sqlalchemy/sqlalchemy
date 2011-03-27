@@ -14,7 +14,7 @@ dbapi_session = engines.ReplayableSession()
 metadata = None
 
 
-class ZooMarkTest(TestBase):
+class ZooMarkTest(fixtures.TestBase):
 
     """Runs the ZooMark and squawks if method counts vary from the norm.
 

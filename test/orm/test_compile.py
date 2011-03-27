@@ -3,10 +3,10 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import *
 from test.lib import *
 from test.lib.testing import assert_raises_message
-from test.orm import _base
+from test.lib import fixtures
 
 
-class CompileTest(_base.ORMTest):
+class CompileTest(fixtures.ORMTest):
     """test various mapper compilation scenarios"""
 
     def teardown(self):

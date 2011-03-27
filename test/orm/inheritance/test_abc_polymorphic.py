@@ -3,10 +3,11 @@ from sqlalchemy import util
 from sqlalchemy.orm import *
 
 from test.lib.util import function_named
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from test.lib.schema import Table, Column
 
-class ABCTest(_base.MappedTest):
+class ABCTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global a, b, c
@@ -24,7 +25,7 @@ class ABCTest(_base.MappedTest):
 
     def make_test(fetchtype):
         def test_roundtrip(self):
-            class A(_base.ComparableEntity):pass
+            class A(fixtures.ComparableEntity):pass
             class B(A):pass
             class C(B):pass
 

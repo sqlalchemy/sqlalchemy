@@ -2,8 +2,9 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from sqlalchemy.ext.declarative import declarative_base
-from test.lib.testing import TestBase, eq_, AssertsExecutionResults, assert_raises
+from test.lib.testing import eq_, AssertsExecutionResults, assert_raises
 from test.lib import testing
+from test.lib import fixtures
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.exc import FlushError
 from test.lib.schema import Table, Column
@@ -11,7 +12,7 @@ from test.lib.schema import Table, Column
 engine = testing.db
 
 
-class FlushOnPendingTest(AssertsExecutionResults, TestBase):
+class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
     def setUp(self):
         global Parent, Child, Base
         Base= declarative_base()
@@ -57,7 +58,7 @@ class FlushOnPendingTest(AssertsExecutionResults, TestBase):
             assert p1.children == []
         self.assert_sql_count(testing.db, go, 0)
 
-class LoadOnFKsTest(AssertsExecutionResults, TestBase):
+class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
 
     def setUp(self):
         global Parent, Child, Base

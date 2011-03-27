@@ -17,7 +17,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, class_mapper, b
 from sqlalchemy.orm import attributes, exc as orm_exc
 from test.lib import testing
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 class O2MCollectionTest(_fixtures.FixtureTest):
     run_inserts = None

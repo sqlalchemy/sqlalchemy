@@ -1,13 +1,13 @@
 from sqlalchemy.ext import sqlsoup
-from test.lib.testing import TestBase, eq_, assert_raises, \
+from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from sqlalchemy import create_engine, or_, desc, select, func, exc, \
     Table, util, Column, Integer
 from sqlalchemy.orm import scoped_session, sessionmaker
 import datetime
+from test.lib import fixtures
 
-
-class SQLSoupTest(TestBase):
+class SQLSoupTest(fixtures.TestBase):
 
     __requires__ = 'sqlite',
 

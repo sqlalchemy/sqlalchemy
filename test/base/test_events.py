@@ -1,9 +1,10 @@
 """Test event registration and listening."""
 
-from test.lib.testing import TestBase, eq_, assert_raises
+from test.lib.testing import eq_, assert_raises
 from sqlalchemy import event, exc, util
+from test.lib import fixtures
 
-class TestEvents(TestBase):
+class TestEvents(fixtures.TestBase):
     """Test class- and instance-level event registration."""
 
     def setUp(self):
@@ -89,7 +90,7 @@ class TestEvents(TestBase):
             [listen_three, listen_one, listen_two]
         )
 
-class TestAcceptTargets(TestBase):
+class TestAcceptTargets(fixtures.TestBase):
     """Test default target acceptance."""
 
     def setUp(self):
@@ -159,7 +160,7 @@ class TestAcceptTargets(TestBase):
             [listen_two, listen_four]
         )
 
-class TestCustomTargets(TestBase):
+class TestCustomTargets(fixtures.TestBase):
     """Test custom target acceptance."""
 
     def setUp(self):
@@ -199,7 +200,7 @@ class TestCustomTargets(TestBase):
             listen, "event_one", Target
         )
 
-class TestListenOverride(TestBase):
+class TestListenOverride(fixtures.TestBase):
     """Test custom listen functions which change the listener function signature."""
 
     def setUp(self):
@@ -246,7 +247,7 @@ class TestListenOverride(TestBase):
             ]
         )
 
-class TestPropagate(TestBase):
+class TestPropagate(fixtures.TestBase):
     def setUp(self):
         global Target
 

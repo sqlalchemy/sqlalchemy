@@ -14,7 +14,7 @@ from test.lib import testing, AssertsCompiledSQL, Column, engines
 
 from test.orm import _fixtures
 
-from test.orm import _base
+from test.lib import fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
@@ -66,7 +66,7 @@ class QueryTest(_fixtures.FixtureTest):
 
         configure_mappers()
 
-class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
+class InheritedJoinTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
 
     @classmethod
@@ -1297,7 +1297,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
 
-class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
+class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('t1', metadata,
@@ -1344,7 +1344,7 @@ class MultiplePathTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
 
-class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
+class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     __dialect__ = default.DefaultDialect()
 
@@ -1432,7 +1432,7 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
         )
 
 
-class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
+class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None
@@ -1783,7 +1783,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
 
         eq_(sess.query(Node).filter(Node.parent != n12).all(), [Node(data='n1'), Node(data='n11'), Node(data='n12'), Node(data='n13')])
 
-class SelfReferentialM2MTest(_base.MappedTest):
+class SelfReferentialM2MTest(fixtures.MappedTest):
     run_setup_mappers = 'once'
     run_inserts = 'once'
     run_deletes = None

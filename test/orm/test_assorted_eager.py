@@ -14,10 +14,10 @@ from sqlalchemy import Integer, String, ForeignKey
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, backref, create_session
 from test.lib.testing import eq_
-from test.orm import _base
+from test.lib import fixtures
 
 
-class EagerTest(_base.MappedTest):
+class EagerTest(fixtures.MappedTest):
     run_deletes = None
     run_inserts = "once"
     run_setup_mappers = "once"
@@ -234,7 +234,7 @@ class EagerTest(_base.MappedTest):
         eq_(result, [u'3 Some Category'])
 
 
-class EagerTest2(_base.MappedTest):
+class EagerTest2(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('left', metadata,
@@ -306,7 +306,7 @@ class EagerTest2(_base.MappedTest):
         obj = session.query(Left).filter_by(data='l1').one()
 
 
-class EagerTest3(_base.MappedTest):
+class EagerTest3(fixtures.MappedTest):
     """Eager loading combined with nested SELECT statements, functions, and aggregates."""
 
     @classmethod
@@ -397,7 +397,7 @@ class EagerTest3(_base.MappedTest):
 
         eq_(verify_result, arb_result)
 
-class EagerTest4(_base.MappedTest):
+class EagerTest4(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -454,7 +454,7 @@ class EagerTest4(_base.MappedTest):
         assert q[0] is d2
 
 
-class EagerTest5(_base.MappedTest):
+class EagerTest5(fixtures.MappedTest):
     """Construction of AliasedClauses for the same eager load property but different parent mappers, due to inheritance."""
 
     @classmethod
@@ -548,7 +548,7 @@ class EagerTest5(_base.MappedTest):
         assert len([c for c in d2.comments]) == 1
 
 
-class EagerTest6(_base.MappedTest):
+class EagerTest6(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -625,7 +625,7 @@ class EagerTest6(_base.MappedTest):
         x.inheritedParts
 
 
-class EagerTest7(_base.MappedTest):
+class EagerTest7(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('companies', metadata,
@@ -711,7 +711,7 @@ class EagerTest7(_base.MappedTest):
 
 
 
-class EagerTest8(_base.MappedTest):
+class EagerTest8(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -763,7 +763,7 @@ class EagerTest8(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Task_Type(cls.Basic):
+        class Task_Type(cls.Comparable):
             pass
 
         class Joined(cls.Comparable):
@@ -802,7 +802,7 @@ class EagerTest8(_base.MappedTest):
             Joined(id=1, title=u'task 1', props_cnt=0))
 
 
-class EagerTest9(_base.MappedTest):
+class EagerTest9(fixtures.MappedTest):
     """Test the usage of query options to eagerly load specific paths.
 
     This relies upon the 'path' construct used by PropertyOption to relate

@@ -16,7 +16,7 @@ from test.lib import *
 from test.lib.engines import utf8_engine
 import datetime
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = mysql.dialect()
 
@@ -29,7 +29,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
         self.assert_compile(x, 
             '''SELECT mysql_table.col1, mysql_table.`master_ssl_verify_server_cert` FROM mysql_table''')
 
-class DialectTest(TestBase):
+class DialectTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 
     @testing.only_on(['mysql+mysqldb', 'mysql+oursql'], 
@@ -54,7 +54,7 @@ class DialectTest(TestBase):
             }
         )
 
-class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
 
     __only_on__ = 'mysql'
@@ -783,7 +783,7 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             enum_table.drop()
 
-class ReflectionTest(TestBase, AssertsExecutionResults):
+class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'mysql'
 
@@ -1045,7 +1045,7 @@ class ReflectionTest(TestBase, AssertsExecutionResults):
 
 
 
-class SQLTest(TestBase, AssertsCompiledSQL):
+class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()
@@ -1333,7 +1333,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
                             'INTEGER NOT NULL, PRIMARY KEY '
                             '(assigned_id, id))ENGINE=InnoDB')
 
-class SQLModeDetectionTest(TestBase):
+class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 
     def _options(self, modes):
@@ -1377,7 +1377,7 @@ class SQLModeDetectionTest(TestBase):
         c.close()
         engine.dispose()
 
-class RawReflectionTest(TestBase):
+class RawReflectionTest(fixtures.TestBase):
     def setup(self):
         dialect = mysql.dialect()
         self.parser = mysql.MySQLTableDefinitionParser(dialect, dialect.identifier_preparer)
@@ -1393,7 +1393,7 @@ class RawReflectionTest(TestBase):
         assert regex.match('  PRIMARY KEY (`id`) USING BTREE')
 
 
-class ExecutionTest(TestBase):
+class ExecutionTest(fixtures.TestBase):
     """Various MySQL execution special cases."""
 
     __only_on__ = 'mysql'
@@ -1413,7 +1413,7 @@ class ExecutionTest(TestBase):
         d = testing.db.scalar(func.sysdate())
         assert isinstance(d, datetime.datetime)
 
-class MatchTest(TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mysql'
 
     @classmethod

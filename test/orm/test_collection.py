@@ -12,7 +12,7 @@ from test.lib.schema import Table, Column
 from sqlalchemy import util, exc as sa_exc
 from sqlalchemy.orm import create_session, mapper, relationship, \
     attributes, instrumentation
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 
 class Canary(sa.orm.interfaces.AttributeExtension):
@@ -38,7 +38,7 @@ class Canary(sa.orm.interfaces.AttributeExtension):
         self.append(obj, value, None)
         return value
 
-class CollectionsTest(_base.ORMTest):
+class CollectionsTest(fixtures.ORMTest):
     class Entity(object):
         def __init__(self, a=None, b=None, c=None):
             self.a = a
@@ -1408,7 +1408,7 @@ class CollectionsTest(_base.ORMTest):
         obj.attr[0] = e3
         self.assert_(e3 in canary.data)
 
-class DictHelpersTest(_base.MappedTest):
+class DictHelpersTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1613,7 +1613,7 @@ class DictHelpersTest(_base.MappedTest):
         collection_class = lambda: Ordered2(lambda v: (v.a, v.b))
         self._test_composite_mapped(collection_class)
 
-class CustomCollectionsTest(_base.MappedTest):
+class CustomCollectionsTest(fixtures.MappedTest):
     """test the integration of collections with mapped classes."""
 
     @classmethod
@@ -1953,7 +1953,7 @@ class CustomCollectionsTest(_base.MappedTest):
         assert len(o) == 3
 
 
-class InstrumentationTest(_base.ORMTest):
+class InstrumentationTest(fixtures.ORMTest):
     def test_uncooperative_descriptor_in_sweep(self):
         class DoNotTouch(object):
             def __get__(self, obj, owner):

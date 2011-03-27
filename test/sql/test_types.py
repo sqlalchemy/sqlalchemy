@@ -14,9 +14,9 @@ from test.lib import *
 from test.lib.util import picklers
 from sqlalchemy.util.compat import decimal
 from test.lib.util import round_decimal
-from test.engine import _base
+from test.lib import fixtures
 
-class AdaptTest(TestBase):
+class AdaptTest(fixtures.TestBase):
     def _all_dialect_modules(self):
         return [
             getattr(dialects, d)
@@ -131,7 +131,7 @@ class AdaptTest(TestBase):
                 typ, 11
             )
 
-class TypeAffinityTest(TestBase):
+class TypeAffinityTest(fixtures.TestBase):
     def test_type_affinity(self):
         for type_, affin in [
             (String(), String),
@@ -154,7 +154,7 @@ class TypeAffinityTest(TestBase):
         ]:
             eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
 
-class PickleMetadataTest(TestBase):
+class PickleMetadataTest(fixtures.TestBase):
     def testmeta(self):
         for loads, dumps in picklers():
             column_types = [
@@ -183,7 +183,7 @@ class PickleMetadataTest(TestBase):
                 mt = loads(dumps(meta))
 
 
-class UserDefinedTest(_base.TablesTest, AssertsCompiledSQL):
+class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
     """tests user-defined types."""
 
     def test_processing(self):
@@ -423,7 +423,7 @@ class UserDefinedTest(_base.TablesTest, AssertsCompiledSQL):
         )
 
 
-class UnicodeTest(TestBase, AssertsExecutionResults):
+class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
 
     @classmethod
@@ -680,7 +680,7 @@ class UnicodeTest(TestBase, AssertsExecutionResults):
             m.drop_all(engine)
 
 
-class EnumTest(TestBase):
+class EnumTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global enum_table, non_native_enum_table, metadata
@@ -770,7 +770,7 @@ class EnumTest(TestBase):
             {'id':4, 'someenum':'four'}
         )
 
-class BinaryTest(TestBase, AssertsExecutionResults):
+class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types
         )
@@ -873,7 +873,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         f = os.path.join(os.path.dirname(__file__), "..", name)
         return open(f, mode='rb').read()
 
-class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class ExpressionTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     @classmethod
@@ -1140,7 +1140,7 @@ class ExpressionTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert distinct(test_table.c.data).type == test_table.c.data.type
         assert test_table.c.data.distinct().type == test_table.c.data.type
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_default_compile(self):
         """test that the base dialect of the type object is used
         for default compilation.
@@ -1159,7 +1159,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             self.assert_compile(type_, expected,
                                 allow_dialect_select=True)
 
-class DateTest(TestBase, AssertsExecutionResults):
+class DateTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         global users_with_date, insert_data
@@ -1294,7 +1294,7 @@ class DateTest(TestBase, AssertsExecutionResults):
         finally:
             t.drop(checkfirst=True)
 
-class StringTest(TestBase):
+class StringTest(fixtures.TestBase):
 
     @testing.requires.unbounded_varchar
     def test_nolength_string(self):
@@ -1304,7 +1304,7 @@ class StringTest(TestBase):
         foo.create()
         foo.drop()
 
-class NumericTest(TestBase):
+class NumericTest(fixtures.TestBase):
     def setup(self):
         global metadata
         metadata = MetaData(testing.db)
@@ -1443,7 +1443,7 @@ class NumericTest(TestBase):
             numbers
         )
 
-class NumericRawSQLTest(TestBase):
+class NumericRawSQLTest(fixtures.TestBase):
     """Test what DBAPIs and dialects return without any typing
     information supplied at the SQLA level.
 
@@ -1497,7 +1497,7 @@ class NumericRawSQLTest(TestBase):
 
 
 
-class IntervalTest(TestBase, AssertsExecutionResults):
+class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         global interval_table, metadata
@@ -1550,7 +1550,7 @@ class IntervalTest(TestBase, AssertsExecutionResults):
         eq_(row['non_native_interval'], None)
 
 
-class BooleanTest(TestBase, AssertsExecutionResults):
+class BooleanTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         global bool_table
@@ -1612,7 +1612,7 @@ class BooleanTest(TestBase, AssertsExecutionResults):
         testing.db.execute(
             "insert into booltest (id, unconstrained_value) values (1, 5)")
 
-class PickleTest(TestBase):
+class PickleTest(fixtures.TestBase):
     def test_eq_comparison(self):
         p1 = PickleType()
 
@@ -1638,7 +1638,7 @@ class PickleTest(TestBase):
         ):
             assert p1.compare_values(p1.copy_value(obj), obj)
 
-class CallableTest(TestBase):
+class CallableTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global meta

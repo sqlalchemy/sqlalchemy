@@ -3,10 +3,10 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from test.lib import testing
-from test.orm import _base
+from test.lib import fixtures
 
 
-class InheritTest(_base.MappedTest):
+class InheritTest(fixtures.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     @classmethod
     def define_tables(cls, metadata):
@@ -66,7 +66,7 @@ class InheritTest(_base.MappedTest):
         sess.flush()
         # TODO: put an assertion
 
-class InheritTest2(_base.MappedTest):
+class InheritTest2(fixtures.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     @classmethod
     def define_tables(cls, metadata):
@@ -140,7 +140,7 @@ class InheritTest2(_base.MappedTest):
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
 
-class InheritTest3(_base.MappedTest):
+class InheritTest3(fixtures.MappedTest):
     """deals with inheritance and many-to-many relationships"""
     @classmethod
     def define_tables(cls, metadata):

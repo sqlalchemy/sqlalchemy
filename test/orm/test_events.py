@@ -9,7 +9,8 @@ from sqlalchemy.orm import mapper, relationship, \
     Session, sessionmaker
 from sqlalchemy.orm.instrumentation import ClassManager
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from sqlalchemy import event
 
 
@@ -950,7 +951,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         assert len(m.dispatch.before_insert) == 1
 
 
-class AttributeExtensionTest(_base.MappedTest):
+class AttributeExtensionTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', 
@@ -976,7 +977,7 @@ class AttributeExtensionTest(_base.MappedTest):
                 ext_msg.append("Ex2 %r" % value)
                 return "ex2" + value
 
-        class A(_base.BasicEntity):
+        class A(fixtures.BasicEntity):
             pass
         class B(A):
             pass

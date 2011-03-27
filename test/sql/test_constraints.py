@@ -8,7 +8,7 @@ from test.lib.testing import eq_
 from test.lib.assertsql import AllOf, RegexSQL, ExactSQL, CompiledSQL
 from sqlalchemy.dialects.postgresql import base as postgresql
 
-class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def setup(self):
         global metadata
@@ -255,7 +255,7 @@ class ConstraintTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 Index('bar', t1.c.x)
         )
 
-class ConstraintCompilationTest(TestBase, AssertsCompiledSQL):
+class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _test_deferrable(self, constraint_factory):

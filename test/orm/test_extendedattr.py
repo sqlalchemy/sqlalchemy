@@ -8,7 +8,7 @@ from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import InstrumentationManager
 from test.lib import *
-from test.orm import _base
+from test.lib import fixtures
 
 class MyTypesManager(InstrumentationManager):
 
@@ -98,7 +98,7 @@ class MyClass(object):
         else:
             del self._goofy_dict[key]
 
-class UserDefinedExtensionTest(_base.ORMTest):
+class UserDefinedExtensionTest(fixtures.ORMTest):
     @classmethod
     def teardown_class(cls):
         clear_mappers()

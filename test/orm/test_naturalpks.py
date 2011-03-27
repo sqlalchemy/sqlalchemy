@@ -11,9 +11,10 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, backref, Session
 from sqlalchemy.orm.session import make_transient
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
-class NaturalPKTest(_base.MappedTest):
+class NaturalPKTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -444,7 +445,7 @@ class TransientExceptionTesst(_fixtures.FixtureTest):
         ne_(u1.id, None)
         eq_(sess.query(User).count(), 2)
 
-class ReversePKsTest(_base.MappedTest):
+class ReversePKsTest(fixtures.MappedTest):
     """reverse the primary keys of two entities and ensure bookkeeping
     succeeds."""
 
@@ -503,7 +504,7 @@ class ReversePKsTest(_base.MappedTest):
         assert session.query(User).get([1, EDITABLE]) is a_editable
 
 
-class SelfReferentialTest(_base.MappedTest):
+class SelfReferentialTest(fixtures.MappedTest):
     # mssql, mysql don't allow 
     # ON UPDATE on self-referential keys
     __unsupported_on__ = ('mssql','mysql') 
@@ -613,7 +614,7 @@ class SelfReferentialTest(_base.MappedTest):
                   Node.name.in_(['n11', 'n12', 'n13']))])
 
 
-class NonPKCascadeTest(_base.MappedTest):
+class NonPKCascadeTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         if testing.against('oracle'):
@@ -719,7 +720,7 @@ class NonPKCascadeTest(_base.MappedTest):
         eq_(User(username='fred', fullname='jack'), u1)
 
 
-class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
+class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     """A primary key mutation cascades onto a foreign key that is itself a
     primary key."""
 
@@ -972,7 +973,7 @@ class CascadeToFKPKTest(_base.MappedTest, testing.AssertsCompiledSQL):
                 [('jack',), ('jack', )])
 
 
-class JoinedInheritanceTest(_base.MappedTest):
+class JoinedInheritanceTest(fixtures.MappedTest):
     """Test cascades of pk->pk/fk on joined table inh."""
 
     # mssql doesn't allow ON UPDATE on self-referential keys

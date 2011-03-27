@@ -7,7 +7,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import *
 from test.lib.util import gc_collect
 from test.lib import testing
-from test.orm import _base
+from test.lib import fixtures
 from test.orm._fixtures import FixtureTest
 
 class TransactionTest(FixtureTest):
@@ -608,7 +608,7 @@ class AutoCommitTest(TransactionTest):
         assert 'id' not in u1.__dict__
         eq_(u1.id, 3)
 
-class NaturalPKRollbackTest(_base.MappedTest):
+class NaturalPKRollbackTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,

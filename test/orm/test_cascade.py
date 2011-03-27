@@ -8,10 +8,11 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from sqlalchemy.orm import attributes, exc as orm_exc
 from test.lib import testing
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
-class O2MCascadeDeleteOrphanTest(_base.MappedTest):
+class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     run_inserts = None
 
     @classmethod
@@ -302,7 +303,7 @@ class O2MCascadeDeleteOrphanTest(_base.MappedTest):
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 0
 
-class O2MCascadeDeleteNoOrphanTest(_base.MappedTest):
+class O2MCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     run_inserts = None
 
     @classmethod
@@ -982,7 +983,7 @@ class NoSaveCascadeBackrefTest(_fixtures.FixtureTest):
         assert k1 not in sess
 
 
-class M2OCascadeDeleteOrphanTestOne(_base.MappedTest):
+class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1164,7 +1165,7 @@ class M2OCascadeDeleteOrphanTestOne(_base.MappedTest):
         eq_(sess.query(Pref).order_by(Pref.id).all(),
             [Pref(data="pref 1"), Pref(data="pref 3"), Pref(data="newpref")])
 
-class M2OCascadeDeleteOrphanTestTwo(_base.MappedTest):
+class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1306,7 +1307,7 @@ class M2OCascadeDeleteOrphanTestTwo(_base.MappedTest):
         assert z.t3 is y
         assert x.t3 is None
 
-class M2OCascadeDeleteNoOrphanTest(_base.MappedTest):
+class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1456,7 +1457,7 @@ class M2OCascadeDeleteNoOrphanTest(_base.MappedTest):
 
 
 
-class M2MCascadeTest(_base.MappedTest):
+class M2MCascadeTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,
@@ -1769,7 +1770,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
             sess.commit
         )
 
-class PendingOrphanTestSingleLevel(_base.MappedTest):
+class PendingOrphanTestSingleLevel(fixtures.MappedTest):
     """Pending entities that are orphans"""
 
     @classmethod
@@ -1899,7 +1900,7 @@ class PendingOrphanTestSingleLevel(_base.MappedTest):
         eq_(s.query(Address).all(), [Address(email_address='ad1')])
 
 
-class PendingOrphanTestTwoLevel(_base.MappedTest):
+class PendingOrphanTestTwoLevel(fixtures.MappedTest):
     """test usages stated at
 
     http://article.gmane.org/gmane.comp.python.sqlalchemy.user/3085
@@ -1991,7 +1992,7 @@ class PendingOrphanTestTwoLevel(_base.MappedTest):
         assert i1 not in s
         assert a1 not in o1.items
 
-class DoubleParentO2MOrphanTest(_base.MappedTest):
+class DoubleParentO2MOrphanTest(fixtures.MappedTest):
     """Test orphan behavior on an entity that requires
     two parents via many-to-one (one-to-many collection.).
 
@@ -2025,11 +2026,11 @@ class DoubleParentO2MOrphanTest(_base.MappedTest):
         """test the delete-orphan uow event for multiple delete-orphan
         parent relationships."""
 
-        class Customer(_base.ComparableEntity):
+        class Customer(fixtures.ComparableEntity):
             pass
-        class Account(_base.ComparableEntity):
+        class Account(fixtures.ComparableEntity):
             pass
-        class SalesRep(_base.ComparableEntity):
+        class SalesRep(fixtures.ComparableEntity):
             pass
 
         mapper(Customer, customers)
@@ -2069,11 +2070,11 @@ class DoubleParentO2MOrphanTest(_base.MappedTest):
         """test the delete-orphan uow event for multiple delete-orphan
         parent relationships."""
 
-        class Customer(_base.ComparableEntity):
+        class Customer(fixtures.ComparableEntity):
             pass
-        class Account(_base.ComparableEntity):
+        class Account(fixtures.ComparableEntity):
             pass
-        class SalesRep(_base.ComparableEntity):
+        class SalesRep(fixtures.ComparableEntity):
             pass
 
         mapper(Customer, customers)
@@ -2106,7 +2107,7 @@ class DoubleParentO2MOrphanTest(_base.MappedTest):
             'Should expunge customer when both parents are gone'
 
 
-class DoubleParentM2OOrphanTest(_base.MappedTest):
+class DoubleParentM2OOrphanTest(fixtures.MappedTest):
     """Test orphan behavior on an entity that requires
     two parents via one-to-many (many-to-one reference to the orphan).
 
@@ -2144,11 +2145,11 @@ class DoubleParentM2OOrphanTest(_base.MappedTest):
         """test that an entity can have two parent delete-orphan
         cascades, and persists normally."""
 
-        class Address(_base.ComparableEntity):
+        class Address(fixtures.ComparableEntity):
             pass
-        class Home(_base.ComparableEntity):
+        class Home(fixtures.ComparableEntity):
             pass
-        class Business(_base.ComparableEntity):
+        class Business(fixtures.ComparableEntity):
             pass
 
         mapper(Address, addresses)
@@ -2182,13 +2183,13 @@ class DoubleParentM2OOrphanTest(_base.MappedTest):
         cascades, and is detected as an orphan when saved without a
         parent."""
 
-        class Address(_base.ComparableEntity):
+        class Address(fixtures.ComparableEntity):
             pass
 
-        class Home(_base.ComparableEntity):
+        class Home(fixtures.ComparableEntity):
             pass
 
-        class Business(_base.ComparableEntity):
+        class Business(fixtures.ComparableEntity):
             pass
 
         mapper(Address, addresses)
@@ -2203,7 +2204,7 @@ class DoubleParentM2OOrphanTest(_base.MappedTest):
         session.add(a1)
         session.flush()
 
-class CollectionAssignmentOrphanTest(_base.MappedTest):
+class CollectionAssignmentOrphanTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('table_a', metadata, 
@@ -2219,9 +2220,9 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
     def test_basic(self):
         table_b, table_a = self.tables.table_b, self.tables.table_a
 
-        class A(_base.ComparableEntity):
+        class A(fixtures.ComparableEntity):
             pass
-        class B(_base.ComparableEntity):
+        class B(fixtures.ComparableEntity):
             pass
 
         mapper(A, table_a, properties={
@@ -2251,7 +2252,7 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
         eq_(sess.query(A).get(a1.id),
             A(name='a1', bs=[B(name='b1'), B(name='b2'), B(name='b3')]))
 
-class O2MConflictTest(_base.MappedTest):
+class O2MConflictTest(fixtures.MappedTest):
     """test that O2M dependency detects a change in parent, does the
     right thing, and updates the collection/attribute.
 
@@ -2414,7 +2415,7 @@ class O2MConflictTest(_base.MappedTest):
         self._do_move_test(False)
 
 
-class PartialFlushTest(_base.MappedTest):
+class PartialFlushTest(fixtures.MappedTest):
     """test cascade behavior as it relates to object lists passed to flush()."""
     @classmethod
     def define_tables(cls, metadata):
@@ -2442,9 +2443,9 @@ class PartialFlushTest(_base.MappedTest):
     def test_o2m_m2o(self):
         base, noninh_child = self.tables.base, self.tables.noninh_child
 
-        class Base(_base.ComparableEntity):
+        class Base(fixtures.ComparableEntity):
             pass
-        class Child(_base.ComparableEntity):
+        class Child(fixtures.ComparableEntity):
             pass
 
         mapper(Base, base, properties={
@@ -2497,7 +2498,7 @@ class PartialFlushTest(_base.MappedTest):
 
         """test ticket 1306"""
 
-        class Base(_base.ComparableEntity):
+        class Base(fixtures.ComparableEntity):
             pass
         class Parent(Base):
             pass

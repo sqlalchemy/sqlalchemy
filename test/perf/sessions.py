@@ -2,14 +2,14 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from test.lib.compat import gc_collect
-from test.lib import TestBase, AssertsExecutionResults, profiling, testing
+from test.lib import AssertsExecutionResults, profiling, testing
 from test.orm import _fixtures
 
 # in this test we are specifically looking for time spent in the attributes.InstanceState.__cleanup() method.
 
 ITERATIONS = 100
 
-class SessionTest(TestBase, AssertsExecutionResults):
+class SessionTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
         global t1, t2, metadata,T1, T2
@@ -36,9 +36,9 @@ class SessionTest(TestBase, AssertsExecutionResults):
                 l.append({'c2':'this is t2 #%d' % y, 't1id':x})
             t2.insert().execute(*l)
 
-        class T1(_base.ComparableEntity):
+        class T1(fixtures.ComparableEntity):
             pass
-        class T2(_base.ComparableEntity):
+        class T2(fixtures.ComparableEntity):
             pass
 
         mapper(T1, t1, properties={

@@ -3,11 +3,11 @@ from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.testing import eq_
 
 
-class AssociationTest(_base.MappedTest):
+class AssociationTest(fixtures.MappedTest):
     run_setup_classes = 'once'
     run_setup_mappers = 'once'
 

@@ -4,7 +4,7 @@ NUM_FIELDS = 10
 NUM_RECORDS = 1000
 
 
-class ResultSetTest(TestBase, AssertsExecutionResults):
+class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'sqlite'
 
@@ -52,7 +52,7 @@ class ResultSetTest(TestBase, AssertsExecutionResults):
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
-class ExecutionTest(TestBase):
+class ExecutionTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
 
     def test_minimal_connection_execute(self):

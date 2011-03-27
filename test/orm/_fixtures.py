@@ -3,12 +3,12 @@ from sqlalchemy import util
 from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import attributes
-from test.orm import _base
+from test.lib import fixtures
 
 __all__ = ()
 
 
-class FixtureTest(_base.MappedTest):
+class FixtureTest(fixtures.MappedTest):
     """A MappedTest pre-configured with a common set of fixtures.
 
     """

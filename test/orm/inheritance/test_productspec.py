@@ -3,10 +3,10 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from test.lib import testing
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.schema import Table, Column
 
-class InheritTest(_base.MappedTest):
+class InheritTest(fixtures.MappedTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""
     @classmethod
     def define_tables(cls, metadata):

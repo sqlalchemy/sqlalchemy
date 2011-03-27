@@ -2,7 +2,7 @@ from sqlalchemy import *
 from test.lib import *
 from sqlalchemy.engine import default
 
-class CompileTest(TestBase, AssertsExecutionResults):
+class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     @classmethod
     def setup_class(cls):
 

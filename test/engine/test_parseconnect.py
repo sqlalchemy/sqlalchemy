@@ -5,10 +5,9 @@ import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc
 from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
-from test.lib import TestBase
+from test.lib import fixtures
 
-
-class ParseConnectTest(TestBase):
+class ParseConnectTest(fixtures.TestBase):
     def test_rfc1738(self):
         for text in (
             'dbtype://username:password@hostspec:110//usr/db_file.db',
@@ -40,7 +39,7 @@ class ParseConnectTest(TestBase):
                 or not u.host
             assert str(u) == text
 
-class DialectImportTest(TestBase):
+class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):
 
         # the globals() somehow makes it for the exec() + nose3.
@@ -57,7 +56,7 @@ class DialectImportTest(TestBase):
                   '%s.dialect()' % (name, name), globals())
             eq_(dialect.name, name)
 
-class CreateEngineTest(TestBase):
+class CreateEngineTest(fixtures.TestBase):
     """test that create_engine arguments of different types get
     propagated properly"""
 

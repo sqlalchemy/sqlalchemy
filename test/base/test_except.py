@@ -2,7 +2,7 @@
 
 
 from sqlalchemy import exc as sa_exceptions
-from test.lib import TestBase
+from test.lib import fixtures
 
 # Py3K 
 #StandardError = BaseException 
@@ -33,7 +33,7 @@ class OutOfSpec(DatabaseError):
     pass
 
 
-class WrapTest(TestBase):
+class WrapTest(fixtures.TestBase):
 
     def test_db_error_normal(self):
         try:

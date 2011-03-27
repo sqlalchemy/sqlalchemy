@@ -101,7 +101,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
                                 self,
                                 attributes.NEVER_SET)
 
-        # this is a hack to allow the _base.ComparableEntity fixture
+        # this is a hack to allow the fixtures.ComparableEntity fixture
         # to work
         dict_[self.key] = True
         return state.committed_state[self.key]

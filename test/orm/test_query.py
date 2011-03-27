@@ -14,7 +14,7 @@ from test.lib import testing, AssertsCompiledSQL, Column, engines
 
 from test.orm import _fixtures
 
-from test.orm import _base
+from test.lib import fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
@@ -197,7 +197,7 @@ class GetTest(QueryTest):
 
         s = users.outerjoin(addresses)
 
-        class UserThing(_base.ComparableEntity):
+        class UserThing(fixtures.ComparableEntity):
             pass
 
         mapper(UserThing, s, properties={
@@ -1779,7 +1779,7 @@ class ImmediateTest(_fixtures.FixtureTest):
         sess.bind = testing.db
         eq_(sess.query().value(sa.literal_column('1').label('x')), 1)
 
-class UpdateDeleteTest(_base.MappedTest):
+class UpdateDeleteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -1965,7 +1965,7 @@ class UpdateDeleteTest(_base.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('counter', Integer, nullable=False, default=0)
         )
-        class Data(_base.ComparableEntity):
+        class Data(fixtures.ComparableEntity):
             pass
 
         mapper(Data, data, properties={'cnt':data.c.counter})

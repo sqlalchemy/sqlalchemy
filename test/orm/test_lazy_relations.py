@@ -12,7 +12,8 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
 class LazyTest(_fixtures.FixtureTest):
@@ -507,7 +508,7 @@ class M2OGetTest(_fixtures.FixtureTest):
             assert ad3.user is None
         self.assert_sql_count(testing.db, go, 1)
 
-class CorrelatedTest(_base.MappedTest):
+class CorrelatedTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(self, meta):
@@ -539,10 +540,10 @@ class CorrelatedTest(_base.MappedTest):
     def test_correlated_lazyload(self):
         stuff, user_t = self.tables.stuff, self.tables.user_t
 
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             pass
 
-        class Stuff(_base.ComparableEntity):
+        class Stuff(fixtures.ComparableEntity):
             pass
 
         mapper(Stuff, stuff)

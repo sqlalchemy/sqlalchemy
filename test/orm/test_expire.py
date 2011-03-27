@@ -10,7 +10,8 @@ from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
                         attributes, deferred, exc as orm_exc, defer, undefer,\
                         strategies, state, lazyload, backref, Session
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
 class ExpireTest(_fixtures.FixtureTest):
@@ -959,7 +960,7 @@ class ExpireTest(_fixtures.FixtureTest):
 
 
 
-class PolymorphicExpireTest(_base.MappedTest):
+class PolymorphicExpireTest(fixtures.MappedTest):
     run_inserts = 'once'
     run_deletes = None
 
@@ -980,7 +981,7 @@ class PolymorphicExpireTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(cls.Comparable):
+        class Person(cls.Basic):
             pass
         class Engineer(Person):
             pass

@@ -1,13 +1,37 @@
-import sqlalchemy as sa
 from test.lib import testing
 from test.lib.testing import adict
 from test.lib.engines import drop_all_tables
 import sys
+import sqlalchemy as sa
+from test.lib.entities import BasicEntity, ComparableEntity
 
-class TablesTest(testing.TestBase):
-    """An integration test that creates and uses tables."""
+class TestBase(object):
+    # A sequence of database names to always run, regardless of the
+    # constraints below.
+    __whitelist__ = ()
 
-    # 'once', 'each', None
+    # A sequence of requirement names matching testing.requires decorators
+    __requires__ = ()
+
+    # A sequence of dialect names to exclude from the test class.
+    __unsupported_on__ = ()
+
+    # If present, test class is only runnable for the *single* specified
+    # dialect.  If you need multiple, use __unsupported_on__ and invert.
+    __only_on__ = None
+
+    # A sequence of no-arg callables. If any are True, the entire testcase is
+    # skipped.
+    __skip_if__ = None
+
+    _artifact_registries = ()
+
+    def assert_(self, val, msg=None):
+        assert val, msg
+
+class TablesTest(TestBase):
+
+    # 'once', None
     run_setup_bind = 'once'
 
     # 'once', 'each', None
@@ -22,7 +46,7 @@ class TablesTest(testing.TestBase):
     # 'each', None
     run_deletes = 'each'
 
-    # 'once', 'each', None
+    # 'once', None
     run_dispose_bind = None
 
     bind = None
@@ -100,22 +124,12 @@ class TablesTest(testing.TestBase):
                     print >> sys.stderr, "Error emptying table %s: %r" % (
                         table, ex)
 
-    def _setup_each_bind(self):
-        if self.setup_bind == 'each':
-            setattr(cls, 'bind', self.setup_bind())
-
-    def _teardown_each_bind(self):
-        if self.run_dispose_bind == 'each':
-            self.dispose_bind(self.bind)
-
     def setup(self):
-        self._setup_each_bind()
         self._setup_each_tables()
         self._setup_each_inserts()
 
     def teardown(self):
         self._teardown_each_tables()
-        self._teardown_each_bind()
 
     @classmethod
     def _teardown_once_metadata_bind(cls):
@@ -179,4 +193,130 @@ class TablesTest(testing.TestBase):
                 [dict(zip(headers[table], column_values))
                  for column_values in rows[table]])
 
+
+class _ORMTest(object):
+    __requires__ = ('subqueries',)
+
+    @classmethod
+    def teardown_class(cls):
+        sa.orm.session.Session.close_all()
+        sa.orm.clear_mappers()
+
+class ORMTest(_ORMTest, TestBase):
+    pass
+
+class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
+    # 'once', 'each', None
+    run_setup_classes = 'once'
+
+    # 'once', 'each', None
+    run_setup_mappers = 'each'
+
+    classes = None
+
+    @classmethod
+    def setup_class(cls):
+        cls._init_class()
+
+        if cls.classes is None:
+            cls.classes = adict()
+
+        cls._setup_once_tables()
+        cls._setup_once_classes()
+        cls._setup_once_mappers()
+        cls._setup_once_inserts()
+
+    @classmethod
+    def teardown_class(cls):
+        cls.classes.clear()
+        _ORMTest.teardown_class()
+        cls._teardown_once_metadata_bind()
+
+    def setup(self):
+        self._setup_each_tables()
+        self._setup_each_mappers()
+        self._setup_each_inserts()
+
+    def teardown(self):
+        sa.orm.session.Session.close_all()
+        self._teardown_each_mappers()
+        self._teardown_each_tables()
+
+    @classmethod
+    def _setup_once_classes(cls):
+        if cls.run_setup_classes == 'once':
+            cls._with_register_classes(cls.setup_classes)
+
+    @classmethod
+    def _setup_once_mappers(cls):
+        if cls.run_setup_mappers == 'once':
+            cls._with_register_classes(cls.setup_mappers)
+
+    def _setup_each_mappers(self):
+        if self.run_setup_mappers == 'each':
+            self._with_register_classes(self.setup_mappers)
+
+    @classmethod
+    def _with_register_classes(cls, fn):
+        """Run a setup method, framing the operation with a Base class
+        that will catch new subclasses to be established within
+        the "classes" registry.
+        
+        """
+        class Base(object):
+            pass
+        class Basic(BasicEntity, Base):
+            pass
+        class Comparable(ComparableEntity, Base):
+            pass
+        cls.Basic = Basic
+        cls.Comparable = Comparable
+        fn()
+        for class_ in subclasses(Base):
+            cls.classes[class_.__name__] = class_
+
+    def _teardown_each_mappers(self):
+        # some tests create mappers in the test bodies
+        # and will define setup_mappers as None - 
+        # clear mappers in any case
+        if self.run_setup_mappers != 'once':
+            sa.orm.clear_mappers()
+        if self.run_setup_classes == 'each':
+            cls.classes.clear()
+
+    @classmethod
+    def setup_classes(cls):
+        pass
+
+    @classmethod
+    def setup_mappers(cls):
+        pass
+
+    @classmethod
+    def _load_fixtures(cls):
+        """Insert rows as represented by the fixtures() method."""
+
+        headers, rows = {}, {}
+        for table, data in cls.fixtures().iteritems():
+            if isinstance(table, basestring):
+                table = cls.tables[table]
+            headers[table] = data[0]
+            rows[table] = data[1:]
+        for table in cls.metadata.sorted_tables:
+            if table not in headers:
+                continue
+            table.bind.execute(
+                table.insert(),
+                [dict(zip(headers[table], column_values))
+                 for column_values in rows[table]])
+
+
+def subclasses(cls):
+    subs, process = set(), set(cls.__subclasses__())
+    while process:
+        cls = process.pop()
+        if cls not in subs:
+            subs.add(cls)
+            process |= set(cls.__subclasses__())
+    return subs
 

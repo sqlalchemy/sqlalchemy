@@ -6,7 +6,7 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, create_session
 from test.lib.testing import eq_
-from test.orm import _base
+from test.lib import fixtures
 
 from sqlalchemy import and_, or_, not_
 from sqlalchemy.orm import evaluator
@@ -21,7 +21,7 @@ def eval_eq(clause, testcases=None):
             testeval(an_obj, result)
     return testeval
 
-class EvaluateTest(_base.MappedTest):
+class EvaluateTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -30,7 +30,7 @@ class EvaluateTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(cls.Comparable):
+        class User(cls.Basic):
             pass
 
     @classmethod

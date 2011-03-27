@@ -9,7 +9,7 @@ def setup():
     global engine
     engine = create_engine('sqlite://', echo=True)
 
-class TestVersioning(TestBase):
+class TestVersioning(fixtures.TestBase):
     def setup(self):
         global Base, Session, Versioned
         Base = declarative_base(bind=engine)

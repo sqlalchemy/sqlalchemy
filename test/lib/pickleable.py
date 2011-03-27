@@ -1,27 +1,27 @@
 """Classes used in pickling tests, need to be at the module level for unpickling."""
 
-from test.orm import _base
+from test.lib import fixtures
 
-class User(_base.ComparableEntity):
+class User(fixtures.ComparableEntity):
     pass
 
-class Order(_base.ComparableEntity):
+class Order(fixtures.ComparableEntity):
     pass
 
 class EmailUser(User):
     pass
 
-class Address(_base.ComparableEntity):
+class Address(fixtures.ComparableEntity):
     pass
 
 # TODO: these are kind of arbitrary....
-class Child1(_base.ComparableEntity):
+class Child1(fixtures.ComparableEntity):
     pass
 
-class Child2(_base.ComparableEntity):
+class Child2(fixtures.ComparableEntity):
     pass
 
-class Parent(_base.ComparableEntity):
+class Parent(fixtures.ComparableEntity):
     pass
 
 class Screen(object):

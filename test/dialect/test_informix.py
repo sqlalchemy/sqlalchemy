@@ -3,7 +3,7 @@ from sqlalchemy.databases import informix
 from test.lib import *
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = informix.InformixDialect()
 

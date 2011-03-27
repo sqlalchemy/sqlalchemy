@@ -1,10 +1,10 @@
 from sqlalchemy.util import topological
-from test.lib import TestBase
 from test.lib.testing import assert_raises, eq_
 from test.lib.util import conforms_partial_ordering
 from sqlalchemy import exc
+from test.lib import fixtures
 
-class DependencySortTest(TestBase):
+class DependencySortTest(fixtures.TestBase):
 
     def assert_sort(self, tuples, allitems=None):
         if allitems is None:

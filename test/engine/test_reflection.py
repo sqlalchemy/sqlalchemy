@@ -6,14 +6,15 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData
 from test.lib.schema import Table, Column
 import sqlalchemy as sa
-from test.lib import TestBase, ComparesTables, \
+from test.lib import ComparesTables, \
                             testing, engines, AssertsCompiledSQL
+from test.lib import fixtures
 
 create_inspector = Inspector.from_engine
 
 metadata, users = None, None
 
-class ReflectionTest(TestBase, ComparesTables):
+class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.exclude('mssql', '<', (10, 0, 0),
                      'Date is only supported on MSSQL 2008+')
@@ -810,7 +811,7 @@ class ReflectionTest(TestBase, ComparesTables):
         finally:
             _drop_views(metadata.bind)
 
-class CreateDropTest(TestBase):
+class CreateDropTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -895,7 +896,7 @@ class CreateDropTest(TestBase):
                      - set(testing.db.table_names()))
         metadata.drop_all(bind=testing.db)
 
-class SchemaManipulationTest(TestBase):
+class SchemaManipulationTest(fixtures.TestBase):
     def test_append_constraint_unique(self):
         meta = MetaData()
 
@@ -911,7 +912,7 @@ class SchemaManipulationTest(TestBase):
         assert len(addresses.c.user_id.foreign_keys) == 1
         assert addresses.constraints == set([addresses.primary_key, fk])
 
-class UnicodeReflectionTest(TestBase):
+class UnicodeReflectionTest(fixtures.TestBase):
 
     @testing.requires.unicode_connections
     def test_basic(self):
@@ -961,7 +962,7 @@ class UnicodeReflectionTest(TestBase):
             bind.dispose()
 
 
-class SchemaTest(TestBase):
+class SchemaTest(fixtures.TestBase):
 
     def test_iteration(self):
         metadata = MetaData()
@@ -1023,7 +1024,7 @@ class SchemaTest(TestBase):
             metadata.drop_all()
 
 
-class HasSequenceTest(TestBase):
+class HasSequenceTest(fixtures.TestBase):
 
     @testing.requires.sequences
     def test_has_sequence(self):
@@ -1135,7 +1136,7 @@ def _drop_views(con, schema=None):
         con.execute(sa.sql.text(query))
 
 
-class ReverseCasingReflectTest(TestBase, AssertsCompiledSQL):
+class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     @testing.requires.denormalized_names
@@ -1161,7 +1162,7 @@ class ReverseCasingReflectTest(TestBase, AssertsCompiledSQL):
                             'weird_casing."Col2", weird_casing."col3" '
                             'FROM weird_casing')
 
-class ComponentReflectionTest(TestBase):
+class ComponentReflectionTest(fixtures.TestBase):
 
     @testing.requires.schemas
     def test_get_schema_names(self):
@@ -1433,7 +1434,7 @@ class ComponentReflectionTest(TestBase):
     def test_get_table_oid_with_schema(self):
         self._test_get_table_oid('users', schema='test_schema')
 
-class ColumnEventsTest(TestBase):
+class ColumnEventsTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         cls.metadata = MetaData()

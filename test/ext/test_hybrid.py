@@ -3,9 +3,10 @@ from sqlalchemy.orm import relationship, Session, aliased
 from test.lib.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
-from test.lib.testing import TestBase, eq_, AssertsCompiledSQL
+from test.lib.testing import eq_, AssertsCompiledSQL
+from test.lib import fixtures
 
-class PropertyComparatorTest(TestBase, AssertsCompiledSQL):
+class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def _fixture(self):
@@ -77,7 +78,7 @@ class PropertyComparatorTest(TestBase, AssertsCompiledSQL):
             "FROM a AS a_1 WHERE upper(a_1.value) = upper(:upper_1)"
         )
 
-class PropertyExpressionTest(TestBase, AssertsCompiledSQL):
+class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()
@@ -143,7 +144,7 @@ class PropertyExpressionTest(TestBase, AssertsCompiledSQL):
             "FROM a AS a_1 WHERE foo(a_1.value) + bar(a_1.value) = :param_1"
         )
 
-class PropertyValueTest(TestBase, AssertsCompiledSQL):
+class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()
@@ -169,7 +170,7 @@ class PropertyValueTest(TestBase, AssertsCompiledSQL):
         eq_(a1.value, 5)
         eq_(a1._value, 10)
 
-class MethodExpressionTest(TestBase, AssertsCompiledSQL):
+class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
     def _fixture(self):
         Base = declarative_base()

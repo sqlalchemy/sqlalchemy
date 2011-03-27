@@ -1,12 +1,12 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-from test.orm import _base
+from test.lib import fixtures
 from test.lib import testing
 from test.lib.schema import Table, Column
 
 
-class PolymorphicCircularTest(_base.MappedTest):
+class PolymorphicCircularTest(fixtures.MappedTest):
     run_setup_mappers = 'once'
 
     @classmethod

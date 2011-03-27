@@ -4,7 +4,7 @@ from sqlalchemy.databases import access
 from test.lib import *
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = access.dialect()
 
     def test_extract(self):

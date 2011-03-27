@@ -3,10 +3,9 @@ from sqlalchemy.orm import *
 
 from test.lib import testing
 
-from test.orm._base import MappedTest, ComparableEntity as Base
+from test.lib import fixtures
 
-
-class InheritingSelectablesTest(MappedTest):
+class InheritingSelectablesTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         global foo, bar, baz
@@ -24,7 +23,7 @@ class InheritingSelectablesTest(MappedTest):
         testing.db.execute(foo.insert(), a='i am bar', b='bar')
         testing.db.execute(foo.insert(), a='also bar', b='bar')
 
-        class Foo(Base): pass
+        class Foo(fixtures.ComparableEntity): pass
         class Bar(Foo): pass
         class Baz(Foo): pass
 

@@ -1,13 +1,12 @@
 from test.lib.testing import assert_raises, assert_raises_message
 import copy, threading
 from sqlalchemy import util, sql, exc
-from test.lib import TestBase
 from test.lib.testing import eq_, is_, ne_, fails_if
 from test.lib.util import gc_collect, picklers
 from sqlalchemy.util import classproperty
+from test.lib import fixtures
 
-
-class OrderedDictTest(TestBase):
+class OrderedDictTest(fixtures.TestBase):
     def test_odict(self):
         o = util.OrderedDict()
         o['a'] = 1
@@ -71,7 +70,7 @@ class OrderedDictTest(TestBase):
         o3 = copy.copy(o)
         eq_(o3.keys(), o.keys())
 
-class OrderedSetTest(TestBase):
+class OrderedSetTest(fixtures.TestBase):
     def test_mutators_against_iter(self):
         # testing a set modified against an iterator
         o = util.OrderedSet([3,2, 4, 5])
@@ -80,14 +79,14 @@ class OrderedSetTest(TestBase):
         eq_(o.intersection(iter([3,4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3,4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
 
-class FrozenDictTest(TestBase):
+class FrozenDictTest(fixtures.TestBase):
     def test_serialize(self):
         d = util.immutabledict({1:2, 3:4})
         for loads, dumps in picklers():
             print loads(dumps(d))
 
 
-class MemoizedAttrTest(TestBase):
+class MemoizedAttrTest(fixtures.TestBase):
     def test_memoized_property(self):
         val = [20]
         class Foo(object):
@@ -121,7 +120,7 @@ class MemoizedAttrTest(TestBase):
         eq_(f1.bar(), 20)
         eq_(val[0], 21)
 
-class ColumnCollectionTest(TestBase):
+class ColumnCollectionTest(fixtures.TestBase):
     def test_in(self):
         cc = sql.ColumnCollection()
         cc.add(sql.column('col1'))
@@ -149,7 +148,7 @@ class ColumnCollectionTest(TestBase):
         assert (cc1==cc2).compare(c1 == c2)
         assert not (cc1==cc3).compare(c2 == c3)
 
-class LRUTest(TestBase):
+class LRUTest(fixtures.TestBase):
 
     def test_lru(self):
         class item(object):
@@ -196,7 +195,7 @@ class LRUTest(TestBase):
 class ImmutableSubclass(str):
     pass
 
-class FlattenIteratorTest(TestBase):
+class FlattenIteratorTest(fixtures.TestBase):
 
     def test_flatten(self):
         assert list(util.flatten_iterator([[1, 2, 3], [4, 5, 6], 7,
@@ -253,7 +252,7 @@ class HashEqOverride(object):
             return True
 
 
-class IdentitySetTest(TestBase):
+class IdentitySetTest(fixtures.TestBase):
     def assert_eq(self, identityset, expected_iterable):
         expected = sorted([id(o) for o in expected_iterable])
         found = sorted([id(o) for o in identityset])
@@ -370,7 +369,7 @@ class IdentitySetTest(TestBase):
         assert_raises(TypeError, lambda: s1 - os2)
         assert_raises(TypeError, lambda: s1 - [3, 4, 5])
 
-class OrderedIdentitySetTest(TestBase):
+class OrderedIdentitySetTest(fixtures.TestBase):
 
     def assert_eq(self, identityset, expected_iterable):
         expected = [id(o) for o in expected_iterable]
@@ -398,7 +397,7 @@ class OrderedIdentitySetTest(TestBase):
         eq_(s1.union(s2).intersection(s3), [a, d, f])
 
 
-class DictlikeIteritemsTest(TestBase):
+class DictlikeIteritemsTest(fixtures.TestBase):
     baseline = set([('a', 1), ('b', 2), ('c', 3)])
 
     def _ok(self, instance):
@@ -475,7 +474,7 @@ class DictlikeIteritemsTest(TestBase):
         self._notok(duck6())
 
 
-class DuckTypeCollectionTest(TestBase):
+class DuckTypeCollectionTest(fixtures.TestBase):
     def test_sets(self):
         # Py2K
         import sets
@@ -506,7 +505,7 @@ class DuckTypeCollectionTest(TestBase):
             instance = type_()
             is_(util.duck_type_collection(instance), None)
 
-class ArgInspectionTest(TestBase):
+class ArgInspectionTest(fixtures.TestBase):
     def test_get_cls_kwargs(self):
         class A(object):
             def __init__(self, a):
@@ -573,7 +572,7 @@ class ArgInspectionTest(TestBase):
         test(f3)
         test(f4)
 
-class SymbolTest(TestBase):
+class SymbolTest(fixtures.TestBase):
     def test_basic(self):
         sym1 = util.symbol('foo')
         assert sym1.name == 'foo'
@@ -603,7 +602,7 @@ class SymbolTest(TestBase):
             assert rt is sym1
             assert rt is sym2
 
-class WeakIdentityMappingTest(TestBase):
+class WeakIdentityMappingTest(fixtures.TestBase):
     class Data(object):
         pass
 
@@ -796,7 +795,7 @@ class WeakIdentityMappingTest(TestBase):
         eq_(wim._weakrefs, {})
 
 
-class TestFormatArgspec(TestBase):
+class TestFormatArgspec(fixtures.TestBase):
     def test_specs(self):
         def test(fn, wanted, grouped=None):
             if grouped is None:
@@ -937,7 +936,7 @@ class TestFormatArgspec(TestBase):
 
         test(O.__init__, custom_spec)
 
-class AsInterfaceTest(TestBase):
+class AsInterfaceTest(fixtures.TestBase):
 
     class Something(object):
         def _ignoreme(self): pass
@@ -1026,7 +1025,7 @@ class AsInterfaceTest(TestBase):
                       cls=self.Something)
 
 
-class TestClassHierarchy(TestBase):
+class TestClassHierarchy(fixtures.TestBase):
     def test_object(self):
         eq_(set(util.class_hierarchy(object)), set((object,)))
 
@@ -1063,7 +1062,7 @@ class TestClassHierarchy(TestBase):
     # end Py2K
 
 
-class TestClassProperty(TestBase):
+class TestClassProperty(fixtures.TestBase):
 
     def test_simple(self):
         class A(object):

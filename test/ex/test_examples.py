@@ -43,7 +43,7 @@ def check_import(module):
     __import__(module)
 
 
-class ExamplesTest(TestBase):
+class ExamplesTest(fixtures.TestBase):
 
     # TODO: ensure examples are actually run regardless of check for
     # "__main__", perhaps standardizing the format of all examples.

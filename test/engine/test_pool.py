@@ -1,9 +1,10 @@
 import threading, time
 from sqlalchemy import pool, interfaces, create_engine, select, event
 import sqlalchemy as tsa
-from test.lib import TestBase, testing
+from test.lib import testing
 from test.lib.util import gc_collect, lazy_gc
 from test.lib.testing import eq_, assert_raises
+from test.lib import fixtures
 
 mcid = 1
 class MockDBAPI(object):
@@ -33,7 +34,7 @@ class MockCursor(object):
     def close(self):
         pass
 
-class PoolTestBase(TestBase):
+class PoolTestBase(fixtures.TestBase):
     def setup(self):
         pool.clear_managers()
 

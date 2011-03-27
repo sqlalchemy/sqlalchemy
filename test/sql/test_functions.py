@@ -15,7 +15,7 @@ from test.lib import testing
 from sqlalchemy.databases import *
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_compile(self):
@@ -190,7 +190,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
             , checkparams={'y_1': 45, 'x_1': 17, 'y_2': 12, 'x_2': 5})
 
 
-class ExecuteTest(TestBase):
+class ExecuteTest(fixtures.TestBase):
     @engines.close_first
     def tearDown(self):
         pass

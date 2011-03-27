@@ -7,8 +7,9 @@ from sqlalchemy.orm import mapper, relationship, Session, \
     create_session, column_property, sessionmaker,\
     exc as orm_exc
 from test.lib.testing import eq_, ne_, assert_raises, assert_raises_message
-from test.orm import _base, _fixtures
-from test.engine import _base as engine_base
+from test.lib import fixtures
+from test.orm import _fixtures
+from test.lib import fixtures
 
 
 _uuids = [
@@ -32,7 +33,7 @@ def make_uuid():
     """generate uuids even on Python 2.4 which has no 'uuid'"""
     return _uuids.pop(0)
 
-class VersioningTest(_base.MappedTest):
+class VersioningTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -44,7 +45,7 @@ class VersioningTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Foo(cls.Comparable):
+        class Foo(cls.Basic):
             pass
 
     def _fixture(self):
@@ -314,7 +315,7 @@ class VersioningTest(_base.MappedTest):
             s1.merge, f2
         )
 
-class RowSwitchTest(_base.MappedTest):
+class RowSwitchTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
@@ -330,9 +331,9 @@ class RowSwitchTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class P(cls.Comparable):
+        class P(cls.Basic):
             pass
-        class C(cls.Comparable):
+        class C(cls.Basic):
             pass
 
     @classmethod
@@ -379,7 +380,7 @@ class RowSwitchTest(_base.MappedTest):
         p.c = C(data='child row-switch')
         session.commit()
 
-class AlternateGeneratorTest(_base.MappedTest):
+class AlternateGeneratorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
@@ -395,9 +396,9 @@ class AlternateGeneratorTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class P(cls.Comparable):
+        class P(cls.Basic):
             pass
-        class C(cls.Comparable):
+        class C(cls.Basic):
             pass
 
     @classmethod
@@ -481,7 +482,7 @@ class AlternateGeneratorTest(_base.MappedTest):
         )
 
 
-class InheritanceTwoVersionIdsTest(_base.MappedTest):
+class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
     """Test versioning where both parent/child table have a
     versioning column.
 
@@ -501,7 +502,7 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Base(cls.Comparable):
+        class Base(cls.Basic):
             pass
         class Sub(Base):
             pass

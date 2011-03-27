@@ -6,15 +6,13 @@ from sqlalchemy import MetaData
 from sqlalchemy import Table
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper, create_session
-
-
-from test.lib import TestBase, testing
-
+from test.lib import testing
+from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.testing import eq_
 
 
-class AliasedClassTest(TestBase):
+class AliasedClassTest(fixtures.TestBase):
     def point_map(self, cls):
         table = Table('point', MetaData(),
                     Column('id', Integer(), primary_key=True),

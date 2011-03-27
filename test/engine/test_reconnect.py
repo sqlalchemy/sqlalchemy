@@ -4,9 +4,10 @@ import weakref
 from sqlalchemy import select, MetaData, Integer, String, pool
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
-from test.lib import TestBase, testing, engines
+from test.lib import testing, engines
 from test.lib.util import gc_collect
 from sqlalchemy import exc
+from test.lib import fixtures
 
 class MockDisconnect(Exception):
     pass
@@ -48,7 +49,7 @@ class MockCursor(object):
         pass
 
 db, dbapi = None, None
-class MockReconnectTest(TestBase):
+class MockReconnectTest(fixtures.TestBase):
     def setup(self):
         global db, dbapi
         dbapi = MockDBAPI()
@@ -178,7 +179,7 @@ class MockReconnectTest(TestBase):
         assert not conn.invalidated
         assert len(dbapi.connections) == 1
 
-class CursorErrTest(TestBase):
+class CursorErrTest(fixtures.TestBase):
 
     def setup(self):
         global db, dbapi
@@ -211,7 +212,7 @@ class CursorErrTest(TestBase):
         db.dispose()
 
 engine = None
-class RealReconnectTest(TestBase):
+class RealReconnectTest(fixtures.TestBase):
     def setup(self):
         global engine
         engine = engines.reconnecting_engine()
@@ -383,7 +384,7 @@ class RealReconnectTest(TestBase):
         eq_(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated
 
-class RecycleTest(TestBase):
+class RecycleTest(fixtures.TestBase):
 
     def test_basic(self):
         for threadlocal in False, True:
@@ -414,7 +415,7 @@ class RecycleTest(TestBase):
             conn.close()
 
 meta, table, engine = None, None, None
-class InvalidateDuringResultTest(TestBase):
+class InvalidateDuringResultTest(fixtures.TestBase):
     def setup(self):
         global meta, table, engine
         engine = engines.reconnecting_engine()

@@ -9,9 +9,9 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 import sqlalchemy as sa
 from test.lib import testing
+from test.lib import fixtures
 
-
-class BindTest(testing.TestBase):
+class BindTest(fixtures.TestBase):
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table('test_table', metadata,

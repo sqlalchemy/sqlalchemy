@@ -4,7 +4,7 @@ from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
 
 from test.lib import testing
 from test.lib.schema import Table, Column
-from test.orm import _base
+from test.lib import fixtures
 
 
 def produce_test(parent, child, direction):
@@ -15,7 +15,7 @@ def produce_test(parent, child, direction):
     the old "no discriminator column" pattern is used.
 
     """
-    class ABCTest(_base.MappedTest):
+    class ABCTest(fixtures.MappedTest):
         @classmethod
         def define_tables(cls, metadata):
             global ta, tb, tc

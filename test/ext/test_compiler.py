@@ -9,7 +9,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import table, column, visitors
 from test.lib import *
 
-class UserDefinedTest(TestBase, AssertsCompiledSQL):
+class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_column(self):
@@ -265,7 +265,7 @@ class UserDefinedTest(TestBase, AssertsCompiledSQL):
         )
 
 
-class DefaultOnExistingTest(TestBase, AssertsCompiledSQL):
+class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
     """Test replacement of default compilation on existing constructs."""
     __dialect__ = 'default'
 

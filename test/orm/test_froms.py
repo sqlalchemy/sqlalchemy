@@ -14,7 +14,7 @@ from test.lib import testing, AssertsCompiledSQL, Column, engines
 
 from test.orm import _fixtures
 
-from test.orm import _base
+from test.lib import fixtures
 
 from sqlalchemy.orm.util import join, outerjoin, with_parent
 
@@ -248,7 +248,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         )
 
-class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
+class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
 
     @classmethod
@@ -1804,7 +1804,7 @@ class ExternalColumnsTest(QueryTest):
             eq_(o1.address.user.count, 1)
         self.assert_sql_count(testing.db, go, 1)
 
-class TestOverlyEagerEquivalentCols(_base.MappedTest):
+class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         base = Table('base', metadata, 
@@ -1827,11 +1827,11 @@ class TestOverlyEagerEquivalentCols(_base.MappedTest):
                                 self.tables.sub2,
                                 self.tables.sub1)
 
-        class Base(_base.ComparableEntity):
+        class Base(fixtures.ComparableEntity):
             pass
-        class Sub1(_base.ComparableEntity):
+        class Sub1(fixtures.ComparableEntity):
             pass
-        class Sub2(_base.ComparableEntity):
+        class Sub2(fixtures.ComparableEntity):
             pass
 
         mapper(Base, base, properties={

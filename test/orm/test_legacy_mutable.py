@@ -15,9 +15,10 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, create_session, Session, attributes
 from test.lib.testing import eq_, ne_
 from test.lib.util import gc_collect
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
-class MutableTypesTest(_base.MappedTest):
+class MutableTypesTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -277,7 +278,7 @@ class MutableTypesTest(_base.MappedTest):
         self.sql_count_(1, go)
 
 
-class PickledDictsTest(_base.MappedTest):
+class PickledDictsTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):

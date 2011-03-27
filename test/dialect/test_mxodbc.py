@@ -1,6 +1,7 @@
 from sqlalchemy import *
-from test.lib.testing import eq_, TestBase
+from test.lib.testing import eq_
 from test.lib import engines
+from test.lib import fixtures
 
 # TODO: we should probably build mock bases for
 # these to share with test_reconnect, test_parseconnect
@@ -35,7 +36,7 @@ class MockCursor(object):
     def close(self):
         pass
 
-class MxODBCTest(TestBase):
+class MxODBCTest(fixtures.TestBase):
 
     def test_native_odbc_execute(self):
         t1 = Table('t1', MetaData(), Column('c1', Integer))

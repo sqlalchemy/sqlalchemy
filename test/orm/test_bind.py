@@ -5,10 +5,10 @@ from test.lib.schema import Column
 from sqlalchemy.orm import mapper, create_session
 import sqlalchemy as sa
 from test.lib import testing
-from test.orm import _base
+from test.lib import fixtures
 
 
-class BindTest(_base.MappedTest):
+class BindTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('test_table', metadata,

@@ -6,13 +6,13 @@ from sqlalchemy import String, Integer, select
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, Session
 from test.lib.testing import eq_, AssertsCompiledSQL
-from test.orm import _base
+from test.lib import fixtures
 
 
 
 # TODO: more tests mapping to selects
 
-class SelectableNoFromsTest(_base.MappedTest, AssertsCompiledSQL):
+class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod
     def define_tables(cls, metadata):
         Table('common', metadata,

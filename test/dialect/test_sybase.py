@@ -4,7 +4,7 @@ from sqlalchemy.databases import sybase
 from test.lib import *
 
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = sybase.dialect()
 
     def test_extract(self):

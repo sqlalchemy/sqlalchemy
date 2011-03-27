@@ -13,7 +13,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from test.lib.assertsql import CompiledSQL
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from sqlalchemy.util import OrderedDict as odict
 import datetime
 
@@ -1436,7 +1437,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             eq_(ret, self._assert_result())
         self.assert_sql_count(testing.db, go, 1)
 
-class OrderBySecondaryTest(_base.MappedTest):
+class OrderBySecondaryTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('m2m', metadata,
@@ -1477,8 +1478,8 @@ class OrderBySecondaryTest(_base.MappedTest):
                                 self.tables.m2m,
                                 self.tables.b)
 
-        class A(_base.ComparableEntity):pass
-        class B(_base.ComparableEntity):pass
+        class A(fixtures.ComparableEntity):pass
+        class B(fixtures.ComparableEntity):pass
 
         mapper(A, a, properties={
             'bs':relationship(B, secondary=m2m, lazy='joined', order_by=m2m.c.id)
@@ -1492,7 +1493,7 @@ class OrderBySecondaryTest(_base.MappedTest):
         ])
 
 
-class SelfReferentialEagerTest(_base.MappedTest):
+class SelfReferentialEagerTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('nodes', metadata,
@@ -1504,7 +1505,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     def test_basic(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -1555,7 +1556,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     def test_lazy_fallback_doesnt_affect_eager(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -1597,7 +1598,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     def test_with_deferred(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -1640,7 +1641,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     def test_options(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -1689,7 +1690,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
     def test_no_depth(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -1720,7 +1721,7 @@ class SelfReferentialEagerTest(_base.MappedTest):
             ]), d)
         self.assert_sql_count(testing.db, go, 3)
 
-class MixedSelfReferentialEagerTest(_base.MappedTest):
+class MixedSelfReferentialEagerTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a_table', metadata,
@@ -1800,7 +1801,7 @@ class MixedSelfReferentialEagerTest(_base.MappedTest):
             )
         self.assert_sql_count(testing.db, go, 1)
 
-class SelfReferentialM2MEagerTest(_base.MappedTest):
+class SelfReferentialM2MEagerTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('widget', metadata,
@@ -1817,7 +1818,7 @@ class SelfReferentialM2MEagerTest(_base.MappedTest):
     def test_basic(self):
         widget, widget_rel = self.tables.widget, self.tables.widget_rel
 
-        class Widget(_base.ComparableEntity):
+        class Widget(fixtures.ComparableEntity):
             pass
 
         mapper(Widget, widget, properties={
@@ -2004,7 +2005,7 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         dialect=DefaultDialect()
         )
 
-class CyclicalInheritingEagerTest(_base.MappedTest):
+class CyclicalInheritingEagerTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2045,7 +2046,7 @@ class CyclicalInheritingEagerTest(_base.MappedTest):
         # testing a particular endless loop condition in eager join setup
         create_session().query(SubT).all()
 
-class SubqueryTest(_base.MappedTest):
+class SubqueryTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users_table', metadata,
@@ -2075,12 +2076,12 @@ class SubqueryTest(_base.MappedTest):
         that type.
 
         """
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             @property
             def prop_score(self):
                 return sum([tag.prop_score for tag in self.tags])
 
-        class Tag(_base.ComparableEntity):
+        class Tag(fixtures.ComparableEntity):
             @property
             def prop_score(self):
                 return self.score1 * self.score2
@@ -2129,7 +2130,7 @@ class SubqueryTest(_base.MappedTest):
             for t in (tags_table, users_table):
                 t.delete().execute()
 
-class CorrelatedSubqueryTest(_base.MappedTest):
+class CorrelatedSubqueryTest(fixtures.MappedTest):
     """tests for #946, #947, #948.
 
     The "users" table is joined to "stuff", and the relationship
@@ -2214,10 +2215,10 @@ class CorrelatedSubqueryTest(_base.MappedTest):
     def _do_test(self, labeled, ondate, aliasstuff):
         stuff, users = self.tables.stuff, self.tables.users
 
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             pass
 
-        class Stuff(_base.ComparableEntity):
+        class Stuff(fixtures.ComparableEntity):
             pass
 
         mapper(Stuff, stuff)

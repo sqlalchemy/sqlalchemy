@@ -6,7 +6,7 @@ from sqlalchemy.orm import exc as orm_exc
 from test.lib import *
 import sqlalchemy as sa
 from test.lib import testing
-from test.orm import _base
+from test.lib import fixtures
 from sqlalchemy.orm import attributes
 from test.lib.testing import eq_
 from test.lib.schema import Table, Column
@@ -64,7 +64,7 @@ class Company(object):
     pass
 
 
-class ConcreteTest(_base.MappedTest):
+class ConcreteTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -372,7 +372,7 @@ class ConcreteTest(_base.MappedTest):
         self.assert_sql_count(testing.db, go, 1)
 
 
-class PropertyInheritanceTest(_base.MappedTest):
+class PropertyInheritanceTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -630,7 +630,7 @@ class PropertyInheritanceTest(_base.MappedTest):
         eq_(merged_c1.some_dest.name, 'd2')
         eq_(merged_c1.some_dest_id, c1.some_dest_id)
 
-class ManyToManyTest(_base.MappedTest):
+class ManyToManyTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -692,7 +692,7 @@ class ManyToManyTest(_base.MappedTest):
         eq_(b1.related, [r1, r2])
 
 
-class ColKeysTest(_base.MappedTest):
+class ColKeysTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):

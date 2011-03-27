@@ -3,10 +3,10 @@ from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.orm import _base
+from test.lib import fixtures
 
 
-class O2OTest(_base.MappedTest):
+class O2OTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('jack', metadata,

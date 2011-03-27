@@ -9,7 +9,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, PropComparator,
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.interfaces import MapperOption
 from test.lib.testing import eq_, ne_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from sqlalchemy import event
 from test.lib.schema import Table, Column
 
@@ -1085,7 +1086,7 @@ class MergeTest(_fixtures.FixtureTest):
             eq_(ustate.load_options, set([opt2]))
 
 
-class MutableMergeTest(_base.MappedTest):
+class MutableMergeTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("data", metadata, 
@@ -1095,7 +1096,7 @@ class MutableMergeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Data(cls.Comparable):
+        class Data(cls.Basic):
             pass
 
     def test_list(self):
@@ -1114,7 +1115,7 @@ class MutableMergeTest(_base.MappedTest):
 
 
 
-class CompositeNullPksTest(_base.MappedTest):
+class CompositeNullPksTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("data", metadata, 
@@ -1124,7 +1125,7 @@ class CompositeNullPksTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Data(cls.Comparable):
+        class Data(cls.Basic):
             pass
 
     def test_merge_allow_partial(self):

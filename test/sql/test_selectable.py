@@ -8,6 +8,7 @@ from sqlalchemy.sql import util as sql_util, visitors
 from sqlalchemy import exc
 from sqlalchemy.sql import table, column, null
 from sqlalchemy import util
+from test.lib import fixtures
 
 metadata = MetaData()
 table1 = Table('table1', metadata,
@@ -26,7 +27,7 @@ table2 = Table('table2', metadata,
 )
 
 
-class SelectableTest(TestBase, AssertsExecutionResults):
+class SelectableTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
@@ -372,7 +373,7 @@ class SelectableTest(TestBase, AssertsExecutionResults):
                               t1t2.join, t2t3.select(use_labels=True))
 
 
-class PrimaryKeyTest(TestBase, AssertsExecutionResults):
+class PrimaryKeyTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_join_pk_collapse_implicit(self):
         """test that redundant columns in a join get 'collapsed' into a
@@ -476,7 +477,7 @@ class PrimaryKeyTest(TestBase, AssertsExecutionResults):
             util.column_set([employee.c.id]))
 
 
-class ReduceTest(TestBase, AssertsExecutionResults):
+class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
     def test_reduce(self):
         meta = MetaData()
         t1 = Table('t1', meta,
@@ -635,7 +636,7 @@ class ReduceTest(TestBase, AssertsExecutionResults):
             pjoin.c.page_id, pjoin.c.magazine_page_id])),
             util.column_set([pjoin.c.id]))
 
-class DerivedTest(TestBase, AssertsExecutionResults):
+class DerivedTest(fixtures.TestBase, AssertsExecutionResults):
     def test_table(self):
         meta = MetaData()
 
@@ -677,7 +678,7 @@ class DerivedTest(TestBase, AssertsExecutionResults):
         assert select([t1, t2]).alias('foo').is_derived_from(t1)
         assert not t2.select().alias('foo').is_derived_from(t1)
 
-class AnnotationsTest(TestBase):
+class AnnotationsTest(fixtures.TestBase):
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):

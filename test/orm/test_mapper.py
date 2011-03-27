@@ -12,7 +12,8 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     column_property, composite, dynamic_loader, \
     comparable_property, Session
 from test.lib.testing import eq_, AssertsCompiledSQL
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 from test.lib.assertsql import CompiledSQL
 
 class MapperTest(_fixtures.FixtureTest):
@@ -326,7 +327,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         assert_col = []
 
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             def _get_name(self):
                 assert_col.append(('get', self._name))
                 return self._name
@@ -1332,7 +1333,7 @@ class MapperTest(_fixtures.FixtureTest):
 
         mapper(B, users)
 
-class DocumentTest(testing.TestBase):
+class DocumentTest(fixtures.TestBase):
 
     def test_doc_propagate(self):
         metadata = MetaData()
@@ -1712,7 +1713,7 @@ class ValidatorTest(_fixtures.FixtureTest):
     def test_scalar(self):
         users = self.tables.users
 
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             @validates('name')
             def validate_name(self, key, name):
                 assert name != 'fred'
@@ -1735,7 +1736,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                                 self.tables.addresses,
                                 self.classes.Address)
 
-        class User(_base.ComparableEntity):
+        class User(fixtures.ComparableEntity):
             @validates('addresses')
             def validate_address(self, key, ad):
                 assert '@' in ad.email_address
@@ -2186,7 +2187,7 @@ class DeferredTest(_fixtures.FixtureTest):
         eq_(item.description, 'item 4')
 
 
-class SecondaryOptionsTest(_base.MappedTest):
+class SecondaryOptionsTest(fixtures.MappedTest):
     """test that the contains_eager() option doesn't bleed into a secondary load."""
 
     run_inserts = 'once'
@@ -2368,7 +2369,7 @@ class SecondaryOptionsTest(_base.MappedTest):
         )
 
 
-class DeferredPopulationTest(_base.MappedTest):
+class DeferredPopulationTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("thing", metadata,
@@ -2517,7 +2518,7 @@ class NoLoadTest(_fixtures.FixtureTest):
 
 
 
-class RequirementsTest(_base.MappedTest):
+class RequirementsTest(fixtures.MappedTest):
     """Tests the contract for user classes."""
 
     @classmethod
@@ -2691,7 +2692,7 @@ class RequirementsTest(_base.MappedTest):
         h2.value = "Asdf"
         h2.value = "asdf asdf" # ding
 
-class MagicNamesTest(_base.MappedTest):
+class MagicNamesTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):

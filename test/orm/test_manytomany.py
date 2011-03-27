@@ -7,10 +7,10 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     exc as orm_exc, sessionmaker
-from test.orm import _base
+from test.lib import fixtures
 
 
-class M2MTest(_base.MappedTest):
+class M2MTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('place', metadata,
@@ -98,11 +98,11 @@ class M2MTest(_base.MappedTest):
                                  sa.orm.configure_mappers)
 
     def test_circular(self):
+        """test a many-to-many relationship from a table to itself."""
+
         place, Place, place_place = (self.tables.place,
                                 self.classes.Place,
                                 self.tables.place_place)
-
-        """test a many-to-many relationship from a table to itself."""
 
         mapper(Place, place, properties={
             'places': relationship(
@@ -152,11 +152,12 @@ class M2MTest(_base.MappedTest):
         sess.flush()
 
     def test_circular_mutation(self):
+        """Test that a mutation in a self-ref m2m of both sides succeeds."""
+
+
         place, Place, place_place = (self.tables.place,
                                 self.classes.Place,
                                 self.tables.place_place)
-
-        """Test that a mutation in a self-ref m2m of both sides succeeds."""
 
         mapper(Place, place, properties={
             'child_places': relationship(
@@ -183,6 +184,9 @@ class M2MTest(_base.MappedTest):
 
 
     def test_double(self):
+        """test that a mapper can have two eager relationships to the same table, via
+        two different association tables.  aliases are required."""
+
         place_input, transition, Transition, PlaceThingy, place, place_thingy, Place, place_output = (self.tables.place_input,
                                 self.tables.transition,
                                 self.classes.Transition,
@@ -192,8 +196,6 @@ class M2MTest(_base.MappedTest):
                                 self.classes.Place,
                                 self.tables.place_output)
 
-        """test that a mapper can have two eager relationships to the same table, via
-        two different association tables.  aliases are required."""
 
         Place.mapper = mapper(Place, place, properties = {
             'thingies':relationship(mapper(PlaceThingy, place_thingy), lazy='joined')
@@ -229,7 +231,6 @@ class M2MTest(_base.MappedTest):
                                 self.tables.place,
                                 self.tables.place_output)
 
-        """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
             inputs = relationship(Place.mapper, place_output, lazy='select', backref='inputs'),
@@ -304,7 +305,7 @@ class M2MTest(_base.MappedTest):
             sess.commit
         )
 
-class M2MTest2(_base.MappedTest):
+class M2MTest2(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('student', metadata,
@@ -408,7 +409,7 @@ class M2MTest2(_base.MappedTest):
         sess.flush()
         assert enroll.count().scalar() == 0
 
-class M2MTest3(_base.MappedTest):
+class M2MTest3(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('c', metadata,
@@ -460,7 +461,7 @@ class M2MTest3(_base.MappedTest):
         # TODO: seems like just a test for an ancient exception throw.
         # how about some data/inserts/queries/assertions for this one
 
-class M2MTest4(_base.MappedTest):
+class M2MTest4(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         table1 = Table("table1", metadata,
@@ -483,9 +484,9 @@ class M2MTest4(_base.MappedTest):
                                 self.tables.table3,
                                 self.tables.table1)
 
-        class A(_base.ComparableEntity):
+        class A(fixtures.ComparableEntity):
             pass
-        class B(_base.ComparableEntity):
+        class B(fixtures.ComparableEntity):
             pass
 
         mapper(A, table1, properties={

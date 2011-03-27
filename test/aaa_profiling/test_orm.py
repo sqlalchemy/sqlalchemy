@@ -4,11 +4,11 @@ from sqlalchemy import exc as sa_exc, util, Integer, String, ForeignKey
 from sqlalchemy.orm import exc as orm_exc, mapper, relationship, \
     sessionmaker, Session
 from test.lib import testing, profiling
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.schema import Table, Column
 import sys
 
-class MergeTest(_base.MappedTest):
+class MergeTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -101,7 +101,7 @@ class MergeTest(_base.MappedTest):
         sess2 = sessionmaker()()
         self.assert_sql_count(testing.db, go, 2)
 
-class LoadManyToOneFromIdentityTest(_base.MappedTest):
+class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     """test overhead associated with many-to-one fetches.
 
     Prior to the refactor of LoadLazyAttribute and 

@@ -11,10 +11,11 @@ from sqlalchemy.orm import attributes, \
     composite, relationship, \
     Session
 from test.lib.testing import eq_
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
-class PointTest(_base.MappedTest):
+class PointTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
@@ -38,7 +39,7 @@ class PointTest(_base.MappedTest):
     def setup_mappers(cls):
         graphs, edges = cls.tables.graphs, cls.tables.edges
 
-        class Point(cls.Basic):
+        class Point(cls.Comparable):
             def __init__(self, x, y):
                 self.x = x
                 self.y = y
@@ -53,9 +54,9 @@ class PointTest(_base.MappedTest):
                 return not isinstance(other, Point) or \
                         not self.__eq__(other)
 
-        class Graph(cls.Basic):
+        class Graph(cls.Comparable):
             pass
-        class Edge(cls.Basic):
+        class Edge(cls.Comparable):
             def __init__(self, *args):
                 if args:
                     self.start, self.end = args
@@ -219,7 +220,7 @@ class PointTest(_base.MappedTest):
         e = Edge()
         eq_(e.start, None)
 
-class PrimaryKeyTest(_base.MappedTest):
+class PrimaryKeyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('graphs', metadata,
@@ -233,7 +234,7 @@ class PrimaryKeyTest(_base.MappedTest):
     def setup_mappers(cls):
         graphs = cls.tables.graphs
 
-        class Version(cls.Basic):
+        class Version(cls.Comparable):
             def __init__(self, id, version):
                 self.id = id
                 self.version = version
@@ -247,7 +248,7 @@ class PrimaryKeyTest(_base.MappedTest):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
-        class Graph(cls.Basic):
+        class Graph(cls.Comparable):
             def __init__(self, version):
                 self.version = version
 
@@ -311,7 +312,7 @@ class PrimaryKeyTest(_base.MappedTest):
         g2 = sess.query(Graph).filter_by(version=Version(2, None)).one()
         eq_(g.version, g2.version)
 
-class DefaultsTest(_base.MappedTest):
+class DefaultsTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -328,10 +329,10 @@ class DefaultsTest(_base.MappedTest):
     def setup_mappers(cls):
         foobars = cls.tables.foobars
 
-        class Foobar(cls.Basic):
+        class Foobar(cls.Comparable):
             pass
 
-        class FBComposite(cls.Basic):
+        class FBComposite(cls.Comparable):
             def __init__(self, x1, x2, x3, x4):
                 self.x1 = x1
                 self.x2 = x2
@@ -384,7 +385,7 @@ class DefaultsTest(_base.MappedTest):
 
         assert f1.foob == FBComposite(2, 5, 15, None)
 
-class MappedSelectTest(_base.MappedTest):
+class MappedSelectTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('descriptions', metadata,
@@ -408,13 +409,13 @@ class MappedSelectTest(_base.MappedTest):
     def setup_mappers(cls):
         values, descriptions = cls.tables.values, cls.tables.descriptions
 
-        class Descriptions(cls.Basic):
+        class Descriptions(cls.Comparable):
             pass
 
-        class Values(cls.Basic):
+        class Values(cls.Comparable):
             pass
 
-        class CustomValues(cls.Basic, list):
+        class CustomValues(cls.Comparable, list):
             def __init__(self, *args):
                 self.extend(args)
 
@@ -469,7 +470,7 @@ class MappedSelectTest(_base.MappedTest):
             [(1, 1, u'Red', u'5'), (2, 1, u'Blue', u'1')]
         )
 
-class ManyToOneTest(_base.MappedTest):
+class ManyToOneTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('a', 
@@ -495,7 +496,7 @@ class ManyToOneTest(_base.MappedTest):
         class B(cls.Comparable):
             pass
 
-        class C(cls.Basic):
+        class C(cls.Comparable):
             def __init__(self, b1, b2):
                 self.b1, self.b2 = b1, b2
 
@@ -543,7 +544,7 @@ class ManyToOneTest(_base.MappedTest):
             a2
         )
 
-class ConfigurationTest(_base.MappedTest):
+class ConfigurationTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('edge', metadata,
@@ -557,7 +558,7 @@ class ConfigurationTest(_base.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        class Point(cls.Basic):
+        class Point(cls.Comparable):
             def __init__(self, x, y):
                 self.x = x
                 self.y = y

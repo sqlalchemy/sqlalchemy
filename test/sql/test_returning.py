@@ -3,8 +3,9 @@ from sqlalchemy import *
 from test.lib import *
 from test.lib.schema import Table, Column
 from sqlalchemy.types import TypeDecorator
+from test.lib import fixtures
 
-class ReturningTest(TestBase, AssertsExecutionResults):
+class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
     __requires__ = 'returning',
 
     def setup(self):
@@ -141,7 +142,7 @@ class ReturningTest(TestBase, AssertsExecutionResults):
         result2 = select([table.c.id, table.c.full]).order_by(table.c.id).execute()
         eq_(result2.fetchall(), [(2,False),])
 
-class SequenceReturningTest(TestBase):
+class SequenceReturningTest(fixtures.TestBase):
     __requires__ = 'returning',
 
     def setup(self):
@@ -162,7 +163,7 @@ class SequenceReturningTest(TestBase):
         assert r.first() == (1, )
         assert seq.execute() == 2
 
-class KeyReturningTest(TestBase, AssertsExecutionResults):
+class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
     """test returning() works with columns that define 'key'."""
 
     __requires__ = 'returning',
@@ -191,7 +192,7 @@ class KeyReturningTest(TestBase, AssertsExecutionResults):
         assert row[table.c.foo_id] == row['id'] == 1
 
 
-class ImplicitReturningFlag(TestBase):
+class ImplicitReturningFlag(fixtures.TestBase):
     def test_flag_turned_off(self):
         e = engines.testing_engine(options={'implicit_returning':False})
         assert e.dialect.implicit_returning is False

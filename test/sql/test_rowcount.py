@@ -2,7 +2,7 @@ from sqlalchemy import *
 from test.lib import *
 
 
-class FoundRowsTest(TestBase, AssertsExecutionResults):
+class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
     """tests rowcount functionality"""
 
     __requires__ = ('sane_rowcount', )

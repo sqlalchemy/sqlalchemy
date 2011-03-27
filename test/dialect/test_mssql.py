@@ -17,7 +17,7 @@ from test.lib.testing import eq_, emits_warning_on, \
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.engine.reflection import Inspector
 
-class CompileTest(TestBase, AssertsCompiledSQL):
+class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
 
     def test_insert(self):
@@ -379,7 +379,7 @@ class CompileTest(TestBase, AssertsCompiledSQL):
 
 
 
-class IdentityInsertTest(TestBase, AssertsCompiledSQL):
+class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
     __dialect__ = mssql.MSDialect()
 
@@ -432,7 +432,7 @@ class IdentityInsertTest(TestBase, AssertsCompiledSQL):
         eq_([(91, 'Smalltalk'), (90, 'PHP')], list(lastcats))
 
 
-class ReflectionTest(TestBase, ComparesTables):
+class ReflectionTest(fixtures.TestBase, ComparesTables):
     __only_on__ = 'mssql'
 
     def test_basic_reflection(self):
@@ -562,7 +562,7 @@ class ReflectionTest(TestBase, ComparesTables):
             set([t2.c['x col'], t2.c.y])
         )
 
-class QueryUnicodeTest(TestBase):
+class QueryUnicodeTest(fixtures.TestBase):
 
     __only_on__ = 'mssql'
 
@@ -587,7 +587,7 @@ class QueryUnicodeTest(TestBase):
         finally:
             meta.drop_all()
 
-class QueryTest(TestBase):
+class QueryTest(fixtures.TestBase):
     __only_on__ = 'mssql'
 
     def test_fetchid_trigger(self):
@@ -719,7 +719,7 @@ class Foo(object):
         for k in kw:
             setattr(self, k, kw[k])
 
-class GenerativeQueryTest(TestBase):
+class GenerativeQueryTest(fixtures.TestBase):
     __only_on__ = 'mssql'
 
     @classmethod
@@ -753,7 +753,7 @@ class GenerativeQueryTest(TestBase):
         assert list(query[:10]) == orig[:10]
 
 
-class SchemaTest(TestBase):
+class SchemaTest(fixtures.TestBase):
 
     def setup(self):
         t = Table('sometable', MetaData(),
@@ -800,7 +800,7 @@ def full_text_search_missing():
     finally:
         connection.close()
 
-class MatchTest(TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'mssql'
     __skip_if__ = full_text_search_missing,
@@ -914,7 +914,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         eq_([1, 3, 5], [r.id for r in results])
 
 
-class ParseConnectTest(TestBase, AssertsCompiledSQL):
+class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
     @classmethod
     def setup_class(cls):
         global dialect
@@ -1036,7 +1036,7 @@ class ParseConnectTest(TestBase, AssertsCompiledSQL):
                               'Unrecognized server version info',
                               engine.connect)
 
-class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
+class TypesTest(fixtures.TestBase, AssertsExecutionResults, ComparesTables):
     __only_on__ = 'mssql'
 
     @classmethod
@@ -1567,7 +1567,7 @@ class TypesTest(TestBase, AssertsExecutionResults, ComparesTables):
                         not in list(engine.execute(tbl.select()).first())
                 engine.execute(tbl.delete())
 
-class BinaryTest(TestBase, AssertsExecutionResults):
+class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     """Test the Binary and VarBinary types"""
 
     __only_on__ = 'mssql'
@@ -1672,7 +1672,7 @@ class BinaryTest(TestBase, AssertsExecutionResults):
         return stream
 
 
-class ReflectHugeViewTest(TestBase):
+class ReflectHugeViewTest(fixtures.TestBase):
     __only_on__ = 'mssql'
 
     def setup(self):

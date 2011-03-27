@@ -11,7 +11,7 @@ from sqlalchemy.engine.url import make_url
 from test.lib import *
 import os
 
-class TestTypes(TestBase, AssertsExecutionResults):
+class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'sqlite'
 
@@ -168,7 +168,7 @@ class TestTypes(TestBase, AssertsExecutionResults):
         assert isinstance(t2.c.y.type, sqltypes.NullType)
 
 
-class TestDefaults(TestBase, AssertsExecutionResults):
+class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'sqlite'
 
@@ -220,7 +220,7 @@ class TestDefaults(TestBase, AssertsExecutionResults):
             db.execute('DROP TABLE r_defaults')
 
 
-class DialectTest(TestBase, AssertsExecutionResults):
+class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'sqlite'
 
@@ -375,7 +375,7 @@ class DialectTest(TestBase, AssertsExecutionResults):
             meta.drop_all()
 
 
-class SQLTest(TestBase, AssertsCompiledSQL):
+class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     """Tests SQLite-dialect specific compilation."""
 
@@ -452,7 +452,7 @@ class SQLTest(TestBase, AssertsCompiledSQL):
         )
 
 
-class InsertTest(TestBase, AssertsExecutionResults):
+class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     """Tests inserts and autoincrement."""
 
@@ -535,7 +535,7 @@ def full_text_search_missing():
         return True
 
 
-class MatchTest(TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'sqlite'
     __skip_if__ = full_text_search_missing,
@@ -618,7 +618,7 @@ class MatchTest(TestBase, AssertsCompiledSQL):
         eq_([1, 3], [r.id for r in results])
 
 
-class AutoIncrementTest(TestBase, AssertsCompiledSQL):
+class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_sqlite_autoincrement(self):
         table = Table('autoinctable', MetaData(), Column('id', Integer,

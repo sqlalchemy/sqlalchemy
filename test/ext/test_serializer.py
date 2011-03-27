@@ -10,17 +10,17 @@ from test.lib.schema import Column
 from sqlalchemy.orm import relationship, sessionmaker, scoped_session, \
     class_mapper, mapper, joinedload, configure_mappers, aliased
 from test.lib.testing import eq_
-from test.orm._base import ComparableEntity, MappedTest
 
+from test.lib import fixtures
 
-class User(ComparableEntity):
+class User(fixtures.ComparableEntity):
     pass
 
-class Address(ComparableEntity):
+class Address(fixtures.ComparableEntity):
     pass
 
 
-class SerializeTest(MappedTest):
+class SerializeTest(fixtures.MappedTest):
 
     run_setup_mappers = 'once'
     run_inserts = 'once'

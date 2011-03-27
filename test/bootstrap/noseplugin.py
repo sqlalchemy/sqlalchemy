@@ -87,8 +87,8 @@ class NoseSQLAlchemy(Plugin):
             fn(self.options, file_config)
 
     def begin(self):
-        global testing, requires, util
-        from test.lib import testing, requires
+        global testing, requires, util, fixtures
+        from test.lib import testing, requires, fixtures
         from sqlalchemy import util
 
         testing.db = db
@@ -117,7 +117,7 @@ class NoseSQLAlchemy(Plugin):
 
         """
 
-        if not issubclass(cls, testing.TestBase):
+        if not issubclass(cls, fixtures.TestBase):
             return False
         else:
             if (hasattr(cls, '__whitelist__') and testing.db.name in cls.__whitelist__):

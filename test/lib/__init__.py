@@ -7,20 +7,17 @@ by noseplugin.NoseSQLAlchemy.
 """
 
 from test.bootstrap import config
-from test.lib import testing, engines, requires, profiling, pickleable
+from test.lib import testing, engines, requires, profiling, pickleable, \
+    fixtures
 from test.lib.schema import Column, Table
-from test.lib.testing import \
-     AssertsCompiledSQL, \
-     AssertsExecutionResults, \
-     ComparesTables, \
-     TestBase, \
-     rowset
+from test.lib.testing import AssertsCompiledSQL, \
+    AssertsExecutionResults, ComparesTables, rowset
 
 
 __all__ = ('testing',
             'Column', 'Table',
-           'rowset',
-           'TestBase', 'AssertsExecutionResults',
+           'rowset','fixtures',
+           'AssertsExecutionResults',
            'AssertsCompiledSQL', 'ComparesTables',
            'engines', 'profiling', 'pickleable')
 

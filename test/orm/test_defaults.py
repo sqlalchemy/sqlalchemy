@@ -4,11 +4,11 @@ from sqlalchemy import Integer, String, ForeignKey, event
 from test.lib import testing
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.testing import eq_
 
 
-class TriggerDefaultsTest(_base.MappedTest):
+class TriggerDefaultsTest(fixtures.MappedTest):
     __requires__ = ('row_triggers',)
 
     @classmethod
@@ -78,7 +78,7 @@ class TriggerDefaultsTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Default(cls.Basic):
+        class Default(cls.Comparable):
             pass
 
     @classmethod
@@ -124,7 +124,7 @@ class TriggerDefaultsTest(_base.MappedTest):
         eq_(d1.col3, 'up')
         eq_(d1.col4, 'up')
 
-class ExcludedDefaultsTest(_base.MappedTest):
+class ExcludedDefaultsTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         dt = Table('dt', metadata,
@@ -135,7 +135,7 @@ class ExcludedDefaultsTest(_base.MappedTest):
     def test_exclude(self):
         dt = self.tables.dt
 
-        class Foo(_base.ComparableEntity):
+        class Foo(fixtures.BasicEntity):
             pass
         mapper(Foo, dt, exclude_properties=('col1',))
 

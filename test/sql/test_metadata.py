@@ -10,11 +10,13 @@ from sqlalchemy import Integer, String, UniqueConstraint, \
 from test.lib.schema import Table, Column
 from sqlalchemy import schema, exc
 import sqlalchemy as tsa
-from test.lib import TestBase, ComparesTables, \
-    AssertsCompiledSQL, testing, engines
+from test.lib import fixtures
+from test.lib import testing
+from test.lib import engines
+from test.lib.testing import ComparesTables, AssertsCompiledSQL
 from test.lib.testing import eq_
 
-class MetaDataTest(TestBase, ComparesTables):
+class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_metadata_connect(self):
         metadata = MetaData()
         t1 = Table('table1', metadata, 
@@ -515,7 +517,7 @@ class MetaDataTest(TestBase, ComparesTables):
                           MetaData(testing.db), autoload=True)
 
 
-class TableTest(TestBase, AssertsCompiledSQL):
+class TableTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
         table1 = Table("temporary_table_1", MetaData(),
                       Column("col1", Integer),
@@ -568,7 +570,7 @@ class TableTest(TestBase, AssertsCompiledSQL):
             assign
         )
 
-class ConstraintTest(TestBase):
+class ConstraintTest(fixtures.TestBase):
     def _single_fixture(self):
         m = MetaData()
 
@@ -615,7 +617,7 @@ class ConstraintTest(TestBase):
         assert s1.c.a.references(t1.c.a)
         assert not s1.c.a.references(t1.c.b)
 
-class ColumnDefinitionTest(AssertsCompiledSQL, TestBase):
+class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
     """Test Column() construction."""
 
     __dialect__ = 'default'
@@ -739,7 +741,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, TestBase):
             getattr, select([t1.select().alias()]), 'c'
         )
 
-class ColumnOptionsTest(TestBase):
+class ColumnOptionsTest(fixtures.TestBase):
 
     def test_default_generators(self):
         g1, g2 = Sequence('foo_id_seq'), ColumnDefault('f5')
@@ -776,7 +778,7 @@ class ColumnOptionsTest(TestBase):
             assert c.info['bar'] == 'zip'
 
 
-class CatchAllEventsTest(TestBase):
+class CatchAllEventsTest(fixtures.TestBase):
 
     def teardown(self):
         events.SchemaEventTarget.dispatch._clear()

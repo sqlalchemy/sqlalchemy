@@ -5,7 +5,7 @@ from sqlalchemy.sql import column
 from sqlalchemy import Column, Integer, func, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.util import partial
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.testing import eq_
 
 class TestDescriptor(descriptor_props.DescriptorProperty):
@@ -20,7 +20,7 @@ class TestDescriptor(descriptor_props.DescriptorProperty):
         else:
             self._comparator_factory = lambda mapper: None
 
-class DescriptorInstrumentationTest(_base.ORMTest):
+class DescriptorInstrumentationTest(fixtures.ORMTest):
     def _fixture(self):
         Base = declarative_base()
 

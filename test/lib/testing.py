@@ -563,30 +563,6 @@ class adict(dict):
         return tuple([self[key] for key in keys])
 
 
-class TestBase(object):
-    # A sequence of database names to always run, regardless of the
-    # constraints below.
-    __whitelist__ = ()
-
-    # A sequence of requirement names matching testing.requires decorators
-    __requires__ = ()
-
-    # A sequence of dialect names to exclude from the test class.
-    __unsupported_on__ = ()
-
-    # If present, test class is only runnable for the *single* specified
-    # dialect.  If you need multiple, use __unsupported_on__ and invert.
-    __only_on__ = None
-
-    # A sequence of no-arg callables. If any are True, the entire testcase is
-    # skipped.
-    __skip_if__ = None
-
-    _artifact_registries = ()
-
-    def assert_(self, val, msg=None):
-        assert val, msg
-
 class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None, 
                         checkparams=None, dialect=None, 

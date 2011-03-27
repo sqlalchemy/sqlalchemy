@@ -8,7 +8,8 @@ from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
 from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from test.lib.assertsql import CompiledSQL
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 import sqlalchemy as sa
 
 class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
@@ -758,7 +759,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         assert_raises(sa.exc.SAWarning,
                 s.query(User).options(subqueryload(User.order)).all)
 
-class OrderBySecondaryTest(_base.MappedTest):
+class OrderBySecondaryTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('m2m', metadata,
@@ -799,8 +800,8 @@ class OrderBySecondaryTest(_base.MappedTest):
                                 self.tables.m2m,
                                 self.tables.b)
 
-        class A(_base.ComparableEntity):pass
-        class B(_base.ComparableEntity):pass
+        class A(fixtures.ComparableEntity):pass
+        class B(fixtures.ComparableEntity):pass
 
         mapper(A, a, properties={
             'bs':relationship(B, secondary=m2m, lazy='subquery', order_by=m2m.c.id)
@@ -815,7 +816,7 @@ class OrderBySecondaryTest(_base.MappedTest):
             ])
         self.assert_sql_count(testing.db, go, 2)
 
-class SelfReferentialTest(_base.MappedTest):
+class SelfReferentialTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('nodes', metadata,
@@ -827,7 +828,7 @@ class SelfReferentialTest(_base.MappedTest):
     def test_basic(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -879,7 +880,7 @@ class SelfReferentialTest(_base.MappedTest):
     def test_lazy_fallback_doesnt_affect_eager(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -913,7 +914,7 @@ class SelfReferentialTest(_base.MappedTest):
     def test_with_deferred(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -956,7 +957,7 @@ class SelfReferentialTest(_base.MappedTest):
     def test_options(self):
         nodes = self.tables.nodes
 
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -993,7 +994,7 @@ class SelfReferentialTest(_base.MappedTest):
         nodes = self.tables.nodes
 
         """no join depth is set, so no eager loading occurs."""
-        class Node(_base.ComparableEntity):
+        class Node(fixtures.ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 

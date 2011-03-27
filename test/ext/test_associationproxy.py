@@ -10,7 +10,7 @@ from sqlalchemy.ext.associationproxy import _AssociationList
 from test.lib import *
 from test.lib.util import gc_collect
 from sqlalchemy.sql import not_
-from test.orm import _base
+from test.lib import fixtures
 
 
 class DictCollection(dict):
@@ -43,7 +43,7 @@ class ObjectCollection(object):
         return iter(self.values)
 
 
-class _CollectionOperations(TestBase):
+class _CollectionOperations(fixtures.TestBase):
     def setup(self):
         collection_class = self.collection_class
 
@@ -667,7 +667,7 @@ class ProxyFactoryTest(ListTest):
         self._test_sequence_ops()
 
 
-class ScalarTest(TestBase):
+class ScalarTest(fixtures.TestBase):
     def test_scalar_proxy(self):
         metadata = MetaData(testing.db)
 
@@ -786,7 +786,7 @@ class ScalarTest(TestBase):
         p2.bar = 'quux'
 
 
-class LazyLoadTest(TestBase):
+class LazyLoadTest(fixtures.TestBase):
     def setup(self):
         metadata = MetaData(testing.db)
 
@@ -908,7 +908,7 @@ class KVChild(object):
         self.name = name
         self.value = value
 
-class ReconstitutionTest(TestBase):
+class ReconstitutionTest(fixtures.TestBase):
 
     def setup(self):
         metadata = MetaData(testing.db)
@@ -1006,7 +1006,7 @@ class PickleKeyFunc(object):
     def __call__(self, obj):
         return getattr(obj, self.name)
 
-class ComparatorTest(_base.MappedTest):
+class ComparatorTest(fixtures.MappedTest):
 
     run_inserts = 'once'
     run_deletes = None

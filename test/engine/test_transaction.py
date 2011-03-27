@@ -7,11 +7,12 @@ from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
     select, Integer, String, func, text, exc
 from test.lib.schema import Table
 from test.lib.schema import Column
-from test.lib import TestBase, testing
+from test.lib import testing
+from test.lib import fixtures
 
 
 users, metadata = None, None
-class TransactionTest(TestBase):
+class TransactionTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global users, metadata
@@ -351,7 +352,7 @@ class TransactionTest(TestBase):
         eq_(result.fetchall(), [('user1', ), ('user4', )])
         conn.close()
 
-class AutoRollbackTest(TestBase):
+class AutoRollbackTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -383,7 +384,7 @@ class AutoRollbackTest(TestBase):
         users.drop(conn2)
         conn2.close()
 
-class ExplicitAutoCommitTest(TestBase):
+class ExplicitAutoCommitTest(fixtures.TestBase):
 
     """test the 'autocommit' flag on select() and text() objects.
 
@@ -515,7 +516,7 @@ class ExplicitAutoCommitTest(TestBase):
 tlengine = None
 
 
-class TLTransactionTest(TestBase):
+class TLTransactionTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -959,7 +960,7 @@ class TLTransactionTest(TestBase):
 counters = None
 
 
-class ForUpdateTest(TestBase):
+class ForUpdateTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -1110,7 +1111,7 @@ class ForUpdateTest(TestBase):
                 update_style='nowait')
         self.assert_(len(errors) != 0)
 
-class IsolationLevelTest(TestBase):
+class IsolationLevelTest(fixtures.TestBase):
     __requires__ = ('isolation_level',)
 
     def _default_isolation_level(self):

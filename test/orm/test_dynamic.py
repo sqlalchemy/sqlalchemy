@@ -7,7 +7,8 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
 from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message, assert_raises
-from test.orm import _base, _fixtures
+from test.lib import fixtures
+from test.orm import _fixtures
 
 
 class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -661,7 +662,7 @@ class SessionTest(_fixtures.FixtureTest):
     def test_backref_savead(self):
         self._backref_test(False, False)
 
-class DontDereferenceTest(_base.MappedTest):
+class DontDereferenceTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,

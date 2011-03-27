@@ -6,7 +6,7 @@ from sqlalchemy.engine import default, base
 from test.lib import *
 from test.lib.schema import Table, Column
 
-class QueryTest(TestBase):
+class QueryTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -1029,7 +1029,7 @@ class QueryTest(TestBase):
         r = s.execute().fetchall()
         assert len(r) == 1
 
-class PercentSchemaNamesTest(TestBase):
+class PercentSchemaNamesTest(fixtures.TestBase):
     """tests using percent signs, spaces in table and column names.
 
     Doesn't pass for mysql, postgresql, but this is really a 
@@ -1129,7 +1129,7 @@ class PercentSchemaNamesTest(TestBase):
 
 
 
-class LimitTest(TestBase):
+class LimitTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
@@ -1202,7 +1202,7 @@ class LimitTest(TestBase):
         self.assert_(len(r) == 3, repr(r))
         self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
-class CompoundTest(TestBase):
+class CompoundTest(fixtures.TestBase):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on
     different databases."""
     @classmethod
@@ -1494,7 +1494,7 @@ class CompoundTest(TestBase):
         eq_(found, wanted)
 
 
-class JoinTest(TestBase):
+class JoinTest(fixtures.TestBase):
     """Tests join execution.
 
     The compiled SQL emitted by the dialect might be ANSI joins or
@@ -1766,7 +1766,7 @@ class JoinTest(TestBase):
             self.assertRows(expr, [(10, 20, 30)])
 
 
-class OperatorTest(TestBase):
+class OperatorTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global metadata, flds

@@ -61,7 +61,7 @@ addresses = table('addresses',
     column('zip')
 )
 
-class SelectTest(TestBase, AssertsCompiledSQL):
+class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_attribute_sanity(self):
@@ -2432,7 +2432,7 @@ class SelectTest(TestBase, AssertsCompiledSQL):
         )
 
 
-class CRUDTest(TestBase, AssertsCompiledSQL):
+class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_insert(self):
@@ -2688,7 +2688,7 @@ class CRUDTest(TestBase, AssertsCompiledSQL):
             "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1"
         )
 
-class InlineDefaultTest(TestBase, AssertsCompiledSQL):
+class InlineDefaultTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_insert(self):
@@ -2722,7 +2722,7 @@ class InlineDefaultTest(TestBase, AssertsCompiledSQL):
                         "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
                         "col3=:col3")
 
-class SchemaTest(TestBase, AssertsCompiledSQL):
+class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def test_select(self):

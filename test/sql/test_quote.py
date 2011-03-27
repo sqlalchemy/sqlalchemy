@@ -3,7 +3,7 @@ from sqlalchemy import sql, schema
 from sqlalchemy.sql import compiler
 from test.lib import *
 
-class QuoteTest(TestBase, AssertsCompiledSQL):
+class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     @classmethod
@@ -182,7 +182,7 @@ class QuoteTest(TestBase, AssertsCompiledSQL):
             '''SELECT "ImATable".col1, "ImATable"."from", "ImATable".louisville, "ImATable"."order" FROM "ImATable"''')
         
 
-class PreparerTest(TestBase):
+class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
 
     def test_unformat(self):

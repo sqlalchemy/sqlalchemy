@@ -12,10 +12,10 @@ from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, sessionmaker
 from test.lib.testing import eq_
 from test.lib.assertsql import RegexSQL, ExactSQL, CompiledSQL, AllOf
-from test.orm import _base
+from test.lib import fixtures
 
 
-class SelfReferentialTest(_base.MappedTest):
+class SelfReferentialTest(fixtures.MappedTest):
     """A self-referential mapper with an additional list of child objects."""
 
     @classmethod
@@ -134,7 +134,7 @@ class SelfReferentialTest(_base.MappedTest):
         sess.expire_all()
         assert c2.parent_c1 is None
 
-class SelfReferentialNoPKTest(_base.MappedTest):
+class SelfReferentialNoPKTest(fixtures.MappedTest):
     """A self-referential relationship that joins on a column other than the primary key column"""
 
     @classmethod
@@ -191,7 +191,7 @@ class SelfReferentialNoPKTest(_base.MappedTest):
         eq_(t.parent.uuid, t1.uuid)
 
 
-class InheritTestOne(_base.MappedTest):
+class InheritTestOne(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("parent", metadata,
@@ -260,7 +260,7 @@ class InheritTestOne(_base.MappedTest):
         session.flush()
 
 
-class InheritTestTwo(_base.MappedTest):
+class InheritTestTwo(fixtures.MappedTest):
     """
 
     The fix in BiDirectionalManyToOneTest raised this issue, regarding the
@@ -321,7 +321,7 @@ class InheritTestTwo(_base.MappedTest):
         sess.flush()
 
 
-class BiDirectionalManyToOneTest(_base.MappedTest):
+class BiDirectionalManyToOneTest(fixtures.MappedTest):
     run_define_tables = 'each'
 
     @classmethod
@@ -421,7 +421,7 @@ class BiDirectionalManyToOneTest(_base.MappedTest):
         sess.flush()
 
 
-class BiDirectionalOneToManyTest(_base.MappedTest):
+class BiDirectionalOneToManyTest(fixtures.MappedTest):
     """tests two mappers with a one-to-many relationship to each other."""
 
     run_define_tables = 'each'
@@ -474,7 +474,7 @@ class BiDirectionalOneToManyTest(_base.MappedTest):
         sess.flush()
 
 
-class BiDirectionalOneToManyTest2(_base.MappedTest):
+class BiDirectionalOneToManyTest2(fixtures.MappedTest):
     """Two mappers with a one-to-many relationship to each other, 
     with a second one-to-many on one of the mappers"""
 
@@ -554,7 +554,7 @@ class BiDirectionalOneToManyTest2(_base.MappedTest):
         sess.delete(c)
         sess.flush()
 
-class OneToManyManyToOneTest(_base.MappedTest):
+class OneToManyManyToOneTest(fixtures.MappedTest):
     """
 
     Tests two mappers, one has a one-to-many on the other mapper, the other
@@ -581,10 +581,10 @@ class OneToManyManyToOneTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Person(cls.Comparable):
+        class Person(cls.Basic):
             pass
 
-        class Ball(cls.Comparable):
+        class Ball(cls.Basic):
             pass
 
     def test_cycle(self):
@@ -812,7 +812,7 @@ class OneToManyManyToOneTest(_base.MappedTest):
         )
 
 
-class SelfReferentialPostUpdateTest(_base.MappedTest):
+class SelfReferentialPostUpdateTest(fixtures.MappedTest):
     """Post_update on a single self-referential mapper.
 
 
@@ -961,7 +961,7 @@ class SelfReferentialPostUpdateTest(_base.MappedTest):
         cats.prev_sibling = None
         session.flush()
 
-class SelfReferentialPostUpdateTest2(_base.MappedTest):
+class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1009,7 +1009,7 @@ class SelfReferentialPostUpdateTest2(_base.MappedTest):
         assert f2.foo is f1
 
 
-class SelfReferentialPostUpdateTest3(_base.MappedTest):
+class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('parent', metadata,
@@ -1077,7 +1077,7 @@ class SelfReferentialPostUpdateTest3(_base.MappedTest):
         p2.child = None
         session.flush()
 
-class PostUpdateBatchingTest(_base.MappedTest):
+class PostUpdateBatchingTest(fixtures.MappedTest):
     """test that lots of post update cols batch together into a single UPDATE."""
 
     @classmethod

@@ -6,7 +6,7 @@ from sqlalchemy import exc as sa_exc
 from test.lib import *
 from test.lib.testing import eq_, ne_, assert_raises, \
     assert_raises_message
-from test.orm import _base
+from test.lib import fixtures
 from test.lib.util import gc_collect, all_partial_orderings
 from sqlalchemy.util import cmp, jython, topological
 from sqlalchemy import event
@@ -16,7 +16,7 @@ MyTest = None
 MyTest2 = None
 
 
-class AttributesTest(_base.ORMTest):
+class AttributesTest(fixtures.ORMTest):
     def setup(self):
         global MyTest, MyTest2
         class MyTest(object): pass
@@ -282,9 +282,9 @@ class AttributesTest(_base.ORMTest):
 
         """
 
-        class Foo(_base.ComparableEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.ComparableEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         class ReceiveEvents(AttributeExtension):
@@ -373,9 +373,9 @@ class AttributesTest(_base.ORMTest):
                 ne_(woc, wic)
 
     def test_extension_lazyload_assertion(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         class ReceiveEvents(AttributeExtension):
@@ -589,9 +589,9 @@ class AttributesTest(_base.ORMTest):
     def test_lazyhistory(self):
         """tests that history functions work with lazy-loading attributes"""
 
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -767,7 +767,7 @@ class AttributesTest(_base.ORMTest):
         except sa_exc.ArgumentError, e:
             assert False
 
-class UtilTest(_base.ORMTest):
+class UtilTest(fixtures.ORMTest):
     def test_helpers(self):
         class Foo(object):
             pass
@@ -794,7 +794,7 @@ class UtilTest(_base.ORMTest):
         attributes.del_attribute(f1, "coll")
         assert "coll" not in f1.__dict__
 
-class BackrefTest(_base.ORMTest):
+class BackrefTest(fixtures.ORMTest):
 
     def test_m2m(self):
         class Student(object):pass
@@ -966,7 +966,7 @@ class BackrefTest(_base.ORMTest):
         # and this condition changes.
         assert c1 in p1.children
 
-class PendingBackrefTest(_base.ORMTest):
+class PendingBackrefTest(fixtures.ORMTest):
     def setup(self):
         global Post, Blog, called, lazy_load
 
@@ -1090,10 +1090,10 @@ class PendingBackrefTest(_base.ORMTest):
         attributes.instance_state(p1).commit_all(attributes.instance_dict(p1))
         assert b.posts == [Post("post 1")]
 
-class HistoryTest(_base.ORMTest):
+class HistoryTest(fixtures.ORMTest):
 
     def test_get_committed_value(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1115,7 +1115,7 @@ class HistoryTest(_base.ORMTest):
             attributes.instance_dict(f)), 3)
 
     def test_scalar(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1192,7 +1192,7 @@ class HistoryTest(_base.ORMTest):
 
 
     def test_mutable_scalar(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1240,7 +1240,7 @@ class HistoryTest(_base.ORMTest):
             'someattr'), ((), [{'foo': 'old'}], ()))
 
     def test_flag_modified(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1276,10 +1276,10 @@ class HistoryTest(_base.ORMTest):
             'someattr'), ([['b', 'c']], (), ()))
 
     def test_use_object(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             _state = None
             def __nonzero__(self):
                 assert False
@@ -1362,9 +1362,9 @@ class HistoryTest(_base.ORMTest):
             'someattr'), (['two'], (), ()))
 
     def test_object_collections_set(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             def __nonzero__(self):
                 assert False
 
@@ -1421,9 +1421,9 @@ class HistoryTest(_base.ORMTest):
             'someattr'), ((), [old], ()))
 
     def test_dict_collections(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -1453,9 +1453,9 @@ class HistoryTest(_base.ORMTest):
             'someattr')]), (set(), set([hi, there]), set()))
 
     def test_object_collections_mutate(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1560,9 +1560,9 @@ class HistoryTest(_base.ORMTest):
             'someattr'), ([], [], [hi, there, hi]))
 
     def test_collections_via_backref(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1595,9 +1595,9 @@ class HistoryTest(_base.ORMTest):
             'foo'), ([f1], (), ()))
 
     def test_lazy_backref_collections(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         lazy_load = []
@@ -1632,9 +1632,9 @@ class HistoryTest(_base.ORMTest):
             'bars'), ((), [bar1, bar2, bar3], ()))
 
     def test_collections_via_lazyload(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         lazy_load = []
@@ -1674,7 +1674,7 @@ class HistoryTest(_base.ORMTest):
             'bars'), ([bar2], [], []))
 
     def test_scalar_via_lazyload(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         lazy_load = None
@@ -1715,7 +1715,7 @@ class HistoryTest(_base.ORMTest):
             'bar'), ([None], (), ['hi']))
 
     def test_scalar_via_lazyload_with_active(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
 
         lazy_load = None
@@ -1757,9 +1757,9 @@ class HistoryTest(_base.ORMTest):
             'bar'), ([None], (), ['hi']))
 
     def test_scalar_object_via_lazyload(self):
-        class Foo(_base.BasicEntity):
+        class Foo(fixtures.BasicEntity):
             pass
-        class Bar(_base.BasicEntity):
+        class Bar(fixtures.BasicEntity):
             pass
 
         lazy_load = None
@@ -1814,7 +1814,7 @@ class HistoryTest(_base.ORMTest):
             attributes.get_history, object(), 'foo', False
         )
 
-class ListenerTest(_base.ORMTest):
+class ListenerTest(fixtures.ORMTest):
     def test_receive_changes(self):
         """test that Listeners can mutate the given value."""
 

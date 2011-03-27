@@ -2,11 +2,12 @@
 """verrrrry basic unicode column name testing"""
 
 from sqlalchemy import *
-from test.lib import *
+from test.lib import fixtures, engines, testing
 from test.lib.engines import utf8_engine
 from sqlalchemy.sql import column
+from test.lib.schema import Table, Column
 
-class UnicodeSchemaTest(TestBase):
+class UnicodeSchemaTest(fixtures.TestBase):
     __requires__ = ('unicode_ddl',)
 
     @classmethod
@@ -111,7 +112,7 @@ class UnicodeSchemaTest(TestBase):
         meta.drop_all()
         metadata.create_all()
 
-class EscapesDefaultsTest(testing.TestBase):
+class EscapesDefaultsTest(fixtures.TestBase):
     def test_default_exec(self):
         metadata = MetaData(testing.db)
         t1 = Table('t1', metadata,
