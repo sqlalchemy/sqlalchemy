@@ -479,7 +479,7 @@ class SingleOnJoinedTest(MappedTest):
         )
 
     def test_single_on_joined(self):
-        class Person(_fixtures.Base):
+        class Person(ComparableEntity):
             pass
         class Employee(Person):
             pass

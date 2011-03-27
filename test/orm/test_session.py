@@ -1,8 +1,9 @@
 from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from test.lib.util import gc_collect
+from test.lib import pickleable
+from sqlalchemy.util import pickle
 import inspect
-import pickle
 from sqlalchemy.orm import create_session, sessionmaker, attributes, \
     make_transient, Session
 import sqlalchemy as sa
@@ -95,35 +96,6 @@ class SessionTest(_fixtures.FixtureTest):
             seq.drop(testing.db)
 
 
-    def test_expunge_cascade(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
-        mapper(Address, addresses)
-        mapper(User, users, properties={
-            'addresses':relationship(Address,
-                                 backref=backref("user", cascade="all"),
-                                 cascade="all")})
-
-        _fixtures.run_inserts_for(users)
-        _fixtures.run_inserts_for(addresses)
-
-        session = create_session()
-        u = session.query(User).filter_by(id=7).one()
-
-        # get everything to load in both directions
-        print [a.user for a in u.addresses]
-
-        # then see if expunge fails
-        session.expunge(u)
-
-        assert sa.orm.object_session(u) is None
-        assert sa.orm.attributes.instance_state(u).session_id is None
-        for a in u.addresses:
-            assert sa.orm.object_session(a) is None
-            assert sa.orm.attributes.instance_state(a).session_id is None
 
     @engines.close_open_connections
     def test_mapped_binds(self):
@@ -423,34 +395,6 @@ class SessionTest(_fixtures.FixtureTest):
                 ).scalar() == 1
         sess.commit()
 
-    def test_autoflush_rollback(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
-
-        mapper(Address, addresses)
-        mapper(User, users, properties={
-            'addresses':relationship(Address)})
-
-        _fixtures.run_inserts_for(users)
-        _fixtures.run_inserts_for(addresses)
-
-        sess = create_session(autocommit=False, autoflush=True)
-        u = sess.query(User).get(8)
-        newad = Address(email_address='a new address')
-        u.addresses.append(newad)
-        u.name = 'some new name'
-        assert u.name == 'some new name'
-        assert len(u.addresses) == 4
-        assert newad in u.addresses
-        sess.rollback()
-        assert u.name == 'ed'
-        assert len(u.addresses) == 3
-
-        assert newad not in u.addresses
-        # pending objects dont get expired
-        assert newad.email_address == 'a new address'
 
     def test_autocommit_doesnt_raise_on_pending(self):
         User, users = self.classes.User, self.tables.users
@@ -1035,7 +979,7 @@ class SessionTest(_fixtures.FixtureTest):
         assert s.identity_map
 
     def test_weak_ref_pickled(self):
-        users, User = self.tables.users, self.classes.User
+        users, User = self.tables.users, pickleable.User
 
         s = create_session()
         mapper(User, users)
@@ -1232,7 +1176,7 @@ class SessionTest(_fixtures.FixtureTest):
 
 
     def test_pickled_update(self):
-        users, User = self.tables.users, self.classes.User
+        users, User = self.tables.users, pickleable.User
 
         mapper(User, users)
         sess1 = create_session()
@@ -1319,6 +1263,61 @@ class SessionTest(_fixtures.FixtureTest):
             if i == 2:
                 del u3
                 gc_collect()
+
+class SessionDataTest(_fixtures.FixtureTest):
+    def test_expunge_cascade(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relationship(Address,
+                                 backref=backref("user", cascade="all"),
+                                 cascade="all")})
+
+        session = create_session()
+        u = session.query(User).filter_by(id=7).one()
+
+        # get everything to load in both directions
+        print [a.user for a in u.addresses]
+
+        # then see if expunge fails
+        session.expunge(u)
+
+        assert sa.orm.object_session(u) is None
+        assert sa.orm.attributes.instance_state(u).session_id is None
+        for a in u.addresses:
+            assert sa.orm.object_session(a) is None
+            assert sa.orm.attributes.instance_state(a).session_id is None
+
+    def test_autoflush_rollback(self):
+        Address, addresses, users, User = (self.classes.Address,
+                                self.tables.addresses,
+                                self.tables.users,
+                                self.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relationship(Address)})
+
+        sess = create_session(autocommit=False, autoflush=True)
+        u = sess.query(User).get(8)
+        newad = Address(email_address='a new address')
+        u.addresses.append(newad)
+        u.name = 'some new name'
+        assert u.name == 'some new name'
+        assert len(u.addresses) == 4
+        assert newad in u.addresses
+        sess.rollback()
+        assert u.name == 'ed'
+        assert len(u.addresses) == 3
+
+        assert newad not in u.addresses
+        # pending objects dont get expired
+        assert newad.email_address == 'a new address'
+
 
 class DisposedStates(_base.MappedTest):
     run_setup_mappers = 'once'

@@ -1,10 +1,33 @@
-"""
+"""Classes used in pickling tests, need to be at the module level for unpickling."""
 
-some objects used for pickle tests, declared in their own module so that they
-are easily pickleable.
+from test.orm import _base
 
-"""
+class User(_base.ComparableEntity):
+    pass
 
+class Order(_base.ComparableEntity):
+    pass
+
+class EmailUser(User):
+    pass
+
+class Address(_base.ComparableEntity):
+    pass
+
+# TODO: these are kind of arbitrary....
+class Child1(_base.ComparableEntity):
+    pass
+
+class Child2(_base.ComparableEntity):
+    pass
+
+class Parent(_base.ComparableEntity):
+    pass
+
+class Screen(object):
+   def __init__(self, obj, parent=None):
+       self.obj = obj
+       self.parent = parent
 
 class Foo(object):
     def __init__(self, moredata):

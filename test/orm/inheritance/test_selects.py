@@ -2,8 +2,8 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 from test.lib import testing
-from test.orm._fixtures import Base
-from test.orm._base import MappedTest
+
+from test.orm._base import MappedTest, ComparableEntity as Base
 
 
 class InheritingSelectablesTest(MappedTest):

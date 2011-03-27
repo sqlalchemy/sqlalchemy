@@ -1,4 +1,5 @@
 from sqlalchemy import MetaData, Integer, String, ForeignKey
+from sqlalchemy import util
 from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import attributes
@@ -8,48 +9,8 @@ from test.orm import _base
 __all__ = ()
 
 
-class Base(_base.ComparableEntity):
-    pass
-
-
-class User(Base):
-    pass
-
-
-class Order(Base):
-    pass
-
-
-class Item(Base):
-    pass
-
-
-class Keyword(Base):
-    pass
-
-
-class Address(Base):
-    pass
-
-
-class Dingaling(Base):
-    pass
-
-
-class Node(Base):
-    pass
-
-class CompositePk(Base):
-    pass
-
 class FixtureTest(_base.MappedTest):
-    """A MappedTest pre-configured for fixtures.
-
-    All fixture tables are pre-loaded into cls.tables, as are all fixture
-    lasses in cls.classes and as cls.ClassName.
-
-    Fixture.mapper() still functions and willregister non-fixture classes into
-    cls.classes.
+    """A MappedTest pre-configured with a common set of fixtures.
 
     """
 
@@ -59,12 +20,34 @@ class FixtureTest(_base.MappedTest):
     run_inserts = 'each'
     run_deletes = 'each'
 
-    fixture_classes = dict(User=User,
-                           Order=Order,
-                           Item=Item,
-                           Keyword=Keyword,
-                           Address=Address,
-                           Dingaling=Dingaling)
+    @classmethod
+    def setup_classes(cls):
+        class Base(_base.ComparableEntity):
+            pass
+
+        class User(Base):
+            pass
+
+        class Order(Base):
+            pass
+
+        class Item(Base):
+            pass
+
+        class Keyword(Base):
+            pass
+
+        class Address(Base):
+            pass
+
+        class Dingaling(Base):
+            pass
+
+        class Node(Base):
+            pass
+
+        class CompositePk(Base):
+            pass
 
     @classmethod
     def define_tables(cls, metadata):
@@ -147,11 +130,6 @@ class FixtureTest(_base.MappedTest):
             Column('j', Integer, primary_key=True),
             Column('k', Integer, nullable=False),
         )
-
-    @classmethod
-    def setup_classes(cls):
-        for cl in cls.fixture_classes.values():
-            cls.register_class(cl)
 
     @classmethod
     def setup_mappers(cls):
@@ -267,11 +245,20 @@ class FixtureTest(_base.MappedTest):
             )
         )
 
+    @util.memoized_property
+    def static(self):
+        return CannedResults(self)
+
 class CannedResults(object):
     """Built on demand, instances use mappers in effect at time of call."""
 
+    def __init__(self, test):
+        self.test = test
+
     @property
     def user_result(self):
+        User = self.test.classes.User
+
         return [
             User(id=7),
             User(id=8),
@@ -280,6 +267,8 @@ class CannedResults(object):
 
     @property
     def user_address_result(self):
+        User, Address = self.test.classes.User, self.test.classes.Address
+
         return [
             User(id=7, addresses=[
                 Address(id=1)
@@ -296,6 +285,10 @@ class CannedResults(object):
 
     @property
     def user_all_result(self):
+        User, Address, Order, Item = self.test.classes.User, \
+            self.test.classes.Address, self.test.classes.Order, \
+            self.test.classes.Item
+
         return [
             User(id=7,
                  addresses=[
@@ -330,6 +323,8 @@ class CannedResults(object):
 
     @property
     def user_order_result(self):
+        User, Order, Item = self.test.classes.User, \
+            self.test.classes.Order, self.test.classes.Item
         return [
             User(id=7,
                  orders=[
@@ -363,6 +358,7 @@ class CannedResults(object):
 
     @property
     def item_keyword_result(self):
+        Item, Keyword = self.test.classes.Item, self.test.classes.Keyword
         return [
             Item(id=1,
                  keywords=[
@@ -386,6 +382,9 @@ class CannedResults(object):
 
     @property
     def user_item_keyword_result(self):
+        Item, Keyword = self.test.classes.Item, self.test.classes.Keyword
+        User, Order = self.test.classes.User, self.test.classes.Order
+
         item1, item2, item3, item4, item5 = \
              Item(id=1,
                   keywords=[
@@ -426,5 +425,4 @@ class CannedResults(object):
                 User(id=10, orders=[])]
         return user_result
 
-FixtureTest.static = CannedResults()
 

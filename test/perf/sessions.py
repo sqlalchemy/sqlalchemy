@@ -36,9 +36,9 @@ class SessionTest(TestBase, AssertsExecutionResults):
                 l.append({'c2':'this is t2 #%d' % y, 't1id':x})
             t2.insert().execute(*l)
 
-        class T1(_fixtures.Base):
+        class T1(_base.ComparableEntity):
             pass
-        class T2(_fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
 
         mapper(T1, t1, properties={

@@ -11,10 +11,10 @@ from test.orm import _base, _fixtures
 from test.lib.testing import eq_
 from test.lib.schema import Table, Column
 
-class Company(_fixtures.Base):
+class Company(_base.ComparableEntity):
     pass
 
-class Person(_fixtures.Base):
+class Person(_base.ComparableEntity):
     pass
 class Engineer(Person):
     pass
@@ -23,10 +23,10 @@ class Manager(Person):
 class Boss(Manager):
     pass
 
-class Machine(_fixtures.Base):
+class Machine(_base.ComparableEntity):
     pass
 
-class Paperwork(_fixtures.Base):
+class Paperwork(_base.ComparableEntity):
     pass
 
 def _produce_test(select_type):
@@ -1117,7 +1117,7 @@ class M2MFilterTest(_base.MappedTest):
                                 cls.tables.engineers,
                                 cls.tables.engineers_to_org)
 
-        class Organization(_fixtures.Base):
+        class Organization(_base.ComparableEntity):
             pass
 
         mapper(Organization, organizations, properties={

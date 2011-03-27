@@ -178,7 +178,7 @@ class PolymorphicSynonymTest(_base.MappedTest):
                    Column('data', String(10), nullable=False))
 
     def test_polymorphic_synonym(self):
-        class T1(_fixtures.Base):
+        class T1(_base.ComparableEntity):
             def info(self):
                 return "THE INFO IS:" + self._info
             def _set_info(self, x):
@@ -318,13 +318,13 @@ class CascadeTest(_base.MappedTest):
             Column('data', String(30)))
 
     def test_cascade(self):
-        class T1(_fixtures.Base):
+        class T1(_base.ComparableEntity):
             pass
-        class T2(_fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
         class T3(T2):
             pass
-        class T4(_fixtures.Base):
+        class T4(_base.ComparableEntity):
             pass
 
         mapper(T1, t1, properties={
@@ -743,7 +743,7 @@ class VersioningTest(_base.MappedTest):
                                 self.tables.base,
                                 self.tables.stuff)
 
-        class Base(_fixtures.Base):
+        class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
             pass
@@ -794,7 +794,7 @@ class VersioningTest(_base.MappedTest):
     def test_delete(self):
         subtable, base = self.tables.subtable, self.tables.base
 
-        class Base(_fixtures.Base):
+        class Base(_base.ComparableEntity):
             pass
         class Sub(Base):
             pass
@@ -1661,13 +1661,13 @@ class DeleteOrphanTest(_base.MappedTest):
             )
 
     def test_orphan_message(self):
-        class Base(_fixtures.Base):
+        class Base(_base.ComparableEntity):
             pass
 
         class SubClass(Base):
             pass
 
-        class Parent(_fixtures.Base):
+        class Parent(_base.ComparableEntity):
             pass
 
         mapper(Base, single, polymorphic_on=single.c.type, polymorphic_identity='base')

@@ -1037,14 +1037,14 @@ class InheritingEagerTest(_base.MappedTest):
     def test_basic(self):
         """test that Query uses the full set of mapper._eager_loaders when generating SQL"""
 
-        class Person(_fixtures.Base):
+        class Person(_base.ComparableEntity):
             pass
 
         class Employee(Person):
            def __init__(self, name='bob'):
                self.name = name
 
-        class Tag(_fixtures.Base):
+        class Tag(_base.ComparableEntity):
            def __init__(self, label):
                self.label = label
 
@@ -1094,9 +1094,9 @@ class MissingPolymorphicOnTest(_base.MappedTest):
             )
 
     def test_polyon_col_setsup(self):
-        class A(_fixtures.Base):
+        class A(_base.ComparableEntity):
             pass
-        class B(_fixtures.Base):
+        class B(_base.ComparableEntity):
             pass
         class C(A):
             pass

@@ -1007,13 +1007,13 @@ class M2OCascadeDeleteOrphanTestOne(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(_fixtures.Base):
+        class User(_base.ComparableEntity):
             pass
-        class Pref(_fixtures.Base):
+        class Pref(_base.ComparableEntity):
             pass
-        class Extra(_fixtures.Base):
+        class Extra(_base.ComparableEntity):
             pass
-        class Foo(_fixtures.Base):
+        class Foo(_base.ComparableEntity):
             pass
 
     @classmethod
@@ -1187,11 +1187,11 @@ class M2OCascadeDeleteOrphanTestTwo(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_fixtures.Base):
+        class T1(_base.ComparableEntity):
             pass
-        class T2(_fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
-        class T3(_fixtures.Base):
+        class T3(_base.ComparableEntity):
             pass
 
     @classmethod
@@ -1328,11 +1328,11 @@ class M2OCascadeDeleteNoOrphanTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class T1(_fixtures.Base):
+        class T1(_base.ComparableEntity):
             pass
-        class T2(_fixtures.Base):
+        class T2(_base.ComparableEntity):
             pass
-        class T3(_fixtures.Base):
+        class T3(_base.ComparableEntity):
             pass
 
     @classmethod
@@ -1489,11 +1489,11 @@ class M2MCascadeTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class A(_fixtures.Base):
+        class A(_base.ComparableEntity):
             pass
-        class B(_fixtures.Base):
+        class B(_base.ComparableEntity):
             pass
-        class C(_fixtures.Base):
+        class C(_base.ComparableEntity):
             pass
 
     def test_delete_orphan(self):
@@ -1790,11 +1790,11 @@ class PendingOrphanTestSingleLevel(_base.MappedTest):
         )
     @classmethod
     def setup_classes(cls):
-        class User(_fixtures.Base):
+        class User(_base.ComparableEntity):
             pass
-        class Address(_fixtures.Base):
+        class Address(_base.ComparableEntity):
             pass
-        class Order(_fixtures.Base):
+        class Order(_base.ComparableEntity):
             pass
 
     def test_pending_standalone_orphan(self):
@@ -2025,11 +2025,11 @@ class DoubleParentO2MOrphanTest(_base.MappedTest):
         """test the delete-orphan uow event for multiple delete-orphan
         parent relationships."""
 
-        class Customer(_fixtures.Base):
+        class Customer(_base.ComparableEntity):
             pass
-        class Account(_fixtures.Base):
+        class Account(_base.ComparableEntity):
             pass
-        class SalesRep(_fixtures.Base):
+        class SalesRep(_base.ComparableEntity):
             pass
 
         mapper(Customer, customers)
@@ -2069,11 +2069,11 @@ class DoubleParentO2MOrphanTest(_base.MappedTest):
         """test the delete-orphan uow event for multiple delete-orphan
         parent relationships."""
 
-        class Customer(_fixtures.Base):
+        class Customer(_base.ComparableEntity):
             pass
-        class Account(_fixtures.Base):
+        class Account(_base.ComparableEntity):
             pass
-        class SalesRep(_fixtures.Base):
+        class SalesRep(_base.ComparableEntity):
             pass
 
         mapper(Customer, customers)
@@ -2144,11 +2144,11 @@ class DoubleParentM2OOrphanTest(_base.MappedTest):
         """test that an entity can have two parent delete-orphan
         cascades, and persists normally."""
 
-        class Address(_fixtures.Base):
+        class Address(_base.ComparableEntity):
             pass
-        class Home(_fixtures.Base):
+        class Home(_base.ComparableEntity):
             pass
-        class Business(_fixtures.Base):
+        class Business(_base.ComparableEntity):
             pass
 
         mapper(Address, addresses)
@@ -2182,13 +2182,13 @@ class DoubleParentM2OOrphanTest(_base.MappedTest):
         cascades, and is detected as an orphan when saved without a
         parent."""
 
-        class Address(_fixtures.Base):
+        class Address(_base.ComparableEntity):
             pass
 
-        class Home(_fixtures.Base):
+        class Home(_base.ComparableEntity):
             pass
 
-        class Business(_fixtures.Base):
+        class Business(_base.ComparableEntity):
             pass
 
         mapper(Address, addresses)
@@ -2219,9 +2219,9 @@ class CollectionAssignmentOrphanTest(_base.MappedTest):
     def test_basic(self):
         table_b, table_a = self.tables.table_b, self.tables.table_a
 
-        class A(_fixtures.Base):
+        class A(_base.ComparableEntity):
             pass
-        class B(_fixtures.Base):
+        class B(_base.ComparableEntity):
             pass
 
         mapper(A, table_a, properties={

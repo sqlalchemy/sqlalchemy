@@ -9,7 +9,7 @@ from test.lib import Column, testing
 from test.lib.util import function_named
 from test.orm import _fixtures, _base
 
-class Person(_fixtures.Base):
+class Person(_base.ComparableEntity):
     pass
 class Engineer(Person):
     pass
@@ -17,7 +17,7 @@ class Manager(Person):
     pass
 class Boss(Manager):
     pass
-class Company(_fixtures.Base):
+class Company(_base.ComparableEntity):
     pass
 
 class PolymorphTest(_base.MappedTest):

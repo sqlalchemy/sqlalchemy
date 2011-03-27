@@ -1,5 +1,5 @@
 from test.lib.testing import eq_
-import pickle
+from sqlalchemy.util import pickle
 import sqlalchemy as sa
 from test.lib import testing
 from test.lib.util import picklers
@@ -10,21 +10,42 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             sessionmaker, attributes, interfaces,\
                             clear_mappers, exc as orm_exc,\
                             configure_mappers, Session, lazyload_all,\
-                            lazyload
+                            lazyload, aliased
 from test.orm import _base, _fixtures
+from test.lib.pickleable import User, Address, Order, Child1, Child2, Parent, Screen, EmailUser
 
 
-User, EmailUser = None, None
+class PickleTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
 
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+        Table('orders', metadata,
+                  Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+                  Column('user_id', None, ForeignKey('users.id')),
+                  Column('address_id', None, ForeignKey('addresses.id')),
+                  Column('description', String(30)),
+                  Column('isopen', Integer),
+                  test_needs_acid=True,
+                  test_needs_fk=True
+        )
 
-class PickleTest(_fixtures.FixtureTest):
-    run_inserts = None
 
     def test_transient(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
@@ -44,7 +65,7 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u1, sess.query(User).get(u2.id))
 
     def test_no_mappers(self):
-        users, User = self.tables.users, self.classes.User
+        users = self.tables.users
 
 
         umapper = mapper(User, users)
@@ -55,11 +76,11 @@ class PickleTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             orm_exc.UnmappedInstanceError,
-            "Cannot deserialize object of type <class 'test.orm._fixtures.User'> - no mapper()",
+            "Cannot deserialize object of type <class 'test.lib.pickleable.User'> - no mapper()",
             pickle.loads, u1_pickled)
 
     def test_no_instrumentation(self):
-        users, User = self.tables.users, self.classes.User
+        users = self.tables.users
 
 
         umapper = mapper(User, users)
@@ -76,10 +97,8 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(str(u1), "User(name='ed')")
 
     def test_serialize_path(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         umapper = mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
@@ -109,10 +128,8 @@ class PickleTest(_fixtures.FixtureTest):
         )
 
     def test_class_deferred_cols(self):
-        Address, addresses, users, User = (self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users,
-                                self.classes.User)
+        addresses, users = (self.tables.addresses,
+                                self.tables.users)
 
         mapper(User, users, properties={
             'name':sa.orm.deferred(users.c.name),
@@ -144,10 +161,8 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
     def test_instance_lazy_relation_loaders(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, lazy='noload')
@@ -175,10 +190,8 @@ class PickleTest(_fixtures.FixtureTest):
         assert u2.addresses
 
     def test_instance_deferred_cols(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
@@ -224,10 +237,8 @@ class PickleTest(_fixtures.FixtureTest):
         eq_(u2, User(name='ed', addresses=[Address(email_address='ed@bar.com')]))
 
     def test_pickle_protocols(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
@@ -247,11 +258,10 @@ class PickleTest(_fixtures.FixtureTest):
             u2 = loads(dumps(u1))
             eq_(u1, u2)
 
+
     def test_options_with_descriptors(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
+        users, addresses = (self.tables.users,
+                                self.tables.addresses)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
@@ -282,8 +292,6 @@ class PickleTest(_fixtures.FixtureTest):
         """test a particular cycle that requires CollectionAdapter 
         to not rely upon InstanceState to deserialize."""
 
-        global Child1, Child2, Parent, Screen
-
         m = MetaData()
         c1 = Table('c1', m, 
             Column('parent_id', String, 
@@ -296,14 +304,6 @@ class PickleTest(_fixtures.FixtureTest):
         p = Table('p', m,
             Column('id', String, primary_key=True)
         )
-        class Child1(_base.ComparableEntity):
-            pass
-
-        class Child2(_base.ComparableEntity):
-            pass
-
-        class Parent(_base.ComparableEntity):
-            pass
 
         mapper(Parent, p, properties={
             'children1':relationship(Child1),
@@ -311,10 +311,6 @@ class PickleTest(_fixtures.FixtureTest):
         })
         mapper(Child1, c1)
         mapper(Child2, c2)
-        class Screen(object):
-           def __init__(self, obj, parent=None):
-               self.obj = obj
-               self.parent = parent
 
         obj = Parent()
         screen1 = Screen(obj)
@@ -333,26 +329,11 @@ class PolymorphicDeferredTest(_base.MappedTest):
             Column('id', Integer, ForeignKey('users.id'), primary_key=True),
             Column('email_address', String(30)))
 
-    @classmethod
-    def setup_classes(cls):
-        global User, EmailUser
-        class User(_base.BasicEntity):
-            pass
-
-        class EmailUser(User):
-            pass
-
-    @classmethod
-    def teardown_class(cls):
-        global User, EmailUser
-        User, EmailUser = None, None
-        super(PolymorphicDeferredTest, cls).teardown_class()
 
     def test_polymorphic_deferred(self):
-        EmailUser, email_users, users, User = (self.classes.EmailUser,
-                                self.tables.email_users,
+        email_users, users = (self.tables.email_users,
                                 self.tables.users,
-                                self.classes.User)
+                                )
 
         mapper(User, users, polymorphic_identity='user', polymorphic_on=users.c.type)
         mapper(EmailUser, email_users, inherits=User, polymorphic_identity='emailuser')
@@ -370,9 +351,95 @@ class PolymorphicDeferredTest(_base.MappedTest):
         assert 'email_address' not in eu2.__dict__
         eq_(eu2.email_address, 'foo@bar.com')
 
-class CustomSetupTeardownTest(_fixtures.FixtureTest):
+class TupleLabelTest(_fixtures.FixtureTest):
+    @classmethod
+    def setup_classes(cls):
+        pass
+
+    @classmethod
+    def setup_mappers(cls):
+        users, addresses, orders = cls.tables.users, cls.tables.addresses, cls.tables.orders
+        mapper(User, users, properties={
+            'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
+            'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'address':relationship(Address),  # m2o
+        })
+
+    def test_tuple_labeling(self):
+        users = self.tables.users
+        sess = create_session()
+
+        # test pickle + all the protocols !
+        for pickled in False, -1, 0, 1, 2:
+            for row in sess.query(User, Address).join(User.addresses).all():
+                if pickled is not False:
+                    row = pickle.loads(pickle.dumps(row, pickled))
+
+                eq_(row.keys(), ['User', 'Address'])
+                eq_(row.User, row[0])
+                eq_(row.Address, row[1])
+
+            for row in sess.query(User.name, User.id.label('foobar')):
+                if pickled is not False:
+                    row = pickle.loads(pickle.dumps(row, pickled))
+                eq_(row.keys(), ['name', 'foobar'])
+                eq_(row.name, row[0])
+                eq_(row.foobar, row[1])
+
+            for row in sess.query(User).values(User.name, User.id.label('foobar')):
+                if pickled is not False:
+                    row = pickle.loads(pickle.dumps(row, pickled))
+                eq_(row.keys(), ['name', 'foobar'])
+                eq_(row.name, row[0])
+                eq_(row.foobar, row[1])
+
+            oalias = aliased(Order)
+            for row in sess.query(User, oalias).join(User.orders).all():
+                if pickled is not False:
+                    row = pickle.loads(pickle.dumps(row, pickled))
+                eq_(row.keys(), ['User'])
+                eq_(row.User, row[0])
+
+            oalias = aliased(Order, name='orders')
+            for row in sess.query(User, oalias).join(oalias, User.orders).all():
+                if pickled is not False:
+                    row = pickle.loads(pickle.dumps(row, pickled))
+                eq_(row.keys(), ['User', 'orders'])
+                eq_(row.User, row[0])
+                eq_(row.orders, row[1])
+
+            # test here that first col is not labeled, only
+            # one name in keys, matches correctly
+            for row in sess.query(User.name + 'hoho', User.name):
+                eq_(row.keys(), ['name'])
+                eq_(row[0], row.name + 'hoho')
+
+            if pickled is not False:
+                ret = sess.query(User, Address).join(User.addresses).all()
+                pickle.loads(pickle.dumps(ret, pickled))
+
+class CustomSetupTeardownTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
+
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+              test_needs_acid=True,
+              test_needs_fk=True
+        )
     def test_rebuild_state(self):
-        User, users = self.classes.User, self.tables.users
+        users = self.tables.users
 
         """not much of a 'test', but illustrate how to 
         remove instance-level state before pickling.
@@ -387,41 +454,3 @@ class CustomSetupTeardownTest(_fixtures.FixtureTest):
         attributes.manager_of_class(User).setup_instance(u2)
         assert attributes.instance_state(u2)
 
-class UnpickleSA05Test(_fixtures.FixtureTest):
-    """test loading picklestrings from SQLA 0.5."""
-
-    __requires__ = ('python2',)
-
-    def test_one(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
-        mapper(User, users, properties={
-            'addresses':relationship(Address, backref="user")
-        })
-        mapper(Address, addresses)
-        data = \
-                 '\x80\x02]q\x00(ctest.orm._fixtures\nUser\nq\x01)\x81q\x02}q\x03(U\x12_sa_instance_stateq\x04csqlalchemy.orm.state\nInstanceState\nq\x05)\x81q\x06}q\x07(U\x08instanceq\x08h\x02U\x03keyq\th\x01K\x07\x85q\n\x86q\x0bubU\taddressesq\x0ccsqlalchemy.orm.collections\nInstrumentedList\nq\r)\x81q\x0ectest.orm._fixtures\nAddress\nq\x0f)\x81q\x10}q\x11(U\remail_addressq\x12X\r\x00\x00\x00jack@bean.comq\x13h\x04h\x05)\x81q\x14}q\x15(h\x08h\x10h\th\x0fK\x01\x85q\x16\x86q\x17ubU\x07user_idq\x18K\x07U\x02idq\x19K\x01uba}q\x1aU\x0b_sa_adapterq\x1bcsqlalchemy.orm.collections\nCollectionAdapter\nq\x1c)\x81q\x1d}q\x1e(U\x04dataq\x1fh\x0eU\x0bowner_stateq h\x06U\x03keyq!h\x0cubsbh\x19K\x07U\x04nameq"X\x04\x00\x00\x00jackq#ubh\x01)\x81q$}q%(h\x04h\x05)\x81q&}q\'(h\x08h$h\th\x01K\x08\x85q(\x86q)ubh\x0ch\r)\x81q*(h\x0f)\x81q+}q,(h\x12X\x0b\x00\x00\x00ed@wood.comq-h\x04h\x05)\x81q.}q/(h\x08h+h\th\x0fK\x02\x85q0\x86q1ubh\x18K\x08h\x19K\x02ubh\x0f)\x81q2}q3(h\x12X\x10\x00\x00\x00ed@bettyboop.comq4h\x04h\x05)\x81q5}q6(h\x08h2h\th\x0fK\x03\x85q7\x86q8ubh\x18K\x08h\x19K\x03ubh\x0f)\x81q9}q:(h\x12X\x0b\x00\x00\x00ed@lala.comq;h\x04h\x05)\x81q<}q=(h\x08h9h\th\x0fK\x04\x85q>\x86q?ubh\x18K\x08h\x19K\x04ube}q@h\x1bh\x1c)\x81qA}qB(h\x1fh*h h&h!h\x0cubsbh\x19K\x08h"X\x02\x00\x00\x00edqCubh\x01)\x81qD}qE(h\x04h\x05)\x81qF}qG(h\x08hDh\th\x01K\t\x85qH\x86qIubh\x0ch\r)\x81qJh\x0f)\x81qK}qL(h\x12X\r\x00\x00\x00fred@fred.comqMh\x04h\x05)\x81qN}qO(h\x08hKh\th\x0fK\x05\x85qP\x86qQubh\x18K\th\x19K\x05uba}qRh\x1bh\x1c)\x81qS}qT(h\x1fhJh hFh!h\x0cubsbh\x19K\th"X\x04\x00\x00\x00fredqUubh\x01)\x81qV}qW(h\x04h\x05)\x81qX}qY(h\x08hVh\th\x01K\n\x85qZ\x86q[ubh\x0ch\r)\x81q\\}q]h\x1bh\x1c)\x81q^}q_(h\x1fh\\h hXh!h\x0cubsbh\x19K\nh"X\x05\x00\x00\x00chuckq`ube.'
-
-        sess = create_session()
-        result = list(sess.query(User).merge_result(pickle.loads(data)))
-        eq_(result, self.static.user_address_result)
-
-    def test_two(self):
-        users, Address, addresses, User = (self.tables.users,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.classes.User)
-
-        mapper(User, users, properties={
-            'addresses':relationship(Address, backref="user")
-        })
-        mapper(Address, addresses)
-        data = \
-                '\x80\x02]q\x00(ctest.orm._fixtures\nUser\nq\x01)\x81q\x02}q\x03(U\x12_sa_instance_stateq\x04csqlalchemy.orm.state\nInstanceState\nq\x05)\x81q\x06}q\x07(U\x08instanceq\x08h\x02U\tload_pathq\t]q\nU\x03keyq\x0bh\x01K\x07\x85q\x0c\x86q\rU\x0cload_optionsq\x0ec__builtin__\nset\nq\x0f]q\x10csqlalchemy.orm.strategies\nEagerLazyOption\nq\x11)\x81q\x12}q\x13(U\x06mapperq\x14NU\x04lazyq\x15\x89U\x14propagate_to_loadersq\x16\x88U\x03keyq\x17]q\x18h\x01U\taddressesq\x19\x86q\x1aaU\x07chainedq\x1b\x89uba\x85q\x1cRq\x1dubh\x19csqlalchemy.orm.collections\nInstrumentedList\nq\x1e)\x81q\x1fctest.orm._fixtures\nAddress\nq )\x81q!}q"(U\remail_addressq#X\r\x00\x00\x00jack@bean.comq$h\x04h\x05)\x81q%}q&(h\x08h!h\t]q\'h\x01h\x19\x86q(ah\x0bh K\x01\x85q)\x86q*h\x0eh\x1dubU\x07user_idq+K\x07U\x02idq,K\x01uba}q-U\x0b_sa_adapterq.csqlalchemy.orm.collections\nCollectionAdapter\nq/)\x81q0}q1(U\x04dataq2h\x1fU\x0bowner_stateq3h\x06h\x17h\x19ubsbU\x04nameq4X\x04\x00\x00\x00jackq5h,K\x07ubh\x01)\x81q6}q7(h\x04h\x05)\x81q8}q9(h\x08h6h\t]q:h\x0bh\x01K\x08\x85q;\x86q<h\x0eh\x1dubh\x19h\x1e)\x81q=(h )\x81q>}q?(h#X\x0b\x00\x00\x00ed@wood.comq@h\x04h\x05)\x81qA}qB(h\x08h>h\t]qCh\x01h\x19\x86qDah\x0bh K\x02\x85qE\x86qFh\x0eh\x1dubh+K\x08h,K\x02ubh )\x81qG}qH(h#X\x10\x00\x00\x00ed@bettyboop.comqIh\x04h\x05)\x81qJ}qK(h\x08hGh\t]qLh\x01h\x19\x86qMah\x0bh K\x03\x85qN\x86qOh\x0eh\x1dubh+K\x08h,K\x03ubh )\x81qP}qQ(h#X\x0b\x00\x00\x00ed@lala.comqRh\x04h\x05)\x81qS}qT(h\x08hPh\t]qUh\x01h\x19\x86qVah\x0bh K\x04\x85qW\x86qXh\x0eh\x1dubh+K\x08h,K\x04ube}qYh.h/)\x81qZ}q[(h2h=h3h8h\x17h\x19ubsbh4X\x02\x00\x00\x00edq\\h,K\x08ubh\x01)\x81q]}q^(h\x04h\x05)\x81q_}q`(h\x08h]h\t]qah\x0bh\x01K\t\x85qb\x86qch\x0eh\x1dubh\x19h\x1e)\x81qdh )\x81qe}qf(h#X\r\x00\x00\x00fred@fred.comqgh\x04h\x05)\x81qh}qi(h\x08heh\t]qjh\x01h\x19\x86qkah\x0bh K\x05\x85ql\x86qmh\x0eh\x1dubh+K\th,K\x05uba}qnh.h/)\x81qo}qp(h2hdh3h_h\x17h\x19ubsbh4X\x04\x00\x00\x00fredqqh,K\tubh\x01)\x81qr}qs(h\x04h\x05)\x81qt}qu(h\x08hrh\t]qvh\x0bh\x01K\n\x85qw\x86qxh\x0eh\x1dubh\x19h\x1e)\x81qy}qzh.h/)\x81q{}q|(h2hyh3hth\x17h\x19ubsbh4X\x05\x00\x00\x00chuckq}h,K\nube.'
-
-        sess = create_session()
-        result = list(sess.query(User).merge_result(pickle.loads(data)))
-        eq_(result, self.static.user_address_result)

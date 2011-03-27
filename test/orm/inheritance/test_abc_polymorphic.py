@@ -24,7 +24,7 @@ class ABCTest(_base.MappedTest):
 
     def make_test(fetchtype):
         def test_roundtrip(self):
-            class A(_fixtures.Base):pass
+            class A(_base.ComparableEntity):pass
             class B(A):pass
             class C(B):pass
 

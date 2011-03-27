@@ -13,12 +13,6 @@ import sqlalchemy as sa
 from test.lib import testing, AssertsCompiledSQL, Column, engines
 
 from test.orm import _fixtures
-from test.orm._fixtures import keywords, addresses, Base, \
-            Keyword, FixtureTest, \
-           Dingaling, item_keywords, dingalings, User, items,\
-           orders, Address, users, nodes, \
-            order_items, Item, Order, Node, \
-            composite_pk_table, CompositePk
 
 from test.orm import _base
 
@@ -32,6 +26,19 @@ class QueryTest(_fixtures.FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
+        Node, composite_pk_table, users, Keyword, items, Dingaling, \
+            order_items, item_keywords, Item, User, dingalings, \
+            Address, keywords, CompositePk, nodes, Order, orders, \
+            addresses = cls.classes.Node, \
+            cls.tables.composite_pk_table, cls.tables.users, \
+            cls.classes.Keyword, cls.tables.items, \
+            cls.classes.Dingaling, cls.tables.order_items, \
+            cls.tables.item_keywords, cls.classes.Item, \
+            cls.classes.User, cls.tables.dingalings, \
+            cls.classes.Address, cls.tables.keywords, \
+            cls.classes.CompositePk, cls.tables.nodes, \
+            cls.classes.Order, cls.tables.orders, cls.tables.addresses
+
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
             'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
@@ -112,9 +119,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
                                 cls.tables.machines,
                                 cls.tables.engineers)
 
-        class Company(_fixtures.Base):
+        class Company(_base.ComparableEntity):
             pass
-        class Person(_fixtures.Base):
+        class Person(_base.ComparableEntity):
             pass
         class Engineer(Person):
             pass
@@ -122,9 +129,9 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
             pass
         class Boss(Manager):
             pass
-        class Machine(_fixtures.Base):
+        class Machine(_base.ComparableEntity):
             pass
-        class Paperwork(_fixtures.Base):
+        class Paperwork(_base.ComparableEntity):
             pass
 
         mapper(Company, companies, properties={
@@ -346,6 +353,8 @@ class InheritedJoinTest(_base.MappedTest, AssertsCompiledSQL):
 class JoinTest(QueryTest, AssertsCompiledSQL):
 
     def test_single_name(self):
+        User = self.classes.User
+
         sess = create_session()
 
         self.assert_compile(
@@ -379,6 +388,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multi_tuple_form(self):
+        Item, Order, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User)
+
         """test the 'tuple' form of join, now superseded by the two-element join() form.
 
         Not deprecating this style as of yet.
@@ -420,6 +433,11 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_single_prop(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
         sess = create_session()
         self.assert_compile(
             sess.query(User).join(User.orders),
@@ -550,6 +568,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_overlapping_paths(self):
+        User = self.classes.User
+
         for aliased in (True,False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
             result = create_session().query(User).join('orders', 'items', aliased=aliased).\
@@ -557,11 +577,17 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             assert [User(id=7, name='jack')] == result
 
     def test_overlapping_paths_outerjoin(self):
+        User = self.classes.User
+
         result = create_session().query(User).outerjoin('orders', 'items').\
                 filter_by(id=3).outerjoin('orders','address').filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
 
     def test_from_joinpoint(self):
+        Item, User, Order = (self.classes.Item,
+                                self.classes.User,
+                                self.classes.Order)
+
         sess = create_session()
 
         for oalias,ialias in [(True, True), (False, False), (True, False), (False, True)]:
@@ -601,6 +627,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_join_nonmapped_column(self):
+        Order, User = self.classes.Order, self.classes.User
+
         """test that the search for a 'left' doesn't trip on non-mapped cols"""
         sess = create_session()
 
@@ -615,6 +643,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_backwards_join(self):
+        User, Address = self.classes.User, self.classes.Address
+
         # a more controversial feature.  join from
         # User->Address, but the onclause is Address.user.
 
@@ -648,6 +678,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multiple_with_aliases(self):
+        Order, User = self.classes.Order, self.classes.User
+
         sess = create_session()
 
         ualias = aliased(User)
@@ -664,6 +696,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_select_from_orm_joins(self):
+        User, Order = self.classes.User, self.classes.Order
+
         sess = create_session()
 
         ualias = aliased(User)
@@ -728,6 +762,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_overlapping_backwards_joins(self):
+        User, Order = self.classes.User, self.classes.Order
+
         sess = create_session()
 
         oalias1 = aliased(Order)
@@ -743,6 +779,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_replace_multiple_from_clause(self):
+        User, Order, Address = (self.classes.User,
+                                self.classes.Order,
+                                self.classes.Address)
+
         """test adding joins onto multiple FROM clauses"""
 
         sess = create_session()
@@ -758,6 +798,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multiple_adaption(self):
+        Item, Order, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User)
+
         sess = create_session()
 
         self.assert_compile(
@@ -769,6 +813,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_onclause_conditional_adaption(self):
+        Item, Order, orders, order_items, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.tables.orders,
+                                self.tables.order_items,
+                                self.classes.User)
+
         sess = create_session()
 
         # this is now a very weird test, nobody should really
@@ -804,17 +854,27 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # or: query.join(path_to_some_joined_table_mapper).join(target, sql_expression)
 
     def test_pure_expression_error(self):
+        addresses, users = self.tables.addresses, self.tables.users
+
         sess = create_session()
 
         assert_raises_message(sa.exc.InvalidRequestError, "Could not find a FROM clause to join from", sess.query(users).join, addresses)
 
 
     def test_orderby_arg_bug(self):
+        User, users, Order = (self.classes.User,
+                                self.tables.users,
+                                self.classes.Order)
+
         sess = create_session()
         # no arg error
         result = sess.query(User).join('orders', aliased=True).order_by(Order.id).reset_joinpoint().order_by(users.c.id).all()
 
     def test_no_onclause(self):
+        Item, User, Order = (self.classes.Item,
+                                self.classes.User,
+                                self.classes.Order)
+
         sess = create_session()
 
         eq_(
@@ -834,6 +894,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_clause_onclause(self):
+        Item, Order, users, order_items, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.tables.users,
+                                self.tables.order_items,
+                                self.classes.User)
+
         sess = create_session()
 
         eq_(
@@ -883,6 +949,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_aliased_classes(self):
+        User, Address = self.classes.User, self.classes.Address
+
         sess = create_session()
 
         (user7, user8, user9, user10) = sess.query(User).all()
@@ -922,6 +990,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(l.all(), [(user8, address2),(user8, address3),(user8, address4),])
 
     def test_expression_onclauses(self):
+        Order, User = self.classes.Order, self.classes.User
+
         sess = create_session()
 
         subq = sess.query(User).subquery()
@@ -955,6 +1025,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_implicit_joins_from_aliases(self):
+        Item, User, Order = (self.classes.Item,
+                                self.classes.User,
+                                self.classes.Order)
+
         sess = create_session()
         OrderAlias = aliased(Order)
 
@@ -982,6 +1056,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_aliased_classes_m2m(self):
+        Item, Order = self.classes.Item, self.classes.Order
+
         sess = create_session()
 
         (order1, order2, order3, order4, order5) = sess.query(Order).all()
@@ -1018,6 +1094,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_joins_from_adapted_entities(self):
+        User = self.classes.User
+
 
         # test for #1853
 
@@ -1056,6 +1134,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                             use_default_dialect=True)
 
     def test_reset_joinpoint(self):
+        User = self.classes.User
+
         for aliased in (True, False):
             # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
             result = create_session().query(User).join('orders', 'items', aliased=aliased).filter_by(id=3).reset_joinpoint().join('orders','address', aliased=aliased).filter_by(id=1).all()
@@ -1065,6 +1145,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             assert [User(id=7, name='jack')] == result
 
     def test_overlap_with_aliases(self):
+        orders, User, users = (self.tables.orders,
+                                self.classes.User,
+                                self.tables.users)
+
         oalias = orders.alias('oalias')
 
         result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_(["order 1", "order 2", "order 3"])).join('orders', 'items').order_by(User.id).all()
@@ -1074,6 +1158,11 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert [User(id=7, name='jack')] == result
 
     def test_aliased(self):
+        Item, Order, User, Address = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User,
+                                self.classes.Address)
+
         """test automatic generation of aliased joins."""
 
         sess = create_session()
@@ -1110,6 +1199,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert [User(id=7)] == q.all()
 
     def test_aliased_order_by(self):
+        User = self.classes.User
+
         sess = create_session()
 
         ualias = aliased(User)
@@ -1126,6 +1217,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_plain_table(self):
+        addresses, User = self.tables.addresses, self.classes.User
+
 
         sess = create_session()
 
@@ -1135,6 +1228,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_no_joinpoint_expr(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = create_session()
 
         # these are consistent regardless of
@@ -1153,6 +1248,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_select_from(self):
+        Item, Order, User = (self.classes.Item,
+                                self.classes.Order,
+                                self.classes.User)
+
         """Test that the left edge of the join can be set reliably with select_from()."""
 
         sess = create_session()
@@ -1177,6 +1276,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
 
     def test_from_self_resets_joinpaths(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
         """test a join from from_self() doesn't confuse joins inside the subquery
         with the outside.
         """
@@ -1270,10 +1371,10 @@ class SelfRefMixedTest(_base.MappedTest, AssertsCompiledSQL):
                                 cls.tables.assoc_table,
                                 cls.tables.sub_table)
 
-        class Node(Base):
+        class Node(_base.ComparableEntity):
             pass
 
-        class Sub(Base):
+        class Sub(_base.ComparableEntity):
             pass
 
         mapper(Node, nodes, properties={
@@ -1345,7 +1446,7 @@ class SelfReferentialTest(_base.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-       class Node(Base):
+       class Node(_base.ComparableEntity):
            def append(self, node):
                self.children.append(node)
 
@@ -1700,7 +1801,7 @@ class SelfReferentialM2MTest(_base.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class Node(Base):
+        class Node(_base.ComparableEntity):
             pass
 
     @classmethod

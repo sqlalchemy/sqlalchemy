@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from test.lib import testing
 from test.lib.testing import adict
 from test.lib.engines import drop_all_tables
-
+import sys
 
 class TablesTest(testing.TestBase):
     """An integration test that creates and uses tables."""
@@ -14,9 +14,12 @@ class TablesTest(testing.TestBase):
     run_define_tables = 'once'
 
     # 'once', 'each', None
+    run_create_tables = 'once'
+
+    # 'once', 'each', None
     run_inserts = 'each'
 
-    # 'foreach', None
+    # 'each', None
     run_deletes = 'each'
 
     # 'once', 'each', None
@@ -37,6 +40,11 @@ class TablesTest(testing.TestBase):
 
     @classmethod
     def _init_class(cls):
+        if cls.run_define_tables == 'each':
+            if cls.run_create_tables == 'once':
+                cls.run_create_tables = 'each'
+            assert cls.run_inserts in ('each', None)
+
         if cls.other is None:
             cls.other = adict()
 
@@ -62,16 +70,19 @@ class TablesTest(testing.TestBase):
     def _setup_once_tables(cls):
         if cls.run_define_tables == 'once':
             cls.define_tables(cls.metadata)
-            cls.metadata.create_all()
+            if cls.run_create_tables == 'once':
+                cls.metadata.create_all()
             cls.tables.update(cls.metadata.tables)
 
     def _setup_each_tables(self):
         if self.run_define_tables == 'each':
             self.tables.clear()
-            drop_all_tables(self.metadata)
+            if self.run_create_tables == 'each':
+                drop_all_tables(self.metadata)
             self.metadata.clear()
             self.define_tables(self.metadata)
-            self.metadata.create_all()
+            if self.run_create_tables == 'each':
+                self.metadata.create_all()
             self.tables.update(self.metadata.tables)
 
     def _setup_each_inserts(self):
@@ -108,7 +119,8 @@ class TablesTest(testing.TestBase):
 
     @classmethod
     def _teardown_once_metadata_bind(cls):
-        cls.metadata.drop_all()
+        if cls.run_create_tables:
+            cls.metadata.drop_all()
 
         if cls.run_dispose_bind == 'once':
             cls.dispose_bind(cls.bind)

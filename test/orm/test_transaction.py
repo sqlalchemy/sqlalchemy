@@ -8,7 +8,7 @@ from sqlalchemy.orm import *
 from test.lib.util import gc_collect
 from test.lib import testing
 from test.orm import _base
-from test.orm._fixtures import FixtureTest, User, Address, users, addresses
+from test.orm._fixtures import FixtureTest
 
 class TransactionTest(FixtureTest):
     run_setup_mappers = 'once'
@@ -17,6 +17,8 @@ class TransactionTest(FixtureTest):
 
     @classmethod
     def setup_mappers(cls):
+        User, Address = cls.classes.User, cls.classes.Address
+        users, addresses = cls.tables.users, cls.tables.addresses
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user',
                                  cascade="all, delete-orphan", order_by=addresses.c.id),
@@ -28,6 +30,7 @@ class FixtureDataTest(TransactionTest):
     run_inserts = 'each'
 
     def test_attrs_on_rollback(self):
+        User = self.classes.User
         sess = self.session()
         u1 = sess.query(User).get(7)
         u1.name = 'ed'
@@ -35,6 +38,7 @@ class FixtureDataTest(TransactionTest):
         eq_(u1.name, 'jack')
 
     def test_commit_persistent(self):
+        User = self.classes.User
         sess = self.session()
         u1 = sess.query(User).get(7)
         u1.name = 'ed'
@@ -43,6 +47,7 @@ class FixtureDataTest(TransactionTest):
         eq_(u1.name, 'ed')
 
     def test_concurrent_commit_persistent(self):
+        User = self.classes.User
         s1 = self.session()
         u1 = s1.query(User).get(7)
         u1.name = 'ed'
@@ -59,6 +64,7 @@ class FixtureDataTest(TransactionTest):
 class AutoExpireTest(TransactionTest):
 
     def test_expunge_pending_on_rollback(self):
+        User = self.classes.User
         sess = self.session()
         u2= User(name='newuser')
         sess.add(u2)
@@ -67,6 +73,7 @@ class AutoExpireTest(TransactionTest):
         assert u2 not in sess
 
     def test_trans_pending_cleared_on_commit(self):
+        User = self.classes.User
         sess = self.session()
         u2= User(name='newuser')
         sess.add(u2)
@@ -80,6 +87,7 @@ class AutoExpireTest(TransactionTest):
         assert u2 in sess
 
     def test_update_deleted_on_rollback(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
@@ -95,6 +103,8 @@ class AutoExpireTest(TransactionTest):
         assert u1 not in s.deleted
 
     def test_gced_delete_on_rollback(self):
+        User, users = self.classes.User, self.tables.users
+
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
@@ -122,6 +132,7 @@ class AutoExpireTest(TransactionTest):
         s.commit()
 
     def test_trans_deleted_cleared_on_rollback(self):
+        User = self.classes.User
         s = self.session()
         u1 = User(name='ed')
         s.add(u1)
@@ -134,6 +145,8 @@ class AutoExpireTest(TransactionTest):
         assert u1 not in s
 
     def test_update_deleted_on_rollback_cascade(self):
+        User, Address = self.classes.User, self.classes.Address
+
         s = self.session()
         u1 = User(name='ed', addresses=[Address(email_address='foo')])
         s.add(u1)
@@ -148,6 +161,8 @@ class AutoExpireTest(TransactionTest):
         assert u1.addresses[0] not in s.deleted
 
     def test_update_deleted_on_rollback_orphan(self):
+        User, Address = self.classes.User, self.classes.Address
+
         s = self.session()
         u1 = User(name='ed', addresses=[Address(email_address='foo')])
         s.add(u1)
@@ -163,6 +178,7 @@ class AutoExpireTest(TransactionTest):
         assert u1.addresses == [a1]
 
     def test_commit_pending(self):
+        User = self.classes.User
         sess = self.session()
         u1 = User(name='newuser')
         sess.add(u1)
@@ -172,6 +188,7 @@ class AutoExpireTest(TransactionTest):
 
 
     def test_concurrent_commit_pending(self):
+        User = self.classes.User
         s1 = self.session()
         u1 = User(name='edward')
         s1.add(u1)
@@ -188,6 +205,7 @@ class TwoPhaseTest(TransactionTest):
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
+        User = self.classes.User
         s = self.session(twophase=True)
 
         u = User(name='ed')
@@ -200,6 +218,7 @@ class TwoPhaseTest(TransactionTest):
 class RollbackRecoverTest(TransactionTest):
 
     def test_pk_violation(self):
+        User, Address = self.classes.User, self.classes.Address
         s = self.session()
         a1 = Address(email_address='foo')
         u1 = User(id=1, name='ed', addresses=[a1])
@@ -231,6 +250,7 @@ class RollbackRecoverTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_pk_violation_with_savepoint(self):
+        User, Address = self.classes.User, self.classes.Address
         s = self.session()
         a1 = Address(email_address='foo')
         u1 = User(id=1, name='ed', addresses=[a1])
@@ -320,6 +340,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_savepoint_rollback_collections(self):
+        User, Address = self.classes.User, self.classes.Address
         s = self.session()
         u1 = User(name='ed', addresses=[Address(email_address='foo')])
         s.add(u1)
@@ -351,6 +372,7 @@ class SavepointTest(TransactionTest):
 
     @testing.requires.savepoints
     def test_savepoint_commit_collections(self):
+        User, Address = self.classes.User, self.classes.Address
         s = self.session()
         u1 = User(name='ed', addresses=[Address(email_address='foo')])
         s.add(u1)
@@ -410,6 +432,8 @@ class SavepointTest(TransactionTest):
 
 class AccountingFlagsTest(TransactionTest):
     def test_no_expire_on_commit(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = sessionmaker(expire_on_commit=False)()
         u1 = User(name='ed')
         sess.add(u1)
@@ -422,6 +446,8 @@ class AccountingFlagsTest(TransactionTest):
         assert u1.name == 'edward'
 
     def test_rollback_no_accounting(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = sessionmaker(_enable_transaction_accounting=False)()
         u1 = User(name='ed')
         sess.add(u1)
@@ -437,6 +463,8 @@ class AccountingFlagsTest(TransactionTest):
         assert u1.name == 'edward'
 
     def test_commit_no_accounting(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = sessionmaker(_enable_transaction_accounting=False)()
         u1 = User(name='ed')
         sess.add(u1)
@@ -457,6 +485,8 @@ class AccountingFlagsTest(TransactionTest):
         sess.commit()
 
     def test_preflush_no_accounting(self):
+        User, users = self.classes.User, self.tables.users
+
         sess = Session(_enable_transaction_accounting=False, 
                         autocommit=True, autoflush=False)
         u1 = User(name='ed')
@@ -480,6 +510,7 @@ class AutoCommitTest(TransactionTest):
         assert_raises(sa_exc.InvalidRequestError, sess.begin_nested)
 
     def test_begin_preflush(self):
+        User = self.classes.User
         sess = create_session(autocommit=True)
 
         u1 = User(name='ed')
@@ -494,6 +525,7 @@ class AutoCommitTest(TransactionTest):
         assert sess.query(User).filter_by(name='ed').one() is u1
 
     def test_accounting_commit_fails_add(self):
+        User = self.classes.User
         sess = create_session(autocommit=True)
 
         fail = False
@@ -524,6 +556,7 @@ class AutoCommitTest(TransactionTest):
         )
 
     def test_accounting_commit_fails_delete(self):
+        User = self.classes.User
         sess = create_session(autocommit=True)
 
         fail = False
@@ -557,6 +590,7 @@ class AutoCommitTest(TransactionTest):
     def test_accounting_no_select_needed(self):
         """test that flush accounting works on non-expired instances
         when autocommit=True/expire_on_commit=True."""
+        User = self.classes.User
         sess = create_session(autocommit=True, expire_on_commit=True)
 
         u1 = User(id=1, name='ed')

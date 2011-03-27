@@ -1601,8 +1601,6 @@ class OptionsTest(_fixtures.FixtureTest):
         assert opt2a not in ustate.load_options
         assert opt2b not in ustate.load_options
 
-        import pickle
-        pickle.dumps(u1)
 
 class DeepOptionsTest(_fixtures.FixtureTest):
     @classmethod
