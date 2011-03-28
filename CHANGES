@@ -29,6 +29,11 @@ CHANGES
       are noted as are if any differences in 
       implementation/behavior are present.
 
+- orm
+  - Reworded the exception raised when a flush
+    is attempted of a subclass that is not polymorphic
+    against the supertype.  [ticket:2063]
+
 - sql
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.

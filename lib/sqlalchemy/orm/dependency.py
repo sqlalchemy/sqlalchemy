@@ -251,14 +251,21 @@ class DependencyProcessor(object):
             not self.mapper._canload(state, 
                             allow_subtypes=not self.enable_typechecks):
             if self.mapper._canload(state, allow_subtypes=True):
-                raise exc.FlushError(
-                "Attempting to flush an item of type %s on collection '%s', "
-                "which is not the expected type %s.  Configure mapper '%s' "
-                "to load this subtype polymorphically, or set "
-                "enable_typechecks=False to allow subtypes. "
-                "Mismatched typeloading may cause bi-directional "
-                "relationships (backrefs) to not function properly." % 
-                (state.class_, self.prop, self.mapper.class_, self.mapper))
+                raise exc.FlushError('Attempting to flush an item of type '
+                                '%(x)s as a member of collection '
+                                '"%(y)s". Expected an object of type '
+                                '%(z)s or a polymorphic subclass of '
+                                'this type. If %(x)s is a subclass of '
+                                '%(z)s, configure mapper "%(zm)s" to '
+                                'load this subtype polymorphically, or '
+                                'set enable_typechecks=False to allow '
+                                'any subtype to be accepted for flush. '
+                                 % {
+                    'x': state.class_,
+                    'y': self.prop,
+                    'z': self.mapper.class_,
+                    'zm': self.mapper,
+                    })
             else:
                 raise exc.FlushError(
                 "Attempting to flush an item of type %s on collection '%s', "
