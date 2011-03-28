@@ -141,6 +141,23 @@ Declarative form::
 This option can also be specified engine-wide using the
 ``implicit_returning=False`` argument on :func:`.create_engine`.
 
+Enabling Snapshot Isolation
+---------------------------
+
+Not necessarily specific to SQLAlchemy, SQL Server has a default transaction 
+isolation mode that locks entire tables, and causes even mildly concurrent
+applications to have long held locks and frequent deadlocks.   
+Enabling snapshot isolation for the database as a whole is recommended 
+for modern levels of concurrency support.  This is accomplished via the 
+following ALTER DATABASE commands executed at the SQL prompt::
+
+    ALTER DATABASE MyDatabase SET ALLOW_SNAPSHOT_ISOLATION ON
+
+    ALTER DATABASE MyDatabase SET READ_COMMITTED_SNAPSHOT ON
+
+Background on SQL Server snapshot isolation is available at
+http://msdn.microsoft.com/en-us/library/ms175095.aspx.
+  
 Known Issues
 ------------
 
