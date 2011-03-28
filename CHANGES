@@ -45,6 +45,10 @@ CHANGES
     entity.  Note 0.7 has an updated version of this
     fix.  [ticket:2098]
 
+  - Reworded the exception raised when a flush
+    is attempted of a subclass that is not polymorphic
+    against the supertype.  [ticket:2063]
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
