@@ -19,6 +19,8 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 Types which are specific to Oracle, or have Oracle-specific 
 construction arguments, are as follows:
 
+.. currentmodule:: sqlalchemy.dialects.oracle
+
 .. autoclass:: BFILE
   :members: __init__
   :show-inheritance:

@@ -66,7 +66,6 @@ from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
                             FLOAT, INTEGER, NUMERIC, SMALLINT, TEXT, TIME,\
                             TIMESTAMP, VARCHAR
 
-
 class _DateTimeMixin(object):
     _reg = None
     _storage_format = None
@@ -79,6 +78,41 @@ class _DateTimeMixin(object):
             self._storage_format = storage_format
 
 class DATETIME(_DateTimeMixin, sqltypes.DateTime):
+    """Represent a Python datetime object in SQLite using a string.
+    
+    The default string storage format is::
+    
+        "%04d-%02d-%02d %02d:%02d:%02d.%06d" % (value.year, 
+                                value.month, value.day,
+                                value.hour, value.minute, 
+                                value.second, value.microsecond)
+    
+    e.g.::
+    
+        2011-03-15 12:05:57.10558
+    
+    The storage format can be customized to some degree using the 
+    ``storage_format`` and ``regexp`` parameters, such as::
+        
+        import re
+        from sqlalchemy.dialects.sqlite import DATETIME
+        
+        dt = DATETIME(
+                storage_format="%04d/%02d/%02d %02d-%02d-%02d-%06d",
+                regexp=re.compile("(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)(?:-(\d+))?")
+            )
+    
+    :param storage_format: format string which will be appled to the 
+     tuple ``(value.year, value.month, value.day, value.hour,
+     value.minute, value.second, value.microsecond)``, given a
+     Python datetime.datetime() object.
+    
+    :param regexp: regular expression which will be applied to 
+     incoming result rows. The resulting match object is appled to
+     the Python datetime() constructor via ``*map(int,
+     match_obj.groups(0))``.
+    """
+
     _storage_format = "%04d-%02d-%02d %02d:%02d:%02d.%06d"
 
     def bind_processor(self, dialect):
@@ -108,6 +142,38 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
             return processors.str_to_datetime
 
 class DATE(_DateTimeMixin, sqltypes.Date):
+    """Represent a Python date object in SQLite using a string.
+
+    The default string storage format is::
+    
+        "%04d-%02d-%02d" % (value.year, value.month, value.day)
+    
+    e.g.::
+    
+        2011-03-15
+    
+    The storage format can be customized to some degree using the 
+    ``storage_format`` and ``regexp`` parameters, such as::
+    
+        import re
+        from sqlalchemy.dialects.sqlite import DATE
+
+        d = DATE(
+                storage_format="%02d/%02d/%02d",
+                regexp=re.compile("(\d+)/(\d+)/(\d+)")
+            )
+    
+    :param storage_format: format string which will be appled to the 
+     tuple ``(value.year, value.month, value.day)``,
+     given a Python datetime.date() object.
+    
+    :param regexp: regular expression which will be applied to 
+     incoming result rows. The resulting match object is appled to
+     the Python date() constructor via ``*map(int,
+     match_obj.groups(0))``.
+     
+    """
+
     _storage_format = "%04d-%02d-%02d"
 
     def bind_processor(self, dialect):
@@ -131,6 +197,40 @@ class DATE(_DateTimeMixin, sqltypes.Date):
             return processors.str_to_date
 
 class TIME(_DateTimeMixin, sqltypes.Time):
+    """Represent a Python time object in SQLite using a string.
+    
+    The default string storage format is::
+    
+        "%02d:%02d:%02d.%06d" % (value.hour, value.minute, 
+                                value.second,
+                                 value.microsecond)
+    
+    e.g.::
+    
+        12:05:57.10558
+    
+    The storage format can be customized to some degree using the 
+    ``storage_format`` and ``regexp`` parameters, such as::
+    
+        import re
+        from sqlalchemy.dialects.sqlite import TIME
+
+        t = TIME(
+                storage_format="%02d-%02d-%02d-%06d",
+                regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
+            )
+    
+    :param storage_format: format string which will be appled 
+     to the tuple ``(value.hour, value.minute, value.second,
+     value.microsecond)``, given a Python datetime.time() object.
+    
+    :param regexp: regular expression which will be applied to 
+     incoming result rows. The resulting match object is appled to
+     the Python time() constructor via ``*map(int,
+     match_obj.groups(0))``.
+
+    """
+
     _storage_format = "%02d:%02d:%02d.%06d"
 
     def bind_processor(self, dialect):

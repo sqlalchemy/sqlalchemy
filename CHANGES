@@ -50,6 +50,10 @@ CHANGES
     talking to cx_oracle.  [ticket:2100]  (Also
     in 0.6.7)
 
+- documentation
+  - Documented SQLite DATE/TIME/DATETIME types.
+    [ticket:2029] (also in 0.6.7)
+
 0.7.0b3
 =======
 - general

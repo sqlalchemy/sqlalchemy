@@ -17,6 +17,8 @@ valid with Drizzle are importable from the top level dialect::
 Types which are specific to Drizzle, or have Drizzle-specific 
 construction arguments, are as follows:
 
+.. currentmodule:: sqlalchemy.dialects.drizzle
+
 .. autoclass:: BIGINT
     :members: __init__
     :show-inheritance:
