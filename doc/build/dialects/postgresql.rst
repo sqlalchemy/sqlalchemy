@@ -19,6 +19,8 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 Types which are specific to PostgreSQL, or have PostgreSQL-specific 
 construction arguments, are as follows:
 
+.. currentmodule:: sqlalchemy.dialects.postgresql
+
 .. autoclass:: ARRAY
     :members: __init__
     :show-inheritance:

@@ -133,8 +133,11 @@ CHANGES
     aren't mistaken for always-hashable, possibly-column
     arguments.  [ticket:2091]
 
-- examples
+- documentation
+  - Documented SQLite DATE/TIME/DATETIME types.
+    [ticket:2029]
 
+- examples
   - The Beaker caching example allows a "query_cls" argument
     to the query_callable() function.  [ticket:2090]
 
