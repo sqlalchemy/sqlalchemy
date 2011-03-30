@@ -134,7 +134,7 @@ class TypeEngine(AbstractType):
             return self.__class__
 
     def dialect_impl(self, dialect):
-        """Return a dialect-specific implementation for this type."""
+        """Return a dialect-specific implementation for this :class:`.TypeEngine`."""
 
         try:
             return dialect._type_memos[self]['impl']
@@ -454,6 +454,9 @@ class TypeDecorator(TypeEngine):
         
         In most cases this returns a dialect-adapted form of
         the :class:`.TypeEngine` type represented by ``self.impl``.
+        Makes usage of :meth:`dialect_impl` but also traverses
+        into wrapped :class:`.TypeDecorator` instances.
+        Behavior can be customized here by overriding :meth:`load_dialect_impl`.
 
         """
         adapted = dialect.type_descriptor(self)
@@ -465,10 +468,15 @@ class TypeDecorator(TypeEngine):
             return self.load_dialect_impl(dialect)
 
     def load_dialect_impl(self, dialect):
-        """User hook which can be overridden to provide a different 'impl'
-        type per-dialect.
+        """Return a :class:`.TypeEngine` object corresponding to a dialect.
+        
+        This is an end-user override hook that can be used to provide
+        differing types depending on the given dialect.  It is used
+        by the :class:`.TypeDecorator` implementation of :meth:`type_engine` 
+        to help determine what type should ultimately be returned
+        for a given :class:`.TypeDecorator`.
 
-        by default returns self.impl.
+        By default returns ``self.impl``.
 
         """
         return self.impl
