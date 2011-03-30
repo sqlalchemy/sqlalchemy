@@ -11,6 +11,7 @@ modules, classes, hierarchies, attributes, functions, and methods.
 import itertools
 import inspect
 import operator
+import re
 import sys
 import types
 import warnings
@@ -756,5 +757,27 @@ def warn(msg, stacklevel=3):
         warnings.warn(msg, exc.SAWarning, stacklevel=stacklevel)
     else:
         warnings.warn(msg, stacklevel=stacklevel)
+
+_SQLA_RE = re.compile(r'sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py')
+_UNITTEST_RE = re.compile(r'unit(?:2|test2?/)')
+def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
+    """Chop extraneous lines off beginning and end of a traceback.
+
+    :param tb:
+      a list of traceback lines as returned by ``traceback.format_stack()``
+
+    :param exclude_prefix:
+      a regular expression object matching lines to skip at beginning of ``tb``
+
+    :param exclude_suffix:
+      a regular expression object matching lines to skip at end of ``tb``
+    """
+    start = 0
+    end = len(tb) - 1
+    while start <= end and exclude_prefix.search(tb[start]):
+        start += 1
+    while start <= end and exclude_suffix.search(tb[end]):
+        end -= 1
+    return tb[start:end+1]
 
 NoneType = type(None)

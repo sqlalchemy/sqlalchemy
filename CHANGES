@@ -46,6 +46,14 @@ CHANGES
     collection of Sequence objects, list
     of schema names.  [ticket:2104]
 
+- pool
+  - AssertionPool now stores the traceback indicating
+    where the currently checked out connection was
+    acquired; this traceback is reported within
+    the assertion raised upon a second concurrent 
+    checkout; courtesy Gunnlaugur Briem 
+    [ticket:2103]
+
 - oracle
   - Using column names that would require quotes
     for the column itself or for a name-generated
