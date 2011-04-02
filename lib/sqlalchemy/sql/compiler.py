@@ -489,7 +489,7 @@ class SQLCompiler(engine.Compiled):
             return disp(func, **kwargs)
         else:
             name = FUNCTIONS.get(func.__class__, func.name + "%(expr)s")
-            return ".".join(func.packagenames + [name]) % \
+            return ".".join(list(func.packagenames) + [name]) % \
                             {'expr':self.function_argspec(func, **kwargs)}
 
     def visit_next_value_func(self, next_value, **kw):

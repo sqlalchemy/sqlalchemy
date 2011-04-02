@@ -147,7 +147,10 @@ Changing Compilation of Types
 Subclassing Guidelines
 ======================
 
-A big part of using the compiler extension is subclassing SQLAlchemy expression constructs.  To make this easier, the expression and schema packages feature a set of "bases" intended for common tasks.  A synopsis is as follows:
+A big part of using the compiler extension is subclassing SQLAlchemy
+expression constructs. To make this easier, the expression and
+schema packages feature a set of "bases" intended for common tasks.
+A synopsis is as follows:
 
 * :class:`~sqlalchemy.sql.expression.ClauseElement` - This is the root
   expression class. Any SQL expression can be derived from this base, and is
@@ -201,6 +204,119 @@ A big part of using the compiler extension is subclassing SQLAlchemy expression 
   can be passed directly to an ``execute()`` method.  It is already implicit 
   within ``DDLElement`` and ``FunctionElement``.
 
+Further Examples
+================
+
+"UTC timestamp" function
+-------------------------
+
+A function that works like "CURRENT_TIMESTAMP" except applies the appropriate conversions
+so that the time is in UTC time.   Timestamps are best stored in relational databases
+as UTC, without time zones.   UTC so that your database doesn't think time has gone
+backwards in the hour when daylight savings ends, without timezones because timezones
+are like character encodings - they're best applied only at the endpoints of an 
+application (i.e. convert to UTC upon user input, re-apply desired timezone upon display).
+
+For Postgresql and Microsoft SQL Server::
+    
+    from sqlalchemy.sql import expression
+    from sqlalchemy.ext.compiler import compiles
+    from sqlalchemy.types import DateTime
+    
+    class utcnow(expression.FunctionElement):
+        type = DateTime()
+
+    @compiles(utcnow, 'postgresql')
+    def pg_utcnow(element, compiler, **kw):
+        return "TIMEZONE('utc', CURRENT_TIMESTAMP)"
+
+    @compiles(utcnow, 'mssql')
+    def ms_utcnow(element, compiler, **kw):
+        return "GETUTCDATE()"
+
+Example usage::
+    
+    from sqlalchemy import (
+                Table, Column, Integer, String, DateTime, MetaData
+            )
+    metadata = MetaData()
+    event = Table("event", metadata,
+        Column("id", Integer, primary_key=True),
+        Column("description", String(50), nullable=False),
+        Column("timestamp", DateTime, server_default=utcnow())
+    )
+
+"GREATEST" function
+-------------------
+
+The "GREATEST" function is given any number of arguments and returns the one that is
+of the highest value - it's equivalent to Python's ``max`` function.  A SQL 
+standard version versus a CASE based version which only accommodates two 
+arguments::
+
+    from sqlalchemy.sql import expression
+    from sqlalchemy.ext.compiler import compiles
+    from sqlalchemy.types import Numeric
+
+    class greatest(expression.FunctionElement):
+        type = Numeric()
+        name = 'greatest'
+
+    @compiles(greatest)
+    def default_greatest(element, compiler, **kw):
+        return compiler.visit_function(element)
+
+    @compiles(greatest, 'sqlite')
+    @compiles(greatest, 'mssql')
+    @compiles(greatest, 'oracle')
+    def case_greatest(element, compiler, **kw):
+        arg1, arg2 = list(element.clauses)
+        return "CASE WHEN %s > %s THEN %s ELSE %s END" % (
+            compiler.process(arg1),
+            compiler.process(arg2),
+            compiler.process(arg1),
+            compiler.process(arg2),
+        )
+
+Example usage::
+
+    Session.query(Account).\\
+            filter(
+                greatest(
+                    Account.checking_balance, 
+                    Account.savings_balance) > 10000
+            )
+
+"false" expression
+------------------
+
+Render a "false" constant expression, rendering as "0" on platforms that don't have a "false" constant::
+    
+    from sqlalchemy.sql import expression
+    from sqlalchemy.ext.compiler import compiles
+    
+    class sql_false(expression.ColumnElement):
+        pass
+
+    @compiles(sql_false)
+    def default_false(element, compiler, **kw):
+        return "false"
+
+    @compiles(sql_false, 'mssql')
+    @compiles(sql_false, 'mysql')
+    @compiles(sql_false, 'oracle')
+    def int_false(element, compiler, **kw):
+        return "0"
+
+Example usage::
+    
+    from sqlalchemy import select, union_all
+
+    exp = union_all(
+        select([users.c.name, sql_false().label("enrolled")]),
+        select([customers.c.name, customers.c.enrolled])
+    )
+    
 """
 
 def compiles(class_, *specs):

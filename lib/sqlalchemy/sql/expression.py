@@ -3004,6 +3004,8 @@ class _Case(ColumnElement):
 class FunctionElement(Executable, ColumnElement, FromClause):
     """Base for SQL function-oriented constructs."""
 
+    packagenames = ()
+
     def __init__(self, *clauses, **kwargs):
         """Construct a :class:`.FunctionElement`.
         """
