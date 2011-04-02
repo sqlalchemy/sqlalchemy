@@ -101,20 +101,20 @@ applied to a parent object which are not instances of the mutable type
 will raise a ``ValueError``.
 
 Our new ``MutationDict`` type offers a class method
-:meth:`~.Mutable.associate_with` which we can use within column metadata
-to associate with types. This method grabs the given type object and
-associates a listener that will detect all future mappings of this type,
-applying event listening instrumentation to the mapped attribute. Such as,
-with classical table metadata::
+:meth:`~.Mutable.as_mutable` which we can use within column metadata
+to associate with types. This method grabs the given type object or
+class and associates a listener that will detect all future mappings
+of this type, applying event listening instrumentation to the mapped
+attribute. Such as, with classical table metadata::
 
     from sqlalchemy import Table, Column, Integer
-
+    
     my_data = Table('my_data', metadata,
         Column('id', Integer, primary_key=True),
-        Column('data', MutationDict.associate_with(JSONEncodedDict))
+        Column('data', MutationDict.as_mutable(JSONEncodedDict))
     )
 
-Above, :meth:`~.Mutable.associate_with` returns an instance of ``JSONEncodedDict``
+Above, :meth:`~.Mutable.as_mutable` returns an instance of ``JSONEncodedDict``
 (if the type object was not an instance already), which will intercept any 
 attributes which are mapped against this type.  Below we establish a simple
 mapping against the ``my_data`` table::
@@ -139,7 +139,7 @@ There's no difference in usage when using declarative::
     class MyDataClass(Base):
         __tablename__ = 'my_data'
         id = Column(Integer, primary_key=True)
-        data = Column(MutationDict.associate_with(JSONEncodedDict))
+        data = Column(MutationDict.as_mutable(JSONEncodedDict))
 
 Any in-place changes to the ``MyDataClass.data`` member
 will flag the attribute as "dirty" on the parent object::
@@ -155,6 +155,20 @@ will flag the attribute as "dirty" on the parent object::
     >>> assert m1 in sess.dirty
     True
 
+The ``MutationDict`` can be associated with all future instances
+of ``JSONEncodedDict`` in one step, using :meth:`~.Mutable.associate_with`.  This
+is similar to :meth:`~.Mutable.as_mutable` except it will intercept 
+all occurrences of ``MutationDict`` in all mappings unconditionally, without
+the need to declare it individually::
+
+    MutationDict.associate_with(JSONEncodedDict)
+
+    class MyDataClass(Base):
+        __tablename__ = 'my_data'
+        id = Column(Integer, primary_key=True)
+        data = Column(JSONEncodedDict)
+    
+    
 Supporting Pickling
 --------------------
 
@@ -468,7 +482,7 @@ class Mutable(MutableBase):
         To associate a particular mutable type with all occurrences of a 
         particular type, use the :meth:`.Mutable.associate_with` classmethod
         of the particular :meth:`.Mutable` subclass to establish a global
-        assoiation.
+        association.
 
         .. warning:: The listeners established by this method are *global*
            to all mappers, and are *not* garbage collected.   Only use 
@@ -524,7 +538,7 @@ class MutableComposite(MutableBase):
 
     @classmethod
     def _setup_listeners(cls):
-        """Associate this wrapper with all future mapped compoistes
+        """Associate this wrapper with all future mapped composites
         of the given type.
 
         This is a convenience method that calls ``associate_with_attribute`` automatically.

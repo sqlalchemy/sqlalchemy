@@ -72,6 +72,10 @@ CHANGES
   - Documented SQLite DATE/TIME/DATETIME types.
     [ticket:2029] (also in 0.6.7)
 
+  - Fixed mutable extension docs to show the 
+    correct type-association methods.
+    [ticket:2118]
+
 0.7.0b3
 =======
 - general
