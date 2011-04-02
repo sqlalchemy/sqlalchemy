@@ -102,3 +102,5 @@ API Reference
 
 .. autofunction:: sqlalchemy.event.listen
 
+.. autofunction:: sqlalchemy.event.listens_for
+

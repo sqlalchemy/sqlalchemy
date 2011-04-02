@@ -46,6 +46,11 @@ CHANGES
     collection of Sequence objects, list
     of schema names.  [ticket:2104]
 
+-event
+  - Added @event.listens_for() decorator, given
+    target + event name, applies the decorated 
+    function as a listener.  [ticket:2106]
+
 - pool
   - AssertionPool now stores the traceback indicating
     where the currently checked out connection was
