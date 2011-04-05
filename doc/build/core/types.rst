@@ -163,6 +163,9 @@ on all databases.
 .. autoclass:: NUMERIC
   :show-inheritance:
 
+.. autoclass:: REAL
+  :show-inheritance:
+
 .. autoclass:: SMALLINT
   :show-inheritance:
 

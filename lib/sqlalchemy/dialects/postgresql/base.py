@@ -99,7 +99,7 @@ except ImportError:
 
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, VARCHAR, \
         CHAR, TEXT, FLOAT, NUMERIC, \
-        DATE, BOOLEAN
+        DATE, BOOLEAN, REAL
 
 RESERVED_WORDS = set(
     ["all", "analyse", "analyze", "and", "any", "array", "as", "asc",
@@ -122,9 +122,6 @@ RESERVED_WORDS = set(
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
-
-class REAL(sqltypes.Float):
-    __visit_name__ = "REAL"
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = 'BYTEA'
@@ -668,9 +665,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_BYTEA(self, type_):
         return "BYTEA"
-
-    def visit_REAL(self, type_):
-        return "REAL"
 
     def visit_ARRAY(self, type_):
         return self.process(type_.item_type) + '[]'

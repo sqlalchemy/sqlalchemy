@@ -1479,6 +1479,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
     def visit_FLOAT(self, type_):
         return "FLOAT"
 
+    def visit_REAL(self, type_):
+        return "REAL"
+
     def visit_NUMERIC(self, type_):
         if type_.precision is None:
             return "NUMERIC"
@@ -1564,6 +1567,9 @@ class GenericTypeCompiler(engine.TypeCompiler):
 
     def visit_integer(self, type_): 
         return self.visit_INTEGER(type_)
+
+    def visit_real(self, type_):
+        return self.visit_REAL(type_)
 
     def visit_float(self, type_):
         return self.visit_FLOAT(type_)

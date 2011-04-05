@@ -287,7 +287,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         metadata = self.metadata
         t1 = Table('t', metadata, 
             Column('x', postgresql.ARRAY(Float)),
-            Column('y', postgresql.ARRAY(postgresql.REAL)),
+            Column('y', postgresql.ARRAY(REAL)),
             Column('z', postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
             Column('q', postgresql.ARRAY(Numeric))
         )

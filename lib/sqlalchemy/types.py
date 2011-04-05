@@ -13,8 +13,8 @@ For more information see the SQLAlchemy documentation on types.
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text',
-            'FLOAT', 'NUMERIC', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 'CLOB',
-            'BLOB', 'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
+            'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 
+            'CLOB', 'BLOB', 'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger', 'BigInteger', 'Numeric',
             'Float', 'DateTime', 'Date', 'Time', 'LargeBinary', 'Binary',
             'Boolean', 'Unicode', 'MutableType', 'Concatenable',
@@ -1994,6 +1994,11 @@ class Interval(_DateAffinity, TypeDecorator):
 
         return self.impl._coerce_compared_value(op, value)
 
+
+class REAL(Float):
+    """The SQL REAL type."""
+
+    __visit_name__ = 'REAL'
 
 class FLOAT(Float):
     """The SQL FLOAT type."""

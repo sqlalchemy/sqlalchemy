@@ -57,6 +57,13 @@ CHANGES
     these elements are only applied when the Table
     is newly created.   [ticket:2109]
 
+- types
+  - REAL has been added to the core types.  Supported
+    by Postgresql, SQL Server, MySQL, SQLite.  Note
+    that the SQL Server and MySQL versions, which 
+    add extra arguments, are also still available
+    from those dialects.  [ticket:2081]
+
 -event
   - Added @event.listens_for() decorator, given
     target + event name, applies the decorated 

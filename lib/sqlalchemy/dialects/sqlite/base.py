@@ -63,8 +63,7 @@ from sqlalchemy.sql import compiler
 from sqlalchemy import processors
 
 from sqlalchemy.types import BLOB, BOOLEAN, CHAR, DATE, DATETIME, DECIMAL,\
-                            FLOAT, INTEGER, NUMERIC, SMALLINT, TEXT, TIME,\
-                            TIMESTAMP, VARCHAR
+    FLOAT, REAL, INTEGER, NUMERIC, SMALLINT, TEXT, TIME, TIMESTAMP, VARCHAR
 
 class _DateTimeMixin(object):
     _reg = None
@@ -272,7 +271,7 @@ ischema_names = {
     'INT': sqltypes.INTEGER,
     'INTEGER': sqltypes.INTEGER,
     'NUMERIC': sqltypes.NUMERIC,
-    'REAL': sqltypes.Numeric,
+    'REAL': sqltypes.REAL,
     'SMALLINT': sqltypes.SMALLINT,
     'TEXT': sqltypes.TEXT,
     'TIME': sqltypes.TIME,

@@ -55,6 +55,7 @@ class AdaptTest(fixtures.TestBase):
 
         for dialect in self._all_dialects():
             for type_, expected in (
+                (REAL, "REAL"),
                 (FLOAT, "FLOAT"),
                 (NUMERIC, "NUMERIC"),
                 (DECIMAL, "DECIMAL"),
@@ -120,7 +121,13 @@ class AdaptTest(fixtures.TestBase):
                 for k in t1.__dict__:
                     if k == 'impl':
                         continue
-                    eq_(getattr(t2, k), t1.__dict__[k])
+                    # assert each value was copied, or that
+                    # the adapted type has a more specific
+                    # value than the original (i.e. SQL Server
+                    # applies precision=24 for REAL)
+                    assert \
+                        getattr(t2, k) == t1.__dict__[k] or \
+                        t1.__dict__[k] is None
 
     def test_plain_init_deprecation_warning(self):
         for typ in (Integer, Date, SmallInteger):

@@ -75,6 +75,7 @@ from sqlalchemy.types import (
     NUMERIC,
     Numeric,
     PickleType,
+    REAL,
     SMALLINT,
     SmallInteger,
     String,

@@ -354,7 +354,7 @@ class DOUBLE(_FloatType):
         super(DOUBLE, self).__init__(precision=precision, scale=scale,
                                      asdecimal=asdecimal, **kw)
 
-class REAL(_FloatType):
+class REAL(_FloatType, sqltypes.REAL):
     """MySQL REAL type."""
 
     __visit_name__ = 'REAL'

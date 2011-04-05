@@ -217,13 +217,12 @@ RESERVED_WORDS = set(
     ])
 
 
-class REAL(sqltypes.Float):
-    """A type for ``real`` numbers."""
-
+class REAL(sqltypes.REAL):
     __visit_name__ = 'REAL'
 
     def __init__(self, **kw):
-        kw.setdefault('precision', 24)
+        # REAL is a synonym for FLOAT(24) on SQL server
+        kw['precision'] = 24
         super(REAL, self).__init__(**kw)
 
 class TINYINT(sqltypes.Integer):
@@ -547,9 +546,6 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': precision}
-
-    def visit_REAL(self, type_):
-        return "REAL"
 
     def visit_TINYINT(self, type_):
         return "TINYINT"
