@@ -459,6 +459,9 @@ Upon select, the polymorphic union produces a query like this:
     ) AS pjoin
     []
 
+For a recipe that sets up concrete inheritance using declarative, see the `DeclarativeAbstractConcreteBase
+<http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_ recipe on the wiki.
+
 Using Relationships with Inheritance
 ------------------------------------
 
