@@ -3,7 +3,7 @@ import StringIO, unicodedata
 from sqlalchemy import types as sql_types
 from sqlalchemy import schema, events, event
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, Integer
 from test.lib.schema import Table, Column
 import sqlalchemy as sa
 from test.lib import ComparesTables, \
@@ -115,7 +115,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             meta3 = MetaData(testing.db)
             foo = Table('foo', meta3, autoload=True)
             foo = Table('foo', meta3, include_columns=['b', 'f', 'e'],
-                        useexisting=True)
+                        extend_existing=True)
             eq_([c.name for c in foo.c], ['b', 'e', 'f'])
             for c in ('b', 'f', 'e'):
                 assert c in foo.c
@@ -477,46 +477,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
                 is a2.c.user_id
             assert u2.join(a2).onclause.compare(u2.c.id == a2.c.user_id)
 
-        finally:
-            meta.drop_all()
-
-    @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
-    def test_use_existing(self):
-        meta = MetaData(testing.db)
-        users = Table('users', meta, 
-                    Column('id', sa.Integer, primary_key=True), 
-                    Column('name', sa.String(30)),
-                      test_needs_fk=True)
-        addresses = Table(
-            'addresses',
-            meta,
-            Column('id', sa.Integer, primary_key=True),
-            Column('user_id', sa.Integer, sa.ForeignKey('users.id')),
-            Column('data', sa.String(100)),
-            test_needs_fk=True,
-            )
-        meta.create_all()
-        try:
-            meta2 = MetaData(testing.db)
-            addresses = Table('addresses', meta2, Column('data',
-                              sa.Unicode), autoload=True)
-            try:
-                users = Table('users', meta2, Column('name',
-                              sa.Unicode), autoload=True)
-                assert False
-            except sa.exc.InvalidRequestError, err:
-                assert str(err) \
-                    == "Table 'users' is already defined for this "\
-                    "MetaData instance.  Specify 'useexisting=True' "\
-                    "to redefine options and columns on an existing "\
-                    "Table object."
-            users = Table('users', meta2, Column('name', sa.Unicode),
-                          autoload=True, useexisting=True)
-            assert isinstance(users.c.name.type, sa.Unicode)
-            assert not users.quote
-            users = Table('users', meta2, quote=True, autoload=True,
-                          useexisting=True)
-            assert users.quote
         finally:
             meta.drop_all()
 

@@ -46,6 +46,17 @@ CHANGES
     collection of Sequence objects, list
     of schema names.  [ticket:2104]
 
+- schema
+  - The 'useexisting' flag on Table has been superceded
+    by a new pair of flags 'keep_existing' and 
+    'extend_existing'.   'extend_existing' is equivalent
+    to 'useexisting' - the existing Table is returned,
+    and additional constructor elements are added.
+    With 'keep_existing', the existing Table is returned,
+    but additional constructor elements are not added -
+    these elements are only applied when the Table
+    is newly created.   [ticket:2109]
+
 -event
   - Added @event.listens_for() decorator, given
     target + event name, applies the decorated 
