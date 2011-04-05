@@ -77,6 +77,9 @@ CHANGES
     checkout; courtesy Gunnlaugur Briem 
     [ticket:2103]
 
+  - The "pool.manage" feature doesn't use pickle
+    anymore to hash the arguments for each pool.
+
 - oracle
   - Using column names that would require quotes
     for the column itself or for a name-generated
