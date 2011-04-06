@@ -34,6 +34,10 @@ CHANGES
     is attempted of a subclass that is not polymorphic
     against the supertype.  [ticket:2063]
 
+  - Still more wording adjustments when a query option
+    can't find the target entity.  Explain that the
+    path must be from one of the root entities.
+
 - sql
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.

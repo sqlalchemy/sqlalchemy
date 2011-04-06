@@ -437,7 +437,9 @@ class PropertyOption(MapperOption):
             if raiseerr:
                 raise sa_exc.ArgumentError(
                     "Can't find property '%s' on any entity "
-                    "specified in this Query." % (token,)
+                    "specified in this Query.  Note the full path " 
+                    "from root (%s) to target entity must be specified." 
+                    % (token, ",".join(str(x) for x in query._mapper_entities))
                 )
             else:
                 return None
