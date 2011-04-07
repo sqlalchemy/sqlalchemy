@@ -7,6 +7,7 @@ from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
 from sqlalchemy.test import *
+import decimal
 
 table1 = table('mytable',
     column('myid', Integer),
@@ -89,6 +90,24 @@ class SelectTest(TestBase, AssertsCompiledSQL):
     def test_invalid_col_argument(self):
         assert_raises(exc.ArgumentError, select, table1)
         assert_raises(exc.ArgumentError, select, table1.c.myid)
+
+    def test_int_limit_offset_coercion(self):
+        for given, exp in [
+            ("5", 5),
+            (5, 5),
+            (5.2, 5),
+            (decimal.Decimal("5"), 5),
+            (None, None),
+        ]:
+            eq_(select().limit(given)._limit, exp)
+            eq_(select().offset(given)._offset, exp)
+            eq_(select(limit=given)._limit, exp)
+            eq_(select(offset=given)._offset, exp)
+
+        assert_raises(ValueError, select().limit, "foo")
+        assert_raises(ValueError, select().offset, "foo")
+        assert_raises(ValueError, select, offset="foo")
+        assert_raises(ValueError, select, limit="foo")
 
     def test_from_subquery(self):
         """tests placing select statements in the column clause of another select, for the

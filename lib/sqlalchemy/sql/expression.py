@@ -3692,8 +3692,8 @@ class _SelectBaseMixin(Executable):
             self._execution_options = \
                 self._execution_options.union({'autocommit'
                     : autocommit})
-        self._limit = limit
-        self._offset = offset
+        self._limit = util.asint(limit)
+        self._offset = util.asint(offset)
         self._bind = bind
 
         self._order_by_clause = ClauseList(*util.to_list(order_by) or [])
@@ -3760,14 +3760,14 @@ class _SelectBaseMixin(Executable):
         """return a new selectable with the given LIMIT criterion
         applied."""
 
-        self._limit = limit
+        self._limit = util.asint(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
         applied."""
 
-        self._offset = offset
+        self._offset = util.asint(offset)
 
     @_generative
     def order_by(self, *clauses):

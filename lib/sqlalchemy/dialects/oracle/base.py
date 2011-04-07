@@ -22,6 +22,8 @@ affect the behavior of the dialect regardless of driver in use.
 
 * *optimize_limits* - defaults to ``False``. see the section on LIMIT/OFFSET.
 
+* *use_binds_for_limits* - defaults to ``True``.  see the section on LIMIT/OFFSET.
+
 Auto Increment Behavior
 -----------------------
 
@@ -74,13 +76,27 @@ requires NLS_LANG to be set.
 LIMIT/OFFSET Support
 --------------------
 
-Oracle has no support for the LIMIT or OFFSET keywords.  Whereas previous versions of SQLAlchemy
-used the "ROW NUMBER OVER..." construct to simulate LIMIT/OFFSET, SQLAlchemy 0.5 now uses 
-a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology is taken from
-http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .  Note that the 
-"FIRST ROWS()" optimization keyword mentioned is not used by default, as the user community felt
-this was stepping into the bounds of optimization that is better left on the DBA side, but this
-prefix can be added by enabling the optimize_limits=True flag on create_engine().
+Oracle has no support for the LIMIT or OFFSET keywords.  SQLAlchemy uses 
+a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology 
+is taken from
+http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .  
+
+There are two options which affect its behavior:
+
+* the "FIRST ROWS()" optimization keyword is not used by default.  To enable the usage of this
+  optimization directive, specify ``optimize_limits=True`` to :func:`.create_engine`.
+* the values passed for the limit/offset are sent as bound parameters.   Some users have observed
+  that Oracle produces a poor query plan when the values are sent as binds and not
+  rendered literally.   To render the limit/offset values literally within the SQL 
+  statement, specify ``use_binds_for_limits=False`` to :func:`.create_engine`.
+
+Some users have reported better performance when the entirely different approach of a 
+window query is used, i.e. ROW_NUMBER() OVER (ORDER BY), to provide LIMIT/OFFSET (note 
+that the majority of users don't observe this).  To suit this case the 
+method used for LIMIT/OFFSET can be replaced entirely.  See the recipe at 
+http://www.sqlalchemy.org/trac/wiki/UsageRecipes/WindowFunctionsByDefault
+which installs a select compiler that overrides the generation of limit/offset with
+a window function.
 
 ON UPDATE CASCADE
 -----------------
@@ -523,6 +539,8 @@ class OracleCompiler(compiler.SQLCompiler):
                     max_row = select._limit
                     if select._offset is not None:
                         max_row += select._offset
+                    if not self.dialect.use_binds_for_limits:
+                        max_row = sql.literal_column("%d" % max_row)
                     limitselect.append_whereclause(
                             sql.literal_column("ROWNUM")<=max_row)
 
@@ -541,8 +559,11 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._oracle_visit = True
                     offsetselect._is_wrapper = True
 
+                    offset_value = select._offset
+                    if not self.dialect.use_binds_for_limits:
+                        offset_value = sql.literal_column("%d" % offset_value)
                     offsetselect.append_whereclause(
-                             sql.literal_column("ora_rn")>select._offset)
+                             sql.literal_column("ora_rn")>offset_value)
 
                     offsetselect.for_update = select.for_update
                     select = offsetselect
@@ -634,10 +655,12 @@ class OracleDialect(default.DefaultDialect):
     def __init__(self, 
                 use_ansi=True, 
                 optimize_limits=False, 
+                use_binds_for_limits=True,
                 **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
+        self.use_binds_for_limits = use_binds_for_limits
 
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)

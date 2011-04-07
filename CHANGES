@@ -66,6 +66,10 @@ CHANGES
   - Added accessors to ResultProxy "returns_rows", "is_insert"
     [ticket:2089]
 
+  - The limit/offset keywords to select() as well
+    as the value passed to select.limit()/offset()
+    will be coerced to integer.  [ticket:2116]
+
 - engine
   - Fixed bug in QueuePool, SingletonThreadPool whereby
     connections that were discarded via overflow or periodic
@@ -118,6 +122,12 @@ CHANGES
     characters, underscores, non-ascii characters,
     now properly translate bind parameter keys when
     talking to cx_oracle.  [ticket:2100]
+
+  - Oracle dialect adds use_binds_for_limits=False
+    create_engine() flag, will render the LIMIT/OFFSET
+    values inline instead of as binds, reported to
+    modify the execution plan used by Oracle.
+    [ticket:2116]
 
 - ext
   - The horizontal_shard ShardedSession class accepts the common

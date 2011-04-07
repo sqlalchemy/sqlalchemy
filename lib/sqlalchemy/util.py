@@ -596,6 +596,13 @@ def bool_or_str(*text):
             return asbool(obj)
     return bool_or_value
 
+def asint(value):
+    """Coerce to integer."""
+
+    if value is None:
+        return value
+    return int(value)
+
 def coerce_kw_type(kw, key, type_, flexi_bool=True):
     """If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
