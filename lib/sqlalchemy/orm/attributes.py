@@ -871,7 +871,6 @@ class CollectionAttributeImpl(AttributeImpl):
         state.commit(dict_, [self.key])
 
         if self.key in state.pending:
-
             # pending items exist.  issue a modified event,
             # add/remove new items.
             state.modified_event(dict_, self, user_data, True)

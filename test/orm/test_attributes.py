@@ -1041,24 +1041,29 @@ class PendingBackrefTest(fixtures.ORMTest):
                             ([p, p4], [p1, p2, p3], []))
         assert called[0] == 1
 
-    def test_lazy_remove(self):
-        global lazy_load
-        called[0] = 0
-        lazy_load = []
-
+    def test_state_on_add_remove(self):
         b = Blog("blog 1")
         p = Post("post 1")
         p.blog = b
-        assert called[0] == 0
-
-        lazy_load = [p]
-
         p.blog = None
+
+        eq_(called[0], 0)
+        eq_(b.posts, [])
+        eq_(called[0], 1)
+
+    def test_pending_combines_with_lazy(self):
+        global lazy_load
+        b = Blog("blog 1")
+        p = Post("post 1")
         p2 = Post("post 2")
-        p2.blog = b
-        assert called[0] == 0
-        assert b.posts == [p2]
-        assert called[0] == 1
+        p.blog = b
+        lazy_load = [p, p2]
+        # lazy loaded + pending get added together.
+        # This isn't seen often with the ORM due
+        # to usual practices surrounding the 
+        # load/flush/load cycle.
+        eq_(b.posts, [p, p2, p])
+        eq_(called[0], 1)
 
     def test_normal_load(self):
         global lazy_load

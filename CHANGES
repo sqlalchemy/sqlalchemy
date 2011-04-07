@@ -46,6 +46,14 @@ CHANGES
     can't find the target entity.  Explain that the
     path must be from one of the root entities.
 
+  - Some fixes to the state handling regarding 
+    backrefs, typically when autoflush=False, where
+    the back-referenced collection wouldn't 
+    properly handle add/removes with no net 
+    change.  Thanks to Richard Murri for the 
+    test case + patch.  [ticket:2123]
+    (also in 0.6.7).
+
 - sql
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.

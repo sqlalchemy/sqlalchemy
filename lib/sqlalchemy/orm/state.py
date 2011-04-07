@@ -547,10 +547,12 @@ class PendingCollection(object):
     def append(self, value):
         if value in self.deleted_items:
             self.deleted_items.remove(value)
-        self.added_items.add(value)
+        else:
+            self.added_items.add(value)
 
     def remove(self, value):
         if value in self.added_items:
             self.added_items.remove(value)
-        self.deleted_items.add(value)
+        else:
+            self.deleted_items.add(value)
 
