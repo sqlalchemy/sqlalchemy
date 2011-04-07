@@ -5,6 +5,9 @@ from sqlalchemy.orm import mapper, relationship, backref, Session, joinedload
 
 from test.lib.schema import Table, Column
 
+
+
+
 class UpdateDeleteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -14,18 +17,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
               Column('name', String(32)),
               Column('age', Integer))
 
-        Table('documents', metadata,
-              Column('id', Integer, primary_key=True, 
-                        test_needs_autoincrement=True),
-              Column('user_id', None, ForeignKey('users.id')),
-              Column('title', String(32)))
-
     @classmethod
     def setup_classes(cls):
         class User(cls.Comparable):
-            pass
-
-        class Document(cls.Comparable):
             pass
 
     @classmethod
@@ -39,26 +33,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
             dict(id=4, name='jane', age=37),
         ])
 
-        documents = cls.tables.documents
-
-        documents.insert().execute([
-            dict(id=1, user_id=1, title='foo'),
-            dict(id=2, user_id=1, title='bar'),
-            dict(id=3, user_id=2, title='baz'),
-        ])
-
     @classmethod
     def setup_mappers(cls):
-        documents, Document, User, users = (cls.tables.documents,
-                                cls.classes.Document,
-                                cls.classes.User,
-                                cls.tables.users)
+        User = cls.classes.User
+        users = cls.tables.users
 
         mapper(User, users)
-        mapper(Document, documents, properties={
-            'user': relationship(User, lazy='joined', 
-                        backref=backref('documents', lazy='select'))
-        })
 
     def test_illegal_operations(self):
         User = self.classes.User
@@ -210,7 +190,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         john,jack,jill,jane = sess.query(User).order_by(User.id).all()
 
-        sess.query(User).filter('age > :x').params(x=29).update({'age': User.age - 10}, synchronize_session='fetch')
+        sess.query(User).filter('age > :x').params(x=29).\
+                update({'age': User.age - 10}, synchronize_session='fetch')
 
         eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
         eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
@@ -300,43 +281,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess = Session()
 
-        rowcount = sess.query(User).filter(User.age > 26).delete(synchronize_session=False)
+        rowcount = sess.query(User).filter(User.age > 26).\
+                    delete(synchronize_session=False)
         eq_(rowcount, 3)
 
-    def test_update_with_eager_relationships(self):
-        Document = self.classes.Document
-
-        sess = Session()
-
-        foo,bar,baz = sess.query(Document).order_by(Document.id).all()
-        sess.query(Document).filter(Document.user_id == 1).\
-                update({'title': Document.title+Document.title}, synchronize_session='fetch')
-
-        eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
-        eq_(sess.query(Document.title).order_by(Document.id).all(), 
-                zip(['foofoo','barbar', 'baz']))
-
-    def test_update_with_explicit_joinedload(self):
-        User = self.classes.User
-
-        sess = Session()
-
-        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
-        sess.query(User).options(joinedload(User.documents)).filter(User.age > 29).\
-                update({'age': User.age - 10}, synchronize_session='fetch')
-
-        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
-        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
-
-    def test_delete_with_eager_relationships(self):
-        Document = self.classes.Document
-
-        sess = Session()
-
-        sess.query(Document).filter(Document.user_id == 1).\
-                    delete(synchronize_session=False)
-
-        eq_(sess.query(Document.title).all(), zip(['baz']))
 
     def test_update_all(self):
         User = self.classes.User
@@ -462,6 +410,96 @@ class UpdateDeleteTest(fixtures.MappedTest):
                             delete(
                             synchronize_session='fetch')
         assert john not in sess
+
+class UpdateDeleteRelatedTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+              Column('name', String(32)),
+              Column('age', Integer))
+
+        Table('documents', metadata,
+              Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('title', String(32)))
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Document(cls.Comparable):
+            pass
+
+    @classmethod
+    def insert_data(cls):
+        users = cls.tables.users
+
+        users.insert().execute([
+            dict(id=1, name='john', age=25),
+            dict(id=2, name='jack', age=47),
+            dict(id=3, name='jill', age=29),
+            dict(id=4, name='jane', age=37),
+        ])
+
+        documents = cls.tables.documents
+
+        documents.insert().execute([
+            dict(id=1, user_id=1, title='foo'),
+            dict(id=2, user_id=1, title='bar'),
+            dict(id=3, user_id=2, title='baz'),
+        ])
+
+    @classmethod
+    def setup_mappers(cls):
+        documents, Document, User, users = (cls.tables.documents,
+                                cls.classes.Document,
+                                cls.classes.User,
+                                cls.tables.users)
+
+        mapper(User, users)
+        mapper(Document, documents, properties={
+            'user': relationship(User, lazy='joined', 
+                        backref=backref('documents', lazy='select'))
+        })
+
+    def test_update_with_eager_relationships(self):
+        Document = self.classes.Document
+
+        sess = Session()
+
+        foo,bar,baz = sess.query(Document).order_by(Document.id).all()
+        sess.query(Document).filter(Document.user_id == 1).\
+                update({'title': Document.title+Document.title}, synchronize_session='fetch')
+
+        eq_([foo.title, bar.title, baz.title], ['foofoo','barbar', 'baz'])
+        eq_(sess.query(Document.title).order_by(Document.id).all(), 
+                zip(['foofoo','barbar', 'baz']))
+
+    def test_update_with_explicit_joinedload(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john,jack,jill,jane = sess.query(User).order_by(User.id).all()
+        sess.query(User).options(joinedload(User.documents)).filter(User.age > 29).\
+                update({'age': User.age - 10}, synchronize_session='fetch')
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25,37,29,27])
+        eq_(sess.query(User.age).order_by(User.id).all(), zip([25,37,29,27]))
+
+    def test_delete_with_eager_relationships(self):
+        Document = self.classes.Document
+
+        sess = Session()
+
+        sess.query(Document).filter(Document.user_id == 1).\
+                    delete(synchronize_session=False)
+
+        eq_(sess.query(Document.title).all(), zip(['baz']))
 
 class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod
