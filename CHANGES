@@ -30,6 +30,14 @@ CHANGES
       implementation/behavior are present.
 
 - orm
+  - Some fixes to "evaulate" and "fetch" evaluation
+    when query.update(), query.delete() are called.
+    The retrieval of records is done after autoflush
+    in all cases, and before update/delete is 
+    emitted, guarding against unflushed data present
+    as well as expired objects failing during 
+    the evaluation.  [ticket:2122]
+
   - Reworded the exception raised when a flush
     is attempted of a subclass that is not polymorphic
     against the supertype.  [ticket:2063]
