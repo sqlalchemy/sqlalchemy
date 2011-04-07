@@ -13,7 +13,8 @@ from sqlalchemy.test.testing import assert_raises, assert_raises_message
 from sqlalchemy import Integer, String, ForeignKey, Sequence, exc as sa_exc
 from sqlalchemy.test.schema import Table
 from sqlalchemy.test.schema import Column
-from sqlalchemy.orm import mapper, relationship, create_session, class_mapper, backref, sessionmaker
+from sqlalchemy.orm import mapper, relationship, create_session, \
+    class_mapper, backref, sessionmaker, Session
 from sqlalchemy.orm import attributes, exc as orm_exc
 from sqlalchemy.test import testing
 from sqlalchemy.test.testing import eq_
@@ -222,6 +223,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         sess.commit()
         assert a1 not in u1.addresses
         assert a1 in u2.addresses
+
 
 class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -441,6 +443,118 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
         assert sess.query(User).count() == 1
 
 
+class M2MCollectionMoveTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    def setup_mappers(cls):
+        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
+                                cls.tables.items,
+                                cls.tables.item_keywords,
+                                cls.classes.Keyword,
+                                cls.classes.Item)
+
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, secondary=item_keywords, 
+                                    backref='items')
+        })
+        mapper(Keyword, keywords)
+
+    def test_add_remove_pending_backref(self):
+        """test that pending doesn't add an item that's not a net add."""
+
+        Item, Keyword = (self.classes.Item, self.classes.Keyword)
+
+        session = Session(autoflush=False)
+
+        i1 = Item(description='i1')
+        session.add(i1)
+        session.commit()
+
+        session.expire(i1, ['keywords'])
+
+        k1= Keyword(name='k1')
+        k1.items.append(i1)
+        k1.items.remove(i1)
+        eq_(i1.keywords, [])
+
+    def test_remove_add_pending_backref(self):
+        """test that pending doesn't remove an item that's not a net remove."""
+
+        Item, Keyword = (self.classes.Item, self.classes.Keyword)
+
+        session = Session(autoflush=False)
+
+        k1= Keyword(name='k1')
+        i1 = Item(description='i1', keywords=[k1])
+        session.add(i1)
+        session.commit()
+
+        session.expire(i1, ['keywords'])
+
+        k1.items.remove(i1)
+        k1.items.append(i1)
+        eq_(i1.keywords, [k1])
+
+    def test_pending_combines_with_flushed(self):
+        """test the combination of unflushed pending + lazy loaded from DB."""
+
+        Item, Keyword = (self.classes.Item, self.classes.Keyword)
+
+        session = Session(testing.db, autoflush=False)
+
+        k1 = Keyword(name='k1')
+        k2 = Keyword(name='k2')
+        i1 = Item(description='i1', keywords=[k1])
+        session.add(i1)
+        session.add(k2)
+        session.commit()
+
+        k2.items.append(i1)
+        # the pending
+        # list is still here.
+        eq_(
+            set(attributes.instance_state(i1).
+                pending['keywords'].added_items),
+            set([k2])
+        )
+        # because autoflush is off, k2 is still
+        # coming in from pending
+        eq_(i1.keywords, [k1, k2])
+
+        # prove it didn't flush
+        eq_(session.scalar("select count(*) from item_keywords"), 1)
+
+        # the pending collection was removed
+        assert 'keywords' not in attributes.\
+                                instance_state(i1).\
+                                pending
+
+    def test_duplicate_adds(self):
+        Item, Keyword = (self.classes.Item, self.classes.Keyword)
+
+        session = Session(testing.db, autoflush=False)
+
+        k1 = Keyword(name='k1')
+        i1 = Item(description='i1', keywords=[k1])
+        session.add(i1)
+        session.commit()
+
+        k1.items.append(i1)
+        eq_(i1.keywords, [k1, k1])
+
+        session.expire(i1, ['keywords'])
+        k1.items.append(i1)
+        eq_(i1.keywords, [k1, k1])
+
+        session.expire(i1, ['keywords'])
+        k1.items.append(i1)
+        eq_(i1.keywords, [k1, k1])
+
+        eq_(k1.items, [i1, i1, i1, i1])
+        session.commit()
+        eq_(k1.items, [i1])
+
 class M2MScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -448,7 +562,9 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     @testing.resolve_artifact_names
     def setup_mappers(cls):
         mapper(Item, items, properties={
-            'keyword':relationship(Keyword, secondary=item_keywords, uselist=False, backref=backref("item", uselist=False))
+            'keyword':relationship(Keyword, secondary=item_keywords, 
+                                    uselist=False, 
+                                    backref=backref("item", uselist=False))
         })
         mapper(Keyword, keywords)
 
