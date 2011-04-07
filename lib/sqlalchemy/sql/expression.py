@@ -3972,6 +3972,8 @@ class _SelectBase(Executable, FromClause):
 
     _order_by_clause = ClauseList()
     _group_by_clause = ClauseList()
+    _limit = None
+    _offset = None
 
     def __init__(self,
             use_labels=False,
@@ -3991,8 +3993,10 @@ class _SelectBase(Executable, FromClause):
             self._execution_options = \
                 self._execution_options.union({'autocommit'
                     : autocommit})
-        self._limit = limit
-        self._offset = offset
+        if limit is not None:
+            self._limit = util.asint(limit)
+        if offset is not None:
+            self._offset = util.asint(offset)
         self._bind = bind
 
         if order_by is not None:
@@ -4061,14 +4065,14 @@ class _SelectBase(Executable, FromClause):
         """return a new selectable with the given LIMIT criterion
         applied."""
 
-        self._limit = limit
+        self._limit = util.asint(limit)
 
     @_generative
     def offset(self, offset):
         """return a new selectable with the given OFFSET criterion
         applied."""
 
-        self._offset = offset
+        self._offset = util.asint(offset)
 
     @_generative
     def order_by(self, *clauses):

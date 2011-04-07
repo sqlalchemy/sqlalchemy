@@ -132,6 +132,49 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':ROWNUM_1) WHERE ora_rn > :ora_rn_1 FOR '
                             'UPDATE')
 
+    def test_use_binds_for_limits_disabled(self):
+        t = table('sometable', column('col1'), column('col2'))
+        dialect = oracle.OracleDialect(use_binds_for_limits = False)
+
+        self.assert_compile(select([t]).limit(10),
+                "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
+                "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM <= 10",
+                dialect=dialect)
+
+        self.assert_compile(select([t]).offset(10),
+                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+                "FROM sometable)) WHERE ora_rn > 10",
+                dialect=dialect)
+
+        self.assert_compile(select([t]).limit(10).offset(10),
+                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+                "FROM sometable) WHERE ROWNUM <= 20) WHERE ora_rn > 10",
+                dialect=dialect)
+
+    def test_use_binds_for_limits_enabled(self):
+        t = table('sometable', column('col1'), column('col2'))
+        dialect = oracle.OracleDialect(use_binds_for_limits = True)
+
+        self.assert_compile(select([t]).limit(10),
+                "SELECT col1, col2 FROM (SELECT sometable.col1 AS col1, "
+                "sometable.col2 AS col2 FROM sometable) WHERE ROWNUM "
+                "<= :ROWNUM_1",
+                dialect=dialect)
+
+        self.assert_compile(select([t]).offset(10),
+                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+                "FROM sometable)) WHERE ora_rn > :ora_rn_1",
+                dialect=dialect)
+
+        self.assert_compile(select([t]).limit(10).offset(10),
+                "SELECT col1, col2 FROM (SELECT col1, col2, ROWNUM AS ora_rn "
+                "FROM (SELECT sometable.col1 AS col1, sometable.col2 AS col2 "
+                "FROM sometable) WHERE ROWNUM <= :ROWNUM_1) WHERE ora_rn > "
+                ":ora_rn_1",
+                dialect=dialect)
 
     def test_long_labels(self):
         dialect = default.DefaultDialect()

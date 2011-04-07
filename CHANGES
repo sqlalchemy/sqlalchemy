@@ -58,6 +58,11 @@ CHANGES
     collection of Sequence objects, list
     of schema names.  [ticket:2104]
 
+  - The limit/offset keywords to select() as well
+    as the value passed to select.limit()/offset()
+    will be coerced to integer.  [ticket:2116]
+    (also in 0.6.7)
+
 - schema
   - The 'useexisting' flag on Table has been superceded
     by a new pair of flags 'keep_existing' and 
@@ -100,6 +105,12 @@ CHANGES
     now properly translate bind parameter keys when
     talking to cx_oracle.  [ticket:2100]  (Also
     in 0.6.7)
+
+  - Oracle dialect adds use_binds_for_limits=False
+    create_engine() flag, will render the LIMIT/OFFSET
+    values inline instead of as binds, reported to
+    modify the execution plan used by Oracle.
+    [ticket:2116] (Also in 0.6.7)
 
 - documentation
   - Documented SQLite DATE/TIME/DATETIME types.
