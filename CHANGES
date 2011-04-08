@@ -105,6 +105,9 @@ CHANGES
   - The "pool.manage" feature doesn't use pickle
     anymore to hash the arguments for each pool.
 
+- postgresql
+  - Psycopg2 for Python 3 is now supported.
+
 - oracle
   - Using column names that would require quotes
     for the column itself or for a name-generated
