@@ -142,8 +142,10 @@ class _PGNumeric(sqltypes.Numeric):
 class _PGEnum(ENUM):
     def __init__(self, *arg, **kw):
         super(_PGEnum, self).__init__(*arg, **kw)
+        # Py2K
         if self.convert_unicode:
             self.convert_unicode = "force"
+        # end Py2K
 
 class _PGArray(ARRAY):
     def __init__(self, *arg, **kw):
