@@ -150,11 +150,13 @@ class _PGEnum(ENUM):
 class _PGArray(ARRAY):
     def __init__(self, *arg, **kw):
         super(_PGArray, self).__init__(*arg, **kw)
+        # Py2K
         # FIXME: this check won't work for setups that
         # have convert_unicode only on their create_engine().
         if isinstance(self.item_type, sqltypes.String) and \
                     self.item_type.convert_unicode:
             self.item_type.convert_unicode = "force"
+        # end Py2K
 
 # When we're handed literal SQL, ensure it's a SELECT-query. Since
 # 8.3, combining cursors and "FOR UPDATE" has been fine.
