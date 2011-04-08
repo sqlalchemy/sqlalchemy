@@ -89,6 +89,7 @@ class PGDialect_pg8000(PGDialect):
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
+    description_encoding = 'use_encoding'
 
     colspecs = util.update_copy(
         PGDialect.colspecs,

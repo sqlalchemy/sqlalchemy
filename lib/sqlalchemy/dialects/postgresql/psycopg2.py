@@ -221,7 +221,9 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
 
 class PGDialect_psycopg2(PGDialect):
     driver = 'psycopg2'
+    # Py2K
     supports_unicode_statements = False
+    # end Py2K
     default_paramstyle = 'pyformat'
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_psycopg2

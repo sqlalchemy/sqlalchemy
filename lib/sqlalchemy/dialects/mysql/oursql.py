@@ -64,8 +64,6 @@ class MySQLExecutionContext_oursql(MySQLExecutionContext):
 
 class MySQLDialect_oursql(MySQLDialect):
     driver = 'oursql'
-# Py3K
-#    description_encoding = None
 # Py2K
     supports_unicode_binds = True
     supports_unicode_statements = True

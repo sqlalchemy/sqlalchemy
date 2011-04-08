@@ -56,10 +56,12 @@ class DefaultDialect(base.Dialect):
     #supports_unicode_statements = True
     #supports_unicode_binds = True
     #returns_unicode_strings = True
+    #description_encoding = None
     # Py2K
     supports_unicode_statements = False
     supports_unicode_binds = False
     returns_unicode_strings = False
+    description_encoding = 'use_encoding'
     # end Py2K
 
 
@@ -139,13 +141,11 @@ class DefaultDialect(base.Dialect):
                     (label_length, self.max_identifier_length))
         self.label_length = label_length
 
-        if not hasattr(self, 'description_encoding'):
-            self.description_encoding = getattr(
-                                            self, 
-                                            'description_encoding', 
-                                            encoding)
-
-        if self.description_encoding:
+        if self.description_encoding == 'use_encoding':
+            self._description_decoder = processors.to_unicode_processor_factory(
+                                            encoding
+                                    )
+        elif self.description_encoding is not None:
             self._description_decoder = processors.to_unicode_processor_factory(
                                             self.description_encoding
                                     )
