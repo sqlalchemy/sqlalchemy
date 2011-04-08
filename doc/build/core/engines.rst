@@ -89,7 +89,7 @@ cx_oracle_                 ``oracle+cx_oracle``\*       yes          development
 **Postgresql**
 pg8000_                    ``postgresql+pg8000``        yes          yes           no           yes                yes
 `PostgreSQL JDBC Driver`_  ``postgresql+zxjdbc``        no           no            yes          yes                yes
-psycopg2_                  ``postgresql+psycopg2``\*    yes          development   no           yes                yes
+psycopg2_                  ``postgresql+psycopg2``\*    yes          yes           no           yes                yes
 pypostgresql_              ``postgresql+pypostgresql``  no           yes           no           yes                yes
 **SQLite**
 pysqlite_                  ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
