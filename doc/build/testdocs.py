@@ -8,9 +8,7 @@ import sqlalchemy.util as util
 import sqlalchemy.log as salog
 import logging
 
-salog.default_enabled=True
-rootlogger = logging.getLogger('sqlalchemy')
-rootlogger.setLevel(logging.NOTSET)
+rootlogger = logging.getLogger('sqlalchemy.engine.base.Engine')
 class MyStream(object):
     def write(self, string):
         sys.stdout.write(string)
@@ -62,10 +60,10 @@ def replace_file(s, newfile):
         raise ValueError("Couldn't find suitable create_engine call to replace '%s' in it" % oldfile)
     return s
 
-for filename in ('orm/tutorial', 'core/tutorial'):
-	filename = '%s.rst' % filename
-	s = open(filename).read()
-	#s = replace_file(s, ':memory:')
-	s = re.sub(r'{(?:stop|sql|opensql)}', '', s)
-	teststring(s, filename)
+for filename in ('orm/tutorial', 'core/tutorial',):
+    filename = '%s.rst' % filename
+    s = open(filename).read()
+    #s = replace_file(s, ':memory:')
+    s = re.sub(r'{(?:stop|sql|opensql)}', '', s)
+    teststring(s, filename)
 
