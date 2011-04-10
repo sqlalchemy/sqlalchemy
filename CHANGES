@@ -105,6 +105,12 @@ CHANGES
   - The "pool.manage" feature doesn't use pickle
     anymore to hash the arguments for each pool.
 
+- sqlite
+  - Fixed bug where reflection of foreign key
+    created as "REFERENCES <tablename>" without
+    col name would fail.  [ticket:2115]
+    (also in 0.6.7)
+
 - postgresql
   - Psycopg2 for Python 3 is now supported.
 
