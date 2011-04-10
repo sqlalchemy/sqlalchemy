@@ -636,3 +636,22 @@ class TestAutoIncrement(TestBase, AssertsCompiledSQL):
                             'CREATE TABLE noautoinctable (id INTEGER '
                             'NOT NULL, x INTEGER, PRIMARY KEY (id))',
                             dialect=sqlite.dialect())
+
+
+class ReflectHeadlessFKsTest(TestBase):
+    def setup(self):
+        testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
+        testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)")
+
+    def teardown(self):
+        testing.db.execute("drop table b")
+        testing.db.execute("drop table a")
+
+    def test_reflect_tables_fk_no_colref(self):
+        meta = MetaData()
+        a = Table('a', meta, autoload=True, autoload_with=testing.db)
+        b = Table('b', meta, autoload=True, autoload_with=testing.db)
+
+        assert b.c.id.references(a.c.id)
+
+

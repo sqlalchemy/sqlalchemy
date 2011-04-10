@@ -86,6 +86,11 @@ CHANGES
     and Pypy.  Thanks to Jaimy Azle for spotting
     this.  [ticket:2102]
 
+- sqlite
+  - Fixed bug where reflection of foreign key
+    created as "REFERENCES <tablename>" without
+    col name would fail.  [ticket:2115]
+
 - postgresql
   - When explicit sequence execution derives the name 
     of the auto-generated sequence of a SERIAL column, 
