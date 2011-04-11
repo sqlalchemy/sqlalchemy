@@ -521,7 +521,6 @@ class MutableAttrInstanceState(InstanceState):
 
         # store strong ref'ed version of the object; will revert
         # to weakref when changes are persisted
-
         obj = self.manager.new_instance(state=self)
         self.obj = weakref.ref(obj, self._cleanup)
         self._strong_obj = obj

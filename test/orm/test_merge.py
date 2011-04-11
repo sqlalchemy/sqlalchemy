@@ -552,7 +552,7 @@ class MergeTest(_fixtures.FixtureTest):
         a2 = sess2.merge(a1)
         eq_(
             attributes.get_history(a2, 'user'), 
-            ([u2], (), [attributes.PASSIVE_NO_RESULT])
+            ([u2], (), ())
         )
         assert a2 in sess2.dirty
 

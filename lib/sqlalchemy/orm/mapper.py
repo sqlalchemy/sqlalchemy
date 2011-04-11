@@ -1955,7 +1955,8 @@ class Mapper(object):
                                     params[col.key] = value
 
                                 if col in pks:
-                                    if history.deleted:
+                                    if history.deleted and \
+                                        not row_switch:
                                         # if passive_updates and sync detected
                                         # this was a  pk->pk sync, use the new
                                         # value to locate the row, since the
@@ -1980,11 +1981,21 @@ class Mapper(object):
                                         del params[col.key]
                                         value = history.added[0]
                                         params[col._label] = value
+                                    if value is None and hasdata:
+                                        raise sa_exc.FlushError(
+                                                "Can't update table "
+                                                "using NULL for primary key "
+                                                "value")
                                 else:
                                     hasdata = True
                             elif col in pks:
                                 value = state.manager[prop.key].\
                                             impl.get(state, state_dict)
+                                if value is None:
+                                    raise sa_exc.FlushError(
+                                                "Can't update table "
+                                                "using NULL for primary "
+                                                "key value")
                                 params[col._label] = value
                     if hasdata:
                         update.append((state, state_dict, params, mapper, 
@@ -2235,8 +2246,15 @@ class Mapper(object):
                 delete[connection].append(params)
                 for col in mapper._pks_by_table[table]:
                     params[col.key] = \
+                            value = \
                             mapper._get_state_attr_by_column(
                                             state, state_dict, col)
+                    if value is None:
+                        raise sa_exc.FlushError(
+                                    "Can't delete from table "
+                                    "using NULL for primary "
+                                    "key value")
+
                 if mapper.version_id_col is not None and \
                             table.c.contains_column(mapper.version_id_col):
                     params[mapper.version_id_col.key] = \

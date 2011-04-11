@@ -54,6 +54,20 @@ CHANGES
     test case + patch.  [ticket:2123]
     (also in 0.6.7).
 
+  - Added checks inside the UOW to detect the unusual
+    condition of being asked to UPDATE or DELETE
+    on a primary key value that contains NULL
+    in it.  [ticket:2127]
+
+  - Some refinements to attribute history.  More
+    changes are pending possibly in 0.8, but
+    for now history has been modified such that
+    scalar history doesn't have a "side effect"
+    of populating None for a non-present value.
+    This allows a slightly better ability to 
+    distinguish between a None set and no actual 
+    change, affects [ticket:2127] as well.
+
 - sql
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.

@@ -1089,7 +1089,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         assert User.foo.dispatch._active_history is False
         eq_(
             attributes.get_history(u1, 'foo'),
-            ([None], (), [attributes.PASSIVE_NO_RESULT])
+            ([None], (), ())
         )
 
         sess.add(u1)

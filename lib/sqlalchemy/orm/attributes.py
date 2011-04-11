@@ -28,6 +28,12 @@ ATTR_EMPTY = util.symbol('ATTR_EMPTY')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
+PASSIVE_RETURN_NEVER_SET = util.symbol('PASSIVE_RETURN_NEVER_SET'
+"""Symbol indicating that a 'default' value, i.e. None or blank
+collection, should not be assigned to an attribute when a get()
+is performed and no value was present.  NEVER_SET is returned
+instead.
+""")
 
 PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE',
 """Symbol indicating that loader callables should
@@ -429,8 +435,11 @@ class AttributeImpl(object):
                 elif value is not ATTR_EMPTY:
                     return self.set_committed_value(state, dict_, value)
 
-            # Return a new, empty value
-            return self.initialize(state, dict_)
+            if passive is PASSIVE_RETURN_NEVER_SET:
+                return NEVER_SET
+            else:
+                # Return a new, empty value
+                return self.initialize(state, dict_)
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         self.set(state, dict_, value, initiator, passive=passive)
@@ -471,7 +480,7 @@ class ScalarAttributeImpl(AttributeImpl):
 
         # TODO: catch key errors, convert to attributeerror?
         if self.dispatch._active_history:
-            old = self.get(state, dict_)
+            old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
@@ -489,7 +498,7 @@ class ScalarAttributeImpl(AttributeImpl):
             return
 
         if self.dispatch._active_history:
-            old = self.get(state, dict_)
+            old = self.get(state, dict_, PASSIVE_RETURN_NEVER_SET)
         else:
             old = dict_.get(self.key, NO_VALUE)
 
@@ -599,6 +608,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.key in dict_:
             return History.from_object_attribute(self, state, dict_[self.key])
         else:
+            if passive is PASSIVE_OFF:
+                passive = PASSIVE_RETURN_NEVER_SET
             current = self.get(state, dict_, passive=passive)
             if current is PASSIVE_NO_RESULT:
                 return HISTORY_BLANK
@@ -968,6 +979,11 @@ def backref_listeners(attribute, key, uselist):
                     emit_backref_from_collection_remove_event, 
                     retval=True, raw=True)
 
+_NO_HISTORY = util.symbol('NO_HISTORY')
+_NO_STATE_SYMBOLS = frozenset([
+                        id(PASSIVE_NO_RESULT), 
+                        id(NO_VALUE), 
+                        id(NEVER_SET)])
 class History(tuple):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occurred on an instrumented
@@ -1035,73 +1051,78 @@ class History(tuple):
 
     def as_state(self):
         return History(
-            [(c is not None and c is not PASSIVE_NO_RESULT)
+            [(c is not None)
              and instance_state(c) or None
              for c in self.added],
-            [(c is not None and c is not PASSIVE_NO_RESULT)
+            [(c is not None)
              and instance_state(c) or None
              for c in self.unchanged],
-            [(c is not None and c is not PASSIVE_NO_RESULT)
+            [(c is not None)
              and instance_state(c) or None
              for c in self.deleted],
             )
 
     @classmethod
     def from_scalar_attribute(cls, attribute, state, current):
-        original = state.committed_state.get(attribute.key, NEVER_SET)
-        if current is NO_VALUE:
-            if (original is not None and
-                original is not NEVER_SET and
-                original is not NO_VALUE):
-                deleted = [original]
+        original = state.committed_state.get(attribute.key, _NO_HISTORY)
+
+        if original is _NO_HISTORY:
+            if current is NO_VALUE:
+                return cls((), (), ())
             else:
-                deleted = ()
-            return cls((), (), deleted)
-        elif original is NO_VALUE:
-            return cls([current], (), ())
-        elif (original is NEVER_SET or
-              attribute.is_equal(current, original) is True):
-            # dont let ClauseElement expressions here trip things up
+                return cls((), [current], ())
+        # dont let ClauseElement expressions here trip things up
+        elif attribute.is_equal(current, original) is True:
             return cls((), [current], ())
         else:
-            if original is not None:
-                deleted = [original]
-            else:
+            # current convention on native scalars is to not 
+            # include information
+            # about missing previous value in "deleted", but
+            # we do include None, which helps in some primary
+            # key situations
+            if id(original) in _NO_STATE_SYMBOLS:
                 deleted = ()
-            return cls([current], (), deleted)
+            else:
+                deleted = [original]
+            if current is NO_VALUE:
+                return cls((), (), deleted)
+            else:
+                return cls([current], (), deleted)
 
     @classmethod
     def from_object_attribute(cls, attribute, state, current):
-        original = state.committed_state.get(attribute.key, NEVER_SET)
+        original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
-        if current is NO_VALUE:
-            if (original is not None and
-                original is not NEVER_SET and
-                original is not NO_VALUE):
-                deleted = [original]
+        if original is _NO_HISTORY:
+            if current is NO_VALUE or current is NEVER_SET:
+                return cls((), (), ())
             else:
-                deleted = ()
-            return cls((), (), deleted)
-        elif original is NO_VALUE:
-            return cls([current], (), ())
-        elif (original is NEVER_SET or
-                current is original):
+                return cls((), [current], ())
+        elif current is original:
             return cls((), [current], ())
         else:
-            if original is not None:
-                deleted = [original]
-            else:
+            # current convention on related objects is to not 
+            # include information
+            # about missing previous value in "deleted", and
+            # to also not include None - the dependency.py rules
+            # ignore the None in any case.  
+            if id(original) in _NO_STATE_SYMBOLS or original is None:
                 deleted = ()
-            return cls([current], (), deleted)
+            else:
+                deleted = [original]
+            if current is NO_VALUE or current is NEVER_SET:
+                return cls((), (), deleted)
+            else:
+                return cls([current], (), deleted)
 
     @classmethod
     def from_collection(cls, attribute, state, current):
-        original = state.committed_state.get(attribute.key, NEVER_SET)
+        original = state.committed_state.get(attribute.key, _NO_HISTORY)
         current = getattr(current, '_sa_adapter')
 
         if original is NO_VALUE:
             return cls(list(current), (), ())
-        elif original is NEVER_SET:
+        elif original is _NO_HISTORY:
             return cls((), list(current), ())
         else:
             current_states = [(instance_state(c), c) for c in current]
