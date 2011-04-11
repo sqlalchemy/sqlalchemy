@@ -670,8 +670,12 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ReflectHeadlessFKsTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
+
     def setup(self):
         testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
+        # this syntax actually works on other DBs perhaps we'd want to add
+        # tests to test_reflection
         testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)")
 
     def teardown(self):
