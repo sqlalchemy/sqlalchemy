@@ -388,7 +388,8 @@ class MappedSelectTest(_base.MappedTest):
         )
 
         Table('values', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True,
+                           test_needs_autoincrement=True),
             Column('description_id', Integer, ForeignKey('descriptions.id'),
                    nullable=False),
             Column('v1', String(20)),
