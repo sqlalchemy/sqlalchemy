@@ -639,6 +639,8 @@ class TestAutoIncrement(TestBase, AssertsCompiledSQL):
 
 
 class ReflectHeadlessFKsTest(TestBase):
+    __only_on__ = ('sqlite', )
+
     def setup(self):
         testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
         testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)")
