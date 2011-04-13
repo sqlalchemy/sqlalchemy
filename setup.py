@@ -10,11 +10,19 @@ Please see README for basic installation instructions.
 BUILD_CEXTENSIONS = False
 
 import os
-import sys
 import re
+import sys
+
+try:
+    from setuptools import setup, Extension, Feature
+except ImportError:
+    from distutils.core import setup, Extension
+    Feature = None
 
 extra = {}
-if sys.version_info >= (3, 0):
+if sys.version_info < (2, 4):
+    raise Exception("SQLAlchemy requires Python 2.4 or higher.")
+elif sys.version_info >= (3, 0):
     # monkeypatch our preprocessor
     # onto the 2to3 tool.
     from sa2to3 import refactor_string
@@ -25,34 +33,22 @@ if sys.version_info >= (3, 0):
         use_2to3=True,
     )
 
-try:
-    from setuptools import setup, Extension, Feature
-except ImportError:
-    from distutils.core import setup, Extension
-    Feature = None
-
+ext_modules = [
+    Extension('sqlalchemy.cprocessors',
+           sources=['lib/sqlalchemy/cextension/processors.c']),
+    Extension('sqlalchemy.cresultproxy',
+           sources=['lib/sqlalchemy/cextension/resultproxy.c'])
+    ]
 if Feature:
     extra.update(
-        features = {'cextensions' : Feature(
+        features={'cextensions': Feature(
             "optional C speed-enhancements",
-            standard = False,
-            ext_modules = [
-                Extension('sqlalchemy.cprocessors',
-                       sources=['lib/sqlalchemy/cextension/processors.c']),
-                Extension('sqlalchemy.cresultproxy',
-                       sources=['lib/sqlalchemy/cextension/resultproxy.c'])
-            ],
+            standard=False,
+            ext_modules=ext_modules
         )}
     )
 elif BUILD_CEXTENSIONS:
-    extra.update(
-        ext_modules = [
-                Extension('sqlalchemy.cprocessors',
-                      sources=['lib/sqlalchemy/cextension/processors.c']),
-                Extension('sqlalchemy.cresultproxy',
-                      sources=['lib/sqlalchemy/cextension/resultproxy.c'])
-            ]
-    )
+    extra['ext_modules'] = ext_modules
 
 def find_packages(dir_):
     packages = []
@@ -63,29 +59,26 @@ def find_packages(dir_):
                 packages.append(fragment.replace(os.sep, '.'))
     return packages
 
-if sys.version_info < (2, 4):
-    raise Exception("SQLAlchemy requires Python 2.4 or higher.")
-
 v = open(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy',
          '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(v.read()).group(1)
 v.close()
 
-setup(name = "SQLAlchemy",
-      version = VERSION,
-      description = "Database Abstraction Library",
-      author = "Mike Bayer",
-      author_email = "mike_mp@zzzcomputing.com",
-      url = "http://www.sqlalchemy.org",
-      packages = find_packages('lib'),
-      package_dir = {'':'lib'},
-      license = "MIT License",
+setup(name="SQLAlchemy",
+      version=VERSION,
+      description="Database Abstraction Library",
+      author="Mike Bayer",
+      author_email="mike_mp@zzzcomputing.com",
+      url="http://www.sqlalchemy.org",
+      packages=find_packages('lib'),
+      package_dir={'': 'lib'},
+      license="MIT License",
 
-      tests_require = ['nose >= 0.11'],
-      test_suite = "sqla_nose",
+      tests_require=['nose >= 0.11'],
+      test_suite="sqla_nose",
 
-      long_description = """\
+      long_description="""\
 SQLAlchemy is:
 
     * The Python SQL toolkit and Object Relational Mapper
@@ -207,7 +200,7 @@ SQLAlchemy's Advantages:
       types are available.
 
 """,
-      classifiers = [
+      classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
