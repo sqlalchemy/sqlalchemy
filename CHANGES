@@ -56,6 +56,10 @@ CHANGES
     change.  Thanks to Richard Murri for the 
     test case + patch.  [ticket:2123]
 
+  - a "having" clause would be copied from the
+    inside to the outside query if from_self()
+    were used. [ticket:2130].
+
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
     'doc' attribute.  [ticket:2028]
