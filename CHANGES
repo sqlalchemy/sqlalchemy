@@ -68,6 +68,12 @@ CHANGES
     distinguish between a None set and no actual 
     change, affects [ticket:2127] as well.
 
+  - a "having" clause would be copied from the
+    inside to the outside query if from_self()
+    were used; in particular this would break
+    an 0.7 style count() query [ticket:2130].
+    (also in 0.6.7)
+
 - sql
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.

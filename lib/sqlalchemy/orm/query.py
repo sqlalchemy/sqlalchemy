@@ -777,9 +777,12 @@ class Query(object):
 
     @_generative()
     def _from_selectable(self, fromclause):
-        for attr in ('_statement', '_criterion', '_order_by', '_group_by',
-                '_limit', '_offset', '_joinpath', '_joinpoint', 
-                '_distinct'
+        for attr in (
+                '_statement', '_criterion', 
+                '_order_by', '_group_by',
+                '_limit', '_offset', 
+                '_joinpath', '_joinpoint', 
+                '_distinct', '_having'
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from(fromclause)
