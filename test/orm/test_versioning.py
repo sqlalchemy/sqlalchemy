@@ -249,7 +249,8 @@ class RowSwitchTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
-            Column('id', String(10), primary_key=True),
+            Column('id', String(10), primary_key=True, 
+                          test_needs_autoincrement=True),
             Column('version_id', Integer, default=1, nullable=False),
             Column('data', String(50))
         )
@@ -308,7 +309,8 @@ class AlternateGeneratorTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('p', metadata,
-            Column('id', String(10), primary_key=True),
+            Column('id', String(10), primary_key=True, 
+                                test_needs_autoincrement=True),
             Column('version_id', String(32), nullable=False),
             Column('data', String(50))
         )
@@ -407,7 +409,8 @@ class InheritanceTwoVersionIdsTest(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('base', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True,
+                                 test_needs_autoincrement=True),
             Column('version_id', Integer, nullable=True),
             Column('data', String(50))
         )
