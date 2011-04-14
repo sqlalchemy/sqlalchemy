@@ -139,6 +139,9 @@ CHANGES
 - postgresql
   - Psycopg2 for Python 3 is now supported.
 
+  - Fixed support for precision numerics when using
+    pg8000. [ticket:2132]
+
 - oracle
   - Using column names that would require quotes
     for the column itself or for a name-generated

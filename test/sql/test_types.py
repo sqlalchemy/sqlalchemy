@@ -1435,7 +1435,6 @@ class NumericTest(fixtures.TestBase):
         )
 
     @testing.fails_on('sqlite', 'TODO')
-    @testing.fails_on('postgresql+pg8000', 'TODO')
     @testing.fails_on("firebird", "Precision must be from 1 to 18")
     @testing.fails_on("sybase+pysybase", "TODO")
     @testing.fails_on('mssql+pymssql', 'FIXME: improve pymssql dec handling')
