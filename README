@@ -35,17 +35,6 @@ To install::
 To use without installation, include the ``lib`` directory in your Python
 path.
 
-Installing the C extension
---------------------------
-
-If installing with Setuptools or Distribute, the C extensions are built 
-and installed using the --with-cextensions flag:
-
-  python setup.py --with-cextensions install
-
-If using plain Distutils, change the BUILD_CEXTENSIONS flag in setup.py
-to "True".
-
 Running Tests
 -------------
 
