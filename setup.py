@@ -16,10 +16,13 @@ except ImportError:
     from distutils.core import setup, Extension
     Feature = None
 
+pypy = hasattr(sys, 'pypy_version_info')
+py3k = False
 extra = {}
 if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 elif sys.version_info >= (3, 0):
+    py3k = True
     # monkeypatch our preprocessor
     # onto the 2to3 tool.
     from sa2to3 import refactor_string
@@ -29,7 +32,6 @@ elif sys.version_info >= (3, 0):
     extra.update(
         use_2to3=True,
     )
-IS_PYPY = hasattr(sys, 'pypy_translation_info')
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
@@ -243,7 +245,7 @@ def run_setup(with_cext):
 
 try:
     # Likely don't want the cextension built on PyPy+CPyExt
-    run_setup(not IS_PYPY)
+    run_setup(not (pypy or py3k))
 except BuildFailed, exc:
     print '*' * 75
     print exc.cause

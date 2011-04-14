@@ -92,9 +92,9 @@ CHANGES
     (also in 0.6.7)
 
 - engine
-  - The C extension is now enabled by default with a
-    fallback to pure python if it fails to compile.
-    [ticket:2129]
+  - The C extension is now enabled by default on CPython
+    2.x with a fallback to pure python if it fails to
+    compile.  [ticket:2129]
 
 - schema
   - The 'useexisting' flag on Table has been superceded
