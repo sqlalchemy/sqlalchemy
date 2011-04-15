@@ -6,6 +6,9 @@ Schema Definition Language
 
 .. module:: sqlalchemy.schema
 
+
+.. _metadata_describing:
+
 Describing Databases with MetaData
 ==================================
 
@@ -532,6 +535,9 @@ database is also available. This is known as the "Inspector"::
     :undoc-members:
     :show-inheritance:
 
+
+.. _metadata_defaults:
+
 Column Insert/Update Defaults
 ==============================
 
@@ -841,6 +847,7 @@ Defining Constraints and Indexes
 =================================
 
 .. _metadata_foreignkeys:
+.. _metadata_constraints:
 
 Defining Foreign Keys
 ---------------------
@@ -1165,6 +1172,8 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 
 .. autoclass:: Index
     :show-inheritance:
+
+.. _metadata_ddl:
 
 Customizing DDL
 ===============

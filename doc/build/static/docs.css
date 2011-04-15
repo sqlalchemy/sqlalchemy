@@ -43,16 +43,30 @@ strong a {
     padding:20px;
 }
 
-#pagecontrol {
-    float:right;
+
+#navbanner {
 }
 
-.topnav
-{
+#pagecontrol {
+  float:right;
+  width:300px;
+}
+
+#pagecontrol ul {
+  padding:0;
+  margin:0;
+}
+#pagecontrol li {
+    font-size:.9em;
+    list-style-type:none;
+}
+
+.topnav {
 	background-color: #fbfbee;
 	border: solid 1px #ccc;
 	padding:10px;
 	margin:10px 0px 10px 0px;
+	display:block;
 }
 
 .document {
@@ -90,7 +104,7 @@ h1 {
 }
 
 .topnav h2 {
-    margin:26px 4px 0px 5px;
+    margin:8px 4px 0px 5px;
     font-family:arial,helvetica,sans-serif;
     font-size:1.6em;
     font-weight:normal;
@@ -133,9 +147,13 @@ li.toctree-l1 ul li li
     padding-top:10px;
 }
 
+.section ul {
+    padding: 0 0 0 25px;
+}
+
 .section {
     line-height: 1.5em;
-    padding:8px 10px 20px 10px;
+    padding:0px 10px 20px 10px;
     margin:10px 0px 0px;
 }
 
@@ -152,9 +170,49 @@ li.toctree-l1 ul li li
     margin:0px 0px 0px 20px;
 }
 
+div#sqlalchemy-documentation {
+  font-size:.95em;
+}
+div#sqlalchemy-documentation em {
+  font-style:normal;
+}
+div#sqlalchemy-documentation .rubric{
+  font-size:14px;
+  background-color:#EEFFEF;
+  padding:5px;
+  border:1px solid #BFBFBF;
+}
+div#sqlalchemy-documentation a, div#sqlalchemy-documentation li {
+  padding:5px 0px;
+}
+
+div#getting-started {
+  border-bottom:1px solid;
+}
+
+div#sqlalchemy-orm {
+  float:left;
+  width:48%;
+}
+
+div#sqlalchemy-core {
+  float:left;
+  width:48%;
+  margin:0;
+  padding-left:10px;
+  border-left:1px solid;
+}
+
+div#dialect-documentation {
+  border-top:1px solid;
+  clear:left;
+}
+
+
 th.field-name {
     text-align:right;
 }
+
 
 div.note, div.warning, p.deprecated  {
     background-color:#EEFFEF;
