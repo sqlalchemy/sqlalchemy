@@ -9,16 +9,53 @@
 Driver
 ------
 
-The psycopg2 driver is supported, available at http://pypi.python.org/pypi/psycopg2/ .
+The psycopg2 driver is available at http://pypi.python.org/pypi/psycopg2/ .
 The dialect has several behaviors  which are specifically tailored towards compatibility 
 with this module.
 
 Note that psycopg1 is **not** supported.
 
+Connecting
+----------
+
+URLs are of the form
+``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
+
+psycopg2-specific keyword arguments which are accepted by
+:func:`.create_engine()` are:
+
+* *server_side_cursors* - Enable the usage of "server side cursors" for SQL
+  statements which support this feature. What this essentially means from a
+  psycopg2 point of view is that the cursor is created using a name, e.g.
+  ``connection.cursor('some name')``, which has the effect that result rows are
+  not immediately pre-fetched and buffered after statement execution, but are
+  instead left on the server and only retrieved as needed. SQLAlchemy's
+  :class:`~sqlalchemy.engine.base.ResultProxy` uses special row-buffering
+  behavior when this feature is enabled, such that groups of 100 rows at a
+  time are fetched over the wire to reduce conversational overhead.
+  Note that the ``stream_results=True`` execution option is a more targeted
+  way of enabling this mode on a per-execution basis.
+* *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode
+  per connection. True by default.
+
+Per-Statement/Connection Execution Options
+-------------------------------------------
+
+The following DBAPI-specific options are respected when used with 
+:meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
+:meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
+
+* isolation_level - Set the transaction isolation level for the lifespan of a 
+  :class:`.Connection` (can only be set on a connection, not a statement or query).
+  This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
+  ``READ UNCOMMITTED`` and ``REPEATABLE READ``.
+* stream_results - Enable or disable usage of server side cursors.
+  If ``None`` or not set, the ``server_side_cursors`` option of the :class:`.Engine` is used.
+
 Unicode
 -------
 
-By default, the Psycopg2 driver uses the ``psycopg2.extensions.UNICODE``
+By default, the psycopg2 driver uses the ``psycopg2.extensions.UNICODE``
 extension, such that the DBAPI receives and returns all strings as Python
 Unicode objects directly - SQLAlchemy passes these values through without
 change. Note that this setting requires that the PG client encoding be set to
@@ -33,27 +70,6 @@ also defaults to ``utf-8``. Note that disabling "native unicode" mode has a
 slight performance penalty, as SQLAlchemy now must translate unicode strings
 to/from an encoding such as utf-8, a task that is handled more efficiently
 within the Psycopg2 driver natively.
-
-Connecting
-----------
-
-URLs are of the form
-``postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]``.
-
-psycopg2-specific keyword arguments which are accepted by
-:func:`.create_engine()` are:
-
-* *server_side_cursors* - Enable the usage of "server side cursors" for SQL
-  statements which support this feature. What this essentially means from a
-  psycopg2 point of view is that the cursor is created using a name, e.g.
-  `connection.cursor('some name')`, which has the effect that result rows are
-  not immediately pre-fetched and buffered after statement execution, but are
-  instead left on the server and only retrieved as needed. SQLAlchemy's
-  :class:`~sqlalchemy.engine.base.ResultProxy` uses special row-buffering
-  behavior when this feature is enabled, such that groups of 100 rows at a
-  time are fetched over the wire to reduce conversational overhead.
-* *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode
-  per connection. True by default.
 
 Transactions
 ------------
@@ -78,21 +94,6 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
     import logging
     logging.getLogger('sqlalchemy.dialects.postgresql').setLevel(logging.INFO)
 
-
-Per-Statement/Connection Execution Options
--------------------------------------------
-
-The following DBAPI-specific options are respected when used with 
-:meth:`.Connection.execution_options`, :meth:`.Executable.execution_options`,
-:meth:`.Query.execution_options`, in addition to those not specific to DBAPIs:
-
-* isolation_level - Set the transaction isolation level for the lifespan of a 
-  :class:`.Connection` (can only be set on a connection, not a statement or query).
-  This includes the options ``SERIALIZABLE``, ``READ COMMITTED``,
-  ``READ UNCOMMITTED`` and ``REPEATABLE READ``.
-* stream_results - Enable or disable usage of server side cursors.
-  If ``None`` or not set, the ``server_side_cursors`` option of the :class:`.Engine` is used. If
-  auto-commit is enabled, the option is ignored.
 
 """
 
