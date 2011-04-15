@@ -2146,6 +2146,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable"
         )
 
+        # this tests that _from_objects 
+        # concantenates OK
+        self.assert_compile(
+            select([column("x") + over(func.foo())]),
+            "SELECT x + foo() OVER () AS anon_1"
+        )
 
 
     def test_date_between(self):

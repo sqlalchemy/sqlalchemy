@@ -3704,11 +3704,11 @@ class _Over(ColumnElement):
 
     @property
     def _from_objects(self):
-        return itertools.chain(
+        return list(itertools.chain(
             *[c._from_objects for c in 
                 (self.func, self.partition_by, self.order_by) 
             if c is not None]
-        )
+        ))
 
 class _Label(ColumnElement):
     """Represents a column label (AS).
