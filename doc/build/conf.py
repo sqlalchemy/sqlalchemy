@@ -49,7 +49,7 @@ template_bridge = "builder.builders.MakoBridge"
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'contents'
 
 # General information about the project.
 project = u'SQLAlchemy'
@@ -199,7 +199,7 @@ htmlhelp_basename = 'SQLAlchemydoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'sqlalchemy_%s.tex' % release.replace('.', '_'), ur'SQLAlchemy Documentation',
+  ('contents', 'sqlalchemy_%s.tex' % release.replace('.', '_'), ur'SQLAlchemy Documentation',
    ur'Mike Bayer', 'manual'),
 ]
 

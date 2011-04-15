@@ -57,32 +57,47 @@
 
         <div class="topnav">
             <div id="pagecontrol">
-                <a href="${pathto('genindex')}">Index</a>
-
-                % if sourcename:
-                <div class="sourcelink">(<a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')})</div>
+                <ul>
+                % if prevtopic:
+                    <li>Prev:
+                    <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
+                    </li>
                 % endif
-            </div>
+                % if nexttopic:
+                    <li>Next:
+                    <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
+                    </li>
+                % endif
 
-            <div class="navbanner">
-                <a class="totoc" href="${pathto(master_doc)}">Table of Contents</a>
+                <li>
+                    <a href="${pathto('contents')}">Table of Contents</a> |
+                    <a href="${pathto('genindex')}">Index</a>
+                    % if sourcename:
+                    | <a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')}
+                    % endif
+                </li>
+                </ul>
+            </div>
+            <div id="navbanner">
+                <a class="totoc" href="${pathto('index')}">${docstitle|h}</a>
                 % if parents:
                     % for parent in parents:
                         » <a href="${parent['link']|h}" title="${parent['title']}">${parent['title']}</a>
                     % endfor
                 % endif
-                % if current_page_name != master_doc:
+                % if current_page_name != 'index':
                 » ${self.show_title()} 
                 % endif
 
-                ${prevnext()}
                 <h2>
                     ${self.show_title()} 
                 </h2>
-            </div>
-            % if display_toc and not current_page_name.startswith('index'):
+            % if display_toc and \
+                    not current_page_name.startswith('index') and \
+                    not current_page_name.startswith('contents'):
                 ${toc}
             % endif
+            </div>
             <div class="clearboth"></div>
         </div>
 
@@ -94,7 +109,14 @@
 
         <%def name="footer()">
             <div class="bottomnav">
-                ${prevnext()}
+                % if prevtopic:
+                    Previous:
+                    <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
+                % endif
+                % if nexttopic:
+                    Next:
+                    <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
+                % endif
                 <div class="doc_copyright">
                 % if hasdoc('copyright'):
                     &copy; <a href="${pathto('copyright')}">Copyright</a> ${copyright|h}.
@@ -108,19 +130,6 @@
             </div>
         </%def>
         ${self.footer()}
-
-<%def name="prevnext()">
-<div class="prevnext">
-    % if prevtopic:
-        Previous:
-        <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
-    % endif
-    % if nexttopic:
-        Next:
-        <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
-    % endif
-</div>
-</%def>
 
 <%def name="show_title()">
 % if title:

@@ -28,6 +28,8 @@ Functions that accept a type (such as :func:`~sqlalchemy.Column`) will
 typically accept a type class or instance; ``Integer`` is equivalent
 to ``Integer()`` with no construction arguments in this case.
 
+.. _types_generic:
+
 Generic Types
 -------------
 
@@ -111,6 +113,8 @@ Standard Types`_ and the other sections of this chapter.
    :show-inheritance:
    :members:
 
+.. _types_sqlstandard:
+
 SQL Standard Types
 ------------------
 
@@ -181,6 +185,7 @@ on all databases.
 .. autoclass:: VARCHAR
   :show-inheritance:
 
+.. _types_vendor:
 
 Vendor-Specific Types
 ---------------------
@@ -235,6 +240,8 @@ such as `collation` and `charset`::
         Column('col1', VARCHAR(200, collation='binary')),
         Column('col2', TEXT(charset='latin1'))
     )
+
+.. _types_custom:
 
 Custom Types
 ------------
@@ -412,6 +419,8 @@ for defining entirely new database types:
    :undoc-members:
    :inherited-members:
    :show-inheritance:
+
+.. _types_api:
 
 Base Type API
 --------------

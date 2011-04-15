@@ -1,12 +1,13 @@
 .. _overview_toplevel:
 
-=======================
-Overview / Installation
-=======================
-
+========
 Overview
 ========
 
+.. _overview:
+
+Overview
+========
 
 The SQLAlchemy SQL Toolkit and Object Relational Mapper
 is a comprehensive set of tools for working with
@@ -25,6 +26,8 @@ Expression language remains part of the public facing API
 as it is used within object-relational configurations and
 queries.
 
+.. _doc_overview:
+
 Documentation Overview
 ======================
 
@@ -37,16 +40,15 @@ as well as management of Python objects, proceed to this tutorial.
 
 In :ref:`core_toplevel`, the breadth of SQLAlchemy's SQL and database
 integration and description services are documented, the core of which is the
-SQL Expression language.  The SQL Expression Language is a toolkit all its own,
-independent of the ORM package, which can be used to construct manipulable SQL
+SQL Expression language.  The SQL Expression Language is a toolkit all its own, independent of the ORM package, which can be used to construct manipulable SQL
 expressions which can be programmatically constructed, modified, and executed,
-returning cursor-like result sets.  In contrast to the ORM's domain-centric 
+returning cursor-like result sets.  In contrast to the ORM's domain-centric
 mode of usage, the expression language provides a schema-centric usage
 paradigm.  New users should begin here with :ref:`sqlexpression_toplevel`.
-SQLAlchemy engine, connection, and pooling services are also described in 
+SQLAlchemy engine, connection, and pooling services are also described in
 :ref:`core_toplevel`.
 
-In :ref:`dialect_toplevel`, reference documentation for all provided 
+In :ref:`dialect_toplevel`, reference documentation for all provided
 database and DBAPI backends is provided.
 
 Code Examples
@@ -60,13 +62,19 @@ There is also a wide variety of examples involving both core SQLAlchemy
 constructs as well as the ORM on the wiki.  See
 `<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
-Installing SQLAlchemy
-======================
+.. _installation:
+
+Installation Guide
+==================
+
+SQLAlchemy builds using the standard `Python Distutils <http://docs.python.org/distutils/>`_ approach.   
+
+Installing with setuptools or pip
+----------------------------------
 
 Installing SQLAlchemy from scratch is most easily achieved with `setuptools
 <http://pypi.python.org/pypi/setuptools/>`_, or alternatively
-`pip <http://pypi.python.org/pypi/pip/>`_. Assuming it's installed, just run
-this from the command-line:
+`pip <http://pypi.python.org/pypi/pip/>`_. Assuming it's installed, just run this from the command-line:
 
 .. sourcecode:: none
 
@@ -79,8 +87,10 @@ Or with pip:
     # pip install SQLAlchemy
 
 This command will download the latest version of SQLAlchemy from the `Python
-Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your
-system.
+Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
+
+Installing using setup.py
+----------------------------------
 
 Otherwise, you can install from the distribution using the ``setup.py`` script:
 
@@ -88,13 +98,30 @@ Otherwise, you can install from the distribution using the ``setup.py`` script:
 
     # python setup.py install
 
+Installing the C Extensions
+----------------------------------
+
+SQLAlchemy includes C extensions which provide an extra speed boost for
+dealing with result sets.  In version 0.6, these extensions must be explicitly
+enabled (in 0.7 they will build by default).   
+
+To install including building the C extensions, use the ``--with-cextensions`` flag.
+This flag must be on the command line before the actual install or build command::
+
+    python setup.py --with-cextensions install
+
+Installing on Python 3
+----------------------------------
+
+SQLAlchemy ships as Python 2 code.   For Python 3 usage, the ``setup.py`` script will invoke the Python ``2to3`` tool on the build, plugging in an extra "preprocessor" as well.   Using the Python 3 interpreter with ``setup.py`` or a Python 3 version of easy_install or pip is all that's needed.
+
 Installing a Database API
-==========================
+----------------------------------
 
 SQLAlchemy is designed to operate with a `DB-API <http://www.python.org/doc/peps/pep-0249/>`_ implementation built for a particular database, and includes support for the most popular databases.  The current list is at :ref:`supported_dbapis`.
 
 Checking the Installed SQLAlchemy Version
-=========================================
+------------------------------------------
 
 This documentation covers SQLAlchemy version 0.6.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
 
@@ -103,6 +130,8 @@ This documentation covers SQLAlchemy version 0.6.  If you're working on a system
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
      0.6.0
+
+.. _migration:
 
 0.5 to 0.6 Migration
 =====================
