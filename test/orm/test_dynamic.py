@@ -191,8 +191,8 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
 
-    @testing.exclude('mysql', 'in', 
-            ((5, 1,49), (5, 1, 50), (5, 1, 51), (5, 1, 52)),
+    @testing.exclude('mysql', 'between', 
+            ((5, 1,49), (5, 1, 52)),
             'https://bugs.launchpad.net/ubuntu/+source/mysql-5.1/+bug/706988')
     def test_association_nonaliased(self):
         items, Order, orders, order_items, Item = (self.tables.items,

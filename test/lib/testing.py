@@ -267,7 +267,6 @@ def _is_excluded(db, op, spec):
       _is_excluded('bigdb', '==', (9,0,9))
       _is_excluded('yikesdb', 'in', ((0, 3, 'alpha2'), (0, 3, 'alpha3')))
     """
-
     vendor_spec = db_spec(db)
 
     if not vendor_spec(config.db):
