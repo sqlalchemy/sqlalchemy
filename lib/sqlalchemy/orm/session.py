@@ -1435,9 +1435,10 @@ class Session(object):
         solver..
 
         Database operations will be issued in the current transactional
-        context and do not affect the state of the transaction.  You may
-        flush() as often as you like within a transaction to move changes from
-        Python to the database's transaction buffer.
+        context and do not affect the state of the transaction, unless an
+        error occurs, in which case the entire transaction is rolled back. 
+        You may flush() as often as you like within a transaction to move
+        changes from Python to the database's transaction buffer.
 
         For ``autocommit`` Sessions with no active manual transaction, flush()
         will create a transaction on the fly that surrounds the entire set of

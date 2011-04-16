@@ -268,9 +268,15 @@ class Table(SchemaItem, expression.TableClause):
                 raise
 
     def __init__(self, *args, **kw):
+        """Constructor for :class:`~.schema.Table`.
+        
+        This method is a no-op.   See the top-level
+        documentation for :class:`~.schema.Table`
+        for constructor arguments.
+        
+        """
         # __init__ is overridden to prevent __new__ from 
         # calling the superclass constructor.
-        pass
 
     def _init(self, name, metadata, *args, **kwargs):
         super(Table, self).__init__(name)
@@ -425,12 +431,43 @@ class Table(SchemaItem, expression.TableClause):
         self._extra_dependencies.add(table)
 
     def append_column(self, column):
-        """Append a ``Column`` to this ``Table``."""
+        """Append a :class:`~.schema.Column` to this :class:`~.schema.Table`.
+        
+        The "key" of the newly added :class:`~.schema.Column`, i.e. the
+        value of its ``.key`` attribute, will then be available
+        in the ``.c`` collection of this :class:`~.schema.Table`, and the
+        column definition will be included in any CREATE TABLE, SELECT,
+        UPDATE, etc. statements generated from this :class:`~.schema.Table`
+        construct.
+        
+        Note that this does **not** change the definition of the table 
+        as it exists within any underlying database, assuming that
+        table has already been created in the database.   Relational 
+        databases support the addition of columns to existing tables 
+        using the SQL ALTER command, which would need to be 
+        emitted for an already-existing table that doesn't contain
+        the newly added column.
+        
+        """
 
         column._set_parent_with_dispatch(self)
 
     def append_constraint(self, constraint):
-        """Append a ``Constraint`` to this ``Table``."""
+        """Append a :class:`~.schema.Constraint` to this :class:`~.schema.Table`.
+        
+        This has the effect of the constraint being included in any
+        future CREATE TABLE statement, assuming specific DDL creation 
+        events have not been associated with the given :class:`~.schema.Constraint` 
+        object.
+        
+        Note that this does **not** produce the constraint within the 
+        relational database automatically, for a table that already exists
+        in the database.   To add a constraint to an
+        existing relational database table, the SQL ALTER command must
+        be used.  SQLAlchemy also provides the :class:`.AddConstraint` construct
+        which can produce this SQL when invoked as an executable clause.
+        
+        """
 
         constraint._set_parent_with_dispatch(self)
 

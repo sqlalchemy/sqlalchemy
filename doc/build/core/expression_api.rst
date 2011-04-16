@@ -27,7 +27,7 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: cast
 
-.. autofunction:: column
+.. autofunction:: sqlalchemy.sql.expression.column
 
 .. autofunction:: collate
 
@@ -77,7 +77,7 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: subquery
 
-.. autofunction:: table
+.. autofunction:: sqlalchemy.sql.expression.table
 
 .. autofunction:: text
 
