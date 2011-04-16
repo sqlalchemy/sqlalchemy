@@ -156,6 +156,12 @@ Next, to tell the :class:`~sqlalchemy.schema.MetaData` we'd actually like to cre
            Column('password', String(12))
         )
 
+    We include this more verbose :class:`~.schema.Table` construct separately
+    to highlight the difference between a minimal construct geared primarily
+    towards in-Python usage only, versus one that will be used to emit CREATE
+    TABLE statements on a particular set of backends with more stringent
+    requirements.
+
 Insert Expressions
 ==================
 
