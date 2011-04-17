@@ -920,7 +920,7 @@ class Query(object):
         """ Set non-SQL options which take effect during execution.
 
         The options are the same as those accepted by 
-        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+        :meth:`.Connection.execution_options`.
 
         Note that the ``stream_results`` execution option is enabled
         automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
@@ -1749,10 +1749,14 @@ class Query(object):
         return self._execute_and_instances(context)
 
     def _execute_and_instances(self, querycontext):
-        result = self.session.connection(
+        conn = self.session.connection(
                         mapper = self._mapper_zero_or_none(),
                         clause = querycontext.statement,
-                        close_with_result=True).execute(querycontext.statement, self._params)
+                        close_with_result=True)
+        if self._execution_options:
+            conn = conn.execution_options(**self._execution_options)
+
+        result = conn.execute(querycontext.statement, self._params)
         return self.instances(result, querycontext)
 
     @property
@@ -2448,10 +2452,6 @@ class Query(object):
                                 for_update=for_update, 
                                 use_labels=labels)
 
-            if self._execution_options:
-                statement = statement.execution_options(
-                                                **self._execution_options)
-
             from_clause = inner
             for eager_join in eager_joins:
                 # EagerLoader places a 'stop_on' attribute on the join,
@@ -2500,10 +2500,6 @@ class Query(object):
 
             for hint in self._with_hints:
                 statement = statement.with_hint(*hint)
-
-            if self._execution_options:
-                statement = statement.execution_options(
-                                            **self._execution_options)
 
             if self._correlate:
                 statement = statement.correlate(*self._correlate)

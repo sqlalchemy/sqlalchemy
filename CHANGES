@@ -74,7 +74,20 @@ CHANGES
     an 0.7 style count() query [ticket:2130].
     (also in 0.6.7)
 
+  - the Query.execution_options() method now passes
+    those options to the Connection rather than
+    the SELECT statement, so that all available
+    options including isolation level and 
+    compiled cache may be used.  [ticket:2131]
+
 - sql
+  - The "compiled_cache" execution option now raises
+    an error when passed to a SELECT statement 
+    rather than a Connection.  Previously it was
+    being ignored entirely.   We may look into
+    having this option work on a per-statement
+    level at some point. [ticket:2131]
+
   - Restored the "catchall" constructor on the base
     TypeEngine class, with a deprecation warning.
     This so that code which does something like

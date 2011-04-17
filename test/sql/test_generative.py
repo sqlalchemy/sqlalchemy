@@ -3,9 +3,9 @@ from sqlalchemy.sql import table, column, ClauseElement
 from sqlalchemy.sql.expression import  _clone, _from_objects
 from test.lib import *
 from sqlalchemy.sql.visitors import *
-from sqlalchemy import util
+from sqlalchemy import util, exc
 from sqlalchemy.sql import util as sql_util
-from test.lib.testing import eq_
+from test.lib.testing import eq_, assert_raises
 
 class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     """test ClauseVisitor's traversal, particularly its 
@@ -1073,6 +1073,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # s2 should have its execution_options based on s, though.
         assert s2._execution_options == dict(foo='bar', bar='baz')
         assert s3._execution_options == dict(foo='not bar')
+
+    def test_invalid_options(self):
+        assert_raises(
+            exc.ArgumentError,
+            select().execution_options, compiled_cache={}
+        )
+
+        assert_raises(
+            exc.ArgumentError,
+            select().execution_options, 
+                isolation_level='READ_COMMITTED'
+        )
 
     # this feature not available yet
     def _NOTYET_test_execution_options_in_kwargs(self):

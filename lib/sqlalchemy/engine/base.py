@@ -894,8 +894,40 @@ class Connection(Connectable):
         accepted by :meth:`.Executable.execution_options`.  Additionally,
         it includes options that are applicable only to 
         :class:`.Connection`.
+
+        :param autocommit: Available on: Connection, statement.
+          When True, a COMMIT will be invoked after execution 
+          when executed in 'autocommit' mode, i.e. when an explicit
+          transaction is not begun on the connection. Note that DBAPI
+          connections by default are always in a transaction - SQLAlchemy uses
+          rules applied to different kinds of statements to determine if
+          COMMIT will be invoked in order to provide its "autocommit" feature.
+          Typically, all INSERT/UPDATE/DELETE statements as well as
+          CREATE/DROP statements have autocommit behavior enabled; SELECT
+          constructs do not. Use this option when invoking a SELECT or other
+          specific SQL construct where COMMIT is desired (typically when
+          calling stored procedures and such), and an explicit
+          transaction is not in progress.
+
+        :param compiled_cache: Available on: Connection.
+          A dictionary where :class:`.Compiled` objects
+          will be cached when the :class:`.Connection` compiles a clause 
+          expression into a :class:`.Compiled` object.   
+          It is the user's responsibility to
+          manage the size of this dictionary, which will have keys
+          corresponding to the dialect, clause element, the column
+          names within the VALUES or SET clause of an INSERT or UPDATE, 
+          as well as the "batch" mode for an INSERT or UPDATE statement.
+          The format of this dictionary is not guaranteed to stay the
+          same in future releases.
+
+          Note that the ORM makes use of its own "compiled" caches for 
+          some operations, including flush operations.  The caching
+          used by the ORM internally supersedes a cache dictionary
+          specified here.
         
-        :param isolation_level: Set the transaction isolation level for
+        :param isolation_level: Available on: Connection.
+          Set the transaction isolation level for
           the lifespan of this connection.   Valid values include
           those string values accepted by the ``isolation_level``
           parameter passed to :func:`.create_engine`, and are
@@ -910,8 +942,11 @@ class Connection(Connectable):
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
 
-        :param \**kw: All options accepted by :meth:`.Executable.execution_options`
-          are also accepted.
+        :param stream_results: Available on: Connection, statement.
+          Indicate to the dialect that results should be 
+          "streamed" and not pre-buffered, if possible.  This is a limitation
+          of many DBAPIs.  The flag is currently understood only by the
+          psycopg2 dialect.
 
         """
         c = self._clone()

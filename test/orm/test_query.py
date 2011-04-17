@@ -1790,9 +1790,9 @@ class ImmediateTest(_fixtures.FixtureTest):
         sess.bind = testing.db
         eq_(sess.query().value(sa.literal_column('1').label('x')), 1)
 
-class StatementOptionsTest(QueryTest):
+class ExecutionOptionsTest(QueryTest):
 
-    def test_query_with_statement_option(self):
+    def test_option_building(self):
         User = self.classes.User
 
         sess = create_session(bind=testing.db, autocommit=False)
@@ -1809,13 +1809,22 @@ class StatementOptionsTest(QueryTest):
 
         q3_options = dict(foo='not bar', stream_results=True, answer=42)
         assert q3._execution_options == q3_options
-        assert q3.statement._execution_options == q3_options
-        assert q3._compile_context().statement._execution_options == q3_options
-        assert q3.subquery().original._execution_options == q3_options
 
-    # TODO: Test that statement options are passed on to
-    # updates/deletes, but currently there are no such options
-    # applicable for them.
+    def test_options_in_connection(self):
+        User = self.classes.User
+
+        execution_options = dict(foo='bar', stream_results=True)
+        class TQuery(Query):
+            def instances(self, result, ctx):
+                eq_(
+                    result.connection._execution_options,
+                    execution_options
+                )
+                return iter([])
+
+        sess = create_session(bind=testing.db, autocommit=False, query_cls=TQuery)
+        q1 = sess.query(User).execution_options(**execution_options)
+        q1.all()
 
 class OptionsTest(QueryTest):
     """Test the _get_paths() method of PropertyOption."""
