@@ -2094,7 +2094,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 partition_by=[table1.c.name],
                 order_by=[table1.c.description]
             ),
-            "row_number() OVER (PARTITION BY mytable.name, "
+            "row_number() OVER (PARTITION BY mytable.name "
             "ORDER BY mytable.description)"
         )
         self.assert_compile(
@@ -2102,8 +2102,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 partition_by=table1.c.name,
                 order_by=table1.c.description
             ),
-            "row_number() OVER (PARTITION BY mytable.name, "
+            "row_number() OVER (PARTITION BY mytable.name "
             "ORDER BY mytable.description)"
+        )
+
+        self.assert_compile(
+            func.row_number().over(
+                partition_by=table1.c.name,
+                order_by=[table1.c.name, table1.c.description]
+            ),
+            "row_number() OVER (PARTITION BY mytable.name "
+            "ORDER BY mytable.name, mytable.description)"
         )
 
         self.assert_compile(

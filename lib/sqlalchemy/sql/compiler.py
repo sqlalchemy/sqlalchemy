@@ -468,7 +468,7 @@ class SQLCompiler(engine.Compiled):
             x += "PARTITION BY %s" % \
                 over.partition_by._compiler_dispatch(self, **kwargs)
             if over.order_by is not None:
-                x += ", "
+                x += " "
         if over.order_by is not None:
             x += "ORDER BY %s" % \
                 over.order_by._compiler_dispatch(self, **kwargs)

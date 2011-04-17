@@ -96,6 +96,10 @@ CHANGES
     not a list, causing "can only concatenate list"
     TypeError when combined with other clauses.
 
+  - Fixed incorrect usage of "," in over() clause
+    being placed between the "partition" and "order by"
+    clauses.  [ticket:2134]
+
 - engine
   - The C extension is now enabled by default on CPython
     2.x with a fallback to pure python if it fails to
