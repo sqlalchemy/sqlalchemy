@@ -31,7 +31,8 @@ queries.
 Documentation Overview
 ======================
 
-The documentation is separated into three sections: :ref:`orm_toplevel`, :ref:`core_toplevel`, and :ref:`dialect_toplevel`.
+The documentation is separated into three sections: :ref:`orm_toplevel`,
+:ref:`core_toplevel`, and :ref:`dialect_toplevel`.
 
 In :ref:`orm_toplevel`, the Object Relational Mapper is introduced and fully
 described. New users should begin with the :ref:`ormtutorial_toplevel`. If you
@@ -40,11 +41,12 @@ as well as management of Python objects, proceed to this tutorial.
 
 In :ref:`core_toplevel`, the breadth of SQLAlchemy's SQL and database
 integration and description services are documented, the core of which is the
-SQL Expression language.  The SQL Expression Language is a toolkit all its own, independent of the ORM package, which can be used to construct manipulable SQL
+SQL Expression language. The SQL Expression Language is a toolkit all its own,
+independent of the ORM package, which can be used to construct manipulable SQL
 expressions which can be programmatically constructed, modified, and executed,
-returning cursor-like result sets.  In contrast to the ORM's domain-centric
+returning cursor-like result sets. In contrast to the ORM's domain-centric
 mode of usage, the expression language provides a schema-centric usage
-paradigm.  New users should begin here with :ref:`sqlexpression_toplevel`.
+paradigm. New users should begin here with :ref:`sqlexpression_toplevel`.
 SQLAlchemy engine, connection, and pooling services are also described in
 :ref:`core_toplevel`.
 
@@ -60,31 +62,54 @@ applications is at :ref:`examples_toplevel`.
 
 There is also a wide variety of examples involving both core SQLAlchemy
 constructs as well as the ORM on the wiki.  See
-`<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
+`Theatrum Chemicum <http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
 .. _installation:
 
 Installation Guide
 ==================
 
-SQLAlchemy builds using the standard `Python Distutils <http://docs.python.org/distutils/>`_ approach.   
+Supported Platforms
+-------------------
 
-Installing with setuptools or pip
-----------------------------------
+SQLAlchemy has been tested against the following platforms:
 
-Installing SQLAlchemy from scratch is most easily achieved with `setuptools
-<http://pypi.python.org/pypi/setuptools/>`_, or alternatively
-`pip <http://pypi.python.org/pypi/pip/>`_. Assuming it's installed, just run this from the command-line:
+* cPython since version 2.4, through the 2.xx series
+* cPython version 3, throughout all 3.xx series
+* `Jython <http://www.jython.org/>`_ 2.5 or greater
+* `Pypy <http://pypy.org/>`_ 1.5 or greater
 
-.. sourcecode:: none
+Supported Installation Methods
+-------------------------------
 
-    # easy_install SQLAlchemy
+SQLAlchemy supports installation using standard Python "distutils" or
+"setuptools" methodologies. An overview of potential setups is as follows:
 
-Or with pip:
+* **Plain Python Distutils** - SQLAlchemy can be installed with a clean
+  Python install using the services provided via `Python Distutils <http://docs.python.org/distutils/>`_,
+  using the ``setup.py`` script. The C extensions as well as Python 3 builds are supported.
+* **Standard Setuptools** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_, 
+  SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
+  extensions are supported.  setuptools is not supported on Python 3 at the time
+  of of this writing.
+* **Distribute** - With `distribute <http://pypi.python.org/pypi/distribute/>`_, 
+  SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
+  extensions as well as Python 3 builds are supported.
+* **pip** - `pip <http://pypi.python.org/pypi/pip/>`_ is an installer that
+  rides on top of ``setuptools`` or ``distribute``, replacing the usage
+  of ``easy_install``.  It is often preferred for its simpler mode of usage.
 
-.. sourcecode:: none
+Install via easy_install or pip
+-------------------------------
 
-    # pip install SQLAlchemy
+When ``easy_install`` or ``pip`` is available, the distribution can be 
+downloaded from Pypi and installed in one step::
+
+    easy_install SQLAlchemy
+
+Or with pip::
+
+    pip install SQLAlchemy
 
 This command will download the latest version of SQLAlchemy from the `Python
 Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
@@ -92,33 +117,50 @@ Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your sy
 Installing using setup.py
 ----------------------------------
 
-Otherwise, you can install from the distribution using the ``setup.py`` script:
+Otherwise, you can install from the distribution using the ``setup.py`` script::
 
-.. sourcecode:: none
-
-    # python setup.py install
+    python setup.py install
 
 Installing the C Extensions
 ----------------------------------
 
-SQLAlchemy includes C extensions which provide an extra speed boost for dealing with result sets.   These extensions build automatically when the build or install commands of setup.py are invoked.  If the C extensions cannot be built, the setup process will output a warning message.
+SQLAlchemy includes C extensions which provide an extra speed boost for
+dealing with result sets. Currently, the extensions are only supported on the
+2.xx series of cPython, not Python 3 or Pypy.
 
-To disable building the C extensions, pass the flag ``--with-no-cextensions`` to the ``setup.py`` script.
+setup.py will automatically build the extensions if an appropriate platform is
+detected. If the build of the C extensions fails, due to missing compiler or
+other issue, the setup process will output a warning message, and re-run the
+build without the C extensions, upon completion reporting final status.
+
+To run the build/install without even attempting to compile the C extensions,
+pass the flag ``--without-cextensions`` to the ``setup.py`` script::
+
+    python setup.py --without-cextensions install
 
 Installing on Python 3
 ----------------------------------
 
-SQLAlchemy ships as Python 2 code.   For Python 3 usage, the ``setup.py`` script will invoke the Python ``2to3`` tool on the build, plugging in an extra "preprocessor" as well.   Using the Python 3 interpreter with ``setup.py`` or a Python 3 version of easy_install or pip is all that's needed.
+SQLAlchemy ships as Python 2 code. For Python 3 usage, the ``setup.py`` script
+will invoke the Python ``2to3`` tool on the build, plugging in an extra
+"preprocessor" as well. The 2to3 step works with Python distutils
+(part of the standard Python install) and Distribute - it will **not**
+work with a non-Distribute setuptools installation.
 
 Installing a Database API
 ----------------------------------
 
-SQLAlchemy is designed to operate with a `DB-API <http://www.python.org/doc/peps/pep-0249/>`_ implementation built for a particular database, and includes support for the most popular databases.  The current list is at :ref:`supported_dbapis`.
+SQLAlchemy is designed to operate with a `DB-API
+<http://www.python.org/doc/peps/pep-0249/>`_ implementation built for a
+particular database, and includes support for the most popular databases. The
+current list is at :ref:`supported_dbapis`.
 
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 0.7.  If you're working on a system that already has SQLAlchemy installed, check the version from your Python prompt like this:
+This documentation covers SQLAlchemy version 0.7. If you're working on a
+system that already has SQLAlchemy installed, check the version from your
+Python prompt like this:
 
 .. sourcecode:: python+sql
 
@@ -131,4 +173,5 @@ This documentation covers SQLAlchemy version 0.7.  If you're working on a system
 0.6 to 0.7 Migration
 =====================
 
-Notes on what's changed from 0.6 to 0.7 is available on the SQLAlchemy wiki at `07Migration <http://www.sqlalchemy.org/trac/wiki/07Migration>`_.
+Notes on what's changed from 0.6 to 0.7 is available on the SQLAlchemy wiki at
+`07Migration <http://www.sqlalchemy.org/trac/wiki/07Migration>`_.

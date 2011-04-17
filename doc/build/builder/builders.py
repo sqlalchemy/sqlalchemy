@@ -10,6 +10,11 @@ from pygments.formatters import HtmlFormatter, LatexFormatter
 import re
 from mako.lookup import TemplateLookup
 from mako.template import Template
+from mako import __version__
+
+if __version__ < "0.4.1":
+    raise Exception("Mako 0.4.1 or greater is required for "
+                        "documentation build.")
 
 class MakoBridge(TemplateBridge):
     def init(self, builder, *args, **kw):

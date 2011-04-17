@@ -12,10 +12,17 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 try:
     from setuptools import setup, Extension, Feature
+    has_setuptools = True
 except ImportError:
+    has_setuptools = False
     from distutils.core import setup, Extension
     Feature = None
+    try:  # Python 3
+        from distutils.command.build_py import build_py_2to3 as build_py
+    except ImportError:  # Python 2
+        from distutils.command.build_py import build_py
 
+cmdclass = {}
 pypy = hasattr(sys, 'pypy_version_info')
 py3k = False
 extra = {}
@@ -29,9 +36,12 @@ elif sys.version_info >= (3, 0):
     from lib2to3.refactor import RefactoringTool
     RefactoringTool.refactor_string = refactor_string
 
-    extra.update(
-        use_2to3=True,
-    )
+    if has_setuptools:
+        extra.update(
+            use_2to3=True,
+        )
+    else:
+        cmdclass['build_py'] = build_py
 
 ext_modules = [
     Extension('sqlalchemy.cprocessors',
@@ -43,15 +53,16 @@ ext_modules = [
 if sys.platform == 'win32' and sys.version_info > (2, 6):
    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
    # find the compiler
-   ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError,
-                 IOError)
+   ext_errors = (
+                    CCompilerError, DistutilsExecError, 
+                    DistutilsPlatformError, IOError)
 else:
    ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
 class BuildFailed(Exception):
 
-    def __init__(self, cause):
-        self.cause = cause
+    def __init__(self):
+        self.cause = sys.exc_info()[1] # work around py 2/3 different syntax
 
 class ve_build_ext(build_ext):
     # This class allows C extension building to fail.
@@ -59,26 +70,36 @@ class ve_build_ext(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError, exc:
-            raise BuildFailed(exc)
+        except DistutilsPlatformError:
+            raise BuildFailed()
 
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except ext_errors, exc:
-            raise BuildFailed(exc)
+        except ext_errors:
+            raise BuildFailed()
+
+cmdclass['build_ext'] = ve_build_ext
+
+def status_msgs(*msgs):
+    print('*' * 75)
+    for msg in msgs:
+        print(msg)
+    print('*' * 75)
 
 def find_packages(dir_):
     packages = []
     for pkg in ['sqlalchemy']:
-        for _dir, subdirectories, files in os.walk(os.path.join(dir_, pkg)):
+        for _dir, subdirectories, files in (
+                os.walk(os.path.join(dir_, pkg))
+            ):
             if '__init__.py' in files:
                 lib, fragment = _dir.split(os.sep, 1)
                 packages.append(fragment.replace(os.sep, '.'))
     return packages
 
-v = open(os.path.join(os.path.dirname(__file__), 'lib', 'sqlalchemy',
-         '__init__.py'))
+v = open(os.path.join(os.path.dirname(__file__), 
+                        'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(v.read()).group(1)
 v.close()
@@ -104,7 +125,7 @@ def run_setup(with_cext):
           packages=find_packages('lib'),
           package_dir={'': 'lib'},
           license="MIT License",
-          cmdclass={'build_ext': ve_build_ext},
+          cmdclass=cmdclass,
 
           tests_require=['nose >= 0.11'],
           test_suite="sqla_nose",
@@ -243,22 +264,30 @@ def run_setup(with_cext):
             **kwargs
           )
 
-try:
-    # Likely don't want the cextension built on PyPy+CPyExt
-    run_setup(not (pypy or py3k))
-except BuildFailed, exc:
-    print '*' * 75
-    print exc.cause
-    BUILD_EXT_WARNING = "WARNING: The C extension could not be compiled, speedups are not enabled."
-    print '*' * 75
-    print BUILD_EXT_WARNING
-    print "Failure information, if any, is above."
-    print "Retrying the build without the C extension now."
-    print '*' * 75
-
+if pypy or py3k:
     run_setup(False)
+    status_msgs(
+        "WARNING: C extensions are not supported on " +
+            "this Python platform, speedups are not enabled.",
+        "Plain-Python build succeeded."
+    )
+else:
+    try:
+        run_setup(True)
+    except BuildFailed:
+        exc = sys.exc_info()[1] # work around py 2/3 different syntax
+        status_msgs(
+            exc.cause,
+            "WARNING: The C extension could not be compiled, " +
+                "speedups are not enabled.",
+            "Failure information, if any, is above.",
+            "Retrying the build without the C extension now."
+        )
 
-    print '*' * 75
-    print BUILD_EXT_WARNING
-    print "Plain-Python installation succeeded."
-    print '*' * 75
+        run_setup(False)
+
+        status_msgs(
+            "WARNING: The C extension could not be compiled, " +
+                "speedups are not enabled.",
+            "Plain-Python build succeeded."
+        )

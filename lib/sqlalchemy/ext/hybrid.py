@@ -104,7 +104,7 @@ SQL expression-level boolean behavior::
     FROM interval 
     WHERE interval.start <= :start_1 AND interval."end" > :end_1
 
-    >>>  ia = aliased(Interval)
+    >>> ia = aliased(Interval)
     >>> print Session().query(Interval, ia).filter(Interval.intersects(ia))
     SELECT interval.id AS interval_id, interval.start AS interval_start, 
     interval."end" AS interval_end, interval_1.id AS interval_1_id, 
@@ -240,8 +240,8 @@ is even present, this issue expresses itself differently at the SQL expression l
 would use an outer join::
 
     >>> from sqlalchemy import or_
-    >>> print Session().query(User, User.balance).outerjoin(User.accounts).\\
-    ...         filter(or_(User.balance < 5000, User.balance == None))
+    >>> print (Session().query(User, User.balance).outerjoin(User.accounts).
+    ...         filter(or_(User.balance < 5000, User.balance == None)))
     SELECT "user".id AS user_id, "user".name AS user_name, account.balance AS account_balance 
     FROM "user" LEFT OUTER JOIN account ON "user".id = account.user_id 
     WHERE account.balance <  :balance_1 OR account.balance IS NULL
