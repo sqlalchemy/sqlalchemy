@@ -100,6 +100,10 @@ CHANGES
     being placed between the "partition" and "order by"
     clauses.  [ticket:2134]
 
+  - Before/after attach events for PrimaryKeyConstraint
+    now function, tests added for before/after events
+    on all constraint types.  [ticket:2105]
+
 - engine
   - The C extension is now enabled by default on CPython
     2.x with a fallback to pure python if it fails to

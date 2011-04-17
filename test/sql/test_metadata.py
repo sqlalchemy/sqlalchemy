@@ -1007,8 +1007,8 @@ class CatchAllEventsTest(fixtures.TestBase):
         def after_attach(obj, parent):
             canary.append("%s->%s" % (obj, parent))
 
-        event.listen(events.SchemaEventTarget, "before_parent_attach", before_attach)
-        event.listen(events.SchemaEventTarget, "after_parent_attach", after_attach)
+        event.listen(schema.SchemaItem, "before_parent_attach", before_attach)
+        event.listen(schema.SchemaItem, "after_parent_attach", after_attach)
 
         m = MetaData()
         t1 = Table('t1', m, 
@@ -1019,7 +1019,6 @@ class CatchAllEventsTest(fixtures.TestBase):
             Column('id', Integer, primary_key=True),
         )
 
-        # TODO: test more conditions here, constraints, defaults, etc.
         eq_(
             canary,
             [
@@ -1028,12 +1027,57 @@ class CatchAllEventsTest(fixtures.TestBase):
                 'ForeignKey->Column', 
                 "ForeignKey('t2.id')->bar", 
                 'Table->MetaData', 
+                'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint()->t1',
                 'Column->Table', 't1.id->t1', 
                 'Column->Table', 't1.bar->t1', 
                 'ForeignKeyConstraint->Table', 
                 'ForeignKeyConstraint()->t1', 
                 't1->MetaData(None)', 
-                'Table->MetaData', 'Column->Table', 
+                'Table->MetaData', 
+                'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint()->t2', 
+                'Column->Table', 
                 't2.id->t2', 't2->MetaData(None)']
         )
 
+    def test_events_per_constraint(self):
+        canary = []
+
+        def evt(target):
+            def before_attach(obj, parent):
+                canary.append("%s->%s" % (target.__name__, parent.__class__.__name__))
+
+            def after_attach(obj, parent):
+                canary.append("%s->%s" % (target.__name__, parent))
+            event.listen(target, "before_parent_attach", before_attach)
+            event.listen(target, "after_parent_attach", after_attach)
+
+        for target in [
+            schema.ForeignKeyConstraint, schema.PrimaryKeyConstraint, schema.UniqueConstraint,
+            schema.CheckConstraint
+        ]:
+            evt(target)
+
+        m = MetaData()
+        t1 = Table('t1', m, 
+            Column('id', Integer, Sequence('foo_id'), primary_key=True),
+            Column('bar', String, ForeignKey('t2.id')),
+            Column('bat', Integer, unique=True),
+        )
+        t2 = Table('t2', m,
+            Column('id', Integer, primary_key=True),
+            Column('bar', Integer),
+            Column('bat', Integer),
+            CheckConstraint("bar>5"),
+            UniqueConstraint('bar', 'bat')
+        )
+        eq_(
+            canary,
+            [
+            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t1', 
+            'ForeignKeyConstraint->Table', 'ForeignKeyConstraint->t1',
+            'UniqueConstraint->Table', 'UniqueConstraint->t1',
+            'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t2', 
+            'CheckConstraint->Table', 'CheckConstraint->t2',
+            'UniqueConstraint->Table', 'UniqueConstraint->t2'
+            ]
+        )

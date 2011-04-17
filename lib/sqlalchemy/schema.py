@@ -285,7 +285,7 @@ class Table(SchemaItem, expression.TableClause):
         self.indexes = set()
         self.constraints = set()
         self._columns = expression.ColumnCollection()
-        self._set_primary_key(PrimaryKeyConstraint())
+        PrimaryKeyConstraint()._set_parent_with_dispatch(self) 
         self.foreign_keys = set()
         self._extra_dependencies = set()
         self.kwargs = {}
@@ -378,14 +378,6 @@ class Table(SchemaItem, expression.TableClause):
     def _init_collections(self):
         pass
 
-    def _set_primary_key(self, pk):
-        if self.primary_key in self.constraints:
-            self.constraints.remove(self.primary_key)
-        self.primary_key = pk
-        self.constraints.add(pk)
-
-        for c in pk.columns:
-            c.primary_key = True
 
     @util.memoized_property
     def _autoincrement_column(self):
@@ -2034,7 +2026,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
     def _set_parent(self, table):
         super(PrimaryKeyConstraint, self)._set_parent(table)
-        table._set_primary_key(self)
+
+        if table.primary_key in table.constraints:
+            table.constraints.remove(table.primary_key)
+        table.primary_key = self
+        table.constraints.add(self)
+
+        for c in self.columns:
+            c.primary_key = True
 
     def _replace(self, col):
         self.columns.replace(col)
