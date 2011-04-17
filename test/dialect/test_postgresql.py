@@ -1909,39 +1909,6 @@ class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
         result = ss_engine.execute('SELECT 1 FOR UPDATE')
         assert result.cursor.name
 
-    def test_orm_queries_with_ss(self):
-        metadata = MetaData(testing.db)
-
-
-        class Foo(object):
-
-            pass
-
-
-        footable = Table('foobar', metadata, Column('id', Integer,
-                         primary_key=True))
-        mapper(Foo, footable)
-        metadata.create_all()
-        try:
-            sess = create_session()
-            engine = \
-                engines.testing_engine(options={'server_side_cursors'
-                    : False})
-            result = engine.execute(sess.query(Foo).statement)
-            assert not result.cursor.name, result.cursor.name
-            result.close()
-            q = sess.query(Foo).execution_options(stream_results=True)
-            result = engine.execute(q.statement)
-            assert result.cursor.name
-            result.close()
-            result = \
-                sess.query(Foo).execution_options(stream_results=True).\
-                    statement.execute()
-            assert result.cursor.name
-            result.close()
-        finally:
-            metadata.drop_all()
-
     def test_text_with_ss(self):
         engine = engines.testing_engine(options={'server_side_cursors'
                 : False})
