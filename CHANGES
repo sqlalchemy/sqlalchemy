@@ -104,6 +104,12 @@ CHANGES
     now function, tests added for before/after events
     on all constraint types.  [ticket:2105]
 
+  - Added explicit true()/false() constructs to expression
+    lib - coercion rules will intercept "False"/"True"
+    into these constructs.  In 0.6, the constructs were
+    typically converted straight to string, which was 
+    no longer accepted in 0.7.  [ticket:2117]
+
 - engine
   - The C extension is now enabled by default on CPython
     2.x with a fallback to pure python if it fails to

@@ -45,6 +45,8 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: extract
 
+.. autofunction:: false
+
 .. autodata:: func
 
 .. autofunction:: insert
@@ -80,6 +82,8 @@ The expression package uses functions to construct SQL expressions.  The return 
 .. autofunction:: sqlalchemy.sql.expression.table
 
 .. autofunction:: text
+
+.. autofunction:: true
 
 .. autofunction:: tuple_
 

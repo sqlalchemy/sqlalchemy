@@ -426,8 +426,14 @@ class SQLCompiler(engine.Compiled):
              self.post_process_text(textclause.text))
         )
 
-    def visit_null(self, null, **kwargs):
+    def visit_null(self, expr, **kw):
         return 'NULL'
+
+    def visit_true(self, expr, **kw):
+        return 'true'
+
+    def visit_false(self, expr, **kw):
+        return 'false'
 
     def visit_clauselist(self, clauselist, **kwargs):
         sep = clauselist.operator

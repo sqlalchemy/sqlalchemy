@@ -3,7 +3,7 @@ import datetime, re, operator, decimal
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
 from sqlalchemy.sql import table, column, label, compiler
-from sqlalchemy.sql.expression import ClauseList
+from sqlalchemy.sql.expression import ClauseList, _literal_as_text
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
 from test.lib import *
@@ -2811,4 +2811,67 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(table4.insert(values=(2, 5, 'test')), 
                     "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES "
                     "(:rem_id, :datatype_id, :value)")
+
+
+class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        m = MetaData()
+        return Table('foo', m,
+            Column('id', Integer))
+
+    def test_null_constant(self):
+        t = self._fixture()
+        self.assert_compile(_literal_as_text(None), "NULL")
+
+    def test_false_constant(self):
+        t = self._fixture()
+        self.assert_compile(_literal_as_text(False), "false")
+
+    def test_true_constant(self):
+        t = self._fixture()
+        self.assert_compile(_literal_as_text(True), "true")
+
+    def test_val_and_false(self):
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == 1, False),
+                            "foo.id = :id_1 AND false")
+
+    def test_val_and_true_coerced(self):
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == 1, True),
+                            "foo.id = :id_1 AND true")
+
+    def test_val_is_null_coerced(self):
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == None),
+                            "foo.id IS NULL")
+
+    def test_val_and_None(self):
+        # current convention is None in and_() or
+        # other clauselist is ignored.  May want
+        # to revise this at some point.
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == 1, None),
+                            "foo.id = :id_1")
+
+    def test_None_and_val(self):
+        # current convention is None in and_() or
+        # other clauselist is ignored.  May want
+        # to revise this at some point.
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == 1, None),
+                            "foo.id = :id_1")
+
+    def test_None_and_nothing(self):
+        # current convention is None in and_()
+        # returns None May want
+        # to revise this at some point.
+        assert and_(None) is None
+
+    def test_val_and_null(self):
+        t = self._fixture()
+        self.assert_compile(and_(t.c.id == 1, null()),
+                            "foo.id = :id_1 AND NULL")
 

@@ -1046,11 +1046,24 @@ def over(func, partition_by=None, order_by=None):
     return _Over(func, partition_by=partition_by, order_by=order_by)
 
 def null():
-    """Return a :class:`_Null` object, which compiles to ``NULL`` in a sql
-    statement.
+    """Return a :class:`_Null` object, which compiles to ``NULL``.
 
     """
     return _Null()
+
+def true():
+    """Return a :class:`_True` object, which compiles to ``true``, or the 
+    boolean equivalent for the target dialect.
+
+    """
+    return _True()
+
+def false():
+    """Return a :class:`_False` object, which compiles to ``false``, or the 
+    boolean equivalent for the target dialect.
+
+    """
+    return _False()
 
 class _FunctionGenerator(object):
     """Generate :class:`.Function` objects based on getattr calls."""
@@ -1199,9 +1212,23 @@ def _literal_as_text(element):
         return element.__clause_element__()
     elif isinstance(element, basestring):
         return _TextClause(unicode(element))
+    elif isinstance(element, (util.NoneType, bool)):
+        return _const_expr(element)
     else:
         raise exc.ArgumentError(
             "SQL expression object or string expected."
+        )
+
+def _const_expr(element):
+    if element is None:
+        return null()
+    elif element is False:
+        return false()
+    elif element is True:
+        return true()
+    else:
+        raise exc.ArgumentError(
+            "Expected None, False, or True"
         )
 
 def _clause_element_as_expr(element):
@@ -2840,9 +2867,30 @@ class _Null(ColumnElement):
     """
 
     __visit_name__ = 'null'
-
     def __init__(self):
         self.type = sqltypes.NULLTYPE
+
+class _False(ColumnElement):
+    """Represent the ``false`` keyword in a SQL statement.
+
+    Public constructor is the :func:`false()` function.
+
+    """
+
+    __visit_name__ = 'false'
+    def __init__(self):
+        self.type = sqltypes.BOOLEANTYPE
+
+class _True(ColumnElement):
+    """Represent the ``true`` keyword in a SQL statement.
+
+    Public constructor is the :func:`true()` function.
+
+    """
+
+    __visit_name__ = 'true'
+    def __init__(self):
+        self.type = sqltypes.BOOLEANTYPE
 
 
 class ClauseList(ClauseElement):
