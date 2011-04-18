@@ -15,6 +15,10 @@ CHANGES
     fixed up some of the error messages tailored
     in [ticket:2069]
 
+- postgresql
+  - Fixed the psycopg2_version parsing in the 
+    psycopg2 dialect.
+
 0.7.0b4
 =======
 - general
