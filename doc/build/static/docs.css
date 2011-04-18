@@ -227,12 +227,12 @@ div#getting-started {
   border-bottom:1px solid;
 }
 
-div#sqlalchemy-orm {
+div#sqlalchemy-documentation div#sqlalchemy-orm {
   float:left;
   width:48%;
 }
 
-div#sqlalchemy-core {
+div#sqlalchemy-documentation div#sqlalchemy-core {
   float:left;
   width:48%;
   margin:0;
