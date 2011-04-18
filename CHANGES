@@ -3,6 +3,18 @@
 =======
 CHANGES
 =======
+0.7.0b5
+=======
+- (note b5 may become 0.7.0)
+- orm
+  - Fixed regression introduced in 0.7b4 (!) whereby
+    query.options(someoption("nonexistent name")) would
+    fail to raise an error.  Also added additional
+    error catching for cases where the option would
+    try to build off a column-based element, further
+    fixed up some of the error messages tailored
+    in [ticket:2069]
+
 0.7.0b4
 =======
 - general
