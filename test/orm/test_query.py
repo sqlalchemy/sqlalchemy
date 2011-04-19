@@ -1886,7 +1886,6 @@ class OptionsTest(QueryTest):
 
         sess = Session()
         q = sess.query(Order)
-
         opt = self._option_fixture("addresses")
         self._assert_path_result(opt, q, [], [])
 
@@ -2108,64 +2107,239 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(Address.user, User.addresses)
         self._assert_path_result(opt, q, [], [])
 
+    def test_multi_entity_opt_on_second(self):
+        Item = self.classes.Item
+        Order = self.classes.Order
+        opt = self._option_fixture(Order.items)
+        sess = Session()
+        q = sess.query(Item, Order)
+        self._assert_path_result(opt, q, [(Order, "items")], [Order])
+
+    def test_multi_entity_opt_on_string(self):
+        Item = self.classes.Item
+        Order = self.classes.Order
+        opt = self._option_fixture("items")
+        sess = Session()
+        q = sess.query(Item, Order)
+        self._assert_path_result(opt, q, [], [])
+
+    def test_multi_entity_no_mapped_entities(self):
+        Item = self.classes.Item
+        Order = self.classes.Order
+        opt = self._option_fixture("items")
+        sess = Session()
+        q = sess.query(Item.id, Order.id)
+        self._assert_path_result(opt, q, [], [])
+
+    def test_path_exhausted(self):
+        User = self.classes.User
+        Item = self.classes.Item
+        Order = self.classes.Order
+        opt = self._option_fixture(User.orders)
+        sess = Session()
+        q = sess.query(Item)._with_current_path(
+                        self._make_path([User, 'orders', Order, 'items'])
+                )
+        self._assert_path_result(opt, q, [], [])
+
 class OptionsNoPropTest(_fixtures.FixtureTest):
     """test the error messages emitted when using property
-    options in conjunection with column-only entities.
-    
+    options in conjunection with column-only entities, or
+    for not existing options
+
     """
 
     run_create_tables = False
     run_inserts = None
     run_deletes = None
 
-    def test_option_with_mapper_using_basestring(self):
+    def test_option_with_mapper_basestring(self):
         Item = self.classes.Item
 
         self._assert_option([Item], 'keywords')
 
-    def test_option_with_mapper_using_PropCompatator(self):
+    def test_option_with_mapper_PropCompatator(self):
         Item = self.classes.Item
 
         self._assert_option([Item], Item.keywords)
 
-    def test_option_with_mapper_then_column_using_basestring(self):
+    def test_option_with_mapper_then_column_basestring(self):
         Item = self.classes.Item
 
         self._assert_option([Item, Item.id], 'keywords')
 
-    def test_option_with_mapper_then_column_using_PropComparator(self):
+    def test_option_with_mapper_then_column_PropComparator(self):
         Item = self.classes.Item
 
         self._assert_option([Item, Item.id], Item.keywords)
 
-    def test_option_with_column_then_mapper_using_basestring(self):
+    def test_option_with_column_then_mapper_basestring(self):
         Item = self.classes.Item
 
         self._assert_option([Item.id, Item], 'keywords')
 
-    def test_option_with_column_then_mapper_using_PropComparator(self):
+    def test_option_with_column_then_mapper_PropComparator(self):
         Item = self.classes.Item
 
         self._assert_option([Item.id, Item], Item.keywords)
 
-    def test_option_with_column_using_basestring(self):
+    def test_option_with_column_basestring(self):
         Item = self.classes.Item
 
         message = \
-            "Can't find property named 'keywords' on the first mapped "\
-            "entity in this Query. Consider using an attribute object "\
-            "instead of a string name to target a specific entity."
+            "Query has only expression-based entities - "\
+            "can't find property named 'keywords'."
         self._assert_eager_with_just_column_exception(Item.id,
                 'keywords', message)
 
-    def test_option_with_column_using_PropComparator(self):
+    def test_option_with_column_PropComparator(self):
         Item = self.classes.Item
 
-        message = \
-            "Can't find property 'keywords' on any entity specified "\
-            "in this Query\."
         self._assert_eager_with_just_column_exception(Item.id,
-                Item.keywords, message)
+                Item.keywords,
+                "Query has only expression-based entities "
+                "- can't find property named 'keywords'."
+                )
+
+    def test_option_against_nonexistent_PropComparator(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword],
+            (eagerload(Item.keywords), ),
+            r"Can't find property 'keywords' on any entity specified "
+            r"in this Query.  Note the full path from root "
+            r"\(Mapper\|Keyword\|keywords\) to target entity must be specified."
+        )
+
+    def test_option_against_nonexistent_basestring(self):
+        Item = self.classes.Item
+        self._assert_eager_not_found_exception(
+            [Item],
+            (eagerload("foo"), ),
+            r"Can't find property named 'foo' on the mapped "
+            r"entity Mapper\|Item\|items in this Query."
+        )
+
+    def test_option_against_nonexistent_twolevel_basestring(self):
+        Item = self.classes.Item
+        self._assert_eager_not_found_exception(
+            [Item],
+            (eagerload("keywords.foo"), ),
+            r"Can't find property named 'foo' on the mapped entity "
+            r"Mapper\|Keyword\|keywords in this Query."
+        )
+
+    def test_option_against_nonexistent_twolevel_all(self):
+        Item = self.classes.Item
+        self._assert_eager_not_found_exception(
+            [Item],
+            (eagerload_all("keywords.foo"), ),
+            r"Can't find property named 'foo' on the mapped entity "
+            r"Mapper\|Keyword\|keywords in this Query."
+        )
+
+    @testing.fails_if(lambda:True, 
+        "PropertyOption doesn't yet check for relation/column on end result")
+    def test_option_against_non_relation_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all("keywords"), ),
+            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity"
+        )
+
+    @testing.fails_if(lambda:True, 
+            "PropertyOption doesn't yet check for relation/column on end result")
+    def test_option_against_multi_non_relation_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all("keywords"), ),
+            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity"
+        )
+
+    def test_option_against_wrong_entity_type_basestring(self):
+        Item = self.classes.Item
+        self._assert_eager_not_found_exception(
+            [Item],
+            (eagerload_all("id", "keywords"), ),
+            r"Attribute 'id' of entity 'Mapper\|Item\|items' does not "
+            r"refer to a mapped entity"
+        )
+
+    def test_option_against_multi_non_relation_twolevel_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all("id", "keywords"), ),
+            r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity"
+        )
+
+    def test_option_against_multi_nonexistent_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all("description"), ),
+            r"Can't find property named 'description' on the mapped "
+            r"entity Mapper\|Keyword\|keywords in this Query."
+        )
+
+    def test_option_against_multi_no_entities_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword.id, Item.id],
+            (eagerload_all("keywords"), ),
+            r"Query has only expression-based entities - can't find property "
+            "named 'keywords'."
+        )
+
+    def test_option_against_wrong_multi_entity_type_attr_one(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all(Keyword.id, Item.keywords), ),
+            r"Attribute 'Keyword.id' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity"
+        )
+
+    def test_option_against_wrong_multi_entity_type_attr_two(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword, Item],
+            (eagerload_all(Keyword.keywords, Item.keywords), ),
+            r"Attribute 'Keyword.keywords' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity"
+        )
+
+    def test_option_against_wrong_multi_entity_type_attr_three(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Keyword.id, Item.id],
+            (eagerload_all(Keyword.keywords, Item.keywords), ),
+            r"Query has only expression-based entities - "
+            "can't find property named 'keywords'."
+        )
+
+    def test_wrong_type_in_option(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_not_found_exception(
+            [Item],
+            (eagerload_all(Keyword), ),
+            r"mapper option expects string key or list of attributes"
+        )
 
     @classmethod
     def setup_mappers(cls):
@@ -2174,8 +2348,9 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                                 cls.tables.item_keywords,
                                 cls.classes.Keyword,
                                 cls.classes.Item)
-
-        mapper(Keyword, keywords)
+        mapper(Keyword, keywords, properties={
+            "keywords":column_property(keywords.c.name + "some keyword")
+        })
         mapper(Item, items,
                properties=dict(keywords=relationship(Keyword,
                secondary=item_keywords)))
@@ -2187,6 +2362,13 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                             options(eagerload(option))
         key = ('loaderstrategy', (class_mapper(Item), 'keywords'))
         assert key in q._attributes
+
+    def _assert_eager_not_found_exception(self, entity_list, options, 
+                                message):
+        assert_raises_message(sa.exc.ArgumentError, 
+                                message,
+                              create_session().query(*entity_list).options,
+                              *options)
 
     def _assert_eager_with_just_column_exception(self, column,
             eager_option, message):

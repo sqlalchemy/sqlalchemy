@@ -1246,6 +1246,12 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 version)
 
     @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_psycopg2_version(self):
+        v = testing.db.dialect.psycopg2_version
+        assert testing.db.dialect.dbapi.__version__.\
+                    startswith(".".join(str(x) for x in v))
+
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
     def test_notice_logging(self):
         log = logging.getLogger('sqlalchemy.dialects.postgresql')
         buf = logging.handlers.BufferingHandler(100)

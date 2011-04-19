@@ -252,10 +252,13 @@ class PGDialect_psycopg2(PGDialect):
         self.use_native_unicode = use_native_unicode
         self.supports_unicode_binds = use_native_unicode
         if self.dbapi and hasattr(self.dbapi, '__version__'):
-            m = re.match(r'(\d+)\.(\d+)\.(\d+)?', 
+            m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?', 
                                 self.dbapi.__version__)
             if m:
-                self.psycopg2_version = tuple(map(int, m.group(1, 2, 3)))
+                self.psycopg2_version = tuple(
+                                            int(x) 
+                                            for x in m.group(1, 2, 3) 
+                                            if x is not None)
 
     @classmethod
     def dbapi(cls):

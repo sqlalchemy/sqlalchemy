@@ -19,7 +19,7 @@ classes within should be considered mostly private.
 from itertools import chain
 
 from sqlalchemy import exc as sa_exc
-from sqlalchemy import log, util, event
+from sqlalchemy import util
 from sqlalchemy.sql import expression
 deque = util.importlater('collections').deque
 
@@ -435,12 +435,20 @@ class PropertyOption(MapperOption):
                 return ent
         else:
             if raiseerr:
-                raise sa_exc.ArgumentError(
-                    "Can't find property '%s' on any entity "
-                    "specified in this Query.  Note the full path " 
-                    "from root (%s) to target entity must be specified." 
-                    % (token, ",".join(str(x) for x in query._mapper_entities))
-                )
+                if not list(query._mapper_entities):
+                    raise sa_exc.ArgumentError(
+                        "Query has only expression-based entities - "
+                        "can't find property named '%s'."
+                         % (token, )
+                    )
+                else:
+                    raise sa_exc.ArgumentError(
+                        "Can't find property '%s' on any entity "
+                        "specified in this Query.  Note the full path " 
+                        "from root (%s) to target entity must be specified." 
+                        % (token, ",".join(str(x) for 
+                            x in query._mapper_entities))
+                    )
             else:
                 return None
 
@@ -453,10 +461,9 @@ class PropertyOption(MapperOption):
         else:
             if raiseerr:
                 raise sa_exc.ArgumentError(
-                    "Can't find property named '%s' on the first mapped "
-                    "entity in this Query. "
-                    "Consider using an attribute object instead of a "
-                    "string name to target a specific entity." % (token, )
+                    "Query has only expression-based entities - "
+                    "can't find property named '%s'."
+                     % (token, )
                 )
             else:
                 return None
@@ -493,13 +500,22 @@ class PropertyOption(MapperOption):
                                         query, 
                                         token, 
                                         raiseerr)
+                    if entity is None:
+                        return [], []
                     path_element = entity.path_entity
                     mapper = entity.mapper
                 mappers.append(mapper)
                 if mapper.has_property(token):
                     prop = mapper.get_property(token)
                 else:
-                    prop = None
+                    if raiseerr:
+                        raise sa_exc.ArgumentError(
+                            "Can't find property named '%s' on the "
+                            "mapped entity %s in this Query. " % (
+                                token, mapper)
+                        )
+                    else:
+                        return [], []
             elif isinstance(token, PropComparator):
                 prop = token.property
 
@@ -528,14 +544,19 @@ class PropertyOption(MapperOption):
                 raise sa_exc.ArgumentError(
                         "mapper option expects "
                         "string key or list of attributes")
-            if prop is None:
-                return [], []
+            assert prop is not None
             path = build_path(path_element, prop.key, path)
             l.append(path)
             if getattr(token, '_of_type', None):
                 path_element = mapper = token._of_type
             else:
                 path_element = mapper = getattr(prop, 'mapper', None)
+                if mapper is None and tokens:
+                    raise sa_exc.ArgumentError(
+                        "Attribute '%s' of entity '%s' does not "
+                        "refer to a mapped entity" %
+                        (token, entity)
+                    )
             if path_element:
                 path_element = path_element
 
@@ -546,8 +567,6 @@ class PropertyOption(MapperOption):
             return [], []
 
         return l, mappers
-
-
 
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used
@@ -726,7 +745,7 @@ class InstrumentationManager(object):
         setattr(instance, '_default_state', state)
 
     def remove_state(self, class_, instance):
-        delattr(instance, '_default_state', state)
+        delattr(instance, '_default_state')
 
     def state_getter(self, class_):
         return lambda instance: getattr(instance, '_default_state')
