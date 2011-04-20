@@ -15,6 +15,10 @@ CHANGES
     fixed up some of the error messages tailored
     in [ticket:2069]
 
+- sql
+  - Added explicit check for when Column .name
+    is assigned as blank string [ticket:2140]
+
 - postgresql
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.

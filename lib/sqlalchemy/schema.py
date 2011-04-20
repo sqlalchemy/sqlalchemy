@@ -901,15 +901,17 @@ class Column(SchemaItem, expression.ColumnClause):
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _set_parent(self, table):
-        if self.name is None:
+        if not self.name:
             raise exc.ArgumentError(
-                "Column must be constructed with a name or assign .name "
-                "before adding to a Table.")
+                "Column must be constructed with a non-blank name or "
+                "assign a non-blank .name before adding to a Table.")
         if self.key is None:
             self.key = self.name
 
         if getattr(self, 'table', None) is not None:
-            raise exc.ArgumentError("this Column already has a table!")
+            raise exc.ArgumentError(
+                    "Column object already assigned to Table '%s'" % 
+                    self.table.description)
 
         if self.key in table._columns:
             col = table._columns.get(self.key)

@@ -862,10 +862,32 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         for i, col in enumerate(tbl.c):
             assert col.name == c[i].name
 
-    def test_incomplete(self):
-        c = self.columns()
+    def test_name_none(self):
 
-        assert_raises(exc.ArgumentError, Table, 't', MetaData(), *c)
+        c = Column(Integer)
+        assert_raises_message(
+            exc.ArgumentError, 
+            "Column must be constructed with a non-blank name or assign a "
+            "non-blank .name ",
+            Table, 't', MetaData(), c)
+
+    def test_name_blank(self):
+
+        c = Column('', Integer)
+        assert_raises_message(
+            exc.ArgumentError, 
+            "Column must be constructed with a non-blank name or assign a "
+            "non-blank .name ",
+            Table, 't', MetaData(), c)
+
+    def test_dupe_column(self):
+        c = Column('x', Integer)
+        t = Table('t', MetaData(), c)
+
+        assert_raises_message(
+            exc.ArgumentError, 
+            "Column object already assigned to Table 't'",
+            Table, 'q', MetaData(), c)
 
     def test_incomplete_key(self):
         c = Column(Integer)

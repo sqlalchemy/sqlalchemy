@@ -118,6 +118,8 @@ class ColumnLoader(LoaderStrategy):
 
     def setup_query(self, context, entity, path, reduced_path, adapter, 
                             column_collection=None, **kwargs):
+#        import pdb
+#        pdb.set_trace()
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
