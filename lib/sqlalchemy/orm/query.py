@@ -298,6 +298,18 @@ class Query(object):
                 )
         return self._mapper_zero()
 
+    def _only_full_mapper_zero(self, methname):
+        if len(self._entities) != 1:
+            raise sa_exc.InvalidRequestError(
+                    "%s() can only be used against "
+                    "a single mapped class." % methname)
+        entity = self._entity_zero()
+        if not hasattr(entity, 'primary_entity'):
+            raise sa_exc.InvalidRequestError(
+                    "%s() can only be used against "
+                    "a single mapped class." % methname)
+        return entity.entity_zero
+
     def _only_entity_zero(self, rationale=None):
         if len(self._entities) > 1:
             raise sa_exc.InvalidRequestError(
@@ -631,9 +643,7 @@ class Query(object):
 
         ident = util.to_list(ident)
 
-        mapper = self._only_mapper_zero(
-                    "get() can only be used against a single mapped class."
-                )
+        mapper = self._only_full_mapper_zero("get")
 
         if len(ident) != len(mapper.primary_key):
             raise sa_exc.InvalidRequestError(

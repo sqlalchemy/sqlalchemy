@@ -189,6 +189,13 @@ class GetTest(QueryTest):
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
 
+    def test_get_against_col(self):
+        User = self.classes.User
+
+        s = Session()
+        q = s.query(User.id)
+        assert_raises(sa_exc.InvalidRequestError, q.get, (5, ))
+
     def test_get_null_pk(self):
         """test that a mapping which can have None in a 
         PK (i.e. map to an outerjoin) works with get()."""

@@ -965,7 +965,7 @@ class SQLCompiler(engine.Compiled):
         if colparams or not supports_default_values:
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
                        for c in colparams])
-
+        
         if self.returning or insert_stmt._returning:
             self.returning = self.returning or insert_stmt._returning
             returning_clause = self.returning_clause(

@@ -15,6 +15,12 @@ CHANGES
     fixed up some of the error messages tailored
     in [ticket:2069]
 
+  - It is an error to call query.get() when the
+    given entity is not a single, full class 
+    entity or mapper (i.e. a column).  This is
+    a deprecation warning in 0.6.8.  
+    [ticket:2144]
+
 - sql
   - Added explicit check for when Column .name
     is assigned as blank string [ticket:2140]
