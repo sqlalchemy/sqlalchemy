@@ -632,10 +632,21 @@ class Query(object):
 
     def get(self, ident):
         """Return an instance of the object based on the 
-        given identifier, or None if not found.
+        given identifier, or ``None`` if not found.
 
-        The `ident` argument is a scalar or tuple of primary key column values
-        in the order of the table def's primary key columns.
+        The ``ident`` argument is a scalar or tuple of 
+        primary key column values
+        in the order of the mapper's "primary key" setting, which
+        defaults to the list of primary key columns for the 
+        mapped :class:`.Table`.
+        
+        :meth:`get` returns only a single mapped instance, or
+        ``None``.  It is not intended to return rows or scalar
+        column values, therefore the :class:`.Query` must be 
+        constructed only against a single mapper or mapped class,
+        not a SQL expression or multiple entities.
+        Other usages raise an error, or in the case of a single
+        column a deprecation warning is raised as of 0.6.8.
 
         """
 
