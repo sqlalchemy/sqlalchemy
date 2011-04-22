@@ -302,6 +302,18 @@ class Query(object):
                 )
         return self._mapper_zero()
 
+    def _only_full_mapper_zero(self, methname):
+        if len(self._entities) != 1:
+            raise sa_exc.InvalidRequestError(
+                    "%s() can only be used against "
+                    "a single mapped class." % methname)
+        entity = self._entity_zero()
+        if not hasattr(entity, 'primary_entity'):
+            util.warn("Calling %s() with a "
+                    "column-based entity is deprecated." % 
+                    methname)
+        return entity.entity_zero
+
     def _only_entity_zero(self, rationale=None):
         if len(self._entities) > 1:
             raise sa_exc.InvalidRequestError(
@@ -631,8 +643,7 @@ class Query(object):
         if hasattr(ident, '__composite_values__'):
             ident = ident.__composite_values__()
 
-        key = self._only_mapper_zero(
-                    "get() can only be used against a single mapped class."
+        key = self._only_full_mapper_zero("get"
                 ).identity_key_from_primary_key(ident)
         return self._get(key, ident)
 

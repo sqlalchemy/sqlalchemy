@@ -3,6 +3,13 @@
 =======
 CHANGES
 =======
+0.6.8
+=====
+- orm
+  - Calling query.get() against a column-based entity is
+    invalid, this condition now raises a deprecation warning.
+    [ticket:2144]
+
 0.6.7
 =====
 - orm
@@ -59,6 +66,12 @@ CHANGES
   - a "having" clause would be copied from the
     inside to the outside query if from_self()
     were used. [ticket:2130].
+
+  - It is an error to call query.get() when the
+    given entity is not a single, full class 
+    entity or mapper (i.e. a column).  This is
+    a deprecation warning in 0.6.8.  
+    [ticket:2144]
 
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
