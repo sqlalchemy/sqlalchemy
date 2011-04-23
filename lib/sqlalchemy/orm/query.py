@@ -773,6 +773,14 @@ class Query(object):
         m = _MapperEntity(self, entity)
         self._setup_aliasizers([m])
 
+    @_generative()
+    def with_session(self, session):
+        """Return a :class:`Query` that will use the given :class:`.Session`.
+
+        """
+
+        self.session = session
+
     def from_self(self, *entities):
         """return a Query that selects from this Query's 
         SELECT statement.
@@ -1766,13 +1774,18 @@ class Query(object):
             self.session._autoflush()
         return self._execute_and_instances(context)
 
-    def _execute_and_instances(self, querycontext):
+    def _connection_from_session(self, **kw):
         conn = self.session.connection(
+                        **kw)
+        if self._execution_options:
+            conn = conn.execution_options(**self._execution_options)
+        return conn
+
+    def _execute_and_instances(self, querycontext):
+        conn = self._connection_from_session(
                         mapper = self._mapper_zero_or_none(),
                         clause = querycontext.statement,
                         close_with_result=True)
-        if self._execution_options:
-            conn = conn.execution_options(**self._execution_options)
 
         result = conn.execute(querycontext.statement, self._params)
         return self.instances(result, querycontext)

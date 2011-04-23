@@ -21,6 +21,9 @@ CHANGES
     a deprecation warning in 0.6.8.  
     [ticket:2144]
 
+  - added Query.with_session() method, switches 
+    Query to use a different session.
+
 - sql
   - Some improvements to error handling inside
     of the execute procedure to ensure auto-close

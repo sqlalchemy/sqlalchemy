@@ -66,6 +66,19 @@ class QueryTest(_fixtures.FixtureTest):
 
         configure_mappers()
 
+class MiscTest(QueryTest):
+    run_create_tables = None
+    run_inserts = None
+
+    def test_with_session(self):
+        User = self.classes.User
+        s1 = Session()
+        s2 = Session()
+        q1 = s1.query(User)
+        q2 = q1.with_session(s2)
+        assert q2.session is s2
+        assert q1.session is s1
+
 class RowTupleTest(QueryTest):
     run_setup_mappers = None
 
