@@ -1830,21 +1830,26 @@ class ExecutionOptionsTest(QueryTest):
         q3_options = dict(foo='not bar', stream_results=True, answer=42)
         assert q3._execution_options == q3_options
 
+
     def test_options_in_connection(self):
         User = self.classes.User
 
         execution_options = dict(foo='bar', stream_results=True)
         class TQuery(Query):
             def instances(self, result, ctx):
-                eq_(
-                    result.connection._execution_options,
-                    execution_options
-                )
+                try:
+                    eq_(
+                    	result.connection._execution_options,
+                    	execution_options
+                    )
+                finally:
+                    result.close()
                 return iter([])
 
         sess = create_session(bind=testing.db, autocommit=False, query_cls=TQuery)
         q1 = sess.query(User).execution_options(**execution_options)
         q1.all()
+
 
 class OptionsTest(QueryTest):
     """Test the _get_paths() method of PropertyOption."""
