@@ -43,7 +43,7 @@ class ExecuteTest(fixtures.TestBase):
                                         '+mxodbc', '+zxjdbc', 'mysql+oursql',
                                         'informix+informixdb')
     def test_raw_qmark(self):
-        for conn in testing.db, testing.db.connect():
+        def go(conn):
             conn.execute('insert into users (user_id, user_name) '
                          'values (?, ?)', (1, 'jack'))
             conn.execute('insert into users (user_id, user_name) '
@@ -66,12 +66,19 @@ class ExecuteTest(fixtures.TestBase):
                 ]
             conn.execute('delete from users')
 
+        go(testing.db)
+        conn = testing.db.connect()
+        try:
+            go(conn)
+        finally:
+            conn.close()
+
     # some psycopg2 versions bomb this.
     @testing.fails_on_everything_except('mysql+mysqldb', 'mysql+pymysql',
             'mysql+mysqlconnector', 'postgresql')
     @testing.fails_on('postgresql+zxjdbc', 'sprintf not supported')
     def test_raw_sprintf(self):
-        for conn in testing.db, testing.db.connect():
+        def go(conn):
             conn.execute('insert into users (user_id, user_name) '
                          'values (%s, %s)', [1, 'jack'])
             conn.execute('insert into users (user_id, user_name) '
@@ -83,6 +90,12 @@ class ExecuteTest(fixtures.TestBase):
             assert res.fetchall() == [(1, 'jack'), (2, 'ed'), (3,
                     'horse'), (4, 'sally'), (5, None)]
             conn.execute('delete from users')
+        go(testing.db)
+        conn = testing.db.connect()
+        try:
+            go(conn)
+        finally:
+            conn.close()
 
     # pyformat is supported for mysql, but skipping because a few driver
     # versions have a bug that bombs out on this test. (1.2.2b3,
@@ -94,7 +107,7 @@ class ExecuteTest(fixtures.TestBase):
             'postgresql+pypostgresql', 'mysql+mysqlconnector', 
             'mysql+pymysql')
     def test_raw_python(self):
-        for conn in testing.db, testing.db.connect():
+        def go(conn):
             conn.execute('insert into users (user_id, user_name) '
                          'values (%(id)s, %(name)s)', {'id': 1, 'name'
                          : 'jack'})
@@ -108,10 +121,16 @@ class ExecuteTest(fixtures.TestBase):
             assert res.fetchall() == [(1, 'jack'), (2, 'ed'), (3,
                     'horse'), (4, 'sally')]
             conn.execute('delete from users')
+        go(testing.db)
+        conn = testing.db.connect()
+        try:
+            go(conn)
+        finally:
+            conn.close()
 
     @testing.fails_on_everything_except('sqlite', 'oracle+cx_oracle', 'informix+informixdb')
     def test_raw_named(self):
-        for conn in testing.db, testing.db.connect():
+        def go(conn):
             conn.execute('insert into users (user_id, user_name) '
                          'values (:id, :name)', {'id': 1, 'name': 'jack'
                          })
@@ -124,14 +143,26 @@ class ExecuteTest(fixtures.TestBase):
             assert res.fetchall() == [(1, 'jack'), (2, 'ed'), (3,
                     'horse'), (4, 'sally')]
             conn.execute('delete from users')
+        go(testing.db)
+        conn= testing.db.connect()
+        try:
+            go(conn)
+        finally:
+            conn.close()
 
     def test_exception_wrapping_dbapi(self):
-        for conn in testing.db, testing.db.connect():
+        def go(conn):
             assert_raises_message(
                 tsa.exc.DBAPIError,
                 r"not_a_valid_statement",
                 conn.execute, 'not_a_valid_statement'
             )
+        go(testing.db)
+        conn = testing.db.connect()
+        try:
+            go(conn)
+        finally:
+            conn.close()
 
     def test_exception_wrapping_non_dbapi_statement(self):
         class MyType(TypeDecorator):
@@ -139,7 +170,7 @@ class ExecuteTest(fixtures.TestBase):
             def process_bind_param(self, value, dialect):
                 raise Exception("nope")
 
-        for conn in testing.db, testing.db.connect():
+        def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
                 "nope 'SELECT 1 ",
@@ -149,6 +180,12 @@ class ExecuteTest(fixtures.TestBase):
                             column('foo') == literal('bar', MyType())
                         )
             )
+        _go(testing.db)
+        conn = testing.db.connect()
+        try:
+            _go(conn)
+        finally:
+            conn.close()
 
     def test_empty_insert(self):
         """test that execute() interprets [] as a list with no params"""
