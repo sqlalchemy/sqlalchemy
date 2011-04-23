@@ -1214,6 +1214,33 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             'SELECT DISTINCT ON (mytable.id, mytable.a) mytable.id, '
             'mytable.a \nFROM mytable')
 
+    @testing.fails_if(lambda: True, "[ticket:2142]")
+    def test_distinct_on_subquery(self):
+        t1 = Table('mytable1', MetaData(testing.db), Column('id',
+                  Integer, primary_key=True), Column('a', String(8)))
+        t2 = Table('mytable2', MetaData(testing.db), Column('id',
+                  Integer, primary_key=True), Column('a', String(8)))
+
+        sq = select([t1]).alias()
+        q = select([t2.c.id,sq.c.id], distinct=sq.c.id).where(t2.c.id==sq.c.id)
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (anon_1.id) mytable2.id, anon_1.id "
+            "FROM mytable2, (SELECT mytable1.id AS id, mytable1.a AS a "
+            "FROM mytable1) AS anon_1 "
+            "WHERE mytable2.id = anon_1.id"
+            )
+
+        sq = select([t1]).alias('sq')
+        q = select([t2.c.id,sq.c.id], distinct=sq.c.id).where(t2.c.id==sq.c.id)
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (sq.id) mytable2.id, sq.id "
+            "FROM mytable2, (SELECT mytable1.id AS id, mytable1.a AS a "
+            "FROM mytable1) AS sq "
+            "WHERE mytable2.id = sq.id"
+            )
+
     def test_schema_reflection(self):
         """note: this test requires that the 'test_schema' schema be
         separate and accessible by the test user"""
