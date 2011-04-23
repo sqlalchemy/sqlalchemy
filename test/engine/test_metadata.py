@@ -401,6 +401,85 @@ class MetaDataTest(TestBase, ComparesTables):
                           'fake_table',
                           MetaData(testing.db), autoload=True)
 
+class ColumnDefaultsTest(TestBase):
+    """test assignment of default fixtures to columns"""
+
+    def _fixture(self, *arg, **kw):
+        return Column('x', Integer, *arg, **kw)
+
+    def test_server_default_positional(self):
+        target = schema.DefaultClause('y')
+        c = self._fixture(target)
+        assert c.server_default is target
+        assert target.column is c
+
+    def test_server_default_keyword_as_schemaitem(self):
+        target = schema.DefaultClause('y')
+        c = self._fixture(server_default=target)
+        assert c.server_default is target
+        assert target.column is c
+
+    def test_server_default_keyword_as_clause(self):
+        target = 'y'
+        c = self._fixture(server_default=target)
+        assert c.server_default.arg == target
+        assert c.server_default.column is c
+
+    def test_server_default_onupdate_positional(self):
+        target = schema.DefaultClause('y', for_update=True)
+        c = self._fixture(target)
+        assert c.server_onupdate is target
+        assert target.column is c
+
+    def test_server_default_onupdate_keyword_as_schemaitem(self):
+        target = schema.DefaultClause('y', for_update=True)
+        c = self._fixture(server_onupdate=target)
+        assert c.server_onupdate is target
+        assert target.column is c
+
+    def test_server_default_onupdate_keyword_as_clause(self):
+        target = 'y'
+        c = self._fixture(server_onupdate=target)
+        assert c.server_onupdate.arg == target
+        assert c.server_onupdate.column is c
+
+    def test_column_default_positional(self):
+        target = schema.ColumnDefault('y')
+        c = self._fixture(target)
+        assert c.default is target
+        assert target.column is c
+
+    def test_column_default_keyword_as_schemaitem(self):
+        target = schema.ColumnDefault('y')
+        c = self._fixture(default=target)
+        assert c.default is target
+        assert target.column is c
+
+    def test_column_default_keyword_as_clause(self):
+        target = 'y'
+        c = self._fixture(default=target)
+        assert c.default.arg == target
+        assert c.default.column is c
+
+    def test_column_default_onupdate_positional(self):
+        target = schema.ColumnDefault('y', for_update=True)
+        c = self._fixture(target)
+        assert c.onupdate is target
+        assert target.column is c
+
+    def test_column_default_onupdate_keyword_as_schemaitem(self):
+        target = schema.ColumnDefault('y', for_update=True)
+        c = self._fixture(onupdate=target)
+        assert c.onupdate is target
+        assert target.column is c
+
+    def test_column_default_onupdate_keyword_as_clause(self):
+        target = 'y'
+        c = self._fixture(onupdate=target)
+        assert c.onupdate.arg == target
+        assert c.onupdate.column is c
+
+
 
 class TableOptionsTest(TestBase, AssertsCompiledSQL):
     def test_prefixes(self):

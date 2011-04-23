@@ -10,6 +10,13 @@ CHANGES
     invalid, this condition now raises a deprecation warning.
     [ticket:2144]
 
+- sql
+  - Fixed bug whereby if FetchedValue was passed
+    to column server_onupdate, it would not
+    have its parent "column" assigned, added
+    test coverage for all column default assignment
+    patterns.  [ticket:2147]
+
 0.6.7
 =====
 - orm
