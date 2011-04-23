@@ -22,6 +22,11 @@ CHANGES
     [ticket:2144]
 
 - sql
+  - Some improvements to error handling inside
+    of the execute procedure to ensure auto-close
+    connections are really closed when very 
+    unusual DBAPI errors occur.
+
   - Added explicit check for when Column .name
     is assigned as blank string [ticket:2140]
 

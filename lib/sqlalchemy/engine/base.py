@@ -1640,11 +1640,10 @@ class Connection(Connectable):
         try:
             # non-DBAPI error - if we already got a context,
             # or theres no string statement, don't wrap it
-            if not isinstance(e, self.dialect.dbapi.Error) and \
-                (statement is None or context is not None):
-                return
+            should_wrap = isinstance(e, self.dialect.dbapi.Error) or \
+                (statement is not None and context is None)
 
-            if context:
+            if should_wrap and context:
                 context.handle_dbapi_exception(e)
 
             is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
@@ -1658,6 +1657,10 @@ class Connection(Connectable):
                 self._autorollback()
                 if self.should_close_with_result:
                     self.close()
+
+            if not should_wrap:
+                return
+
             # Py3K
             #raise exc.DBAPIError.instance(
             #                        statement, 
@@ -2484,7 +2487,12 @@ class ResultProxy(object):
         uses ``returning()``.
 
         """
-        return self.context.rowcount
+        try:
+            return self.context.rowcount
+        except Exception, e:
+            self.connection._handle_dbapi_exception(
+                              e, None, None, self.cursor, self.context)
+            raise
 
     @property
     def lastrowid(self):
@@ -2501,7 +2509,13 @@ class ResultProxy(object):
         regardless of database backend.
 
         """
-        return self._saved_cursor.lastrowid
+        try:
+            return self._saved_cursor.lastrowid
+        except Exception, e:
+            self.connection._handle_dbapi_exception(
+                                 e, None, None, 
+                                 self._saved_cursor, self.context)
+            raise
 
     @property
     def returns_rows(self):
