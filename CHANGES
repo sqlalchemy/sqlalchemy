@@ -24,6 +24,9 @@ CHANGES
   - added Query.with_session() method, switches 
     Query to use a different session.
 
+  - horizontal shard query should use execution
+    options per connection as per [ticket:2131]
+
 - sql
   - Some improvements to error handling inside
     of the execute procedure to ensure auto-close
