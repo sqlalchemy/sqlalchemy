@@ -30,6 +30,12 @@ CHANGES
   - Added explicit check for when Column .name
     is assigned as blank string [ticket:2140]
 
+  - Fixed bug whereby if FetchedValue was passed
+    to column server_onupdate, it would not
+    have its parent "column" assigned, added
+    test coverage for all column default assignment
+    patterns.  [ticket:2147]  also in 0.6.8
+
 - postgresql
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.

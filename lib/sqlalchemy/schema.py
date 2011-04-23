@@ -836,7 +836,7 @@ class Column(SchemaItem, expression.ColumnClause):
 
         if self.server_onupdate is not None:
             if isinstance(self.server_onupdate, FetchedValue):
-                args.append(self.server_default)
+                args.append(self.server_onupdate)
             else:
                 args.append(DefaultClause(self.server_onupdate,
                                             for_update=True))
