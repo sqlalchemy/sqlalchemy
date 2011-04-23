@@ -791,7 +791,7 @@ class VersioningTest(fixtures.MappedTest):
         s2.subdata = 'sess2 subdata'
         sess2.flush()
 
-    @testing.emits_warning(r".*updated rowcount")
+    @testing.emits_warning(r".*(update|delete)d rowcount")
     def test_delete(self):
         subtable, base = self.tables.subtable, self.tables.base
 

@@ -282,6 +282,8 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             ).scalar()
             eq_(round_decimal(ret, 9), result)
 
+    @testing.fails_on('postgresql+zxjdbc',
+                      'zxjdbc has no support for PG arrays')
     @testing.provide_metadata
     def test_arrays(self):
         metadata = self.metadata
@@ -1816,6 +1818,9 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         sess.add(foo)
         sess.flush()
 
+    @testing.fails_on('+zxjdbc',
+                      "Can't infer the SQL type to use for an instance "
+                      "of org.python.core.PyList.")
     @testing.provide_metadata
     def test_tuple_flag(self):
         metadata = self.metadata
@@ -2064,6 +2069,8 @@ class UUIDTest(fixtures.TestBase):
     __only_on__ = 'postgresql'
 
     @testing.requires.python25
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid but expression is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_string(self):
         import uuid
@@ -2076,6 +2083,8 @@ class UUIDTest(fixtures.TestBase):
         )
 
     @testing.requires.python25
+    @testing.fails_on('postgresql+zxjdbc',
+                      'column "data" is of type uuid but expression is of type character varying')
     @testing.fails_on('postgresql+pg8000', 'No support for UUID type')
     def test_uuid_uuid(self):
         import uuid

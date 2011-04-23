@@ -74,7 +74,7 @@ class VersioningTest(fixtures.MappedTest):
         finally:
             testing.db.dialect.supports_sane_rowcount = save
 
-    @testing.emits_warning(r'.*does not support updated rowcount')
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_basic(self):
         Foo = self.classes.Foo
 
@@ -124,7 +124,7 @@ class VersioningTest(fixtures.MappedTest):
         else:
             s1.commit()
 
-    @testing.emits_warning(r'.*does not support updated rowcount')
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_bump_version(self):
         """test that version number can be bumped.
 
@@ -241,6 +241,7 @@ class VersioningTest(fixtures.MappedTest):
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_merge_no_version(self):
         Foo = self.classes.Foo
 
@@ -258,6 +259,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
         eq_(f3.version_id, 3)
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_merge_correct_version(self):
         Foo = self.classes.Foo
 
@@ -275,6 +277,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
         eq_(f3.version_id, 3)
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_merge_incorrect_version(self):
         Foo = self.classes.Foo
 
@@ -296,6 +299,7 @@ class VersioningTest(fixtures.MappedTest):
             s1.merge, f2
         )
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_merge_incorrect_version_not_in_session(self):
         Foo = self.classes.Foo
 
@@ -353,6 +357,7 @@ class RowSwitchTest(fixtures.MappedTest):
         })
         mapper(C, c, version_id_col=c.c.version_id)
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_row_switch(self):
         P = self.classes.P
 
@@ -366,6 +371,7 @@ class RowSwitchTest(fixtures.MappedTest):
         session.add(P(id='P1', data="really a row-switch"))
         session.commit()
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_child_row_switch(self):
         P, C = self.classes.P, self.classes.C
 
@@ -421,6 +427,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
                     version_id_generator=lambda x:make_uuid(),
         )
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support updated rowcount')
     def test_row_switch(self):
         P = self.classes.P
 
@@ -434,6 +441,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
         session.add(P(id='P1', data="really a row-switch"))
         session.commit()
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_child_row_switch_one(self):
         P, C = self.classes.P, self.classes.C
 
@@ -452,6 +460,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
         p.c = C(data='child row-switch')
         session.commit()
 
+    @testing.emits_warning_on('+zxjdbc', r'.*does not support (update|delete)d rowcount')
     def test_child_row_switch_two(self):
         P = self.classes.P
 
