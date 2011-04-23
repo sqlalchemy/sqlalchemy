@@ -1203,6 +1203,33 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
             "t_1.a AS t_1_a, t_1.b AS t_1_b FROM t AS t_1"
         )
 
+    def test_distinct_on_subquery_anon(self):
+
+        sq = select([self.table]).alias()
+        q = select([self.table.c.id,sq.c.id]).\
+                    distinct(sq.c.id).\
+                    where(self.table.c.id==sq.c.id)
+
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (anon_1.id) t.id, anon_1.id "
+            "FROM t, (SELECT t.id AS id, t.a AS a, t.b "
+            "AS b FROM t) AS anon_1 WHERE t.id = anon_1.id"
+            )
+
+    def test_distinct_on_subquery_named(self):
+        sq = select([self.table]).alias('sq')
+        q = select([self.table.c.id,sq.c.id]).\
+                    distinct(sq.c.id).\
+                    where(self.table.c.id==sq.c.id)
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT ON (sq.id) t.id, sq.id "
+            "FROM t, (SELECT t.id AS id, t.a AS a, "
+            "t.b AS b FROM t) AS sq WHERE t.id = sq.id"
+            )
+
+
 class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     __only_on__ = 'postgresql'
