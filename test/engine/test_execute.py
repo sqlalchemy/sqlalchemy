@@ -32,7 +32,7 @@ class ExecuteTest(fixtures.TestBase):
 
     @engines.close_first
     def teardown(self):
-        testing.db.connect().execute(users.delete())
+        testing.db.execute(users.delete())
 
     @classmethod
     def teardown_class(cls):
@@ -226,7 +226,7 @@ class CompiledCacheTest(fixtures.TestBase):
 
     @engines.close_first
     def teardown(self):
-        testing.db.connect().execute(users.delete())
+        testing.db.execute(users.delete())
 
     @classmethod
     def teardown_class(cls):
@@ -344,7 +344,7 @@ class EchoTest(fixtures.TestBase):
 
         # do an initial execute to clear out 'first connect'
         # messages
-        e.execute(select([10]))
+        e.execute(select([10])).close()
         self.buf.flush()
 
         return e
@@ -382,16 +382,16 @@ class EchoTest(fixtures.TestBase):
         e2 = self.testing_engine()
 
         e1.echo = True
-        e1.execute(select([1]))
-        e2.execute(select([2]))
+        e1.execute(select([1])).close()
+        e2.execute(select([2])).close()
 
         e1.echo = False
-        e1.execute(select([3]))
-        e2.execute(select([4]))
+        e1.execute(select([3])).close()
+        e2.execute(select([4])).close()
 
         e2.echo = True
-        e1.execute(select([5]))
-        e2.execute(select([6]))
+        e1.execute(select([5])).close()
+        e2.execute(select([6])).close()
 
         assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
         assert self.buf.buffer[2].getMessage().startswith("SELECT 6")
