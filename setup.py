@@ -24,6 +24,7 @@ except ImportError:
 
 cmdclass = {}
 pypy = hasattr(sys, 'pypy_version_info')
+jython = sys.platform.startswith('java')
 py3k = False
 extra = {}
 if sys.version_info < (2, 4):
@@ -264,7 +265,7 @@ def run_setup(with_cext):
             **kwargs
           )
 
-if pypy or py3k:
+if pypy or jython or py3k:
     run_setup(False)
     status_msgs(
         "WARNING: C extensions are not supported on " +
