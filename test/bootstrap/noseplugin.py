@@ -15,7 +15,7 @@ from test.bootstrap import config
 from test.bootstrap.config import (
     _create_testing_engine, _engine_pool, _engine_strategy, _engine_uri, _list_dbs, _log,
     _prep_testing_database, _require, _reverse_topological, _server_side_cursors,
-    _monkeypatch_cdecimal,
+    _monkeypatch_cdecimal, _zero_timeout,
     _set_table_options, base_config, db, db_label, db_url, file_config, post_configure, 
     pre_configure)
 
@@ -52,6 +52,8 @@ class NoseSQLAlchemy(Plugin):
             "MS-SQL)")
         opt("--mockpool", action="store_true", dest="mockpool",
             help="Use mock pool (asserts only one connection used)")
+        opt("--zero-timeout", action="callback", callback=_zero_timeout,
+            help="Set pool_timeout to zero, applies to QueuePool only")
         opt("--enginestrategy", action="callback", type="string",
             callback=_engine_strategy,
             help="Engine strategy (plain or threadlocal, defaults to plain)")

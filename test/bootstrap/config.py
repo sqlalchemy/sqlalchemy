@@ -53,6 +53,9 @@ def _list_dbs(*args):
 def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
 
+def _zero_timeout(options, opt_str, value, parser):
+    db_opts['pool_timeout'] = 0 
+
 def _engine_strategy(options, opt_str, value, parser):
     if value:
         db_opts['strategy'] = value

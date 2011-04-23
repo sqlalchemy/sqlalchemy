@@ -2308,32 +2308,36 @@ class MetaData(SchemaItem):
         if schema is not None:
             reflect_opts['schema'] = schema
 
-        available = util.OrderedSet(bind.engine.table_names(schema,
+        try:
+            available = util.OrderedSet(bind.engine.table_names(schema,
                                                             connection=conn))
-        if views:
-            available.update(
-                bind.dialect.get_view_names(conn or bind, schema)
-            )
+            if views:
+                available.update(
+                    bind.dialect.get_view_names(conn or bind, schema)
+                )
 
-        current = set(self.tables.iterkeys())
+            current = set(self.tables.iterkeys())
 
-        if only is None:
-            load = [name for name in available if name not in current]
-        elif util.callable(only):
-            load = [name for name in available
+            if only is None:
+                load = [name for name in available if name not in current]
+            elif util.callable(only):
+                load = [name for name in available
                     if name not in current and only(name, self)]
-        else:
-            missing = [name for name in only if name not in available]
-            if missing:
-                s = schema and (" schema '%s'" % schema) or ''
-                raise exc.InvalidRequestError(
-                    'Could not reflect: requested table(s) not available '
-                    'in %s%s: (%s)' % 
-                    (bind.engine.url, s, ', '.join(missing)))
-            load = [name for name in only if name not in current]
+            else:
+                missing = [name for name in only if name not in available]
+                if missing:
+                    s = schema and (" schema '%s'" % schema) or ''
+                    raise exc.InvalidRequestError(
+                        'Could not reflect: requested table(s) not available '
+                        'in %s%s: (%s)' % 
+                        (bind.engine.url, s, ', '.join(missing)))
+                load = [name for name in only if name not in current]
 
-        for name in load:
-            Table(name, self, **reflect_opts)
+            for name in load:
+                Table(name, self, **reflect_opts)
+        finally:
+            if conn is not None:
+                conn.close()
 
     def append_ddl_listener(self, event_name, listener):
         """Append a DDL event listener to this ``MetaData``.

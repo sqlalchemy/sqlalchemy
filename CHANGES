@@ -27,6 +27,10 @@ CHANGES
     connections are really closed when very 
     unusual DBAPI errors occur.
 
+  - metadata.reflect() and reflection.Inspector() 
+    had some reliance on GC to close connections
+    which were internally procured, fixed this.
+
   - Added explicit check for when Column .name
     is assigned as blank string [ticket:2140]
 

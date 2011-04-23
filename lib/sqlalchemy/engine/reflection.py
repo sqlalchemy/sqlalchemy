@@ -80,10 +80,6 @@ class Inspector(object):
         :meth:`Inspector.from_engine`
 
         """
-
-        # ensure initialized
-        bind.connect()
-
         # this might not be a connection, it could be an engine.
         self.bind = bind
 
@@ -92,6 +88,11 @@ class Inspector(object):
             self.engine = bind.engine
         else:
             self.engine = bind
+
+        if self.engine is bind:
+            # if engine, ensure initialized
+            bind.connect().close()
+
         self.dialect = self.engine.dialect
         self.info_cache = {}
 
