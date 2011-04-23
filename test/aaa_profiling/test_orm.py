@@ -10,6 +10,8 @@ import sys
 
 class MergeTest(fixtures.MappedTest):
 
+    __requires__ = 'cpython',
+
     @classmethod
     def define_tables(cls, metadata):
         parent = Table('parent', metadata, Column('id', Integer,
@@ -115,7 +117,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
     # count here,
     # so remove some platforms that have wildly divergent
     # callcounts.
-    __requires__ = 'python25',
+    __requires__ = 'python25', 'cpython'
     __unsupported_on__ = 'postgresql+pg8000', 'mysql+pymysql'
 
     @classmethod

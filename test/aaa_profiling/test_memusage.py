@@ -3,7 +3,6 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
     clear_mappers, sessionmaker, class_mapper
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
-from sqlalchemy.util import jython
 import operator
 from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, \
@@ -18,11 +17,6 @@ from sqlalchemy.util.compat import decimal
 import gc
 import weakref
 from test.lib import fixtures
-
-if jython:
-    from nose import SkipTest
-    raise SkipTest("Profiling not supported on this platform")
-
 
 class A(fixtures.ComparableEntity):
     pass
@@ -74,6 +68,8 @@ class EnsureZeroed(fixtures.ORMTest):
         _mapper_registry.clear()
 
 class MemUsageTest(EnsureZeroed):
+
+    __requires__ = 'cpython',
 
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda: True)
