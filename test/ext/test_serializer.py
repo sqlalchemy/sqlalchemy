@@ -88,6 +88,7 @@ class SerializeTest(fixtures.MappedTest):
         eq_(re_expr.execute().fetchall(), [(7, u'jack'), (8, u'ed'),
             (8, u'ed'), (8, u'ed'), (9, u'fred')])
 
+    @testing.fails_if(lambda: util.pypy, "problem in pickle")
     def test_query(self):
         q = Session.query(User).filter(User.name == 'ed'
                 ).options(joinedload(User.addresses))
@@ -134,6 +135,7 @@ class SerializeTest(fixtures.MappedTest):
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9),
             (u8, u10)])
 
+    @testing.fails_if(lambda: util.pypy, "problem in pickle")
     def test_any(self):
         r = User.addresses.any(Address.email == 'x')
         ser = serializer.dumps(r, -1)
