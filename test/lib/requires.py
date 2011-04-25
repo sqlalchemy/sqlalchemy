@@ -346,6 +346,14 @@ def python25(fn):
         )
     )
 
+def cpython(fn):
+    return _chain_decorators_on(
+         fn,
+         skip_if(lambda: util.jython or util.pypy, 
+           "cPython interpreter needed"
+         )
+    )
+
 def _has_cextensions():
     try:
         from sqlalchemy import cresultproxy, cprocessors

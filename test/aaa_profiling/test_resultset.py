@@ -5,7 +5,7 @@ NUM_RECORDS = 1000
 
 
 class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
-
+    __requires__ = 'cpython',
     __only_on__ = 'sqlite'
 
     @classmethod
@@ -53,6 +53,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
 class ExecutionTest(fixtures.TestBase):
+    __requires__ = 'cpython',
     __only_on__ = 'sqlite'
 
     def test_minimal_connection_execute(self):

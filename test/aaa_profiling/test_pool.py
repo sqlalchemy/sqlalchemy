@@ -4,6 +4,8 @@ from sqlalchemy.pool import QueuePool
 from sqlalchemy import pool as pool_module
 
 class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
+    __requires__ = 'cpython', 
+
     class Connection(object):
         def rollback(self):
             pass

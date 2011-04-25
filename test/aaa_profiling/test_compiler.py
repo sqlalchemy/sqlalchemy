@@ -3,6 +3,8 @@ from test.lib import *
 from sqlalchemy.engine import default
 
 class CompileTest(fixtures.TestBase, AssertsExecutionResults):
+    __requires__ = 'cpython',
+
     @classmethod
     def setup_class(cls):
 
