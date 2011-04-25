@@ -21,6 +21,10 @@ CHANGES
     a deprecation warning in 0.6.8.  
     [ticket:2144]
 
+  - Fixed a potential KeyError which under some
+    circumstances could occur with the identity 
+    map, part of [ticket:2148]
+
   - added Query.with_session() method, switches 
     Query to use a different session.
 

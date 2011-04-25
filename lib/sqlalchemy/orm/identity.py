@@ -138,9 +138,9 @@ class WeakInstanceDict(IdentityMap):
         self._manage_incoming_state(state)
 
     def get(self, key, default=None):
-        if not dict.__contains__(self, key):
+        state = dict.get(self, key, default)
+        if state is default:
             return default
-        state = dict.__getitem__(self, key)
         o = state.obj()
         if o is None:
             o = state._is_really_none()
