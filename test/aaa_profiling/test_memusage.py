@@ -172,7 +172,8 @@ class MemUsageTest(EnsureZeroed):
         def go():
             engine = engines.testing_engine(
                                 options={'logging_name':'FOO',
-                                        'pool_logging_name':'BAR'}
+                                        'pool_logging_name':'BAR',
+                                        'use_reaper':False}
                                     )
             sess = create_session(bind=engine)
 
