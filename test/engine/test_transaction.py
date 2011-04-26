@@ -3,6 +3,7 @@ from test.lib.testing import eq_, assert_raises, \
 import sys
 import time
 import threading
+from test.lib.engines import testing_engine
 from sqlalchemy import create_engine, MetaData, INT, VARCHAR, Sequence, \
     select, Integer, String, func, text, exc
 from test.lib.schema import Table
@@ -522,7 +523,7 @@ class TLTransactionTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         global users, metadata, tlengine
-        tlengine = create_engine(testing.db.url, strategy='threadlocal')
+        tlengine = testing_engine(options=dict(strategy='threadlocal'))
         metadata = MetaData()
         users = Table('query_users', metadata, Column('user_id', INT,
                       Sequence('query_users_id_seq', optional=True),
@@ -535,6 +536,7 @@ class TLTransactionTest(fixtures.TestBase):
 
     @classmethod
     def teardown_class(cls):
+        tlengine.close()
         metadata.drop_all(tlengine)
         tlengine.dispose()
 
@@ -546,7 +548,7 @@ class TLTransactionTest(fixtures.TestBase):
 
     @testing.crashes('oracle', 'TNS error of unknown origin occurs on the buildbot.')
     def test_rollback_no_trans(self):
-        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+        tlengine = testing_engine(options=dict(strategy="threadlocal"))
 
         # shouldn't fail
         tlengine.rollback()
@@ -558,7 +560,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.rollback()
 
     def test_commit_no_trans(self):
-        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+        tlengine = testing_engine(options=dict(strategy="threadlocal"))
 
         # shouldn't fail
         tlengine.commit()
@@ -570,7 +572,7 @@ class TLTransactionTest(fixtures.TestBase):
         tlengine.commit()
 
     def test_prepare_no_trans(self):
-        tlengine = create_engine(testing.db.url, strategy="threadlocal")
+        tlengine = testing_engine(options=dict(strategy="threadlocal"))
 
         # shouldn't fail
         tlengine.prepare()
@@ -933,7 +935,7 @@ class TLTransactionTest(fixtures.TestBase):
 
     @testing.crashes('oracle+cx_oracle', 'intermittent failures on the buildbot')
     def test_dispose(self):
-        eng = create_engine(testing.db.url, strategy='threadlocal')
+        eng = testing_engine(options=dict(strategy='threadlocal'))
         result = eng.execute(select([1]))
         eng.dispose()
         eng.execute(select([1]))
@@ -1133,14 +1135,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_engine_param_stays(self):
 
-        eng = create_engine(testing.db.url)
+        eng = testing_engine()
         isolation_level = eng.dialect.get_isolation_level(eng.connect().connection)
         level = self._non_default_isolation_level()
 
         ne_(isolation_level, level)
 
-        eng = create_engine(testing.db.url,
-                            isolation_level=level)
+        eng = testing_engine(options=dict(isolation_level=level))
         eq_(
             eng.dialect.get_isolation_level(eng.connect().connection),
             level
@@ -1162,12 +1163,12 @@ class IsolationLevelTest(fixtures.TestBase):
         conn.close()
 
     def test_default_level(self):
-        eng = create_engine(testing.db.url)
+        eng = testing_engine(options=dict())
         isolation_level = eng.dialect.get_isolation_level(eng.connect().connection)
         eq_(isolation_level, self._default_isolation_level())
 
     def test_reset_level(self):
-        eng = create_engine(testing.db.url)
+        eng = testing_engine(options=dict())
         conn = eng.connect()
         eq_(eng.dialect.get_isolation_level(conn.connection), self._default_isolation_level())
 
@@ -1180,7 +1181,7 @@ class IsolationLevelTest(fixtures.TestBase):
         conn.close()
 
     def test_reset_level_with_setting(self):
-        eng = create_engine(testing.db.url, isolation_level=self._non_default_isolation_level())
+        eng = testing_engine(options=dict(isolation_level=self._non_default_isolation_level()))
         conn = eng.connect()
         eq_(eng.dialect.get_isolation_level(conn.connection), self._non_default_isolation_level())
 
@@ -1193,7 +1194,7 @@ class IsolationLevelTest(fixtures.TestBase):
         conn.close()
 
     def test_invalid_level(self):
-        eng = create_engine(testing.db.url, isolation_level='FOO')
+        eng = testing_engine(options=dict(isolation_level='FOO'))
         assert_raises_message(
             exc.ArgumentError, 
                 "Invalid value '%s' for isolation_level. "
@@ -1203,7 +1204,7 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_per_connection(self):
         from sqlalchemy.pool import QueuePool
-        eng = create_engine(testing.db.url, poolclass=QueuePool, pool_size=2, max_overflow=0)
+        eng = testing_engine(options=dict(poolclass=QueuePool, pool_size=2, max_overflow=0))
 
         c1 = eng.connect()
         c1 = c1.execution_options(isolation_level=self._non_default_isolation_level())

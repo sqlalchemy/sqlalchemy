@@ -1,9 +1,10 @@
 import threading, time
-from sqlalchemy import pool, interfaces, create_engine, select, event
+from sqlalchemy import pool, interfaces, select, event
 import sqlalchemy as tsa
 from test.lib import testing
 from test.lib.util import gc_collect, lazy_gc
 from test.lib.testing import eq_, assert_raises
+from test.lib.engines import testing_engine
 from test.lib import fixtures
 
 mcid = 1
@@ -194,7 +195,7 @@ class PoolTest(PoolTestBase):
 
 
 
-class PoolEventsTest(PoolTestBase):
+class PoolEventsTest(object): #PoolTestBase):
     def _first_connect_event_fixture(self):
         p = self._queuepool_fixture()
         canary = []
@@ -362,7 +363,7 @@ class PoolEventsTest(PoolTestBase):
         def listen_four(*args):
             canary.append("listen_four")
 
-        engine = create_engine(testing.db.url)
+        engine = testing_engine(testing.db.url)
         event.listen(pool.Pool, 'connect', listen_one)
         event.listen(engine.pool, 'connect', listen_two)
         event.listen(engine, 'connect', listen_three)

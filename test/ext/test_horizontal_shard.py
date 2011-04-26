@@ -6,6 +6,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.sql import operators
 from test.lib import *
+from test.lib.engines import testing_engine
 from test.lib.testing import eq_
 from nose import SkipTest
 
@@ -16,12 +17,12 @@ class ShardTest(fixtures.TestBase):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
         try:
-            db1 = create_engine('sqlite:///shard1.db', pool_threadlocal=True)
+            db1 = testing_engine('sqlite:///shard1.db', options=dict(pool_threadlocal=True))
         except ImportError:
             raise SkipTest('Requires sqlite')
-        db2 = create_engine('sqlite:///shard2.db')
-        db3 = create_engine('sqlite:///shard3.db')
-        db4 = create_engine('sqlite:///shard4.db')
+        db2 = testing_engine('sqlite:///shard2.db')
+        db3 = testing_engine('sqlite:///shard3.db')
+        db4 = testing_engine('sqlite:///shard4.db')
 
         meta = MetaData()
         ids = Table('ids', meta,

@@ -89,8 +89,8 @@ class NoseSQLAlchemy(Plugin):
             fn(self.options, file_config)
 
     def begin(self):
-        global testing, requires, util, fixtures
-        from test.lib import testing, requires, fixtures
+        global testing, requires, util, fixtures, engines
+        from test.lib import testing, requires, fixtures, engines
         from sqlalchemy import util
 
         testing.db = db
@@ -170,9 +170,11 @@ class NoseSQLAlchemy(Plugin):
         testing.resetwarnings()
 
     def afterTest(self, test):
+        engines.testing_reaper._after_test_ctx()
         testing.resetwarnings()
 
-    def afterContext(self):
+    def stopContext(self, ctx):
+        engines.testing_reaper._stop_test_ctx()
         testing.global_cleanup_assertions()
 
     #def handleError(self, test, err):

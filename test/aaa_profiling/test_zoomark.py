@@ -25,7 +25,7 @@ class ZooMarkTest(fixtures.TestBase):
     components individually will fail.
 
     """
-
+    __requires__ = 'cpython',
     __only_on__ = 'postgresql+psycopg2'
     __skip_if__ = lambda : sys.version_info < (2, 5),
 

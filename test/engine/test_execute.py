@@ -2,11 +2,12 @@ from test.lib.testing import eq_, assert_raises, assert_raises_message, config
 import re
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
-    bindparam, select, event, TypeDecorator, create_engine
+    bindparam, select, event, TypeDecorator
 from sqlalchemy.sql import column, literal
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
 from test.lib import testing, engines
+from test.lib.engines import testing_engine
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import base, default
@@ -398,6 +399,7 @@ class EchoTest(fixtures.TestBase):
         assert len(self.buf.buffer) == 4
 
 class ResultProxyTest(fixtures.TestBase):
+
     def test_nontuple_row(self):
         """ensure the C version of BaseRowProxy handles 
         duck-type-dependent rows."""
@@ -499,8 +501,8 @@ class AlternateResultProxyTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
-        from sqlalchemy.engine import base, create_engine, default
-        cls.engine = engine = create_engine('sqlite://')
+        from sqlalchemy.engine import base, default
+        cls.engine = engine = testing_engine('sqlite://')
         m = MetaData()
         cls.table = t = Table('test', m, 
             Column('x', Integer, primary_key=True),
@@ -573,8 +575,8 @@ class EngineEventsTest(fixtures.TestBase):
                     break
 
     def test_per_engine_independence(self):
-        e1 = create_engine(config.db_url)
-        e2 = create_engine(config.db_url)
+        e1 = testing_engine(config.db_url)
+        e2 = testing_engine(config.db_url)
 
         canary = []
         def before_exec(conn, stmt, *arg):
@@ -600,8 +602,8 @@ class EngineEventsTest(fixtures.TestBase):
             canary.append('be3')
 
         event.listen(Engine, "before_execute", be1)
-        e1 = create_engine(config.db_url)
-        e2 = create_engine(config.db_url)
+        e1 = testing_engine(config.db_url)
+        e2 = testing_engine(config.db_url)
 
         event.listen(e1, "before_execute", be2)
 
@@ -621,7 +623,7 @@ class EngineEventsTest(fixtures.TestBase):
         def after_execute(conn, clauseelement, multiparams, params, result):
             assert isinstance(multiparams, (list, tuple))
             assert isinstance(params, dict)
-        e1 = create_engine(config.db_url)
+        e1 = testing_engine(config.db_url)
         event.listen(e1, 'before_execute', before_execute)
         event.listen(e1, 'after_execute', after_execute)
 

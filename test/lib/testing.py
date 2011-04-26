@@ -447,7 +447,7 @@ def global_cleanup_assertions():
     """
 
     testutil.lazy_gc()
-    assert not pool._refs
+    assert not pool._refs, str(pool._refs)
 
 def against(*queries):
     """Boolean predicate, compares to testing database configuration.

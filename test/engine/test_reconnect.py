@@ -1,13 +1,14 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 import time
 import weakref
-from sqlalchemy import select, MetaData, Integer, String, pool
+from sqlalchemy import select, MetaData, Integer, String, pool, create_engine
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
 from test.lib import testing, engines
 from test.lib.util import gc_collect
 from sqlalchemy import exc
 from test.lib import fixtures
+from test.lib.engines import testing_engine
 
 class MockDisconnect(Exception):
     pass
@@ -54,12 +55,17 @@ class MockReconnectTest(fixtures.TestBase):
         global db, dbapi
         dbapi = MockDBAPI()
 
-        db = tsa.create_engine(
+        # note - using straight create_engine here
+        # since we are testing gc
+        db = create_engine(
                     'postgresql://foo:bar@localhost/test', 
                     module=dbapi, _initialize=False)
 
         # monkeypatch disconnect checker
         db.dialect.is_disconnect = lambda e, conn, cursor: isinstance(e, MockDisconnect)
+
+    def teardown(self):
+        db.dispose()
 
     def test_reconnect(self):
         """test that an 'is_disconnect' condition will invalidate the
@@ -198,9 +204,9 @@ class CursorErrTest(fixtures.TestBase):
 
         dbapi = MDBAPI()
 
-        db = tsa.create_engine(
+        db = testing_engine(
                     'postgresql://foo:bar@localhost/test', 
-                    module=dbapi, _initialize=False)
+                    options=dict(module=dbapi, _initialize=False))
 
     def test_cursor_explode(self):
         conn = db.connect()

@@ -54,7 +54,7 @@ def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
 
 def _zero_timeout(options, opt_str, value, parser):
-    db_opts['pool_timeout'] = 0 
+    warnings.warn("--zero-timeout testing option is now on in all cases")
 
 def _engine_strategy(options, opt_str, value, parser):
     if value:
