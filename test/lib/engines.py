@@ -148,6 +148,11 @@ def testing_engine(url=None, options=None):
     from sqlalchemy import create_engine
     from test.lib.assertsql import asserter
 
+    if not options:
+        use_reaper = True
+    else:
+        use_reaper = options.pop('use_reaper', True)
+
     url = url or config.db_url
     options = options or config.db_opts
 
@@ -157,12 +162,9 @@ def testing_engine(url=None, options=None):
         engine.pool._max_overflow = 0
     event.listen(engine, 'after_execute', asserter.execute)
     event.listen(engine, 'after_cursor_execute', asserter.cursor_execute)
-    event.listen(engine.pool, 'checkout', testing_reaper.checkout)
-
-    # may want to call this, results
-    # in first-connect initializers
-    #engine.connect()
-    testing_reaper.add_engine(engine)
+    if use_reaper:
+        event.listen(engine.pool, 'checkout', testing_reaper.checkout)
+        testing_reaper.add_engine(engine)
 
     return engine
 
