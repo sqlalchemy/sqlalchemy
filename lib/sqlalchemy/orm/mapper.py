@@ -589,6 +589,7 @@ class Mapper(object):
                     "a primary mapper first before setting up a non primary "
                     "Mapper." % self.class_)
             self.class_manager = manager
+            self._identity_class = manager.mapper._identity_class
             _mapper_registry[self] = True
             return
 

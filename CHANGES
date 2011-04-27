@@ -31,6 +31,13 @@ CHANGES
   - horizontal shard query should use execution
     options per connection as per [ticket:2131]
 
+  - a non_primary mapper will inherit the _identity_class
+    of the primary mapper.  This so that a non_primary
+    established against a class that's normally in an
+    inheritance mapping will produce results that are 
+    identity-map compatible with that of the primary
+    mapper [ticket:2151] (also in 0.6.8)
+
 - sql
   - Some improvements to error handling inside
     of the execute procedure to ensure auto-close
