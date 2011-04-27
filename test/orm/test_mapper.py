@@ -451,6 +451,19 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(str(Node.parent == n2), ":param_1 = nodes.parent_id")
 
     @testing.resolve_artifact_names
+    def test_non_primary_identity_class(self):
+        class AddressUser(User):
+            pass
+        m1 = mapper(User, users, polymorphic_identity='user')
+        m2 = mapper(AddressUser, addresses, inherits=User, polymorphic_identity='address')
+        m3 = mapper(AddressUser, addresses, non_primary=True)
+        assert m3._identity_class is m2._identity_class
+        eq_(
+            m2.identity_key_from_instance(AddressUser()),
+            m3.identity_key_from_instance(AddressUser())
+        )
+
+    @testing.resolve_artifact_names
     def test_illegal_non_primary(self):
         mapper(User, users)
         mapper(Address, addresses)
