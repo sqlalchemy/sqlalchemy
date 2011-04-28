@@ -61,6 +61,12 @@ CHANGES
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.
 
+- documentation
+  - Removed the usage of the "collections.MutableMapping"
+    abc from the ext.mutable docs as it was being used
+    incorrectly and makes the example more difficult
+    to understand in any case.  [ticket:2152]
+
 - examples
   - removed the ancient "polymorphic association"
     examples and replaced with an updated set of
