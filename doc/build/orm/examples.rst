@@ -57,6 +57,15 @@ Location: /examples/dynamic_dict/
 
 .. automodule:: dynamic_dict
 
+.. _examples_generic_associations:
+
+Generic Associations
+--------------------
+
+Location: /examples/generic_associations
+
+.. automodule:: generic_associations
+
 .. _examples_sharding:
 
 Horizontal Sharding
@@ -90,9 +99,7 @@ Location: /examples/nested_sets/
 Polymorphic Associations
 ------------------------
 
-Location: /examples/poly_assoc/
-
-.. automodule:: poly_assoc
+See :ref:`examples_generic_associations` for a modern version of polymorphic associations.
 
 PostGIS Integration
 -------------------
