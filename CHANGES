@@ -61,6 +61,13 @@ CHANGES
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.
 
+- examples
+  - removed the ancient "polymorphic association"
+    examples and replaced with an updated set of
+    examples that use declarative mixins, 
+    "generic_associations".   Each presents an alternative
+    table layout.
+
 0.7.0b4
 =======
 - general
