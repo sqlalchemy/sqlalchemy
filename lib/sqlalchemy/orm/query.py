@@ -32,14 +32,12 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
-    join as orm_join,with_parent, _attr_as_key
+    join as orm_join,with_parent, _attr_as_key, aliased
     )
 
 
 __all__ = ['Query', 'QueryContext', 'aliased']
 
-
-aliased = AliasedClass
 
 def _generative(*assertions):
     """Mark a method as generative."""
@@ -199,34 +197,6 @@ class Query(object):
             if alias:
                 return alias.adapt_clause(element)
 
-    def __replace_element(self, adapters):
-        def replace(elem):
-            if '_halt_adapt' in elem._annotations:
-                return elem
-
-            for adapter in adapters:
-                e = adapter(elem)
-                if e is not None:
-                    return e
-        return replace
-
-    def __replace_orm_element(self, adapters):
-        def replace(elem):
-            if '_halt_adapt' in elem._annotations:
-                return elem
-
-            if "_orm_adapt" in elem._annotations \
-                    or "parententity" in elem._annotations:
-                for adapter in adapters:
-                    e = adapter(elem)
-                    if e is not None:
-                        return e
-        return replace
-
-    @_generative()
-    def _adapt_all_clauses(self):
-        self._disable_orm_filtering = True
-
     def _adapt_col_list(self, cols):
         return [
                     self._adapt_clause(
@@ -235,33 +205,70 @@ class Query(object):
                     for o in cols
                 ]
 
+    @_generative()
+    def _adapt_all_clauses(self):
+        self._orm_only_adapt = False
+
     def _adapt_clause(self, clause, as_filter, orm_only):
+        """Adapt incoming clauses to transformations which have been applied 
+        within this query."""
+
         adapters = []
+
+        # do we adapt all expression elements or only those
+        # tagged as 'ORM' constructs ?
+        orm_only = getattr(self, '_orm_only_adapt', orm_only)
+
         if as_filter and self._filter_aliases:
             for fa in self._filter_aliases._visitor_iterator:
-                adapters.append(fa.replace)
+                adapters.append(
+                    (
+                        orm_only, fa.replace
+                    )
+                )
 
         if self._from_obj_alias:
-            adapters.append(self._from_obj_alias.replace)
+            # for the "from obj" alias, apply extra rule to the
+            # 'ORM only' check, if this query were generated from a 
+            # subquery of itself, i.e. _from_selectable(), apply adaption
+            # to all SQL constructs.
+            adapters.append(
+                (
+                    getattr(self, '_orm_only_from_obj_alias', orm_only), 
+                    self._from_obj_alias.replace
+                )
+            )
 
         if self._polymorphic_adapters:
-            adapters.append(self.__adapt_polymorphic_element)
+            adapters.append(
+                (
+                    orm_only, self.__adapt_polymorphic_element
+                )
+            )
 
         if not adapters:
             return clause
 
-        if getattr(self, '_disable_orm_filtering', not orm_only):
-            return visitors.replacement_traverse(
-                                clause, 
-                                {'column_collections':False}, 
-                                self.__replace_element(adapters)
-                            )
-        else:
-            return visitors.replacement_traverse(
-                                clause, 
-                                {'column_collections':False}, 
-                                self.__replace_orm_element(adapters)
-                            )
+        def replace(elem):
+            if '_halt_adapt' in elem._annotations:
+                return elem
+
+            for _orm_only, adapter in adapters:
+                # if 'orm only', look for ORM annotations
+                # in the element before adapting.
+                if not _orm_only or \
+                    '_orm_adapt' in elem._annotations or \
+                    "parententity" in elem._annotations:
+
+                    e = adapter(elem)
+                    if e is not None:
+                        return e
+
+        return visitors.replacement_traverse(
+                            clause, 
+                            {'column_collections':False}, 
+                            replace
+                        )
 
     def _entity_zero(self):
         return self._entities[0]
@@ -812,6 +819,11 @@ class Query(object):
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from(fromclause)
+
+        # this enables clause adaptation for non-ORM
+        # expressions.
+        self._orm_only_from_obj_alias = False
+
         old_entities = self._entities
         self._entities = []
         for e in old_entities:
@@ -1459,7 +1471,7 @@ class Query(object):
         # until reset_joinpoint() is called.
         if need_adapter:
             self._filter_aliases = ORMAdapter(right,
-                        equivalents=right_mapper._equivalent_columns,
+                        equivalents=right_mapper and right_mapper._equivalent_columns or {},
                         chain_to=self._filter_aliases)
 
         # if the onclause is a ClauseElement, adapt it with any 

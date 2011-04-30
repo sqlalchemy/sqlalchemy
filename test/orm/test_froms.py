@@ -302,6 +302,152 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         )
 
+class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
+    """test access of columns after _from_selectable has been applied"""
+
+    __dialect__ = 'default'
+
+    def test_from_self(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User).from_self()
+        self.assert_compile(
+            q.filter(User.name=='ed'),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name FROM (SELECT users.id AS users_id, users.name "
+            "AS users_name FROM users) AS anon_1 WHERE anon_1.users_name = "
+            ":name_1"
+        )
+
+    def test_from_self_twice(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User).from_self(User.id, User.name).from_self()
+        self.assert_compile(
+            q.filter(User.name=='ed'),
+            "SELECT anon_1.anon_2_users_id AS anon_1_anon_2_users_id, "
+            "anon_1.anon_2_users_name AS anon_1_anon_2_users_name FROM "
+            "(SELECT anon_2.users_id AS anon_2_users_id, anon_2.users_name "
+            "AS anon_2_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users) AS anon_2) AS anon_1 "
+            "WHERE anon_1.anon_2_users_name = :name_1"
+        )
+
+    def test_select_from(self):
+        User = self.classes.User
+        sess = create_session()
+
+        q = sess.query(User)
+        q = sess.query(User).select_from(q.statement)
+        self.assert_compile(
+            q.filter(User.name=='ed'),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1 WHERE anon_1.name = :name_1"
+        )
+
+    def test_anonymous_expression(self):
+        from sqlalchemy.sql import column
+
+        sess = create_session()
+        c1, c2 = column('c1'), column('c2')
+        q1 = sess.query(c1, c2).filter(c1 == 'dog')
+        q2 = sess.query(c1, c2).filter(c1 == 'cat')
+        q3 = q1.union(q2)
+        self.assert_compile(
+            q3.order_by(c1),
+            "SELECT anon_1.c1 AS anon_1_c1, anon_1.c2 "
+            "AS anon_1_c2 FROM (SELECT c1 AS c1, c2 AS c2 WHERE "
+            "c1 = :c1_1 UNION SELECT c1 AS c1, c2 AS c2 "
+            "WHERE c1 = :c1_2) AS anon_1 ORDER BY anon_1.c1"
+        )
+
+    def test_anonymous_expression_from_self_twice(self):
+        from sqlalchemy.sql import column
+
+        sess = create_session()
+        c1, c2 = column('c1'), column('c2')
+        q1 = sess.query(c1, c2).filter(c1 == 'dog')
+        q1 = q1.from_self().from_self()
+        self.assert_compile(
+            q1.order_by(c1),
+            "SELECT anon_1.anon_2_c1 AS anon_1_anon_2_c1, anon_1.anon_2_c2 AS "
+            "anon_1_anon_2_c2 FROM (SELECT anon_2.c1 AS anon_2_c1, anon_2.c2 "
+            "AS anon_2_c2 FROM (SELECT c1 AS c1, c2 AS c2 WHERE c1 = :c1_1) AS "
+            "anon_2) AS anon_1 ORDER BY anon_1.anon_2_c1"
+        )
+
+    def test_anonymous_expression_union(self):
+        from sqlalchemy.sql import column
+
+        sess = create_session()
+        c1, c2 = column('c1'), column('c2')
+        q1 = sess.query(c1, c2).filter(c1 == 'dog')
+        q2 = sess.query(c1, c2).filter(c1 == 'cat')
+        q3 = q1.union(q2)
+        self.assert_compile(
+            q3.order_by(c1),
+            "SELECT anon_1.c1 AS anon_1_c1, anon_1.c2 "
+            "AS anon_1_c2 FROM (SELECT c1 AS c1, c2 AS c2 WHERE "
+            "c1 = :c1_1 UNION SELECT c1 AS c1, c2 AS c2 "
+            "WHERE c1 = :c1_2) AS anon_1 ORDER BY anon_1.c1"
+        )
+
+    def test_table_anonymous_expression_from_self_twice(self):
+        from sqlalchemy.sql import column, table
+
+        sess = create_session()
+        t1 = table('t1', column('c1'), column('c2'))
+        q1 = sess.query(t1.c.c1, t1.c.c2).filter(t1.c.c1 == 'dog')
+        q1 = q1.from_self().from_self()
+        self.assert_compile(
+            q1.order_by(t1.c.c1),
+            "SELECT anon_1.anon_2_t1_c1 AS anon_1_anon_2_t1_c1, anon_1.anon_2_t1_c2 "
+            "AS anon_1_anon_2_t1_c2 FROM (SELECT anon_2.t1_c1 AS anon_2_t1_c1, "
+            "anon_2.t1_c2 AS anon_2_t1_c2 FROM (SELECT t1.c1 AS t1_c1, t1.c2 "
+            "AS t1_c2 FROM t1 WHERE t1.c1 = :c1_1) AS anon_2) AS anon_1 ORDER BY "
+            "anon_1.anon_2_t1_c1"
+        )
+
+    def test_anonymous_labeled_expression(self):
+        from sqlalchemy.sql import column
+
+        sess = create_session()
+        c1, c2 = column('c1'), column('c2')
+        q1 = sess.query(c1.label('foo'), c2.label('bar')).filter(c1 == 'dog')
+        q2 = sess.query(c1.label('foo'), c2.label('bar')).filter(c1 == 'cat')
+        q3 = q1.union(q2)
+        self.assert_compile(
+            q3.order_by(c1),
+            "SELECT anon_1.foo AS anon_1_foo, anon_1.bar AS anon_1_bar FROM "
+            "(SELECT c1 AS foo, c2 AS bar WHERE c1 = :c1_1 UNION SELECT "
+            "c1 AS foo, c2 AS bar WHERE c1 = :c1_2) AS anon_1 ORDER BY anon_1.foo"
+        )
+
+    def test_anonymous_expression_plus_aliased_join(self):
+        """test that the 'dont alias non-ORM' rule remains for other 
+        kinds of aliasing when _from_selectable() is used."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+        addresses = self.tables.addresses
+
+        sess = create_session()
+        q1 = sess.query(User.id).filter(User.id > 5)
+        q1 = q1.from_self()
+        q1 = q1.join(User.addresses, aliased=True).\
+                order_by(User.id, Address.id, addresses.c.id)
+        self.assert_compile(
+            q1,
+            "SELECT anon_1.users_id AS anon_1_users_id "
+            "FROM (SELECT users.id AS users_id FROM users "
+            "WHERE users.id > :id_1) AS anon_1 JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_id, addresses_1.id, addresses.id"
+        )
+
 class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'
 

@@ -1261,6 +1261,37 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
+    def test_order_by_anonymous_col(self):
+        User = self.classes.User
+
+        s = Session()
+
+        c1, c2 = column('c1'), column('c2')
+        f = c1.label('foo')
+        q1 = s.query(User, f, c2.label('bar'))
+        q2 = s.query(User, c1.label('foo'), c2.label('bar'))
+        q3 = q1.union(q2)
+
+        self.assert_compile(
+            q3.order_by(c1),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name, anon_1.foo AS anon_1_foo, anon_1.bar AS "
+            "anon_1_bar FROM (SELECT users.id AS users_id, users.name AS "
+            "users_name, c1 AS foo, c2 AS bar FROM users UNION SELECT users.id "
+            "AS users_id, users.name AS users_name, c1 AS foo, c2 AS bar "
+            "FROM users) AS anon_1 ORDER BY anon_1.foo"
+        )
+
+        self.assert_compile(
+            q3.order_by(f),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name, anon_1.foo AS anon_1_foo, anon_1.bar AS "
+            "anon_1_bar FROM (SELECT users.id AS users_id, users.name AS "
+            "users_name, c1 AS foo, c2 AS bar FROM users UNION SELECT users.id "
+            "AS users_id, users.name AS users_name, c1 AS foo, c2 AS bar "
+            "FROM users) AS anon_1 ORDER BY anon_1.foo"
+        )
+
     def test_union_mapped_colnames_preserved_across_subquery(self):
         User = self.classes.User
 

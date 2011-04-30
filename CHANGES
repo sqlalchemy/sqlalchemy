@@ -15,6 +15,16 @@ CHANGES
     fixed up some of the error messages tailored
     in [ticket:2069]
 
+  - Fine tuning of Query clause adaptation when
+    from_self(), union(), or other "select from
+    myself" operation, such that plain SQL expression
+    elements added to filter(), order_by() etc.
+    which are present in the nested "from myself" 
+    query *will* be adapted in the same way an ORM
+    expression element will, since these
+    elements are otherwise not easily accessible.
+    [ticket:2155]
+
   - It is an error to call query.get() when the
     given entity is not a single, full class 
     entity or mapper (i.e. a column).  This is
