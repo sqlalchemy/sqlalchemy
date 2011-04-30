@@ -1,7 +1,7 @@
 import sys, types, weakref
 from collections import deque
 from test.bootstrap import config
-from test.lib.util import decorator
+from test.lib.util import decorator, gc_collect
 from sqlalchemy.util import callable
 from sqlalchemy import event, pool
 from sqlalchemy.engine import base as engine_base
@@ -42,8 +42,13 @@ class ConnectionKiller(object):
                 self._safe(rec._close)
 
     def _after_test_ctx(self):
-        for conn in self.conns:
-            self._safe(conn.rollback)
+        pass
+        # this can cause a deadlock with pg8000 - pg8000 acquires
+        # prepared statment lock inside of rollback() - if async gc
+        # is collecting in finalize_fairy, deadlock.
+        # not sure if this should be if pypy/jython only
+        #for conn in self.conns:
+        #    self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
         self.close_all()
