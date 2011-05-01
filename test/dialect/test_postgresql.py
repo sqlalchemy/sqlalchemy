@@ -1872,33 +1872,42 @@ class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql+psycopg2'
 
-    @classmethod
-    def setup_class(cls):
-        global ss_engine
-        ss_engine = \
-            engines.testing_engine(options={'server_side_cursors'
-                                   : True})
+    def _fixture(self, server_side_cursors):
+        self.engine = engines.testing_engine(
+                        options={'server_side_cursors':server_side_cursors}
+                    )
+        return self.engine
 
-    @classmethod
-    def teardown_class(cls):
-        ss_engine.dispose()
+    def tearDown(self):
+        engines.testing_reaper.close_all()
+        self.engine.dispose()
 
-    def test_uses_ss(self):
-        result = ss_engine.execute('select 1')
-        assert result.cursor.name
-        result = ss_engine.execute(text('select 1'))
-        assert result.cursor.name
-        result = ss_engine.execute(select([1]))
+    def test_global_string(self):
+        engine = self._fixture(True)
+        result = engine.execute('select 1')
         assert result.cursor.name
 
-    def test_uses_ss_when_explicitly_enabled(self):
-        engine = engines.testing_engine(options={'server_side_cursors'
-                : False})
+    def test_global_text(self):
+        engine = self._fixture(True)
+        result = engine.execute(text('select 1'))
+        assert result.cursor.name
+
+    def test_global_expr(self):
+        engine = self._fixture(True)
+        result = engine.execute(select([1]))
+        assert result.cursor.name
+
+    def test_global_off_explicit(self):
+        engine = self._fixture(False)
         result = engine.execute(text('select 1'))
 
         # It should be off globally ...
 
         assert not result.cursor.name
+
+    def test_stmt_option(self):
+        engine = self._fixture(False)
+
         s = select([1]).execution_options(stream_results=True)
         result = engine.execute(s)
 
@@ -1906,65 +1915,78 @@ class ServerSideCursorsTest(fixtures.TestBase, AssertsExecutionResults):
 
         assert result.cursor.name
 
-        # and this one
 
+    def test_conn_option(self):
+        engine = self._fixture(False)
+
+        # and this one
         result = \
             engine.connect().execution_options(stream_results=True).\
                 execute('select 1'
                 )
         assert result.cursor.name
 
-        # not this one
+    def test_stmt_enabled_conn_option_disabled(self):
+        engine = self._fixture(False)
 
+        s = select([1]).execution_options(stream_results=True)
+
+        # not this one
         result = \
             engine.connect().execution_options(stream_results=False).\
                 execute(s)
         assert not result.cursor.name
 
-    def test_ss_explicitly_disabled(self):
+    def test_stmt_option_disabled(self):
+        engine = self._fixture(True)
         s = select([1]).execution_options(stream_results=False)
-        result = ss_engine.execute(s)
+        result = engine.execute(s)
         assert not result.cursor.name
 
     def test_aliases_and_ss(self):
-        engine = engines.testing_engine(options={'server_side_cursors'
-                : False})
+        engine = self._fixture(False)
         s1 = select([1]).execution_options(stream_results=True).alias()
         result = engine.execute(s1)
         assert result.cursor.name
 
         # s1's options shouldn't affect s2 when s2 is used as a
         # from_obj.
-
         s2 = select([1], from_obj=s1)
         result = engine.execute(s2)
         assert not result.cursor.name
 
-    def test_for_update_and_ss(self):
+    def test_for_update_expr(self):
+        engine = self._fixture(True)
         s1 = select([1], for_update=True)
-        result = ss_engine.execute(s1)
-        assert result.cursor.name
-        result = ss_engine.execute('SELECT 1 FOR UPDATE')
+        result = engine.execute(s1)
         assert result.cursor.name
 
-    def test_text_with_ss(self):
-        engine = engines.testing_engine(options={'server_side_cursors'
-                : False})
+    def test_for_update_string(self):
+        engine = self._fixture(True)
+        result = engine.execute('SELECT 1 FOR UPDATE')
+        assert result.cursor.name
+
+    def test_text_no_ss(self):
+        engine = self._fixture(False)
         s = text('select 42')
         result = engine.execute(s)
         assert not result.cursor.name
+
+    def test_text_ss_option(self):
+        engine = self._fixture(False)
         s = text('select 42').execution_options(stream_results=True)
         result = engine.execute(s)
         assert result.cursor.name
 
     def test_roundtrip(self):
-        test_table = Table('test_table', MetaData(ss_engine),
+        engine = self._fixture(True)
+        test_table = Table('test_table', MetaData(engine),
                            Column('id', Integer, primary_key=True),
                            Column('data', String(50)))
         test_table.create(checkfirst=True)
         try:
             test_table.insert().execute(data='data1')
-            nextid = ss_engine.execute(Sequence('test_table_id_seq'))
+            nextid = engine.execute(Sequence('test_table_id_seq'))
             test_table.insert().execute(id=nextid, data='data2')
             eq_(test_table.select().execute().fetchall(), [(1, 'data1'
                 ), (2, 'data2')])
