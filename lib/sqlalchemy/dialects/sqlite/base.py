@@ -745,7 +745,8 @@ class SQLiteDialect(default.DefaultDialect):
 
 
 def _pragma_cursor(cursor):
-    """work around SQLite issue whereby cursor.description is blank when PRAGMA returns no rows."""
+    """work around SQLite issue whereby cursor.description 
+    is blank when PRAGMA returns no rows."""
 
     if cursor.closed:
         cursor.fetchone = lambda: None

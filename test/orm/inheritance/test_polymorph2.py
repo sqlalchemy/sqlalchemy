@@ -6,7 +6,7 @@ from test.lib.testing import eq_
 from sqlalchemy import *
 from sqlalchemy import util
 from sqlalchemy.orm import *
-
+from sqlalchemy.orm.interfaces import MANYTOONE
 from test.lib import AssertsExecutionResults, testing
 from test.lib.util import function_named
 from test.lib import fixtures
@@ -1078,39 +1078,53 @@ class InheritingEagerTest(fixtures.MappedTest):
 class MissingPolymorphicOnTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global tablea, tableb, tablec, tabled
         tablea = Table('tablea', metadata, 
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
             Column('adata', String(50)),
             )
         tableb = Table('tableb', metadata, 
-            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
             Column('aid', Integer, ForeignKey('tablea.id')),
             Column('data', String(50)),
             )
         tablec = Table('tablec', metadata, 
-            Column('id', Integer, ForeignKey('tablea.id'), primary_key=True),
+            Column('id', Integer, ForeignKey('tablea.id'), 
+                                    primary_key=True),
             Column('cdata', String(50)),
             )
         tabled = Table('tabled', metadata, 
-            Column('id', Integer, ForeignKey('tablec.id'), primary_key=True),
+            Column('id', Integer, ForeignKey('tablec.id'), 
+                                    primary_key=True),
             Column('ddata', String(50)),
             )
 
-    def test_polyon_col_setsup(self):
-        class A(fixtures.ComparableEntity):
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Comparable):
             pass
-        class B(fixtures.ComparableEntity):
+        class B(cls.Comparable):
             pass
         class C(A):
             pass
         class D(C):
             pass
 
-        poly_select = select([tablea, tableb.c.data.label('discriminator')], from_obj=tablea.join(tableb)).alias('poly')
+    def test_polyon_col_setsup(self):
+        tablea, tableb, tablec, tabled = self.tables.tablea, \
+            self.tables.tableb, self.tables.tablec, self.tables.tabled
+        A, B, C, D = self.classes.A, self.classes.B, self.classes.C, \
+            self.classes.D
+        poly_select = select(
+                        [tablea, tableb.c.data.label('discriminator')], 
+                        from_obj=tablea.join(tableb)).alias('poly')
 
         mapper(B, tableb)
-        mapper(A, tablea, with_polymorphic=('*', poly_select), polymorphic_on=poly_select.c.discriminator, properties={
+        mapper(A, tablea, 
+                    with_polymorphic=('*', poly_select),
+                     polymorphic_on=poly_select.c.discriminator, 
+        properties={
             'b':relationship(B, uselist=False)
         })
         mapper(C, tablec, inherits=A,polymorphic_identity='c')
@@ -1123,5 +1137,11 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
         sess.add(d)
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(A).all(), [C(cdata='c1', adata='a1'), D(cdata='c2', adata='a2', ddata='d2')])
+        eq_(
+            sess.query(A).all(), 
+            [
+                C(cdata='c1', adata='a1'), 
+                D(cdata='c2', adata='a2', ddata='d2')
+            ]
+        )
 
