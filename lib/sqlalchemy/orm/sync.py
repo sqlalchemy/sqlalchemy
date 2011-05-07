@@ -85,7 +85,7 @@ def _raise_col_to_prop(isdest, source_mapper, source_column, dest_mapper, dest_c
                                 "Can't execute sync rule for destination column '%s'; "
                                 "mapper '%s' does not map this column.  Try using an explicit"
                                 " `foreign_keys` collection which does not include this column "
-                                "(or use a viewonly=True relation)." % (dest_column, source_mapper)
+                                "(or use a viewonly=True relation)." % (dest_column, dest_mapper)
                                 )
     else:
         raise exc.UnmappedColumnError(

@@ -25,6 +25,11 @@ CHANGES
     issues, the original rationale for the mutex.  
     [ticket:2148]
 
+  - Fixed the error message emitted for "can't
+    execute syncrule for destination column 'q';
+    mapper 'X' does not map this column" to 
+    reference the correct mapper.  [ticket:2163].
+
 - sql
   - Fixed bug whereby if FetchedValue was passed
     to column server_onupdate, it would not
