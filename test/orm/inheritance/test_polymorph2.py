@@ -12,6 +12,7 @@ from sqlalchemy.util import function_named
 from test.orm import _base, _fixtures
 from sqlalchemy.test.testing import eq_
 from sqlalchemy.test.schema import Table, Column
+from sqlalchemy.orm.interfaces import MANYTOONE
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
@@ -1121,3 +1122,116 @@ class MissingPolymorphicOnTest(_base.MappedTest):
         sess.expunge_all()
         eq_(sess.query(A).all(), [C(cdata='c1', adata='a1'), D(cdata='c2', adata='a2', ddata='d2')])
 
+class JoinedInhAdjacencyTest(_base.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('people', metadata,
+                 Column('id', Integer, primary_key=True, 
+                                test_needs_autoincrement=True),
+                 Column('type', String(30)),
+                 )
+        Table('users', metadata,
+              Column('id', Integer, ForeignKey('people.id'), 
+                                primary_key=True),
+              Column('supervisor_id', Integer, ForeignKey('people.id')),
+        )
+        Table('dudes', metadata,
+              Column('id', Integer, ForeignKey('users.id'), 
+                                primary_key=True),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Person(_base.ComparableEntity):
+            pass
+
+        class User(Person):
+            pass
+
+        class Dude(User):
+            pass
+
+    @testing.resolve_artifact_names
+    def _roundtrip(self):
+        sess = Session()
+        u1 = User()
+        u2 = User()
+        u2.supervisor = u1
+        sess.add_all([u1, u2])
+        sess.commit()
+
+        assert u2.supervisor is u1
+
+    @testing.resolve_artifact_names
+    def _dude_roundtrip(self):
+        sess = Session()
+        u1 = User()
+        d1 = Dude()
+        d1.supervisor = u1
+        sess.add_all([u1, d1])
+        sess.commit()
+
+        assert d1.supervisor is u1
+
+    @testing.resolve_artifact_names
+    def test_joined_to_base(self):
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+        )
+        mapper(User, users, inherits=Person,
+            polymorphic_identity='user',
+            inherit_condition=(users.c.id == people.c.id),
+            properties = {
+                'supervisor': relationship(Person,
+                                primaryjoin=users.c.supervisor_id==people.c.id,
+                               ),
+               }
+        )
+
+        assert User.supervisor.property.direction is MANYTOONE
+        self._roundtrip()
+
+    @testing.resolve_artifact_names
+    def test_joined_to_same_subclass(self):
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+        )
+        mapper(User, users, inherits=Person,
+            polymorphic_identity='user',
+            inherit_condition=(users.c.id == people.c.id),
+            properties = {
+                'supervisor': relationship(User,
+                                   primaryjoin=users.c.supervisor_id==people.c.id,
+                                   remote_side=people.c.id,
+                                   foreign_keys=[users.c.supervisor_id]
+                               ),
+               }
+        )
+        assert User.supervisor.property.direction is MANYTOONE
+        self._roundtrip()
+
+    @testing.resolve_artifact_names
+    def test_joined_subclass_to_superclass(self):
+        mapper(Person, people,
+            polymorphic_on=people.c.type,
+            polymorphic_identity='person',
+        )
+        mapper(User, users, inherits=Person,
+            polymorphic_identity='user',
+            inherit_condition=(users.c.id == people.c.id),
+        )
+        mapper(Dude, dudes, inherits=User,
+            polymorphic_identity='dude',
+            inherit_condition=(dudes.c.id==users.c.id),
+            properties={
+                'supervisor': relationship(User,
+                                   primaryjoin=users.c.supervisor_id==people.c.id,
+                                   remote_side=people.c.id,
+                                   foreign_keys=[users.c.supervisor_id]
+                               ),
+            }
+        )
+        assert Dude.supervisor.property.direction is MANYTOONE
+        self._dude_roundtrip()

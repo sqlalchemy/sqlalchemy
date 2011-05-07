@@ -30,6 +30,13 @@ CHANGES
     mapper 'X' does not map this column" to 
     reference the correct mapper.  [ticket:2163].
 
+  - Fixed bug where determination of "self referential"
+    relationship would fail with no workaround
+    for joined-inh subclass related to itself,
+    or joined-inh subclass related to a subclass
+    of that with no cols in the sub-sub class 
+    in the join condition.  [ticket:2149]
+
 - sql
   - Fixed bug whereby if FetchedValue was passed
     to column server_onupdate, it would not
@@ -93,12 +100,6 @@ CHANGES
   - a "having" clause would be copied from the
     inside to the outside query if from_self()
     were used. [ticket:2130].
-
-  - It is an error to call query.get() when the
-    given entity is not a single, full class 
-    entity or mapper (i.e. a column).  This is
-    a deprecation warning in 0.6.8.  
-    [ticket:2144]
 
 - sql
   - Column.copy(), as used in table.tometadata(), copies the 
