@@ -1507,6 +1507,89 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         mc = mapper(C, child, inherits=P, primary_key=[parent.c.id])
         eq_(mc.primary_key, (parent.c.id,))
 
+class InhCondTest(fixtures.TestBase):
+    def test_inh_cond_ignores_others(self):
+        metadata = MetaData()
+        base_table = Table("base", metadata,
+            Column("id", Integer, primary_key=True)
+        )
+        derived_table = Table("derived", metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+            Column("owner_id", Integer, ForeignKey("owner.owner_id"))
+        )
+
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+        # succeeds, despite "owner" table not configured yet
+        m2 = mapper(Derived, derived_table, 
+                    inherits=Base)
+        assert m2.inherit_condition.compare(
+                    base_table.c.id==derived_table.c.id
+                )
+
+    def test_inh_cond_fails_notfound(self):
+        metadata = MetaData()
+        base_table = Table("base", metadata,
+            Column("id", Integer, primary_key=True)
+        )
+        derived_table = Table("derived", metadata,
+            Column("id", Integer, primary_key=True),
+        )
+
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Can't find any foreign key relationships between "
+            "'base' and 'derived'.",
+            mapper,
+            Derived, derived_table,  inherits=Base
+        )
+
+    def test_inh_cond_fails_separate_metas(self):
+        m1 = MetaData()
+        m2 = MetaData()
+        base_table = Table("base", m1,
+            Column("id", Integer, primary_key=True)
+        )
+        derived_table = Table("derived", m2,
+            Column("id", Integer, ForeignKey('base.id'), 
+                primary_key=True),
+        )
+
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+
+        # this used to be "can't resolve foreign key base.id",
+        # but with the flag on, we just get "can't find".  this is
+        # the less-than-ideal case that prevented us from doing this
+        # for mapper(), not just declarative, in the first place.  
+        # there is no case where the failure would be silent - 
+        # there is either a single join condition between the two tables 
+        # or there's not.
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Can't find any foreign key relationships between "
+            "'base' and 'derived'.",
+            mapper,
+            Derived, derived_table,  inherits=Base
+        )
+
 class PKDiscriminatorTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

@@ -1058,14 +1058,6 @@ def _as_declarative(cls, classname, dict_):
         inherited_mapper = class_mapper(mapper_args['inherits'],
                                             compile=False)
         inherited_table = inherited_mapper.local_table
-        if 'inherit_condition' not in mapper_args and table is not None:
-            # figure out the inherit condition with relaxed rules
-            # about nonexistent tables, to allow for ForeignKeys to
-            # not-yet-defined tables (since we know for sure that our
-            # parent table is defined within the same MetaData)
-            mapper_args['inherit_condition'] = sql_util.join_condition(
-                mapper_args['inherits'].__table__, table,
-                ignore_nonexistent_tables=True)
 
         if table is None:
             # single table inheritance.

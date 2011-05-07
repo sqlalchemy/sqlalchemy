@@ -33,6 +33,13 @@ CHANGES
     in the join condition.  [ticket:2149]
     Also in 0.6.8.
 
+  - mapper() will ignore non-configured foreign keys
+    to unrelated tables when determining inherit
+    condition between parent and child class.
+    This is equivalent to behavior already 
+    applied to declarative.  [ticket:2153]
+    Also in 0.6.8.
+
   - It is an error to call query.get() when the
     given entity is not a single, full class 
     entity or mapper (i.e. a column).  This is

@@ -489,6 +489,8 @@ class MapperTest(_fixtures.FixtureTest):
             m3.identity_key_from_instance(AddressUser())
         )
 
+
+
     def test_illegal_non_primary(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
