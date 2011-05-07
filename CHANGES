@@ -48,6 +48,12 @@ CHANGES
     identity-map compatible with that of the primary
     mapper [ticket:2151] (also in 0.6.8)
 
+  - Fixed the error message emitted for "can't
+    execute syncrule for destination column 'q';
+    mapper 'X' does not map this column" to 
+    reference the correct mapper.  [ticket:2163].
+    Also in 0.6.8.
+
 - sql
   - Some improvements to error handling inside
     of the execute procedure to ensure auto-close

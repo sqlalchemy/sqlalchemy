@@ -6,7 +6,8 @@ from test.lib import fixtures
 from sqlalchemy import Integer, String, ForeignKey, func
 from sqlalchemy.orm import mapper, relationship, backref, \
                             create_session, unitofwork, attributes,\
-                            Session
+                            Session, class_mapper, sync, exc as orm_exc
+
 from test.lib.assertsql import AllOf, CompiledSQL
 
 class AssertsUOW(object):
