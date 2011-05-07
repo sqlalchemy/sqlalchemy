@@ -25,6 +25,14 @@ CHANGES
     elements are otherwise not easily accessible.
     [ticket:2155]
 
+  - Fixed bug where determination of "self referential"
+    relationship would fail with no workaround
+    for joined-inh subclass related to itself,
+    or joined-inh subclass related to a subclass
+    of that with no cols in the sub-sub class 
+    in the join condition.  [ticket:2149]
+    Also in 0.6.8.
+
   - It is an error to call query.get() when the
     given entity is not a single, full class 
     entity or mapper (i.e. a column).  This is

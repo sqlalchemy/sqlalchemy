@@ -1132,8 +1132,15 @@ class RelationshipProperty(StrategizedProperty):
         return strategy.use_get
 
     def _refers_to_parent_table(self):
+        pt = self.parent.mapped_table
+        mt = self.mapper.mapped_table
         for c, f in self.synchronize_pairs:
-            if c.table is f.table:
+            if (
+                pt.is_derived_from(c.table) and \
+                pt.is_derived_from(f.table) and \
+                mt.is_derived_from(c.table) and \
+                mt.is_derived_from(f.table)
+            ):
                 return True
         else:
             return False
