@@ -37,6 +37,12 @@ CHANGES
     of that with no cols in the sub-sub class 
     in the join condition.  [ticket:2149]
 
+  - mapper() will ignore non-configured foreign keys
+    to unrelated tables when determining inherit
+    condition between parent and child class.
+    This is equivalent to behavior already 
+    applied to declarative.  [ticket:2153]
+
 - sql
   - Fixed bug whereby if FetchedValue was passed
     to column server_onupdate, it would not
