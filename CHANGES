@@ -41,7 +41,10 @@ CHANGES
     to unrelated tables when determining inherit
     condition between parent and child class.
     This is equivalent to behavior already 
-    applied to declarative.  [ticket:2153]
+    applied to declarative.  Note that 0.7 has a 
+    more comprehensive solution to this, altering
+    how join() itself determines an FK error.
+    [ticket:2153]
 
 - sql
   - Fixed bug whereby if FetchedValue was passed

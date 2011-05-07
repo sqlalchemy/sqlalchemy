@@ -1463,7 +1463,8 @@ class InhCondTest(testing.TestBase):
         # for mapper(), not just declarative, in the first place.  
         # there is no case where the failure would be silent - 
         # there is either a single join condition between the two tables 
-        # or there's not.
+        # or there's not.  0.7 changes how join conditions are determined
+        # so that we get the correct FK error here.
         assert_raises_message(
             sa_exc.ArgumentError,
             "Can't find any foreign key relationships between "
