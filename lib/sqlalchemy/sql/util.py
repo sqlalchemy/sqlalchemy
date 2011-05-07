@@ -187,7 +187,6 @@ def adapt_criterion_to_null(crit, nulls):
 
     return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
 
-
 def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
     """create a join condition between two tables or selectables.
 
@@ -203,11 +202,9 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
     between the two selectables.   If there are multiple ways
     to join, or no way to join, an error is raised.
 
-    :param ignore_nonexistent_tables: This flag will cause the
-    function to silently skip over foreign key resolution errors
-    due to nonexistent tables - the assumption is that these
-    tables have not yet been defined within an initialization process
-    and are not significant to the operation.
+    :param ignore_nonexistent_tables:  Deprecated - this
+    flag is no longer used.  Only resolution errors regarding
+    the two given tables are propagated.
 
     :param a_subset: An optional expression that is a sub-component
     of ``a``.  An attempt will be made to join to just this sub-component
@@ -228,11 +225,11 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
                     key=lambda fk:fk.parent._creation_order):
             try:
                 col = fk.get_referent(left)
-            except exc.NoReferencedTableError:
-                if ignore_nonexistent_tables:
-                    continue
-                else:
+            except exc.NoReferenceError, nrte:
+                if nrte.table_name == left.name:
                     raise
+                else:
+                    continue
 
             if col is not None:
                 crit.append(col == fk.parent)
@@ -243,11 +240,13 @@ def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
                         key=lambda fk:fk.parent._creation_order):
                 try:
                     col = fk.get_referent(b)
-                except exc.NoReferencedTableError:
-                    if ignore_nonexistent_tables:
-                        continue
-                    else:
+                except exc.NoReferenceError, nrte:
+                    if nrte.table_name == b.name:
                         raise
+                    else:
+                        # this is totally covered.  can't get
+                        # coverage to mark it.
+                        continue
 
                 if col is not None:
                     crit.append(col == fk.parent)

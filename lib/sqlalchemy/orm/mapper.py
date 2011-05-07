@@ -470,8 +470,7 @@ class Mapper(object):
                         # want (allows test/inheritance.InheritTest4 to pass)
                         self.inherit_condition = sqlutil.join_condition(
                                                     self.inherits.local_table,
-                                                    self.local_table,
-                                                    ignore_nonexistent_tables=True)
+                                                    self.local_table)
                     self.mapped_table = sql.join(
                                                 self.inherits.mapped_table, 
                                                 self.local_table,

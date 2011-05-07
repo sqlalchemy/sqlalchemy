@@ -1125,7 +1125,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
                 configure_mappers)
 
 
-    def test_fk_error_raised(self):
+    def test_fk_error_not_raised_unrelated(self):
         m = MetaData()
         t1 = Table('t1', m, 
             Column('id', Integer, primary_key=True),
@@ -1147,8 +1147,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
         mapper(C1, t1, properties={'c2':relationship(C2)})
         mapper(C2, t3)
-
-        assert_raises(sa.exc.NoReferencedColumnError, configure_mappers)
+        assert C1.c2.property.primaryjoin.compare(t1.c.id==t3.c.t1id)
 
     def test_join_error_raised(self):
         m = MetaData()

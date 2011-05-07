@@ -1508,7 +1508,7 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         eq_(mc.primary_key, (parent.c.id,))
 
 class InhCondTest(fixtures.TestBase):
-    def test_inh_cond_ignores_others(self):
+    def test_inh_cond_nonexistent_table_unrelated(self):
         metadata = MetaData()
         base_table = Table("base", metadata,
             Column("id", Integer, primary_key=True)
@@ -1532,7 +1532,32 @@ class InhCondTest(fixtures.TestBase):
                     base_table.c.id==derived_table.c.id
                 )
 
-    def test_inh_cond_fails_notfound(self):
+    def test_inh_cond_nonexistent_col_unrelated(self):
+        m = MetaData()
+        base_table = Table("base", m,
+            Column("id", Integer, primary_key=True)
+        )
+        derived_table = Table("derived", m,
+            Column("id", Integer, ForeignKey('base.id'), 
+                primary_key=True),
+            Column('order_id', Integer, ForeignKey('order.foo'))
+        )
+        order_table = Table('order', m, Column('id', Integer, primary_key=True))
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+
+        # succeeds, despite "order.foo" doesn't exist
+        m2 = mapper(Derived, derived_table, inherits=Base)
+        assert m2.inherit_condition.compare(
+                    base_table.c.id==derived_table.c.id
+                )
+
+    def test_inh_cond_no_fk(self):
         metadata = MetaData()
         base_table = Table("base", metadata,
             Column("id", Integer, primary_key=True)
@@ -1556,7 +1581,7 @@ class InhCondTest(fixtures.TestBase):
             Derived, derived_table,  inherits=Base
         )
 
-    def test_inh_cond_fails_separate_metas(self):
+    def test_inh_cond_nonexistent_table_related(self):
         m1 = MetaData()
         m2 = MetaData()
         base_table = Table("base", m1,
@@ -1575,20 +1600,45 @@ class InhCondTest(fixtures.TestBase):
 
         mapper(Base, base_table)
 
-        # this used to be "can't resolve foreign key base.id",
-        # but with the flag on, we just get "can't find".  this is
-        # the less-than-ideal case that prevented us from doing this
-        # for mapper(), not just declarative, in the first place.  
-        # there is no case where the failure would be silent - 
-        # there is either a single join condition between the two tables 
-        # or there's not.
+        # the ForeignKey def is correct but there are two
+        # different metadatas.  Would like the traditional
+        # "noreferencedtable" error to raise so that the
+        # user is directed towards the FK definition in question.
         assert_raises_message(
-            sa_exc.ArgumentError,
-            "Can't find any foreign key relationships between "
-            "'base' and 'derived'.",
+            sa_exc.NoReferencedTableError,
+            "Foreign key associated with column 'derived.id' "
+            "could not find table 'base' with which to generate "
+            "a foreign key to target column 'id'",
             mapper,
             Derived, derived_table,  inherits=Base
         )
+
+    def test_inh_cond_nonexistent_col_related(self):
+        m = MetaData()
+        base_table = Table("base", m,
+            Column("id", Integer, primary_key=True)
+        )
+        derived_table = Table("derived", m,
+            Column("id", Integer, ForeignKey('base.q'), 
+                primary_key=True),
+        )
+
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+
+        assert_raises_message(
+            sa_exc.NoReferencedColumnError,
+            "Could not create ForeignKey 'base.q' on table "
+            "'derived': table 'base' has no column named 'q'",
+            mapper,
+            Derived, derived_table,  inherits=Base
+        )
+
 
 class PKDiscriminatorTest(fixtures.MappedTest):
     @classmethod

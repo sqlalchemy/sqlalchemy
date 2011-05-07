@@ -1277,7 +1277,8 @@ class ForeignKey(SchemaItem):
                 raise exc.NoReferencedTableError(
                     "Foreign key associated with column '%s' could not find "
                     "table '%s' with which to generate a "
-                    "foreign key to target column '%s'" % (self.parent, tname, colname))
+                    "foreign key to target column '%s'" % (self.parent, tname, colname),
+                    tname)
             table = Table(tname, parenttable.metadata,
                           mustexist=True, schema=schema)
 
@@ -1302,7 +1303,8 @@ class ForeignKey(SchemaItem):
                 raise exc.NoReferencedColumnError(
                     "Could not create ForeignKey '%s' on table '%s': "
                     "table '%s' has no column named '%s'" % (
-                    self._colspec, parenttable.name, table.name, key))
+                    self._colspec, parenttable.name, table.name, key), 
+                    table.name, key)
 
         elif hasattr(self._colspec, '__clause_element__'):
             _column = self._colspec.__clause_element__()

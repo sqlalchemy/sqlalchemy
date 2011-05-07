@@ -35,10 +35,15 @@ CHANGES
 
   - mapper() will ignore non-configured foreign keys
     to unrelated tables when determining inherit
-    condition between parent and child class.
-    This is equivalent to behavior already 
-    applied to declarative.  [ticket:2153]
-    Also in 0.6.8.
+    condition between parent and child class,
+    but will raise as usual for unresolved
+    columns and table names regarding the inherited
+    table.  This is an enhanced generalization of 
+    behavior that was already applied to declarative
+    previously.  [ticket:2153]   0.6.8 has a more
+    conservative version of this which doesn't
+    fundamentally alter how join conditions
+    are determined.
 
   - It is an error to call query.get() when the
     given entity is not a single, full class 
@@ -70,6 +75,15 @@ CHANGES
     Also in 0.6.8.
 
 - sql
+  - Changed the handling in determination of join
+    conditions such that foreign key errors are
+    only considered between the two given tables.
+    That is, t1.join(t2) will report FK errors
+    that involve 't1' or 't2', but anything 
+    involving 't3' will be skipped.   This affects
+    join(), as well as ORM relationship and
+    inherit condition logic.
+
   - Some improvements to error handling inside
     of the execute procedure to ensure auto-close
     connections are really closed when very 

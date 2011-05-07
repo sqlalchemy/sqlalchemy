@@ -302,6 +302,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults):
 
         assert_raises(exc.NoReferencedTableError, s.join, t1)
 
+class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_join_condition(self):
         m = MetaData()
@@ -372,6 +373,66 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults):
                               "side to a subquery using alias\(\)\?",
                               t1t2.join, t2t3.select(use_labels=True))
 
+
+    def test_join_cond_no_such_unrelated_table(self):
+        m = MetaData()
+        # bounding the "good" column with two "bad" ones is so to 
+        # try to get coverage to get the "continue" statements
+        # in the loop...
+        t1 = Table('t1', m, 
+                            Column('y', Integer, ForeignKey('t22.id')),
+                            Column('x', Integer, ForeignKey('t2.id')), 
+                            Column('q', Integer, ForeignKey('t22.id')), 
+                            )
+        t2 = Table('t2', m, Column('id', Integer))
+        assert sql_util.join_condition(t1, t2).compare(t1.c.x==t2.c.id)
+        assert sql_util.join_condition(t2, t1).compare(t1.c.x==t2.c.id)
+
+    def test_join_cond_no_such_unrelated_column(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, ForeignKey('t2.id')), 
+                            Column('y', Integer, ForeignKey('t3.q')))
+        t2 = Table('t2', m, Column('id', Integer))
+        t3 = Table('t3', m, Column('id', Integer))
+        assert sql_util.join_condition(t1, t2).compare(t1.c.x==t2.c.id)
+        assert sql_util.join_condition(t2, t1).compare(t1.c.x==t2.c.id)
+
+    def test_join_cond_no_such_related_table(self):
+        m1 = MetaData()
+        m2 = MetaData()
+        t1 = Table('t1', m1, Column('x', Integer, ForeignKey('t2.id')))
+        t2 = Table('t2', m2, Column('id', Integer))
+        assert_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 't1.x' could not find "
+            "table 't2' with which to generate a foreign key to "
+            "target column 'id'",
+            sql_util.join_condition, t1, t2
+        )
+
+        assert_raises_message(
+            exc.NoReferencedTableError,
+            "Foreign key associated with column 't1.x' could not find "
+            "table 't2' with which to generate a foreign key to "
+            "target column 'id'",
+            sql_util.join_condition, t2, t1
+        )
+
+    def test_join_cond_no_such_related_column(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, ForeignKey('t2.q')))
+        t2 = Table('t2', m, Column('id', Integer))
+        assert_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not create ForeignKey 't2.q' on table 't1': table 't2' has no column named 'q'",
+            sql_util.join_condition, t1, t2
+        )
+
+        assert_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not create ForeignKey 't2.q' on table 't1': table 't2' has no column named 'q'",
+            sql_util.join_condition, t2, t1
+        )
 
 class PrimaryKeyTest(fixtures.TestBase, AssertsExecutionResults):
 
