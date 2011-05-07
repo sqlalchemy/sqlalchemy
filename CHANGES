@@ -17,6 +17,14 @@ CHANGES
     identity-map compatible with that of the primary
     mapper [ticket:2151]
 
+  - Backported 0.7's identity map implementation, which
+    does not use a mutex around removal.  This as some users 
+    were still getting deadlocks despite the adjustments
+    in 0.6.7; the 0.7 approach that doesn't use a mutex
+    does not appear to produce "dictionary changed size"
+    issues, the original rationale for the mutex.  
+    [ticket:2148]
+
 - sql
   - Fixed bug whereby if FetchedValue was passed
     to column server_onupdate, it would not
