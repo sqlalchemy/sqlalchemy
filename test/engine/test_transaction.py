@@ -519,6 +519,7 @@ tlengine = None
 
 
 class TLTransactionTest(fixtures.TestBase):
+    __requires__ = ('ad_hoc_engines', )
 
     @classmethod
     def setup_class(cls):
@@ -1115,7 +1116,7 @@ class ForUpdateTest(fixtures.TestBase):
         self.assert_(len(errors) != 0)
 
 class IsolationLevelTest(fixtures.TestBase):
-    __requires__ = ('isolation_level',)
+    __requires__ = ('isolation_level', 'ad_hoc_engines')
 
     def _default_isolation_level(self):
         if testing.against('sqlite'):

@@ -197,6 +197,7 @@ class ExecuteTest(fixtures.TestBase):
         eq_(testing.db.execute(users_autoinc.select()).fetchall(), [(1,
             None)])
 
+    @testing.requires.ad_hoc_engines
     def test_engine_level_options(self):
         eng = engines.testing_engine(options={'execution_options'
                 : {'foo': 'bar'}})
@@ -246,6 +247,8 @@ class CompiledCacheTest(fixtures.TestBase):
         eq_(conn.execute("select count(*) from users").scalar(), 3)
 
 class LoggingNameTest(fixtures.TestBase):
+    __requires__ = 'ad_hoc_engines',
+
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
         eng.execute(select([1]))
         for name in [b.name for b in self.buf.buffer]:
@@ -329,6 +332,7 @@ class LoggingNameTest(fixtures.TestBase):
         self._assert_no_name_in_execute(eng)
 
 class EchoTest(fixtures.TestBase):
+    __requires__ = 'ad_hoc_engines',
 
     def setup(self):
         self.level = logging.getLogger('sqlalchemy.engine').level
@@ -558,6 +562,8 @@ class AlternateResultProxyTest(fixtures.TestBase):
         self._test_proxy(base.BufferedColumnResultProxy)
 
 class EngineEventsTest(fixtures.TestBase):
+    __requires__ = 'ad_hoc_engines', 
+
     def tearDown(self):
         Engine.dispatch._clear()
 
@@ -823,6 +829,7 @@ class ProxyConnectionTest(fixtures.TestBase):
     the deprecated ConnectionProxy interface.
 
     """
+    __requires__ = 'ad_hoc_engines', 
 
     @testing.uses_deprecated(r'.*Use event.listen')
     @testing.fails_on('firebird', 'Data type unknown')

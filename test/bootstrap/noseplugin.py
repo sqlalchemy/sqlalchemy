@@ -54,6 +54,9 @@ class NoseSQLAlchemy(Plugin):
             help="Use mock pool (asserts only one connection used)")
         opt("--zero-timeout", action="callback", callback=_zero_timeout,
             help="Set pool_timeout to zero, applies to QueuePool only")
+        opt("--low-connections", action="store_true", dest="low_connections",
+            help="Use a low number of distinct connections - i.e. for Oracle TNS"
+        )
         opt("--enginestrategy", action="callback", type="string",
             callback=_engine_strategy,
             help="Engine strategy (plain or threadlocal, defaults to plain)")
@@ -175,7 +178,8 @@ class NoseSQLAlchemy(Plugin):
 
     def stopContext(self, ctx):
         engines.testing_reaper._stop_test_ctx()
-        testing.global_cleanup_assertions()
+        if not config.options.low_connections:
+            testing.global_cleanup_assertions()
 
     #def handleError(self, test, err):
         #pass

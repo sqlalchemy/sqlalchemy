@@ -51,6 +51,19 @@ class ConnectionKiller(object):
         #    self._safe(conn.rollback)
 
     def _stop_test_ctx(self):
+        if config.options.low_connections:
+            self._stop_test_ctx_minimal()
+        else:
+            self._stop_test_ctx_aggressive()
+
+    def _stop_test_ctx_minimal(self):
+        from test.lib import testing
+        self.close_all()
+        for rec in self.testing_engines.keys():
+            if rec is not testing.db:
+                rec.dispose()
+
+    def _stop_test_ctx_aggressive(self):
         self.close_all()
         for conn in self.conns:
             self._safe(conn.close)

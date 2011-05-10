@@ -16,7 +16,7 @@ from testing import \
      fails_on_everything_except,\
      fails_if
 from sqlalchemy import util
-
+from test.lib import config
 import testing
 import sys
 
@@ -375,3 +375,15 @@ def sqlite(fn):
         skip_if(lambda: not _has_sqlite())
     )
 
+def ad_hoc_engines(fn):
+    """Test environment must allow ad-hoc engine/connection creation.
+    
+    DBs that scale poorly for many connections, even when closed, i.e.
+    Oracle, may use the "--low-connections" option which flags this requirement
+    as not present.
+    
+    """
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: config.options.low_connections)
+    )

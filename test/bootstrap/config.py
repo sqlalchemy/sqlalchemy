@@ -63,6 +63,11 @@ def _engine_strategy(options, opt_str, value, parser):
 pre_configure = []
 post_configure = []
 
+def _setup_options(opt, file_config):
+    global options
+    options = opt
+pre_configure.append(_setup_options)
+
 def _monkeypatch_cdecimal(options, file_config):
     if options.cdecimal:
         import sys
