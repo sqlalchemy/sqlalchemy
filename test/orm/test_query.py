@@ -6,7 +6,7 @@ from sqlalchemy.sql import compiler, table, column
 from sqlalchemy.engine import default
 from sqlalchemy.orm import *
 from sqlalchemy.orm import attributes
-
+from test.lib.assertsql import CompiledSQL
 from test.lib.testing import eq_
 
 import sqlalchemy as sa
@@ -1386,6 +1386,24 @@ class CountTest(QueryTest):
         eq_(s.query(User).count(), 4)
 
         eq_(s.query(User).filter(users.c.name.endswith('ed')).count(), 2)
+
+    def test_count_char(self):
+        User = self.classes.User
+        s = create_session()
+        # '*' is favored here as the most common character,
+        # it is reported that Informix doesn't like count(1),
+        # rumors about Oracle preferring count(1) don't appear 
+        # to be well founded.
+        self.assert_sql_execution(
+                testing.db,
+                s.query(User).count,
+                CompiledSQL(
+                    "SELECT count(*) AS count_1 FROM "
+                    "(SELECT users.id AS users_id, users.name "
+                    "AS users_name FROM users) AS anon_1",
+                    {} 
+                )
+        )
 
     def test_multiple_entity(self):
         User, Address = self.classes.User, self.classes.Address

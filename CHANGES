@@ -15,6 +15,9 @@ CHANGES
     fixed up some of the error messages tailored
     in [ticket:2069]
 
+  - query.count() emits "count(*)" instead of 
+    "count(1)".  [ticket:2162]
+
   - Fine tuning of Query clause adaptation when
     from_self(), union(), or other "select from
     myself" operation, such that plain SQL expression

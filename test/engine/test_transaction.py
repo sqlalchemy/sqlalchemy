@@ -965,6 +965,7 @@ counters = None
 
 
 class ForUpdateTest(fixtures.TestBase):
+    __requires__ = 'ad_hoc_engines',
 
     @classmethod
     def setup_class(cls):

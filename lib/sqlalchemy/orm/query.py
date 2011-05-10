@@ -2119,7 +2119,7 @@ class Query(object):
             session.query(func.count(distinct(User.name)))
             
         """
-        col = sql.func.count(sql.literal_column('1'))
+        col = sql.func.count(sql.literal_column('*'))
         return self.from_self(col).scalar()
 
     def delete(self, synchronize_session='evaluate'):

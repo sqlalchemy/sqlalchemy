@@ -182,6 +182,8 @@ class CompiledSQL(SQLMatchRule):
                 equivalent = False
         else:
             params = {}
+            all_params = {}
+            all_received = []
         self._result = equivalent
         if not self._result:
             print 'Testing for compiled statement %r partial params '\
