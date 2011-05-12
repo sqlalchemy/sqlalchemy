@@ -77,6 +77,16 @@ CHANGES
     reference the correct mapper.  [ticket:2163].
     Also in 0.6.8.
 
+  - polymorphic_union() gets a "cast_nulls" option,
+    disables the usage of CAST when it renders
+    the labeled NULL columns.  [ticket:1502]
+
+  - polymorphic_union() renders the columns in their
+    original table order, as according to the first
+    table/selectable in the list of polymorphic
+    unions in which they appear.  (which is itself 
+    an unordered mapping unless you pass an OrderedDict).
+
 - sql
   - Changed the handling in determination of join
     conditions such that foreign key errors are

@@ -5,7 +5,7 @@ from sqlalchemy import exc as sa_exc, util
 from sqlalchemy.orm import *
 from sqlalchemy.orm import exc as orm_exc, attributes
 from test.lib.assertsql import AllOf, CompiledSQL
-
+from sqlalchemy.sql import table, column
 from test.lib import testing, engines
 from test.lib import fixtures
 from test.orm import _fixtures
@@ -1816,4 +1816,60 @@ class DeleteOrphanTest(fixtures.MappedTest):
         sess.add(s1)
         assert_raises(sa_exc.DBAPIError, sess.flush)
 
+class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _fixture(self):
+        t1 = table('t1', column('c1', Integer), 
+                        column('c2', Integer), 
+                        column('c3', Integer))
+        t2 = table('t2', column('c1', Integer), column('c2', Integer), 
+                                column('c3', Integer), 
+                                column('c4', Integer))
+        t3 = table('t3', column('c1', Integer), 
+                                column('c3', Integer), 
+                                column('c5', Integer))
+        return t1, t2, t3
+
+    def test_type_col_present(self):
+        t1, t2, t3 = self._fixture()
+        self.assert_compile(
+            polymorphic_union(
+                util.OrderedDict([("a", t1), ("b", t2), ("c", t3)]),
+                'q1'
+            ),
+            "SELECT t1.c1, t1.c2, t1.c3, CAST(NULL AS INTEGER) AS c4, "
+            "CAST(NULL AS INTEGER) AS c5, 'a' AS q1 FROM t1 UNION ALL "
+            "SELECT t2.c1, t2.c2, t2.c3, t2.c4, CAST(NULL AS INTEGER) AS c5, "
+            "'b' AS q1 FROM t2 UNION ALL SELECT t3.c1, "
+            "CAST(NULL AS INTEGER) AS c2, t3.c3, CAST(NULL AS INTEGER) AS c4, "
+            "t3.c5, 'c' AS q1 FROM t3"
+        )
+
+    def test_type_col_non_present(self):
+        t1, t2, t3 = self._fixture()
+        self.assert_compile(
+            polymorphic_union(
+                util.OrderedDict([("a", t1), ("b", t2), ("c", t3)]),
+                None
+            ),
+            "SELECT t1.c1, t1.c2, t1.c3, CAST(NULL AS INTEGER) AS c4, "
+            "CAST(NULL AS INTEGER) AS c5 FROM t1 UNION ALL SELECT t2.c1, "
+            "t2.c2, t2.c3, t2.c4, CAST(NULL AS INTEGER) AS c5 FROM t2 "
+            "UNION ALL SELECT t3.c1, CAST(NULL AS INTEGER) AS c2, t3.c3, "
+            "CAST(NULL AS INTEGER) AS c4, t3.c5 FROM t3"
+        )
+
+    def test_no_cast_null(self):
+        t1, t2, t3 = self._fixture()
+        self.assert_compile(
+            polymorphic_union(
+                util.OrderedDict([("a", t1), ("b", t2), ("c", t3)]),
+                'q1', cast_nulls=False
+            ),
+            "SELECT t1.c1, t1.c2, t1.c3, NULL AS c4, NULL AS c5, 'a' AS q1 "
+            "FROM t1 UNION ALL SELECT t2.c1, t2.c2, t2.c3, t2.c4, NULL AS c5, "
+            "'b' AS q1 FROM t2 UNION ALL SELECT t3.c1, NULL AS c2, t3.c3, "
+            "NULL AS c4, t3.c5, 'c' AS q1 FROM t3"
+        )
 

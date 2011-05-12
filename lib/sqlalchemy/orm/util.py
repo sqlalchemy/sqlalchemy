@@ -65,14 +65,26 @@ def _validator_events(desc, key, validator):
     event.listen(desc, 'append', append, raw=True, retval=True)
     event.listen(desc, 'set', set_, raw=True, retval=True)
 
-def polymorphic_union(table_map, typecolname, aliasname='p_union'):
+def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=True):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 
     See  :ref:`concrete_inheritance` for an example of how
     this is used.
+    
+    :param table_map: mapping of polymorphic identities to 
+     :class:`.Table` objects.
+    :param typecolname: string name of a "discriminator" column, which will be 
+     derived from the query, producing the polymorphic identity for each row.  If
+     ``None``, no polymorphic discriminator is generated.
+    :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()` 
+     construct generated.
+    :param cast_nulls: if True, non-existent columns, which are represented as labeled
+     NULLs, will be passed into CAST.   This is a legacy behavior that is problematic
+     on some backends such as Oracle - in which case it can be set to False.
+
     """
 
-    colnames = set()
+    colnames = util.OrderedSet()
     colnamemaps = {}
     types = {}
     for key in table_map.keys():
@@ -95,7 +107,10 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
         try:
             return colnamemaps[table][name]
         except KeyError:
-            return sql.cast(sql.null(), types[name]).label(name)
+            if cast_nulls:
+                return sql.cast(sql.null(), types[name]).label(name)
+            else:
+                return sql.type_coerce(sql.null(), types[name]).label(name)
 
     result = []
     for type, table in table_map.iteritems():
