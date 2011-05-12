@@ -487,13 +487,15 @@ class AlternateGeneratorTest(fixtures.MappedTest):
         sess1.commit()
 
         p2.data = 'P overwritten by concurrent tx'
-        assert_raises_message(
-            orm.exc.StaleDataError,
-            r"UPDATE statement on table 'p' expected to update "
-            r"1 row\(s\); 0 were matched.",
+        if testing.db.dialect.supports_sane_rowcount:
+            assert_raises_message(
+                orm.exc.StaleDataError,
+                r"UPDATE statement on table 'p' expected to update "
+                r"1 row\(s\); 0 were matched.",
+                sess2.commit
+            )
+        else:
             sess2.commit
-        )
-
 
 class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
     """Test versioning where both parent/child table have a
