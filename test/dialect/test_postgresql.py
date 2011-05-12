@@ -258,6 +258,8 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             {'data':9},
         )
 
+    @testing.fails_on('postgresql+zxjdbc',
+                      'XXX: postgresql+zxjdbc currently returns a Decimal result for Float')
     def test_float_coercion(self):
         data_table = self.tables.data_table
 
@@ -1602,6 +1604,8 @@ class TimezoneTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.fails_on('postgresql+zxjdbc',
+                      "XXX: postgresql+zxjdbc doesn't give a tzinfo back")
     def test_with_timezone(self):
 
         # get a date with a tzinfo
