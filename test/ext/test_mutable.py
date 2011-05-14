@@ -70,8 +70,7 @@ class _MutableDictTestBase(object):
     def test_coerce_raise(self):
         assert_raises_message(
             ValueError,
-            "Attribute 'data' does not accept objects of "
-            "type <type 'set'>",
+            "Attribute 'data' does not accept objects of type",
             Foo, data=set([1,2,3])
         )
 
