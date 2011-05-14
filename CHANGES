@@ -132,6 +132,12 @@ CHANGES
     "generic_associations".   Each presents an alternative
     table layout.
 
+- ext
+  - Fixed bugs in sqlalchemy.ext.mutable extension where
+    `None` was not appropriately handled, replacement
+    events were not appropriately handled.
+    [ticket:2143]
+
 0.7.0b4
 =======
 - general

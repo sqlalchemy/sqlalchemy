@@ -378,12 +378,12 @@ class MutableBase(object):
             outgoing.
 
             """
-
             if not isinstance(value, cls):
-                value = cls.coerce(key, value) 
-            value._parents[target.obj()] = key
+                value = cls.coerce(key, value)
+            if value is not None:
+                value._parents[target.obj()] = key
             if isinstance(oldvalue, cls):
-                oldvalue._parents.pop(state.obj(), None)
+                oldvalue._parents.pop(target.obj(), None)
             return value
 
         def pickle(state, state_dict):
@@ -426,7 +426,7 @@ class Mutable(MutableBase):
         """
         if value is None:
             return None
-        raise ValueError("Attribute '%s' accepts objects of type %s" % (key, cls))
+        raise ValueError("Attribute '%s' does not accept objects of type %s" % (key, type(value)))
 
     @classmethod
     def associate_with_attribute(cls, attribute):

@@ -4,7 +4,7 @@ from sqlalchemy.orm import mapper, Session, composite
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.orm.instrumentation import ClassManager
 from test.lib.schema import Table, Column
-from test.lib.testing import eq_
+from test.lib.testing import eq_, assert_raises_message
 from test.lib.util import picklers
 from test.lib import testing
 from test.lib import fixtures
@@ -60,6 +60,21 @@ class _MutableDictTestBase(object):
         ClassManager.dispatch._clear()
         super(_MutableDictTestBase, self).teardown()
 
+    def test_coerce_none(self):
+        sess = Session()
+        f1 = Foo(data=None)
+        sess.add(f1)
+        sess.commit()
+        eq_(f1.data, None)
+
+    def test_coerce_raise(self):
+        assert_raises_message(
+            ValueError,
+            "Attribute 'data' does not accept objects of "
+            "type <type 'set'>",
+            Foo, data=set([1,2,3])
+        )
+
     def test_in_place_mutation(self):
         sess = Session()
 
@@ -71,6 +86,16 @@ class _MutableDictTestBase(object):
         sess.commit()
 
         eq_(f1.data, {'a':'c'})
+
+    def test_replace(self):
+        sess = Session()
+        f1 = Foo(data={'a':'b'})
+        sess.add(f1)
+        sess.flush()
+
+        f1.data = {'b':'c'}
+        sess.commit()
+        eq_(f1.data, {'b':'c'})
 
     def test_pickle_parent(self):
         sess = Session()
