@@ -462,3 +462,4 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             if not e.connection_invalidated:
                 raise
         assert conn.invalidated
+
