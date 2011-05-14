@@ -1142,6 +1142,7 @@ class FilterTest(QueryTest):
 
 
 class SetOpsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_union(self):
         User = self.classes.User
@@ -1199,7 +1200,6 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             " anon_1.anon_2 AS anon_1_anon_2 FROM (SELECT users.id AS users_id, users.name AS"
             " users_name, :param_1 AS anon_2 FROM users UNION SELECT users.id AS users_id, "
             "users.name AS users_name, 'y' FROM users) AS anon_1"
-            , use_default_dialect = True
         )
 
     def test_union_literal_expressions_results(self):
@@ -1257,8 +1257,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             "FROM (SELECT users.id AS users_id, users.name AS users_name, "
             "c1 AS foo, c1 AS bar FROM users UNION SELECT users.id AS "
             "users_id, users.name AS users_name, c1 AS foo, c2 AS bar "
-            "FROM users) AS anon_1",
-            use_default_dialect=True
+            "FROM users) AS anon_1"
         )
 
     def test_order_by_anonymous_col(self):
@@ -1304,8 +1303,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             q1.union(q2),
             "SELECT anon_1.users_name AS anon_1_users_name "
             "FROM (SELECT users.name AS users_name FROM users "
-            "UNION SELECT users.name AS users_name FROM users) AS anon_1",
-            use_default_dialect=True
+            "UNION SELECT users.name AS users_name FROM users) AS anon_1"
         )
 
         # but in the returned named tuples,
