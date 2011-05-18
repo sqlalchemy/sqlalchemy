@@ -3814,11 +3814,7 @@ class _Label(ColumnElement):
         return self.element._from_objects
 
     def _make_proxy(self, selectable, name = None):
-        if isinstance(self.element, (Selectable, ColumnElement)):
-            e = self.element._make_proxy(selectable, name=self.name)
-        else:
-            e = column(self.name)._make_proxy(selectable=selectable)
-
+        e = self.element._make_proxy(selectable, name=name or self.name)
         e.proxies.append(self)
         return e
 
@@ -3934,6 +3930,12 @@ class ColumnClause(_Immutable, ColumnElement):
             return self.name
 
     def label(self, name):
+        # currently, anonymous labels don't occur for 
+        # ColumnClause.   The use at the moment
+        # is that they do not generate nicely for 
+        # is_literal clauses.   We would like to change
+        # this so that label(None) acts as would be expected.
+        # See [ticket:2168].
         if name is None:
             return self
         else:

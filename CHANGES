@@ -88,6 +88,13 @@ CHANGES
     an unordered mapping unless you pass an OrderedDict).
 
 - sql
+  - Fixed bug whereby nesting a label of a select()
+    with another label in it would produce incorrect
+    exported columns.   Among other things this would
+    break an ORM column_property() mapping against
+    another column_property().  [ticket:2167].
+    Also in 0.6.8
+
   - Changed the handling in determination of join
     conditions such that foreign key errors are
     only considered between the two given tables.

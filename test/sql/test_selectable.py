@@ -27,7 +27,7 @@ table2 = Table('table2', metadata,
 )
 
 
-class SelectableTest(fixtures.TestBase, AssertsExecutionResults):
+class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
@@ -301,6 +301,56 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults):
         s = select([t2, t3], use_labels=True)
 
         assert_raises(exc.NoReferencedTableError, s.join, t1)
+
+    def test_multi_label_chain_naming_col(self):
+        # See [ticket:2167] for this one.
+        l1 = table1.c.col1.label('a')
+        l2 = select([l1]).label('b')
+        s = select([l2])
+        assert s.c.b is not None
+        self.assert_compile(
+            s.select(),
+            "SELECT b FROM (SELECT (SELECT table1.col1 AS a FROM table1) AS b)"
+        )
+
+        s2 = select([s.label('c')])
+        self.assert_compile(
+            s2.select(),
+            "SELECT c FROM (SELECT (SELECT (SELECT table1.col1 AS a FROM table1) AS b) AS c)"
+        )
+
+
+class AnonLabelTest(fixtures.TestBase):
+    """Test behaviors that we hope to change with [ticket:2168]."""
+
+    def test_anon_labels_named_column(self):
+        c1 = column('x')
+
+        # surprising
+        assert c1.label(None) is c1
+        eq_(str(select([c1.label(None)])), "SELECT x")
+
+    def test_anon_labels_literal_column(self):
+        c1 = literal_column('x')
+        assert c1.label(None) is c1
+        eq_(str(select([c1.label(None)])), "SELECT x")
+
+    def test_anon_labels_func(self):
+        c1 = func.count('*')
+        assert c1.label(None) is not c1
+
+        eq_(str(select([c1])), "SELECT count(:param_1) AS count_1")
+        c2 = select([c1]).compile()
+
+        eq_(str(select([c1.label(None)])), "SELECT count(:param_1) AS count_1")
+
+    def test_named_labels_named_column(self):
+        c1 = column('x')
+        eq_(str(select([c1.label('y')])), "SELECT x AS y")
+
+    def test_named_labels_literal_column(self):
+        c1 = literal_column('x')
+        eq_(str(select([c1.label('y')])), "SELECT x AS y")
 
 class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
 

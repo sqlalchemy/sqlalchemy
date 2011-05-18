@@ -2794,11 +2794,11 @@ class _ColumnEntity(_QueryEntity):
                 "expected - got '%r'" % column
             )
 
-        # if the Column is unnamed, give it a
+        # If the Column is unnamed, give it a
         # label() so that mutable column expressions
         # can be located in the result even
         # if the expression's identity has been changed
-        # due to adaption
+        # due to adaption.
         if not column._label:
             column = column.label(None)
 
