@@ -4517,6 +4517,26 @@ class ExternalColumnsTest(QueryTest):
             eq_(o1.address.user.count, 1)
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_external_columns_compound(self):
+        # see [ticket:2167] for background
+
+        mapper(User, users, properties={
+            'fullname':column_property(users.c.name.label('x'))
+        })
+
+        mapper(Address, addresses, properties={
+            'username':column_property(
+                        select([User.fullname]).\
+                            where(User.id==addresses.c.user_id).label('y'))
+        })
+        sess = create_session()
+        a1 = sess.query(Address).first()
+        eq_(a1.username, "jack")
+
+        sess = create_session()
+        a1 = sess.query(Address).from_self().first()
+        eq_(a1.username, "jack")
+
 class TestOverlyEagerEquivalentCols(_base.MappedTest):
     @classmethod
     def define_tables(cls, metadata):

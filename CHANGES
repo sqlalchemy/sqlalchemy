@@ -53,6 +53,12 @@ CHANGES
     test coverage for all column default assignment
     patterns.  [ticket:2147]
 
+  - Fixed bug whereby nesting a label of a select()
+    with another label in it would produce incorrect
+    exported columns.   Among other things this would
+    break an ORM column_property() mapping against
+    another column_property().  [ticket:2167].
+
 0.6.7
 =====
 - orm
