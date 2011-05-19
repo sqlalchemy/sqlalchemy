@@ -126,6 +126,12 @@ CHANGES
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.
 
+- mssql
+  - Fixed bug in MSSQL dialect whereby the aliasing
+    applied to a schema-qualified table would leak
+    into enclosing select statements [ticket:2169].
+    Also in 0.6.8.
+
 - documentation
   - Removed the usage of the "collections.MutableMapping"
     abc from the ext.mutable docs as it was being used

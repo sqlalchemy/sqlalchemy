@@ -107,63 +107,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "myid FROM mytable) AS foo, mytable WHERE "
                             "foo.myid = mytable.myid")
 
-    def test_aliases_schemas(self):
-        metadata = MetaData()
-        table1 = table('mytable',
-            column('myid', Integer),
-            column('name', String),
-            column('description', String),
-        )
-
-        table4 = Table(
-            'remotetable', metadata,
-            Column('rem_id', Integer, primary_key=True),
-            Column('datatype_id', Integer),
-            Column('value', String(20)),
-            schema = 'remote_owner'
-        )
-
-        s = table4.select()
-        c = s.compile(dialect=self.__dialect__)
-        assert table4.c.rem_id in set(c.result_map['rem_id'][1])
-
-        s = table4.select(use_labels=True)
-        c = s.compile(dialect=self.__dialect__)
-        assert table4.c.rem_id \
-            in set(c.result_map['remote_owner_remotetable_rem_id'][1])
-        self.assert_compile(table4.select(),
-                            'SELECT remotetable_1.rem_id, '
-                            'remotetable_1.datatype_id, '
-                            'remotetable_1.value FROM '
-                            'remote_owner.remotetable AS remotetable_1')
-        self.assert_compile(table4.select(use_labels=True),
-                            'SELECT remotetable_1.rem_id AS '
-                            'remote_owner_remotetable_rem_id, '
-                            'remotetable_1.datatype_id AS '
-                            'remote_owner_remotetable_datatype_id, '
-                            'remotetable_1.value AS '
-                            'remote_owner_remotetable_value FROM '
-                            'remote_owner.remotetable AS remotetable_1')
-        self.assert_compile(table1.join(table4, table1.c.myid
-                            == table4.c.rem_id).select(),
-                            'SELECT mytable.myid, mytable.name, '
-                            'mytable.description, remotetable_1.rem_id,'
-                            ' remotetable_1.datatype_id, '
-                            'remotetable_1.value FROM mytable JOIN '
-                            'remote_owner.remotetable AS remotetable_1 '
-                            'ON remotetable_1.rem_id = mytable.myid')
-
-        self.assert_compile(select([table4.c.rem_id,
-                table4.c.value]).apply_labels().union(select([table1.c.myid,
-                table1.c.description]).apply_labels()).alias().select(),
-                "SELECT anon_1.remote_owner_remotetable_rem_id, "
-                "anon_1.remote_owner_remotetable_value FROM "
-                "(SELECT remotetable_1.rem_id AS remote_owner_remotetable_rem_id, "
-                "remotetable_1.value AS remote_owner_remotetable_value "
-                "FROM remote_owner.remotetable AS remotetable_1 UNION "
-                "SELECT mytable.myid AS mytable_myid, mytable.description "
-                "AS mytable_description FROM mytable) AS anon_1"
-            )
 
 
     def test_delete_schema(self):
@@ -378,6 +321,80 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
+    """SQL server cannot reference schema-qualified tables in a SELECT statement, they
+    must be aliased.
+    """
+    __dialect__ = mssql.dialect()
+
+    def setup(self):
+        metadata = MetaData()
+        self.t1 = table('t1',
+            column('a', Integer),
+            column('b', String),
+            column('c', String),
+        )
+        self.t2 = Table(
+            't2', metadata,
+            Column("a", Integer),
+            Column("b", Integer),
+            Column("c", Integer),
+            schema = 'schema'
+        )
+
+    def test_result_map(self):
+        s = self.t2.select()
+        c = s.compile(dialect=self.__dialect__)
+        assert self.t2.c.a in set(c.result_map['a'][1])
+
+    def test_result_map_use_labels(self):
+        s = self.t2.select(use_labels=True)
+        c = s.compile(dialect=self.__dialect__)
+        assert self.t2.c.a in set(c.result_map['schema_t2_a'][1])
+
+    def test_straight_select(self):
+        self.assert_compile(self.t2.select(),
+            "SELECT t2_1.a, t2_1.b, t2_1.c FROM [schema].t2 AS t2_1"
+        )
+
+    def test_straight_select_use_labels(self):
+        self.assert_compile(
+            self.t2.select(use_labels=True),
+            "SELECT t2_1.a AS schema_t2_a, t2_1.b AS schema_t2_b, "
+            "t2_1.c AS schema_t2_c FROM [schema].t2 AS t2_1"
+        )
+
+    def test_join_to_schema(self):
+        t1, t2 = self.t1, self.t2
+        self.assert_compile(
+            t1.join(t2, t1.c.a==t2.c.a).select(),
+            "SELECT t1.a, t1.b, t1.c, t2_1.a, t2_1.b, t2_1.c FROM t1 JOIN [schema].t2 AS t2_1 ON t2_1.a = t1.a"
+        )
+
+    def test_union_schema_to_non(self):
+        t1, t2 = self.t1, self.t2
+        s = select([t2.c.a, t2.c.b]).apply_labels().\
+                union(
+                    select([t1.c.a, t1.c.b]).apply_labels()
+                ).alias().select()
+        self.assert_compile(
+            s,
+            "SELECT anon_1.schema_t2_a, anon_1.schema_t2_b FROM "
+            "(SELECT t2_1.a AS schema_t2_a, t2_1.b AS schema_t2_b "
+            "FROM [schema].t2 AS t2_1 UNION SELECT t1.a AS t1_a, "
+            "t1.b AS t1_b FROM t1) AS anon_1"
+        )
+
+    def test_column_subquery_to_alias(self):
+        a1 = self.t2.alias('a1')
+        s = select([self.t2, select([a1.c.a]).as_scalar()])
+        self.assert_compile(
+            s,
+            "SELECT t2_1.a, t2_1.b, t2_1.c, "
+            "(SELECT a1.a FROM [schema].t2 AS a1) "
+            "AS anon_1 FROM [schema].t2 AS t2_1"
+
+        )
 
 class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = 'mssql'
