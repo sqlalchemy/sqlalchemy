@@ -3,9 +3,13 @@
 =======
 CHANGES
 =======
-0.7.0b5
+0.7.0
 =======
-- (note b5 may become 0.7.0)
+- This section documents those changes from 0.7b4
+  to 0.7.0.  For an overview of what's new in 
+  SQLAlchemy 0.7, see 
+  http://www.sqlalchemy.org/trac/wiki/07Migration
+
 - orm
   - Fixed regression introduced in 0.7b4 (!) whereby
     query.options(someoption("nonexistent name")) would
