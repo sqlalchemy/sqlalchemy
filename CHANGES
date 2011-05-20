@@ -135,6 +135,10 @@ CHANGES
   - Fixed the psycopg2_version parsing in the 
     psycopg2 dialect.
 
+  - Fixed bug affecting PG 9 whereby index reflection
+    would fail if against a column whose name
+    had changed.  [ticket:2141].  Also in 0.6.8.
+
 - mssql
   - Fixed bug in MSSQL dialect whereby the aliasing
     applied to a schema-qualified table would leak

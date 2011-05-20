@@ -1541,6 +1541,28 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                 'expression-based index idx3'
             ])
 
+    @testing.provide_metadata
+    def test_index_reflection_modified(self):
+        """reflect indexes when a column name has changed - PG 9 
+        does not update the name of the column in the index def.
+        [ticket:2141]
+
+        """
+
+        metadata = self.metadata
+
+        t1 = Table('t', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer)
+        )
+        metadata.create_all()
+        conn = testing.db.connect().execution_options(autocommit=True)
+        conn.execute("CREATE INDEX idx1 ON t (x)")
+        conn.execute("ALTER TABLE t RENAME COLUMN x to y")
+
+        ind = testing.db.dialect.get_indexes(conn, "t", None)
+        eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
+        conn.close()
 
     @testing.fails_on('+zxjdbc', 'psycopg2/pg8000 specific assertion')
     @testing.fails_on('pypostgresql',

@@ -1308,16 +1308,31 @@ class PGDialect(default.DefaultDialect):
     def get_indexes(self, connection, table_name, schema, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
+
         IDX_SQL = """
-          SELECT c.relname, i.indisunique, i.indexprs, i.indpred,
-            a.attname
-          FROM pg_index i, pg_class c, pg_attribute a
-          WHERE i.indrelid = :table_oid AND i.indexrelid = c.oid
-            AND a.attrelid = i.indexrelid AND i.indisprimary = 'f'
-          ORDER BY c.relname, a.attnum
+          SELECT
+              i.relname as relname,
+              ix.indisunique, ix.indexprs, ix.indpred,
+              a.attname
+          FROM
+              pg_class t 
+                    join pg_index ix on t.oid = ix.indrelid
+                    join pg_class i on i.oid=ix.indexrelid
+                    left outer join 
+                        pg_attribute a 
+                        on t.oid=a.attrelid and a.attnum=ANY(ix.indkey)
+          WHERE
+              t.relkind = 'r'
+              and t.oid = :table_oid
+              and ix.indisprimary = 'f'
+          ORDER BY
+              t.relname,
+              i.relname
         """
+
         t = sql.text(IDX_SQL, typemap={'attname':sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
+
         index_names = {}
         indexes = []
         sv_idx_name = None
@@ -1343,7 +1358,8 @@ class PGDialect(default.DefaultDialect):
                 indexes.append(index_d)
                 index_names[idx_name] = index_d
             index_d['name'] = idx_name
-            index_d['column_names'].append(col)
+            if col is not None:
+                index_d['column_names'].append(col)
             index_d['unique'] = unique
         return indexes
 
