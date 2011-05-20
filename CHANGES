@@ -46,6 +46,10 @@ CHANGES
     how join() itself determines an FK error.
     [ticket:2153]
 
+  - Fixed bug whereby mapper mapped to an anonymous
+    alias would fail if logging were used, due to 
+    unescaped % sign in the alias name.  [ticket:2171]
+
 - sql
   - Fixed bug whereby if FetchedValue was passed
     to column server_onupdate, it would not
