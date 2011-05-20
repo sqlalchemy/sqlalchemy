@@ -15,6 +15,7 @@ from test.lib.testing import eq_, AssertsCompiledSQL
 from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.assertsql import CompiledSQL
+import logging
 
 class MapperTest(_fixtures.FixtureTest):
 
@@ -1410,7 +1411,34 @@ class DocumentTest(fixtures.TestBase):
         eq_(Bar.col1.__doc__, "primary key column")
         eq_(Bar.foo.__doc__, "foo relationship")
 
+class ORMLoggingTest(_fixtures.FixtureTest):
+    def setup(self):
+        self.buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger('sqlalchemy.orm'),
+        ]:
+            log.addHandler(self.buf)
+            log.setLevel(logging.DEBUG)
 
+    def teardown(self):
+        for log in [
+            logging.getLogger('sqlalchemy.orm'),
+        ]:
+            log.removeHandler(self.buf)
+
+    def _current_messages(self):
+        return [b.getMessage() for b in self.buf.buffer]
+
+    def test_mapper_info_aliased(self):
+        User, users = self.classes.User, self.tables.users
+        tb = users.select().alias()
+        mapper(User, tb)
+        s = Session()
+        s.add(User(name='ed'))
+        s.commit()
+
+        for msg in self._current_messages():
+            assert msg.startswith('(User|%%(%d anon)s) ' % id(tb))
 
 class OptionsTest(_fixtures.FixtureTest):
 

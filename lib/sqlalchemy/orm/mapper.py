@@ -1066,25 +1066,26 @@ class Mapper(object):
         for mapper in self.iterate_to_root():
             _memoized_configured_property.expire_instance(mapper)
 
-    def _log(self, msg, *args):
-        self.logger.info(
-            "(" + self.class_.__name__ + 
-            "|" + 
+    @property
+    def _log_desc(self):
+        return "(" + self.class_.__name__ + \
+            "|" + \
             (self.local_table is not None and 
                 self.local_table.description or 
-                str(self.local_table)) +
-            (self.non_primary and "|non-primary" or "") + ") " + 
-            msg, *args)
+                str(self.local_table)) +\
+            (self.non_primary and 
+            "|non-primary" or "") + ")"
+
+    def _log(self, msg, *args):
+
+        self.logger.info(
+            "%s " + msg, *((self._log_desc,) + args)
+        )
 
     def _log_debug(self, msg, *args):
         self.logger.debug(
-            "(" + self.class_.__name__ + 
-            "|" + 
-            (self.local_table is not None and 
-                self.local_table.description 
-                or str(self.local_table)) + 
-            (self.non_primary and "|non-primary" or "") + ") " + 
-            msg, *args)
+            "%s " + msg, *((self._log_desc,) + args)
+        )
 
     def __repr__(self):
         return '<Mapper at 0x%x; %s>' % (

@@ -87,6 +87,11 @@ CHANGES
     unions in which they appear.  (which is itself 
     an unordered mapping unless you pass an OrderedDict).
 
+  - Fixed bug whereby mapper mapped to an anonymous
+    alias would fail if logging were used, due to 
+    unescaped % sign in the alias name.  [ticket:2171]
+    Also in 0.6.8.
+
 - sql
   - Fixed bug whereby nesting a label of a select()
     with another label in it would produce incorrect
