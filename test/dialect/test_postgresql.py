@@ -1421,6 +1421,27 @@ class MiscTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             warnings.warn = capture_warnings._orig_showwarning
             m1.drop_all()
 
+    @testing.provide_metadata
+    def test_index_reflection_modified(self):
+        """reflect indexes when a column name has changed - PG 9 
+        does not update the name of the column in the index def.
+        [ticket:2141]
+
+        """
+
+        t1 = Table('t', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer)
+        )
+        metadata.create_all()
+        conn = testing.db.connect().execution_options(autocommit=True)
+        conn.execute("CREATE INDEX idx1 ON t (x)")
+        conn.execute("ALTER TABLE t RENAME COLUMN x to y")
+
+        ind = testing.db.dialect.get_indexes(conn, "t", None)
+        eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
+        conn.close()
+
     @testing.fails_on('postgresql+pypostgresql',
                       'pypostgresql bombs on multiple calls')
     def test_set_isolation_level(self):
@@ -1744,8 +1765,6 @@ class ArrayTest(TestBase, AssertsExecutionResults):
             set(row[1] for row in r),
             set([('1', '2', '3'), ('4', '5', '6'), (('4', '5'), ('6', '7'))])
         )
-
-
 
 class TimestampTest(TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
