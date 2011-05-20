@@ -1418,7 +1418,6 @@ class ORMLoggingTest(_fixtures.FixtureTest):
             logging.getLogger('sqlalchemy.orm'),
         ]:
             log.addHandler(self.buf)
-            log.setLevel(logging.DEBUG)
 
     def teardown(self):
         for log in [
