@@ -298,7 +298,93 @@ interface.   A "coercion" operation like lowercasing can be applied to all compa
     class CaseInsensitiveComparator(Comparator):
         def operate(self, op, other):
             return op(func.lower(self.__clause_element__()), func.lower(other))
-    
+
+Hybrid Value Objects
+--------------------
+
+Note in our previous example, if we were to compare the ``word_insensitive`` attribute of
+a ``SearchWord`` instance to a plain Python string, the plain Python string would not
+be coerced to lower case - the ``CaseInsensitiveComparator`` we built, being returned
+by ``@word_insensitive.comparator``, only applies to the SQL side.
+
+A more comprehensive form of the custom comparator is to construct a *Hybrid Value Object*.
+This technique applies the target value or expression to a value object which is then
+returned by the accessor in all cases.   The value object allows control
+of all operations upon the value as well as how compared values are treated, both 
+on the SQL expression side as well as the Python value side.   Replacing the
+previous ``CaseInsensitiveComparator`` class with a new ``CaseInsensitiveWord`` class::
+
+    class CaseInsensitiveWord(Comparator):
+        "Hybrid value representing a lower case representation of a word."
+
+        def __init__(self, word):
+            if isinstance(word, basestring):
+                self.word = word.lower()
+            elif isinstance(word, CaseInsensitiveWord):
+                self.word = word.word
+            else:
+                self.word = func.lower(word)
+
+        def operate(self, op, other):
+            if not isinstance(other, CaseInsensitiveWord):
+                other = CaseInsensitiveWord(other)
+            return op(self.word, other.word)
+
+        def __clause_element__(self):
+            return self.word
+
+        def __str__(self):
+            return self.word
+
+        key = 'word'
+        "Label to apply to Query tuple results"
+
+Above, the ``CaseInsensitiveWord`` object represents ``self.word``, which may be a SQL function,
+or may be a Python native.   By overriding ``operate()`` and ``__clause_element__()``
+to work in terms of ``self.word``, all comparison operations will work against the
+"converted" form of ``word``, whether it be SQL side or Python side.   
+Our ``SearchWord`` class can now deliver the ``CaseInsensitiveWord`` object unconditionally 
+from a single hybrid call::
+
+    class SearchWord(Base):
+        __tablename__ = 'searchword'
+        id = Column(Integer, primary_key=True)
+        word = Column(String(255), nullable=False)
+
+        @hybrid_property
+        def word_insensitive(self):
+            return CaseInsensitiveWord(self.word)
+
+The ``word_insensitive`` attribute now has case-insensitive comparison behavior
+universally, including SQL expression vs. Python expression (note the Python value is 
+converted to lower case on the Python side here)::
+
+    >>> print Session().query(SearchWord).filter_by(word_insensitive="Trucks")
+    SELECT searchword.id AS searchword_id, searchword.word AS searchword_word 
+    FROM searchword 
+    WHERE lower(searchword.word) = :lower_1
+
+SQL expression versus SQL expression::
+
+    >>> sw1 = aliased(SearchWord)
+    >>> sw2 = aliased(SearchWord)
+    >>> print Session().query(sw1.word_insensitive, sw2.word_insensitive).filter(sw1.word_insensitive > sw2.word_insensitive)
+    SELECT lower(searchword_1.word) AS lower_1, lower(searchword_2.word) AS lower_2 
+    FROM searchword AS searchword_1, searchword AS searchword_2 
+    WHERE lower(searchword_1.word) > lower(searchword_2.word)
+
+Python only expression::
+
+    >>> ws1 = SearchWord(word="SomeWord")
+    >>> ws1.word_insensitive == "sOmEwOrD"
+    True
+    >>> ws1.word_insensitive != "XOmEwOrX"
+    False
+    >>> print ws1.word_insensitive
+    someword
+
+The Hybrid Value pattern is very useful for any kind of value that may have multiple representations,
+such as timestamps, time deltas, units of measurement, currencies and encrypted passwords.
 
 """
 from sqlalchemy import util
