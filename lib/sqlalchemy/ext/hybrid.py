@@ -259,7 +259,12 @@ some highly idiosyncratic behavior on the SQL side.
 The example class below allows case-insensitive comparisons on the attribute
 named ``word_insensitive``::
 
-    from sqlalchemy.ext.hybrid import Comparator
+    from sqlalchemy.ext.hybrid import Comparator, hybrid_property
+    from sqlalchemy import func, Column, Integer, String
+    from sqlalchemy.orm import Session
+    from sqlalchemy.ext.declarative import declarative_base
+    
+    Base = declarative_base()
     
     class CaseInsensitiveComparator(Comparator):
         def __eq__(self, other):
@@ -285,6 +290,15 @@ SQL function to both sides::
     SELECT searchword.id AS searchword_id, searchword.word AS searchword_word 
     FROM searchword 
     WHERE lower(searchword.word) = lower(:lower_1)
+
+The ``CaseInsensitiveComparator`` above implements part of the :class:`.ColumnOperators`
+interface.   A "coercion" operation like lowercasing can be applied to all comparison operations
+(i.e. ``eq``, ``lt``, ``gt``, etc.) using :meth:`.Operators.operate`::
+    
+    class CaseInsensitiveComparator(Comparator):
+        def operate(self, op, other):
+            return op(func.lower(self.__clause_element__()), func.lower(other))
+    
 
 """
 from sqlalchemy import util

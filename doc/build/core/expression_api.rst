@@ -135,6 +135,26 @@ Classes
    :members:
    :undoc-members:
    :inherited-members:
+   :show-inheritance:
+
+   .. automethod:: __eq__
+   .. automethod:: __ne__
+   .. automethod:: __gt__
+   .. automethod:: __ge__
+   .. automethod:: __lt__
+   .. automethod:: __le__
+   .. automethod:: __neg__
+   .. automethod:: __add__
+   .. automethod:: __mul__
+   .. automethod:: __div__
+   .. automethod:: __truediv__
+   .. automethod:: __sub__
+   .. automethod:: __radd__
+   .. automethod:: __rsub__
+   .. automethod:: __rtruediv__
+   .. automethod:: __rdiv__
+   .. automethod:: __rmul__
+   .. automethod:: __mod__
 
 .. autoclass:: CompoundSelect
    :members:
@@ -167,6 +187,14 @@ Classes
 .. autoclass:: Join
    :members:
    :show-inheritance:
+
+.. autoclass:: Operators
+   :members:
+   :undoc-members:
+
+   .. automethod:: __and__
+   .. automethod:: __or__
+   .. automethod:: __invert__
 
 .. autoclass:: Select
    :members:

@@ -1631,6 +1631,15 @@ class _Immutable(object):
         return self
 
 class Operators(object):
+    """Base of comparison and logical operators.
+    
+    Implements base methods :meth:`operate` and :meth:`reverse_operate`,
+    as well as :meth:`__and__`, :meth:`__or__`, :meth:`__invert__`.
+    
+    Usually is used via its most common subclass
+    :class:`.ColumnOperators`.
+    
+    """
     def __and__(self, other):
         return self.operate(operators.and_, other)
 
@@ -1646,13 +1655,65 @@ class Operators(object):
         return op
 
     def operate(self, op, *other, **kwargs):
+        """Operate on an argument.
+        
+        This is the lowest level of operation, raises
+        :class:`NotImplementedError` by default.
+        
+        Overriding this on a subclass can allow common 
+        behavior to be applied to all operations.  
+        For example, overriding :class:`.ColumnOperators`
+        to apply ``func.lower()`` to the left and right 
+        side::
+        
+            class MyComparator(ColumnOperators):
+                def operate(self, op, other):
+                    return op(func.lower(self), func.lower(other))
+
+        :param op:  Operator callable.
+        :param \*other: the 'other' side of the operation. Will
+         be a single scalar for most operations.
+        :param \**kwargs: modifiers.  These may be passed by special
+         operators such as :meth:`ColumnOperators.contains`.
+        
+        
+        """
         raise NotImplementedError(str(op))
 
     def reverse_operate(self, op, other, **kwargs):
+        """Reverse operate on an argument.
+        
+        Usage is the same as :meth:`operate`.
+        
+        """
         raise NotImplementedError(str(op))
 
 class ColumnOperators(Operators):
-    """Defines comparison and math operations."""
+    """Defines comparison and math operations.
+    
+    By default all methods call down to
+    :meth:`Operators.operate` or :meth:`Operators.reverse_operate`
+    passing in the appropriate operator function from the 
+    Python builtin ``operator`` module or
+    a SQLAlchemy-specific operator function from 
+    :mod:`sqlalchemy.expression.operators`.   For example
+    the ``__eq__`` function::
+    
+        def __eq__(self, other):
+            return self.operate(operators.eq, other)
+
+    Where ``operators.eq`` is essentially::
+    
+        def eq(a, b):
+            return a == b
+    
+    A SQLAlchemy construct like :class:`.ColumnElement` ultimately
+    overrides :meth:`.Operators.operate` and others
+    to return further :class:`.ClauseElement` constructs, 
+    so that the ``==`` operation above is replaced by a clause
+    construct.
+    
+    """
 
     timetuple = None
     """Hack, allows datetime objects to be compared on the LHS."""
