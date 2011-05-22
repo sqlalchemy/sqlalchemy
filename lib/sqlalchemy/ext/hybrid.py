@@ -378,7 +378,7 @@ Python only expression::
     >>> ws1 = SearchWord(word="SomeWord")
     >>> ws1.word_insensitive == "sOmEwOrD"
     True
-    >>> ws1.word_insensitive != "XOmEwOrX"
+    >>> ws1.word_insensitive == "XOmEwOrX"
     False
     >>> print ws1.word_insensitive
     someword
