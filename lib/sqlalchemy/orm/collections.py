@@ -154,7 +154,8 @@ def attribute_mapped_collection(attr_name):
     """A dictionary-based collection type with attribute-based keying.
 
     Returns a MappedCollection factory with a keying based on the
-    'attr_name' attribute of entities in the collection.
+    'attr_name' attribute of entities in the collection, where ``attr_name``
+    is the string name of the attribute.
 
     The key value must be immutable for the lifetime of the object.  You
     can not, for example, map on foreign key values if those key values will
