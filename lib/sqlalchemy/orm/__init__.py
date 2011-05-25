@@ -490,6 +490,13 @@ def relationship(argument, secondary=None, **kwargs):
       used for self-referential relationships, indicates the column or
       list of columns that form the "remote side" of the relationship.
 
+    :param query_class:
+      a :class:`.Query` subclass that will be used as the base of the
+      "appender query" returned by a "dynamic" relationship, that
+      is, a relationship that specifies ``lazy="dynamic"`` or was 
+      otherwise constructed using the :func:`.orm.dynamic_loader`
+      function.
+      
     :param secondaryjoin:
       a ColumnElement (i.e. WHERE criterion) that will be used as the join of
       an association table to the child object. By default, this value is

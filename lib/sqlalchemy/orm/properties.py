@@ -31,10 +31,16 @@ from descriptor_props import CompositeProperty, SynonymProperty, \
             ComparableProperty,ConcreteInheritedProperty
 
 class ColumnProperty(StrategizedProperty):
-    """Describes an object attribute that corresponds to a table column."""
+    """Describes an object attribute that corresponds to a table column.
+    
+    Public constructor is the :func:`.orm.column_property` function.
+    
+    """
 
     def __init__(self, *columns, **kwargs):
         """Construct a ColumnProperty.
+
+        Note the public constructor is the :func:`.orm.column_property` function.
 
         :param \*columns: The list of `columns` describes a single
           object property. If there are multiple tables joined
@@ -168,6 +174,9 @@ log.class_logger(ColumnProperty)
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
+    
+    Public constructor is the :func:`.orm.relationship` function.
+    
     """
 
     def __init__(self, argument,
