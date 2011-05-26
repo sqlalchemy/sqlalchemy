@@ -67,6 +67,10 @@ The expression package uses functions to construct SQL expressions.  The return 
 
 .. autofunction:: null
 
+.. autofunction:: nullsfirst
+
+.. autofunction:: nullslast
+
 .. autofunction:: or_
 
 .. autofunction:: outparam
@@ -128,7 +132,6 @@ Classes
 
 .. autoclass:: _CompareMixin
   :members:
-  :undoc-members:
   :show-inheritance:
 
 .. autoclass:: ColumnOperators

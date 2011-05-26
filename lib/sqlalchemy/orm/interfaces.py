@@ -185,7 +185,7 @@ class PropComparator(expression.ColumnOperators):
     User-defined subclasses of :class:`.PropComparator` may be created. The
     built-in Python comparison and math operator methods, such as
     ``__eq__()``, ``__lt__()``, ``__add__()``, can be overridden to provide
-    new operator behaivor. The custom :class:`.PropComparator` is passed to
+    new operator behavior. The custom :class:`.PropComparator` is passed to
     the mapper property via the ``comparator_factory`` argument. In each case,
     the appropriate subclass of :class:`.PropComparator` should be used::
 

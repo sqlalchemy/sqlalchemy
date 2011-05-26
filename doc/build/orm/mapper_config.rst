@@ -545,11 +545,7 @@ should be used in order to acquire the underlying mapped column.  This will
 return a column that is appropriately wrapped in any kind of subquery
 or aliasing that has been applied in the context of the generated SQL statement.
 
-.. autoclass:: sqlalchemy.orm.interfaces.PropComparator
-    :show-inheritance:
-
 .. autofunction:: comparable_property
-
 
 .. _mapper_composite:
 

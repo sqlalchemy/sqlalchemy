@@ -19,10 +19,6 @@ Some key internal constructs are listed here.
     :members:
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.orm.properties.DeferredColumnProperty
-    :members:
-    :show-inheritance:
-
 .. autoclass:: sqlalchemy.orm.state.InstanceState
     :members:
     :show-inheritance:
@@ -38,6 +34,7 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.orm.properties.RelationshipProperty
     :members:
     :show-inheritance:
+
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.SynonymProperty
     :members:

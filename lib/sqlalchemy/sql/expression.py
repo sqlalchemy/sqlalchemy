@@ -57,7 +57,11 @@ def nullsfirst(column):
 
     e.g.::
 
-      order_by = [desc(table1.mycol).nullsfirst()]
+      someselect.order_by(desc(table1.mycol).nullsfirst())
+      
+    produces::
+    
+      ORDER BY mycol DESC NULLS FIRST
 
     """
     return _UnaryExpression(column, modifier=operators.nullsfirst_op)
@@ -67,7 +71,11 @@ def nullslast(column):
 
     e.g.::
 
-      order_by = [desc(table1.mycol).nullslast()]
+      someselect.order_by(desc(table1.mycol).nullslast())
+      
+    produces::
+    
+        ORDER BY mycol DESC NULLS LAST
 
     """
     return _UnaryExpression(column, modifier=operators.nullslast_op)
@@ -77,7 +85,11 @@ def desc(column):
 
     e.g.::
 
-      order_by = [desc(table1.mycol)]
+      someselect.order_by(desc(table1.mycol))
+      
+    produces::
+    
+        ORDER BY mycol DESC
 
     """
     return _UnaryExpression(column, modifier=operators.desc_op)
@@ -87,7 +99,11 @@ def asc(column):
 
     e.g.::
 
-      order_by = [asc(table1.mycol)]
+      someselect.order_by(asc(table1.mycol))
+      
+    produces::
+    
+      ORDER BY mycol ASC
 
     """
     return _UnaryExpression(column, modifier=operators.asc_op)
@@ -97,22 +113,21 @@ def outerjoin(left, right, onclause=None):
 
     The returned object is an instance of :class:`.Join`.
 
-    Similar functionality is also available via the :func:`outerjoin()`
-    method on any :class:`.FromClause`.
+    Similar functionality is also available via the 
+    :meth:`~.FromClause.outerjoin()` method on any 
+    :class:`.FromClause`.
 
-    left
-      The left side of the join.
+    :param left: The left side of the join.
 
-    right
-      The right side of the join.
+    :param right: The right side of the join.
 
-    onclause
-      Optional criterion for the ``ON`` clause, is derived from
-      foreign key relationships established between left and right
-      otherwise.
+    :param onclause:  Optional criterion for the ``ON`` clause, is 
+      derived from foreign key relationships established between 
+      left and right otherwise.
 
-    To chain joins together, use the :func:`join()` or :func:`outerjoin()`
-    methods on the resulting :class:`.Join` object.
+    To chain joins together, use the :meth:`.FromClause.join` or 
+    :meth:`.FromClause.outerjoin` methods on the resulting 
+    :class:`.Join` object.
 
     """
     return Join(left, right, onclause, isouter=True)
@@ -122,22 +137,22 @@ def join(left, right, onclause=None, isouter=False):
 
     The returned object is an instance of :class:`.Join`.
 
-    Similar functionality is also available via the :func:`join()` method
-    on any :class:`.FromClause`.
+    Similar functionality is also available via the 
+    :meth:`~.FromClause.join()` method on any 
+    :class:`.FromClause`.
 
-    left
-      The left side of the join.
+    :param left: The left side of the join.
 
-    right
-      The right side of the join.
+    :param right: The right side of the join.
 
-    onclause
-      Optional criterion for the ``ON`` clause, is derived from
-      foreign key relationships established between left and right
-      otherwise.
+    :param onclause:  Optional criterion for the ``ON`` clause, is 
+      derived from foreign key relationships established between 
+      left and right otherwise.
 
-    To chain joins together, use the :func:`join()` or :func:`outerjoin()`
-    methods on the resulting :class:`.Join` object.
+    To chain joins together, use the :meth:`.FromClause.join` or 
+    :meth:`.FromClause.outerjoin` methods on the resulting 
+    :class:`.Join` object.
+
 
     """
     return Join(left, right, onclause, isouter)
@@ -431,7 +446,17 @@ def not_(clause):
     return operators.inv(_literal_as_binds(clause))
 
 def distinct(expr):
-    """Return a ``DISTINCT`` clause."""
+    """Return a ``DISTINCT`` clause.
+    
+    e.g.::
+    
+        distinct(a)
+        
+    renders::
+    
+        DISTINCT a
+        
+    """
     expr = _literal_as_binds(expr)
     return _UnaryExpression(expr, operator=operators.distinct_op, type_=expr.type)
 
@@ -525,7 +550,17 @@ def extract(field, expr):
     return _Extract(field, expr)
 
 def collate(expression, collation):
-    """Return the clause ``expression COLLATE collation``."""
+    """Return the clause ``expression COLLATE collation``.
+    
+    e.g.::
+    
+        collate(mycolumn, 'utf8_bin')
+    
+    produces::
+    
+        mycolumn COLLATE utf8_bin
+
+    """
 
     expr = _literal_as_binds(expression)
     return _BinaryExpression(
@@ -1641,15 +1676,93 @@ class Operators(object):
     
     """
     def __and__(self, other):
+        """Implement the ``&`` operator.
+        
+        When used with SQL expressions, results in an
+        AND operation, equivalent to
+        :func:`~.expression.and_`, that is::
+        
+            a & b
+        
+        is equivalent to::
+        
+            from sqlalchemy import and_
+            and_(a, b)
+
+        Care should be taken when using ``&`` regarding
+        operator precedence; the ``&`` operator has the highest precedence.
+        The operands should be enclosed in parenthesis if they contain
+        further sub expressions::
+        
+            (a == 2) & (b == 4)
+
+        """
         return self.operate(operators.and_, other)
 
     def __or__(self, other):
+        """Implement the ``|`` operator.
+        
+        When used with SQL expressions, results in an
+        OR operation, equivalent to
+        :func:`~.expression.or_`, that is::
+        
+            a | b
+        
+        is equivalent to::
+        
+            from sqlalchemy import or_
+            or_(a, b)
+
+        Care should be taken when using ``|`` regarding
+        operator precedence; the ``|`` operator has the highest precedence.
+        The operands should be enclosed in parenthesis if they contain
+        further sub expressions::
+        
+            (a == 2) | (b == 4)
+
+        """
         return self.operate(operators.or_, other)
 
     def __invert__(self):
+        """Implement the ``~`` operator.
+        
+        When used with SQL expressions, results in a 
+        NOT operation, equivalent to 
+        :func:`~.expression.not_`, that is::
+        
+            ~a
+            
+        is equivalent to::
+        
+            from sqlalchemy import not_
+            not_(a)
+
+        """
         return self.operate(operators.inv)
 
     def op(self, opstring):
+        """produce a generic operator function.
+
+        e.g.::
+
+          somecolumn.op("*")(5)
+
+        produces::
+
+          somecolumn * 5
+
+        :param operator: a string which will be output as the infix operator
+          between this :class:`.ClauseElement` and the expression passed to the
+          generated function.
+
+        This function can also be used to make bitwise operators explicit. For
+        example::
+
+          somecolumn.op('&')(0xff)
+
+        is a bitwise AND of the value in somecolumn.
+
+        """
         def op(b):
             return self.operate(operators.op, opstring, b)
         return op
@@ -1713,115 +1826,278 @@ class ColumnOperators(Operators):
     so that the ``==`` operation above is replaced by a clause
     construct.
     
+    The docstrings here will describe column-oriented
+    behavior of each operator.  For ORM-based operators
+    on related objects and collections, see :class:`.RelationshipProperty.Comparator`.
+    
     """
 
     timetuple = None
     """Hack, allows datetime objects to be compared on the LHS."""
 
     def __lt__(self, other):
+        """Implement the ``<`` operator.
+        
+        In a column context, produces the clause ``a < b``.
+        
+        """
         return self.operate(operators.lt, other)
 
     def __le__(self, other):
+        """Implement the ``<=`` operator.
+        
+        In a column context, produces the clause ``a <= b``.
+        
+        """
         return self.operate(operators.le, other)
 
     __hash__ = Operators.__hash__
 
     def __eq__(self, other):
+        """Implement the ``==`` operator.
+        
+        In a column context, produces the clause ``a = b``.
+        If the target is ``None``, produces ``a IS NULL``.
+
+        """
         return self.operate(operators.eq, other)
 
     def __ne__(self, other):
+        """Implement the ``!=`` operator.
+
+        In a column context, produces the clause ``a != b``.
+        If the target is ``None``, produces ``a IS NOT NULL``.
+        
+        """
         return self.operate(operators.ne, other)
 
     def __gt__(self, other):
+        """Implement the ``>`` operator.
+        
+        In a column context, produces the clause ``a > b``.
+        
+        """
         return self.operate(operators.gt, other)
 
     def __ge__(self, other):
+        """Implement the ``>=`` operator.
+        
+        In a column context, produces the clause ``a >= b``.
+        
+        """
         return self.operate(operators.ge, other)
 
     def __neg__(self):
+        """Implement the ``-`` operator.
+        
+        In a column context, produces the clause ``-a``.
+        
+        """
         return self.operate(operators.neg)
 
     def concat(self, other):
+        """Implement the 'concat' operator.
+        
+        In a column context, produces the clause ``a || b``,
+        or uses the ``concat()`` operator on MySQL.
+        
+        """
         return self.operate(operators.concat_op, other)
 
     def like(self, other, escape=None):
+        """Implement the ``like`` operator.
+        
+        In a column context, produces the clause ``a LIKE other``.
+        
+        """
         return self.operate(operators.like_op, other, escape=escape)
 
     def ilike(self, other, escape=None):
+        """Implement the ``ilike`` operator.
+        
+        In a column context, produces the clause ``a ILIKE other``.
+        
+        """
         return self.operate(operators.ilike_op, other, escape=escape)
 
     def in_(self, other):
+        """Implement the ``in`` operator.
+        
+        In a column context, produces the clause ``a IN other``.
+        "other" may be a tuple/list of column expressions,
+        or a :func:`~.expression.select` construct.
+        
+        """
         return self.operate(operators.in_op, other)
 
     def startswith(self, other, **kwargs):
+        """Implement the ``startwith`` operator.
+
+        In a column context, produces the clause ``LIKE '<other>%'``
+        
+        """
         return self.operate(operators.startswith_op, other, **kwargs)
 
     def endswith(self, other, **kwargs):
+        """Implement the 'endswith' operator.
+        
+        In a column context, produces the clause ``LIKE '%<other>'``
+        
+        """
         return self.operate(operators.endswith_op, other, **kwargs)
 
     def contains(self, other, **kwargs):
+        """Implement the 'contains' operator.
+        
+        In a column context, produces the clause ``LIKE '%<other>%'``
+        
+        """
         return self.operate(operators.contains_op, other, **kwargs)
 
     def match(self, other, **kwargs):
+        """Implements the 'match' operator.
+        
+        In a column context, this produces a MATCH clause, i.e. 
+        ``MATCH '<other>'``.  The allowed contents of ``other`` 
+        are database backend specific.
+
+        """
         return self.operate(operators.match_op, other, **kwargs)
 
     def desc(self):
+        """Produce a :func:`~.expression.desc` clause against the
+        parent object."""
         return self.operate(operators.desc_op)
 
     def asc(self):
+        """Produce a :func:`~.expression.asc` clause against the
+        parent object."""
         return self.operate(operators.asc_op)
 
     def nullsfirst(self):
+        """Produce a :func:`~.expression.nullsfirst` clause against the
+        parent object."""
         return self.operate(operators.nullsfirst_op)
 
     def nullslast(self):
+        """Produce a :func:`~.expression.nullslast` clause against the
+        parent object."""
         return self.operate(operators.nullslast_op)
 
     def collate(self, collation):
+        """Produce a :func:`~.expression.collate` clause against
+        the parent object, given the collation string."""
         return self.operate(operators.collate, collation)
 
     def __radd__(self, other):
+        """Implement the ``+`` operator in reverse.
+
+        See :meth:`__add__`.
+        
+        """
         return self.reverse_operate(operators.add, other)
 
     def __rsub__(self, other):
+        """Implement the ``-`` operator in reverse.
+
+        See :meth:`__sub__`.
+        
+        """
         return self.reverse_operate(operators.sub, other)
 
     def __rmul__(self, other):
+        """Implement the ``*`` operator in reverse.
+
+        See :meth:`__mul__`.
+        
+        """
         return self.reverse_operate(operators.mul, other)
 
     def __rdiv__(self, other):
+        """Implement the ``/`` operator in reverse.
+
+        See :meth:`__div__`.
+        
+        """
         return self.reverse_operate(operators.div, other)
 
     def between(self, cleft, cright):
+        """Produce a :func:`~.expression.between` clause against
+        the parent object, given the lower and upper range."""
         return self.operate(operators.between_op, cleft, cright)
 
     def distinct(self):
+        """Produce a :func:`~.expression.distinct` clause against the parent object."""
         return self.operate(operators.distinct_op)
 
     def __add__(self, other):
+        """Implement the ``+`` operator.
+        
+        In a column context, produces the clause ``a + b``
+        if the parent object has non-string affinity.
+        If the parent object has a string affinity, 
+        produces the concatenation operator, ``a || b`` -
+        see :meth:`concat`.
+        
+        """
         return self.operate(operators.add, other)
 
     def __sub__(self, other):
+        """Implement the ``-`` operator.
+        
+        In a column context, produces the clause ``a - b``.
+        
+        """
         return self.operate(operators.sub, other)
 
     def __mul__(self, other):
+        """Implement the ``*`` operator.
+        
+        In a column context, produces the clause ``a * b``.
+        
+        """
         return self.operate(operators.mul, other)
 
     def __div__(self, other):
+        """Implement the ``/`` operator.
+        
+        In a column context, produces the clause ``a / b``.
+        
+        """
         return self.operate(operators.div, other)
 
     def __mod__(self, other):
+        """Implement the ``%`` operator.
+        
+        In a column context, produces the clause ``a % b``.
+        
+        """
         return self.operate(operators.mod, other)
 
     def __truediv__(self, other):
+        """Implement the ``//`` operator.
+        
+        In a column context, produces the clause ``a / b``.
+        
+        """
         return self.operate(operators.truediv, other)
 
     def __rtruediv__(self, other):
+        """Implement the ``//`` operator in reverse.
+        
+        See :meth:`__truediv__`.
+        
+        """
         return self.reverse_operate(operators.truediv, other)
 
 class _CompareMixin(ColumnOperators):
     """Defines comparison and math operations for :class:`.ClauseElement`
-    instances."""
+    instances.
+    
+    See :class:`.ColumnOperators` and :class:`.Operators` for descriptions 
+    of all operations.
+    
+    """
 
     def __compare(self, op, obj, negate=None, reverse=False,
                         **kwargs
@@ -1902,8 +2178,7 @@ class _CompareMixin(ColumnOperators):
         return o[0](self, op, other, reverse=True, *o[1:], **kwargs)
 
     def in_(self, other):
-        """Compare this element to the given element or collection using IN."""
-
+        """See :meth:`.ColumnOperators.in_`."""
         return self._in_impl(operators.in_op, operators.notin_op, other)
 
     def _in_impl(self, op, negate_op, seq_or_selectable):
@@ -1958,11 +2233,11 @@ class _CompareMixin(ColumnOperators):
                               negate=negate_op)
 
     def __neg__(self):
+        """See :meth:`.ColumnOperators.__neg__`."""
         return _UnaryExpression(self, operator=operators.neg)
 
     def startswith(self, other, escape=None):
-        """Produce the clause ``LIKE '<other>%'``"""
-
+        """See :meth:`.ColumnOperators.startswith`."""
         # use __radd__ to force string concat behavior
         return self.__compare(
             operators.like_op,
@@ -1972,8 +2247,7 @@ class _CompareMixin(ColumnOperators):
             escape=escape)
 
     def endswith(self, other, escape=None):
-        """Produce the clause ``LIKE '%<other>'``"""
-
+        """See :meth:`.ColumnOperators.endswith`."""
         return self.__compare(
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String) + 
@@ -1981,8 +2255,7 @@ class _CompareMixin(ColumnOperators):
             escape=escape)
 
     def contains(self, other, escape=None):
-        """Produce the clause ``LIKE '%<other>%'``"""
-
+        """See :meth:`.ColumnOperators.contains`."""
         return self.__compare(
             operators.like_op,
             literal_column("'%'", type_=sqltypes.String) +
@@ -1991,11 +2264,7 @@ class _CompareMixin(ColumnOperators):
             escape=escape)
 
     def match(self, other):
-        """Produce a MATCH clause, i.e. ``MATCH '<other>'``
-
-        The allowed contents of ``other`` are database backend specific.
-
-        """
+        """See :meth:`.ColumnOperators.match`."""
         return self.__compare(operators.match_op,
                               self._check_literal(operators.match_op,
                               other))
@@ -2011,35 +2280,28 @@ class _CompareMixin(ColumnOperators):
         return _Label(name, self, self.type)
 
     def desc(self):
-        """Produce a DESC clause, i.e. ``<columnname> DESC``"""
-
+        """See :meth:`.ColumnOperators.desc`."""
         return desc(self)
 
     def asc(self):
-        """Produce a ASC clause, i.e. ``<columnname> ASC``"""
-
+        """See :meth:`.ColumnOperators.asc`."""
         return asc(self)
 
     def nullsfirst(self):
-        """Produce a NULLS FIRST clause, i.e. ``NULLS FIRST``"""
-
+        """See :meth:`.ColumnOperators.nullsfirst`."""
         return nullsfirst(self)
 
     def nullslast(self):
-        """Produce a NULLS LAST clause, i.e. ``NULLS LAST``"""
-
+        """See :meth:`.ColumnOperators.nullslast`."""
         return nullslast(self)
 
     def distinct(self):
-        """Produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
-
+        """See :meth:`.ColumnOperators.distinct`."""
         return _UnaryExpression(self, operator=operators.distinct_op,
                                 type_=self.type)
 
     def between(self, cleft, cright):
-        """Produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND
-        <cright>``"""
-
+        """See :meth:`.ColumnOperators.between`."""
         return _BinaryExpression(
                 self,
                 ClauseList(
@@ -2050,33 +2312,13 @@ class _CompareMixin(ColumnOperators):
                 operators.between_op)
 
     def collate(self, collation):
-        """Produce a COLLATE clause, i.e. ``<column> COLLATE utf8_bin``"""
+        """See :meth:`.ColumnOperators.collate`."""
 
         return collate(self, collation)
 
     def op(self, operator):
-        """produce a generic operator function.
+        """See :meth:`.ColumnOperators.op`."""
 
-        e.g.::
-
-          somecolumn.op("*")(5)
-
-        produces::
-
-          somecolumn * 5
-
-        :param operator: a string which will be output as the infix operator
-          between this :class:`.ClauseElement` and the expression passed to the
-          generated function.
-
-        This function can also be used to make bitwise operators explicit. For
-        example::
-
-          somecolumn.op('&')(0xff)
-
-        is a bitwise AND of the value in somecolumn.
-
-        """
         return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, operator, obj):

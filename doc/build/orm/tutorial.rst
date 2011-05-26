@@ -1061,6 +1061,8 @@ See :ref:`loading_toplevel` for information on
 :func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
 load in the next section.
 
+.. _ormtutorial_joins:
+
 Querying with Joins
 ====================
 
@@ -1106,6 +1108,11 @@ works better when one of the following forms are used::
     query.join(User.addresses)                       # specify relationship from left to right
     query.join(Address, User.addresses)              # same, with explicit target
     query.join('addresses')                          # same, using a string
+
+As you would expect, the same idea is used for "outer" joins, using the 
+:meth:`~.Query.outerjoin` function::
+
+    query.outerjoin(User.addresses)   # LEFT OUTER JOIN
 
 Note that when :meth:`~sqlalchemy.orm.query.Query.join` is called with an
 explicit target as well as an ON clause, we use a tuple as the argument. This
@@ -1355,36 +1362,38 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
 Common Relationship Operators
 -----------------------------
 
-Here's all the operators which build on relationships:
+Here's all the operators which build on relationships - each one
+is linked to its API documentation which includes full details on usage
+and behavior:
 
-* equals (used for many-to-one)::
+* :meth:`~.RelationshipProperty.Comparator.__eq__` (many-to-one "equals" comparison)::
 
     query.filter(Address.user == someuser)
 
-* not equals (used for many-to-one)::
+* :meth:`~.RelationshipProperty.Comparator.__ne__` (many-to-one "not equals" comparison)::
 
     query.filter(Address.user != someuser)
 
-* IS NULL (used for many-to-one)::
+* IS NULL (many-to-one comparison, also uses :meth:`~.RelationshipProperty.Comparator.__eq__`)::
 
     query.filter(Address.user == None)
 
-* contains (used for one-to-many and many-to-many collections)::
+* :meth:`~.RelationshipProperty.Comparator.contains` (used for one-to-many collections)::
 
     query.filter(User.addresses.contains(someaddress))
 
-* any (used for one-to-many and many-to-many collections)::
+* :meth:`~.RelationshipProperty.Comparator.any` (used for collections)::
 
     query.filter(User.addresses.any(Address.email_address == 'bar'))
 
     # also takes keyword arguments:
     query.filter(User.addresses.any(email_address='bar'))
 
-* has (used for many-to-one)::
+* :meth:`~.RelationshipProperty.Comparator.has` (used for scalar references)::
 
     query.filter(Address.user.has(name='ed'))
 
-* with_parent (used for any relationship)::
+* :meth:`.Query.with_parent` (used for any relationship)::
 
     session.query(Address).with_parent(someuser, 'addresses')
 

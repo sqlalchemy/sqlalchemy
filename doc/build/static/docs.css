@@ -247,6 +247,9 @@ div#dialect-documentation {
 
 /* SQL popup, code styles */
 
+.highlight {
+  background:none;
+}
 pre {
   background-color: #f0f0f0;  
   border: solid 1px #ccc;

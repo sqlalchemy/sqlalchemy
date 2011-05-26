@@ -177,6 +177,10 @@ class RelationshipProperty(StrategizedProperty):
     
     Public constructor is the :func:`.orm.relationship` function.
     
+    Of note here is the :class:`.RelationshipProperty.Comparator`
+    class, which implements comparison operations for scalar-
+    and collection-referencing mapped attributes.
+    
     """
 
     def __init__(self, argument,
@@ -278,7 +282,14 @@ class RelationshipProperty(StrategizedProperty):
             )
 
     class Comparator(PropComparator):
+        """Produce comparison operations for :func:`~.orm.relationship`-based
+         attributes."""
+
         def __init__(self, prop, mapper, of_type=None, adapter=None):
+            """Construction of :class:`.RelationshipProperty.Comparator`
+            is internal to the ORM's attribute mechanics.
+            
+            """
             self.prop = prop
             self.mapper = mapper
             self.adapter = adapter
@@ -314,12 +325,23 @@ class RelationshipProperty(StrategizedProperty):
             return op(self, *other, **kwargs)
 
         def of_type(self, cls):
+            """Produce a construct that represents a particular 'subtype' of
+            attribute for the parent class.
+            
+            Currently this is usable in conjunction with :meth:`.Query.join`
+            and :meth:`.Query.outerjoin`.
+            
+            """
             return RelationshipProperty.Comparator(
                                         self.property, 
                                         self.mapper, 
                                         cls, adapter=self.adapter)
 
         def in_(self, other):
+            """Produce an IN clause - this is not implemented 
+            for :func:`~.orm.relationship`-based attributes at this time.
+            
+            """
             raise NotImplementedError('in_() not yet supported for '
                     'relationships.  For a simple many-to-one, use '
                     'in_() against the set of foreign key values.')
@@ -327,6 +349,42 @@ class RelationshipProperty(StrategizedProperty):
         __hash__ = None
 
         def __eq__(self, other):
+            """Implement the ``==`` operator.
+
+            In a many-to-one context, such as::
+
+              MyClass.some_prop == <some object>
+
+            this will typically produce a
+            clause such as::
+  
+              mytable.related_id == <some id>
+  
+            Where ``<some id>`` is the primary key of the given 
+            object.
+  
+            The ``==`` operator provides partial functionality for non-
+            many-to-one comparisons:
+  
+            * Comparisons against collections are not supported.
+              Use :meth:`~.RelationshipProperty.Comparator.contains`.
+            * Compared to a scalar one-to-many, will produce a 
+              clause that compares the target columns in the parent to
+              the given target. 
+            * Compared to a scalar many-to-many, an alias
+              of the association table will be rendered as
+              well, forming a natural join that is part of the
+              main body of the query. This will not work for
+              queries that go beyond simple AND conjunctions of
+              comparisons, such as those which use OR. Use
+              explicit joins, outerjoins, or
+              :meth:`~.RelationshipProperty.Comparator.has` for
+              more comprehensive non-many-to-one scalar
+              membership tests.
+            * Comparisons against ``None`` given in a one-to-many
+              or many-to-many context produce a NOT EXISTS clause.
+
+            """
             if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
@@ -399,6 +457,45 @@ class RelationshipProperty(StrategizedProperty):
             return sql.exists([1], crit, from_obj=dest).correlate(source)
 
         def any(self, criterion=None, **kwargs):
+            """Produce an expression that tests a collection against
+            particular criterion, using EXISTS.
+            
+            An expression like::
+            
+                session.query(MyClass).filter(
+                    MyClass.somereference.any(SomeRelated.x==2)
+                )
+                
+                
+            Will produce a query like::
+            
+                SELECT * FROM my_table WHERE
+                EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id 
+                AND related.x=2)
+                
+            Because :meth:`~.RelationshipProperty.Comparator.any` uses
+            a correlated subquery, its performance is not nearly as
+            good when compared against large target tables as that of
+            using a join.
+            
+            :meth:`~.RelationshipProperty.Comparator.any` is particularly
+            useful for testing for empty collections::
+            
+                session.query(MyClass).filter(
+                    ~MyClass.somereference.any()
+                )
+            
+            will produce::
+            
+                SELECT * FROM my_table WHERE
+                NOT EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id)
+                
+            :meth:`~.RelationshipProperty.Comparator.any` is only
+            valid for collections, i.e. a :func:`.relationship`
+            that has ``uselist=True``.  For scalar references,
+            use :meth:`~.RelationshipProperty.Comparator.has`.
+            
+            """
             if not self.property.uselist:
                 raise sa_exc.InvalidRequestError(
                             "'any()' not implemented for scalar "
@@ -408,6 +505,33 @@ class RelationshipProperty(StrategizedProperty):
             return self._criterion_exists(criterion, **kwargs)
 
         def has(self, criterion=None, **kwargs):
+            """Produce an expression that tests a scalar reference against
+            particular criterion, using EXISTS.
+
+            An expression like::
+            
+                session.query(MyClass).filter(
+                    MyClass.somereference.has(SomeRelated.x==2)
+                )
+                
+                
+            Will produce a query like::
+            
+                SELECT * FROM my_table WHERE
+                EXISTS (SELECT 1 FROM related WHERE related.id==my_table.related_id
+                AND related.x=2)
+
+            Because :meth:`~.RelationshipProperty.Comparator.has` uses
+            a correlated subquery, its performance is not nearly as
+            good when compared against large target tables as that of
+            using a join.
+            
+            :meth:`~.RelationshipProperty.Comparator.has` is only
+            valid for scalar references, i.e. a :func:`.relationship`
+            that has ``uselist=False``.  For collection references,
+            use :meth:`~.RelationshipProperty.Comparator.any`.
+            
+            """
             if self.property.uselist:
                 raise sa_exc.InvalidRequestError(
                             "'has()' not implemented for collections.  "
@@ -415,6 +539,61 @@ class RelationshipProperty(StrategizedProperty):
             return self._criterion_exists(criterion, **kwargs)
 
         def contains(self, other, **kwargs):
+            """Return a simple expression that tests a collection for 
+            containment of a particular item.
+            
+            :meth:`~.RelationshipProperty.Comparator.contains` is
+            only valid for a collection, i.e. a
+            :func:`~.orm.relationship` that implements
+            one-to-many or many-to-many with ``uselist=True``.
+            
+            When used in a simple one-to-many context, an 
+            expression like::
+            
+                MyClass.contains(other)
+                
+            Produces a clause like::
+            
+                mytable.id == <some id>
+                
+            Where ``<some id>`` is the value of the foreign key
+            attribute on ``other`` which refers to the primary
+            key of its parent object. From this it follows that
+            :meth:`~.RelationshipProperty.Comparator.contains` is
+            very useful when used with simple one-to-many
+            operations.
+            
+            For many-to-many operations, the behavior of
+            :meth:`~.RelationshipProperty.Comparator.contains`
+            has more caveats. The association table will be
+            rendered in the statement, producing an "implicit"
+            join, that is, includes multiple tables in the FROM
+            clause which are equated in the WHERE clause::
+            
+                query(MyClass).filter(MyClass.contains(other))
+                
+            Produces a query like::
+            
+                SELECT * FROM my_table, my_association_table AS
+                my_association_table_1 WHERE
+                my_table.id = my_association_table_1.parent_id
+                AND my_association_table_1.child_id = <some id>
+                
+            Where ``<some id>`` would be the primary key of
+            ``other``. From the above, it is clear that
+            :meth:`~.RelationshipProperty.Comparator.contains`
+            will **not** work with many-to-many collections when
+            used in queries that move beyond simple AND
+            conjunctions, such as multiple
+            :meth:`~.RelationshipProperty.Comparator.contains`
+            expressions joined by OR. In such cases subqueries or
+            explicit "outer joins" will need to be used instead.
+            See :meth:`~.RelationshipProperty.Comparator.any` for
+            a less-performant alternative using EXISTS, or refer
+            to :meth:`.Query.outerjoin` as well as :ref:`ormtutorial_joins`
+            for more details on constructing outer joins.
+            
+            """
             if not self.property.uselist:
                 raise sa_exc.InvalidRequestError(
                             "'contains' not implemented for scalar "
@@ -461,6 +640,44 @@ class RelationshipProperty(StrategizedProperty):
             return ~self._criterion_exists(criterion)
 
         def __ne__(self, other):
+            """Implement the ``!=`` operator.
+
+            In a many-to-one context, such as::
+  
+              MyClass.some_prop != <some object>
+  
+            This will typically produce a clause such as::
+  
+              mytable.related_id != <some id>
+  
+            Where ``<some id>`` is the primary key of the
+            given object.
+  
+            The ``!=`` operator provides partial functionality for non-
+            many-to-one comparisons:
+  
+            * Comparisons against collections are not supported.
+              Use
+              :meth:`~.RelationshipProperty.Comparator.contains`
+              in conjunction with :func:`~.expression.not_`.
+            * Compared to a scalar one-to-many, will produce a 
+              clause that compares the target columns in the parent to
+              the given target. 
+            * Compared to a scalar many-to-many, an alias
+              of the association table will be rendered as
+              well, forming a natural join that is part of the
+              main body of the query. This will not work for
+              queries that go beyond simple AND conjunctions of
+              comparisons, such as those which use OR. Use
+              explicit joins, outerjoins, or
+              :meth:`~.RelationshipProperty.Comparator.has` in
+              conjunction with :func:`~.expression.not_` for
+              more comprehensive non-many-to-one scalar
+              membership tests.
+            * Comparisons against ``None`` given in a one-to-many
+              or many-to-many context produce an EXISTS clause.
+                
+            """
             if isinstance(other, (NoneType, expression._Null)):
                 if self.property.direction == MANYTOONE:
                     return sql.or_(*[x != None for x in
@@ -1252,7 +1469,6 @@ class RelationshipProperty(StrategizedProperty):
             secondary,
             target_adapter,
             )
-
 
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)
