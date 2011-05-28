@@ -661,7 +661,8 @@ def _generate_init(class_, class_manager):
     assert original__init__
 
     # Go through some effort here and don't change the user's __init__
-    # calling signature.
+    # calling signature, including the unlikely case that it has
+    # a return value.
     # FIXME: need to juggle local names to avoid constructor argument
     # clashes.
     func_body = """\
