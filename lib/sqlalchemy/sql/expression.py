@@ -5058,19 +5058,11 @@ class Select(_SelectBase):
 
         self._froms = self._froms.union([fromclause])
 
-    def __exportable_columns(self):
-        for column in self._raw_columns:
-            if isinstance(column, Selectable):
-                for co in column.columns:
-                    yield co
-            elif isinstance(column, ColumnElement):
-                yield column
-            else:
-                continue
 
     def _populate_column_collection(self):
-        for c in self.__exportable_columns():
-            c._make_proxy(self, name=self.use_labels and c._label or None)
+        for c in self.inner_columns:
+            if hasattr(c, '_make_proxy'):
+                c._make_proxy(self, name=self.use_labels and c._label or None)
 
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement

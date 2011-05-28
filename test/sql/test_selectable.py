@@ -319,6 +319,34 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             "SELECT c FROM (SELECT (SELECT (SELECT table1.col1 AS a FROM table1) AS b) AS c)"
         )
 
+    def test_unusual_column_elements_text(self):
+        """test that .c excludes text()."""
+
+        s = select([table1.c.col1, text("foo")])
+        eq_(
+            list(s.c),
+            [s.c.col1]
+        )
+
+    def test_unusual_column_elements_clauselist(self):
+        """Test that raw ClauseList is expanded into .c."""
+
+        from sqlalchemy.sql.expression import ClauseList
+        s = select([table1.c.col1, ClauseList(table1.c.col2, table1.c.col3)])
+        eq_(
+            list(s.c),
+            [s.c.col1, s.c.col2, s.c.col3]
+        )
+
+    def test_unusual_column_elements_boolean_clauselist(self):
+        """test that BooleanClauseList is placed as single element in .c."""
+
+        c2 = and_(table1.c.col2==5, table1.c.col3==4)
+        s = select([table1.c.col1, c2])
+        eq_(
+            list(s.c),
+            [s.c.col1, s.corresponding_column(c2)]
+        )
 
 class AnonLabelTest(fixtures.TestBase):
     """Test behaviors that we hope to change with [ticket:2168]."""

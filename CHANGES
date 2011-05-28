@@ -3,6 +3,18 @@
 =======
 CHANGES
 =======
+0.7.1
+=====
+
+- sql
+  - Streamlined the process by which a Select
+    determines what's in it's '.c' collection.
+    Behaves identically, except that a 
+    raw ClauseList() passed to select([]) 
+    (which is not a documented case anyway) will
+    now be expanded into its individual column
+    elements instead of being ignored.
+
 0.7.0
 =======
 - This section documents those changes from 0.7b4
