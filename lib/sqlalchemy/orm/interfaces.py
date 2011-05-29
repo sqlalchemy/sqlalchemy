@@ -20,7 +20,7 @@ from itertools import chain
 
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util
-from sqlalchemy.sql import expression
+from sqlalchemy.sql import operators
 deque = util.importlater('collections').deque
 
 mapperutil = util.importlater('sqlalchemy.orm', 'util')
@@ -179,7 +179,7 @@ class MapperProperty(object):
 
         return operator(self.comparator, value)
 
-class PropComparator(expression.ColumnOperators):
+class PropComparator(operators.ColumnOperators):
     """Defines comparison operations for MapperProperty objects.
 
     User-defined subclasses of :class:`.PropComparator` may be created. The

@@ -134,7 +134,7 @@ Classes
   :members:
   :show-inheritance:
 
-.. autoclass:: ColumnOperators
+.. autoclass:: sqlalchemy.sql.operators.ColumnOperators
    :members:
    :undoc-members:
    :inherited-members:
@@ -191,7 +191,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: Operators
+.. autoclass:: sqlalchemy.sql.expression.Operators
    :members:
    :undoc-members:
 
