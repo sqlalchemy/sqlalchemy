@@ -28,6 +28,7 @@ table2 = Table('table2', metadata,
 
 
 class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to
