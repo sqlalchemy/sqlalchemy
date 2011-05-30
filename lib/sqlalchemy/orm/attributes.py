@@ -1222,7 +1222,7 @@ def register_attribute_impl(class_, key,
     return manager[key]
 
 def register_descriptor(class_, key, comparator=None, 
-                                parententity=None, property_=None, doc=None):
+                                parententity=None, doc=None):
     manager = manager_of_class(class_)
 
     descriptor = InstrumentedAttribute(class_, key, comparator=comparator,

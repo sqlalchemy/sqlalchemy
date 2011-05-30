@@ -102,7 +102,6 @@ class ColumnProperty(StrategizedProperty):
             self.key, 
             comparator=self.comparator_factory(self, mapper), 
             parententity=mapper,
-            property_=self,
             doc=self.doc
             )
 
@@ -277,7 +276,6 @@ class RelationshipProperty(StrategizedProperty):
             self.key, 
             comparator=self.comparator_factory(self, mapper), 
             parententity=mapper,
-            property_=self,
             doc=self.doc,
             )
 
