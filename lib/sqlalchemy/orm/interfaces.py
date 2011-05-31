@@ -623,15 +623,14 @@ class LoaderStrategy(object):
 
     * it processes the ``QueryContext`` at statement construction time,
       where it can modify the SQL statement that is being produced.
-      simple column attributes may add their represented column to the
+      Simple column attributes may add their represented column to the
       list of selected columns, *eager loading* properties may add
       ``LEFT OUTER JOIN`` clauses to the statement.
 
-    * it processes the ``SelectionContext`` at row-processing time.  This
-      includes straight population of attributes corresponding to rows,
-      setting instance-level lazyloader callables on newly
-      constructed instances, and appending child items to scalar/collection
-      attributes in response to eagerly-loaded relations.
+    * It produces "row processor" functions at result fetching time.
+      These "row processor" functions populate a particular attribute
+      on a particular mapped instance.
+
     """
 
     def __init__(self, parent):
