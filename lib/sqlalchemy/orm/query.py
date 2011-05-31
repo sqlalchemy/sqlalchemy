@@ -1866,7 +1866,13 @@ class Query(object):
 
         context.runid = _new_runid()
 
-        filtered = bool(list(self._mapper_entities))
+        for ent in self._entities:
+            if isinstance(ent, _MapperEntity):
+                filtered = True
+                break
+        else:
+            filtered = False
+
         single_entity = filtered and len(self._entities) == 1
 
         if filtered:
