@@ -313,7 +313,6 @@ class StrategizedProperty(MapperProperty):
 
     def __init_strategy(self, cls):
         self._strategies[cls] = strategy = cls(self)
-        strategy.init()
         return strategy
 
     def setup(self, context, entity, path, reduced_path, adapter, **kwargs):
@@ -638,6 +637,11 @@ class LoaderStrategy(object):
         self.is_class_level = False
         self.parent = self.parent_property.parent
         self.key = self.parent_property.key
+        # TODO: there's no particular reason we need
+        # the separate .init() method at this point.
+        # It's possible someone has written their
+        # own LS object.
+        self.init()
 
     def init(self):
         raise NotImplementedError("LoaderStrategy")
