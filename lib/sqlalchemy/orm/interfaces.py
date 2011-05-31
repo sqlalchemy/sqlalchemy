@@ -80,7 +80,7 @@ class MapperProperty(object):
 
         pass
 
-    def create_row_processor(self, selectcontext, path, reduced_path, 
+    def create_row_processor(self, context, path, reduced_path, 
                                             mapper, row, adapter):
         """Return a 3-tuple consisting of three row processing functions.
 
@@ -648,7 +648,7 @@ class LoaderStrategy(object):
     def setup_query(self, context, entity, path, reduced_path, adapter, **kwargs):
         pass
 
-    def create_row_processor(self, selectcontext, path, reduced_path, mapper, 
+    def create_row_processor(self, context, path, reduced_path, mapper, 
                                 row, adapter):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.

@@ -106,18 +106,18 @@ class UninstrumentedColumnLoader(LoaderStrategy):
                 c = adapter.columns[c]
             column_collection.append(c)
 
-    def create_row_processor(self, selectcontext, path, reduced_path, mapper, row, adapter):
+    def create_row_processor(self, context, path, reduced_path, mapper, row, adapter):
         return None, None, None
 
 class ColumnLoader(LoaderStrategy):
-    """Strategize the loading of a plain column-based MapperProperty."""
+    """Provide loading behavior for a :class:`.ColumnProperty`."""
 
     def init(self):
         self.columns = self.parent_property.columns
         self.is_composite = hasattr(self.parent_property, 'composite_class')
 
-    def setup_query(self, context, entity, path, reduced_path, adapter, 
-                            column_collection=None, **kwargs):
+    def setup_query(self, context, entity, path, reduced_path, 
+                            adapter, column_collection, **kwargs):
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
@@ -137,7 +137,8 @@ class ColumnLoader(LoaderStrategy):
             active_history = active_history
        )
 
-    def create_row_processor(self, selectcontext, path, reduced_path, mapper, row, adapter):
+    def create_row_processor(self, context, path, reduced_path, 
+                                            mapper, row, adapter):
         key = self.key
         # look through list of columns represented here
         # to see which, if any, is present in the row.
@@ -156,9 +157,9 @@ class ColumnLoader(LoaderStrategy):
 log.class_logger(ColumnLoader)
 
 class DeferredColumnLoader(LoaderStrategy):
-    """Strategize the loading of a deferred column-based MapperProperty."""
+    """Provide loading behavior for a deferred :class:`.ColumnProperty`."""
 
-    def create_row_processor(self, selectcontext, path, reduced_path, mapper, row, adapter):
+    def create_row_processor(self, context, path, reduced_path, mapper, row, adapter):
         col = self.columns[0]
         if adapter:
             col = adapter.columns[col]
@@ -167,7 +168,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if col in row:
             return self.parent_property._get_strategy(ColumnLoader).\
                         create_row_processor(
-                                selectcontext, path, reduced_path, mapper, row, adapter)
+                                context, path, reduced_path, mapper, row, adapter)
 
         elif not self.is_class_level:
             def new_execute(state, dict_, row):
@@ -294,7 +295,10 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.uselist = self.parent_property.uselist
 
 class NoLoader(AbstractRelationshipLoader):
-    """Strategize a relationship() that doesn't load data automatically."""
+    """Provide loading behavior for a :class:`.RelationshipProperty`
+    with "lazy=None".
+    
+    """
 
     def init_class_attribute(self, mapper):
         self.is_class_level = True
@@ -305,7 +309,7 @@ class NoLoader(AbstractRelationshipLoader):
             typecallable = self.parent_property.collection_class,
         )
 
-    def create_row_processor(self, selectcontext, path, reduced_path, mapper, row, adapter):
+    def create_row_processor(self, context, path, reduced_path, mapper, row, adapter):
         def new_execute(state, dict_, row):
             state.initialize(self.key)
         return new_execute, None, None
@@ -313,7 +317,10 @@ class NoLoader(AbstractRelationshipLoader):
 log.class_logger(NoLoader)
 
 class LazyLoader(AbstractRelationshipLoader):
-    """Strategize a relationship() that loads when first accessed."""
+    """Provide loading behavior for a :class:`.RelationshipProperty`
+    with "lazy=True", that is loads when first accessed.
+    
+    """
 
     def init(self):
         super(LazyLoader, self).init()
@@ -555,7 +562,7 @@ class LazyLoader(AbstractRelationshipLoader):
             else:
                 return None
 
-    def create_row_processor(self, selectcontext, path, reduced_path, 
+    def create_row_processor(self, context, path, reduced_path, 
                                     mapper, row, adapter):
         key = self.key
         if not self.is_class_level:
@@ -901,8 +908,10 @@ class SubqueryLoader(AbstractRelationshipLoader):
 log.class_logger(SubqueryLoader)
 
 class EagerLoader(AbstractRelationshipLoader):
-    """Strategize a relationship() that loads within the process 
-    of the parent object being selected."""
+    """Provide loading behavior for a :class:`.RelationshipProperty`
+    using joined eager loading.
+    
+    """
 
     def init(self):
         super(EagerLoader, self).init()
