@@ -7,6 +7,10 @@ CHANGES
 =====
 
 - sql
+  - Fixed bug whereby metadata.reflect(bind)
+    would close a Connection passed as a
+    bind argument.  Regression from 0.6.
+
   - Streamlined the process by which a Select
     determines what's in it's '.c' collection.
     Behaves identically, except that a 

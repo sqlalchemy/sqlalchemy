@@ -695,6 +695,18 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             m9.reflect()
             self.assert_(not m9.tables)
 
+    def test_reflect_all_conn_closing(self):
+        m1 = MetaData()
+        c = testing.db.connect()
+        m1.reflect(bind=c)
+        assert not c.closed
+
+    def test_inspector_conn_closing(self):
+        m1 = MetaData()
+        c = testing.db.connect()
+        i = Inspector.from_engine(testing.db)
+        assert not c.closed
+
     def test_index_reflection(self):
         m1 = MetaData(testing.db)
         t1 = Table('party', m1,

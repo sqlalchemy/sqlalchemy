@@ -2338,7 +2338,8 @@ class MetaData(SchemaItem):
             for name in load:
                 Table(name, self, **reflect_opts)
         finally:
-            if conn is not None:
+            if conn is not None and \
+                conn is not bind:
                 conn.close()
 
     def append_ddl_listener(self, event_name, listener):
