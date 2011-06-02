@@ -19,6 +19,12 @@ CHANGES
     now be expanded into its individual column
     elements instead of being ignored.
 
+- engine
+  - Deprecate schema/SQL-oriented methods on 
+    Connection/Engine that were never well known
+    and are redundant:  reflecttable(), create(), 
+    drop(), text(), engine.func
+
 0.7.0
 =======
 - This section documents those changes from 0.7b4

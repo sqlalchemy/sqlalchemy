@@ -32,6 +32,8 @@ from sqlalchemy import exc, util, dialects
 from sqlalchemy.sql import expression, visitors
 from sqlalchemy import event, events
 
+
+ddl = util.importlater("sqlalchemy.engine", "ddl")
 sqlutil = util.importlater("sqlalchemy.sql", "util")
 url = util.importlater("sqlalchemy.engine", "url")
 sqltypes = util.importlater("sqlalchemy", "types")
@@ -317,16 +319,21 @@ class Table(SchemaItem, expression.TableClause):
         # circular foreign keys
         if autoload:
             if autoload_with:
-                autoload_with.reflecttable(self,
-                                include_columns=include_columns)
+                autoload_with.run_callable(
+                    autoload_with.dialect.reflecttable,
+                    self, include_columns
+                )
             else:
-                _bind_or_error(metadata, 
+                bind = _bind_or_error(metadata, 
                         msg="No engine is bound to this Table's MetaData. "
                         "Pass an engine to the Table via "
                         "autoload_with=<someengine>, "
                         "or associate the MetaData with an engine via "
-                        "metadata.bind=<someengine>").\
-                        reflecttable(self, include_columns=include_columns)
+                        "metadata.bind=<someengine>")
+                bind.run_callable(
+                        bind.dialect.reflecttable,
+                        self, include_columns
+                    )
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
@@ -500,25 +507,34 @@ class Table(SchemaItem, expression.TableClause):
                                 self.name, schema=self.schema)
 
     def create(self, bind=None, checkfirst=False):
-        """Issue a ``CREATE`` statement for this table.
+        """Issue a ``CREATE`` statement for this 
+        :class:`.Table`, using the given :class:`.Connectable`
+        for connectivity.
 
-        See also ``metadata.create_all()``.
+        See also :meth:`.MetaData.create_all`.
 
         """
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind.create(self, checkfirst=checkfirst)
+        bind._run_visitor(ddl.SchemaGenerator, 
+                            self, 
+                            checkfirst=checkfirst)
+
 
     def drop(self, bind=None, checkfirst=False):
-        """Issue a ``DROP`` statement for this table.
+        """Issue a ``DROP`` statement for this 
+        :class:`.Table`, using the given :class:`.Connectable`
+        for connectivity.
 
-        See also ``metadata.drop_all()``.
+        See also :meth:`.MetaData.drop_all`.
 
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind.drop(self, checkfirst=checkfirst)
+        bind._run_visitor(ddl.SchemaDropper, 
+                            self, 
+                            checkfirst=checkfirst)
 
 
     def tometadata(self, metadata, schema=RETAIN_SCHEMA):
@@ -1608,14 +1624,18 @@ class Sequence(DefaultGenerator):
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind.create(self, checkfirst=checkfirst)
+        bind._run_visitor(ddl.SchemaGenerator, 
+                            self, 
+                            checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
         """Drops this sequence from the database."""
 
         if bind is None:
             bind = _bind_or_error(self)
-        bind.drop(self, checkfirst=checkfirst)
+        bind._run_visitor(ddl.SchemaDropper, 
+                            self, 
+                            checkfirst=checkfirst)
 
     def _not_a_column_expr(self):
         raise exc.InvalidRequestError(
@@ -2116,15 +2136,29 @@ class Index(ColumnCollectionMixin, SchemaItem):
         return self.table.bind
 
     def create(self, bind=None):
+        """Issue a ``CREATE`` statement for this 
+        :class:`.Index`, using the given :class:`.Connectable`
+        for connectivity.
+
+        See also :meth:`.MetaData.create_all`.
+
+        """
         if bind is None:
             bind = _bind_or_error(self)
-        bind.create(self)
+        bind._run_visitor(ddl.SchemaGenerator, self)
         return self
 
     def drop(self, bind=None):
+        """Issue a ``DROP`` statement for this 
+        :class:`.Index`, using the given :class:`.Connectable`
+        for connectivity.
+
+        See also :meth:`.MetaData.drop_all`.
+
+        """
         if bind is None:
             bind = _bind_or_error(self)
-        bind.drop(self)
+        bind._run_visitor(ddl.SchemaDropper, self)
 
     def __repr__(self):
         return 'Index("%s", %s%s)' % (
@@ -2375,7 +2409,10 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind.create(self, checkfirst=checkfirst, tables=tables)
+        bind._run_visitor(ddl.SchemaGenerator, 
+                            self, 
+                            checkfirst=checkfirst,
+                            tables=tables)
 
     def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
@@ -2399,7 +2436,10 @@ class MetaData(SchemaItem):
         """
         if bind is None:
             bind = _bind_or_error(self)
-        bind.drop(self, checkfirst=checkfirst, tables=tables)
+        bind._run_visitor(ddl.SchemaDropper, 
+                            self, 
+                            checkfirst=checkfirst,
+                            tables=tables)
 
 class ThreadLocalMetaData(MetaData):
     """A MetaData variant that presents a different ``bind`` in every thread.

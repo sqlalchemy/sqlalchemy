@@ -1172,6 +1172,7 @@ The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` 
 
 .. autoclass:: Index
     :show-inheritance:
+    :members:
 
 .. _metadata_ddl:
 

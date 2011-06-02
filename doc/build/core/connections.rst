@@ -367,6 +367,10 @@ Connection / Engine API
    :show-inheritance:
    :members:
 
+.. autoclass:: NestedTransaction
+    :show-inheritance:
+    :members:
+
 .. autoclass:: sqlalchemy.engine.base.ResultProxy
     :members:
 
@@ -374,5 +378,10 @@ Connection / Engine API
     :members:
 
 .. autoclass:: Transaction
+    :show-inheritance:
+    :members:
+
+.. autoclass:: TwoPhaseTransaction
+    :show-inheritance:
     :members:
 

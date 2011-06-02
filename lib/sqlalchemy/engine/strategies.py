@@ -236,6 +236,13 @@ class MockEngineStrategy(EngineStrategy):
             from sqlalchemy.engine import ddl
             ddl.SchemaDropper(self.dialect, self, **kwargs).traverse(entity)
 
+        def _run_visitor(self, visitorcallable, element, 
+                                        connection=None, 
+                                        **kwargs):
+            kwargs['checkfirst'] = False
+            visitorcallable(self.dialect, self,
+                                **kwargs).traverse(element)
+
         def execute(self, object, *multiparams, **params):
             raise NotImplementedError()
 

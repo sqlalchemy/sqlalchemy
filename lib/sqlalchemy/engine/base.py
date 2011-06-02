@@ -767,26 +767,50 @@ class TypeCompiler(object):
 class Connectable(object):
     """Interface for an object which supports execution of SQL constructs.
 
-    The two implementations of ``Connectable`` are :class:`.Connection` and
+    The two implementations of :class:`.Connectable` are :class:`.Connection` and
     :class:`.Engine`.
 
     Connectable must also implement the 'dialect' member which references a
     :class:`.Dialect` instance.
+
     """
 
+    def connect(self, **kwargs):
+        """Return a :class:`.Connection` object.
+        
+        Depending on context, this may be ``self`` if this object
+        is already an instance of :class:`.Connection`, or a newly 
+        procured :class:`.Connection` if this object is an instance
+        of :class:`.Engine`.
+        
+        """
+
     def contextual_connect(self):
-        """Return a Connection object which may be part of an ongoing
-        context."""
+        """Return a :class:`.Connection` object which may be part of an ongoing
+        context.
+
+        Depending on context, this may be ``self`` if this object
+        is already an instance of :class:`.Connection`, or a newly 
+        procured :class:`.Connection` if this object is an instance
+        of :class:`.Engine`.
+        
+        """
 
         raise NotImplementedError()
 
+    @util.deprecated("0.7", "Use the create() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.create`, "
+                            ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, **kwargs):
-        """Create a table or index given an appropriate schema object."""
+        """Emit CREATE statements for the given schema entity."""
 
         raise NotImplementedError()
 
+    @util.deprecated("0.7", "Use the drop() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.drop`, "
+                            ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, **kwargs):
-        """Drop a table or index given an appropriate schema object."""
+        """Emit DROP statements for the given schema entity."""
 
         raise NotImplementedError()
 
@@ -799,6 +823,10 @@ class Connectable(object):
 
         The underlying cursor is closed after execution.
         """
+        raise NotImplementedError()
+
+    def _run_visitor(self, visitorcallable, element, 
+                                    **kwargs):
         raise NotImplementedError()
 
     def _execute_clauseelement(self, elem, multiparams=None, params=None):
@@ -1077,13 +1105,19 @@ class Connection(Connectable):
         self.__connection.detach()
 
     def begin(self):
-        """Begin a transaction and return a Transaction handle.
+        """Begin a transaction and return a transaction handle.
+        
+        The returned object is an instance of :class:`.Transaction`.
 
         Repeated calls to ``begin`` on the same Connection will create
         a lightweight, emulated nested transaction.  Only the
         outermost transaction may ``commit``.  Calls to ``commit`` on
         inner transactions are ignored.  Any transaction in the
         hierarchy may ``rollback``, however.
+        
+        See also :meth:`.Connection.begin_nested`, 
+        :meth:`.Connection.begin_twophase`.
+
         """
 
         if self.__transaction is None:
@@ -1093,13 +1127,18 @@ class Connection(Connectable):
             return Transaction(self, self.__transaction)
 
     def begin_nested(self):
-        """Begin a nested transaction and return a Transaction handle.
+        """Begin a nested transaction and return a transaction handle.
+
+        The returned object is an instance of :class:`.NestedTransaction`.
 
         Nested transactions require SAVEPOINT support in the
         underlying database.  Any transaction in the hierarchy may
         ``commit`` and ``rollback``, however the outermost transaction
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
+
+        See also :meth:`.Connection.begin`, 
+        :meth:`.Connection.begin_twophase`.
         """
 
         if self.__transaction is None:
@@ -1109,11 +1148,19 @@ class Connection(Connectable):
         return self.__transaction
 
     def begin_twophase(self, xid=None):
-        """Begin a two-phase or XA transaction and return a Transaction
+        """Begin a two-phase or XA transaction and return a transaction
         handle.
+        
+        The returned object is an instance of :class:`.TwoPhaseTransaction`,
+        which in addition to the methods provided by
+        :class:`.Transaction`, also provides a :meth:`~.TwoPhaseTransaction.prepare`
+        method.
 
         :param xid: the two phase transaction id.  If not supplied, a 
           random id will be generated.
+
+        See also :meth:`.Connection.begin`, 
+        :meth:`.Connection.begin_twophase`.
 
         """
 
@@ -1248,7 +1295,24 @@ class Connection(Connectable):
             self._rollback_impl()
 
     def close(self):
-        """Close this Connection."""
+        """Close this :class:`.Connection`.
+        
+        This results in a release of the underlying database
+        resources, that is, the DBAPI connection referenced
+        internally. The DBAPI connection is typically restored
+        back to the connection-holding :class:`.Pool` referenced
+        by the :class:`.Engine` that produced this
+        :class:`.Connection`. Any transactional state present on
+        the DBAPI connection is also unconditionally released via
+        the DBAPI connection's ``rollback()`` method, regardless
+        of any :class:`.Transaction` object that may be
+        outstanding with regards to this :class:`.Connection`.
+        
+        After :meth:`~.Connection.close` is called, the
+        :class:`.Connection` is permanently in a closed state,
+        and will allow no further operations.
+
+        """
 
         try:
             conn = self.__connection
@@ -1692,20 +1756,39 @@ class Connection(Connectable):
         basestring: _execute_text
     }
 
+    @util.deprecated("0.7", "Use the create() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.create`, "
+                            ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, **kwargs):
-        """Create a Table or Index given an appropriate Schema object."""
+        """Emit CREATE statements for the given schema entity."""
 
         return self.engine.create(entity, connection=self, **kwargs)
 
+    @util.deprecated("0.7", "Use the drop() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.drop`, "
+                            ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, **kwargs):
-        """Drop a Table or Index given an appropriate Schema object."""
+        """Emit DROP statements for the given schema entity."""
 
         return self.engine.drop(entity, connection=self, **kwargs)
 
+    @util.deprecated("0.7", "Use autoload=True with :class:`.Table`, "
+                        "or use the :class:`.Inspector` object.")
     def reflecttable(self, table, include_columns=None):
-        """Reflect the columns in the given string table name from the
-        database."""
+        """Load table description from the database.
 
+        Given a :class:`.Table` object, reflect its columns and
+        properties from the database, populating the given :class:`.Table`
+        object with attributes..  If include_columns (a list or
+        set) is specified, limit the autoload to the given column
+        names.
+
+        The default implementation uses the 
+        :class:`.Inspector` interface to 
+        provide the output, building upon the granular table/column/
+        constraint etc. methods of :class:`.Dialect`.
+
+        """
         return self.engine.reflecttable(table, self, include_columns)
 
     def default_schema_name(self):
@@ -1714,11 +1797,34 @@ class Connection(Connectable):
     def transaction(self, callable_, *args, **kwargs):
         """Execute the given function within a transaction boundary.
 
-        This is a shortcut for explicitly calling `begin()` and `commit()`
-        and optionally `rollback()` when exceptions are raised.  The
-        given `*args` and `**kwargs` will be passed to the function.
+        The function is passed this :class:`.Connection` 
+        as the first argument, followed by the given \*args and \**kwargs.
 
-        See also transaction() on engine.
+        This is a shortcut for explicitly invoking 
+        :meth:`.Connection.begin`, calling :meth:`.Transaction.commit`
+        upon success or :meth:`.Transaction.rollback` upon an 
+        exception raise::
+        
+            def do_something(conn, x, y):
+                conn.execute("some statement", {'x':x, 'y':y})
+            
+            conn.transaction(do_something, 5, 10)
+        
+        Note that context managers (i.e. the ``with`` statement)
+        present a more modern way of accomplishing the above,
+        using the :class:`.Transaction` object as a base::
+        
+            with conn.begin():
+                conn.execute("some statement", {'x':5, 'y':10})
+
+        One advantage to the :meth:`.Connection.transaction`
+        method is that the same method is also available
+        on :class:`.Engine` as :meth:`.Engine.transaction` - 
+        this method procures a :class:`.Connection` and then
+        performs the same operation, allowing equivalent
+        usage with either a :class:`.Connection` or :class:`.Engine`
+        without needing to know what kind of object 
+        it is.
 
         """
 
@@ -1732,30 +1838,58 @@ class Connection(Connectable):
             raise
 
     def run_callable(self, callable_, *args, **kwargs):
+        """Given a callable object or function, execute it, passing
+        a :class:`.Connection` as the first argument.
+        
+        The given \*args and \**kwargs are passed subsequent
+        to the :class:`.Connection` argument.
+        
+        This function, along with :meth:`.Engine.run_callable`, 
+        allows a function to be run with a :class:`.Connection`
+        or :class:`.Engine` object without the need to know
+        which one is being dealt with.
+        
+        """
         return callable_(self, *args, **kwargs)
+
+    def _run_visitor(self, visitorcallable, element, **kwargs):
+        visitorcallable(self.dialect, self,
+                            **kwargs).traverse_single(element)
 
 
 class Transaction(object):
-    """Represent a Transaction in progress.
+    """Represent a database transaction in progress.
+    
+    The :class:`.Transaction` object is procured by 
+    calling the :meth:`~.Connection.begin` method of
+    :class:`.Connection`::
+        
+        from sqlalchemy import create_engine
+        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        connection = engine.connect()
+        trans = connection.begin()
+        connection.execute("insert into x (a, b) values (1, 2)")
+        trans.commit()
 
     The object provides :meth:`.rollback` and :meth:`.commit`
     methods in order to control transaction boundaries.  It 
     also implements a context manager interface so that 
     the Python ``with`` statement can be used with the 
-    :meth:`.Connection.begin` method.
+    :meth:`.Connection.begin` method::
+    
+        with connection.begin():
+            connection.execute("insert into x (a, b) values (1, 2)")
 
     The Transaction object is **not** threadsafe.
 
+    See also:  :meth:`.Connection.begin`, :meth:`.Connection.begin_twophase`,
+    :meth:`.Connection.begin_nested`.
+    
     .. index::
       single: thread safety; Transaction
     """
 
     def __init__(self, connection, parent):
-        """The constructor for :class:`.Transaction` is private
-        and is called from within the :class:`.Connection.begin` 
-        implementation.
-
-        """
         self.connection = connection
         self._parent = parent or self
         self.is_active = True
@@ -1824,6 +1958,14 @@ class RootTransaction(Transaction):
 
 
 class NestedTransaction(Transaction):
+    """Represent a 'nested', or SAVEPOINT transaction.
+
+    A new :class:`.NestedTransaction` object may be procured
+    using the :meth:`.Connection.begin_nested` method.
+    
+    The interface is the same as that of :class:`.Transaction`.
+    
+    """
     def __init__(self, connection, parent):
         super(NestedTransaction, self).__init__(connection, parent)
         self._savepoint = self.connection._savepoint_impl()
@@ -1840,6 +1982,15 @@ class NestedTransaction(Transaction):
 
 
 class TwoPhaseTransaction(Transaction):
+    """Represent a two-phase transaction.
+    
+    A new :class:`.TwoPhaseTransaction` object may be procured
+    using the :meth:`.Connection.begin_twophase` method.
+    
+    The interface is the same as that of :class:`.Transaction`
+    with the addition of the :meth:`prepare` method.
+    
+    """
     def __init__(self, connection, xid):
         super(TwoPhaseTransaction, self).__init__(connection, None)
         self._is_prepared = False
@@ -1847,6 +1998,11 @@ class TwoPhaseTransaction(Transaction):
         self.connection._begin_twophase_impl(self.xid)
 
     def prepare(self):
+        """Prepare this :class:`.TwoPhaseTransaction`.
+        
+        After a PREPARE, the transaction can be committed.
+        
+        """
         if not self._parent.is_active:
             raise exc.InvalidRequestError("This transaction is inactive")
         self.connection._prepare_twophase_impl(self.xid)
@@ -1901,11 +2057,17 @@ class Engine(Connectable, log.Identified):
     dispatch = event.dispatcher(events.ConnectionEvents)
 
     def update_execution_options(self, **opt):
-        """update the execution_options dictionary of this :class:`.Engine`.
-
-        For details on execution_options, see
-        :meth:`Connection.execution_options` as well as
-        :meth:`sqlalchemy.sql.expression.Executable.execution_options`.
+        """Update the default execution_options dictionary 
+        of this :class:`.Engine`.
+        
+        The given keys/values in \**opt are added to the
+        default execution options that will be used for 
+        all connections.  The initial contents of this dictionary
+        can be sent via the ``execution_options`` paramter
+        to :func:`.create_engine`.
+        
+        See :meth:`.Connection.execution_options` for more
+        details on execution options.
 
         """
         self._execution_options = \
@@ -1957,18 +2119,22 @@ class Engine(Connectable, log.Identified):
         self.pool.dispose()
         self.pool = self.pool.recreate()
 
+    @util.deprecated("0.7", "Use the create() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.create`, "
+                            ":meth:`.Index.create`, :meth:`.MetaData.create_all`")
     def create(self, entity, connection=None, **kwargs):
-        """Create a table or index within this engine's database connection
-        given a schema object."""
+        """Emit CREATE statements for the given schema entity."""
 
         from sqlalchemy.engine import ddl
 
         self._run_visitor(ddl.SchemaGenerator, entity, 
                                 connection=connection, **kwargs)
 
+    @util.deprecated("0.7", "Use the drop() method on the given schema "
+                            "object directly, i.e. :meth:`.Table.drop`, "
+                            ":meth:`.Index.drop`, :meth:`.MetaData.drop_all`")
     def drop(self, entity, connection=None, **kwargs):
-        """Drop a table or index within this engine's database connection
-        given a schema object."""
+        """Emit DROP statements for the given schema entity."""
 
         from sqlalchemy.engine import ddl
 
@@ -1983,9 +2149,13 @@ class Engine(Connectable, log.Identified):
             connection.close()
 
     @property
+    @util.deprecated("0.7", 
+                "Use :attr:`.expression.func` to create function constructs.")
     def func(self):
         return expression._FunctionGenerator(bind=self)
 
+    @util.deprecated("0.7", 
+                "Use :func:`.expression.text` to create text constructs.")
     def text(self, text, *args, **kwargs):
         """Return a :func:`~sqlalchemy.sql.expression.text` construct, 
         bound to this engine.
@@ -2005,8 +2175,7 @@ class Engine(Connectable, log.Identified):
         else:
             conn = connection
         try:
-            visitorcallable(self.dialect, conn,
-                            **kwargs).traverse_single(element)
+            conn._run_visitor(visitorcallable, element, **kwargs)
         finally:
             if connection is None:
                 conn.close()
@@ -2014,13 +2183,16 @@ class Engine(Connectable, log.Identified):
     def transaction(self, callable_, *args, **kwargs):
         """Execute the given function within a transaction boundary.
 
-        This is a shortcut for explicitly calling `begin()` and `commit()`
-        and optionally `rollback()` when exceptions are raised.  The
-        given `*args` and `**kwargs` will be passed to the function.
-
-        The connection used is that of contextual_connect().
-
-        See also the similar method on Connection itself.
+        The function is passed a newly procured
+        :class:`.Connection` as the first argument, followed by
+        the given \*args and \**kwargs. The :class:`.Connection`
+        is then closed (returned to the pool) when the operation
+        is complete.
+        
+        This method can be used interchangeably with
+        :meth:`.Connection.transaction`. See that method for
+        more details on usage as well as a modern alternative
+        using context managers (i.e. the ``with`` statement).
 
         """
 
@@ -2031,6 +2203,18 @@ class Engine(Connectable, log.Identified):
             conn.close()
 
     def run_callable(self, callable_, *args, **kwargs):
+        """Given a callable object or function, execute it, passing
+        a :class:`.Connection` as the first argument.
+        
+        The given \*args and \**kwargs are passed subsequent
+        to the :class:`.Connection` argument.
+        
+        This function, along with :meth:`.Connection.run_callable`, 
+        allows a function to be run with a :class:`.Connection`
+        or :class:`.Engine` object without the need to know
+        which one is being dealt with.
+        
+        """
         conn = self.contextual_connect()
         try:
             return conn.run_callable(callable_, *args, **kwargs)
@@ -2070,10 +2254,12 @@ class Engine(Connectable, log.Identified):
     def connect(self, **kwargs):
         """Return a new :class:`.Connection` object.
 
-        The :class:`.Connection`, upon construction, will procure a DBAPI connection
-        from the :class:`.Pool` referenced by this :class:`.Engine`,
-        returning it back to the :class:`.Pool` after the :meth:`.Connection.close`
-        method is called.
+        The :class:`.Connection` object is a facade that uses a DBAPI connection internally
+        in order to communicate with the database.  This connection is procured
+        from the connection-holding :class:`.Pool` referenced by this :class:`.Engine`.
+        When the :meth:`~.Connection.close` method of the :class:`.Connection` object is called,
+        the underlying DBAPI connection is then returned to the connection pool,
+        where it may be used again in a subsequent call to :meth:`~.Engine.connect`.
 
         """
 
@@ -2120,10 +2306,19 @@ class Engine(Connectable, log.Identified):
             if connection is None:
                 conn.close()
 
+    @util.deprecated("0.7", "Use autoload=True with :class:`.Table`, "
+                        "or use the :class:`.Inspector` object.")
     def reflecttable(self, table, connection=None, include_columns=None):
-        """Given a Table object, reflects its columns and properties from the
-        database."""
+        """Load table description from the database.
 
+        Uses the given :class:`.Connection`, or if None produces
+        its own :class:`.Connection`, and passes the ``table``
+        and ``include_columns`` arguments onto that 
+        :class:`.Connection` object's :meth:`.Connection.reflecttable`
+        method.  The :class:`.Table` object is then populated
+        with new attributes.
+
+        """
         if connection is None:
             conn = self.contextual_connect()
         else:
@@ -2138,7 +2333,21 @@ class Engine(Connectable, log.Identified):
         return self.run_callable(self.dialect.has_table, table_name, schema)
 
     def raw_connection(self):
-        """Return a DB-API connection."""
+        """Return a "raw" DBAPI connection from the connection pool.
+        
+        The returned object is a proxied version of the DBAPI 
+        connection object used by the underlying driver in use.
+        The object will have all the same behavior as the real DBAPI
+        connection, except that its ``close()`` method will result in the
+        connection being returned to the pool, rather than being closed
+        for real.
+        
+        This method provides direct DBAPI connection access for
+        special situations.  In most situations, the :class:`.Connection`
+        object should be used, which is procured using the
+        :meth:`.Engine.connect` method.
+        
+        """
 
         return self.pool.unique_connection()
 
