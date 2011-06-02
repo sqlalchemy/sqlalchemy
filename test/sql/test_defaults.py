@@ -68,7 +68,7 @@ class DefaultTest(fixtures.TestBase):
                 def2 = sa.text("getdate()")
             else:
                 def2 = sa.text("current_date")
-            ts = db.func.current_date().scalar()
+            ts = db.scalar(func.current_date())
         else:
             f = len('abcdef')
             f2 = len('abcdefghijk')

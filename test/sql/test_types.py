@@ -1263,15 +1263,15 @@ class DateTest(fixtures.TestBase, AssertsExecutionResults):
                      'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
 
     def testtextdate(self):
-        x = testing.db.text(
+        x = testing.db.execute(text(
             "select user_datetime from query_users_with_date",
-            typemap={'user_datetime':DateTime}).execute().fetchall()
+            typemap={'user_datetime':DateTime})).fetchall()
 
         self.assert_(isinstance(x[0][0], datetime.datetime))
 
-        x = testing.db.text(
+        x = testing.db.execute(text(
             "select * from query_users_with_date where user_datetime=:somedate",
-            bindparams=[bindparam('somedate', type_=types.DateTime)]).execute(
+            bindparams=[bindparam('somedate', type_=types.DateTime)]),
             somedate=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
 
     def testdate2(self):

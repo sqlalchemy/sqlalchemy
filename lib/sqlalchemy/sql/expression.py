@@ -1144,6 +1144,12 @@ func = _FunctionGenerator()
         >>> print func.count(1)
         count(:param_1)
 
+   The element is a column-oriented SQL element like any other, and is
+   used in that way::
+   
+        >>> print select([func.count(table.c.id)])
+        SELECT count(sometable.id) FROM sometable
+
    Any name can be given to ``func``. If the function name is unknown to
    SQLAlchemy, it will be rendered exactly as is. For common SQL functions
    which SQLAlchemy is aware of, the name may be interpreted as a *generic
@@ -1171,7 +1177,16 @@ func = _FunctionGenerator()
    This object meets the "column" interface, including comparison and labeling
    functions.  The object can also be passed the :meth:`~.Connectable.execute`
    method of a :class:`.Connection` or :class:`.Engine`, where it will be
-   wrapped inside of a SELECT statement first.
+   wrapped inside of a SELECT statement first::
+   
+        print connection.execute(func.current_timestamp()).scalar()
+        
+   A function can also be "bound" to a :class:`.Engine` or :class:`.Connection`
+   using the ``bind`` keyword argument, providing an execute() as well
+   as a scalar() method::
+   
+        myfunc = func.current_timestamp(bind=some_engine)
+        print myfunc.scalar()
 
    Functions which are interpreted as "generic" functions know how to
    calculate their return type automatically. For a listing of known generic

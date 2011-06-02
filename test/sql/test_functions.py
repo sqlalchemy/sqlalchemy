@@ -195,6 +195,7 @@ class ExecuteTest(fixtures.TestBase):
     def tearDown(self):
         pass
 
+    @testing.uses_deprecated
     def test_standalone_execute(self):
         x = testing.db.func.current_date().execute().scalar()
         y = testing.db.func.current_date().select().execute().scalar()
@@ -300,13 +301,13 @@ class ExecuteTest(fixtures.TestBase):
     @testing.fails_on_everything_except('postgresql')
     def test_as_from(self):
         # TODO: shouldnt this work on oracle too ?
-        x = testing.db.func.current_date().execute().scalar()
-        y = testing.db.func.current_date().select().execute().scalar()
-        z = testing.db.func.current_date().scalar()
-        w = select(['*'], from_obj=[testing.db.func.current_date()]).scalar()
+        x = func.current_date(bind=testing.db).execute().scalar()
+        y = func.current_date(bind=testing.db).select().execute().scalar()
+        z = func.current_date(bind=testing.db).scalar()
+        w = select(['*'], from_obj=[func.current_date(bind=testing.db)]).scalar()
 
         # construct a column-based FROM object out of a function, like in [ticket:172]
-        s = select([sql.column('date', type_=DateTime)], from_obj=[testing.db.func.current_date()])
+        s = select([sql.column('date', type_=DateTime)], from_obj=[func.current_date(bind=testing.db)])
         q = s.execute().first()[s.c.date]
         r = s.alias('datequery').select().scalar()
 
