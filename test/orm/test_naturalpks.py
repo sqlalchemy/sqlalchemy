@@ -15,6 +15,9 @@ from test.lib import fixtures
 from test.orm import _fixtures
 
 class NaturalPKTest(fixtures.MappedTest):
+    # MySQL 5.5 on Windows crashes (the entire server, not the client)
+    # if you screw around with ON UPDATE CASCADE type of stuff.
+    __requires__ = 'skip_mysql_on_windows',
 
     @classmethod
     def define_tables(cls, metadata):
@@ -616,6 +619,8 @@ class SelfReferentialTest(fixtures.MappedTest):
 
 
 class NonPKCascadeTest(fixtures.MappedTest):
+    __requires__ = 'skip_mysql_on_windows',
+
     @classmethod
     def define_tables(cls, metadata):
         if testing.against('oracle'):
@@ -982,6 +987,8 @@ class JoinedInheritanceTest(fixtures.MappedTest):
 
     # mssql doesn't allow ON UPDATE on self-referential keys
     __unsupported_on__ = ('mssql',) 
+
+    __requires__ = 'skip_mysql_on_windows',
 
     @classmethod
     def define_tables(cls, metadata):

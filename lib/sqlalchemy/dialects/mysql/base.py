@@ -68,6 +68,22 @@ creation option can be specified in this syntax::
         mysql_charset='utf8'
        )
 
+Case Sensitivity and Table Reflection
+-------------------------------------
+
+MySQL has inconsistent support for case-sensitive identifier
+names, basing support on specific details of the underlying
+operating system. However, it has been observed that no matter
+what case sensitivity behavior is present, the names of tables in
+foreign key declarations are *always* received from the database
+as all-lower case, making it impossible to accurately reflect a
+schema where inter-related tables use mixed-case identifier names.
+
+Therefore it is strongly advised that table names be declared as
+all lower case both within SQLAlchemy as well as on the MySQL
+database itself, especially if database reflection features are
+to be used.
+
 Keys
 ----
 
@@ -1974,17 +1990,6 @@ class MySQLDialect(default.DefaultDialect):
             sql = parser._describe_to_create(table_name, columns)
         return parser.parse(sql, charset)
 
-    def _adjust_casing(self, table, charset=None):
-        """Adjust Table name to the server case sensitivity, if needed."""
-
-        casing = self._server_casing
-
-        # For winxx database hosts.  TODO: is this really needed?
-        if casing == 1 and table.name != table.name.lower():
-            table.name = table.name.lower()
-            lc_alias = sa_schema._get_table_key(table.name, table.schema)
-            table.metadata.tables[lc_alias] = table
-
     def _detect_charset(self, connection):
         raise NotImplementedError()
 
@@ -2114,7 +2119,7 @@ class MySQLTableDefinitionParser(object):
         self.dialect = dialect
         self.preparer = preparer
         self._prep_regexes()
-    
+
     def parse(self, show_create, charset):
         state = ReflectedState()
         state.charset = charset

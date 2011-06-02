@@ -761,8 +761,9 @@ class EnumTest(fixtures.TestBase):
         eq_(e1.adapt(ENUM).name, 'foo')
         eq_(e1.adapt(ENUM).schema, 'bar')
 
-    @testing.fails_on('mysql+mysqldb', "MySQL seems to issue a 'data truncated' warning.")
-    @testing.fails_on('mysql+pymysql', "MySQL seems to issue a 'data truncated' warning.")
+    @testing.crashes('mysql', 
+                    'Inconsistent behavior across various OS/drivers'
+                )
     def test_constraint(self):
         assert_raises(exc.DBAPIError, 
             enum_table.insert().execute,

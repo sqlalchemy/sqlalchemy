@@ -102,6 +102,9 @@ expect them to be present will fail.
 
 Additional steps specific to individual databases are as follows:
 
+    MYSQL: Default storage engine should be "MyISAM".   Tests that require
+    "InnoDB" as the engine will specify this explicitly.
+
     ORACLE: a user named "test_schema" is created.
 
     The primary database user needs to be able to create and drop tables,

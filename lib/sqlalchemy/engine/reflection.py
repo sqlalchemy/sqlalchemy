@@ -346,12 +346,6 @@ class Inspector(object):
         """
         dialect = self.bind.dialect
 
-        # MySQL dialect does this.  Applicable with other dialects?
-        if hasattr(dialect, '_connection_charset') \
-                                        and hasattr(dialect, '_adjust_casing'):
-            charset = dialect._connection_charset
-            dialect._adjust_casing(table)
-
         # table attributes we might need.
         reflection_options = dict(
             (k, table.kwargs.get(k)) for k in dialect.reflection_options if k in table.kwargs)

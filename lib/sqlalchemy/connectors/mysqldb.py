@@ -93,7 +93,7 @@ class MySQLDBConnector(Connector):
                                     ).constants.CLIENT
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except (AttributeError, ImportError):
-                pass
+                self.supports_sane_rowcount = False
             opts['client_flag'] = client_flag
         return [[], opts]
 

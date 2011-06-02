@@ -129,11 +129,11 @@ def savepoints(fn):
     return _chain_decorators_on(
         fn,
         emits_warning_on('mssql', 'Savepoint support in mssql is experimental and may lead to data loss.'),
-        no_support('access', 'not supported by database'),
-        no_support('sqlite', 'not supported by database'),
-        no_support('sybase', 'FIXME: guessing, needs confirmation'),
-        exclude('mysql', '<', (5, 0, 3), 'not supported by database'),
-        exclude('informix', '<', (11, 55, 'xC3'), 'not supported by database'),
+        no_support('access', 'savepoints not supported'),
+        no_support('sqlite', 'savepoints not supported'),
+        no_support('sybase', 'savepoints not supported'),
+        exclude('mysql', '<', (5, 0, 3), 'savepoints not supported'),
+        exclude('informix', '<', (11, 55, 'xC3'), 'savepoints not supported'),
         )
 
 def denormalized_names(fn):
@@ -369,6 +369,10 @@ def _has_sqlite():
     except ImportError:
         return False
 
+def _has_mysql_on_windows():
+    return testing.against('mysql+mysqldb') and \
+            testing.db.dialect._server_casing == 1
+
 def sqlite(fn):
     return _chain_decorators_on(
         fn,
@@ -386,4 +390,14 @@ def ad_hoc_engines(fn):
     return _chain_decorators_on(
         fn,
         skip_if(lambda: config.options.low_connections)
+    )
+
+def skip_mysql_on_windows(fn):
+    """Catchall for a large variety of MySQL on Windows failures"""
+
+    return _chain_decorators_on(
+        fn,
+        skip_if(_has_mysql_on_windows,
+            "Not supported on MySQL + Windows"
+        )
     )

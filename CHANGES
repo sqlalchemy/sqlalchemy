@@ -25,6 +25,29 @@ CHANGES
     and are redundant:  reflecttable(), create(), 
     drop(), text(), engine.func
 
+- mysql
+  - Unit tests pass 100% on MySQL installed
+    on windows.
+
+  - Removed the "adjust casing" step that would
+    fail when reflecting a table on MySQL
+    on windows with a mixed case name.  After some
+    experimenting with a windows MySQL server, it's
+    been determined that this step wasn't really 
+    helping the situation much; MySQL does not return
+    FK names with proper casing on non-windows 
+    platforms either, and removing the step at
+    least allows the reflection to act more like
+    it does on other OSes.   A warning here
+    has been considered but its difficult to 
+    determine under what conditions such a warning
+    can be raised, so punted on that for now - 
+    added some docs instead. [ticket:2181]
+
+  - supports_sane_rowcount will be set to False
+    if using MySQLdb and the DBAPI doesn't provide 
+    the constants.CLIENT module.
+
 0.7.0
 =======
 - This section documents those changes from 0.7b4

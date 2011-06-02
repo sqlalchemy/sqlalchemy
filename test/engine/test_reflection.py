@@ -394,6 +394,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         finally:
             meta.drop_all()
 
+    @testing.provide_metadata
     def test_nonreflected_fk_raises(self):
         """test that a NoReferencedColumnError is raised when reflecting
         a table with an FK to another table which has not included the target
@@ -401,7 +402,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         """
 
-        meta = MetaData(testing.db)
+        meta = self.metadata
         a1 = Table('a', meta,
             Column('x', sa.Integer, primary_key=True),
             Column('z', sa.Integer),
@@ -412,15 +413,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             test_needs_fk=True
         )
         meta.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            a2 = Table('a', m2, include_columns=['z'], autoload=True)
-            b2 = Table('b', m2, autoload=True)
+        m2 = MetaData(testing.db)
+        a2 = Table('a', m2, include_columns=['z'], autoload=True)
+        b2 = Table('b', m2, autoload=True)
 
-            assert_raises(sa.exc.NoReferencedColumnError, a2.join, b2)
-        finally:
-            meta.drop_all()
-
+        assert_raises(sa.exc.NoReferencedColumnError, a2.join, b2)
 
     @testing.exclude('mysql', '<', (4, 1, 1), 'innodb funkiness')
     def test_override_existing_fk(self):
@@ -585,7 +582,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
-    @testing.fails_on('+informixdb', 'FIXME: should be supported via the DELIMITED env var but that breaks everything else for now')
+    @testing.fails_on('+informixdb', 
+                        "FIXME: should be supported via the "
+                        "DELIMITED env var but that breaks "
+                        "everything else for now")
     def test_reserved(self):
 
         # check a table that uses an SQL reserved name doesn't cause an
@@ -1135,6 +1135,48 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'SELECT weird_casing.col1, '
                             'weird_casing."Col2", weird_casing."col3" '
                             'FROM weird_casing')
+
+class CaseSensitiveTest(fixtures.TablesTest):
+    """Nail down case sensitive behaviors, mostly on MySQL."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('SomeTable', metadata, 
+            Column('x', Integer, primary_key=True),
+            test_needs_fk=True
+        )
+        Table('SomeOtherTable', metadata, 
+            Column('x', Integer, primary_key=True),
+            Column('y', Integer, sa.ForeignKey("SomeTable.x")),
+            test_needs_fk=True
+        )
+
+    @testing.fails_if(testing.requires._has_mysql_on_windows)
+    def test_table_names(self):
+        x = testing.db.run_callable(
+            testing.db.dialect.get_table_names
+        )
+        assert set(["SomeTable", "SomeOtherTable"]).issubset(x)
+
+    def test_reflect_exact_name(self):
+        m = MetaData()
+        t1 = Table("SomeTable", m, autoload=True, autoload_with=testing.db)
+        eq_(t1.name, "SomeTable")
+        assert t1.c.x is not None
+
+    @testing.fails_on('mysql', 'FKs come back as lower case no matter what')
+    def test_reflect_via_fk(self):
+        m = MetaData()
+        t2 = Table("SomeOtherTable", m, autoload=True, autoload_with=testing.db)
+        eq_(t2.name, "SomeOtherTable")
+        assert "SomeTable" in m.tables
+
+    @testing.fails_on_everything_except('sqlite', 'mysql')
+    def test_reflect_case_insensitive(self):
+        m = MetaData()
+        t2 = Table("sOmEtAbLe", m, autoload=True, autoload_with=testing.db)
+        eq_(t2.name, "sOmEtAbLe")
+
 
 class ComponentReflectionTest(fixtures.TestBase):
 
