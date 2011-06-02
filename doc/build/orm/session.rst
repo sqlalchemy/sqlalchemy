@@ -636,9 +636,17 @@ transaction. It always issues :func:`~sqlalchemy.orm.session.Session.flush`
 beforehand to flush any remaining state to the database; this is independent
 of the "autoflush" setting. If no transaction is present, it raises an error.
 Note that the default behavior of the :class:`~sqlalchemy.orm.session.Session`
-is that a transaction is always present; this behavior can be disabled by
+is that a "transaction" is always present; this behavior can be disabled by
 setting ``autocommit=True``. In autocommit mode, a transaction can be
 initiated by calling the :func:`~sqlalchemy.orm.session.Session.begin` method.
+
+.. note:: The term "transaction" here refers to a transactional
+   construct within the :class:`.Session` itself which may be
+   maintaining zero or more actual database (DBAPI) transactions.  An individual
+   DBAPI connection begins participation in the "transaction" as it is first
+   used to execute a SQL statement, then remains present until the session-level
+   "transaction" is completed.  See :ref:`unitofwork_transaction` for 
+   further detail.
 
 Another behavior of :func:`~sqlalchemy.orm.session.Session.commit` is that by
 default it expires the state of all instances present after the commit is
