@@ -110,6 +110,7 @@ class ClassManager(dict):
 
     @util.memoized_property
     def mapper(self):
+        # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
 
     def _attr_has_impl(self, key):
@@ -119,27 +120,6 @@ class ClassManager(dict):
         """
 
         return key in self and self[key].impl is not None
-
-    def _configure_create_arguments(self, 
-                            _source=None, 
-                            deferred_scalar_loader=None):
-        """Accept extra **kw arguments passed to create_manager_for_cls.
-
-        The current contract of ClassManager and other managers is that they
-        take a single "cls" argument in their constructor (as per 
-        test/orm/instrumentation.py InstrumentationCollisionTest).  This
-        is to provide consistency with the current API of "class manager"
-        callables and such which may return various ClassManager and 
-        ClassManager-like instances.   So create_manager_for_cls sends
-        in ClassManager-specific arguments via this method once the 
-        non-proxied ClassManager is available.
-
-        """
-        if _source:
-            deferred_scalar_loader = _source.deferred_scalar_loader
-
-        if deferred_scalar_loader:
-            self.deferred_scalar_loader = deferred_scalar_loader
 
     def _subclass_manager(self, cls):
         """Create a new ClassManager for a subclass of this ClassManager's
@@ -525,8 +505,6 @@ class InstrumentationRegistry(object):
             # expensive ones.
             self._extended = True
             _install_lookup_strategy(self)
-
-        manager._configure_create_arguments(**kw)
 
         manager.factory = factory
         self._manager_finders[class_] = manager.manager_getter()

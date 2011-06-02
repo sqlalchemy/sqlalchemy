@@ -81,7 +81,6 @@ except ImportError:
             return func(*(args + fargs), **newkeywords)
         return newfunc
 
-
 if py3k:
     # they're bringing it back in 3.2.  brilliant !
     def callable(fn):

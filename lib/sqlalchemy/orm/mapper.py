@@ -612,14 +612,13 @@ class Mapper(object):
         self.dispatch.instrument_class(self, self.class_)
 
         if manager is None:
-            manager = instrumentation.register_class(self.class_, 
-                deferred_scalar_loader = _load_scalar_attributes
-            )
+            manager = instrumentation.register_class(self.class_)
 
         self.class_manager = manager
 
         manager.mapper = self
-
+        manager.deferred_scalar_loader = self._load_scalar_attributes
+ 
         # The remaining members can be added by any mapper, 
         # e_name None or not.
         if manager.info.get(_INSTRUMENTOR, False):
@@ -1518,6 +1517,65 @@ class Mapper(object):
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.\
                     get_committed_value(state, dict_, passive=passive)
+
+    def _load_scalar_attributes(self, state, attribute_names):
+        """initiate a column-based attribute refresh operation."""
+
+        #assert mapper is _state_mapper(state)
+        session = sessionlib._state_session(state)
+        if not session:
+            raise orm_exc.DetachedInstanceError(
+                        "Instance %s is not bound to a Session; "
+                        "attribute refresh operation cannot proceed" %
+                        (state_str(state)))
+
+        has_key = bool(state.key)
+
+        result = False
+
+        if self.inherits and not self.concrete:
+            statement = self._optimized_get_statement(state, attribute_names)
+            if statement is not None:
+                result = session.query(self).from_statement(statement).\
+                                        _load_on_ident(None, 
+                                            only_load_props=attribute_names, 
+                                            refresh_state=state)
+
+        if result is False:
+            if has_key:
+                identity_key = state.key
+            else:
+                # this codepath is rare - only valid when inside a flush, and the
+                # object is becoming persistent but hasn't yet been assigned an identity_key.
+                # check here to ensure we have the attrs we need.
+                pk_attrs = [self._columntoproperty[col].key
+                            for col in self.primary_key]
+                if state.expired_attributes.intersection(pk_attrs):
+                    raise sa_exc.InvalidRequestError("Instance %s cannot be refreshed - it's not "
+                                                    " persistent and does not "
+                                                    "contain a full primary key." % state_str(state))
+                identity_key = self._identity_key_from_state(state)
+
+            if (_none_set.issubset(identity_key) and \
+                    not self.allow_partial_pks) or \
+                    _none_set.issuperset(identity_key):
+                util.warn("Instance %s to be refreshed doesn't "
+                            "contain a full primary key - can't be refreshed "
+                            "(and shouldn't be expired, either)." 
+                            % state_str(state))
+                return
+
+            result = session.query(self)._load_on_ident(
+                                                identity_key, 
+                                                refresh_state=state, 
+                                                only_load_props=attribute_names)
+
+        # if instance is pending, a refresh operation 
+        # may not complete (even if PK attributes are assigned)
+        if has_key and result is None:
+            raise orm_exc.ObjectDeletedError(
+                                "Instance '%s' has been deleted." % 
+                                state_str(state))
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary
@@ -2424,7 +2482,10 @@ class Mapper(object):
                     # occur within a flush()
                     identitykey = self._identity_key_from_state(refresh_state)
             else:
-                identitykey = identity_class, tuple([row[column] for column in pk_cols])
+                identitykey = (
+                                identity_class, 
+                                tuple([row[column] for column in pk_cols])
+                            )
 
             instance = session_identity_map.get(identitykey)
             if instance is not None:
@@ -2475,9 +2536,8 @@ class Mapper(object):
 
                 if create_instance:
                     for fn in create_instance:
-                        instance = fn(self, 
-                                                context, 
-                                                row, self.class_)
+                        instance = fn(self, context, 
+                                            row, self.class_)
                         if instance is not EXT_CONTINUE:
                             manager = attributes.manager_of_class(
                                                     instance.__class__)
@@ -2494,12 +2554,13 @@ class Mapper(object):
                 state = attributes.instance_state(instance)
                 state.key = identitykey
 
-                # manually adding instance to session.  for a complete add,
-                # session._finalize_loaded() must be called.
+                # attach instance to session.
                 state.session_id = context.session.hash_key
                 session_identity_map.add(state)
 
             if currentload or populate_existing:
+                # state is being fully loaded, so populate.
+                # add to the "context.progress" collection.
                 if isnew:
                     state.runid = context.runid
                     context.progress[state] = dict_
@@ -2522,9 +2583,9 @@ class Mapper(object):
                     state.manager.dispatch.refresh(state, context, only_load_props)
 
             elif state in context.partials or state.unloaded:
-                # populate attributes on non-loading instances which have 
-                # been expired
-                # TODO: apply eager loads to un-lazy loaded collections ?
+                # state is having a partial set of its attributes
+                # refreshed.  Populate those attributes,
+                # and add to the "context.partials" collection.
 
                 if state in context.partials:
                     isnew = False
@@ -2532,7 +2593,6 @@ class Mapper(object):
                 else:
                     isnew = True
                     attrs = state.unloaded
-                    # allow query.instances to commit the subset of attrs
                     context.partials[state] = (dict_, attrs)
 
                 if populate_instance:
@@ -2747,64 +2807,6 @@ def _event_on_resurrect(state):
 def _sort_states(states):
     return sorted(states, key=operator.attrgetter('sort_key'))
 
-def _load_scalar_attributes(state, attribute_names):
-    """initiate a column-based attribute refresh operation."""
-
-    mapper = _state_mapper(state)
-    session = sessionlib._state_session(state)
-    if not session:
-        raise orm_exc.DetachedInstanceError(
-                    "Instance %s is not bound to a Session; "
-                    "attribute refresh operation cannot proceed" %
-                    (state_str(state)))
-
-    has_key = bool(state.key)
-
-    result = False
-
-    if mapper.inherits and not mapper.concrete:
-        statement = mapper._optimized_get_statement(state, attribute_names)
-        if statement is not None:
-            result = session.query(mapper).from_statement(statement).\
-                                    _load_on_ident(None, 
-                                        only_load_props=attribute_names, 
-                                        refresh_state=state)
-
-    if result is False:
-        if has_key:
-            identity_key = state.key
-        else:
-            # this codepath is rare - only valid when inside a flush, and the
-            # object is becoming persistent but hasn't yet been assigned an identity_key.
-            # check here to ensure we have the attrs we need.
-            pk_attrs = [mapper._columntoproperty[col].key
-                        for col in mapper.primary_key]
-            if state.expired_attributes.intersection(pk_attrs):
-                raise sa_exc.InvalidRequestError("Instance %s cannot be refreshed - it's not "
-                                                " persistent and does not "
-                                                "contain a full primary key." % state_str(state))
-            identity_key = mapper._identity_key_from_state(state)
-
-        if (_none_set.issubset(identity_key) and \
-                not mapper.allow_partial_pks) or \
-                _none_set.issuperset(identity_key):
-            util.warn("Instance %s to be refreshed doesn't "
-                        "contain a full primary key - can't be refreshed "
-                        "(and shouldn't be expired, either)." 
-                        % state_str(state))
-            return
-
-        result = session.query(mapper)._load_on_ident(
-                                            identity_key, 
-                                            refresh_state=state, 
-                                            only_load_props=attribute_names)
-
-    # if instance is pending, a refresh operation 
-    # may not complete (even if PK attributes are assigned)
-    if has_key and result is None:
-        raise orm_exc.ObjectDeletedError(
-                            "Instance '%s' has been deleted." % 
-                            state_str(state))
 
 
 class _ColumnMapping(util.py25_dict):
