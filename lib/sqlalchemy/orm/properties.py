@@ -1155,17 +1155,19 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 self.direction = MANYTOONE
         else:
-            foreign_keys = [f for (c, f) in self.synchronize_pairs]
             parentcols = util.column_set(self.parent.mapped_table.c)
             targetcols = util.column_set(self.mapper.mapped_table.c)
 
             # fk collection which suggests ONETOMANY.
 
-            onetomany_fk = targetcols.intersection(foreign_keys)
+            onetomany_fk = targetcols.intersection(
+                            self._calculated_foreign_keys)
 
             # fk collection which suggests MANYTOONE.
 
-            manytoone_fk = parentcols.intersection(foreign_keys)
+            manytoone_fk = parentcols.intersection(
+                            self._calculated_foreign_keys)
+
             if not onetomany_fk and not manytoone_fk:
                 raise sa_exc.ArgumentError("Can't determine relationshi"
                         "p direction for relationship '%s' - foreign "
