@@ -1164,13 +1164,14 @@ class CaseSensitiveTest(fixtures.TablesTest):
         eq_(t1.name, "SomeTable")
         assert t1.c.x is not None
 
-    @testing.fails_on('mysql', 'FKs come back as lower case no matter what')
+    @testing.fails_if(lambda: not testing.requires._has_mysql_fully_case_sensitive())
     def test_reflect_via_fk(self):
         m = MetaData()
         t2 = Table("SomeOtherTable", m, autoload=True, autoload_with=testing.db)
         eq_(t2.name, "SomeOtherTable")
         assert "SomeTable" in m.tables
 
+    @testing.fails_if(testing.requires._has_mysql_fully_case_sensitive)
     @testing.fails_on_everything_except('sqlite', 'mysql')
     def test_reflect_case_insensitive(self):
         m = MetaData()

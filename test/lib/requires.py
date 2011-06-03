@@ -370,8 +370,12 @@ def _has_sqlite():
         return False
 
 def _has_mysql_on_windows():
-    return testing.against('mysql+mysqldb') and \
+    return testing.against('mysql') and \
             testing.db.dialect._server_casing == 1
+
+def _has_mysql_fully_case_sensitive():
+    return testing.against('mysql') and \
+            testing.db.dialect._server_casing == 0
 
 def sqlite(fn):
     return _chain_decorators_on(
