@@ -1164,7 +1164,9 @@ class CaseSensitiveTest(fixtures.TablesTest):
         eq_(t1.name, "SomeTable")
         assert t1.c.x is not None
 
-    @testing.fails_if(lambda: not testing.requires._has_mysql_fully_case_sensitive())
+    @testing.fails_if(lambda: 
+            testing.against('mysql') and 
+            not testing.requires._has_mysql_fully_case_sensitive())
     def test_reflect_via_fk(self):
         m = MetaData()
         t2 = Table("SomeOtherTable", m, autoload=True, autoload_with=testing.db)
