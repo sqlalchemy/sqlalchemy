@@ -1,4 +1,4 @@
-from sqlalchemy import Integer
+from sqlalchemy import Integer, ForeignKey
 from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
 from sqlalchemy.orm import mapper, Session, composite
 from sqlalchemy.orm.mapper import Mapper
@@ -12,6 +12,9 @@ import sys
 import pickle
 
 class Foo(fixtures.BasicEntity):
+    pass
+
+class SubFoo(Foo):
     pass
 
 class _MutableDictTestBase(object):
@@ -171,6 +174,51 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
     def test_non_mutable(self):
         self._test_non_mutable()
 
+class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        MutationDict = cls._type_fixture()
+
+        Table('foo', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('data', PickleType),
+            Column('non_mutable_data', PickleType)
+        )
+
+        Table('subfoo', metadata,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+        )
+
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+        subfoo = cls.tables.subfoo
+
+        mapper(Foo, foo)
+        mapper(SubFoo, subfoo, inherits=Foo)
+        MutationDict.associate_with_attribute(Foo.data)
+
+    def test_in_place_mutation(self):
+        sess = Session()
+
+        f1 = SubFoo(data={'a':'b'})
+        sess.add(f1)
+        sess.commit()
+
+        f1.data['a'] = 'c'
+        sess.commit()
+
+        eq_(f1.data, {'a':'c'})
+
+    def test_replace(self):
+        sess = Session()
+        f1 = SubFoo(data={'a':'b'})
+        sess.add(f1)
+        sess.flush()
+
+        f1.data = {'b':'c'}
+        sess.commit()
+        eq_(f1.data, {'b':'c'})
+
 class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -228,8 +276,6 @@ class _CompositeTestBase(object):
         ClassManager.dispatch._clear()
         super(_CompositeTestBase, self).teardown()
 
-class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
-
     @classmethod
     def _type_fixture(cls):
 
@@ -263,6 +309,8 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
                     other.x == self.x and \
                     other.y == self.y
         return Point
+
+class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
@@ -303,3 +351,59 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
             sess.add(f2)
             f2.data.y = 12
             assert f2 in sess.dirty
+
+
+class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata,
+            Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('x', Integer),
+            Column('y', Integer)
+        )
+        Table('subfoo', metadata,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+        subfoo = cls.tables.subfoo
+
+        Point = cls._type_fixture()
+
+        mapper(Foo, foo, properties={
+            'data':composite(Point, foo.c.x, foo.c.y)
+        })
+        mapper(SubFoo, subfoo, inherits=Foo)
+
+    def test_in_place_mutation_subclass(self):
+        sess = Session()
+        d = Point(3, 4)
+        f1 = SubFoo(data=d)
+        sess.add(f1)
+        sess.commit()
+
+        f1.data.y = 5
+        sess.commit()
+
+        eq_(f1.data, Point(3, 5))
+
+    def test_pickle_of_parent_subclass(self):
+        sess = Session()
+        d = Point(3, 4)
+        f1 = SubFoo(data=d)
+        sess.add(f1)
+        sess.commit()
+
+        f1.data
+        assert 'data' in f1.__dict__
+        sess.close()
+
+        for loads, dumps in picklers():
+            sess = Session()
+            f2 = loads(dumps(f1))
+            sess.add(f2)
+            f2.data.y = 12
+            assert f2 in sess.dirty
+

@@ -215,9 +215,9 @@ class CompositeProperty(DescriptorProperty):
                                     insert_update_handler, raw=True)
         event.listen(self.parent, 'after_update', 
                                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'load', load_handler, raw=True)
-        event.listen(self.parent, 'refresh', load_handler, raw=True)
-        event.listen(self.parent, "expire", expire_handler, raw=True)
+        event.listen(self.parent, 'load', load_handler, raw=True, propagate=True)
+        event.listen(self.parent, 'refresh', load_handler, raw=True, propagate=True)
+        event.listen(self.parent, "expire", expire_handler, raw=True, propagate=True)
 
         # TODO: need a deserialize hook here
 

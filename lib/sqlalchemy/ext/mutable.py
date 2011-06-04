@@ -347,12 +347,16 @@ class MutableBase(object):
         return weakref.WeakKeyDictionary()
 
     @classmethod
-    def _listen_on_attribute(cls, attribute, coerce):
+    def _listen_on_attribute(cls, attribute, coerce, parent_cls):
         """Establish this type as a mutation listener for the given 
         mapped descriptor.
 
         """
         key = attribute.key
+        if parent_cls is not attribute.class_:
+            return
+
+        # rely on "propagate" here
         parent_cls = attribute.class_
 
         def load(state, *args):
@@ -398,11 +402,12 @@ class MutableBase(object):
                 for val in state_dict['ext.mutable.values']:
                     val._parents[state.obj()] = key
 
-        event.listen(parent_cls, 'load', load, raw=True)
-        event.listen(parent_cls, 'refresh', load, raw=True)
-        event.listen(attribute, 'set', set, raw=True, retval=True)
-        event.listen(parent_cls, 'pickle', pickle, raw=True)
-        event.listen(parent_cls, 'unpickle', unpickle, raw=True)
+
+        event.listen(parent_cls, 'load', load, raw=True, propagate=True)
+        event.listen(parent_cls, 'refresh', load, raw=True, propagate=True)
+        event.listen(attribute, 'set', set, raw=True, retval=True, propagate=True)
+        event.listen(parent_cls, 'pickle', pickle, raw=True, propagate=True)
+        event.listen(parent_cls, 'unpickle', unpickle, raw=True, propagate=True)
 
 class Mutable(MutableBase):
     """Mixin that defines transparent propagation of change
@@ -434,7 +439,7 @@ class Mutable(MutableBase):
         mapped descriptor.
 
         """
-        cls._listen_on_attribute(attribute, True)
+        cls._listen_on_attribute(attribute, True, attribute.class_)
 
     @classmethod
     def associate_with(cls, sqltype):
@@ -548,7 +553,7 @@ class MutableComposite(MutableBase):
         def listen_for_type(mapper, class_):
             for prop in mapper.iterate_properties:
                 if hasattr(prop, 'composite_class') and issubclass(prop.composite_class, cls):
-                    cls._listen_on_attribute(getattr(class_, prop.key), False)
+                    cls._listen_on_attribute(getattr(class_, prop.key), False, class_)
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 

@@ -13,6 +13,11 @@ CHANGES
     up to foreign key nullability.  
     Related to [ticket:1912]
 
+  - Repaired new "mutable" extension to propagate
+    events to subclasses correctly; don't 
+    create multiple event listeners for 
+    subclasses either.  [ticket:2180]
+
 - sql
   - Fixed bug whereby metadata.reflect(bind)
     would close a Connection passed as a
