@@ -505,7 +505,17 @@ class SQLiteDialect(default.DefaultDialect):
     def get_isolation_level(self, connection):
         cursor = connection.cursor()
         cursor.execute('PRAGMA read_uncommitted')
-        value = cursor.fetchone()[0]
+        res = cursor.fetchone()
+        if res:
+            value = res[0]
+        else: 
+            # http://www.sqlite.org/changes.html#version_3_3_3
+            # "Optional READ UNCOMMITTED isolation (instead of the 
+            # default isolation level of SERIALIZABLE) and 
+            # table level locking when database connections 
+            # share a common cache.""
+            # pre-SQLite 3.3.0 default to 0
+            value = 0
         cursor.close()
         if value == 0:
             return "SERIALIZABLE"

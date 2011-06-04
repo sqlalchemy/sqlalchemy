@@ -37,6 +37,14 @@ CHANGES
     and are redundant:  reflecttable(), create(), 
     drop(), text(), engine.func
 
+- sqlite
+  - Accept None from cursor.fetchone() when
+    "PRAGMA read_uncommitted" is called to determine
+    current isolation mode at connect time and
+    default to SERIALIZABLE; this to support SQLite 
+    versions pre-3.3.0 that did not have this 
+    feature.  [ticket:2173]
+
 - mysql
   - Unit tests pass 100% on MySQL installed
     on windows.
