@@ -291,7 +291,6 @@ class AbstractRelationshipLoader(LoaderStrategy):
     def init(self):
         self.mapper = self.parent_property.mapper
         self.target = self.parent_property.target
-        self.table = self.parent_property.table
         self.uselist = self.parent_property.uselist
 
 class NoLoader(AbstractRelationshipLoader):

@@ -243,7 +243,7 @@ class DependencyProcessor(object):
                 return True
         else:
             return states and \
-                not self.prop._is_self_referential() and \
+                not self.prop._is_self_referential and \
                 self.mapper in uowcommit.mappers
 
     def _verify_canload(self, state):

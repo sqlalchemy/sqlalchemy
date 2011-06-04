@@ -1665,6 +1665,50 @@ class M2MCascadeTest(fixtures.MappedTest):
         assert b1 not in a1.bs
         assert b1 in a2.bs
 
+class O2MSelfReferentialDetelOrphanTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('node', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer, ForeignKey('node.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Node(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Node = cls.classes.Node
+        node = cls.tables.node
+        mapper(Node, node, properties={
+            "children":relationship(
+                            Node, 
+                            cascade="all, delete-orphan", 
+                            backref=backref(
+                                    "parent", 
+                                    remote_side=node.c.id
+                                )
+                            )
+        })
+
+    def test_self_referential_delete(self):
+        Node = self.classes.Node
+        s = Session()
+
+        n1, n2, n3, n4 = Node(), Node(), Node(), Node()
+        n1.children = [n2, n3]
+        n3.children = [n4]
+        s.add_all([n1, n2, n3, n4])
+        s.commit()
+        eq_(s.query(Node).count(), 4)
+
+        n1.children.remove(n3)
+        s.commit()
+        eq_(s.query(Node).count(), 2)
+
+
 class NoBackrefCascadeTest(_fixtures.FixtureTest):
     run_inserts = None
 

@@ -1368,8 +1368,8 @@ class Mapper(object):
         return False
 
     def common_parent(self, other):
-        """Return true if the given mapper shares a common inherited parent as
-        this mapper."""
+        """Return true if the given mapper shares a 
+        common inherited parent as this mapper."""
 
         return self.base_mapper is other.base_mapper
 

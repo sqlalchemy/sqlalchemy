@@ -5,6 +5,13 @@ CHANGES
 =======
 0.7.1
 =====
+- orm
+  - "delete-orphan" cascade is now allowed on
+    self-referential relationships - this since
+    SQLA 0.7 no longer enforces "parent with no 
+    child" at the ORM level; this check is left
+    up to foreign key nullability.  
+    Related to [ticket:1912]
 
 - sql
   - Fixed bug whereby metadata.reflect(bind)
