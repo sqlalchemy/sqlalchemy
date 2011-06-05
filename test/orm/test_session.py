@@ -300,6 +300,20 @@ class SessionTest(_fixtures.FixtureTest):
         assert u1 in sess
 
     @testing.resolve_artifact_names
+    def test_make_transient_plus_rollback(self):
+        # test for [ticket:2182]
+        mapper(User, users)
+        sess = Session()
+        u1 = User(name='test')
+        sess.add(u1)
+        sess.commit()
+
+        sess.delete(u1)
+        sess.flush()
+        make_transient(u1)
+        sess.rollback()
+
+    @testing.resolve_artifact_names
     def test_deleted_flag(self):
         mapper(User, users)
 

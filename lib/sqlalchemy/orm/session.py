@@ -1032,6 +1032,8 @@ class Session(object):
             self.identity_map.discard(state)
             self._deleted.pop(state, None)
             state.detach()
+        elif self.transaction:
+            self.transaction._deleted.pop(state, None)
 
     def _register_newly_persistent(self, state):
         mapper = _state_mapper(state)
