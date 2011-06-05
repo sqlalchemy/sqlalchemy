@@ -1247,8 +1247,10 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, ComparesTables):
             type_, args, kw, res, requires = spec[0:5]
             if requires and testing._is_excluded('mssql', *requires) \
                 or not requires:
-                table_args.append(Column('c%s' % index, type_(*args,
-                                  **kw), nullable=None))
+                c = Column('c%s' % index, type_(*args,
+                                  **kw), nullable=None)
+                testing.db.dialect.type_descriptor(c.type)
+                table_args.append(c)
         dates_table = Table(*table_args)
         gen = testing.db.dialect.ddl_compiler(testing.db.dialect,
                 schema.CreateTable(dates_table))
