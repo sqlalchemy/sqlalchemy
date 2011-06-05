@@ -52,6 +52,14 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
+    def test_contains_doesnt_compile(self):
+        row = t.select().execute().first()
+        c1 = Column('some column', Integer) + Column("some other column", Integer)
+        @profiling.function_call_count(9)
+        def go():
+            c1 in row
+        go()
+
 class ExecutionTest(fixtures.TestBase):
     __requires__ = 'cpython',
     __only_on__ = 'sqlite'

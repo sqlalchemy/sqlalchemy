@@ -44,6 +44,14 @@ CHANGES
     and are redundant:  reflecttable(), create(), 
     drop(), text(), engine.func
 
+  - Adjusted the __contains__() method of 
+    a RowProxy result row such that no exception
+    throw is generated internally;  
+    NoSuchColumnError() also will generate its 
+    message regardless of whether or not the column 
+    construct can be coerced to a string.  
+    [ticket:2178].  Also in 0.6.8.
+
 - sqlite
   - Accept None from cursor.fetchone() when
     "PRAGMA read_uncommitted" is called to determine

@@ -1207,6 +1207,15 @@ def _escape_for_generated(x):
     else:
         return x.replace('%', '%%')
 
+def _string_or_unprintable(element):
+    if isinstance(element, basestring):
+        return element
+    else:
+        try:
+            return str(element)
+        except:
+            return "unprintable element %r" % element
+
 def _clone(element):
     return element._clone()
 

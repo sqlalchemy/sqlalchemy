@@ -2578,7 +2578,7 @@ class ResultMetaData(object):
         if self._keymap.setdefault(name, rec) is not rec:
             self._keymap[name] = (processor, None)
 
-    def _key_fallback(self, key):
+    def _key_fallback(self, key, raiseerr=True):
         map = self._keymap
         result = None
         if isinstance(key, basestring):
@@ -2592,8 +2592,12 @@ class ResultMetaData(object):
             elif hasattr(key, 'name') and key.name.lower() in map:
                 result = map[key.name.lower()]
         if result is None:
-            raise exc.NoSuchColumnError(
-                "Could not locate column in row for column '%s'" % key)
+            if raiseerr:
+                raise exc.NoSuchColumnError(
+                    "Could not locate column in row for column '%s'" % 
+                        expression._string_or_unprintable(key))
+            else:
+                return None
         else:
             map[key] = result
         return result
@@ -2602,11 +2606,7 @@ class ResultMetaData(object):
         if key in self._keymap:
             return True
         else:
-            try:
-                self._key_fallback(key)
-                return True
-            except exc.NoSuchColumnError:
-                return False
+            return self._key_fallback(key, False) is not None
 
     def __getstate__(self):
         return {
