@@ -2320,10 +2320,10 @@ class DontAllowFlushOnLoadingObjectTest(_base.MappedTest):
         # the population process would continue after the erroneous flush
         # and thing would right themselves.
         assert_raises_message(sa.orm.exc.FlushError,
-                              'has a NULL identity key.  Check if this '
-                              'flush is occurring at an inappropriate '
-                              'time, such as during a load operation.',
-                              sess.query(T1).first)
+                        r"Instance \<T1 at .+?\> has a NULL "
+                        "identity key.  If this is an auto-generated value, "
+                        "check that the database table allows generation ",
+                      sess.query(T1).first)
 
 
 
