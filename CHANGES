@@ -69,6 +69,15 @@ CHANGES
     break an ORM column_property() mapping against
     another column_property().  [ticket:2167].
 
+- engine
+  - Adjusted the __contains__() method of 
+    a RowProxy result row such that no exception
+    throw is generated internally;  
+    NoSuchColumnError() also will generate its 
+    message regardless of whether or not the column 
+    construct can be coerced to a string.  
+    [ticket:2178].
+
 - postgresql
 
   - Fixed bug affecting PG 9 whereby index reflection

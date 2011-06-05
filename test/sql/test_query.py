@@ -341,6 +341,25 @@ class QueryTest(TestBase):
                 assert_raises(exc.NoSuchColumnError, lambda: result[0]['fake key'])
                 assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.address_id])
 
+    def test_column_error_printing(self):
+        row = testing.db.execute(select([1])).first()
+        class unprintable(object):
+            def __str__(self):
+                raise ValueError("nope")
+
+        msg = r"Could not locate column in row for column '%s'"
+
+        for accessor, repl in [
+            ("x", "x"),
+            (Column("q", Integer), "q"),
+            (Column("q", Integer) + 12, r"q \+ :q_1"),
+            (unprintable(), "unprintable element.*"),
+        ]:
+            assert_raises_message(
+                exc.NoSuchColumnError, 
+                msg % repl,
+                lambda: row[accessor]
+            )
 
 
     @testing.requires.boolean_col_expressions
