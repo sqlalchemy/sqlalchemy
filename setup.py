@@ -51,14 +51,11 @@ ext_modules = [
            sources=['lib/sqlalchemy/cextension/resultproxy.c'])
     ]
 
+ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError) 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
    # find the compiler
-   ext_errors = (
-                    CCompilerError, DistutilsExecError, 
-                    DistutilsPlatformError, IOError)
-else:
-   ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+   ext_errors += (IOError,) 
 
 class BuildFailed(Exception):
 
@@ -79,6 +76,11 @@ class ve_build_ext(build_ext):
             build_ext.build_extension(self, ext)
         except ext_errors:
             raise BuildFailed()
+        except ValueError:
+            # this can happen on Windows 64 bit, see Python issue 7511
+            if "'path'" in str(sys.exc_info()[1]): # works with both py 2/3
+                raise BuildFailed()
+            raise
 
 cmdclass['build_ext'] = ve_build_ext
 

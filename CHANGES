@@ -5,6 +5,12 @@ CHANGES
 =======
 0.7.1
 =====
+- general
+  - Added a workaround for Python bug 7511 where
+    failure of C extension build does not 
+    raise an appropriate exception on Windows 64
+    bit + VC express [ticket:2184]
+
 - orm
   - "delete-orphan" cascade is now allowed on
     self-referential relationships - this since
