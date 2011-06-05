@@ -75,6 +75,12 @@ CHANGES
     would fail if against a column whose name
     had changed.  [ticket:2141].
 
+  - Some unit test fixes regarding numeric arrays, 
+    MATCH operator.   A potential floating-point
+    inaccuracy issue was fixed, and certain tests 
+    of the MATCH operator only execute within an 
+    EN-oriented locale for now.  [ticket:2175].  
+
 - mssql
   - Fixed bug in MSSQL dialect whereby the aliasing
     applied to a schema-qualified table would leak
