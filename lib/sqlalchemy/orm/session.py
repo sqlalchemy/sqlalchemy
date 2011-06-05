@@ -1085,10 +1085,15 @@ class Session(object):
             if _none_set.issubset(instance_key[1]) and \
                 not mapper.allow_partial_pks or \
                 _none_set.issuperset(instance_key[1]):
-                raise exc.FlushError('Instance %s has a NULL identity '
-                        'key.  Check if this flush is occurring at an '
-                        'inappropriate time, such as during a load '
-                        'operation.' % mapperutil.state_str(state))
+                raise exc.FlushError(
+                    "Instance %s has a NULL identity key.  If this is an "
+                    "auto-generated value, check that the database table "
+                    "allows generation of new primary key values, and that "
+                    "the mapped Column object is configured to expect these "
+                    "generated values.  Ensure also that this flush() is "
+                    "not occurring at an inappropriate time, such as within "
+                    "a load() event." % mapperutil.state_str(state)
+                )
 
             if state.key is None:
                 state.key = instance_key

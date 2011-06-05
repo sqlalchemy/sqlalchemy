@@ -18,6 +18,13 @@ CHANGES
     create multiple event listeners for 
     subclasses either.  [ticket:2180]
 
+  - Modify the text of the message which occurs
+    when the "identity" key isn't detected on 
+    flush, to include the common cause that
+    the Column isn't set up to detect
+    auto-increment correctly; [ticket:2170].
+    Also in 0.6.8.
+
 - sql
   - Fixed bug whereby metadata.reflect(bind)
     would close a Connection passed as a

@@ -2469,7 +2469,7 @@ class PartialNullPKTest(fixtures.MappedTest):
         assert_raises_message(
             sa.exc.FlushError,
             r"Instance \<T1 at .+?\> has a NULL "
-            "identity key.  Check if this flush is occurring "
-            "at an inappropriate time, such as during a load operation.",
+            "identity key.  If this is an auto-generated value, "
+            "check that the database table allows generation ",
             s.commit
         )
