@@ -100,6 +100,11 @@ CHANGES
     applied to a schema-qualified table would leak
     into enclosing select statements [ticket:2169].
 
+  - Fixed bug whereby DATETIME2 type would fail on
+    the "adapt" step when used in result sets or 
+    bound parameters.  This issue is not in 0.7.
+    [ticket:2159]
+
 0.6.7
 =====
 - orm

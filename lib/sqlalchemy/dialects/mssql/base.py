@@ -307,6 +307,7 @@ class DATETIME2(_DateTimeBase, sqltypes.DateTime):
     __visit_name__ = 'DATETIME2'
 
     def __init__(self, precision=None, **kwargs):
+        super(DATETIME2, self).__init__(**kwargs)
         self.precision = precision
 
 
