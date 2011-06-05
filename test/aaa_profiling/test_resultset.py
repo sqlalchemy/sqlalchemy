@@ -55,7 +55,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
         c1 = Column('some column', Integer) + Column("some other column", Integer)
-        @profiling.function_call_count(9)
+        @profiling.function_call_count(9, variance=.15)
         def go():
             c1 in row
         go()
