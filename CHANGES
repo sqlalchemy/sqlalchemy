@@ -31,6 +31,12 @@ CHANGES
     auto-increment correctly; [ticket:2170].
     Also in 0.6.8.
 
+  - Fixed bug where transaction-level "deleted"
+    collection wouldn't be cleared of expunged
+    states, raising an error if they later
+    became transient [ticket:2182]. 
+    Also in 0.6.8.
+
 - sql
   - Fixed bug whereby metadata.reflect(bind)
     would close a Connection passed as a

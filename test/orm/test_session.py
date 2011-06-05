@@ -292,6 +292,21 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         assert u1 in sess
 
+    def test_make_transient_plus_rollback(self):
+        # test for [ticket:2182]
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(name='test')
+        sess.add(u1)
+        sess.commit()
+
+        sess.delete(u1)
+        sess.flush()
+        make_transient(u1)
+        sess.rollback()
+
     def test_deleted_flag(self):
         users, User = self.tables.users, self.classes.User
 
