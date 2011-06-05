@@ -52,6 +52,14 @@ CHANGES
     versions pre-3.3.0 that did not have this 
     feature.  [ticket:2173]
 
+- postgresql
+  - Some unit test fixes regarding numeric arrays, 
+    MATCH operator.   A potential floating-point
+    inaccuracy issue was fixed, and certain tests 
+    of the MATCH operator only execute within an 
+    EN-oriented locale for now.  [ticket:2175].  
+    Also in 0.6.8.
+
 - mysql
   - Unit tests pass 100% on MySQL installed
     on windows.

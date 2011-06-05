@@ -296,7 +296,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column('q', postgresql.ARRAY(Numeric))
         )
         metadata.create_all()
-        t1.insert().execute(x=[5], y=[5], z=[6], q=[6.4])
+        t1.insert().execute(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
         row = t1.select().execute().first()
         eq_(
             row, 
@@ -2240,12 +2240,14 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).execute().fetchall()
         eq_([3], [r.id for r in results])
 
+    @testing.requires.english_locale_on_postgresql
     def test_simple_derivative_match(self):
         results = \
             matchtable.select().where(matchtable.c.title.match('nutshells'
                 )).execute().fetchall()
         eq_([5], [r.id for r in results])
 
+    @testing.requires.english_locale_on_postgresql
     def test_or_match(self):
         results1 = \
             matchtable.select().where(or_(matchtable.c.title.match('nutshells'
@@ -2258,6 +2260,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).order_by(matchtable.c.id).execute().fetchall()
         eq_([3, 5], [r.id for r in results2])
 
+    @testing.requires.english_locale_on_postgresql
     def test_and_match(self):
         results1 = \
             matchtable.select().where(and_(matchtable.c.title.match('python'
@@ -2270,6 +2273,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )).execute().fetchall()
         eq_([5], [r.id for r in results2])
 
+    @testing.requires.english_locale_on_postgresql
     def test_match_across_joins(self):
         results = matchtable.select().where(and_(cattable.c.id
                 == matchtable.c.category_id,

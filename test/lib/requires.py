@@ -405,3 +405,10 @@ def skip_mysql_on_windows(fn):
             "Not supported on MySQL + Windows"
         )
     )
+
+def english_locale_on_postgresql(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: testing.against('postgresql') \
+                and not testing.db.scalar('SHOW LC_COLLATE').startswith('en'))
+    )
