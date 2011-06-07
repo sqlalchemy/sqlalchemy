@@ -3,6 +3,17 @@
 =======
 CHANGES
 =======
+0.7.2
+=====
+- mssql
+  - Adjusted the pyodbc dialect such that bound
+    values are passed as bytes and not unicode
+    if the "Easysoft" unix drivers are detected. 
+    This is the same behavior as occurs with
+    FreeTDS.  Easysoft appears to segfault
+    if Python unicodes are passed under
+    certain circumstances.
+
 0.7.1
 =====
 - general
