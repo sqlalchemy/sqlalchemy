@@ -2,6 +2,7 @@ from sqlalchemy.orm.interfaces import AttributeExtension
 from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql import expression
+from sqlalchemy import event
 
 # Python datatypes
 
@@ -105,29 +106,43 @@ class GISDDL(object):
     """
 
     def __init__(self, table):
-        for event in ('before-create', 'after-create', 'before-drop', 'after-drop'):
-            table.ddl_listeners[event].append(self)
+        event.listen(table, "before_create", self.before_create)
+        event.listen(table, "after_create", self.after_create)
+        event.listen(table, "before_drop", self.before_drop)
+        event.listen(table, "after_drop", self.before_drop)
         self._stack = []
+
+    def before_create(self, target, connection, **kw):
+        self("before-create", target, connection)
+
+    def after_create(self, target, connection, **kw):
+        self("after-create", target, connection)
+
+    def before_drop(self, target, connection, **kw):
+        self("before-drop", target, connection)
+
+    def after_drop(self, target, connection, **kw):
+        self("after-drop", target, connection)
 
     def __call__(self, event, table, bind):
         if event in ('before-create', 'before-drop'):
             regular_cols = [c for c in table.c if not isinstance(c.type, Geometry)]
             gis_cols = set(table.c).difference(regular_cols)
             self._stack.append(table.c)
-            table._columns = expression.ColumnCollection(*regular_cols)
+            table.columns = expression.ColumnCollection(*regular_cols)
 
             if event == 'before-drop':
                 for c in gis_cols:
                     bind.execute(select([func.DropGeometryColumn('public', table.name, c.name)], autocommit=True))
 
         elif event == 'after-create':
-            table._columns = self._stack.pop()
+            table.columns = self._stack.pop()
 
             for c in table.c:
                 if isinstance(c.type, Geometry):
                     bind.execute(select([func.AddGeometryColumn(table.name, c.name, c.type.srid, c.type.name, c.type.dimension)], autocommit=True))
         elif event == 'after-drop':
-            table._columns = self._stack.pop()
+            table.columns = self._stack.pop()
 
 # ORM integration
 
@@ -195,7 +210,7 @@ if __name__ == '__main__':
     from sqlalchemy.orm import sessionmaker, column_property
     from sqlalchemy.ext.declarative import declarative_base
 
-    engine = create_engine('postgresql://scott:tiger@localhost/gistest', echo=True)
+    engine = create_engine('postgresql://scott:tiger@localhost/test', echo=True)
     metadata = MetaData(engine)
     Base = declarative_base(metadata=metadata)
 
