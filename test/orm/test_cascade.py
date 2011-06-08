@@ -1669,7 +1669,8 @@ class O2MSelfReferentialDetelOrphanTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('node', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
             Column('parent_id', Integer, ForeignKey('node.id'))
         )
 
