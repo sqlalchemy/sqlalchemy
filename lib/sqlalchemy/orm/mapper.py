@@ -127,7 +127,9 @@ class Mapper(object):
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
-        self.polymorphic_on = polymorphic_on
+        self.polymorphic_on = expression._only_column_elements_or_none(
+                                        polymorphic_on, 
+                                        "polymorphic_on")
         self._dependency_processors = []
         self._validators = {}
         self.passive_updates = passive_updates

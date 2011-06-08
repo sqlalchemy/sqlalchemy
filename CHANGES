@@ -5,6 +5,12 @@ CHANGES
 =======
 0.7.2
 =====
+- orm
+  - Added the same "columns-only" check to 
+    mapper.polymorphic_on as used in 
+    relationship.order_by, foreign_keys,
+    remote_side, etc.
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

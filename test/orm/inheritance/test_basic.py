@@ -86,6 +86,19 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
                 Column('y', String(10)), 
                 Column('xid', ForeignKey('t1.id')))
 
+    def test_non_col_polymorphic_on(self):
+        class InterfaceBase(object):
+            pass
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Column-based expression object expected "
+            "for argument 'polymorphic_on'; got: "
+            "'im not a column', type",
+            mapper,
+            InterfaceBase, t2, polymorphic_on="im not a column"
+        )
+
     def test_bad_polymorphic_on(self):
         t2, t1 = self.tables.t2, self.tables.t1
 

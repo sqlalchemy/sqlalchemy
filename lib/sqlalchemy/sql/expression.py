@@ -1334,12 +1334,19 @@ def _no_literals(element):
     else:
         return element
 
+def _only_column_elements_or_none(element, name):
+    if element is None:
+        return None
+    else:
+        return _only_column_elements(element, name)
+
 def _only_column_elements(element, name):
     if hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
     if not isinstance(element, ColumnElement):
-        raise exc.ArgumentError("Column-based expression object expected for argument '%s'; "
-                                "got: '%s', type %s" % (name, element, type(element)))
+        raise exc.ArgumentError(
+                "Column-based expression object expected for argument "
+                "'%s'; got: '%s', type %s" % (name, element, type(element)))
     return element
 
 def _corresponding_column_or_error(fromclause, column,
