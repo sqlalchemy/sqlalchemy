@@ -11,6 +11,13 @@ CHANGES
     relationship.order_by, foreign_keys,
     remote_side, etc.
 
+  - Fixed bug whereby comparison of column
+    expression to a Query() would not call
+    as_scalar() on the underlying SELECT 
+    statement to produce a scalar subquery,
+    in the way that occurs if you called
+    it on Query().subquery(). [ticket:2190]
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

@@ -1943,7 +1943,10 @@ class _CompareMixin(ColumnOperators):
             other.type = self.type
             return other
         elif hasattr(other, '__clause_element__'):
-            return other.__clause_element__()
+            other = other.__clause_element__()
+            if isinstance(other, (_SelectBase, Alias)):
+                other = other.as_scalar()
+            return other
         elif not isinstance(other, ClauseElement):
             return self._bind_param(operator, other)
         elif isinstance(other, (_SelectBase, Alias)):
