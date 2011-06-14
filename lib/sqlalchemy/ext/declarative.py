@@ -316,9 +316,7 @@ and simply pass it to declarative classes::
 
 Some configuration schemes may find it more appropriate to use ``__table__``, 
 such as those which already take advantage of the data-driven nature of 
-:class:`.Table` to customize and/or automate schema definition.   See
-the wiki example `NamingConventions <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/NamingConventions>`_
-for one such example.
+:class:`.Table` to customize and/or automate schema definition. 
 
 Mapper Configuration
 ====================
@@ -442,7 +440,9 @@ Concrete is defined as a subclass which has its own table and sets the
         name = Column(String(50))
 
 Usage of an abstract base class is a little less straightforward as it
-requires usage of :func:`~sqlalchemy.orm.util.polymorphic_union`::
+requires usage of :func:`~sqlalchemy.orm.util.polymorphic_union`,
+which needs to be created with the :class:`.Table` objects
+before the class is built::
 
     engineers = Table('engineers', Base.metadata,
                     Column('id', Integer, primary_key=True),
@@ -472,6 +472,10 @@ requires usage of :func:`~sqlalchemy.orm.util.polymorphic_union`::
         __table__ = managers
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
 
+There is a recipe which allows the above pattern to be executed
+using the declarative form, via a special base class that defers
+the creation of the mapper.  That recipe is available at
+`DeclarativeAbstractConcreteBase <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_
 
 Mixin Classes
 ==============
