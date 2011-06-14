@@ -18,6 +18,11 @@ CHANGES
     in the way that occurs if you called
     it on Query().subquery(). [ticket:2190]
 
+  - Fixed declarative bug where a class inheriting
+    from a superclass of the same name would fail
+    due to an unnecessary lookup of the name
+    in the _decl_class_registry. [ticket:2194]
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

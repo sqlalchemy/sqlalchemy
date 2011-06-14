@@ -1038,8 +1038,7 @@ def _as_declarative(cls, classname, dict_):
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
             if _is_mapped_class(c):
-                mapper_args['inherits'] = cls._decl_class_registry.get(
-                                                            c.__name__, None)
+                mapper_args['inherits'] = c
                 break
 
     if hasattr(cls, '__mapper_cls__'):
