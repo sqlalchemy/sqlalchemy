@@ -35,7 +35,7 @@ def _history_mapper(local_mapper):
             col.unique = False
 
             if super_mapper and col_references_table(column, super_mapper.local_table):
-                super_fks.append((col.key, list(super_history_mapper.base_mapper.local_table.primary_key)[0]))
+                super_fks.append((col.key, list(super_history_mapper.local_table.primary_key)[0]))
 
             cols.append(col)
 

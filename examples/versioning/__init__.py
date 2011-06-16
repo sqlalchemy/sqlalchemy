@@ -8,7 +8,8 @@ represents historical versions of the target object.
 Usage is illustrated via a unit test module ``test_versioning.py``, which can
 be run via nose::
 
-    nosetests -w examples/versioning/
+    cd examples/versioning
+    nosetests -v 
 
 A fragment of example usage, using declarative::
 

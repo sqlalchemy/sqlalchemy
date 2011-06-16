@@ -32,6 +32,17 @@ CHANGES
     if Python unicodes are passed under
     certain circumstances.
 
+- examples
+  - Repaired the examples/versioning test runner
+    to not rely upon SQLAlchemy test libs,
+    nosetests must be run from within
+    examples/versioning to get around setup.cfg
+    breaking it.
+
+  - Tweak to examples/versioning to pick the
+    correct foreign key in a multi-level
+    inheritance situation.
+
 0.7.1
 =====
 - general
@@ -45,7 +56,7 @@ CHANGES
     self-referential relationships - this since
     SQLA 0.7 no longer enforces "parent with no 
     child" at the ORM level; this check is left
-    up to foreign key nullability.  
+    up to foreign key nullability.
     Related to [ticket:1912]
 
   - Repaired new "mutable" extension to propagate
@@ -87,10 +98,10 @@ CHANGES
 
   - Adjusted the __contains__() method of 
     a RowProxy result row such that no exception
-    throw is generated internally;  
+    throw is generated internally;
     NoSuchColumnError() also will generate its 
     message regardless of whether or not the column 
-    construct can be coerced to a string.  
+    construct can be coerced to a string.
     [ticket:2178].  Also in 0.6.8.
 
 - sqlite
@@ -106,7 +117,7 @@ CHANGES
     MATCH operator.   A potential floating-point
     inaccuracy issue was fixed, and certain tests 
     of the MATCH operator only execute within an 
-    EN-oriented locale for now.  [ticket:2175].  
+    EN-oriented locale for now.  [ticket:2175].
     Also in 0.6.8.
 
 - mysql
@@ -184,7 +195,7 @@ CHANGES
   - It is an error to call query.get() when the
     given entity is not a single, full class 
     entity or mapper (i.e. a column).  This is
-    a deprecation warning in 0.6.8.  
+    a deprecation warning in 0.6.8.
     [ticket:2144]
 
   - Fixed a potential KeyError which under some
@@ -310,7 +321,7 @@ CHANGES
 
     - The changelog for 0.6.7 and subsequent within
       the 0.6 series is now listed only in the 
-      CHANGES file within the 0.6 branch.  
+      CHANGES file within the 0.6 branch.
       In the 0.7 CHANGES file (i.e. this file), all the
       0.6 changes are listed inline within the 0.7
       section in which they were also applied 
@@ -529,7 +540,7 @@ CHANGES
     the given objects don't have any inter-attribute 
     references in memory, which was the behavior in 
     0.5 and earlier, so a flush of Parent/Child with
-    only foreign key/primary key set will succeed.  
+    only foreign key/primary key set will succeed.
     This while still maintaining 0.6 and above's not 
     generating a ton of useless internal dependency 
     structures within the flush that don't correspond 
@@ -539,7 +550,7 @@ CHANGES
   - Improvements to the error messages emitted when
     querying against column-only entities in conjunction
     with (typically incorrectly) using loader options, 
-    where the parent entity is not fully present.  
+    where the parent entity is not fully present.
     [ticket:2069]
 
   - Fixed bug in query.options() whereby a path 
@@ -579,7 +590,7 @@ CHANGES
     a Sequence object as its argument and renders the
     appropriate "next value" generation string on the
     target platform, if supported.  Also provides
-    ".next_value()" method on Sequence itself.   
+    ".next_value()" method on Sequence itself.
     [ticket:2085]
 
   - func.next_value() or other SQL expression can
@@ -944,7 +955,7 @@ CHANGES
 
   - Established consistency when server_default is present
     on an Integer PK column.  SQLA doesn't pre-fetch these,
-    nor do they come back in cursor.lastrowid (DBAPI).  
+    nor do they come back in cursor.lastrowid (DBAPI).
     Ensured all backends consistently return None 
     in result.inserted_primary_key for these. Regarding
     reflection for this case, reflection of an int PK col 

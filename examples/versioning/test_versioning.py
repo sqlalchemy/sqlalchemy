@@ -1,16 +1,16 @@
+from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
 from history_meta import VersionedMeta, VersionedListener
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, sessionmaker, deferred, relationship
-from test.lib.testing import TestBase, eq_
-from test.lib.entities import ComparableEntity
+from _lib import ComparableEntity, eq_
 
 def setup():
     global engine
     engine = create_engine('sqlite://', echo=True)
 
-class TestVersioning(fixtures.TestBase):
-    def setup(self):
+class TestVersioning(TestCase):
+    def setUp(self):
         global Base, Session, Versioned
         Base = declarative_base(bind=engine)
         class Versioned(object):
@@ -18,7 +18,7 @@ class TestVersioning(fixtures.TestBase):
             _decl_class_registry = Base._decl_class_registry
         Session = sessionmaker(extension=VersionedListener())
 
-    def teardown(self):
+    def tearDown(self):
         clear_mappers()
         Base.metadata.drop_all()
 
