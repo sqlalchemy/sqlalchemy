@@ -93,35 +93,53 @@ processing. Execution of "func.current_date()" will return a string.
 "func.current_timestamp()" is registered as returning a DATETIME type in
 SQLAlchemy, so this function still receives SQLAlchemy-level result processing.
 
-Pooling Behavior
-------------------
+Threading/Pooling Behavior
+---------------------------
 
-Pysqlite connections do not support being moved between threads, unless
-the ``check_same_thread`` Pysqlite flag is set to ``False``.  In addition,
-when using an in-memory SQLite database, the full database exists only within 
-the scope of a single connection.  It is reported that an in-memory
-database does not support being shared between threads regardless of the 
-``check_same_thread`` flag - which means that a multithreaded
-application **cannot** share data from a ``:memory:`` database across threads
-unless access to the connection is limited to a single worker thread which communicates
-through a queueing mechanism to concurrent threads.
+Pysqlite's default behavior is to prohibit the usage of a single connection
+in more than one thread.   This is controlled by the ``check_same_thread``
+Pysqlite flag.   This default is intended to work with older versions
+of SQLite that did not support multithreaded operation under 
+various circumstances.  In particular, older SQLite versions
+did not allow a ``:memory:`` database to be used in multiple threads
+under any circumstances.
 
-To provide for these two behaviors, the pysqlite dialect will select a :class:`.Pool`
-implementation suitable:
+SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
 
-* When a ``:memory:`` SQLite database is specified, the dialect will use :class:`.SingletonThreadPool`.
-  This pool maintains a single connection per thread, so that all access to the engine within
-  the current thread use the same ``:memory:`` database.
-* When a file-based database is specified, the dialect will use :class:`.NullPool` as the source 
-  of connections.  This pool closes and discards connections which are returned to the pool immediately.
-  SQLite file-based connections have extermely low overhead, so pooling is not necessary.
-  The scheme also prevents a connection from being used again in a different thread
-  and works best with SQLite's coarse-grained file locking.
+* When a ``:memory:`` SQLite database is specified, the dialect by default will use
+  :class:`.SingletonThreadPool`. This pool maintains a single connection per
+  thread, so that all access to the engine within the current thread use the
+  same ``:memory:`` database - other threads would access a different 
+  ``:memory:`` database.
+* When a file-based database is specified, the dialect will use :class:`.NullPool` 
+  as the source of connections. This pool closes and discards connections
+  which are returned to the pool immediately. SQLite file-based connections
+  have extremely low overhead, so pooling is not necessary. The scheme also
+  prevents a connection from being used again in a different thread and works
+  best with SQLite's coarse-grained file locking.
 
   .. note:: The default selection of :class:`.NullPool` for SQLite file-based databases 
               is new in SQLAlchemy 0.7. Previous versions
               select :class:`.SingletonThreadPool` by
               default for all SQLite databases.
+
+Modern versions of SQLite no longer have the threading restrictions, and assuming
+the sqlite3/pysqlite library was built with SQLite's default threading mode
+of "Serialized", even ``:memory:`` databases can be shared among threads.
+
+To use a ``:memory:`` database in a multithreaded scenario, the same connection
+object must be shared among threads, since the database exists
+only within the scope of that connection.   The :class:`.StaticPool` implementation
+will maintain a single connection globally, and the ``check_same_thread`` flag
+can be passed to Pysqlite as ``False``::
+
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine('sqlite://',
+                        connect_args={'check_same_thread':False},
+                        poolclass=StaticPool)
+
+Note that using a ``:memory:`` database in multiple threads requires a recent 
+version of SQLite.
 
 Unicode
 -------
