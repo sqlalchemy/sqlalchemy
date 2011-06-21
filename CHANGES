@@ -23,6 +23,12 @@ CHANGES
     due to an unnecessary lookup of the name
     in the _decl_class_registry. [ticket:2194]
 
+  - Repaired the "no statement condition" 
+    assertion in Query which would attempt
+    to raise if a generative method were called
+    after from_statement() were called.
+    [ticket:2199].  Also in 0.6.9.
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

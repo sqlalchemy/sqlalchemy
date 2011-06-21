@@ -370,7 +370,7 @@ class Query(object):
     def _no_statement_condition(self, meth):
         if not self._enable_assertions:
             return
-        if self._statement:
+        if self._statement is not None:
             raise sa_exc.InvalidRequestError(
                 ("Query.%s() being called on a Query with an existing full "
                  "statement - can't apply criterion.") % meth)

@@ -496,20 +496,26 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         s = create_session()
 
-        q = s.query(User).filter(User.id==5)
-        assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
+        for meth, arg, kw in [
+            (Query.filter, (User.id==5,), {}),
+            (Query.filter_by, (), {'id':5}),
+            (Query.limit, (5, ), {}),
+            (Query.group_by, (User.name,), {}),
+            (Query.order_by, (User.name,), {})
+        ]:
+            q = s.query(User)
+            q = meth(q, *arg, **kw)
+            assert_raises(
+                sa_exc.InvalidRequestError,
+                q.from_statement, "x"
+            )
 
-        q = s.query(User).filter_by(id=5)
-        assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
-
-        q = s.query(User).limit(5)
-        assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
-
-        q = s.query(User).group_by(User.name)
-        assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
-
-        q = s.query(User).order_by(User.name)
-        assert_raises(sa_exc.InvalidRequestError, q.from_statement, "x")
+            q = s.query(User)
+            q = q.from_statement("x")
+            assert_raises(
+                sa_exc.InvalidRequestError,
+                meth, q, *arg, **kw
+            )
 
 class OperatorTest(QueryTest, AssertsCompiledSQL):
     """test sql.Comparator implementation for MapperProperties"""
