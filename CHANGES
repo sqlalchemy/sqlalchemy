@@ -3,6 +3,15 @@
 =======
 CHANGES
 =======
+0.6.9
+=====
+- orm
+  - Repaired the "no statement condition" 
+    assertion in Query which would attempt
+    to raise if a generative method were called
+    after from_statement() were called.
+    [ticket:2199].
+
 0.6.8
 =====
 - orm
