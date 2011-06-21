@@ -6,7 +6,8 @@
 
 from compat import callable, cmp, reduce, defaultdict, py25_dict, \
     threading, py3k, jython, pypy, win32, set_types, buffer, pickle, \
-    update_wrapper, partial, md5_hex, decode_slice, dottedgetter
+    update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
+    parse_qsl
 
 from _collections import NamedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \

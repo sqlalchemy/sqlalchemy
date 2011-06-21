@@ -81,6 +81,14 @@ except ImportError:
             return func(*(args + fargs), **newkeywords)
         return newfunc
 
+
+if sys.version_info < (2, 6):
+    # emits a nasty deprecation warning
+    # in newer pythons
+    from cgi import parse_qsl
+else:
+    from urlparse import parse_qsl
+
 if py3k:
     # they're bringing it back in 3.2.  brilliant !
     def callable(fn):

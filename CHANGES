@@ -29,6 +29,11 @@ CHANGES
     after from_statement() were called.
     [ticket:2199].  Also in 0.6.9.
 
+- engine
+  - Use urllib.parse_qsl() in Python 2.6 and above,
+    no deprecation warning about cgi.parse_qsl()
+    [ticket:1682]
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

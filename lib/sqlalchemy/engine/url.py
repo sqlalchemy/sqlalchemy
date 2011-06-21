@@ -12,8 +12,8 @@ with a string argument; alternatively, the URL is a public-facing construct whic
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
-import re, cgi, sys, urllib
-from sqlalchemy import exc
+import re, urllib
+from sqlalchemy import exc, util
 
 
 class URL(object):
@@ -193,7 +193,7 @@ def _parse_rfc1738_args(name):
         if components['database'] is not None:
             tokens = components['database'].split('?', 2)
             components['database'] = tokens[0]
-            query = (len(tokens) > 1 and dict(cgi.parse_qsl(tokens[1]))) or None
+            query = (len(tokens) > 1 and dict(util.parse_qsl(tokens[1]))) or None
             # Py2K
             if query is not None:
                 query = dict((k.encode('ascii'), query[k]) for k in query)
@@ -215,7 +215,7 @@ def _parse_keyvalue_args(name):
     m = re.match( r'(\w+)://(.*)', name)
     if m is not None:
         (name, args) = m.group(1, 2)
-        opts = dict( cgi.parse_qsl( args ) )
+        opts = dict( util.parse_qsl( args ) )
         return URL(name, *opts)
     else:
         return None
