@@ -12,6 +12,7 @@ result of DBAPI exceptions are all subclasses of
 
 """
 
+import traceback
 
 class SQLAlchemyError(Exception):
     """Generic error class."""
@@ -98,6 +99,26 @@ class UnboundExecutionError(InvalidRequestError):
     """SQL was attempted without a database connection to execute it on."""
 
 
+class DontWrapMixin(object):
+    """A mixin class which, when applied to a user-defined Exception class,
+    will not be wrapped inside of :class:`.StatementError` if the error is
+    emitted within the process of executing a statement.
+    
+    E.g.::
+        from sqlalchemy.exc import DontWrapMixin
+        
+        class MyCustomException(Exception, DontWrapMixin):
+            pass
+        
+        class MySpecialType(TypeDecorator):
+            impl = String
+            
+            def process_bind_param(self, value, dialect):
+                if value == 'invalid':
+                    raise MyCustomException("invalid!")
+            
+    """
+
 # Moved to orm.exc; compatibility definition installed by orm import until 0.6
 UnmappedColumnError = None
 
@@ -160,14 +181,18 @@ class DBAPIError(StatementError):
                         connection_invalidated=False):
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
-        if isinstance(orig, (KeyboardInterrupt, SystemExit)):
+        if isinstance(orig, (KeyboardInterrupt, SystemExit, DontWrapMixin)):
             return orig
 
         if orig is not None:
             # not a DBAPI error, statement is present.
             # raise a StatementError
             if not isinstance(orig, dbapi_base_err) and statement:
-                return StatementError(str(orig), statement, params, orig)
+                return StatementError(
+                            "%s (original cause: %s)" % (
+                                str(orig), 
+                                traceback.format_exception_only(orig.__class__, orig)[-1].strip()
+                            ), statement, params, orig)
 
             name, glob = orig.__class__.__name__, globals()
             if name in glob and issubclass(glob[name], DBAPIError):

@@ -174,7 +174,34 @@ class ExecuteTest(fixtures.TestBase):
         def _go(conn):
             assert_raises_message(
                 tsa.exc.StatementError,
-                "nope 'SELECT 1 ",
+                r"nope \(original cause: Exception: nope\) 'SELECT 1 ",
+                conn.execute,
+                    select([1]).\
+                        where(
+                            column('foo') == literal('bar', MyType())
+                        )
+            )
+        _go(testing.db)
+        conn = testing.db.connect()
+        try:
+            _go(conn)
+        finally:
+            conn.close()
+
+    @testing.requires.python25
+    def test_dont_wrap_mixin(self):
+        class MyException(Exception, tsa.exc.DontWrapMixin):
+            pass
+
+        class MyType(TypeDecorator):
+            impl = Integer
+            def process_bind_param(self, value, dialect):
+                raise MyException("nope")
+
+        def _go(conn):
+            assert_raises_message(
+                MyException,
+                "nope",
                 conn.execute,
                     select([1]).\
                         where(

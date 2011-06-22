@@ -53,7 +53,6 @@ def decorator(target):
     return update_wrapper(decorate, target)
 
 
-
 def get_cls_kwargs(cls):
     """Return the full set of inherited kwargs for the given `cls`.
 

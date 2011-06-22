@@ -34,6 +34,15 @@ CHANGES
     no deprecation warning about cgi.parse_qsl()
     [ticket:1682]
 
+  - Added mixin class sqlalchemy.ext.DontWrapMixin.
+    User-defined exceptions of this type are never
+    wrapped in StatementException when they 
+    occur in the context of a statement 
+    execution.
+
+ - StatementException wrapping will display the
+   original exception class in the message.  
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode
