@@ -686,10 +686,14 @@ class OracleDialect_cx_oracle(OracleDialect):
                     )
 
     def is_disconnect(self, e, connection, cursor):
+        error, = e.args
         if isinstance(e, self.dbapi.InterfaceError):
             return "not connected" in str(e)
         else:
-            return "ORA-03114" in str(e) or "ORA-03113" in str(e)
+            # ORA-00028: your session has been killed
+            # ORA-03114: not connected to ORACLE
+            # ORA-03113: end-of-file on communication channel
+            return error.code in (28, 3114, 3113)
 
     def create_xid(self):
         """create a two-phase transaction ID.

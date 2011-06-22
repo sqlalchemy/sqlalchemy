@@ -52,6 +52,11 @@ CHANGES
     if Python unicodes are passed under
     certain circumstances.
 
+- oracle
+  - Added ORA-00028 to disconnect codes, use 
+    cx_oracle _Error.code to get at the code,
+    [ticket:2200].  Also in 0.6.9.
+
 - examples
   - Repaired the examples/versioning test runner
     to not rely upon SQLAlchemy test libs,
