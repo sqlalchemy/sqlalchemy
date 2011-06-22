@@ -49,7 +49,10 @@ class QueryTest(fixtures.TestBase):
         """test that executemany parameters are asserted to match the parameter set of the first."""
 
         assert_raises_message(exc.StatementError, 
-            "A value is required for bind parameter 'user_name', in parameter group 2 'INSERT INTO query_users",
+            r"A value is required for bind parameter 'user_name', in "
+            "parameter group 2 \(original cause: InvalidRequestError: A "
+            "value is required for bind parameter 'user_name', in "
+            "parameter group 2\) 'INSERT INTO query_users",
             users.insert().execute,
             {'user_id':7, 'user_name':'jack'},
             {'user_id':8, 'user_name':'ed'},
