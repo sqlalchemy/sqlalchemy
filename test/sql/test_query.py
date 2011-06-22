@@ -50,7 +50,7 @@ class QueryTest(fixtures.TestBase):
 
         assert_raises_message(exc.StatementError, 
             r"A value is required for bind parameter 'user_name', in "
-            "parameter group 2 \(original cause: InvalidRequestError: A "
+            "parameter group 2 \(original cause: (sqlalchemy.exc.)?InvalidRequestError: A "
             "value is required for bind parameter 'user_name', in "
             "parameter group 2\) 'INSERT INTO query_users",
             users.insert().execute,
