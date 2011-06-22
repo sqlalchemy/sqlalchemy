@@ -12,6 +12,11 @@ CHANGES
     after from_statement() were called.
     [ticket:2199].
 
+- oracle
+  - Added ORA-00028 to disconnect codes, use 
+    cx_oracle _Error.code to get at the code,
+    [ticket:2200].
+
 0.6.8
 =====
 - orm
