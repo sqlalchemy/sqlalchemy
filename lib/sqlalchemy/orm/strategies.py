@@ -906,14 +906,14 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
 log.class_logger(SubqueryLoader)
 
-class EagerLoader(AbstractRelationshipLoader):
+class JoinedLoader(AbstractRelationshipLoader):
     """Provide loading behavior for a :class:`.RelationshipProperty`
     using joined eager loading.
     
     """
 
     def init(self):
-        super(EagerLoader, self).init()
+        super(JoinedLoader, self).init()
         self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self, mapper):
@@ -1202,7 +1202,10 @@ class EagerLoader(AbstractRelationshipLoader):
                                             reduced_path,
                                             mapper, row, adapter)
 
-log.class_logger(EagerLoader)
+EagerLoader = JoinedLoader
+"""Deprecated, use JoinedLoader"""
+
+log.class_logger(JoinedLoader)
 
 class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False,
@@ -1219,7 +1222,7 @@ class EagerLazyOption(StrategizedOption):
 
 def factory(identifier):
     if identifier is False or identifier == 'joined':
-        return EagerLoader
+        return JoinedLoader
     elif identifier is None or identifier == 'noload':
         return NoLoader
     elif identifier is False or identifier == 'select':
