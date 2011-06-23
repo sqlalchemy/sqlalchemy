@@ -1813,7 +1813,7 @@ class Query(object):
             q = sess.query(User, User.id, user_alias)
 
             # this expression:
-            q.columns
+            q.column_descriptions
 
             # would return:
             [
