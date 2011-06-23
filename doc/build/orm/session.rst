@@ -852,8 +852,8 @@ Cascading is configured by setting the ``cascade`` keyword argument on a
 :func:`~sqlalchemy.orm.relationship`::
 
     mapper(Order, order_table, properties={
-        'items' : relationship(Item, items_table, cascade="all, delete-orphan"),
-        'customer' : relationship(User, users_table, user_orders_table, cascade="save-update"),
+        'items' : relationship(Item, cascade="all, delete-orphan"),
+        'customer' : relationship(User, secondary=user_orders_table, cascade="save-update"),
     })
 
 The above mapper specifies two relationships, ``items`` and ``customer``. The
@@ -885,7 +885,7 @@ appropriate for one-to-one or one-to-many relationships. For a
 :func:`~sqlalchemy.orm.relationship` which establishes one-to-one via a local
 foreign key, i.e. a many-to-one that stores only a single parent, or
 one-to-one/one-to-many via a "secondary" (association) table, a warning will
-be issued if ``delete-orphan`` is configured. To disable this warning, also
+be issued if ``delete-orphan`` is configured. To disable this warning, 
 specify the ``single_parent=True`` flag on the relationship, which constrains
 objects to allow attachment to only one parent at a time.
 
@@ -896,11 +896,11 @@ The default value for ``cascade`` on :func:`~sqlalchemy.orm.relationship` is
 that, given a mapping such as this::
 
     mapper(Order, order_table, properties={
-        'items' : relationship(Item, items_table, backref='order')
+        'items' : relationship(Item, backref='order')
     })
 
 If an ``Order`` is already in the session, and is assigned to the ``order``
-attribute of an ``Item``, the backref appends the ``Item`` to the ``orders``
+attribute of an ``Item``, the backref appends the ``Order`` to the ``items``
 collection of that ``Order``, resulting in the ``save-update`` cascade taking
 place::
 
@@ -911,7 +911,7 @@ place::
 
     >>> i1 = Item()
     >>> i1.order = o1
-    >>> i1 in o1.orders
+    >>> i1 in o1.items
     True
     >>> i1 in session
     True
@@ -919,13 +919,13 @@ place::
 This behavior can be disabled as of 0.6.5 using the ``cascade_backrefs`` flag::
 
     mapper(Order, order_table, properties={
-        'items' : relationship(Item, items_table, backref='order', 
+        'items' : relationship(Item, backref='order', 
                                     cascade_backrefs=False)
     })
 
-So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``orders``
-collection of ``o1``, but will not add ``i1`` to the session.   You can of
-course :func:`~.Session.add` ``i1`` to the session at a later point.   This option
+So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
+collection of ``o1``, but will not add ``i1`` to the session.   You can, of
+course, :func:`~.Session.add` ``i1`` to the session at a later point.   This option
 may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.

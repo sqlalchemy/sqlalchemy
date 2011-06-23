@@ -266,14 +266,30 @@ def relationship(argument, secondary=None, **kwargs):
 
     :param cascade_backrefs=True:
       a boolean value indicating if the ``save-update`` cascade should
-      operate along a backref event.   When set to ``False`` on a
-      one-to-many relationship that has a many-to-one backref, assigning
-      a persistent object to the many-to-one attribute on a transient object
-      will not add the transient to the session.  Similarly, when
-      set to ``False`` on a many-to-one relationship that has a one-to-many
-      backref, appending a persistent object to the one-to-many collection
-      on a transient object will not add the transient to the session.
-
+      operate along an assignment event intercepted by a backref.   
+      When set to ``False``,
+      the attribute managed by this relationship will not cascade
+      an incoming transient object into the session of a
+      persistent parent, if the event is received via backref.
+      
+      That is::
+      
+        mapper(A, a_table, properties={
+            'bs':relationship(B, backref="a", cascade_backrefs=False)
+        })
+        
+      If an ``A()`` is present in the session, assigning it to
+      the "a" attribute on a transient ``B()`` will not place
+      the ``B()`` into the session.   To set the flag in the other 
+      direction, i.e. so that ``A().bs.append(B())`` won't add 
+      a transient ``A()`` into the session for a persistent ``B()``::
+      
+        mapper(A, a_table, properties={
+            'bs':relationship(B, 
+                    backref=backref("a", cascade_backrefs=False)
+                )
+        })
+      
       ``cascade_backrefs`` is new in 0.6.5.
 
     :param collection_class:
