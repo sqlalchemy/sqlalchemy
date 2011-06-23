@@ -1333,21 +1333,62 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        """Executes the given construct and returns a :class:`.ResultProxy`.
+        """Executes the a SQL statement construct and returns a :class:`.ResultProxy`.
 
-        The construct can be one of:
+        :param object: The statement to be executed.  May be 
+         one of:
 
-        * a textual SQL string
-        * any :class:`.ClauseElement` construct that is also
-          a subclass of :class:`.Executable`, such as a 
-          :func:`expression.select` construct
-        * a :class:`.FunctionElement`, such as that generated
-          by :attr:`.func`, will be automatically wrapped in
-          a SELECT statement, which is then executed.
-        * a :class:`.DDLElement` object
-        * a :class:`.DefaultGenerator` object
-        * a :class:`.Compiled` object
-
+         * a plain string
+         * any :class:`.ClauseElement` construct that is also
+           a subclass of :class:`.Executable`, such as a 
+           :func:`~.expression.select` construct
+         * a :class:`.FunctionElement`, such as that generated
+           by :attr:`.func`, will be automatically wrapped in
+           a SELECT statement, which is then executed.
+         * a :class:`.DDLElement` object
+         * a :class:`.DefaultGenerator` object
+         * a :class:`.Compiled` object
+        
+        :param \*multiparams/\**params: represent bound parameter
+         values to be used in the execution.   Typically,
+         the format is either a collection of one or more
+         dictionaries passed to \*multiparams::
+         
+             conn.execute(
+                 table.insert(), 
+                 {"id":1, "value":"v1"},
+                 {"id":2, "value":"v2"}
+             )
+         
+         ...or individual key/values interpreted by \**params::
+         
+             conn.execute(
+                 table.insert(), id=1, value="v1"
+             )
+         
+         In the case that a plain SQL string is passed, and the underlying 
+         DBAPI accepts positional bind parameters, a collection of tuples
+         or individual values in \*multiparams may be passed::
+ 
+             conn.execute(
+                 "INSERT INTO table (id, value) VALUES (?, ?)",
+                 (1, "v1"), (2, "v2")
+             )
+         
+             conn.execute(
+                 "INSERT INTO table (id, value) VALUES (?, ?)",
+                 1, "v1"
+             )
+         
+         Note above, the usage of a question mark "?" or other
+         symbol is contingent upon the "paramstyle" accepted by the DBAPI 
+         in use, which may be any of "qmark", "named", "pyformat", "format",
+         "numeric".   See `pep-249 <http://www.python.org/dev/peps/pep-0249/>`_ 
+         for details on paramstyle.
+         
+         To execute a textual SQL statement which uses bound parameters in a
+         DBAPI-agnostic way, use the :func:`~.expression.text` construct.
+        
         """
         for c in type(object).__mro__:
             if c in Connection.executors:

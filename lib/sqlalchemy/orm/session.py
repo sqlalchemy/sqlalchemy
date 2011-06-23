@@ -713,6 +713,9 @@ class Session(object):
         passed, it is first converted to a
         :func:`~.sql.expression.text` construct, which here means
         that bind parameters should be specified using the format ``:param``.
+        If raw DBAPI statement execution is desired, use :meth:`.Session.connection`
+        to acquire a :class:`.Connection`, then call its :meth:`~.Connection.execute`
+        method.
 
         The statement is executed within the current transactional context of
         this :class:`.Session`, using the same behavior as that of
