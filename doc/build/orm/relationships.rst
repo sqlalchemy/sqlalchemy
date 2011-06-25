@@ -535,6 +535,268 @@ depth setting is configured via ``join_depth``:
     FROM nodes LEFT OUTER JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id LEFT OUTER JOIN nodes AS nodes_1 ON nodes_2.id = nodes_1.parent_id
     []
 
+Linking relationships with Backref
+----------------------------------
+
+The ``backref`` keyword argument was first introduced in :ref:`ormtutorial_toplevel`, and has been
+mentioned throughout many of the examples here.   What does it actually do ?   Let's start
+with the canonical ``User`` and ``Address`` scenario::
+
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        addresses = relationship("Address", backref="user")
+
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        email = Column(String)
+        user_id = Column(Integer, ForeignKey('user.id'))
+
+The above configuration establishes a collection of ``Address`` objects on ``User`` called
+``User.addresses``.   It also establishes a ``.user`` attribute on ``Address`` which will
+refer to the parent ``User`` object.
+
+In fact, the ``backref`` keyword is only a common shortcut for placing a second
+``relationship`` onto the ``Address`` mapping, including the establishment
+of an event listener on both sides which will mirror attribute operations
+in both directions.   The above configuration is equivalent to::
+
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        addresses = relationship("Address", back_populates="user")
+
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        email = Column(String)
+        user_id = Column(Integer, ForeignKey('user.id'))
+
+        user = relationship("User", back_populates="addresses")
+
+Above, we add a ``.user`` relationship to ``Address`` explicitly.  On 
+both relationships, the ``back_populates`` directive tells each relationship 
+about the other one, indicating that they should establish "bi-directional"
+behavior between each other.   The primary effect of this configuration
+is that the relationship adds event handlers to both attributes 
+which have the behavior of "when an append or set event occurs here, set ourselves
+onto the incoming attribute using this particular attribute name".
+The behavior is illustrated as follows.   Start with a ``User`` and an ``Address``
+instance.  The ``.addresses`` collection is empty, and the ``.user`` attribute
+is ``None``::
+
+    >>> u1 = User()
+    >>> a1 = Address()
+    >>> u1.addresses
+    []
+    >>> print a1.user
+    None
+
+However, once the ``Address`` is appended to the ``u1.addresses`` collection,
+both the collection and the scalar attribute have been populated::
+
+    >>> u1.addresses.append(a1)
+    >>> u1.addresses
+    [<__main__.Address object at 0x12a6ed0>]
+    >>> a1.user
+    <__main__.User object at 0x12a6590>
+
+This behavior of course works in reverse for removal operations as well, as well
+as for equivalent operations on both sides.   Such as
+when ``.user`` is set again to ``None``, the ``Address`` object is removed 
+from the reverse collection::
+
+    >>> a1.user = None
+    >>> u1.addresses
+    []
+
+The manipulation of the ``.addresses`` collection and the ``.user`` attribute 
+occurs entirely in Python without any interaction with the SQL database.  
+Without this behavior, the proper state would be apparent on both sides once the
+data has been flushed to the database, and later reloaded after a commit or
+expiration operation occurs.  The ``backref``/``back_populates`` behavior has the advantage
+that common bidirectional operations can reflect the correct state without requiring
+a database round trip.
+
+Remember, when the ``backref`` keyword is used on a single relationship, it's
+exactly the same as if the above two relationships were created individually
+using ``back_populates`` on each.
+
+Backref Arguments
+~~~~~~~~~~~~~~~~~~
+
+We've established that the ``backref`` keyword is merely a shortcut for building
+two individual :func:`.relationship` constructs that refer to each other.  Part of 
+the behavior of this shortcut is that certain configurational arguments applied to 
+the :func:`.relationship`
+will also be applied to the other direction - namely those arguments that describe
+the relationship at a schema level, and are unlikely to be different in the reverse
+direction.  The usual case
+here is a many-to-many :func:`.relationship` that has a ``secondary`` argument,
+or a one-to-many or many-to-one which has a ``primaryjoin`` argument (the 
+``primaryjoin`` argument is discussed in :ref:`relationship_primaryjoin`).  Such
+as if we limited the list of ``Address`` objects to those which start with "tony"::
+
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        addresses = relationship("Address", 
+                        primaryjoin="and_(User.id==Address.user_id, "
+                            "Address.email.startswith('tony'))",
+                        backref="user")
+
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        email = Column(String)
+        user_id = Column(Integer, ForeignKey('user.id'))
+
+We can observe, by inspecting the resulting property, that both sides
+of the relationship have this join condition applied::
+
+    >>> print User.addresses.property.primaryjoin
+    "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
+    >>> 
+    >>> print Address.user.property.primaryjoin
+    "user".id = address.user_id AND address.email LIKE :email_1 || '%%'
+    >>> 
+
+This reuse of arguments should pretty much do the "right thing" - it uses
+only arguments that are applicable, and in the case of a many-to-many
+relationship, will reverse the usage of ``primaryjoin`` and ``secondaryjoin``
+to correspond to the other direction (see the example in :ref:`self_referential_many_to_many` 
+for this).
+
+It's very often the case however that we'd like to specify arguments that
+are specific to just the side where we happened to place the "backref". 
+This includes :func:`.relationship` arguments like ``lazy``, ``remote_side``,
+``cascade`` and ``cascade_backrefs``.   For this case we use the :func:`.backref`
+function in place of a string::
+
+    # <other imports>
+    from sqlalchemy.orm import backref
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        addresses = relationship("Address", 
+                        backref=backref("user", lazy="joined"))
+
+Where above, we placed a ``lazy="joined"`` directive only on the ``Address.user``
+side, indicating that when a query against ``Address`` is made, a join to the ``User``
+entity should be made automatically which will populate the ``.user`` attribute of each
+returned ``Address``.   The :func:`.backref` function formatted the arguments we gave
+it into a form that is interpreted by the receiving :func:`.relationship` as additional
+arguments to be applied to the new relationship it creates.
+
+One Way Backrefs
+~~~~~~~~~~~~~~~~~
+
+An unusual case is that of the "one way backref".   This is where the "back-populating"
+behavior of the backref is only desirable in one direction. An example of this
+is a collection which contains a filtering ``primaryjoin`` condition.   We'd like to append
+items to this collection as needed, and have them populate the "parent" object on the 
+incoming object. However, we'd also like to have items that are not part of the collection,
+but still have the same "parent" association - these items should never be in the 
+collection.  
+
+Taking our previous example, where we established a ``primaryjoin`` that limited the
+collection only to ``Address`` objects whose email address started with the word ``tony``,
+the usual backref behavior is that all items populate in both directions.   We wouldn't
+want this behavior for a case like the following::
+
+    >>> u1 = User()
+    >>> a1 = Address(email='mary')
+    >>> a1.user = u1
+    >>> u1.addresses
+    [<__main__.Address object at 0x1411910>]
+
+Above, the ``Address`` object that doesn't match the criterion of "starts with 'tony'"
+is present in the ``addresses`` collection of ``u1``.   After these objects are flushed,
+the transaction committed and their attributes expired for a re-load, the ``addresses``
+collection will hit the database on next access and no longer have this ``Address`` object
+present, due to the filtering condition.   But we can do away with this unwanted side
+of the "backref" behavior on the Python side by using two separate :func:`.relationship` constructs, 
+placing ``back_populates`` only on one side::
+
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+        addresses = relationship("Address", 
+                        primaryjoin="and_(User.id==Address.user_id, "
+                            "Address.email.startswith('tony'))",
+                        back_populates="user")
+
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        email = Column(String)
+        user_id = Column(Integer, ForeignKey('user.id'))
+        user = relationship("User")
+
+With the above scenario, appending an ``Address`` object to the ``.addresses``
+collection of a ``User`` will always establish the ``.user`` attribute on that
+``Address``::
+
+    >>> u1 = User()
+    >>> a1 = Address(email='tony')
+    >>> u1.addresses.append(a1)
+    >>> a1.user
+    <__main__.User object at 0x1411850>
+
+However, applying a ``User`` to the ``.user`` attribute of an ``Address``,
+will not append the ``Address`` object to the collection::
+
+    >>> a2 = Address(email='mary')
+    >>> a2.user = u1
+    >>> a2 in u1.addresses
+    False
+
+Of course, we've disabled some of the usefulness of ``backref`` here, in that
+when we do append an ``Address`` that corresponds to the criteria of ``email.startswith('tony')``,
+it won't show up in the ``User.addresses`` collection until the session is flushed,
+and the attributes reloaded after a commit or expire operation.   While we could
+consider an attribute event that checks this criterion in Python, this starts
+to cross the line of duplicating too much SQL behavior in Python.  The backref behavior
+itself is only a slight transgression of this philosophy - SQLAlchemy tries to keep
+these to a minimum overall.
+
+.. _relationship_primaryjoin:
+
 Specifying Alternate Join Conditions to relationship()
 ------------------------------------------------------
 
@@ -558,16 +820,60 @@ relationship it also formulates the **secondary join condition**::
                         secondary_table.c.child_id == child_table.c.id --> child_table
                                     secondaryjoin
 
-If you are working with a :class:`~sqlalchemy.schema.Table` which has no
-:class:`~sqlalchemy.schema.ForeignKey` objects on it (which can be the case
+If you are working with a :class:`.Table` which has no
+:class:`.ForeignKey` metadata established (which can be the case
 when using reflected tables with MySQL), or if the join condition cannot be
-expressed by a simple foreign key relationship, use the ``primaryjoin`` and
-possibly ``secondaryjoin`` conditions to create the appropriate relationship.
+expressed by a simple foreign key relationship, use the ``primaryjoin``, and
+for many-to-many relationships ``secondaryjoin``, directives 
+to create the appropriate relationship.
 
-In this example we create a relationship ``boston_addresses`` which will only
-load the user addresses with a city of "Boston":
+In this example, using the ``User`` class as well as an ``Address`` class
+which stores a street address,  we create a relationship ``boston_addresses`` which will only
+load those ``Address`` objects which specify a city of "Boston"::
 
-.. sourcecode:: python+sql
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+        addresses = relationship("Address", 
+                        primaryjoin="and_(User.id==Address.user_id, "
+                            "Address.city=='Boston')")
+
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'))
+
+        street = Column(String)
+        city = Column(String)
+        state = Column(String)
+        zip = Column(String)
+
+Note above we specified the ``primaryjoin`` argument as a string - this feature
+is available only when the mapping is constructed using the Declarative extension, 
+and allows us to specify a full SQL expression
+between two entities before those entities have been fully constructed.   When
+all mappings have been defined, an automatic "mapper configuration" step interprets
+these string arguments when first needed.
+
+Within this string SQL expression, we also made usage of the :func:`.and_` conjunction construct to establish
+two distinct predicates for the join condition - joining both the ``User.id`` and
+``Address.user_id`` columns to each other, as well as limiting rows in ``Address``
+to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions like
+:func:`.and_` are automatically available in the evaulated namespace of a string
+:func:`.relationship` argument.    
+
+When using classical mappings, we have the advantage of the :class:`.Table` objects
+already being present when the mapping is defined, so that the SQL expression
+can be created immediately::
+
+    from sqlalchemy.orm import relationship, mapper
 
     class User(object):
         pass
@@ -577,27 +883,94 @@ load the user addresses with a city of "Boston":
     mapper(Address, addresses_table)
     mapper(User, users_table, properties={
         'boston_addresses': relationship(Address, primaryjoin=
-                    and_(users_table.c.user_id==addresses_table.c.user_id,
+                    and_(users_table.c.id==addresses_table.c.user_id,
                     addresses_table.c.city=='Boston'))
     })
 
+Note that the custom criteria we use in a ``primaryjoin`` is generally only significant
+when SQLAlchemy is rendering SQL in order to load or represent this relationship.
+That is, it's  used
+in the SQL statement that's emitted in order to perform a per-attribute lazy load, or when a join is 
+constructed at query time, such as via :meth:`.Query.join`, or via the eager "joined" or "subquery"
+styles of loading.   When in-memory objects are being manipulated, we can place any ``Address`` object
+we'd like into the ``boston_addresses`` collection, regardless of what the value of the ``.city``
+attribute is.   The objects will remain present in the collection until the attribute is expired
+and re-loaded from the database where the criterion is applied.   When 
+a flush occurs, the objects inside of ``boston_addresses`` will be flushed unconditionally, assigning
+value of the primary key ``user.id`` column onto the foreign-key-holding ``address.user_id`` column
+for each row.  The ``city`` criteria has no effect here, as the flush process only cares about synchronizing primary
+key values into referencing foreign key values.
+
+.. _self_referential_many_to_many:
+
+Self-Referential Many-to-Many Relationship
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Many to many relationships can be customized by one or both of ``primaryjoin``
-and ``secondaryjoin``, shown below with just the default many-to-many
-relationship explicitly set:
+and ``secondaryjoin``.    A common situation for custom primary and secondary joins
+is when establishing a many-to-many relationship from a class to itself, as shown below::
 
-.. sourcecode:: python+sql
+    from sqlalchemy import Integer, ForeignKey, String, Column, Table
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
 
-    class User(object):
+    Base = declarative_base()
+
+    node_to_node = Table("node_to_node", Base.metadata,
+        Column("left_node_id", Integer, ForeignKey("node.id"), primary_key=True),
+        Column("right_node_id", Integer, ForeignKey("node.id"), primary_key=True)
+    )
+
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        label = Column(String)
+        right_nodes = relationship("Node",
+                            secondary=node_to_node,
+                            primaryjoin=id==node_to_node.c.left_node_id,
+                            secondaryjoin=id==node_to_node.c.right_node_id,
+                            backref="left_nodes"
+        )
+
+Where above, SQLAlchemy can't know automatically which columns should connect
+to which for the ``right_nodes`` and ``left_nodes`` relationships.   The ``primaryjoin``
+and ``secondaryjoin`` arguments establish how we'd like to join to the association table.
+In the Declarative form above, as we are declaring these conditions within the Python
+block that corresponds to the ``Node`` class, the ``id`` variable is available directly
+as the ``Column`` object we wish to join with.
+
+A classical mapping situation here is similar, where ``node_to_node`` can be joined
+to ``node.c.id``::
+
+    from sqlalchemy import Integer, ForeignKey, String, Column, Table, MetaData
+    from sqlalchemy.orm import relationship, mapper
+
+    metadata = MetaData()
+
+    node_to_node = Table("node_to_node", metadata,
+        Column("left_node_id", Integer, ForeignKey("node.id"), primary_key=True),
+        Column("right_node_id", Integer, ForeignKey("node.id"), primary_key=True)
+    )
+
+    node = Table("node", metadata,
+        Column('id', Integer, primary_key=True),
+        Column('label', String)
+    )
+    class Node(object):
         pass
-    class Keyword(object):
-        pass
-    mapper(Keyword, keywords_table)
-    mapper(User, users_table, properties={
-        'keywords': relationship(Keyword, secondary=userkeywords_table,
-            primaryjoin=users_table.c.user_id==userkeywords_table.c.user_id,
-            secondaryjoin=userkeywords_table.c.keyword_id==keywords_table.c.keyword_id
-            )
-    })
+
+    mapper(Node, node, properties={
+        'right_nodes':relationship(Node,
+                            secondary=node_to_node,
+                            primaryjoin=node.c.id==node_to_node.c.left_node_id,
+                            secondaryjoin=node.c.id==node_to_node.c.right_node_id,
+                            backref="left_nodes"
+                        )})
+
+
+Note that in both examples, the ``backref`` keyword specifies a ``left_nodes`` 
+backref - when :func:`.relationship` creates the second relationship in the reverse 
+direction, it's smart enough to reverse the ``primaryjoin`` and ``secondaryjoin`` arguments.
 
 Specifying Foreign Keys
 ~~~~~~~~~~~~~~~~~~~~~~~~
