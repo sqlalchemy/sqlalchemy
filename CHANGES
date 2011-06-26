@@ -68,6 +68,10 @@ CHANGES
     correct foreign key in a multi-level
     inheritance situation.
 
+  - Fixed the attribute shard example to check
+    for bind param callable correctly in 0.7 
+    style.
+
 0.7.1
 =====
 - general

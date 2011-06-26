@@ -160,17 +160,19 @@ def _get_query_comparisons(query):
     comparisons = []
 
     def visit_bindparam(bind):
-        # visit a bind parameter.   Below we ensure
-        # that we get the value whether it was specified
-        # as part of query.params(), or is directly embedded
-        # in the bind's "value" attribute.
-        value = query._params.get(bind.key, bind.value)
+        # visit a bind parameter.   
 
-        # some ORM functions place the bind's value as a 
-        # callable for deferred evaulation.   Get that
-        # actual value here.
-        if callable(value):
-            value = value()
+        # check in _params for it first
+        if bind.key in query._params:
+            value = query._params[bind.key]
+        elif bind.callable:
+            # some ORM functions (lazy loading) 
+            # place the bind's value as a 
+            # callable for deferred evaulation. 
+            value = bind.callable()
+        else:
+            # just use .value
+            value = bind.value
 
         binds[bind] = value
 
