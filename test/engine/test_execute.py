@@ -188,7 +188,6 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             conn.close()
 
-    @testing.requires.python25
     def test_dont_wrap_mixin(self):
         class MyException(Exception, tsa.exc.DontWrapMixin):
             pass
