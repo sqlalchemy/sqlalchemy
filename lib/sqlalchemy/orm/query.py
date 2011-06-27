@@ -2411,7 +2411,7 @@ class Query(object):
             if context.order_by:
                 order_by_col_expr = list(
                                         chain(*[
-                                            sql_util.find_columns(o) 
+                                            sql_util.unwrap_order_by(o)
                                             for o in context.order_by
                                         ])
                                     )
@@ -2425,6 +2425,9 @@ class Query(object):
                         from_obj=froms,
                         use_labels=labels,
                         correlate=False,
+                        # TODO: this order_by is only needed if 
+                        # LIMIT/OFFSET is present in self._select_args,
+                        # else the application on the outside is enough
                         order_by=context.order_by,
                         **self._select_args
                     )
@@ -2462,11 +2465,11 @@ class Query(object):
             statement.append_from(from_clause)
 
             if context.order_by:
-                    statement.append_order_by(
-                        *context.adapter.copy_and_process(
-                            context.order_by
-                        )
+                statement.append_order_by(
+                    *context.adapter.copy_and_process(
+                        context.order_by
                     )
+                )
 
             statement.append_order_by(*context.eager_order_by)
         else:
@@ -2476,7 +2479,7 @@ class Query(object):
             if self._distinct and context.order_by:
                 order_by_col_expr = list(
                                         chain(*[
-                                            sql_util.find_columns(o) 
+                                            sql_util.unwrap_order_by(o) 
                                             for o in context.order_by
                                         ])
                                     )

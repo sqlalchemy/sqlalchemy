@@ -637,11 +637,13 @@ class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None, 
                             checkparams=None, dialect=None, 
                             use_default_dialect=False):
+
         if use_default_dialect:
             dialect = default.DefaultDialect()
-
-        if dialect is None:
+        elif dialect == None:
             dialect = getattr(self, '__dialect__', None)
+            if dialect == 'default':
+                dialect = default.DefaultDialect()
 
         kw = {}
         if params is not None:
