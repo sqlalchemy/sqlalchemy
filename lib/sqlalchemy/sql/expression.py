@@ -2144,6 +2144,10 @@ class ColumnCollection(util.OrderedProperties):
                           'use_labels for select() statements.' % (key,
                           getattr(existing, 'table', None)))
             self._all_cols.remove(existing)
+            # pop out memoized proxy_set as this
+            # operation may very well be occurring
+            # in a _make_proxy operation
+            value.__dict__.pop('proxy_set', None)
         self._all_cols.add(value)
         self._data[key] = value
 
@@ -2328,7 +2332,6 @@ class FromClause(Selectable):
         """
 
         # dont dig around if the column is locally present
-
         if self.c.contains_column(column):
             return column
         col, intersect = None, None
@@ -3873,6 +3876,7 @@ class ColumnClause(_Immutable, ColumnElement):
                     is_literal=is_literal
                 )
         c.proxies = [self]
+
         if attach:
             selectable._columns[c.name] = c
         return c

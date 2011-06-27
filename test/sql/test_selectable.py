@@ -47,6 +47,24 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert s.corresponding_column(s.c.col1) is s.c.col1
         assert s.corresponding_column(s.c.c1) is s.c.c1
 
+    def test_labeled_subquery_twice(self):
+        scalar_select = select([table1.c.col1]).label('foo')
+
+        s1 = select([scalar_select])
+        s2 = select([scalar_select, scalar_select])
+
+        eq_(
+            s1.c.foo.proxy_set,
+            set([s1.c.foo, scalar_select, scalar_select.element, table1.c.col1])
+        )
+        eq_(
+            s2.c.foo.proxy_set,
+            set([s2.c.foo, scalar_select, scalar_select.element, table1.c.col1])
+        )
+
+        assert s1.corresponding_column(scalar_select) is s1.c.foo
+        assert s2.corresponding_column(scalar_select) is s2.c.foo
+
     def test_direct_correspondence_on_labels(self):
         # this test depends on labels being part
         # of the proxy set to get the right result

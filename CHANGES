@@ -29,6 +29,11 @@ CHANGES
     after from_statement() were called.
     [ticket:2199].  Also in 0.6.9.
 
+- sql
+  - Fixed a subtle bug involving column 
+    correspondence in a selectable with the
+    same column repeated.   Affects [ticket:2188].
+
 - engine
   - Use urllib.parse_qsl() in Python 2.6 and above,
     no deprecation warning about cgi.parse_qsl()
