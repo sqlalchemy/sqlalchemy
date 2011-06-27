@@ -524,6 +524,10 @@ _commutative = set([eq, ne, add, mul])
 def is_commutative(op):
     return op in _commutative
 
+def is_ordering_modifier(op):
+    return op in (asc_op, desc_op, 
+                    nullsfirst_op, nullslast_op)
+
 _associative = _commutative.union([concat_op, and_, or_])
 
 

@@ -6,6 +6,12 @@ CHANGES
 0.7.2
 =====
 - orm
+  - Fixed subtle bug that caused SQL to blow
+    up if: column_property() against subquery +
+    joinedload + LIMIT + order by the column
+    property() occurred.  [ticket:2188].
+    Also in 0.6.9
+
   - Added the same "columns-only" check to 
     mapper.polymorphic_on as used in 
     relationship.order_by, foreign_keys,
@@ -30,9 +36,11 @@ CHANGES
     [ticket:2199].  Also in 0.6.9.
 
 - sql
-  - Fixed a subtle bug involving column 
-    correspondence in a selectable with the
-    same column repeated.   Affects [ticket:2188].
+  - Fixed two subtle bugs involving column 
+    correspondence in a selectable,
+    one with the same labeled subquery repeated, the other
+    when the label has been "grouped" and 
+    loses itself.  Affects [ticket:2188].
 
 - engine
   - Use urllib.parse_qsl() in Python 2.6 and above,

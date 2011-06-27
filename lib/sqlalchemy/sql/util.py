@@ -8,6 +8,7 @@ from sqlalchemy import exc, schema, util, sql, types as sqltypes
 from sqlalchemy.util import topological
 from sqlalchemy.sql import expression, operators, visitors
 from itertools import chain
+from collections import deque
 
 """Utility functions that build upon SQL and Schema constructs."""
 
@@ -97,6 +98,25 @@ def find_columns(clause):
 
     cols = util.column_set()
     visitors.traverse(clause, {}, {'column':cols.add})
+    return cols
+
+def unwrap_order_by(clause):
+    """Break up an 'order by' expression into individual column-expressions,
+    without DESC/ASC/NULLS FIRST/NULLS LAST"""
+
+    cols = util.column_set()
+    stack = deque([clause])
+    while stack:
+        t = stack.popleft()
+        if isinstance(t, expression.ColumnElement) and \
+            (
+                not isinstance(t, expression._UnaryExpression) or \
+                not operators.is_ordering_modifier(t.modifier)
+            ): 
+            cols.add(t)
+        else:
+            for c in t.get_children():
+                stack.append(c)
     return cols
 
 def clause_is_present(clause, search):
@@ -624,11 +644,15 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         self.equivalents = util.column_dict(equivalents or {})
 
     def _corresponding_column(self, col, require_embedded, _seen=util.EMPTY_SET):
-        newcol = self.selectable.corresponding_column(col, require_embedded=require_embedded)
+        newcol = self.selectable.corresponding_column(
+                                    col, 
+                                    require_embedded=require_embedded)
 
         if newcol is None and col in self.equivalents and col not in _seen:
             for equiv in self.equivalents[col]:
-                newcol = self._corresponding_column(equiv, require_embedded=require_embedded, _seen=_seen.union([col]))
+                newcol = self._corresponding_column(equiv, 
+                                require_embedded=require_embedded, 
+                                _seen=_seen.union([col]))
                 if newcol is not None:
                     return newcol
         return newcol

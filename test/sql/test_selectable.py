@@ -64,7 +64,16 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         assert s1.corresponding_column(scalar_select) is s1.c.foo
         assert s2.corresponding_column(scalar_select) is s2.c.foo
-
+    
+    def test_label_grouped_still_corresponds(self):
+        label = select([table1.c.col1]).label('foo')
+        label2 = label.self_group()
+        
+        s1 = select([label])
+        s2 = select([label2])
+        assert s1.corresponding_column(label) is s1.c.foo
+        assert s2.corresponding_column(label) is s2.c.foo
+        
     def test_direct_correspondence_on_labels(self):
         # this test depends on labels being part
         # of the proxy set to get the right result

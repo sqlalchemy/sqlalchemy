@@ -3710,7 +3710,7 @@ class _Label(ColumnElement):
                         sub_element, 
                         type_=self._type)
         else:
-            return self._element
+            return self
 
     @property
     def primary_key(self):
