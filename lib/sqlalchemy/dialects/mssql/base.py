@@ -766,6 +766,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return s
         return compiler.SQLCompiler.get_select_precolumns(self, select)
 
+    def get_from_hint_text(self, text):
+        return text
+
     def limit_clause(self, select):
         # Limit in mssql is after the select keyword
         return ""

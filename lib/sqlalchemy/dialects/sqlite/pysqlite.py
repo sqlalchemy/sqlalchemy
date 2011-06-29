@@ -127,6 +127,9 @@ Modern versions of SQLite no longer have the threading restrictions, and assumin
 the sqlite3/pysqlite library was built with SQLite's default threading mode
 of "Serialized", even ``:memory:`` databases can be shared among threads.
 
+Using a Memory Database in Multiple Threads
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 To use a ``:memory:`` database in a multithreaded scenario, the same connection
 object must be shared among threads, since the database exists
 only within the scope of that connection.   The :class:`.StaticPool` implementation
@@ -140,6 +143,32 @@ can be passed to Pysqlite as ``False``::
 
 Note that using a ``:memory:`` database in multiple threads requires a recent 
 version of SQLite.
+
+Using Temporary Tables with SQLite
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Due to the way SQLite deals with temporary tables, if you wish to use a temporary table
+in a file-based SQLite database across multiple checkouts from the connection pool, such
+as when using an ORM :class:`.Session` where the temporary table should continue to remain
+after :meth:`.commit` or :meth:`.rollback` is called,
+a pool which maintains a single connection must be used.   Use :class:`.SingletonThreadPool`
+if the scope is only needed within the current thread, or :class:`.StaticPool` is scope is
+needed within multiple threads for this case::
+
+    # maintain the same connection per thread
+    from sqlalchemy.pool import SingletonThreadPool
+    engine = create_engine('sqlite:///mydb.db',
+                        poolclass=SingletonThreadPool)
+
+
+    # maintain the same connection across all threads
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine('sqlite:///mydb.db',
+                        poolclass=StaticPool)
+
+Note that :class:`.SingletonThreadPool` should be configured for the number of threads
+that are to be used; beyond that number, connections will be closed out in a non deterministic
+way.
 
 Unicode
 -------
