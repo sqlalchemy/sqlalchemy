@@ -132,9 +132,11 @@ class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
     def define_tables(cls, metadata):
         MutationDict = cls._type_fixture()
 
+        mutable_pickle = MutationDict.as_mutable(PickleType)
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', MutationDict.as_mutable(PickleType)),
+            Column('skip', mutable_pickle),
+            Column('data', mutable_pickle),
             Column('non_mutable_data', PickleType)
         )
 
@@ -227,6 +229,7 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTe
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('skip', PickleType),
             Column('data', PickleType)
         )
 

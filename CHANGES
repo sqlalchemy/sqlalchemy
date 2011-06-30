@@ -77,6 +77,12 @@ CHANGES
     cx_oracle _Error.code to get at the code,
     [ticket:2200].  Also in 0.6.9.
 
+-ext
+  - Fixed bug in the mutable extension whereby
+    if the same type were used twice in one
+    mapping, the attributes beyond the first
+    would not get instrumented.
+
 - examples
   - Repaired the examples/versioning test runner
     to not rely upon SQLAlchemy test libs,

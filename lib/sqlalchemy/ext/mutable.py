@@ -461,7 +461,6 @@ class Mutable(MutableBase):
                 if hasattr(prop, 'columns'):
                     if isinstance(prop.columns[0].type, sqltype):
                         cls.associate_with_attribute(getattr(class_, prop.key))
-                        break
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 
@@ -503,7 +502,6 @@ class Mutable(MutableBase):
                 if hasattr(prop, 'columns'):
                     if prop.columns[0].type is sqltype:
                         cls.associate_with_attribute(getattr(class_, prop.key))
-                        break
 
         event.listen(mapper, 'mapper_configured', listen_for_type)
 
