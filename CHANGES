@@ -49,6 +49,12 @@ CHANGES
     event in 0.6 would get "tables=somecollection",
     this behavior is preserved.  [ticket:2206]
 
+  - Fixed bug where "autoincrement" detection on 
+    Table would fail if the type had no "affinity"
+    value, in particular this would occur when using 
+    the UUID example on the site that uses TypeEngine
+    as the "impl".
+
 - engine
   - Use urllib.parse_qsl() in Python 2.6 and above,
     no deprecation warning about cgi.parse_qsl()

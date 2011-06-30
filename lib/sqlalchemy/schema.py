@@ -390,6 +390,7 @@ class Table(SchemaItem, expression.TableClause):
     def _autoincrement_column(self):
         for col in self.primary_key:
             if col.autoincrement and \
+                col.type._type_affinity is not None and \
                 issubclass(col.type._type_affinity, sqltypes.Integer) and \
                 not col.foreign_keys and \
                 isinstance(col.default, (type(None), Sequence)) and \

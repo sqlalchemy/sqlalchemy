@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from test.lib import testing, engines
 from sqlalchemy import MetaData, Integer, String, ForeignKey, Boolean, exc,\
                 Sequence, func, literal, Unicode
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import TypeDecorator, TypeEngine
 from test.lib.schema import Table, Column
 from test.lib.testing import eq_
 from sqlalchemy.dialects import sqlite
@@ -541,6 +541,16 @@ class AutoIncrementTest(fixtures.TablesTest):
         r = nodes.insert().execute(data='foo')
         id_ = r.inserted_primary_key[0]
         nodes.insert().execute(data='bar', parent_id=id_)
+
+    def test_autoinc_detection_no_affinity(self):
+        class MyType(TypeDecorator):
+            impl = TypeEngine
+
+        assert MyType()._type_affinity is None
+        t = Table('x', MetaData(),
+            Column('id', MyType(), primary_key=True)
+        )
+        assert t._autoincrement_column is None
 
     @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_non_autoincrement(self):
