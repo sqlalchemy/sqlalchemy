@@ -386,6 +386,11 @@ Validators also receive collection events, when items are added to a collection:
             assert '@' in address.email
             return address
 
+Note that the :func:`~.validates` decorator is a convenience function built on 
+top of attribute events.   An application that requires more control over
+configuration of attribute change behavior can make use of this system,
+described at :class:`~.AttributeEvents`.
+
 .. autofunction:: validates
 
 .. _synonyms:
