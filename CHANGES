@@ -42,6 +42,13 @@ CHANGES
     when the label has been "grouped" and 
     loses itself.  Affects [ticket:2188].
 
+- schema
+  - Fixed bug whereby adaptation of old append_ddl_listener()
+    function was passing unexpected **kw through 
+    to the Table event.   Table gets no kws, the MetaData
+    event in 0.6 would get "tables=somecollection",
+    this behavior is preserved.  [ticket:2206]
+
 - engine
   - Use urllib.parse_qsl() in Python 2.6 and above,
     no deprecation warning about cgi.parse_qsl()

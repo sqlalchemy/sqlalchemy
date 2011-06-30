@@ -478,7 +478,7 @@ class Table(SchemaItem, expression.TableClause):
         """
 
         def adapt_listener(target, connection, **kw):
-            listener(event_name, target, connection, **kw)
+            listener(event_name, target, connection)
 
         event.listen(self, "" + event_name.replace('-', '_'), adapt_listener)
 
@@ -2383,7 +2383,8 @@ class MetaData(SchemaItem):
 
         """
         def adapt_listener(target, connection, **kw):
-            listener(event, target, connection, **kw)
+            tables = kw['tables']
+            listener(event, target, connection, tables=tables)
 
         event.listen(self, "" + event_name.replace('-', '_'), adapt_listener)
 

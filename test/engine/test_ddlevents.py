@@ -261,6 +261,63 @@ class DDLExecutionTest(fixtures.TestBase):
         assert 'xyzzy' in strings
         assert 'fnord' in strings
 
+    def test_deprecated_append_ddl_listener_table(self):
+        metadata, users, engine = self.metadata, self.users, self.engine
+        canary = []
+        users.append_ddl_listener('before-create', 
+                            lambda e, t, b:canary.append('mxyzptlk')
+                        )
+        users.append_ddl_listener('after-create', 
+                            lambda e, t, b:canary.append('klptzyxm')
+                        )
+        users.append_ddl_listener('before-drop', 
+                            lambda e, t, b:canary.append('xyzzy')
+                        )
+        users.append_ddl_listener('after-drop', 
+                            lambda e, t, b:canary.append('fnord')
+                        )
+
+        metadata.create_all()
+        assert 'mxyzptlk' in canary
+        assert 'klptzyxm' in canary
+        assert 'xyzzy' not in canary
+        assert 'fnord' not in canary
+        del engine.mock[:]
+        canary[:] = []
+        metadata.drop_all()
+        assert 'mxyzptlk' not in canary
+        assert 'klptzyxm' not in canary
+        assert 'xyzzy' in canary
+        assert 'fnord' in canary
+
+    def test_deprecated_append_ddl_listener_metadata(self):
+        metadata, users, engine = self.metadata, self.users, self.engine
+        canary = []
+        metadata.append_ddl_listener('before-create', 
+                            lambda e, t, b, tables=None:canary.append('mxyzptlk')
+                        )
+        metadata.append_ddl_listener('after-create', 
+                            lambda e, t, b, tables=None:canary.append('klptzyxm')
+                        )
+        metadata.append_ddl_listener('before-drop', 
+                            lambda e, t, b, tables=None:canary.append('xyzzy')
+                        )
+        metadata.append_ddl_listener('after-drop', 
+                            lambda e, t, b, tables=None:canary.append('fnord')
+                        )
+
+        metadata.create_all()
+        assert 'mxyzptlk' in canary
+        assert 'klptzyxm' in canary
+        assert 'xyzzy' not in canary
+        assert 'fnord' not in canary
+        del engine.mock[:]
+        canary[:] = []
+        metadata.drop_all()
+        assert 'mxyzptlk' not in canary
+        assert 'klptzyxm' not in canary
+        assert 'xyzzy' in canary
+        assert 'fnord' in canary
 
     def test_metadata(self):
         metadata, engine = self.metadata, self.engine
