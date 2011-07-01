@@ -5,7 +5,7 @@ import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc
 from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
-from test.lib import fixtures
+from test.lib import fixtures, testing
 
 class ParseConnectTest(fixtures.TestBase):
     def test_rfc1738(self):
@@ -175,7 +175,7 @@ pool_timeout=10
                           module=dbapi, _initialize=False)
         assert e.pool._recycle == 472
 
-    def test_badargs(self):
+    def test_bad_args(self):
         assert_raises(exc.ArgumentError, create_engine, 'foobar://',
                       module=mock_dbapi)
 
@@ -201,19 +201,49 @@ pool_timeout=10
         assert_raises(TypeError, create_engine, 'mysql+mysqldb://',
                       use_unicode=True, module=mock_dbapi)
 
+    @testing.requires.sqlite
+    def test_wraps_connect_in_dbapi(self):
         # sqlite uses SingletonThreadPool which doesnt have max_overflow
 
         assert_raises(TypeError, create_engine, 'sqlite://',
                       max_overflow=5, module=mock_sqlite_dbapi)
+        e = create_engine('sqlite://', connect_args={'use_unicode'
+                          : True}, convert_unicode=True)
         try:
-            e = create_engine('sqlite://', connect_args={'use_unicode'
-                              : True}, convert_unicode=True)
-        except ImportError:
-            # no sqlite
-            pass
-        else:
-            # raises DBAPIerror due to use_unicode not a sqlite arg
-            assert_raises(tsa.exc.DBAPIError, e.connect)
+            e.connect()
+        except tsa.exc.DBAPIError, de:
+            assert not de.connection_invalidated
+
+    def test_ensure_dialect_does_is_disconnect_no_conn(self):
+        """test that is_disconnect() doesn't choke if no connection, cursor given."""
+        dialect = testing.db.dialect
+        dbapi = dialect.dbapi
+        assert not dialect.is_disconnect(dbapi.OperationalError("test"), None, None)
+
+    @testing.requires.sqlite
+    def test_invalidate_on_connect(self):
+        """test that is_disconnect() is called during connect.
+        
+        interpretation of connection failures are not supported by
+        every backend.
+        
+        """
+        # pretend pysqlite throws the 
+        # "Cannot operate on a closed database." error
+        # on connect.   IRL we'd be getting Oracle's "shutdown in progress"
+
+        import sqlite3
+        class ThrowOnConnect(MockDBAPI):
+            dbapi = sqlite3
+            Error = sqlite3.Error
+            ProgrammingError = sqlite3.ProgrammingError
+            def connect(self, *args, **kw):
+                raise sqlite3.ProgrammingError("Cannot operate on a closed database.")
+        try:
+            create_engine('sqlite://', module=ThrowOnConnect()).connect()
+            assert False
+        except tsa.exc.DBAPIError, de:
+            assert de.connection_invalidated
 
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
@@ -264,6 +294,9 @@ pool_timeout=10
             )
 
 class MockDBAPI(object):
+    version_info = sqlite_version_info = 99, 9, 9
+    sqlite_version = '99.9.9'
+
     def __init__(self, **kwargs):
         self.kwargs = kwargs
         self.paramstyle = 'named'
@@ -293,5 +326,3 @@ class MockCursor(object):
 
 mock_dbapi = MockDBAPI()
 mock_sqlite_dbapi = msd = MockDBAPI()
-msd.version_info = msd.sqlite_version_info = 99, 9, 9
-msd.sqlite_version = '99.9.9'

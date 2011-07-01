@@ -85,7 +85,8 @@ class DefaultEngineStrategy(EngineStrategy):
                     # Py2K
                     import sys
                     raise exc.DBAPIError.instance(
-                                None, None, e, dialect.dbapi.Error), \
+                                None, None, e, dialect.dbapi.Error,
+                                connection_invalidated=dialect.is_disconnect(e, None, None)), \
                                 None, sys.exc_info()[2]
                     # end Py2K
 

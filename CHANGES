@@ -66,8 +66,15 @@ CHANGES
     occur in the context of a statement 
     execution.
 
- - StatementException wrapping will display the
-   original exception class in the message.  
+  - StatementException wrapping will display the
+    original exception class in the message.  
+
+  - Failures on connect which raise dbapi.Error
+    will forward the error to dialect.is_disconnect()
+    and set the "connection_invalidated" flag if 
+    the dialect knows this to be a potentially
+    "retryable" condition.  Only Oracle ORA-01033
+    implemented for now.  [ticket:2201]
 
 - mssql
   - Adjusted the pyodbc dialect such that bound
@@ -82,6 +89,10 @@ CHANGES
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,
     [ticket:2200].  Also in 0.6.9.
+
+  - Added ORA-01033 to disconnect codes, which
+    can be caught during a connection 
+    event.  [ticket:2201]
 
 -ext
   - Fixed bug in the mutable extension whereby
