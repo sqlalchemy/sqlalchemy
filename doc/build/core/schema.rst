@@ -1062,6 +1062,19 @@ MySQL.
         CONSTRAINT check1  CHECK (col2 > col3 + 5)
     ){stop}
 
+Setting up Constraints when using the Declarative ORM Extension
+----------------------------------------------------------------
+
+The :class:`.Table` is the SQLAlchemy Core construct that allows one to define
+table metadata, which among other things can be used by the SQLAlchemy ORM
+as a target to map a class.  The :ref:`Declarative <declarative_toplevel>`
+extension allows the :class:`.Table` object to be created automatically, given 
+the contents of the table primarily as a mapping of :class:`.Column` objects.
+
+To apply table-level constraint objects such as :class:`.ForeignKeyConstraint`
+to a table defined using Declarative, use the ``__table_args__`` attribute, 
+described at :ref:`declarative_table_args`.
+
 Constraints API
 ---------------
 .. autoclass:: Constraint

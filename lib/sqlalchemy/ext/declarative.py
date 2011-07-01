@@ -247,6 +247,8 @@ of the ``User`` class::
             where(Address.user_id==User.id)
     ) 
 
+.. _declarative_table_args:
+
 Table Configuration
 ===================
 
@@ -318,6 +320,39 @@ Some configuration schemes may find it more appropriate to use ``__table__``,
 such as those which already take advantage of the data-driven nature of 
 :class:`.Table` to customize and/or automate schema definition. 
 
+Note that when the ``__table__`` approach is used, the object is immediately
+usable as a plain :class:`.Table` within the class declaration body itself,
+as a Python class is only another syntactical block.  Below this is illustrated
+by using the ``id`` column in the ``primaryjoin`` condition of a :func:`.relationship`::
+
+    class MyClass(Base):
+        __table__ = Table('my_table', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+        )
+
+        widgets = relationship(Widget, 
+                    primaryjoin=Widget.myclass_id==__table__.c.id)
+
+Similarly, mapped attributes which refer to ``__table__`` can be placed inline, 
+as below where we assign the ``name`` column to the attribute ``_name``, generating
+a synonym for ``name``::
+
+    from sqlalchemy.ext.declarative import synonym_for
+    
+    class MyClass(Base):
+        __table__ = Table('my_table', Base.metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', String(50))
+        )
+
+        _name = __table__.c.name
+
+        @synonym_for("_name")
+        def name(self):
+            return "Name: %s" % _name
+
+        
 Mapper Configuration
 ====================
 
