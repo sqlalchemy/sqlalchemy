@@ -355,6 +355,24 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
             f2.data.y = 12
             assert f2 in sess.dirty
 
+    def test_set_none(self):
+        sess = Session()
+        f1 = Foo(data=None)
+        sess.add(f1)
+        sess.commit()
+        eq_(f1.data, Point(None, None))
+
+        f1.data.y = 5
+        sess.commit()
+        eq_(f1.data, Point(None, 5))
+
+    def test_set_illegal(self):
+        f1 = Foo()
+        assert_raises_message(
+            ValueError,
+            "Attribute 'data' does not accept objects",
+            setattr, f1, 'data', 'foo'
+        )
 
 class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod

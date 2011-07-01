@@ -89,6 +89,12 @@ CHANGES
     mapping, the attributes beyond the first
     would not get instrumented.
 
+  - Fixed bug in the mutable extension whereby
+    if None or a non-corresponding type were set, 
+    an error would be raised.  None is now accepted
+    which assigns None to all attributes,
+    illegal values raise ValueError.
+
 - examples
   - Repaired the examples/versioning test runner
     to not rely upon SQLAlchemy test libs,

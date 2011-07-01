@@ -347,6 +347,16 @@ class MutableBase(object):
         return weakref.WeakKeyDictionary()
 
     @classmethod
+    def coerce(cls, key, value):
+        """Given a value, coerce it into this type.
+
+        By default raises ValueError.
+        """
+        if value is None:
+            return None
+        raise ValueError("Attribute '%s' does not accept objects of type %s" % (key, type(value)))
+
+    @classmethod
     def _listen_on_attribute(cls, attribute, coerce, parent_cls):
         """Establish this type as a mutation listener for the given 
         mapped descriptor.
@@ -422,16 +432,6 @@ class Mutable(MutableBase):
 
         for parent, key in self._parents.items():
             flag_modified(parent, key)
-
-    @classmethod
-    def coerce(cls, key, value):
-        """Given a value, coerce it into this type.
-
-        By default raises ValueError.
-        """
-        if value is None:
-            return None
-        raise ValueError("Attribute '%s' does not accept objects of type %s" % (key, type(value)))
 
     @classmethod
     def associate_with_attribute(cls, attribute):
