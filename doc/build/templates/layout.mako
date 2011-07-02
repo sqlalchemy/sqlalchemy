@@ -51,7 +51,12 @@
         </div>
 
         <div class="versionheader">
-            Version: <span class="versionnum">${release}</span> Last Updated: ${last_updated}
+            Release: <span class="versionnum">${release}</span> | Release Date: ${release_date}
+            % if not version.startswith(versions[0][0]):
+            <div class="versionwarning">
+                The current version of SQLAlchemy is ${versions[0][0]}.   <a href="/docs/">View current SQLAlchemy Documentation</a>
+            </div>
+            % endif
         </div>
         <div class="clearboth"></div>
 
@@ -60,12 +65,12 @@
                 <a href="${pathto('reference/index')}">API Reference</a>
                 |
                 <a href="${pathto('genindex')}">Index</a>
-            
+
                 % if sourcename:
                 <div class="sourcelink">(<a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')})</div>
                 % endif
             </div>
-            
+
             <div class="navbanner">
                 <a class="totoc" href="${pathto(master_doc)}">Table of Contents</a>
                 % if parents:
@@ -76,7 +81,7 @@
                 % if current_page_name != master_doc:
                 » ${self.show_title()} 
                 % endif
-                
+
                 ${prevnext()}
                 <h2>
                     ${self.show_title()} 
@@ -87,7 +92,7 @@
             % endif
             <div class="clearboth"></div>
         </div>
-        
+
         <div class="document">
             <div class="body">
                 ${next.body()}
