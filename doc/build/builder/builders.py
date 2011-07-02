@@ -19,6 +19,8 @@ if __version__ < "0.4.1":
 class MakoBridge(TemplateBridge):
     def init(self, builder, *args, **kw):
         self.layout = builder.config.html_context.get('mako_layout', 'html')
+        builder.config.html_context['release_date'] = builder.config['release_date']
+        builder.config.html_context['versions'] = builder.config['versions']
 
         self.lookup = TemplateLookup(directories=builder.config.templates_path,
             #format_exceptions=True, 
@@ -166,6 +168,8 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 def setup(app):
     app.add_lexer('pycon+sql', PyConWithSQLLexer())
     app.add_lexer('python+sql', PythonWithSQLLexer())
+    app.add_config_value('release_date', "", True)
+    app.add_config_value('versions', "", True)
     app.connect('autodoc-skip-member', autodoc_skip_member)
     PygmentsBridge.html_formatter = PopupSQLFormatter
     PygmentsBridge.latex_formatter = PopupLatexFormatter
