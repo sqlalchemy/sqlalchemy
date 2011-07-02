@@ -49,7 +49,12 @@ Search:
 </div>
 
 <div class="versionheader">
-    Version: <span class="versionnum">${release}</span> Last Updated: ${last_updated}
+    Release: <span class="versionnum">${release}</span> | Release Date: ${release_date}
+    % if not version.startswith(versions[0][0]):
+    <div class="versionwarning">
+        The current version of SQLAlchemy is ${versions[0][0]}.   <a href="/docs/">View current SQLAlchemy Documentation</a>
+    </div>
+    % endif
 </div>
 <div class="clearboth"></div>
 

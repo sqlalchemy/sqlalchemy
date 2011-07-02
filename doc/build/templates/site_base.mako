@@ -7,7 +7,7 @@
 </%text>
 
 <div style="text-align:right">
-<b>Jump to Version:</b> <a href="/docs/07/">0.7</a> | <a href="/docs/06/">0.6</a> | <a href="/docs/05/">0.5</a>
+<b>Jump to Version:</b> ${" | ".join('<a href="/docs/%s/">%s</a>' % (link, vers) for vers, link in versions)}
 </div>
 
 <div style="text-align:right">
