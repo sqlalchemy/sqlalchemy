@@ -55,6 +55,11 @@ CHANGES
     the UUID example on the site that uses TypeEngine
     as the "impl".
 
+  - Added an improved repr() to TypeEngine objects
+    that will only display constructor args which
+    are positional or kwargs that deviate
+    from the default.  [ticket:2209]
+
 - engine
   - Use urllib.parse_qsl() in Python 2.6 and above,
     no deprecation warning about cgi.parse_qsl()

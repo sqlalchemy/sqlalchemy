@@ -26,7 +26,8 @@ from langhelpers import iterate_attributes, class_hierarchy, \
     monkeypatch_proxied_specials, asbool, bool_or_str, coerce_kw_type,\
     duck_type_collection, assert_arg_type, symbol, dictlike_iteritems,\
     classproperty, set_creation_order, warn_exception, warn, NoneType,\
-    constructor_copy, methods_equivalent, chop_traceback, asint
+    constructor_copy, methods_equivalent, chop_traceback, asint,\
+    generic_repr
 
 from deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation

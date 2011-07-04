@@ -263,11 +263,7 @@ class TypeEngine(AbstractType):
                     "constructor %s is deprecated" % self.__class__)
 
     def __repr__(self):
-        return "%s(%s)" % (
-            self.__class__.__name__,
-            ", ".join("%s=%r" % (k, getattr(self, k, None))
-                      for k in inspect.getargspec(self.__init__)[0][1:]))
-
+        return util.generic_repr(self)
 
 class UserDefinedType(TypeEngine):
     """Base for user defined types.

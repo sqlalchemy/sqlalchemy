@@ -937,6 +937,93 @@ class TestFormatArgspec(fixtures.TestBase):
 
         test(O.__init__, custom_spec)
 
+
+class GenericReprTest(fixtures.TestBase):
+    def test_all_positional(self):
+        class Foo(object):
+            def __init__(self, a, b, c):
+                self.a = a
+                self.b = b
+                self.c = c
+        eq_(
+            util.generic_repr(Foo(1, 2, 3)),
+            "Foo(1, 2, 3)"
+        )
+
+    def test_positional_plus_kw(self):
+        class Foo(object):
+            def __init__(self, a, b, c=5, d=4):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+        eq_(
+            util.generic_repr(Foo(1, 2, 3, 6)),
+            "Foo(1, 2, c=3, d=6)"
+        )
+
+    def test_kw_defaults(self):
+        class Foo(object):
+            def __init__(self, a=1, b=2, c=3, d=4):
+                self.a = a
+                self.b = b
+                self.c = c
+                self.d = d
+        eq_(
+            util.generic_repr(Foo(1, 5, 3, 7)),
+            "Foo(b=5, d=7)"
+        )
+
+    def test_discard_vargs(self):
+        class Foo(object):
+            def __init__(self, a, b, *args):
+                self.a = a
+                self.b = b
+                self.c, self.d = args[0:2]
+        eq_(
+            util.generic_repr(Foo(1, 2, 3, 4)),
+            "Foo(1, 2)"
+        )
+
+    def test_discard_vargs_kwargs(self):
+        class Foo(object):
+            def __init__(self, a, b, *args, **kw):
+                self.a = a
+                self.b = b
+                self.c, self.d = args[0:2]
+        eq_(
+            util.generic_repr(Foo(1, 2, 3, 4, x=7, y=4)),
+            "Foo(1, 2)"
+        )
+
+    def test_significant_vargs(self):
+        class Foo(object):
+            def __init__(self, a, b, *args):
+                self.a = a
+                self.b = b
+                self.args = args
+        eq_(
+            util.generic_repr(Foo(1, 2, 3, 4)),
+            "Foo(1, 2, 3, 4)"
+        )
+
+    def test_no_args(self):
+        class Foo(object):
+            def __init__(self):
+                pass
+        eq_(
+            util.generic_repr(Foo()),
+            "Foo()"
+        )
+
+    def test_no_init(self):
+        class Foo(object):
+            pass
+        eq_(
+            util.generic_repr(Foo()),
+            "Foo()"
+        )
+
 class AsInterfaceTest(fixtures.TestBase):
 
     class Something(object):

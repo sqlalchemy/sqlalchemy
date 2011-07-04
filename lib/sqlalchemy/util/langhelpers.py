@@ -215,6 +215,33 @@ def unbound_method_to_callable(func_or_cls):
     else:
         return func_or_cls
 
+def generic_repr(obj):
+    """Produce a __repr__() based on direct association of the __init__()
+    specification vs. same-named attributes present.
+    
+    """
+    def genargs():
+        try:
+            (args, vargs, vkw, defaults) = inspect.getargspec(obj.__init__)
+        except TypeError:
+            return
+
+        default_len = defaults and len(defaults) or 0
+
+        if not default_len:
+            for arg in args[1:]:
+                yield repr(getattr(obj, arg, None))
+            if vargs is not None and hasattr(obj, vargs):
+                yield ', '.join(repr(val) for val in getattr(obj, vargs))
+        else:
+            for arg in args[1:-default_len]:
+                yield repr(getattr(obj, arg, None))
+            for (arg, defval) in zip(args[-default_len:], defaults):
+                val = getattr(obj, arg, None)
+                if val != defval:
+                    yield '%s=%r' % (arg, val)
+    return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
+
 class portable_instancemethod(object):
     """Turn an instancemethod into a (parent, name) pair
     to produce a serializable callable.

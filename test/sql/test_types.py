@@ -129,6 +129,17 @@ class AdaptTest(fixtures.TestBase):
                         getattr(t2, k) == t1.__dict__[k] or \
                         t1.__dict__[k] is None
 
+    @testing.uses_deprecated()
+    def test_repr(self):
+        for typ in self._all_types():
+            if typ in (types.TypeDecorator, types.TypeEngine):
+                continue
+            elif typ is dialects.postgresql.ARRAY:
+                t1 = typ(String)
+            else:
+                t1 = typ()
+            repr(t1)
+
     def test_plain_init_deprecation_warning(self):
         for typ in (Integer, Date, SmallInteger):
             assert_raises_message(
