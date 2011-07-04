@@ -31,13 +31,13 @@ __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
 
 def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
                  expire_on_commit=True, **kwargs):
-    """Generate a custom-configured :class:`~sqlalchemy.orm.session.Session` class.
+    """Generate a custom-configured :class:`.Session` class.
 
-    The returned object is a subclass of ``Session``, which, when instantiated
+    The returned object is a subclass of :class:`.Session`, which, when instantiated
     with no arguments, uses the keyword arguments configured here as its
     constructor arguments.
 
-    It is intended that the `sessionmaker()` function be called within the
+    It is intended that the :func:`.sessionmaker()` function be called within the
     global scope of an application, and the returned class be made available
     to the rest of the application as the single class used to instantiate
     sessions.

@@ -111,18 +111,7 @@ def scoped_session(session_factory, scopefunc=None):
     """Provides thread-local or scoped management of :class:`.Session` objects.
 
     This is a front-end function to
-    :class:`.ScopedSession`.
-
-    :param session_factory: a callable function that produces
-      :class:`.Session` instances, such as :func:`sessionmaker`.
-
-    :param scopefunc: Optional "scope" function which would be
-      passed to the :class:`.ScopedRegistry`.  If None, the
-      :class:`.ThreadLocalRegistry` is used by default.
-
-    :returns: an :class:`.ScopedSession` instance
-
-    Usage::
+    :class:`.ScopedSession`::
 
       Session = scoped_session(sessionmaker(autoflush=True))
 
@@ -136,6 +125,18 @@ def scoped_session(session_factory, scopefunc=None):
 
       Session.commit()
       Session.close()
+
+    See also: :ref:`unitofwork_contextual`.
+
+    :param session_factory: a callable function that produces
+      :class:`.Session` instances, such as :func:`sessionmaker`.
+
+    :param scopefunc: Optional "scope" function which would be
+      passed to the :class:`.ScopedRegistry`.  If None, the
+      :class:`.ThreadLocalRegistry` is used by default.
+
+    :returns: a :class:`.ScopedSession` instance
+
 
     """
     return ScopedSession(session_factory, scopefunc=scopefunc)

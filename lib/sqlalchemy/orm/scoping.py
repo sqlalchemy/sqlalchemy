@@ -16,16 +16,16 @@ __all__ = ['ScopedSession']
 
 class ScopedSession(object):
     """Provides thread-local management of Sessions.
-
-    Usage::
-
+    
+    Typical invocation is via the :func:`.scoped_session`
+    function::
+    
       Session = scoped_session(sessionmaker())
 
-    ... use Session normally.
-
-    The internal registry is accessible as well,
+    The internal registry is accessible,
     and by default is an instance of :class:`.ThreadLocalRegistry`.
 
+    See also: :ref:`unitofwork_contextual`.
 
     """
 

@@ -62,7 +62,12 @@ The usage of :func:`.sessionmaker` is illustrated below:
 
 .. sourcecode:: python+sql
 
+    from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
+    # an Engine, which the Session will use for connection
+    # resources
+    some_engine = create_engine('postgresql://scott:tiger@localhost/')
 
     # create a configured "Session" class
     Session = sessionmaker(bind=some_engine)
@@ -81,16 +86,36 @@ actual :class:`.Session` class, which when instantiated, will
 use the arguments we've given the function, in this case
 to use a particular :class:`.Engine` for connection resources.
 
-When you write your application, place the call to
-:func:`.sessionmaker` somewhere global, and then make your new
-``Session`` class available to the rest of your application.
-
 A typical setup will associate the :func:`.sessionmaker` with an :class:`.Engine`,
 so that each :class:`.Session` generated will use this :class:`.Engine`
 to acquire connection resources.   This association can
-be set up as in the example above, using the ``bind`` argument.   You 
-can also associate a :class:`.Engine` with an existing :func:`.sessionmaker` 
-using the :meth:`.sessionmaker.configure` method::
+be set up as in the example above, using the ``bind`` argument. 
+
+When you write your application, place the result of the
+:func:`.sessionmaker` call at the global level.   The resulting
+``Session`` class, configured for your application, should then
+be used by the rest of the applcation as the source of new :class:`.Session`
+instances.
+
+An extremely common step taken by applications, including virtually
+all web applications, is to further wrap the :func:`.sessionmaker`
+construct in a so-called "contextual" session, provided by the
+:func:`.scoped_session` construct.  This construct places the :func:`.sessionmaker`
+into a **registry** that maintains a single :class:`.Session` per 
+application thread.   Information on using contextual sessions
+is at :ref:`unitofwork_contextual`.
+
+Adding additional configuration to an Existing sessionmaker()
+--------------------------------------------------------------
+
+A common scenario is where the :func:`.sessionmaker` is invoked 
+at module import time, however the generation of one or more :class:`.Engine`
+instances to be associated with the :func:`.sessionmaker` has not yet proceeded.
+For this use case, the :func:`.sessionmaker` construct offers the 
+:meth:`.sessionmaker.configure` method, which will place additional configuration
+directives into an existing :func:`.sessionmaker` that will take place
+when the construct is invoked::
+
 
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy import create_engine
@@ -107,19 +132,31 @@ using the :meth:`.sessionmaker.configure` method::
     # work with the session
     session = Session()
 
-you can also associate individual :class:`.Session` objects with an :class:`.Engine`
-on each invocation::
+Creating Ad-Hoc Session Objects with Alternate Arguments
+---------------------------------------------------------
 
-    session = Session(bind=engine)
+For the use case where an application needs to create a new :class:`.Session` with
+special arguments that deviate from what is normally used throughout the application, 
+such as a :class:`.Session` that binds to an alternate 
+source of connectivity, or a :class:`.Session` that should 
+have other arguments such as ``expire_on_commit`` established differently from 
+what most of the application wants, specific arguments can be passed to the 
+:func:`.sessionmaker` construct's class itself.  These arguments will override whatever
+configurations have already been placed, such as below, where a new :class:`.Session`
+is constructed against a specific :class:`.Connection`::
 
-...or directly with a :class:`.Connection`::
+    # at the module level, the global sessionmaker,
+    # bound to a specific Engine
+    Session = sessionmaker(bind=engine)
 
+    # later, some unit of code wants to create a 
+    # Session that is bound to a specific Connection
     conn = engine.connect()
     session = Session(bind=conn)
 
-While the rationale for the above example may not be apparent, the typical
-usage is in a test fixture that maintains an external transaction - see
-:ref:`session_external_transaction` below for a full example.
+The typical rationale for the association of a :class:`.Session` with a specific
+:class:`.Connection` is that of a test fixture that maintains an external 
+transaction - see :ref:`session_external_transaction` for an example of this.
 
 Using the Session
 ==================
@@ -541,7 +578,7 @@ is a quick way to check::
 Deleting
 --------
 
-The :func:`~sqlalchemy.orm.session.Session.delete` method places an instance
+The :meth:`~.Session.delete` method places an instance
 into the Session's list of objects to be marked as deleted::
 
     # mark two objects to be deleted
@@ -551,10 +588,16 @@ into the Session's list of objects to be marked as deleted::
     # commit (or flush)
     session.commit()
 
-The big gotcha with :func:`~sqlalchemy.orm.session.Session.delete` is that
-**nothing is removed from collections**. Such as, if a ``User`` has a
-collection of three ``Addresses``, deleting an ``Address`` will not remove it
-from ``user.addresses``::
+Deleting from Collections
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A common confusion that arises regarding :meth:`~.Session.delete` is when
+objects which are members of a collection are being deleted.   While the
+collection member is marked for deletion from the database, this does not
+impact the collection itself in memory until the collection is expired.
+Below, we illustrate that even after an ``Address`` object is marked
+for deletion, it's still present in the collection associated with the
+parent ``User``, even after a flush::
 
     >>> address = user.addresses[1]
     >>> session.delete(address)
@@ -562,13 +605,31 @@ from ``user.addresses``::
     >>> address in user.addresses
     True
 
-The solution is to use proper cascading::
+When the above session is committed, all attributes are expired.  The next
+access of ``user.addresses`` will re-load the collection, revealing the
+desired state::
+
+    >>> session.commit()
+    >>> address in user.addresses
+    False
+
+The usual practice of deleting items within collections is to forego the usage
+of :meth:`~.Session.delete` directly, and instead use cascade behavior to
+automatically invoke the deletion as a result of removing the object from
+the parent collection.  The ``delete-orphan`` cascade accomplishes this,
+as illustrated in the example below::
 
     mapper(User, users_table, properties={
         'addresses':relationship(Address, cascade="all, delete, delete-orphan")
     })
     del user.addresses[1]
     session.flush()
+
+Where above, upon removing the ``Address`` object from the ``User.addresses`` 
+collection, the ``delete-orphan`` cascade has the effect of marking the ``Address``
+object for deletion in the same way as passing it to :meth:`~.Session.delete`.
+
+See also :ref:`unitofwork_cascades` for detail on cascades.
 
 Deleting based on Filter Criterion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -936,73 +997,75 @@ associations to objects which are already persistent in the target session.
 Managing Transactions
 =====================
 
-The :class:`~sqlalchemy.orm.session.Session` manages transactions across all
-engines associated with it. As the :class:`~sqlalchemy.orm.session.Session`
-receives requests to execute SQL statements using a particular
-:class:`~sqlalchemy.engine.base.Engine` or
-:class:`~sqlalchemy.engine.base.Connection`, it adds each individual
-:class:`~sqlalchemy.engine.base.Engine` encountered to its transactional state
-and maintains an open connection for each one (note that a simple application
-normally has just one :class:`~sqlalchemy.engine.base.Engine`). At commit
-time, all unflushed data is flushed, and each individual transaction is
-committed. If the underlying databases support two-phase semantics, this may
-be used by the Session as well if two-phase transactions are enabled.
+A newly constructed :class:`.Session` may be said to be in the "begin" state.
+In this state, the :class:`.Session` has not established any connection or 
+transactional state with any of the :class:`.Engine` objects that may be associated
+with it.
 
-Normal operation ends the transactional state using the
-:func:`~sqlalchemy.orm.session.Session.rollback` or
-:func:`~sqlalchemy.orm.session.Session.commit` methods. After either is
-called, the :class:`~sqlalchemy.orm.session.Session` starts a new
-transaction::
+The :class:`.Session` then receives requests to operate upon a database connection.
+Typically, this means it is called upon to execute SQL statements using a particular
+:class:`.Engine`, which may be via :meth:`.Session.query`, :meth:`.Session.execute`,
+or within a flush operation of pending data, which occurs when such state exists
+and :meth:`.Session.commit` or :meth:`.Session.flush` is called.
 
-    Session = sessionmaker()
+As these requests are received, each new :class:`.Engine` encountered is associated 
+with an ongoing transactional state maintained by the :class:`.Session`.
+When the first :class:`.Engine` is operated upon, the :class:`.Session` can be said
+to have left the "begin" state and entered "transactional" state.   For each
+:class:`.Engine` encountered, a :class:`.Connection` is associated with it,
+which is acquired via the :meth:`.Engine.contextual_connect` method.  If a
+:class:`.Connection` was directly associated with the :class:`.Session` (see :ref:`session_external_transaction`
+for an example of this), it is 
+added to the transactional state directly.
+
+For each :class:`.Connection`, the :class:`.Session` also maintains a :class:`.Transaction` object, 
+which is acquired by calling :meth:`.Connection.begin` on each :class:`.Connection`,
+or if the :class:`.Session`
+object has been established using the flag ``twophase=True``, a :class:`.TwoPhaseTransaction`
+object acquired via :meth:`.Connection.begin_twophase`.  These transactions are all committed or 
+rolled back corresponding to the invocation of the 
+:meth:`.Session.commit` and :meth:`.Session.rollback` methods.   A commit operation will
+also call the :meth:`.TwoPhaseTransaction.prepare` method on all transactions if applicable.
+
+When the transactional state is completed after a rollback or commit, the :class:`.Session`
+releases all :class:`.Transaction` and :class:`.Connection` resources (which has the effect
+of returning DBAPI connections to the connection pool of each :class:`.Engine`), 
+and goes back to the "begin" state, which
+will again invoke new :class:`.Connection` and :class:`.Transaction` objects as new 
+requests to emit SQL statements are received.
+
+The example below illustrates this lifecycle::
+
+    engine = create_engine("...")
+    Session = sessionmaker(bind=engine)
+
+    # new session.   no connections are in use.
     session = Session()
     try:
+        # first query.  a Connection is acquired
+        # from the Engine, and a Transaction 
+        # started.
         item1 = session.query(Item).get(1)
+
+        # second query.  the same Connection/Transaction
+        # are used.
         item2 = session.query(Item).get(2)
+
+        # pending changes are created.
         item1.foo = 'bar'
         item2.bar = 'foo'
 
-        # commit- will immediately go into 
-        # a new transaction on next use.
+        # commit.  The pending changes above
+        # are flushed via flush(), the Transaction
+        # is committed, the Connection object closed
+        # and discarded, the underlying DBAPI connection
+        # returned to the connection pool.
         session.commit()
     except:
-        # rollback - will immediately go into 
-        # a new transaction on next use.
-        session.rollback()
-
-A session which is configured with ``autocommit=True`` may be placed into a
-transaction using :func:`~sqlalchemy.orm.session.Session.begin`. With an
-``autocommit=True`` session that's been placed into a transaction using
-:func:`~sqlalchemy.orm.session.Session.begin`, the session releases all
-connection resources after a :func:`~sqlalchemy.orm.session.Session.commit` or
-:func:`~sqlalchemy.orm.session.Session.rollback` and remains transaction-less
-(with the exception of flushes) until the next
-:func:`~sqlalchemy.orm.session.Session.begin` call::
-
-    Session = sessionmaker(autocommit=True)
-    session = Session()
-    session.begin()
-    try:
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
-        item1.foo = 'bar'
-        item2.bar = 'foo'
-        session.commit()
-    except:
+        # on rollback, the same closure of state
+        # as that of commit proceeds.
         session.rollback()
         raise
-
-The :func:`~sqlalchemy.orm.session.Session.begin` method also returns a
-transactional token which is compatible with the Python 2.6 ``with``
-statement::
-
-    Session = sessionmaker(autocommit=True)
-    session = Session()
-    with session.begin():
-        item1 = session.query(Item).get(1)
-        item2 = session.query(Item).get(2)
-        item1.foo = 'bar'
-        item2.bar = 'foo'
 
 .. _session_begin_nested:
 
@@ -1038,72 +1101,84 @@ session is expired, thus causing all subsequent attribute/instance access to
 reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
 before :func:`~sqlalchemy.orm.session.Session.begin_nested` was called.
 
+Autocommit Mode
+---------------
+
+The example of :class:`.Session` transaction lifecycle illustrated at
+the start of :ref:`unitofwork_transaction` applies to a :class:`.Session` configured in the
+default mode of ``autocommit=False``.   Constructing a :class:`.Session`
+with ``autocommit=True`` produces a :class:`.Session` placed into "autocommit" mode, where each SQL statement
+invoked by a :meth:`.Session.query` or :meth:`.Session.execute` occurs
+using a new connection from the connection pool, discarding it after
+results have been iterated.   The :meth:`.Session.flush` operation
+still occurs within the scope of a single transaction, though this transaction
+is closed out after the :meth:`.Session.flush` operation completes.
+
+"autocommit" mode should **not be considered for general use**.   While
+very old versions of SQLAlchemy standardized on this mode, the modern
+:class:`.Session` benefits highly from being given a clear point of transaction
+demarcation via :meth:`.Session.rollback` and :meth:`.Session.commit`.
+The autoflush action can safely emit SQL to the database as needed without
+implicitly producing permanent effects, the contents of attributes 
+are expired only when a logical series of steps has completed.   If the
+:class:`.Session` were to be used in pure "autocommit" mode without 
+an ongoing transaction, these features should be disabled, that is,
+``autoflush=False, expire_on_commit=False``.
+
+Modern usage of "autocommit" is for framework integrations that need to control
+specifically when the "begin" state occurs.  A session which is configured with 
+``autocommit=True`` may be placed into the "begin" state using the 
+:meth:`.Session.begin` method.
+After the cycle completes upon :meth:`.Session.commit` or :meth:`.Session.rollback`,
+connection and transaction resources are released and the :class:`.Session`
+goes back into "autocommit" mode, until :meth:`.Session.begin` is called again::
+
+    Session = sessionmaker(bind=engine, autocommit=True)
+    session = Session()
+    session.begin()
+    try:
+        item1 = session.query(Item).get(1)
+        item2 = session.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+        session.commit()
+    except:
+        session.rollback()
+        raise
+
+The :func:`.Session.begin` method also returns a
+transactional token which is compatible with the Python 2.6 ``with``
+statement::
+
+    Session = sessionmaker(bind=engine, autocommit=True)
+    session = Session()
+    with session.begin():
+        item1 = session.query(Item).get(1)
+        item2 = session.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+
 .. _session_subtransactions:
 
-Using Subtransactions
----------------------
+Using Subtransactions with Autocommit
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A subtransaction, as offered by the ``subtransactions=True`` flag of :meth:`.Session.begin`,
-is a non-transactional, delimiting construct that
+A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with 
+the ``subtransactions=True`` flag.  This produces a a non-transactional, delimiting construct that
 allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
 It's purpose is to allow the construction of code that can function within a transaction
 both independently of any external code that starts a transaction,
-as well as within a block that has already demarcated a transaction.  By "non-transactional", we
-mean that no actual transactional dialogue with the database is generated by this flag beyond that of
-a single call to :meth:`~.Session.begin`, regardless of how many times the method
-is called within a transaction.
+as well as within a block that has already demarcated a transaction. 
 
-The subtransaction feature is in fact intrinsic to any call to :meth:`~.Session.flush`, which uses
-it internally to ensure that the series of flush steps are enclosed within a transaction,
-regardless of the setting of ``autocommit`` or the presence of an existing transactional context.
-However, explicit usage of the ``subtransactions=True`` flag is generally only useful with an 
-application that uses the
-:class:`.Session` in "autocommit=True" mode, and calls :meth:`~.Session.begin` explicitly
-in order to demarcate transactions.  For this reason the subtransaction feature is not
-commonly used in an explicit way, except for apps that integrate SQLAlchemy-level transaction control with
-the transaction control of another library or subsystem.  For true, general purpose "nested" 
-transactions, where a rollback affects only a portion of the work which has proceeded, 
-savepoints should be used, documented in :ref:`session_begin_nested`.
-
-The feature is the ORM equivalent to the pattern described at :ref:`connections_nested_transactions`, 
+``subtransactions=True`` is generally only useful in conjunction with 
+autocommit, and is equivalent to the pattern described at :ref:`connections_nested_transactions`, 
 where any number of functions can call :meth:`.Connection.begin` and :meth:`.Transaction.commit`
 as though they are the initiator of the transaction, but in fact may be participating
-in an already ongoing transaction.
-
-As is the case with the non-ORM :class:`.Transaction` object,
-calling :meth:`.Session.rollback` rolls back the **entire**
-transaction, which was initiated by the first call to
-:meth:`.Session.begin` (whether this call was explicit by the
-end user, or implicit in an ``autocommit=False`` scenario).
-However, the :class:`.Session` still considers itself to be in a
-"partially rolled back" state until :meth:`.Session.rollback` is
-called explicitly for each call that was made to
-:meth:`.Session.begin`, where "partially rolled back" means that
-no further SQL operations can proceed until each level
-of the transaction has been acounted for, unless the :meth:`~.Session.close` method
-is called which cancels all transactional markers. For a full exposition on 
-the rationale for this,
-please see "`But why isn't the one automatic call to ROLLBACK
-enough ? Why must I ROLLBACK again?
-<http://www.sqlalchemy.org/trac/wiki/FAQ#ButwhyisnttheoneautomaticcalltoROLLBACKenoughWhymustIROLLBACKagain>`_".
-The general theme is that if subtransactions are used as intended, that is, as a means to nest multiple
-begin/commit pairs, the appropriate rollback calls naturally occur in any case, and allow the session's 
-nesting of transactional pairs to function in a simple and predictable way 
-without the need to guess as to what level is active.
-
-An example of ``subtransactions=True`` is nearly identical to
-that of the non-ORM technique. The nesting of transactions, as
-well as the natural presence of "rollback" for all transactions
-should an exception occur, is illustrated::
+in an already ongoing transaction::
 
     # method_a starts a transaction and calls method_b
     def method_a(session):
-        session.begin(subtransactions=True) # open a transaction.  If there was
-                                            # no previous call to begin(), this will
-                                            # begin a real transaction (meaning, a 
-                                            # DBAPI connection is procured, which as
-                                            # per the DBAPI specification is in a transactional
-                                            # state ready to be committed or rolled back)
+        session.begin(subtransactions=True)
         try:
             method_b(session)
             session.commit()  # transaction is committed here
@@ -1111,11 +1186,11 @@ should an exception occur, is illustrated::
             session.rollback() # rolls back the transaction
             raise
 
-    # method_b also starts a transaction
+    # method_b also starts a transaction, but when
+    # called from method_a participates in the ongoing
+    # transaction.
     def method_b(connection):
-        session.begin(subtransactions=True) # open a transaction - this 
-                                            # runs in the context of method_a()'s 
-                                            # transaction
+        session.begin(subtransactions=True)
         try:
             session.add(SomeObject('bat', 'lala'))
             session.commit()  # transaction is not committed yet
@@ -1129,21 +1204,22 @@ should an exception occur, is illustrated::
     method_a(session)
     session.close()
 
-Since the :meth:`.Session.flush` method uses a subtransaction, a failed flush
-will always issue a rollback which then affects the state of the outermost transaction (unless a SAVEPOINT
-is in use).   This forces the need to issue :meth:`~.Session.rollback` for the full operation
-before subsequent SQL operations can proceed.
+Subtransactions are used by the :meth:`.Session.flush` process to ensure that the
+flush operation takes place within a transaction, regardless of autocommit.   When
+autocommit is disabled, it is still useful in that it forces the :class:`.Session`
+into a "pending rollback" state, as a failed flush cannot be resumed in mid-operation,
+where the end user still maintains the "scope" of the transaction overall.
 
 Enabling Two-Phase Commit
 -------------------------
 
-Finally, for MySQL, PostgreSQL, and soon Oracle as well, the session can be
-instructed to use two-phase commit semantics. This will coordinate the
-committing of transactions across databases so that the transaction is either
-committed or rolled back in all databases. You can also
-:func:`~sqlalchemy.orm.session.Session.prepare` the session for interacting
-with transactions not managed by SQLAlchemy. To use two phase transactions set
-the flag ``twophase=True`` on the session::
+For backends which support two-phase operaration (currently MySQL and
+PostgreSQL), the session can be instructed to use two-phase commit semantics.
+This will coordinate the committing of transactions across databases so that
+the transaction is either committed or rolled back in all databases. You can
+also :func:`~sqlalchemy.orm.session.Session.prepare` the session for
+interacting with transactions not managed by SQLAlchemy. To use two phase
+transactions set the flag ``twophase=True`` on the session::
 
     engine1 = create_engine('postgresql://db1')
     engine2 = create_engine('postgresql://db2')
