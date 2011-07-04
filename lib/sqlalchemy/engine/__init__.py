@@ -99,27 +99,38 @@ __all__ = (
 
 default_strategy = 'plain'
 def create_engine(*args, **kwargs):
-    """Create a new Engine instance.
+    """Create a new :class:`.Engine` instance.
 
-    The standard method of specifying the engine is via URL as the
-    first positional argument, to indicate the appropriate database
-    dialect and connection arguments, with additional keyword
-    arguments sent as options to the dialect and resulting Engine.
+    The standard calling form is to send the URL as the 
+    first positional argument, usually a string 
+    that indicates database dialect and connection arguments.
+    Additional keyword arguments may then follow it which
+    establish various options on the resulting :class:`.Engine`
+    and its underlying :class:`.Dialect` and :class:`.Pool`
+    constructs.
 
-    The URL is a string in the form
+    The string form of the URL is
     ``dialect+driver://user:password@host/dbname[?key=value..]``, where
     ``dialect`` is a database name such as ``mysql``, ``oracle``, 
     ``postgresql``, etc., and ``driver`` the name of a DBAPI, such as 
     ``psycopg2``, ``pyodbc``, ``cx_oracle``, etc.  Alternatively, 
     the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
-    `**kwargs` takes a wide variety of options which are routed 
+    ``**kwargs`` takes a wide variety of options which are routed 
     towards their appropriate components.  Arguments may be 
-    specific to the Engine, the underlying Dialect, as well as the 
-    Pool.  Specific dialects also accept keyword arguments that
+    specific to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the 
+    :class:`.Pool`.  Specific dialects also accept keyword arguments that
     are unique to that dialect.   Here, we describe the parameters
-    that are common to most ``create_engine()`` usage.
+    that are common to most :func:`.create_engine()` usage.
 
+    Once established, the newly resulting :class:`.Engine` will
+    request a connection from the underlying :class:`.Pool` once
+    :meth:`.Engine.connect` is called, or a method which depends on it
+    such as :meth:`.Engine.execute` is invoked.   The :class:`.Pool` in turn
+    will establish the first actual DBAPI connection when this request
+    is received.   The :func:`.create_engine` call itself does **not**
+    establish any actual DBAPI connections directly.
+    
     :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
         object is passed when SQLAlchemy would coerce into an encoding
         (note: but **not** when the DBAPI handles unicode objects natively).

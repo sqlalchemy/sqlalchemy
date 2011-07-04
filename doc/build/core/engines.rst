@@ -24,8 +24,14 @@ Creating an engine is just a matter of issuing a single call,
     from sqlalchemy import create_engine
     engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
 
-The above engine invokes the ``postgresql`` dialect and a connection pool
-which references ``localhost:5432``.
+The above engine creates a :class:`.Dialect` object tailored towards
+PostgreSQL, as well as a :class:`.Pool` object which will establish a DBAPI
+connection at ``localhost:5432`` when a connection request is first received.
+Note that the :class:`.Engine` and its underlying :class:`.Pool` do **not**
+establish the first actual DBAPI connection until the :meth:`.Engine.connect`
+method is called, or an operation which is dependent on this method such as
+:meth:`.Engine.execute` is invoked. In this way, :class:`.Engine` and
+:class:`.Pool` can be said to have a *lazy initialization* behavior.
 
 The :class:`.Engine`, once created, can either be used directly to interact with the database,
 or can be passed to a :class:`.Session` object to work with the ORM.   This section
