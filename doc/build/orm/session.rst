@@ -1189,7 +1189,7 @@ in an already ongoing transaction::
     # method_b also starts a transaction, but when
     # called from method_a participates in the ongoing
     # transaction.
-    def method_b(connection):
+    def method_b(session):
         session.begin(subtransactions=True)
         try:
             session.add(SomeObject('bat', 'lala'))
