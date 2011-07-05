@@ -812,7 +812,7 @@ In SQLAlchemy, any :class:`.Table`, :func:`.select` construct, or
 other selectable can be turned into an alias using the :meth:`.FromClause.alias`
 method, which produces a :class:`.Alias` construct.  As an example, suppose we know that our user ``jack`` has two
 particular email addresses. How can we locate jack based on the combination of those two
-addresses?   To accomplish this, we'd use a join to the ``addresses` table,
+addresses?   To accomplish this, we'd use a join to the ``addresses`` table,
 once for each address.   We create two :class:`.Alias` constructs against
 ``addresses``, and then use them both within a :func:`.select` construct:
 
