@@ -232,7 +232,8 @@ pool_timeout=10
         # "Cannot operate on a closed database." error
         # on connect.   IRL we'd be getting Oracle's "shutdown in progress"
 
-        import sqlite3
+        e = create_engine('sqlite://')
+        sqlite3 = e.dialect.dbapi
         class ThrowOnConnect(MockDBAPI):
             dbapi = sqlite3
             Error = sqlite3.Error
