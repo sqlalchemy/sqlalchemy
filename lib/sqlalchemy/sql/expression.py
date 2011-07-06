@@ -2444,7 +2444,16 @@ class _BindParamClause(ColumnElement):
         else:
             self.key = key or _generated_label('%%(%d param)s'
                     % id(self))
+
+        # identifiying key that won't change across
+        # clones, used to identify the bind's logical
+        # identity
+        self._identifying_key = self.key
+
+        # key that was passed in the first place, used to 
+        # generate new keys
         self._orig_key = key or 'param'
+
         self.unique = unique
         self.value = value
         self.isoutparam = isoutparam

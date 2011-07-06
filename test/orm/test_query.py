@@ -831,7 +831,9 @@ class SliceTest(QueryTest):
 
 
 
-class FilterTest(QueryTest):
+class FilterTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
@@ -878,6 +880,23 @@ class FilterTest(QueryTest):
             assert True
 
         #assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
+
+    def test_unique_binds_join_cond(self):
+        """test that binds used when the lazyclause is used in criterion are unique"""
+
+        sess = Session()
+        a1, a2 = sess.query(Address).order_by(Address.id)[0:2]
+        self.assert_compile(
+            sess.query(User).filter(User.addresses.contains(a1)).union(
+                sess.query(User).filter(User.addresses.contains(a2))
+            ),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users WHERE users.id = :param_1 "
+            "UNION SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = :param_2) AS anon_1",
+            checkparams = {u'param_1': 7, u'param_2': 8}
+        )
 
     def test_any(self):
         sess = create_session()
@@ -1467,7 +1486,9 @@ class TextTest(QueryTest):
 
         eq_(s.query(User.id, "name").order_by(User.id).all(), [(7, u'jack'), (8, u'ed'), (9, u'fred'), (10, u'chuck')])
 
-class ParentTest(QueryTest):
+class ParentTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
     def test_o2m(self):
         sess = create_session()
         q = sess.query(User)
@@ -1921,6 +1942,7 @@ class AddEntityEquivalenceTest(_base.MappedTest, AssertsCompiledSQL):
             )
 
 class JoinTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_single_name(self):
         sess = create_session()
@@ -2672,8 +2694,45 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
+    def test_unique_binds_union(self):
+        """bindparams used in the 'parent' query are unique"""
 
+        sess = Session()
+        u1, u2 = sess.query(User).order_by(User.id)[0:2]
 
+        q1 = sess.query(Address).with_parent(u1, 'addresses')
+        q2 = sess.query(Address).with_parent(u2, 'addresses')
+
+        self.assert_compile(
+            q1.union(q2),
+            "SELECT anon_1.addresses_id AS anon_1_addresses_id, "
+            "anon_1.addresses_user_id AS anon_1_addresses_user_id, "
+            "anon_1.addresses_email_address AS "
+            "anon_1_addresses_email_address FROM (SELECT addresses.id AS "
+            "addresses_id, addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address FROM "
+            "addresses WHERE :param_1 = addresses.user_id UNION SELECT "
+            "addresses.id AS addresses_id, addresses.user_id AS "
+            "addresses_user_id, addresses.email_address AS addresses_email_address "
+            "FROM addresses WHERE :param_2 = addresses.user_id) AS anon_1",
+            checkparams={u'param_1': 7, u'param_2': 8},
+        )
+
+    def test_unique_binds_or(self):
+
+        sess = Session()
+        u1, u2 = sess.query(User).order_by(User.id)[0:2]
+
+        self.assert_compile(
+            sess.query(Address).filter(
+                or_(with_parent(u1, 'addresses'), with_parent(u2, 'addresses'))
+            ),
+            "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+            "addresses_user_id, addresses.email_address AS "
+            "addresses_email_address FROM addresses WHERE "
+            ":param_1 = addresses.user_id OR :param_2 = addresses.user_id",
+            checkparams={u'param_1': 7, u'param_2': 8},
+        )
 
     def test_from_self_resets_joinpaths(self):
         """test a join from from_self() doesn't confuse joins inside the subquery

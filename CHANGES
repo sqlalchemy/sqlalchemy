@@ -11,6 +11,12 @@ CHANGES
     joinedload + LIMIT + order by the column
     property() occurred.  [ticket:2188].
 
+  - The join condition produced by with_parent
+    as well as when using a "dynamic" relationship
+    against a parent will generate unique
+    bindparams, rather than incorrectly repeating 
+    the same bindparam.  [ticket:2207].
+
   - Repaired the "no statement condition" 
     assertion in Query which would attempt
     to raise if a generative method were called
