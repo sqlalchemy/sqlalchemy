@@ -323,18 +323,24 @@ class LazyLoader(AbstractRelationshipLoader):
 
     def init(self):
         super(LazyLoader, self).init()
-        self.__lazywhere, \
-        self.__bind_to_col, \
+        self._lazywhere, \
+        self._bind_to_col, \
         self._equated_columns = self._create_lazy_clause(self.parent_property)
 
-        self.logger.info("%s lazy loading clause %s", self, self.__lazywhere)
+        self._rev_lazywhere, \
+        self._rev_bind_to_col, \
+        self._rev_equated_columns = self._create_lazy_clause(
+                                                self.parent_property, 
+                                                reverse_direction=True)
+
+        self.logger.info("%s lazy loading clause %s", self, self._lazywhere)
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         #from sqlalchemy.orm import query
         self.use_get = not self.uselist and \
                         self.mapper._get_clause[0].compare(
-                            self.__lazywhere, 
+                            self._lazywhere, 
                             use_proxies=True, 
                             equivalents=self.mapper._equivalent_columns
                         )
@@ -381,14 +387,14 @@ class LazyLoader(AbstractRelationshipLoader):
 
         if not reverse_direction:
             criterion, bind_to_col, rev = \
-                                            self.__lazywhere, \
-                                            self.__bind_to_col, \
+                                            self._lazywhere, \
+                                            self._bind_to_col, \
                                             self._equated_columns
         else:
             criterion, bind_to_col, rev = \
-                                LazyLoader._create_lazy_clause(
-                                        self.parent_property,
-                                        reverse_direction=reverse_direction)
+                                            self._rev_lazywhere, \
+                                            self._rev_bind_to_col, \
+                                            self._rev_equated_columns
 
         if reverse_direction:
             mapper = self.parent_property.mapper
@@ -404,15 +410,18 @@ class LazyLoader(AbstractRelationshipLoader):
         sess = sessionlib._state_session(state)
         if sess is not None and sess._flushing:
             def visit_bindparam(bindparam):
-                if bindparam.key in bind_to_col:
+                if bindparam._identifying_key in bind_to_col:
                     bindparam.callable = \
-                                lambda: mapper._get_committed_state_attr_by_column(
-                                        state, dict_, bind_to_col[bindparam.key])
+                        lambda: mapper._get_committed_state_attr_by_column(
+                            state, dict_, 
+                            bind_to_col[bindparam._identifying_key])
         else:
             def visit_bindparam(bindparam):
-                if bindparam.key in bind_to_col:
-                    bindparam.callable = lambda: mapper._get_state_attr_by_column(
-                                            state, dict_, bind_to_col[bindparam.key])
+                if bindparam._identifying_key in bind_to_col:
+                    bindparam.callable = \
+                            lambda: mapper._get_state_attr_by_column(
+                                    state, dict_, 
+                                    bind_to_col[bindparam._identifying_key])
 
 
         if self.parent_property.secondary is not None and alias_secondary:
@@ -430,14 +439,14 @@ class LazyLoader(AbstractRelationshipLoader):
     def _lazy_none_clause(self, reverse_direction=False, adapt_source=None):
         if not reverse_direction:
             criterion, bind_to_col, rev = \
-                                        self.__lazywhere, \
-                                        self.__bind_to_col,\
+                                        self._lazywhere, \
+                                        self._bind_to_col,\
                                         self._equated_columns
         else:
             criterion, bind_to_col, rev = \
-                                LazyLoader._create_lazy_clause(
-                                    self.parent_property,
-                                    reverse_direction=reverse_direction)
+                                            self._rev_lazywhere, \
+                                            self._rev_bind_to_col, \
+                                            self._rev_equated_columns
 
         criterion = sql_util.adapt_criterion_to_null(criterion, bind_to_col)
 
@@ -612,7 +621,7 @@ class LazyLoader(AbstractRelationshipLoader):
                     if equated in binds:
                         return None
                 if col not in binds:
-                    binds[col] = sql.bindparam(None, None, type_=col.type)
+                    binds[col] = sql.bindparam(None, None, type_=col.type, unique=True)
                 return binds[col]
             return None
 

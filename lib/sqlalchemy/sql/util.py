@@ -194,13 +194,15 @@ def adapt_criterion_to_null(crit, nulls):
     """given criterion containing bind params, convert selected elements to IS NULL."""
 
     def visit_binary(binary):
-        if isinstance(binary.left, expression._BindParamClause) and binary.left.key in nulls:
+        if isinstance(binary.left, expression._BindParamClause) \
+            and binary.left._identifying_key in nulls:
             # reverse order if the NULL is on the left side
             binary.left = binary.right
             binary.right = expression.null()
             binary.operator = operators.is_
             binary.negate = operators.isnot
-        elif isinstance(binary.right, expression._BindParamClause) and binary.right.key in nulls:
+        elif isinstance(binary.right, expression._BindParamClause) \
+            and binary.right._identifying_key in nulls:
             binary.right = expression.null()
             binary.operator = operators.is_
             binary.negate = operators.isnot

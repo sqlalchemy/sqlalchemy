@@ -12,8 +12,16 @@ CHANGES
     property() occurred.  [ticket:2188].
     Also in 0.6.9
 
+  - The join condition produced by with_parent
+    as well as when using a "dynamic" relationship
+    against a parent will generate unique
+    bindparams, rather than incorrectly repeating 
+    the same bindparam.  [ticket:2207].
+    Also in 0.6.9.
+
   - Added the same "columns-only" check to 
-    mapper.polymorphic_on as used in 
+    mapper.polymorphic_on as used when
+    receiving user arguments to  
     relationship.order_by, foreign_keys,
     remote_side, etc.
 
