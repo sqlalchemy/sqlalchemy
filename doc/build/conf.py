@@ -36,7 +36,9 @@ extensions = ['sphinx.ext.autodoc',
                 'sphinx.ext.doctest', 'builder.builders']
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['templates']
+# not sure why abspath() is needed here, some users
+# have reported this.
+templates_path = [os.path.abspath('templates')]
 
 nitpicky = True
 
