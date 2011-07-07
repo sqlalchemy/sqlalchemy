@@ -50,6 +50,8 @@ dist-html:
 
 site-mako:
 	$(SPHINXBUILD) -b html -A mako_layout=site $(ALLSPHINXOPTS) $(BUILDDIR)/site
+	$(MAKE) latexpdf
+	cp $(BUILDDIR)/latex/*.pdf $(BUILDDIR)/site/
 	@echo
 	@echo "Build finished. The Mako pages are in $(BUILDDIR)/site."
 
@@ -112,6 +114,7 @@ latex:
 
 latexpdf:
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/latex
+	cp texinputs/* $(BUILDDIR)/latex/
 	@echo "Running LaTeX files through pdflatex..."
 	make -C $(BUILDDIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILDDIR)/latex."
