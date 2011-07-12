@@ -69,6 +69,10 @@ CHANGES
     from the default.  [ticket:2209]
 
 - engine
+  - Context manager provided by Connection.begin()
+    will issue rollback() if the commit() fails,
+    not just if an exception occurs.
+
   - Use urllib.parse_qsl() in Python 2.6 and above,
     no deprecation warning about cgi.parse_qsl()
     [ticket:1682]

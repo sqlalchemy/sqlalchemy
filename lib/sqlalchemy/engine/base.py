@@ -1979,10 +1979,13 @@ class Transaction(object):
 
     def __exit__(self, type, value, traceback):
         if type is None and self.is_active:
-            self.commit()
+            try:
+                self.commit()
+            except:
+                self.rollback()
+                raise
         else:
             self.rollback()
-
 
 class RootTransaction(Transaction):
     def __init__(self, connection):

@@ -159,6 +159,28 @@ class TransactionTest(fixtures.TestBase):
         assert len(result.fetchall()) == 0
         connection.close()
 
+    def test_with_interface(self):
+        connection = testing.db.connect()
+        trans = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        try:
+            connection.execute(users.insert(), user_id=2, user_name='user2.5')
+        except Exception, e:
+            trans.__exit__(*sys.exc_info())
+
+        assert not trans.is_active
+        self.assert_(connection.scalar('select count(*) from '
+                     'query_users') == 0)
+
+        trans = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        trans.__exit__(None, None, None)
+        assert not trans.is_active
+        self.assert_(connection.scalar('select count(*) from '
+                     'query_users') == 1)
+        connection.close()
+
     def test_close(self):
         connection = testing.db.connect()
         transaction = connection.begin()
