@@ -1878,22 +1878,18 @@ class Query(object):
 
         context.runid = _new_runid()
 
-        for ent in self._entities:
-            if isinstance(ent, _MapperEntity):
-                filtered = True
-                break
-        else:
-            filtered = False
+        filter_fns = [ent.filter_fn
+                    for ent in self._entities]
+        filtered = id in filter_fns
 
         single_entity = filtered and len(self._entities) == 1
 
         if filtered:
             if single_entity:
-                filter = lambda x: util.unique_list(x, id)
+                filter_fn = id
             else:
-                filter = util.unique_list
-        else:
-            filter = None
+                def filter_fn(row):
+                    return tuple(fn(x) for x, fn in zip(row, filter_fns))
 
         custom_rows = single_entity and \
                         self._entities[0].mapper.dispatch.append_result
@@ -1926,8 +1922,8 @@ class Query(object):
                 rows = [util.NamedTuple([proc(row, None) for proc in process],
                                         labels) for row in fetch]
 
-            if filter:
-                rows = filter(rows)
+            if filtered:
+                rows = util.unique_list(rows, filter_fn)
 
             if context.refresh_state and self._only_load_props \
                         and context.refresh_state in context.progress:
@@ -2665,6 +2661,8 @@ class _MapperEntity(_QueryEntity):
             self.selectable = from_obj
             self.adapter = query._get_polymorphic_adapter(self, from_obj)
 
+    filter_fn = id
+
     @property
     def type(self):
         return self.mapper.class_
@@ -2851,6 +2849,9 @@ class _ColumnEntity(_QueryEntity):
     @property
     def type(self):
         return self.column.type
+
+    def filter_fn(self, item):
+        return item
 
     def adapt_to_selectable(self, query, sel):
         c = _ColumnEntity(query, sel.corresponding_column(self.column))

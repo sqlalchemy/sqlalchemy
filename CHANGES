@@ -32,6 +32,15 @@ CHANGES
     _with_invoke_all_eagers()
     which selects old/new behavior [ticket:2213]
 
+  - Fixed bug whereby if a mapped class
+    redefined __hash__() or __eq__() to something
+    non-standard, which is a supported use case
+    as SQLA should never consult these,
+    the methods would be consulted if the class
+    was part of a "composite" (i.e. non-single-entity)
+    result set.  [ticket:2215]
+    Also in 0.6.9.
+
   - Fixed subtle bug that caused SQL to blow
     up if: column_property() against subquery +
     joinedload + LIMIT + order by the column
