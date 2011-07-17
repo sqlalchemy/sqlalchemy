@@ -4,7 +4,8 @@ from test.lib.schema import Table, Column
 from sqlalchemy import Integer, String, ForeignKey, bindparam
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
     mapper, relationship, clear_mappers, create_session, lazyload, \
-    aliased, joinedload, deferred, undefer, eagerload_all
+    aliased, joinedload, deferred, undefer, eagerload_all,\
+    Session
 from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from test.lib.assertsql import CompiledSQL
@@ -765,6 +766,128 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         s = create_session()
         assert_raises(sa.exc.SAWarning,
                 s.query(User).options(subqueryload(User.order)).all)
+
+class LoadOnExistingTest(_fixtures.FixtureTest):
+    """test that loaders from a base Query fully populate."""
+
+    run_inserts = 'once'
+    run_deletes = None
+
+    def _collection_to_scalar_fixture(self):
+        User, Address, Dingaling = self.classes.User, \
+            self.classes.Address, self.classes.Dingaling
+        mapper(User, self.tables.users, properties={
+            'addresses':relationship(Address),
+        })
+        mapper(Address, self.tables.addresses, properties={
+            'dingaling':relationship(Dingaling)
+        })
+        mapper(Dingaling, self.tables.dingalings)
+
+        sess = Session(autoflush=False)
+        return User, Address, Dingaling, sess
+
+    def _collection_to_collection_fixture(self):
+        User, Order, Item = self.classes.User, \
+            self.classes.Order, self.classes.Item
+        mapper(User, self.tables.users, properties={
+            'orders':relationship(Order), 
+        })
+        mapper(Order, self.tables.orders, properties={
+            'items':relationship(Item, secondary=self.tables.order_items),
+        })
+        mapper(Item, self.tables.items)
+
+        sess = Session(autoflush=False)
+        return User, Order, Item, sess
+
+    def _eager_config_fixture(self):
+        User, Address = self.classes.User, self.classes.Address
+        mapper(User, self.tables.users, properties={
+            'addresses':relationship(Address, lazy="subquery"),
+        })
+        mapper(Address, self.tables.addresses)
+        sess = Session(autoflush=False)
+        return User, Address, sess
+
+    def _deferred_config_fixture(self):
+        User, Address = self.classes.User, self.classes.Address
+        mapper(User, self.tables.users, properties={
+            'name':deferred(self.tables.users.c.name),
+            'addresses':relationship(Address, lazy="subquery"),
+        })
+        mapper(Address, self.tables.addresses)
+        sess = Session(autoflush=False)
+        return User, Address, sess
+
+    def test_no_query_on_refresh(self):
+        User, Address, sess = self._eager_config_fixture()
+
+        u1 = sess.query(User).get(8)
+        assert 'addresses' in u1.__dict__
+        sess.expire(u1)
+        def go():
+            eq_(u1.id, 8)
+        self.assert_sql_count(testing.db, go, 1)
+        assert 'addresses' not in u1.__dict__
+
+    def test_no_query_on_deferred(self):
+        User, Address, sess = self._deferred_config_fixture()
+        u1 = sess.query(User).get(8)
+        assert 'addresses' in u1.__dict__
+        sess.expire(u1, ['addresses'])
+        def go():
+            eq_(u1.name, 'ed')
+        self.assert_sql_count(testing.db, go, 1)
+        assert 'addresses' not in u1.__dict__
+
+    def test_loads_second_level_collection_to_scalar(self):
+        User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
+
+        u1 = sess.query(User).get(8)
+        a1 = Address()
+        u1.addresses.append(a1)
+        a2 = u1.addresses[0]
+        a2.email_address = 'foo'
+        sess.query(User).options(subqueryload_all("addresses.dingaling")).\
+                            filter_by(id=8).all()
+        assert u1.addresses[-1] is a1
+        for a in u1.addresses:
+            if a is not a1:
+                assert 'dingaling' in a.__dict__
+            else:
+                assert 'dingaling' not in a.__dict__
+            if a is a2:
+                eq_(a2.email_address, 'foo')
+
+    def test_loads_second_level_collection_to_collection(self):
+        User, Order, Item, sess = self._collection_to_collection_fixture()
+
+        u1 = sess.query(User).get(7)
+        u1.orders
+        o1 = Order()
+        u1.orders.append(o1)
+        sess.query(User).options(subqueryload_all("orders.items")).\
+                            filter_by(id=7).all()
+        for o in u1.orders:
+            if o is not o1:
+                assert 'items' in o.__dict__
+            else:
+                assert 'items' not in o.__dict__
+
+    def test_load_two_levels_collection_to_scalar(self):
+        User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
+
+        u1 = sess.query(User).filter_by(id=8).options(subqueryload("addresses")).one()
+        sess.query(User).filter_by(id=8).options(subqueryload_all("addresses.dingaling")).first()
+        assert 'dingaling' in u1.addresses[0].__dict__
+
+    def test_load_two_levels_collection_to_collection(self):
+        User, Order, Item, sess = self._collection_to_collection_fixture()
+
+        u1 = sess.query(User).filter_by(id=7).options(subqueryload("orders")).one()
+        sess.query(User).filter_by(id=7).options(subqueryload_all("orders.items")).first()
+        assert 'items' in u1.orders[0].__dict__
 
 class OrderBySecondaryTest(fixtures.MappedTest):
     @classmethod

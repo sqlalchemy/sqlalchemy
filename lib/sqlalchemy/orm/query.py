@@ -82,6 +82,7 @@ class Query(object):
     _statement = None
     _correlate = frozenset()
     _populate_existing = False
+    _invoke_all_eagers = True
     _version_check = False
     _autoflush = True
     _current_path = ()
@@ -732,6 +733,17 @@ class Query(object):
 
         """
         self._populate_existing = True
+
+    @_generative()
+    def _with_invoke_all_eagers(self, value):
+        """Set the 'invoke all eagers' flag which causes joined- and
+        subquery loaders to traverse into already-loaded related objects
+        and collections.
+        
+        Default is that of :attr:`.Query._invoke_all_eagers`.
+
+        """
+        self._invoke_all_eagers = value
 
     def with_parent(self, instance, property=None):
         """Add filtering criterion that relates the given instance
@@ -2908,6 +2920,7 @@ class QueryContext(object):
         self.query = query
         self.session = query.session
         self.populate_existing = query._populate_existing
+        self.invoke_all_eagers = query._invoke_all_eagers
         self.version_check = query._version_check
         self.refresh_state = query._refresh_state
         self.primary_columns = []

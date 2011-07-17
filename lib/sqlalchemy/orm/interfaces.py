@@ -631,7 +631,6 @@ class LoaderStrategy(object):
       on a particular mapped instance.
 
     """
-
     def __init__(self, parent):
         self.parent_property = parent
         self.is_class_level = False

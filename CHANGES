@@ -6,6 +6,32 @@ CHANGES
 0.7.2
 =====
 - orm
+  - Feature enhancement: joined and subquery
+    loading will now traverse already-present related
+    objects and collections in search of unpopulated
+    attributes throughout the scope of the eager load
+    being defined, so that the eager loading that is
+    specified via mappings or query options
+    unconditionally takes place for the full depth,
+    populating whatever is not already populated.
+    Previously, this traversal would stop if a related
+    object or collection were already present leading
+    to inconsistent behavior (though would save on
+    loads/cycles for an already-loaded graph). For a
+    subqueryload, this means that the additional
+    SELECT statements emitted by subqueryload will
+    invoke unconditionally, no matter how much of the
+    existing graph is already present (hence the
+    controversy). The previous behavior of "stopping"
+    is still in effect when a query is the result of
+    an attribute-initiated lazyload, as otherwise an
+    "N+1" style of collection iteration can become
+    needlessly expensive when the same related object
+    is encountered repeatedly. There's also an 
+    as-yet-not-public generative Query method 
+    _with_invoke_all_eagers()
+    which selects old/new behavior [ticket:2213]
+
   - Fixed subtle bug that caused SQL to blow
     up if: column_property() against subquery +
     joinedload + LIMIT + order by the column

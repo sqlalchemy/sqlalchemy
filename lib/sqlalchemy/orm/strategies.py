@@ -521,6 +521,8 @@ class LazyLoader(AbstractRelationshipLoader):
 
         q = session.query(prop_mapper)._adapt_all_clauses()
 
+        q = q._with_invoke_all_eagers(False)
+
         # don't autoflush on pending
         if pending:
             q = q.autoflush(False)
@@ -920,7 +922,6 @@ class JoinedLoader(AbstractRelationshipLoader):
     using joined eager loading.
     
     """
-
     def init(self):
         super(JoinedLoader, self).init()
         self.join_depth = self.parent_property.join_depth
@@ -1160,6 +1161,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                                 our_reduced_path + (self.mapper.base_mapper,),
                                 eager_adapter)
 
+            def eager_exec(state, dict_, row):
+                _instance(row, None)
+
             if not self.uselist:
                 def new_execute(state, dict_, row):
                     # set a scalar object instance directly on the parent
@@ -1177,7 +1181,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                             "Multiple rows returned with "
                             "uselist=False for eagerly-loaded attribute '%s' "
                             % self)
-                return new_execute, existing_execute, None
+                return new_execute, existing_execute, None, eager_exec
             else:
                 def new_execute(state, dict_, row):
                     collection = attributes.init_state_collection(
@@ -1202,7 +1206,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                                                 'append_without_event')
                         context.attributes[(state, key)] = result_list
                     _instance(row, result_list)
-            return new_execute, existing_execute, None
+            return new_execute, existing_execute, None, eager_exec
         else:
             return self.parent_property.\
                             _get_strategy(LazyLoader).\
@@ -1242,8 +1246,6 @@ def factory(identifier):
         return ImmediateLoader
     else:
         return LazyLoader
-
-
 
 class EagerJoinOption(PropertyOption):
 

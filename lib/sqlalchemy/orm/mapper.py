@@ -2418,6 +2418,7 @@ class Mapper(object):
 
         new_populators = []
         existing_populators = []
+        eager_populators = []
         load_path = context.query._current_path + path
 
         def populate_state(state, dict_, row, isnew, only_load_props):
@@ -2430,7 +2431,8 @@ class Mapper(object):
             if not new_populators:
                 self._populators(context, path, reduced_path, row, adapter,
                                 new_populators,
-                                existing_populators
+                                existing_populators,
+                                eager_populators
                 )
 
             if isnew:
@@ -2438,13 +2440,13 @@ class Mapper(object):
             else:
                 populators = existing_populators
 
-            if only_load_props:
+            if only_load_props is None:
+                for key, populator in populators:
+                    populator(state, dict_, row)
+            elif only_load_props:
                 for key, populator in populators:
                     if key in only_load_props:
                         populator(state, dict_, row)
-            else:
-                for key, populator in populators:
-                    populator(state, dict_, row)
 
         session_identity_map = context.session.identity_map
 
@@ -2455,12 +2457,21 @@ class Mapper(object):
         populate_instance = listeners.populate_instance or None
         append_result = listeners.append_result or None
         populate_existing = context.populate_existing or self.always_refresh
+        invoke_all_eagers = context.invoke_all_eagers
+
         if self.allow_partial_pks:
             is_not_primary_key = _none_set.issuperset
         else:
             is_not_primary_key = _none_set.issubset
 
         def _instance(row, result):
+            if not new_populators and invoke_all_eagers:
+                self._populators(context, path, reduced_path, row, adapter,
+                                new_populators,
+                                existing_populators,
+                                eager_populators
+                )
+
             if translate_row:
                 for fn in translate_row:
                     ret = fn(self, context, row)
@@ -2584,11 +2595,10 @@ class Mapper(object):
                 elif isnew:
                     state.manager.dispatch.refresh(state, context, only_load_props)
 
-            elif state in context.partials or state.unloaded:
+            elif state in context.partials or state.unloaded or eager_populators:
                 # state is having a partial set of its attributes
                 # refreshed.  Populate those attributes,
                 # and add to the "context.partials" collection.
-
                 if state in context.partials:
                     isnew = False
                     (d_, attrs) = context.partials[state]
@@ -2608,6 +2618,10 @@ class Mapper(object):
                         populate_state(state, dict_, row, isnew, attrs)
                 else:
                     populate_state(state, dict_, row, isnew, attrs)
+
+                for key, pop in eager_populators:
+                    if key not in state.unloaded:
+                        pop(state, dict_, row)
 
                 if isnew:
                     state.manager.dispatch.refresh(state, context, attrs)
@@ -2629,21 +2643,19 @@ class Mapper(object):
         return _instance
 
     def _populators(self, context, path, reduced_path, row, adapter,
-            new_populators, existing_populators):
+            new_populators, existing_populators, eager_populators):
         """Produce a collection of attribute level row processor callables."""
 
         delayed_populators = []
+        pops = (new_populators, existing_populators, delayed_populators, eager_populators)
         for prop in self._props.itervalues():
-            newpop, existingpop, delayedpop = prop.create_row_processor(
-                                                    context, path, 
-                                                    reduced_path,
-                                                    self, row, adapter)
-            if newpop:
-                new_populators.append((prop.key, newpop))
-            if existingpop:
-                existing_populators.append((prop.key, existingpop))
-            if delayedpop:
-                delayed_populators.append((prop.key, delayedpop))
+            for i, pop in enumerate(prop.create_row_processor(
+                                        context, path, 
+                                        reduced_path,
+                                        self, row, adapter)):
+                if pop is not None:
+                    pops[i].append((prop.key, pop))
+
         if delayed_populators:
             new_populators.extend(delayed_populators)
 
