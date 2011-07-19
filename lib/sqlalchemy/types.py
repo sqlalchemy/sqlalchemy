@@ -946,7 +946,7 @@ class String(Concatenable, TypeEngine):
                     length=self.length,
                     convert_unicode=self.convert_unicode,
                     unicode_error=self.unicode_error,
-                    _warn_on_bytestring=True,
+                    _warn_on_bytestring=self._warn_on_bytestring,
                     )
 
     def bind_processor(self, dialect):

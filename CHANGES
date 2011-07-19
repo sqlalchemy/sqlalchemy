@@ -38,10 +38,18 @@ CHANGES
     when the label has been "grouped" and 
     loses itself.  Affects [ticket:2188].
 
+  - Fixed bug whereby "warn on unicode" flag
+    would get set for the String type
+    when used with certain dialects.  This
+    bug is not in 0.7.
+
 - oracle
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,
     [ticket:2200].
+
+  - repaired the oracle.RAW type which did not
+    generate the correct DDL.  [ticket:2220]
 
 0.6.8
 =====
