@@ -1010,7 +1010,7 @@ class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
 
-    def test_reflect_raw(self):
+    def test_reflect_all_types_schema(self):
         types_table = Table('all_types', MetaData(testing.db),
             Column('owner', String(30), primary_key=True),
             Column('type_name', String(30), primary_key=True),
@@ -1019,31 +1019,47 @@ class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
         for row in types_table.select().execute().fetchall():
             [row[k] for k in row.keys()]
 
+    def test_raw_compile(self):
+        self.assert_compile(oracle.RAW(), "RAW")
+        self.assert_compile(oracle.RAW(35), "RAW(35)")
+
+    @testing.provide_metadata
+    def test_raw_roundtrip(self):
+        metadata = self.metadata
+        raw_table = Table('raw', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', oracle.RAW(35))
+        )
+        metadata.create_all()
+        testing.db.execute(raw_table.insert(), id=1, data="ABCDEF")
+        eq_(
+            testing.db.execute(raw_table.select()).first(),
+            (1, "ABCDEF")
+        )
+
+    @testing.provide_metadata
     def test_reflect_nvarchar(self):
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
         t = Table('t', metadata,
             Column('data', sqltypes.NVARCHAR(255))
         )
         metadata.create_all()
-        try:
-            m2 = MetaData(testing.db)
-            t2 = Table('t', m2, autoload=True)
-            assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
+        m2 = MetaData(testing.db)
+        t2 = Table('t', m2, autoload=True)
+        assert isinstance(t2.c.data.type, sqltypes.NVARCHAR)
 
-            if testing.against('oracle+cx_oracle'):
-                # nvarchar returns unicode natively.  cx_oracle
-                # _OracleNVarChar type should be at play here.
-                assert isinstance(
-                    t2.c.data.type.dialect_impl(testing.db.dialect), 
-                    cx_oracle._OracleNVarChar)
+        if testing.against('oracle+cx_oracle'):
+            # nvarchar returns unicode natively.  cx_oracle
+            # _OracleNVarChar type should be at play here.
+            assert isinstance(
+                t2.c.data.type.dialect_impl(testing.db.dialect), 
+                cx_oracle._OracleNVarChar)
 
-            data = u'm’a réveillé.'
-            t2.insert().execute(data=data)
-            res = t2.select().execute().first()['data']
-            eq_(res, data)
-            assert isinstance(res, unicode)
-        finally:
-            metadata.drop_all()
+        data = u'm’a réveillé.'
+        t2.insert().execute(data=data)
+        res = t2.select().execute().first()['data']
+        eq_(res, data)
+        assert isinstance(res, unicode)
 
     def test_char_length(self):
         self.assert_compile(VARCHAR(50),"VARCHAR(50 CHAR)")
@@ -1088,7 +1104,7 @@ class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
             testing.db.execute("DROP TABLE Z_TEST")
 
     @testing.fails_on('+zxjdbc', 'auto_convert_lobs not applicable')
-    def test_raw_lobs(self):
+    def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         metadata = MetaData()
         t = Table("z_test", metadata, Column('id', Integer, primary_key=True), 
