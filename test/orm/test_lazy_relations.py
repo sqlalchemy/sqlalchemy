@@ -444,6 +444,8 @@ class LazyTest(_fixtures.FixtureTest):
 
         assert a.user is u1
 
+
+
     def test_backrefs_dont_lazyload(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
@@ -483,6 +485,124 @@ class LazyTest(_fixtures.FixtureTest):
             assert ad2 in u1.addresses
         self.assert_sql_count(testing.db, go, 1)
 
+class GetterStateTest(_fixtures.FixtureTest):
+    """test lazyloader on non-existent attribute returns 
+    expected attribute symbols, maintain expected state"""
+
+    run_inserts = None
+
+    def _u_ad_fixture(self, populate_user):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
+        mapper(User, users, properties={
+            'addresses':relationship(Address, backref='user')
+        })
+        mapper(Address, addresses)
+
+        sess = create_session()
+        a1 = Address(email_address='a1')
+        sess.add(a1)
+        if populate_user:
+            a1.user = User(name='ed')
+        sess.flush()
+        if populate_user:
+            sess.expire_all()
+        return User, Address, sess, a1
+
+    def test_get_empty_passive_return_never_set(self):
+        User, Address, sess, a1 = self._u_ad_fixture(False)
+        eq_(
+            Address.user.impl.get(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            attributes.NEVER_SET
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_history_empty_passive_return_never_set(self):
+        User, Address, sess, a1 = self._u_ad_fixture(False)
+        eq_(
+            Address.user.impl.get_history(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            ((), (), ())
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_get_empty_passive_no_initialize(self):
+        User, Address, sess, a1 = self._u_ad_fixture(False)
+        eq_(
+            Address.user.impl.get(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.PASSIVE_NO_RESULT
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_history_empty_passive_no_initialize(self):
+        User, Address, sess, a1 = self._u_ad_fixture(False)
+        eq_(
+            Address.user.impl.get_history(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.HISTORY_BLANK
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_get_populated_passive_no_initialize(self):
+        User, Address, sess, a1 = self._u_ad_fixture(True)
+        eq_(
+            Address.user.impl.get(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.PASSIVE_NO_RESULT
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_history_populated_passive_no_initialize(self):
+        User, Address, sess, a1 = self._u_ad_fixture(True)
+        eq_(
+            Address.user.impl.get_history(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.HISTORY_BLANK
+        )
+        assert 'user_id' not in a1.__dict__
+        assert 'user' not in a1.__dict__
+
+    def test_get_populated_passive_return_never_set(self):
+        User, Address, sess, a1 = self._u_ad_fixture(True)
+        eq_(
+            Address.user.impl.get(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            User(name='ed')
+        )
+
+    def test_history_populated_passive_return_never_set(self):
+        User, Address, sess, a1 = self._u_ad_fixture(True)
+        eq_(
+            Address.user.impl.get_history(
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), 
+                passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            ((), [User(name='ed'), ], ())
+        )
 
 class M2OGetTest(_fixtures.FixtureTest):
     run_inserts = 'once'

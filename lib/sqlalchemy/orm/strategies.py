@@ -507,6 +507,8 @@ class LazyLoader(AbstractRelationshipLoader):
             ]
             if attributes.PASSIVE_NO_RESULT in ident:
                 return attributes.PASSIVE_NO_RESULT
+            elif attributes.NEVER_SET in ident:
+                return attributes.NEVER_SET
 
             if _none_set.issuperset(ident):
                 return None

@@ -29,10 +29,10 @@ NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
 PASSIVE_RETURN_NEVER_SET = util.symbol('PASSIVE_RETURN_NEVER_SET'
-"""Symbol indicating that a 'default' value, i.e. None or blank
-collection, should not be assigned to an attribute when a get()
-is performed and no value was present.  NEVER_SET is returned
-instead.
+"""Symbol indicating that loader callables can be 
+fired off, but if no callable is applicable and no value is
+present, the attribute should remain non-initialized.
+NEVER_SET is returned in this case.
 """)
 
 PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE',
@@ -421,7 +421,7 @@ class AttributeImpl(object):
                 else:
                     value = ATTR_EMPTY
 
-                if value is PASSIVE_NO_RESULT:
+                if value in (PASSIVE_NO_RESULT, NEVER_SET):
                     return value
                 elif value is ATTR_WAS_SET:
                     try:

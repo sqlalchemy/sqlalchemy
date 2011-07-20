@@ -464,7 +464,6 @@ class AttributesTest(fixtures.ORMTest):
             ('remove', f, [4,5,6])
         ])
 
-
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly 
            when lazy loaders and backrefs are used
@@ -767,6 +766,81 @@ class AttributesTest(fixtures.ORMTest):
             assert True
         except sa_exc.ArgumentError, e:
             assert False
+
+class GetNoValueTest(fixtures.ORMTest):
+    def _fixture(self, expected):
+        class Foo(object):
+            pass
+
+        class Bar(object):
+            pass
+
+        def lazy_callable(state, passive):
+            return expected
+
+        instrumentation.register_class(Foo)
+        instrumentation.register_class(Bar)
+        if expected is not None:
+            attributes.register_attribute(Foo, 
+                        "attr", useobject=True, 
+                        uselist=False, callable_=lazy_callable)
+        else:
+            attributes.register_attribute(Foo, 
+                        "attr", useobject=True, 
+                        uselist=False)
+
+        f1 = Foo()
+        return Foo.attr.impl,\
+                attributes.instance_state(f1), \
+                attributes.instance_dict(f1)
+
+
+    def test_passive_no_result(self):
+        attr, state, dict_ = self._fixture(attributes.PASSIVE_NO_RESULT)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.PASSIVE_NO_RESULT
+        )
+
+    def test_passive_no_result_never_set(self):
+        attr, state, dict_ = self._fixture(attributes.NEVER_SET)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_NO_INITIALIZE),
+            attributes.PASSIVE_NO_RESULT
+        )
+        assert 'attr' not in dict_
+
+    def test_passive_ret_never_set_never_set(self):
+        attr, state, dict_ = self._fixture(attributes.NEVER_SET)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            attributes.NEVER_SET
+        )
+        assert 'attr' not in dict_
+
+    def test_passive_ret_never_set_empty(self):
+        attr, state, dict_ = self._fixture(None)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_RETURN_NEVER_SET),
+            attributes.NEVER_SET
+        )
+        assert 'attr' not in dict_
+
+    def test_passive_no_result_empty(self):
+        attr, state, dict_ = self._fixture(None)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_NO_RESULT),
+            None
+        )
+        assert 'attr' in dict_
+
+    def test_off_empty(self):
+        attr, state, dict_ = self._fixture(None)
+        eq_(
+            attr.get(state, dict_, passive=attributes.PASSIVE_OFF),
+            None
+        )
+        assert 'attr' in dict_
 
 class UtilTest(fixtures.ORMTest):
     def test_helpers(self):

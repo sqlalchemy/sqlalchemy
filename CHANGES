@@ -32,6 +32,13 @@ CHANGES
     _with_invoke_all_eagers()
     which selects old/new behavior [ticket:2213]
 
+  - Fixed regression from 0.6 where a get history
+    operation on some relationship() based attributes
+    would fail when a lazyload would emit; this could 
+    trigger within a flush() under certain conditions.
+    [ticket:2224]  Thanks to the user who submitted
+    the great test for this.
+
   - Fixed bug whereby the source clause
     used by query.join() would be inconsistent
     if against a column expression that combined
