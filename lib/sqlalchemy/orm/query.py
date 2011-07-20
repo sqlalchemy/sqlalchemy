@@ -1186,7 +1186,7 @@ class Query(object):
             # join from Company entities to the "employees" collection,
             # using "people JOIN engineers" as the target.  Then join
             # to the "computers" collection on the Engineer entity.
-            session.query(Company).\
+            session.query(Company).\\
                         join((people.join(engineers), 'employees'),
                         Engineer.computers)
 
@@ -1212,6 +1212,8 @@ class Query(object):
             from_joinpoint - when joins are specified using string property
             names, locate the property from the mapper found in the most
             recent previous join() call, instead of from the root entity.
+
+        See also :ref:`ormtutorial_joins` in the ORM tutorial.
 
         """
         aliased, from_joinpoint = kwargs.pop('aliased', False),\

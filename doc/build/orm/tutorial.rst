@@ -1006,9 +1006,11 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
 
 .. sourcecode:: python+sql
 
-    {sql}>>> jack = session.query(User).filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> jack = session.query(User).\
+    ... filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, users.name AS users_name, 
+    users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
     ('jack',)
@@ -1021,7 +1023,8 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    SELECT addresses.id AS addresses_id, addresses.email_address AS 
+    addresses_email_address, addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
     (5,)
@@ -1065,10 +1068,23 @@ See :ref:`loading_toplevel` for information on
 :func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
 load in the next section.
 
+.. note:: The join created by :func:`.joinedload` is anonymously aliased such that
+   it **does not affect the query results**.   An :meth:`.Query.order_by`
+   or :meth:`.Query.filter` call **cannot** reference these aliased
+   tables - so-called "user space" joins are constructed using 
+   :meth:`.Query.join`.   The rationale for this is that :func:`.joinedload` is only
+   applied in order to affect how related objects or collections are loaded
+   as an optimizing detail - it can be added or removed with no impact
+   on actual results.   See the section :ref:`zen_of_eager_loading` for 
+   a detailed description of how this is used, including how to use a single 
+   explicit JOIN for filtering/ordering and eager loading simultaneously.
+
+.. _ormtutorial_joins:
+
 Querying with Joins
 ====================
 
-While :func:`~sqlalchemy.orm.joinedload` created a JOIN specifically to
+While :func:`~sqlalchemy.orm.joinedload` created an anonymous, non-accessible JOIN specifically to
 populate a collection, we can also work explicitly with joins in many ways.
 For example, to construct a simple inner join between ``User`` and
 ``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their
