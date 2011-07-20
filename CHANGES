@@ -32,6 +32,12 @@ CHANGES
     _with_invoke_all_eagers()
     which selects old/new behavior [ticket:2213]
 
+  - Fixed bug whereby the source clause
+    used by query.join() would be inconsistent
+    if against a column expression that combined
+    multiple entities together.  [ticket:2197]
+    Also in 0.6.9
+
   - Fixed bug whereby if a mapped class
     redefined __hash__() or __eq__() to something
     non-standard, which is a supported use case

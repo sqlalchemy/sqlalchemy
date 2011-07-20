@@ -2861,7 +2861,8 @@ class _ColumnEntity(_QueryEntity):
 
     def setup_entity(self, entity, mapper, adapter, from_obj,
                                 is_aliased_class, with_polymorphic):
-        self.selectable = from_obj
+        if 'selectable' not in self.__dict__: 
+            self.selectable = from_obj
         self.froms.add(from_obj)
 
     def corresponds_to(self, entity):
