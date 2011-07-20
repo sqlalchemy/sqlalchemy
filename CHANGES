@@ -128,6 +128,12 @@ CHANGES
     "retryable" condition.  Only Oracle ORA-01033
     implemented for now.  [ticket:2201]
 
+- postgresql
+  - Added new "postgresql_ops" argument to 
+    Index, allows specification of PostgreSQL
+    operator classes for indexed columns.
+    [ticket:2198]  Courtesy Filip Zyzniewski.
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

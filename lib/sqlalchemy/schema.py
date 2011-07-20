@@ -2079,7 +2079,13 @@ class Index(ColumnCollectionMixin, SchemaItem):
 
     Defines a composite (one or more column) INDEX. For a no-frills, single
     column index, adding ``index=True`` to the ``Column`` definition is
-    a shorthand equivalent for an unnamed, single column Index.
+    a shorthand equivalent for an unnamed, single column :class:`.Index`.
+    
+    See also:
+    
+    :ref:`schema_indexes` - General information on :class:`.Index`.
+
+    :ref:`postgresql_indexes` - PostgreSQL-specific options available for the :class:`.Index` construct.
     """
 
     __visit_name__ = 'index'

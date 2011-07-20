@@ -152,6 +152,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             "WHERE data > 'a' AND data < 'b''s'",
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_ops(self):
+        m = MetaData()
+        tbl = Table('testtbl', m,
+                    Column('data', String), 
+                    Column('data2', key='d2', Integer))
+
+        idx = Index('test_idx1', tbl.c.data,
+                    postgresql_ops={'data': 'text_pattern_ops'})
+
+        idx2 = Index('test_idx2', tbl.c.data, tbl.c.d2,
+                    postgresql_ops={'data': 'text_pattern_ops',
+                                    'd2': 'int4_ops'})
+
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data text_pattern_ops)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            '(data text_pattern_ops, data2 int4_ops)',
+                            dialect=postgresql.dialect())
+
     @testing.uses_deprecated(r".*'postgres_where' argument has been "
                              "renamed.*")
     def test_old_create_partial_index(self):

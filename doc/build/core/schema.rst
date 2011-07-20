@@ -1100,6 +1100,7 @@ Constraints API
 .. autoclass:: UniqueConstraint
     :show-inheritance:
 
+.. _schema_indexes:
 
 Indexes
 -------

@@ -75,13 +75,42 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
         where(table.c.name=='foo')
     print result.fetchall()
 
-Indexes
--------
 
-PostgreSQL supports partial indexes. To create them pass a postgresql_where
-option to the Index constructor::
+.. _postgresql_indexes:
+
+Postgresql-Specific Index Options
+---------------------------------
+
+Several extensions to the :class:`.Index` construct are available, specific
+to the PostgreSQL dialect.
+
+Partial Indexes
+^^^^^^^^^^^^^^^^
+
+Partial indexes add criterion to the index definition so that the index is 
+applied to a subset of rows.   These can be specified on :class:`.Index`
+using the ``postgresql_where`` keyword argument::
 
   Index('my_index', my_table.c.id, postgresql_where=tbl.c.value > 10)
+
+Operator Classes
+^^^^^^^^^^^^^^^^^
+
+PostgreSQL allows the specification of an *operator class* for each column of
+an index (see http://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
+The :class:`.Index` construct allows these to be specified via the ``postgresql_ops``
+keyword argument (new as of SQLAlchemy 0.7.2)::
+
+    Index('my_index', my_table.c.id, my_table.c.data, 
+                            postgresql_ops={
+                                'data': 'text_pattern_ops', 
+                                'id': 'int4_ops'
+                            }) 
+
+Note that the keys in the ``postgresql_ops`` dictionary are the "key" name of
+the :class:`.Column`, i.e. the name used to access it from the ``.c`` collection
+of :class:`.Table`, which can be configured to be different than the actual
+name of the column as expressed in the database.
 
 """
 
@@ -570,12 +599,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
+        ops = index.kwargs.get('postgresql_ops', {})
         text += "INDEX %s ON %s (%s)" \
-                % (preparer.quote(
-                    self._index_identifier(index.name), index.quote),
-                   preparer.format_table(index.table),
-                   ', '.join([preparer.format_column(c) 
-                                for c in index.columns]))
+                % (
+                    preparer.quote(
+                        self._index_identifier(index.name), index.quote),
+                    preparer.format_table(index.table),
+                    ', '.join([
+                        preparer.format_column(c) + 
+                        (c.key in ops and (' ' + ops[c.key]) or '')
+                        for c in index.columns])
+                    )
 
         if "postgres_where" in index.kwargs:
             whereclause = index.kwargs['postgres_where']
