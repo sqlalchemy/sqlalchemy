@@ -156,7 +156,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table('testtbl', m,
                     Column('data', String), 
-                    Column('data2', key='d2', Integer))
+                    Column('data2', Integer, key='d2'))
 
         idx = Index('test_idx1', tbl.c.data,
                     postgresql_ops={'data': 'text_pattern_ops'})
