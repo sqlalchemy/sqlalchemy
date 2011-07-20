@@ -46,7 +46,9 @@ same result set as that of the parent:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> jack = session.query(User).options(joinedload('addresses')).filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> jack = session.query(User).\
+    ... options(joinedload('addresses')).\
+    ... filter_by(name='jack').all() #doctest: +NORMALIZE_WHITESPACE
     SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
     addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
     users.fullname AS users_fullname, users.password AS users_password
@@ -62,7 +64,9 @@ parent objects:
 
 .. sourcecode:: python+sql
 
-    {sql}>>>jack = session.query(User).options(subqueryload('addresses')).filter_by(name='jack').all() 
+    {sql}>>> jack = session.query(User).\
+    ... options(subqueryload('addresses')).\
+    ... filter_by(name='jack').all() 
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, 
     users.password AS users_password 
     FROM users 
@@ -152,6 +156,8 @@ or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or
 There are two other loader strategies available, **dynamic loading** and **no
 loading**; these are described in :ref:`largecollections`.
 
+.. _zen_of_eager_loading:
+
 The Zen of Eager Loading
 -------------------------
 
@@ -165,20 +171,124 @@ modifications to the query, the results will remain identical, but fewer SQL sta
 In theory (and pretty much in practice), nothing you can do to the :class:`.Query` would make it load
 a different set of primary or related objects based on a change in loader strategy.
 
-The way eagerloading does this, and in particular how :func:`joinedload`
-works, is that it creates an anonymous alias of all the joins it adds to your
-query, so that they can't be referenced by other parts of the query. If the
-query contains a DISTINCT, or a limit or offset, the statement is first
-wrapped inside a subquery, and joins are applied to that. As the user, you
-don't have access to these aliases or subqueries, and you cannot affect what
-data they will load at query time - a typical beginner misunderstanding is
-that adding a :meth:`.Query.order_by`, naming the joined relationship, would
-change the order of the collection, or that the entries in the collection as
-it is loaded could be affected by :meth:`.Query.filter`. Not the case ! If
-you'd like to join from one table to another, filtering or ordering on the
-joined result, you'd use :meth:`.Query.join`. If you then wanted that joined
-result to populate itself into a related collection, this is also available,
-via :func:`.contains_eager` option - see :ref:`contains_eager`.
+How :func:`joinedload` in particular achieves this result of not impacting
+entity rows returned in any way is that it creates an anonymous alias of the joins it adds to your
+query, so that they can't be referenced by other parts of the query.   For example,
+the query below uses :func:`.joinedload` to create a LEFT OUTER JOIN from ``users``
+to ``addresses``, however the ``ORDER BY`` added against ``Address.email_address``
+is not valid - the ``Address`` entity is not named in the query:
+
+.. sourcecode:: python+sql
+
+    >>> jack = session.query(User).\
+    ... options(joinedload(User.addresses)).\
+    ... filter(User.name=='jack').\
+    ... order_by(Address.email_address).all() 
+    {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE users.name = ? ORDER BY addresses.email_address   <-- this part is wrong !
+    ['jack']
+
+Above, ``ORDER BY addresses.email_address`` is not valid since ``addresses`` is not in the 
+FROM list.   The correct way to load the ``User`` records and order by email
+address is to use :meth:`.Query.join`:
+
+.. sourcecode:: python+sql
+
+    >>> jack = session.query(User).\
+    ... join(User.addresses).\
+    ... filter(User.name=='jack').\
+    ... order_by(Address.email_address).all() 
+    {opensql}
+    SELECT users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+    WHERE users.name = ? ORDER BY addresses.email_address
+    ['jack']
+
+The statement above is of course not the same as the previous one, in that the columns from ``addresses``
+are not included in the result at all.   We can add :func:`.joinedload` back in, so that
+there are two joins - one is that which we are ordering on, the other is used anonymously to 
+load the contents of the ``User.addresses`` collection:
+
+.. sourcecode:: python+sql
+
+    >>> jack = session.query(User).\
+    ... join(User.addresses).\
+    ... options(joinedload(User.addresses)).\
+    ... filter(User.name=='jack').\
+    ... order_by(Address.email_address).all() 
+    {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+    LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE users.name = ? ORDER BY addresses.email_address
+    ['jack']
+
+What we see above is that our usage of :meth:`.Query.join` is to supply JOIN clauses we'd like
+to use in subsequent query criterion, whereas our usage of :func:`.joinedload` only concerns
+itself with the loading of the ``User.addresses`` collection, for each ``User`` in the result.
+In this case, the two joins most probably appear redundant - which they are.  If we
+wanted to use just one JOIN for collection loading as well as ordering, we use the 
+:func:`.contains_eager` option, described in :ref:`contains_eager` below.   But 
+to see why :func:`joinedload` does what it does, consider if we were **filtering** on a
+particular ``Address``:
+
+.. sourcecode:: python+sql
+
+    >>> jack = session.query(User).\
+    ... join(User.addresses).\
+    ... options(joinedload(User.addresses)).\
+    ... filter(User.name=='jack').\
+    ... filter(Address.email_address=='someaddress@foo.com').\
+    ... all() 
+    {opensql}SELECT addresses_1.id AS addresses_1_id, addresses_1.email_address AS addresses_1_email_address,
+    addresses_1.user_id AS addresses_1_user_id, users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+    LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE users.name = ? AND addresses.email_address = ?
+    ['jack', 'someaddress@foo.com']
+
+Above, we can see that the two JOINs have very different roles.  One will match exactly
+one row, that of the join of ``User`` and ``Address`` where ``Address.email_address=='someaddress@foo.com'``.
+The other LEFT OUTER JOIN will match *all* ``Address`` rows related to ``User``,
+and is only used to populate the ``User.addresses`` collection, for those ``User`` objects
+that are returned.
+
+By changing the usage of ``joinedload`` to another style of loading, we can change
+how the collection is loaded completely independently of SQL used to retrieve
+the actual ``User`` rows we want:
+
+.. sourcecode:: python+sql
+
+    >>> jack = session.query(User).\
+    ... join(User.addresses).\
+    ... options(subqueryload(User.addresses)).\
+    ... filter(User.name=='jack').\
+    ... filter(Address.email_address=='someaddress@foo.com').\
+    ... all() 
+    {opensql}SELECT users.id AS users_id, users.name AS users_name,
+    users.fullname AS users_fullname, users.password AS users_password
+    FROM users JOIN addresses ON users.id = addresses.user_id
+    WHERE users.name = ? AND addresses.email_address = ?
+    ['jack', 'someaddress@foo.com']
+
+    # ... subqueryload() emits a SELECT in order 
+    # to load all address records ...
+
+When using joined eager loading, if the
+query contains a modifier that impacts the rows returned
+externally to the joins, such as when using DISTINCT, LIMIT, OFFSET
+or equivalent, the completed statement is first
+wrapped inside a subquery, and the joins used specifically for joined eager
+loading are applied to the subquery.   SQLAlchemy's 
+joined eager loading goes the extra mile, and then ten miles further, to 
+absolutely ensure that it does not affect the end result of the query, only
+the way collections and related objects are loaded, no matter what the format of the query is.
 
 What Kind of Loading to Use ?
 -----------------------------
@@ -237,13 +347,16 @@ references a scalar many-to-one reference.
    joined loading, however, except perhaps that subquery loading can use an INNER JOIN in all cases
    whereas joined loading requires that the foreign key is NOT NULL.
 
+.. _joinedload_and_join:
+
 .. _contains_eager:
 
 Routing Explicit Joins/Statements into Eagerly Loaded Collections
 ------------------------------------------------------------------
 
 The behavior of :func:`~sqlalchemy.orm.joinedload()` is such that joins are
-created automatically, the results of which are routed into collections and
+created automatically, using anonymous aliases as targets, the results of which 
+are routed into collections and
 scalar references on loaded objects. It is often the case that a query already
 includes the necessary joins which represent a particular collection or scalar
 reference, and the joins added by the joinedload feature are redundant - yet

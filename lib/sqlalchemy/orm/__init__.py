@@ -1059,11 +1059,16 @@ def joinedload(*keys, **kw):
 
         query(Order).options(joinedload(Order.user, innerjoin=True))
 
-    Note that the join created by :func:`joinedload` is aliased such that no
-    other aspects of the query will affect what it loads. To use joined eager
-    loading with a join that is constructed manually using
-    :meth:`~sqlalchemy.orm.query.Query.join` or :func:`~sqlalchemy.orm.join`,
-    see :func:`contains_eager`.
+    .. note:: The join created by :func:`joinedload` is anonymously aliased such that
+       it **does not affect the query results**.   An :meth:`.Query.order_by`
+       or :meth:`.Query.filter` call **cannot** reference these aliased
+       tables - so-called "user space" joins are constructed using 
+       :meth:`.Query.join`.   The rationale for this is that :func:`joinedload` is only
+       applied in order to affect how related objects or collections are loaded
+       as an optimizing detail - it can be added or removed with no impact
+       on actual results.   See the section :ref:`zen_of_eager_loading` for 
+       a detailed description of how this is used, including how to use a single 
+       explicit JOIN for filtering/ordering and eager loading simultaneously.
 
     See also:  :func:`subqueryload`, :func:`lazyload`
 
