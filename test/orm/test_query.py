@@ -3040,6 +3040,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
 
 class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def test_values(self):
         sess = create_session()
@@ -3411,7 +3412,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                             "orders.description AS orders_description, "
                             "'q' AS foo FROM orders WHERE "
                             "orders.description = :description_1) AS "
-                            "anon_1", use_default_dialect=True)
+                            "anon_1")
         eq_(
             q.all(),
             [(3, u'order 3', 'q')]
@@ -3501,8 +3502,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                     ' AS addresses_email_address FROM users, '
                     'addresses WHERE users.id = :id_1 AND '
                     'addresses.user_id = users.id ORDER BY '
-                    'users.name', 
-                use_default_dialect=True)
+                    'users.name')
 
 
     def test_multi_columns(self):
@@ -3607,6 +3607,61 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         assert q.all() == expected
         sess.expunge_all()
+
+    def test_expression_selectable_matches_mzero(self):
+        ua = aliased(User)
+        aa = aliased(Address)
+        s = create_session()
+        for crit, j, exp in [
+            (User.id + Address.id, User.addresses,
+                            "SELECT users.id + addresses.id AS anon_1 "
+                            "FROM users JOIN addresses ON users.id = "
+                            "addresses.user_id"
+            ),
+            (User.id + Address.id, Address.user,
+                            "SELECT users.id + addresses.id AS anon_1 "
+                            "FROM addresses JOIN users ON users.id = "
+                            "addresses.user_id"
+            ),
+            (Address.id + User.id, User.addresses,
+                            "SELECT addresses.id + users.id AS anon_1 "
+                            "FROM users JOIN addresses ON users.id = "
+                            "addresses.user_id"
+            ),
+            (User.id + aa.id, (aa, User.addresses),
+                            "SELECT users.id + addresses_1.id AS anon_1 "
+                            "FROM users JOIN addresses AS addresses_1 "
+                            "ON users.id = addresses_1.user_id"
+            ),
+        ]:
+            q = s.query(crit)
+            mzero = q._mapper_zero()
+            assert mzero.mapped_table is q._entity_zero().selectable
+            q = q.join(j)
+            self.assert_compile(q, exp)
+
+        for crit, j, exp in [
+            (ua.id + Address.id, ua.addresses, 
+                            "SELECT users_1.id + addresses.id AS anon_1 "
+                            "FROM users AS users_1 JOIN addresses "
+                            "ON users_1.id = addresses.user_id"),
+            (ua.id + aa.id, (aa, ua.addresses), 
+                            "SELECT users_1.id + addresses_1.id AS anon_1 "
+                            "FROM users AS users_1 JOIN addresses AS "
+                            "addresses_1 ON users_1.id = addresses_1.user_id"),
+            (ua.id + aa.id, (ua, aa.user), 
+                            "SELECT users_1.id + addresses_1.id AS anon_1 "
+                            "FROM addresses AS addresses_1 JOIN "
+                            "users AS users_1 "
+                            "ON users_1.id = addresses_1.user_id")
+        ]:
+            q = s.query(crit)
+            mzero = q._mapper_zero()
+            assert mzero._AliasedClass__alias is q._entity_zero().selectable
+            q = q.join(j)
+            self.assert_compile(q, exp)
+
+
 
 class ImmediateTest(_fixtures.FixtureTest):
     run_inserts = 'once'

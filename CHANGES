@@ -6,6 +6,11 @@ CHANGES
 0.6.9
 =====
 - orm
+  - Fixed bug whereby the source clause
+    used by query.join() would be inconsistent
+    if against a column expression that combined
+    multiple entities together.  [ticket:2197]
+
   - Fixed bug whereby if a mapped class
     redefined __hash__() or __eq__() to something
     non-standard, which is a supported use case
