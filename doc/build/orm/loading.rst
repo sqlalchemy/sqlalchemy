@@ -259,9 +259,10 @@ The other LEFT OUTER JOIN will match *all* ``Address`` rows related to ``User``,
 and is only used to populate the ``User.addresses`` collection, for those ``User`` objects
 that are returned.
 
-By changing the usage of ``joinedload`` to another style of loading, we can change
+By changing the usage of :func:`.joinedload` to another style of loading, we can change
 how the collection is loaded completely independently of SQL used to retrieve
-the actual ``User`` rows we want:
+the actual ``User`` rows we want.  Below we change :func:`.joinedload` into
+:func:`.subqueryload`:
 
 .. sourcecode:: python+sql
 

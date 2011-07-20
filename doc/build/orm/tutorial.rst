@@ -1080,7 +1080,8 @@ load in the next section.
 Querying with Joins
 ====================
 
-While :func:`~sqlalchemy.orm.joinedload` created a JOIN specifically to
+While :func:`~sqlalchemy.orm.joinedload` created an anonymous, non-accessible JOIN 
+specifically to
 populate a collection, we can also work explicitly with joins in many ways.
 For example, to construct a simple inner join between ``User`` and
 ``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their

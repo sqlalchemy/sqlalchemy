@@ -1241,7 +1241,7 @@ class Query(object):
             # join from Company entities to the "employees" collection,
             # using "people JOIN engineers" as the target.  Then join
             # to the "computers" collection on the Engineer entity.
-            session.query(Company).\
+            session.query(Company).\\
                         join(people.join(engineers), 'employees').\\
                         join(Engineer.computers)
 
@@ -1275,7 +1275,9 @@ class Query(object):
                 query.join(a).\\
                         join(b, from_joinpoint=True).\\
                         join(c, from_joinpoint=True)
-
+        
+        See also :ref:`ormtutorial_joins` in the ORM tutorial.
+        
         """
         aliased, from_joinpoint = kwargs.pop('aliased', False),\
                                     kwargs.pop('from_joinpoint', False)
