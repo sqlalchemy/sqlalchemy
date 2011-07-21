@@ -944,7 +944,6 @@ def _as_declarative(cls, classname, dict_):
                 continue
             elif base is not cls:
                 # we're a mixin.
-
                 if isinstance(obj, Column):
                     if obj.foreign_keys:
                         raise exc.InvalidRequestError(
@@ -1042,7 +1041,6 @@ def _as_declarative(cls, classname, dict_):
             if key == c.key:
                 del our_stuff[key]
     cols = sorted(cols, key=lambda c:c._creation_order)
-
     table = None
     if '__table__' not in dict_:
         if tablename is not None:

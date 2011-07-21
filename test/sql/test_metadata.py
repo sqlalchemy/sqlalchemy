@@ -195,6 +195,39 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         fk1 = ForeignKeyConstraint(('foo', ), ('bar', ), table=t1)
         assert fk1 in t1.constraints
 
+    def test_fk_no_such_parent_col_error(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('a', Integer))
+        b = Table('b', meta, Column('b', Integer))
+
+        def go():
+            a.append_constraint(
+                ForeignKeyConstraint(['x'], ['b.b'])
+            )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Can't create ForeignKeyConstraint on "
+            "table 'a': no column named 'x' is present.",
+            go
+        )
+
+    def test_fk_no_such_target_col_error(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('a', Integer))
+        b = Table('b', meta, Column('b', Integer))
+        a.append_constraint(
+            ForeignKeyConstraint(['a'], ['b.x'])
+        )
+
+        def go():
+            list(a.c.a.foreign_keys)[0].column
+        assert_raises_message(
+            exc.NoReferencedColumnError,
+            "Could not create ForeignKey 'b.x' on "
+            "table 'a': table 'b' has no column named 'x'",
+            go
+        )
+
     @testing.exclude('mysql', '<', (4, 1, 1), 'early types are squirrely')
     def test_to_metadata(self):
         meta = MetaData()

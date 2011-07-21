@@ -99,6 +99,10 @@ CHANGES
     loses itself.  Affects [ticket:2188].
 
 - schema
+  - Added an informative error message when 
+    ForeignKeyConstraint refers to a column name in 
+    the parent that is not found.  Also in 0.6.9.
+
   - Fixed bug whereby adaptation of old append_ddl_listener()
     function was passing unexpected **kw through 
     to the Table event.   Table gets no kws, the MetaData

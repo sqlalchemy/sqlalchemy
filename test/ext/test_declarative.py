@@ -3176,6 +3176,41 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Model.__table__.c.keys(), ['col1', 'col3', 'col2', 'col4',
             'id'])
 
+    def test_honor_class_mro_one(self):
+        class HasXMixin(object):
+            @declared_attr
+            def x(self):
+                return Column(Integer)
+
+        class Parent(HasXMixin, Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+
+        class Child(Parent):
+            __tablename__ = 'child'
+            id = Column(Integer, ForeignKey('parent.id'), primary_key=True)
+
+        assert "x" not in Child.__table__.c
+
+    def test_honor_class_mro_two(self):
+        class HasXMixin(object):
+            @declared_attr
+            def x(self):
+                return Column(Integer)
+
+        class Parent(HasXMixin, Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            def x(self):
+                return "hi"
+
+        class C(Parent):
+            __tablename__ = 'c'
+            id = Column(Integer, ForeignKey('parent.id'), primary_key=True)
+
+        assert C().x() == 'hi'
+
+
 class DeclarativeMixinPropertyTest(DeclarativeTestBase):
 
     def test_column_property(self):
