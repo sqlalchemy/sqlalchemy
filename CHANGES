@@ -48,6 +48,11 @@ CHANGES
     when used with certain dialects.  This
     bug is not in 0.7.
 
+- schema
+  - Added an informative error message when 
+    ForeignKeyConstraint refers to a column name in 
+    the parent that is not found.
+
 - oracle
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,

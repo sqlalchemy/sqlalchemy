@@ -1802,7 +1802,13 @@ class ForeignKeyConstraint(Constraint):
             # string-specified column names now get
             # resolved to Column objects
             if isinstance(col, basestring):
-                col = table.c[col]
+                try:
+                    col = table.c[col]
+                except KeyError:
+                    raise exc.ArgumentError(
+                                "Can't create ForeignKeyConstraint "
+                                "on table '%s': no column "
+                                "named '%s' is present." % (table.description, col))
             fk._set_parent(col)
 
         if self.use_alter:
