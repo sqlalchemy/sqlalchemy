@@ -635,22 +635,61 @@ class Query(object):
         self._execution_options['stream_results'] = True
 
     def get(self, ident):
-        """Return an instance of the object based on the 
-        given identifier, or ``None`` if not found.
-
-        The ``ident`` argument is a scalar or tuple of 
-        primary key column values
-        in the order of the mapper's "primary key" setting, which
-        defaults to the list of primary key columns for the 
-        mapped :class:`.Table`.
+        """Return an instance based on the given primary key identifier, 
+        or ``None`` if not found.
         
-        :meth:`get` returns only a single mapped instance, or
-        ``None``.  It is not intended to return rows or scalar
-        column values, therefore the :class:`.Query` must be 
-        constructed only against a single mapper or mapped class,
-        not a SQL expression or multiple entities.
-        Other usages raise an error.
+        E.g.::
+        
+            my_user = session.query(User).get(5)
+            
+            some_object = session.query(VersionedFoo).get((5, 10))
+        
+        :meth:`~.Query.get` is special in that it provides direct 
+        access to the identity map of the owning :class:`.Session`.
+        If the given primary key identifier is present
+        in the local identity map, the object is returned
+        directly from this collection and no SQL is emitted, 
+        unless the object has been marked fully expired.
+        If not present,
+        a SELECT is performed in order to locate the object.
+        
+        :meth:`~.Query.get` also will perform a check if 
+        the object is present in the identity map and 
+        marked as expired - a SELECT 
+        is emitted to refresh the object as well as to
+        ensure that the row is still present.
+        If not, :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
+        
+        :meth:`~.Query.get` is only used to return a single
+        mapped instance, not multiple instances or 
+        individual column constructs, and strictly
+        on a single primary key value.  The originating
+        :class:`.Query` must be constructed in this way,
+        i.e. against a single mapped entity,
+        with no additional filtering criterion.  Loading
+        options via :meth:`~.Query.options` may be applied
+        however, and will be used if the object is not
+        yet locally present.
+        
+        A lazy-loading, many-to-one attribute configured
+        by :func:`.relationship`, using a simple
+        foreign-key-to-primary-key criterion, will also use an 
+        operation equivalent to :meth:`~.Query.get` in order to retrieve
+        the target value from the local identity map
+        before querying the database.  See :ref:`loading_toplevel`
+        for further details on relationship loading.
+        
+        :param ident: A scalar or tuple value representing
+         the primary key.   For a composite primary key,
+         the order of identifiers corresponds in most cases
+         to that of the mapped :class:`.Table` object's 
+         primary key columns.  For a :func:`.mapper` that
+         was given the ``primary key`` argument during
+         construction, the order of identifiers corresponds 
+         to the elements present in this collection.
 
+        :return: The object instance, or ``None``.
+        
         """
 
         # convert composite types to individual args

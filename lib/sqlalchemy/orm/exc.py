@@ -77,7 +77,24 @@ class UnmappedClassError(UnmappedError):
 
 
 class ObjectDeletedError(sa.exc.InvalidRequestError):
-    """An refresh() operation failed to re-retrieve an object's row."""
+    """A refresh operation failed to retrieve the database
+    row corresponding to an object's known primary key identity.
+    
+    A refresh operation proceeds when an expired attribute is 
+    accessed on an object, or when :meth:`.Query.get` is
+    used to retrieve an object which is, upon retrieval, detected
+    as expired.   A SELECT is emitted for the target row
+    based on primary key; if no row is returned, this
+    exception is raised.
+    
+    The true meaning of this exception is simply that 
+    no row exists for the primary key identifier associated
+    with a persistent object.   The row may have been 
+    deleted, or in some cases the primary key updated
+    to a new value, outside of the ORM's management of the target
+    object.   
+    
+    """
 
 
 class UnmappedColumnError(sa.exc.InvalidRequestError):

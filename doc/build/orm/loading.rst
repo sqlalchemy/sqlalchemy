@@ -330,7 +330,7 @@ references a scalar many-to-one reference.
  * When using the default lazy loading, a load of 100 objects will like in the case of the collection
    emit as many as 101 SQL statements.  However - there is a significant exception to this, in that
    if the many-to-one reference is a simple foreign key reference to the target's primary key, each
-   reference will be checked first in the current identity map using ``query.get()``.  So here, 
+   reference will be checked first in the current identity map using :meth:`.Query.get`.  So here, 
    if the collection of objects references a relatively small set of target objects, or the full set
    of possible target objects have already been loaded into the session and are strongly referenced,
    using the default of `lazy='select'` is by far the most efficient way to go.

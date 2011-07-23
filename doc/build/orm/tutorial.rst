@@ -1491,7 +1491,7 @@ their parent:
     >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
     <Mapper at 0x...; Address>
 
-Now when we load Jack (below using :meth:`~Query.get`, which loads by primary key),
+Now when we load Jack (below using :meth:`~.Query.get`, which loads by primary key),
 removing an address from his ``addresses`` collection will result in that
 ``Address`` being deleted:
 
