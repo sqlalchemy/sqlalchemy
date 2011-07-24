@@ -1439,6 +1439,7 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     def _inherits_fixture(self):
         m = MetaData()
@@ -1477,7 +1478,7 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
             "AS anon_1 WHERE a.b_id = anon_1.b_id AND (EXISTS "
             "(SELECT 1 FROM (SELECT base.id AS base_id, c.id AS c_id "
             "FROM base JOIN c ON base.id = c.id) AS anon_2 "
-            "WHERE anon_1.b_c_id = anon_2.c_id AND anon_2.c_id = ?"
+            "WHERE anon_1.b_c_id = anon_2.c_id AND anon_2.c_id = :id_1"
             ")))"
         )
 
