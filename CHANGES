@@ -59,6 +59,11 @@ CHANGES
     ForeignKeyConstraint refers to a column name in 
     the parent that is not found.
 
+- mysql
+  - Fixed OurSQL dialect to use ansi-neutral 
+    quote symbol "'" for XA commands instead
+    of '"'.  [ticket:2186].
+
 - oracle
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,
