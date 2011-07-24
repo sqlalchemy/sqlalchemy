@@ -168,6 +168,11 @@ CHANGES
     operator classes for indexed columns.
     [ticket:2198]  Courtesy Filip Zyzniewski.
 
+- mysql
+  - Fixed OurSQL dialect to use ansi-neutral 
+    quote symbol "'" for XA commands instead
+    of '"'.  [ticket:2186].  Also in 0.6.9.
+
 - mssql
   - Adjusted the pyodbc dialect such that bound
     values are passed as bytes and not unicode

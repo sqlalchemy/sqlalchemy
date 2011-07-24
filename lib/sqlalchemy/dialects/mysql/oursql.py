@@ -105,6 +105,7 @@ class MySQLDialect_oursql(MySQLDialect):
 # Py3K
 #        charset = self._connection_charset
 #        arg = connection.connection._escape_string(xid.encode(charset)).decode(charset)
+        arg = "'%s'" % arg
         connection.execution_options(_oursql_plain_query=True).execute(query % arg)
 
     # Because mysql is bad, these methods have to be 
@@ -113,23 +114,23 @@ class MySQLDialect_oursql(MySQLDialect):
     # the parameterized query API, or refuse to be parameterized
     # in the first place.
     def do_begin_twophase(self, connection, xid):
-        self._xa_query(connection, 'XA BEGIN "%s"', xid)
+        self._xa_query(connection, 'XA BEGIN %s', xid)
 
     def do_prepare_twophase(self, connection, xid):
-        self._xa_query(connection, 'XA END "%s"', xid)
-        self._xa_query(connection, 'XA PREPARE "%s"', xid)
+        self._xa_query(connection, 'XA END %s', xid)
+        self._xa_query(connection, 'XA PREPARE %s', xid)
 
     def do_rollback_twophase(self, connection, xid, is_prepared=True,
                              recover=False):
         if not is_prepared:
-            self._xa_query(connection, 'XA END "%s"', xid)
-        self._xa_query(connection, 'XA ROLLBACK "%s"', xid)
+            self._xa_query(connection, 'XA END %s', xid)
+        self._xa_query(connection, 'XA ROLLBACK %s', xid)
 
     def do_commit_twophase(self, connection, xid, is_prepared=True,
                            recover=False):
         if not is_prepared:
             self.do_prepare_twophase(connection, xid)
-        self._xa_query(connection, 'XA COMMIT "%s"', xid)
+        self._xa_query(connection, 'XA COMMIT %s', xid)
 
     # Q: why didn't we need all these "plain_query" overrides earlier ?
     # am i on a newer/older version of OurSQL ?
