@@ -346,7 +346,7 @@ class O2MCascadeTest(fixtures.MappedTest):
         # for 0.8
         User, Address = self.classes.User, self.classes.Address
         s = Session()
-        u1 = User(addresses=[None])
+        u1 = User(name='u', addresses=[None])
         s.add(u1)
         eq_(u1.addresses, [None])
         s.commit()
@@ -358,7 +358,7 @@ class O2MCascadeTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         s = Session()
 
-        u1 = User()
+        u1 = User(name='u')
         s.add(u1)
         u1.addresses.append(None)
         eq_(u1.addresses, [None])
