@@ -195,6 +195,9 @@ CHANGES
     generate the correct DDL.  [ticket:2220]
     Also in 0.6.9.
 
+  - added CURRENT to reserved word list.
+    [ticket:2212] Also in 0.6.9.
+
 -ext
   - Fixed bug in the mutable extension whereby
     if the same type were used twice in one
