@@ -11,6 +11,7 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     validates, aliased, defer, deferred, synonym, attributes, \
     column_property, composite, dynamic_loader, \
     comparable_property, Session
+from sqlalchemy.orm.mapper import _sort_states
 from test.lib.testing import eq_, AssertsCompiledSQL
 from test.lib import fixtures
 from test.orm import _fixtures
@@ -110,7 +111,7 @@ class MapperTest(_fixtures.FixtureTest):
         })
 
         # test that QueryableAttribute.__str__() doesn't 
-        # cause a compile.  
+        # cause a compile.
         eq_(str(User.addresses), "User.addresses")
 
     def test_exceptions_sticky(self):
@@ -240,6 +241,43 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Bar, addresses)
         assert_raises(TypeError, Foo, x=5)
         assert_raises(TypeError, Bar, x=5)
+
+    def test_sort_states_comparisons(self):
+        """test that _sort_states() doesn't compare 
+        insert_order to state.key, for set of mixed
+        persistent/pending.  In particular Python 3 disallows
+        this.  
+        
+        """
+        class Foo(object):
+            def __init__(self, id):
+                self.id = id
+        m = MetaData()
+        foo_t = Table('foo', m, 
+                        Column('id', String, primary_key=True)
+                    )
+        m = mapper(Foo, foo_t)
+        class DontCompareMeToString(int):
+        # Py3K
+        #    pass
+        # Py2K
+            def __lt__(self, other):
+                assert not isinstance(other, basestring)
+                return int(self) < other
+        # end Py2K
+        foos = [Foo(id='f%d' % i) for i in range(5)]
+        states = [attributes.instance_state(f) for f in foos]
+
+        for s in states[0:3]:
+            s.key = m._identity_key_from_state(s)
+        states[3].insert_order = DontCompareMeToString(5)
+        states[4].insert_order = DontCompareMeToString(1)
+        states[2].insert_order = DontCompareMeToString(3)
+        eq_(
+            _sort_states(states),
+            [states[4], states[3], states[0], states[1], states[2]]
+        )
+
 
     def test_props(self):
         users, Address, addresses, User = (self.tables.users,
@@ -2207,7 +2245,7 @@ class DeferredTest(_fixtures.FixtureTest):
     def test_map_selectable_wo_deferred(self):
         """test mapping to a selectable with deferred cols,
         the selectable doesn't include the deferred col.
-        
+
         """
 
         Order, orders = self.classes.Order, self.tables.orders

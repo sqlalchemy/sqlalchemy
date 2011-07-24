@@ -39,6 +39,13 @@ CHANGES
     [ticket:2224]  Thanks to the user who submitted
     the great test for this.
 
+  - Fixed bug apparent only in Python 3 whereby
+    sorting of persistent + pending objects during
+    flush would produce an illegal comparison,
+    if the persistent object primary key 
+    is not a single integer.  [ticket:2228]
+    Also in 0.6.9
+
   - Fixed bug whereby the source clause
     used by query.join() would be inconsistent
     if against a column expression that combined
