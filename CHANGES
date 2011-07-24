@@ -32,6 +32,12 @@ CHANGES
     _with_invoke_all_eagers()
     which selects old/new behavior [ticket:2213]
 
+  - A rework of "replacement traversal" within
+    the ORM as it alters selectables to be against
+    aliases of things (i.e. clause adaption) includes 
+    a fix for multiply-nested any()/has() constructs 
+    against a joined table structure.  [ticket:2195]
+
   - Fixed regression from 0.6 where Session.add()
     against an object which contained None in a
     collection would raise an internal exception.

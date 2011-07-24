@@ -1438,6 +1438,48 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
             "assoc_table_1.right_id JOIN sub_table ON nodes.id = sub_table.node_id",
         )
 
+class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
+
+    def _inherits_fixture(self):
+        m = MetaData()
+        base = Table('base', m, Column('id', Integer, primary_key=True))
+        a = Table('a', m, 
+                Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+                Column('b_id', Integer, ForeignKey('b.id')))
+        b = Table('b', m, 
+                Column('id', Integer, ForeignKey('base.id'), primary_key=True),
+                Column('c_id', Integer, ForeignKey('c.id')))
+        c = Table('c', m, 
+                Column('id', Integer, ForeignKey('base.id'), primary_key=True))
+        class Base(object):
+            pass
+        class A(Base):
+            pass
+        class B(Base):
+            pass
+        class C(Base):
+            pass
+        mapper(Base, base)
+        mapper(A, a, inherits=Base, properties={'b':relationship(B, primaryjoin=a.c.b_id==b.c.id)})
+        mapper(B, b, inherits=Base, properties={'c':relationship(C, primaryjoin=b.c.c_id==c.c.id)})
+        mapper(C, c, inherits=Base)
+        return A, B, C, Base
+
+    def test_double_level_aliased_exists(self):
+        A, B, C, Base = self._inherits_fixture()
+        s = Session()
+        self.assert_compile(
+            s.query(A).filter(A.b.has(B.c.has(C.id==5))),
+            "SELECT a.id AS a_id, base.id AS base_id, a.b_id AS a_b_id "
+            "FROM base JOIN a ON base.id = a.id WHERE "
+            "EXISTS (SELECT 1 FROM (SELECT base.id AS base_id, b.id AS "
+            "b_id, b.c_id AS b_c_id FROM base JOIN b ON base.id = b.id) "
+            "AS anon_1 WHERE a.b_id = anon_1.b_id AND (EXISTS "
+            "(SELECT 1 FROM (SELECT base.id AS base_id, c.id AS c_id "
+            "FROM base JOIN c ON base.id = c.id) AS anon_2 "
+            "WHERE anon_1.b_c_id = anon_2.c_id AND anon_2.c_id = ?"
+            ")))"
+        )
 
 class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     run_setup_mappers = 'once'

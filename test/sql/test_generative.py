@@ -779,7 +779,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = s2._clone()
         assert s2.is_derived_from(s1)
 
-    def test_aliasedselect_to_aliasedselect(self):
+    def test_aliasedselect_to_aliasedselect_straight(self):
 
         # original issue from ticket #904
 
@@ -791,6 +791,10 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             'AS col2, table1.col3 AS col3 FROM table1) '
                             'AS foo LIMIT :param_1 OFFSET :param_2',
                             {'param_1': 5, 'param_2': 10})
+
+    def test_aliasedselect_to_aliasedselect_join(self):
+        s1 = select([t1]).alias('foo')
+        s2 = select([s1]).limit(5).offset(10).alias()
         j = s1.outerjoin(t2, s1.c.col1 == t2.c.col1)
         self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(),
                             'SELECT anon_1.col1, anon_1.col2, '
@@ -803,8 +807,15 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                             ':param_2) AS anon_1 LEFT OUTER JOIN '
                             'table2 ON anon_1.col1 = table2.col1',
                             {'param_1': 5, 'param_2': 10})
+
+    def test_aliasedselect_to_aliasedselect_join_nested_table(self):
+        s1 = select([t1]).alias('foo')
+        s2 = select([s1]).limit(5).offset(10).alias()
         talias = t1.alias('bar')
+
+        assert not s2.is_derived_from(talias)
         j = s1.outerjoin(talias, s1.c.col1 == talias.c.col1)
+
         self.assert_compile(sql_util.ClauseAdapter(s2).traverse(j).select(),
                             'SELECT anon_1.col1, anon_1.col2, '
                             'anon_1.col3, bar.col1, bar.col2, bar.col3 '

@@ -13,7 +13,7 @@ mapped attributes.
 
 from sqlalchemy import sql, util, log, exc as sa_exc
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
-    join_condition
+    join_condition, _shallow_annotate
 from sqlalchemy.sql import operators, expression
 from sqlalchemy.orm import attributes, dependency, mapper, \
     object_mapper, strategies, configure_mappers
@@ -166,9 +166,6 @@ class ColumnProperty(StrategizedProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 log.class_logger(ColumnProperty)
-
-
-
 
 class RelationshipProperty(StrategizedProperty):
     """Describes an object property that holds a single item or list
@@ -448,7 +445,7 @@ class RelationshipProperty(StrategizedProperty):
             # should not correlate or otherwise reach out
             # to anything in the enclosing query.
             if criterion is not None:
-                criterion = criterion._annotate({'_halt_adapt': True})
+                criterion = criterion._annotate({'no_replacement_traverse': True})
 
             crit = j & criterion
 
@@ -1485,6 +1482,14 @@ class RelationshipProperty(StrategizedProperty):
         else:
             aliased = True
 
+        # place a barrier on the destination such that
+        # replacement traversals won't ever dig into it.
+        # its internal structure remains fixed 
+        # regardless of context.
+        dest_selectable = _shallow_annotate(
+                                dest_selectable, 
+                                {'no_replacement_traverse':True})
+
         aliased = aliased or (source_selectable is not None)
 
         primaryjoin, secondaryjoin, secondary = self.primaryjoin, \
@@ -1508,13 +1513,10 @@ class RelationshipProperty(StrategizedProperty):
             if secondary is not None:
                 secondary = secondary.alias()
                 primary_aliasizer = ClauseAdapter(secondary)
-                if dest_selectable is not None:
-                    secondary_aliasizer = \
-                        ClauseAdapter(dest_selectable,
-                            equivalents=self.mapper._equivalent_columns).\
-                            chain(primary_aliasizer)
-                else:
-                    secondary_aliasizer = primary_aliasizer
+                secondary_aliasizer = \
+                    ClauseAdapter(dest_selectable,
+                        equivalents=self.mapper._equivalent_columns).\
+                        chain(primary_aliasizer)
                 if source_selectable is not None:
                     primary_aliasizer = \
                         ClauseAdapter(secondary).\
@@ -1523,20 +1525,14 @@ class RelationshipProperty(StrategizedProperty):
                 secondaryjoin = \
                     secondary_aliasizer.traverse(secondaryjoin)
             else:
-                if dest_selectable is not None:
-                    primary_aliasizer = ClauseAdapter(dest_selectable,
-                            exclude=self.local_side,
-                            equivalents=self.mapper._equivalent_columns)
-                    if source_selectable is not None:
-                        primary_aliasizer.chain(
-                            ClauseAdapter(source_selectable,
-                                exclude=self.remote_side,
-                                equivalents=self.parent._equivalent_columns))
-                elif source_selectable is not None:
-                    primary_aliasizer = \
+                primary_aliasizer = ClauseAdapter(dest_selectable,
+                        exclude=self.local_side,
+                        equivalents=self.mapper._equivalent_columns)
+                if source_selectable is not None:
+                    primary_aliasizer.chain(
                         ClauseAdapter(source_selectable,
                             exclude=self.remote_side,
-                            equivalents=self.parent._equivalent_columns)
+                            equivalents=self.parent._equivalent_columns))
                 secondary_aliasizer = None
             primaryjoin = primary_aliasizer.traverse(primaryjoin)
             target_adapter = secondary_aliasizer or primary_aliasizer

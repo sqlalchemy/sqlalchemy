@@ -251,9 +251,6 @@ class Query(object):
             return clause
 
         def replace(elem):
-            if '_halt_adapt' in elem._annotations:
-                return elem
-
             for _orm_only, adapter in adapters:
                 # if 'orm only', look for ORM annotations
                 # in the element before adapting.
@@ -267,7 +264,7 @@ class Query(object):
 
         return visitors.replacement_traverse(
                             clause, 
-                            {'column_collections':False}, 
+                            {}, 
                             replace
                         )
 
@@ -438,7 +435,9 @@ class Query(object):
                         statement
         if self._params:
             stmt = stmt.params(self._params)
-        return stmt._annotate({'_halt_adapt': True})
+        # TODO: there's no tests covering effects of
+        # the annotation not being there
+        return stmt._annotate({'no_replacement_traverse': True})
 
     def subquery(self, name=None):
         """return the full SELECT statement represented by this :class:`.Query`, 

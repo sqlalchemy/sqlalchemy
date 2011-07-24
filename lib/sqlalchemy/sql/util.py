@@ -417,6 +417,17 @@ def _deep_deannotate(element):
         element = clone(element)
     return element
 
+def _shallow_annotate(element, annotations): 
+    """Annotate the given ClauseElement and copy its internals so that 
+    internal objects refer to the new annotated object. 
+
+    Basically used to apply a "dont traverse" annotation to a  
+    selectable, without digging throughout the whole 
+    structure wasting time. 
+    """ 
+    element = element._annotate(annotations) 
+    element._copy_internals() 
+    return element 
 
 def splice_joins(left, right, stop_on=None):
     if left is None:
@@ -639,7 +650,7 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
 
     """
     def __init__(self, selectable, equivalents=None, include=None, exclude=None):
-        self.__traverse_options__ = {'column_collections':False, 'stop_on':[selectable]}
+        self.__traverse_options__ = {'stop_on':[selectable]}
         self.selectable = selectable
         self.include = include
         self.exclude = exclude

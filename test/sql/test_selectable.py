@@ -914,6 +914,13 @@ class AnnotationsTest(fixtures.TestBase):
         b5 = visitors.cloned_traverse(b3, {}, {'binary':visit_binary})
         assert str(b5) == ":bar = table1.col2"
 
+    def test_annotate_aliased(self):
+        t1 = table('t1', column('c1'))
+        s = select([(t1.c.c1 + 3).label('bat')])
+        a = s.alias()
+        a = sql_util._deep_annotate(a, {'foo': 'bar'})
+        eq_(a._annotations['foo'], 'bar')
+        eq_(a.element._annotations['foo'], 'bar')
 
     def test_annotate_expressions(self):
         table1 = table('table1', column('col1'), column('col2'))
