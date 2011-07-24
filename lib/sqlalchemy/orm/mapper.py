@@ -2819,13 +2819,11 @@ def _event_on_resurrect(state):
 
 
 def _sort_states(states):
-    ret = []
-    for haskey, g in groupby(states, key=lambda s:s.key is not None):
-        if haskey:
-            ret.extend(sorted(g, key=lambda st: st.key[1]))
-        else:
-            ret = sorted(g, key=operator.attrgetter("insert_order")) + ret
-    return ret
+    pending = set(states)
+    persistent = set(s for s in pending if s.key is not None)
+    pending.difference_update(persistent)
+    return sorted(pending, key=operator.attrgetter("insert_order")) + \
+        sorted(persistent, key=lambda q:q.key[1])
 
 class _ColumnMapping(util.py25_dict):
     """Error reporting helper for mapper._columntoproperty."""
