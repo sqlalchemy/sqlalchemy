@@ -3362,7 +3362,7 @@ class Alias(FromClause):
 
     def _copy_internals(self, clone=_clone):
         self._reset_exported()
-        self.element = _clone(self.element)
+        self.element = clone(self.element)
         baseselectable = self.element
         while isinstance(baseselectable, Alias):
             baseselectable = baseselectable.element
