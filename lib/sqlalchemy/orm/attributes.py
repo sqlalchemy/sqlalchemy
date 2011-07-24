@@ -722,8 +722,12 @@ class CollectionAttributeImpl(AttributeImpl):
         if self.key in state.committed_state:
             original = state.committed_state[self.key]
             if original is not NO_VALUE:
-                current_states = [(instance_state(c), c) for c in current]
-                original_states = [(instance_state(c), c) for c in original]
+                current_states = [((c is not None) and 
+                                    instance_state(c) or None, c) 
+                                    for c in current]
+                original_states = [((c is not None) and 
+                                    instance_state(c) or None, c) 
+                                    for c in original]
 
                 current_set = dict(current_states)
                 original_set = dict(original_states)
@@ -1114,8 +1118,13 @@ class History(tuple):
         elif original is _NO_HISTORY:
             return cls((), list(current), ())
         else:
-            current_states = [(instance_state(c), c) for c in current]
-            original_states = [(instance_state(c), c) for c in original]
+
+            current_states = [((c is not None) and instance_state(c) or None, c) 
+                                for c in current 
+                                ]
+            original_states = [((c is not None) and instance_state(c) or None, c) 
+                                for c in original 
+                                ]
 
             current_set = dict(current_states)
             original_set = dict(original_states)

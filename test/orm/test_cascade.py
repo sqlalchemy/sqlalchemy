@@ -307,6 +307,64 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         assert users.count().scalar() == 1
         assert orders.count().scalar() == 0
 
+class O2MCascadeTest(fixtures.MappedTest):
+    run_inserts = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+        )
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', Integer, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+        class Address(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        users, User, Address, addresses = (
+                    cls.tables.users, cls.classes.User, 
+                    cls.classes.Address, cls.tables.addresses)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+           'addresses':relationship(Address, backref="user"),
+
+        })
+
+    def test_none_skipped_assignment(self):
+        # [ticket:2229] proposes warning/raising on None
+        # for 0.8
+        User, Address = self.classes.User, self.classes.Address
+        s = Session()
+        u1 = User(addresses=[None])
+        s.add(u1)
+        eq_(u1.addresses, [None])
+        s.commit()
+        eq_(u1.addresses, [])
+
+    def test_none_skipped_append(self):
+        # [ticket:2229] proposes warning/raising on None
+        # for 0.8
+        User, Address = self.classes.User, self.classes.Address
+        s = Session()
+
+        u1 = User()
+        s.add(u1)
+        u1.addresses.append(None)
+        eq_(u1.addresses, [None])
+        s.commit()
+        eq_(u1.addresses, [])
+
 class O2MCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     run_inserts = None
 

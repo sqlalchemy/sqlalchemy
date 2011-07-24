@@ -32,6 +32,16 @@ CHANGES
     _with_invoke_all_eagers()
     which selects old/new behavior [ticket:2213]
 
+  - Fixed regression from 0.6 where Session.add()
+    against an object which contained None in a
+    collection would raise an internal exception.
+    Reverted this to 0.6's behavior which is to 
+    accept the None but obviously nothing is
+    persisted.  Ideally, collections with None 
+    present or on append() should at least emit a 
+    warning, which is being considered for 0.8.
+    [ticket:2205]
+
   - Fixed regression from 0.6 where a get history
     operation on some relationship() based attributes
     would fail when a lazyload would emit; this could 

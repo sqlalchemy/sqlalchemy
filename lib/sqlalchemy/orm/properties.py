@@ -818,6 +818,13 @@ class RelationshipProperty(StrategizedProperty):
             if instance_state in visited_states:
                 continue
 
+            if c is None:
+                # would like to emit a warning here, but
+                # would not be consistent with collection.append(None)
+                # current behavior of silently skipping.
+                # see [ticket:2229]
+                continue
+
             instance_dict = attributes.instance_dict(c)
 
             if halt_on and halt_on(instance_state):
