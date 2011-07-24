@@ -72,6 +72,9 @@ CHANGES
   - repaired the oracle.RAW type which did not
     generate the correct DDL.  [ticket:2220]
 
+  - added CURRENT to reserved word list.
+    [ticket:2212]
+
 0.6.8
 =====
 - orm
