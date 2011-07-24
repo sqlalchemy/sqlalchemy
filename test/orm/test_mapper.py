@@ -14,6 +14,7 @@ from sqlalchemy.orm import defer, deferred, synonym, attributes, \
     comparable_property, AttributeExtension, Session
 from sqlalchemy.test.testing import eq_, AssertsCompiledSQL
 from test.orm import _base, _fixtures
+from sqlalchemy.orm.mapper import _sort_states
 from sqlalchemy.test.assertsql import AllOf, CompiledSQL
 import logging
 
@@ -235,6 +236,42 @@ class MapperTest(_fixtures.FixtureTest):
         mapper(Bar, addresses)
         assert_raises(TypeError, Foo, x=5)
         assert_raises(TypeError, Bar, x=5)
+
+    def test_sort_states_comparisons(self):
+        """test that _sort_states() doesn't compare 
+        insert_order to state.key, for set of mixed
+        persistent/pending.  In particular Python 3 disallows
+        this.  
+        
+        """
+        class Foo(object):
+            def __init__(self, id):
+                self.id = id
+        m = MetaData()
+        foo_t = Table('foo', m, 
+                        Column('id', String, primary_key=True)
+                    )
+        m = mapper(Foo, foo_t)
+        class DontCompareMeToString(int):
+        # Py3K
+        #    pass
+        # Py2K
+            def __lt__(self, other):
+                assert not isinstance(other, basestring)
+                return int(self) < other
+        # end Py2K
+        foos = [Foo(id='f%d' % i) for i in range(5)]
+        states = [attributes.instance_state(f) for f in foos]
+
+        for s in states[0:3]:
+            s.key = m._identity_key_from_state(s)
+        states[3].insert_order = DontCompareMeToString(5)
+        states[4].insert_order = DontCompareMeToString(1)
+        states[2].insert_order = DontCompareMeToString(3)
+        eq_(
+            _sort_states(states),
+            [states[4], states[3], states[0], states[1], states[2]]
+        )
 
     @testing.resolve_artifact_names
     def test_props(self):

@@ -2447,7 +2447,13 @@ def _event_on_resurrect(state, instance):
 
 
 def _sort_states(states):
-    return sorted(states, key=operator.attrgetter('sort_key'))
+    ret = []
+    for haskey, g in groupby(states, key=lambda s:s.key is not None):
+        if haskey:
+            ret.extend(sorted(g, key=lambda st: st.key[1]))
+        else:
+            ret = sorted(g, key=operator.attrgetter("insert_order")) + ret
+    return ret
 
 def _load_scalar_attributes(state, attribute_names):
     """initiate a column-based attribute refresh operation."""

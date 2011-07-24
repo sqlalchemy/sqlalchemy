@@ -11,6 +11,12 @@ CHANGES
     if against a column expression that combined
     multiple entities together.  [ticket:2197]
 
+  - Fixed bug apparent only in Python 3 whereby
+    sorting of persistent + pending objects during
+    flush would produce an illegal comparison,
+    if the persistent object primary key 
+    is not a single integer.  [ticket:2228]
+
   - Fixed bug whereby if a mapped class
     redefined __hash__() or __eq__() to something
     non-standard, which is a supported use case
