@@ -369,8 +369,12 @@ class Annotated(object):
     def __hash__(self):
         return hash(self.__element)
 
-    def __cmp__(self, other):
-        return cmp(hash(self.__element), hash(other))
+    def __eq__(self, other):
+        if isinstance(self.__element, expression.ColumnOperators):
+            return self.__element.__class__.__eq__(self, other)
+        else:
+            return hash(other) == hash(self)
+
 
 # hard-generate Annotated subclasses.  this technique
 # is used instead of on-the-fly types (i.e. type.__new__())

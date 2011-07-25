@@ -846,6 +846,24 @@ class DerivedTest(fixtures.TestBase, AssertsExecutionResults):
         assert not t2.select().alias('foo').is_derived_from(t1)
 
 class AnnotationsTest(fixtures.TestBase):
+
+    def test_hashing(self):
+        t = table('t', column('x'))
+
+        a = t.alias()
+        s = t.select()
+        s2 = a.select()
+
+        for obj in [
+            t,
+            t.c.x,
+            a,
+            s,
+            s2
+        ]:
+            annot = obj._annotate({})
+            eq_(set([obj]), set([annot]))
+
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):
