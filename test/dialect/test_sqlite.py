@@ -10,6 +10,7 @@ from sqlalchemy.dialects.sqlite import base as sqlite, \
 from sqlalchemy.engine.url import make_url
 from test.lib import *
 import os
+from sqlalchemy.schema import CreateTable
 
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
@@ -168,7 +169,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         assert isinstance(t2.c.y.type, sqltypes.NullType)
 
 
-class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
+class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = 'sqlite'
 
@@ -206,7 +207,7 @@ class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
 
         db = testing.db
         m = MetaData(db)
-        expected = ['my_default', '0']
+        expected = ["'my_default'", '0']
         table = \
             """CREATE TABLE r_defaults (
             data VARCHAR(40) DEFAULT 'my_default',
@@ -219,6 +220,30 @@ class TestDefaults(fixtures.TestBase, AssertsExecutionResults):
                 eq_(str(reflected.server_default.arg), expected[i])
         finally:
             db.execute('DROP TABLE r_defaults')
+
+    def test_default_reflection_3(self):
+        db = testing.db
+        table = \
+            """CREATE TABLE r_defaults (
+            data VARCHAR(40) DEFAULT 'my_default',
+            val INTEGER NOT NULL DEFAULT 0
+            )"""
+        try:
+            db.execute(table)
+            m1 = MetaData(db)
+            t1 = Table('r_defaults', m1, autoload=True)
+            db.execute("DROP TABLE r_defaults")
+            t1.create()
+            m2 = MetaData(db)
+            t2 = Table('r_defaults', m2, autoload=True)
+            self.assert_compile(
+                CreateTable(t2), 
+                "CREATE TABLE r_defaults (data VARCHAR(40) "
+                "DEFAULT 'my_default', val INTEGER DEFAULT 0 "
+                "NOT NULL)"
+            )
+        finally:
+            db.execute("DROP TABLE r_defaults")
 
 
 class DialectTest(fixtures.TestBase, AssertsExecutionResults):

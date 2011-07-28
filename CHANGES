@@ -168,6 +168,14 @@ CHANGES
     "retryable" condition.  Only Oracle ORA-01033
     implemented for now.  [ticket:2201]
 
+- sqlite
+  - SQLite dialect no longer strips quotes
+    off of reflected default value, allowing
+    a round trip CREATE TABLE to work.  
+    This is consistent with other dialects
+    that also maintain the exact form of
+    the default.  [ticket:2189]
+
 - postgresql
   - Added new "postgresql_ops" argument to 
     Index, allows specification of PostgreSQL
