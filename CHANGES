@@ -77,6 +77,12 @@ CHANGES
     result set.  [ticket:2215]
     Also in 0.6.9.
 
+  - Added public attribute ".validators" to 
+    Mapper, an immutable dictionary view of 
+    all attributes that have been decorated
+    with the @validates decorator.
+    [ticket:2240] courtesy Stefano Fontanelli
+
   - Fixed subtle bug that caused SQL to blow
     up if: column_property() against subquery +
     joinedload + LIMIT + order by the column

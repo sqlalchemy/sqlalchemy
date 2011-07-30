@@ -1834,7 +1834,6 @@ class ValidatorTest(_fixtures.FixtureTest):
         sess.expunge_all()
         eq_(sess.query(User).filter_by(name='ed modified').one(), User(name='ed'))
 
-
     def test_collection(self):
         users, addresses, Address = (self.tables.users,
                                 self.tables.addresses,
@@ -1858,6 +1857,37 @@ class ValidatorTest(_fixtures.FixtureTest):
         eq_(
             sess.query(User).filter_by(name='edward').one(), 
             User(name='edward', addresses=[Address(email_address='foo@bar.com')])
+        )
+
+    def test_validators_dict(self):
+        users, addresses, Address = (self.tables.users,
+                                     self.tables.addresses,
+                                     self.classes.Address)
+
+        class User(fixtures.ComparableEntity):
+
+            @validates('name')
+            def validate_name(self, key, name):
+                assert name != 'fred'
+                return name + ' modified'
+
+            @validates('addresses')
+            def validate_address(self, key, ad):
+                assert '@' in ad.email_address
+                return ad
+
+            def simple_function(self, key, value):
+                return key, value
+
+        u_m = mapper(User,
+                      users,
+                      properties={'addresses':relationship(Address)})
+        mapper(Address, addresses)
+
+        eq_(
+            dict((k, v.__name__) for k, v in u_m.validators.items()),
+            {'name':'validate_name', 
+            'addresses':'validate_address'}
         )
 
 class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):

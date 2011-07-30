@@ -131,7 +131,7 @@ class Mapper(object):
                                         polymorphic_on, 
                                         "polymorphic_on")
         self._dependency_processors = []
-        self._validators = {}
+        self.validators = util.immutabledict()
         self.passive_updates = passive_updates
         self._clause_adapter = None
         self._requires_row_aliasing = False
@@ -428,6 +428,15 @@ class Mapper(object):
     
     """
 
+    validators = None
+    """An immutable dictionary of attributes which have been decorated
+    using the :func:`~.orm.validates` decorator.    
+    
+    The dictionary contains string attribute names as keys
+    mapped to the actual validation method.
+    
+    """
+
     c = None
     """A synonym for :attr:`~.Mapper.columns`."""
 
@@ -637,7 +646,9 @@ class Mapper(object):
                     event.listen(manager, 'load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
                     for name in method.__sa_validators__:
-                        self._validators[name] = method
+                        self.validators = self.validators.union(
+                            {name : method}
+                        )
 
         manager.info[_INSTRUMENTOR] = self
 
