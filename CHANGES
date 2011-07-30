@@ -38,6 +38,13 @@ CHANGES
     a fix for multiply-nested any()/has() constructs 
     against a joined table structure.  [ticket:2195]
 
+  - Fixed bug where query.join() + aliased=True
+    from a joined-inh structure to itself on 
+    relationship() with join condition on the child
+    table would convert the lead entity into the 
+    joined one inappropriately.  [ticket:2234]
+    Also in 0.6.9.
+
   - Fixed regression from 0.6 where Session.add()
     against an object which contained None in a
     collection would raise an internal exception.

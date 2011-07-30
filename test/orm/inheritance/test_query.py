@@ -1083,7 +1083,119 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
             [m1]
         )
 
+class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
+    run_setup_mappers = 'once'
 
+    @classmethod
+    def define_tables(cls, metadata):
+        people = Table('people', metadata,
+           Column('person_id', Integer, 
+                        primary_key=True, test_needs_autoincrement=True),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        engineers = Table('engineers', metadata,
+           Column('person_id', Integer, 
+                    ForeignKey('people.person_id'), primary_key=True),
+           Column('reports_to_id', Integer, 
+                    ForeignKey('engineers.person_id'))
+          )
+
+
+    @classmethod
+    def setup_mappers(cls):
+        engineers, people = (cls.tables.engineers,
+                                cls.tables.people)
+
+        mapper(Person, people, polymorphic_on=people.c.type, 
+                            polymorphic_identity='person')
+
+        mapper(Engineer, engineers, inherits=Person, 
+          polymorphic_identity='engineer', properties={
+          'reports_to':relationship(Engineer, 
+                            primaryjoin=engineers.c.person_id==engineers.c.reports_to_id, 
+                            backref='engineers',
+                            remote_side=engineers.c.person_id)
+        })
+
+    def _two_obj_fixture(self):
+        e1 = Engineer(name='wally')
+        e2 = Engineer(name='dilbert', 
+                        reports_to=e1)
+        sess = Session()
+        sess.add_all([e1, e2])
+        sess.commit()
+        return sess
+
+    def _five_obj_fixture(self):
+        sess =Session()
+        e1, e2, e3, e4, e5 = [
+            Engineer(name='e%d' % (i + 1)) for i in xrange(5)
+        ]
+        e3.reports_to=e1
+        e4.reports_to=e2
+        sess.add_all([e1, e2, e3, e4, e5])
+        sess.commit()
+        return sess
+
+    def test_has(self):
+        sess = self._two_obj_fixture()
+
+        eq_(
+            sess.query(Engineer).
+                filter(Engineer.reports_to.has(Engineer.name=='wally')).
+                first(), 
+            Engineer(name='dilbert'))
+
+    def test_join_explicit_alias(self):
+        sess = self._five_obj_fixture()
+
+        ea = aliased(Engineer)
+        eq_(
+            sess.query(Engineer).
+                join(ea, Engineer.engineers).
+                filter(Engineer.name=='e1').all(),
+            [Engineer(name='e1')]
+        )
+
+    def test_join_aliased_flag_one(self):
+        sess = self._two_obj_fixture()
+
+        eq_(
+            sess.query(Engineer).
+                join('reports_to', aliased=True).
+                filter(Engineer.name=='wally').first(), 
+            Engineer(name='dilbert')
+        )
+
+    def test_join_aliased_flag_two(self):
+        sess = self._five_obj_fixture()
+
+        eq_(
+            sess.query(Engineer).
+                join(Engineer.engineers, aliased=True).
+                filter(Engineer.name=='e4').all(),
+            [Engineer(name='e2')]
+        )
+
+
+    def test_relationship_compare(self):
+        sess = self._five_obj_fixture()
+
+        eq_(
+            sess.query(Engineer).
+                join(Engineer.engineers, aliased=True).
+                filter(Engineer.reports_to==None).all(), 
+            []
+        )
+
+        e1 = sess.query(Engineer).filter_by(name='e1').one()
+        eq_(
+            sess.query(Engineer).
+                join(Engineer.engineers, aliased=True).
+                filter(Engineer.reports_to==e1).all(), 
+            [e1]
+        )
 
 class M2MFilterTest(fixtures.MappedTest):
     run_setup_mappers = 'once'

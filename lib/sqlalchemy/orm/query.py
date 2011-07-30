@@ -1535,7 +1535,7 @@ class Query(object):
         # which is intended to wrap a the right side in a subquery,
         # ensure that columns retrieved from this target in the result
         # set are also adapted.
-        if aliased_entity:
+        if aliased_entity and not create_aliases:
             self.__mapper_loads_polymorphically_with(
                         right_mapper,
                         ORMAdapter(
