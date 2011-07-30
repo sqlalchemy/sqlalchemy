@@ -297,6 +297,34 @@ TypeDecorator Recipes
 ~~~~~~~~~~~~~~~~~~~~~
 A few key :class:`.TypeDecorator` recipes follow.
 
+Coercing Encoded Strings to Unicode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A common source of confusion regarding the :class:`.Unicode` type
+is that it is intended to deal *only* with Python ``unicode`` objects
+on the Python side, meaning values passed to it as bind parameters
+must be of the form ``u'some string'`` if using Python 2 and not 3.
+The encoding/decoding functions it performs are only to suit what the 
+DBAPI in use requires, and are primarily a private implementation detail.
+
+The use case of a type that can safely receive Python bytestrings, 
+that is strings that contain non-ASCII characters and are not ``u''``
+objects in Python 2, can be achieved using a :class:`.TypeDecorator`
+which coerces as needed::
+
+    from sqlalchemy.types import TypeDecorator, Unicode
+
+    class CoerceUTF8(TypeDecorator):
+        """Safely coerce Python bytestrings to Unicode
+        before passing off to the database."""
+
+        impl = Unicode
+
+        def process_bind_param(self, value, dialect):
+            if isinstance(value, str):
+                value = value.decode('utf-8')
+            return value
+
 Rounding Numerics
 ^^^^^^^^^^^^^^^^^
 
@@ -451,3 +479,6 @@ Base Type API
 .. autoclass:: NullType
    :show-inheritance:
 
+.. autoclass:: Variant
+   :show-inheritance:
+   :members: with_variant, __init__

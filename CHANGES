@@ -135,6 +135,12 @@ CHANGES
     loses itself.  Affects [ticket:2188].
 
 - schema
+  - New feature: with_variant() method on 
+    all types.  Produces an instance of Variant(),
+    a special TypeDecorator which will select
+    the usage of a different type based on the
+    dialect in use. [ticket:2187]
+
   - Added an informative error message when 
     ForeignKeyConstraint refers to a column name in 
     the parent that is not found.  Also in 0.6.9.

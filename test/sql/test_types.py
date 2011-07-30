@@ -9,6 +9,7 @@ for name in dialects.__all__:
 from sqlalchemy.sql import operators, column, table
 from test.lib.testing import eq_
 import sqlalchemy.engine.url as url
+from sqlalchemy.engine import default
 from test.lib.schema import Table, Column
 from test.lib import *
 from test.lib.util import picklers
@@ -106,7 +107,7 @@ class AdaptTest(fixtures.TestBase):
         """
 
         for typ in self._all_types():
-            if typ in (types.TypeDecorator, types.TypeEngine):
+            if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
             elif typ is dialects.postgresql.ARRAY:
                 t1 = typ(String)
@@ -132,7 +133,7 @@ class AdaptTest(fixtures.TestBase):
     @testing.uses_deprecated()
     def test_repr(self):
         for typ in self._all_types():
-            if typ in (types.TypeDecorator, types.TypeEngine):
+            if typ in (types.TypeDecorator, types.TypeEngine, types.Variant):
                 continue
             elif typ is dialects.postgresql.ARRAY:
                 t1 = typ(String)
@@ -282,6 +283,42 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
         eq_(
                 t.dialect_impl(dialect=pg).impl.__class__, 
                 Float().dialect_impl(pg).__class__
+        )
+
+    def test_user_defined_typedec_impl_bind(self):
+        class TypeOne(types.TypeEngine):
+            def bind_processor(self, dialect):
+                def go(value):
+                    return value + " ONE"
+                return go
+
+        class TypeTwo(types.TypeEngine):
+            def bind_processor(self, dialect):
+                def go(value):
+                    return value + " TWO"
+                return go
+
+        class MyType(types.TypeDecorator):
+            impl = TypeOne
+
+            def load_dialect_impl(self, dialect):
+                if dialect.name == 'sqlite':
+                    return TypeOne()
+                else:
+                    return TypeTwo()
+
+            def process_bind_param(self, value, dialect):
+                return "MYTYPE " + value
+        sl = dialects.sqlite.dialect()
+        pg = dialects.postgresql.dialect()
+        t = MyType()
+        eq_(
+            t._cached_bind_processor(sl)('foo'),
+            "MYTYPE foo ONE"
+        )
+        eq_(
+            t._cached_bind_processor(pg)('foo'),
+            "MYTYPE foo TWO"
         )
 
     @testing.provide_metadata
@@ -440,6 +477,110 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             Column('goofy9', MyNewIntSubClass, nullable = False),
         )
 
+class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
+    def setup(self):
+        class UTypeOne(types.UserDefinedType):
+            def get_col_spec(self):
+                return "UTYPEONE"
+            def bind_processor(self, dialect):
+                def process(value):
+                    return value + "UONE"
+                return process
+
+        class UTypeTwo(types.UserDefinedType):
+            def get_col_spec(self):
+                return "UTYPETWO"
+            def bind_processor(self, dialect):
+                def process(value):
+                    return value + "UTWO"
+                return process
+
+        class UTypeThree(types.UserDefinedType):
+            def get_col_spec(self):
+                return "UTYPETHREE"
+
+        self.UTypeOne = UTypeOne
+        self.UTypeTwo = UTypeTwo
+        self.UTypeThree = UTypeThree
+        self.variant = self.UTypeOne().with_variant(
+                            self.UTypeTwo(), 'postgresql')
+        self.composite = self.variant.with_variant(
+                            self.UTypeThree(), 'mysql')
+
+    def test_illegal_dupe(self):
+        v = self.UTypeOne().with_variant(
+            self.UTypeTwo(), 'postgresql'
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Dialect 'postgresql' is already present "
+            "in the mapping for this Variant",
+            lambda: v.with_variant(self.UTypeThree(), 'postgresql')
+        )
+    def test_compile(self):
+        self.assert_compile(
+            self.variant,
+            "UTYPEONE",
+            use_default_dialect=True
+        )
+        self.assert_compile(
+            self.variant,
+            "UTYPEONE",
+            dialect=dialects.mysql.dialect()
+        )
+        self.assert_compile(
+            self.variant,
+            "UTYPETWO",
+            dialect=dialects.postgresql.dialect()
+        )
+
+    def test_compile_composite(self):
+        self.assert_compile(
+            self.composite,
+            "UTYPEONE",
+            use_default_dialect=True
+        )
+        self.assert_compile(
+            self.composite,
+            "UTYPETHREE",
+            dialect=dialects.mysql.dialect()
+        )
+        self.assert_compile(
+            self.composite,
+            "UTYPETWO",
+            dialect=dialects.postgresql.dialect()
+        )
+
+    def test_bind_process(self):
+        eq_(
+            self.variant._cached_bind_processor(
+                    dialects.mysql.dialect())('foo'),
+            'fooUONE'
+        )
+        eq_(
+            self.variant._cached_bind_processor(
+                    default.DefaultDialect())('foo'),
+            'fooUONE'
+        )
+        eq_(
+            self.variant._cached_bind_processor(
+                    dialects.postgresql.dialect())('foo'),
+            'fooUTWO'
+        )
+
+    def test_bind_process_composite(self):
+        assert self.composite._cached_bind_processor(
+                    dialects.mysql.dialect()) is None
+        eq_(
+            self.composite._cached_bind_processor(
+                    default.DefaultDialect())('foo'),
+            'fooUONE'
+        )
+        eq_(
+            self.composite._cached_bind_processor(
+                    dialects.postgresql.dialect())('foo'),
+            'fooUTWO'
+        )
 
 class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""

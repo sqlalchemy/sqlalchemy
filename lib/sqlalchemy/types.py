@@ -112,6 +112,36 @@ class TypeEngine(AbstractType):
         """
         return None
 
+    def with_variant(self, type_, dialect_name):
+        """Produce a new type object that will utilize the given 
+        type when applied to the dialect of the given name.
+
+        e.g.::
+
+            from sqlalchemy.types import String
+            from sqlalchemy.dialects import mysql
+
+            s = String()
+
+            s = s.with_variant(mysql.VARCHAR(collation='foo'), 'mysql')
+
+        The construction of :meth:`.TypeEngine.with_variant` is always
+        from the "fallback" type to that which is dialect specific.
+        The returned type is an instance of :class:`.Variant`, which
+        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant` that can 
+        be called repeatedly.
+
+        :param type_: a :class:`.TypeEngine` that will be selected
+         as a variant from the originating type, when a dialect
+         of the given name is in use.
+        :param dialect_name: base name of the dialect which uses 
+         this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
+
+        New in 0.7.2.
+
+        """
+        return Variant(self, {dialect_name:type_})
+
     def _adapt_expression(self, op, othertype):
         """evaluate the return type of <self> <op> <othertype>,
         and apply any adaptations to the given operator.
@@ -186,23 +216,23 @@ class TypeEngine(AbstractType):
     def adapt(self, cls, **kw):
         """Produce an "adapted" form of this type, given an "impl" class 
         to work with. 
-        
+
         This method is used internally to associate generic 
         types with "implementation" types that are specific to a particular
-        dialect.  
+        dialect.
         """
         return util.constructor_copy(self, cls, **kw)
 
     def _coerce_compared_value(self, op, value):
         """Suggest a type for a 'coerced' Python value in an expression.
-        
+
         Given an operator and value, gives the type a chance
         to return a type which the value should be coerced into.
-        
+
         The default behavior here is conservative; if the right-hand
         side is already coerced into a SQL type based on its 
         Python type, it is usually left alone.
-        
+
         End-user functionality extension here should generally be via
         :class:`.TypeDecorator`, which provides more liberal behavior in that
         it defaults to coercing the other side of the expression into this
@@ -210,7 +240,7 @@ class TypeEngine(AbstractType):
         needed by the DBAPI to both ides. It also provides the public method
         :meth:`.TypeDecorator.coerce_compared_value` which is intended for
         end-user customization of this behavior.
-        
+
         """
         _coerced_type = _type_map.get(type(value), NULLTYPE)
         if _coerced_type is NULLTYPE or _coerced_type._type_affinity \
@@ -224,12 +254,12 @@ class TypeEngine(AbstractType):
 
     def compile(self, dialect=None):
         """Produce a string-compiled form of this :class:`.TypeEngine`.
-        
+
         When called with no arguments, uses a "default" dialect
         to produce a string result.
-        
+
         :param dialect: a :class:`.Dialect` instance.
-        
+
         """
         # arg, return value is inconsistent with
         # ClauseElement.compile()....this is a mistake.
@@ -403,17 +433,17 @@ class TypeDecorator(TypeEngine):
 
     def __init__(self, *args, **kwargs):
         """Construct a :class:`.TypeDecorator`.
-        
+
         Arguments sent here are passed to the constructor 
         of the class assigned to the ``impl`` class level attribute,
         where the ``self.impl`` attribute is assigned an instance
         of the implementation type.  If ``impl`` at the class level
         is already an instance, then it's assigned to ``self.impl``
         as is.
-        
+
         Subclasses can override this to customize the generation
         of ``self.impl``.
-        
+
         """
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations "
@@ -447,7 +477,7 @@ class TypeDecorator(TypeEngine):
 
     def type_engine(self, dialect):
         """Return a dialect-specific :class:`.TypeEngine` instance for this :class:`.TypeDecorator`.
-        
+
         In most cases this returns a dialect-adapted form of
         the :class:`.TypeEngine` type represented by ``self.impl``.
         Makes usage of :meth:`dialect_impl` but also traverses
@@ -465,7 +495,7 @@ class TypeDecorator(TypeEngine):
 
     def load_dialect_impl(self, dialect):
         """Return a :class:`.TypeEngine` object corresponding to a dialect.
-        
+
         This is an end-user override hook that can be used to provide
         differing types depending on the given dialect.  It is used
         by the :class:`.TypeDecorator` implementation of :meth:`type_engine` 
@@ -485,45 +515,45 @@ class TypeDecorator(TypeEngine):
 
     def process_bind_param(self, value, dialect):
         """Receive a bound parameter value to be converted.
-        
+
         Subclasses override this method to return the
         value that should be passed along to the underlying
         :class:`.TypeEngine` object, and from there to the 
         DBAPI ``execute()`` method.
-        
+
         :param value: the value.  Can be None.
         :param dialect: the :class:`.Dialect` in use.
-        
+
         """
         raise NotImplementedError()
 
     def process_result_value(self, value, dialect):
         """Receive a result-row column value to be converted.
-        
+
         Subclasses override this method to return the
         value that should be passed back to the application,
         given a value that is already processed by
         the underlying :class:`.TypeEngine` object, originally
         from the DBAPI cursor method ``fetchone()`` or similar.
-        
+
         :param value: the value.  Can be None.
         :param dialect: the :class:`.Dialect` in use.
-        
+
         """
         raise NotImplementedError()
 
     def bind_processor(self, dialect):
         """Provide a bound value processing function for the given :class:`.Dialect`.
-        
+
         This is the method that fulfills the :class:`.TypeEngine` 
         contract for bound value conversion.   :class:`.TypeDecorator`
         will wrap a user-defined implementation of 
-        :meth:`process_bind_param` here.  
-        
+        :meth:`process_bind_param` here.
+
         User-defined code can override this method directly,
         though its likely best to use :meth:`process_bind_param` so that
         the processing provided by ``self.impl`` is maintained.
-        
+
         """
         if self.__class__.process_bind_param.func_code \
             is not TypeDecorator.process_bind_param.func_code:
@@ -543,16 +573,16 @@ class TypeDecorator(TypeEngine):
 
     def result_processor(self, dialect, coltype):
         """Provide a result value processing function for the given :class:`.Dialect`.
-        
+
         This is the method that fulfills the :class:`.TypeEngine` 
         contract for result value conversion.   :class:`.TypeDecorator`
         will wrap a user-defined implementation of 
-        :meth:`process_result_value` here.  
+        :meth:`process_result_value` here.
 
         User-defined code can override this method directly,
         though its likely best to use :meth:`process_result_value` so that
         the processing provided by ``self.impl`` is maintained.
-        
+
         """
         if self.__class__.process_result_value.func_code \
             is not TypeDecorator.process_result_value.func_code:
@@ -596,12 +626,12 @@ class TypeDecorator(TypeEngine):
 
     def copy(self):
         """Produce a copy of this :class:`.TypeDecorator` instance.
-        
+
         This is a shallow copy and is provided to fulfill part of 
         the :class:`.TypeEngine` contract.  It usually does not
         need to be overridden unless the user-defined :class:`.TypeDecorator`
         has local state that should be deep-copied.
-        
+
         """
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
@@ -609,20 +639,20 @@ class TypeDecorator(TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         """Return the DBAPI type object represented by this :class:`.TypeDecorator`.
-        
+
         By default this calls upon :meth:`.TypeEngine.get_dbapi_type` of the 
-        underlying "impl".  
+        underlying "impl".
         """
         return self.impl.get_dbapi_type(dbapi)
 
     def copy_value(self, value):
         """Given a value, produce a copy of it.
-        
+
         By default this calls upon :meth:`.TypeEngine.copy_value` 
         of the underlying "impl".
-        
+
         :meth:`.copy_value` will return the object
-        itself, assuming "mutability" is not enabled.  
+        itself, assuming "mutability" is not enabled.
         Only the :class:`.MutableType` mixin provides a copy 
         function that actually produces a new object.
         The copying function is used by the ORM when
@@ -630,27 +660,27 @@ class TypeDecorator(TypeEngine):
         version of an object as loaded from the database,
         which is then compared to the possibly mutated
         version to check for changes.
-        
+
         Modern implementations should use the 
         ``sqlalchemy.ext.mutable`` extension described in
         :ref:`mutable_toplevel` for intercepting in-place
         changes to values.
-        
+
         """
         return self.impl.copy_value(value)
 
     def compare_values(self, x, y):
         """Given two values, compare them for equality.
-        
+
         By default this calls upon :meth:`.TypeEngine.compare_values` 
         of the underlying "impl", which in turn usually
         uses the Python equals operator ``==``.
-        
+
         This function is used by the ORM to compare
         an original-loaded value with an intercepted
         "changed" value, to determine if a net change
         has occurred.
-        
+
         """
         return self.impl.compare_values(x, y)
 
@@ -676,6 +706,57 @@ class TypeDecorator(TypeEngine):
             return op, self
         else:
             return op, typ
+
+class Variant(TypeDecorator):
+    """A wrapping type that selects among a variety of
+    implementations based on dialect in use.
+    
+    The :class:`.Variant` type is typically constructed
+    using the :meth:`.TypeEngine.with_variant` method.
+    
+    New in 0.7.2.
+    
+    """
+
+    def __init__(self, base, mapping):
+        """Construct a new :class:`.Variant`.
+        
+        :param base: the base 'fallback' type
+        :param mapping: dictionary of string dialect names to :class:`.TypeEngine` 
+         instances.
+         
+        """
+        self.impl = base
+        self.mapping = mapping
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name in self.mapping:
+            return self.mapping[dialect.name]
+        else:
+            return self.impl
+
+    def with_variant(self, type_, dialect_name):
+        """Return a new :class:`.Variant` which adds the given
+        type + dialect name to the mapping, in addition to the 
+        mapping present in this :class:`.Variant`.
+        
+        :param type_: a :class:`.TypeEngine` that will be selected
+         as a variant from the originating type, when a dialect
+         of the given name is in use.
+        :param dialect_name: base name of the dialect which uses 
+         this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
+
+        New in 0.7.2.
+        
+        """
+
+        if dialect_name in self.mapping:
+            raise exc.ArgumentError(
+                "Dialect '%s' is already present in "
+                "the mapping for this Variant" % dialect_name)
+        mapping = self.mapping.copy()
+        mapping[dialect_name] = type_
+        return Variant(self.impl, mapping)
 
 class MutableType(object):
     """A mixin that marks a :class:`.TypeEngine` as representing
@@ -1526,7 +1607,7 @@ class SchemaType(events.SchemaEventTarget):
     Supports types that must be explicitly created/dropped (i.e. PG ENUM type)
     as well as types that are complimented by table or schema level
     constraints, triggers, and other rules.
-    
+
     :class:`.SchemaType` classes can also be targets for the 
     :meth:`.DDLEvents.before_parent_attach` and :meth:`.DDLEvents.after_parent_attach`
     events, where the events fire off surrounding the association of
