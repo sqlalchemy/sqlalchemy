@@ -161,20 +161,21 @@ class ExpireTest(_fixtures.FixtureTest):
         assert o1.description
 
     def test_deferred_notfound(self):
-        Order, orders = self.classes.Order, self.tables.orders
+        users, User = self.tables.users, self.classes.User
 
-        mapper(Order, orders, properties={
-                'description':deferred(orders.c.description)})
-        s = create_session()
-        o1 = s.query(Order).first()
-        assert 'description' not in o1.__dict__
-        s.expire(o1)
-        s.query(Order).delete()
+        mapper(User, users, properties={
+            'name':deferred(users.c.name)
+        })
+        s = create_session(autocommit=False)
+        u = s.query(User).get(10)
+
+        assert 'name' not in u.__dict__
+        s.execute(users.delete().where(User.id==10))
         assert_raises_message(
             sa.orm.exc.ObjectDeletedError,
-            "Instance '<Order at .*?>' has been "
+            "Instance '<User at .*?>' has been "
             "deleted, or its row is otherwise not present.",
-            getattr, o1, 'description'
+            getattr, u, 'name'
         )
 
     def test_lazyload_autoflushes(self):
