@@ -1586,9 +1586,7 @@ class Mapper(object):
         # if instance is pending, a refresh operation 
         # may not complete (even if PK attributes are assigned)
         if has_key and result is None:
-            raise orm_exc.ObjectDeletedError(
-                                "Instance '%s' has been deleted." % 
-                                state_str(state))
+            raise orm_exc.ObjectDeletedError(state)
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary

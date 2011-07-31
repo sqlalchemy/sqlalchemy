@@ -88,6 +88,13 @@ class ExpireTest(_fixtures.FixtureTest):
             u = s.query(User).get(10)  # expire flag reset, so not expired
         self.assert_sql_count(testing.db, go, 0)
 
+    def test_get_on_deleted_expunges(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        s = create_session(autocommit=False)
+        u = s.query(User).get(10)
+
         s.expire_all()
         s.execute(users.delete().where(User.id==10))
 
@@ -96,33 +103,54 @@ class ExpireTest(_fixtures.FixtureTest):
         assert s.query(User).get(10) is None
         assert u not in s # and expunges
 
-        # trick the "deleted" flag so we can re-add for the sake
-        # of this test
-        del attributes.instance_state(u).deleted
+    def test_refresh_on_deleted_raises(self):
+        users, User = self.tables.users, self.classes.User
 
-        # add it back
-        s.add(u)
-        # nope, raises ObjectDeletedError
-        assert_raises(sa.orm.exc.ObjectDeletedError, getattr, u, 'name')
+        mapper(User, users)
+        s = create_session(autocommit=False)
+        u = s.query(User).get(10)
+        s.expire_all()
 
-        # do a get()/remove u from session again
+        s.expire_all()
+        s.execute(users.delete().where(User.id==10))
+
+        # raises ObjectDeletedError
+        assert_raises_message(
+            sa.orm.exc.ObjectDeletedError,
+            "Instance '<User at .*?>' has been "
+            "deleted, or its row is otherwise not present.",
+            getattr, u, 'name'
+        )
+
+    def test_rollback_undoes_expunge_from_deleted(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        s = create_session(autocommit=False)
+        u = s.query(User).get(10)
+        s.expire_all()
+        s.execute(users.delete().where(User.id==10))
+
+        # do a get()/remove u from session
         assert s.query(User).get(10) is None
         assert u not in s
 
         s.rollback()
 
         assert u in s
-        # but now its back, rollback has occurred, the _remove_newly_deleted
-        # is reverted
+        # but now its back, rollback has occurred, the 
+        # _remove_newly_deleted is reverted
         eq_(u.name, 'chuck')
 
     def test_deferred(self):
-        """test that unloaded, deferred attributes aren't included in the expiry list."""
+        """test that unloaded, deferred attributes aren't included in the 
+        expiry list."""
 
         Order, orders = self.classes.Order, self.tables.orders
 
 
-        mapper(Order, orders, properties={'description':deferred(orders.c.description)})
+        mapper(Order, orders, properties={
+                    'description':deferred(orders.c.description)})
 
         s = create_session()
         o1 = s.query(Order).first()
@@ -132,6 +160,23 @@ class ExpireTest(_fixtures.FixtureTest):
         assert 'description' not in o1.__dict__
         assert o1.description
 
+    def test_deferred_notfound(self):
+        Order, orders = self.classes.Order, self.tables.orders
+
+        mapper(Order, orders, properties={
+                'description':deferred(orders.c.description)})
+        s = create_session()
+        o1 = s.query(Order).first()
+        assert 'description' not in o1.__dict__
+        s.expire(o1)
+        s.query(Order).delete()
+        assert_raises_message(
+            sa.orm.exc.ObjectDeletedError,
+            "Instance '<Order at .*?>' has been "
+            "deleted, or its row is otherwise not present.",
+            getattr, o1, 'description'
+        )
+
     def test_lazyload_autoflushes(self):
         users, Address, addresses, User = (self.tables.users,
                                 self.classes.Address,
@@ -139,7 +184,8 @@ class ExpireTest(_fixtures.FixtureTest):
                                 self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, order_by=addresses.c.email_address)
+            'addresses':relationship(Address, 
+                    order_by=addresses.c.email_address)
         })
         mapper(Address, addresses)
         s = create_session(autoflush=True, autocommit=False)

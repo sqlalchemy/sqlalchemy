@@ -7,7 +7,7 @@
 """SQLAlchemy ORM exceptions."""
 
 import sqlalchemy as sa
-
+orm_util = sa.util.importlater('sqlalchemy.orm', 'util')
 
 NO_STATE = (AttributeError, KeyError)
 """Exception types that may be raised by instrumentation implementations."""
@@ -95,7 +95,12 @@ class ObjectDeletedError(sa.exc.InvalidRequestError):
     object.   
     
     """
-
+    def __init__(self, state):
+        sa.exc.InvalidRequestError.__init__(
+             self,
+             "Instance '%s' has been deleted, or its "
+             "row is otherwise not present." % orm_util.state_str(state)
+        )
 
 class UnmappedColumnError(sa.exc.InvalidRequestError):
     """Mapping operation was requested on an unknown column."""

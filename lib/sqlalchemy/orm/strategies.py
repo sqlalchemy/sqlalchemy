@@ -242,8 +242,10 @@ class DeferredColumnLoader(LoaderStrategy):
                 )
 
         query = session.query(localparent)
-        query._load_on_ident(state.key, 
-                    only_load_props=group, refresh_state=state)
+        if query._load_on_ident(state.key, 
+                    only_load_props=group, refresh_state=state) is None:
+            raise orm_exc.ObjectDeletedError(state)
+
         return attributes.ATTR_WAS_SET
 
 log.class_logger(DeferredColumnLoader)

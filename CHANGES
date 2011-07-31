@@ -55,6 +55,13 @@ CHANGES
     warning, which is being considered for 0.8.
     [ticket:2205]
 
+  - Load of a deferred() attribute on an object
+    where row can't be located raises 
+    ObjectDeletedError instead of failing later
+    on; improved the message in ObjectDeletedError
+    to include other conditions besides a simple
+    "delete". [ticket:2191]
+
   - Fixed regression from 0.6 where a get history
     operation on some relationship() based attributes
     would fail when a lazyload would emit; this could 
