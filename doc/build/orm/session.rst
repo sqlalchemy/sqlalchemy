@@ -1533,6 +1533,9 @@ Session and sessionmaker()
 .. autoclass:: sqlalchemy.orm.session.Session
    :members:
 
+.. autoclass:: sqlalchemy.orm.session.SessionTransaction
+   :members:
+
 Session Utilites
 ----------------
 

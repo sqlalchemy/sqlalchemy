@@ -1,4 +1,4 @@
-from test.lib.testing import assert_raises_message
+from test.lib.testing import assert_raises_message, assert_raises
 import sqlalchemy as sa
 from test.lib import testing
 from sqlalchemy import Integer, String
@@ -537,6 +537,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'before_commit',
             'after_commit',
             'after_rollback',
+            'after_soft_rollback',
             'before_flush',
             'after_flush',
             'after_flush_postexec',
@@ -566,6 +567,55 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'after_flush', 'after_flush_postexec', 
             'before_commit', 'after_commit',]
         )
+
+    def test_rollback_hook(self):
+        User, users = self.classes.User, self.tables.users
+        sess, canary = self._listener_fixture()
+        mapper(User, users)
+
+        u = User(name='u1', id=1)
+        sess.add(u)
+        sess.commit()
+
+        u2 = User(name='u1', id=1)
+        sess.add(u2)
+        assert_raises(
+            sa.orm.exc.FlushError,
+            sess.commit
+        )
+        sess.rollback()
+        eq_(canary, ['after_attach', 'before_commit', 'before_flush', 
+        'after_begin', 'after_flush', 'after_flush_postexec', 
+        'after_commit', 'after_attach', 'before_commit', 
+        'before_flush', 'after_begin', 'after_rollback', 
+        'after_soft_rollback', 'after_soft_rollback'])
+
+    def test_can_use_session_in_outer_rollback_hook(self):
+        User, users = self.classes.User, self.tables.users
+        mapper(User, users)
+
+        sess = Session()
+
+        assertions = []
+        @event.listens_for(sess, "after_soft_rollback")
+        def do_something(session, previous_transaction):
+            if session.is_active:
+                assertions.append('name' not in u.__dict__)
+                assertions.append(u.name == 'u1')
+
+        u = User(name='u1', id=1)
+        sess.add(u)
+        sess.commit()
+
+        u2 = User(name='u1', id=1)
+        sess.add(u2)
+        assert_raises(
+            sa.orm.exc.FlushError,
+            sess.commit
+        )
+        sess.rollback()
+        eq_(assertions, [True, True])
+
 
     def test_flush_noautocommit_hook(self):
         User, users = self.classes.User, self.tables.users

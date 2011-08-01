@@ -821,25 +821,82 @@ class SessionEvents(event.Events):
         """Execute before commit is called.
 
         Note that this may not be per-flush if a longer running
-        transaction is ongoing."""
+        transaction is ongoing.
+
+        :param session: The target :class:`.Session`.
+        
+        """
 
     def after_commit(self, session):
         """Execute after a commit has occurred.
 
         Note that this may not be per-flush if a longer running
-        transaction is ongoing."""
+        transaction is ongoing.
+        
+        :param session: The target :class:`.Session`.
+        
+        """
 
     def after_rollback(self, session):
-        """Execute after a rollback has occurred.
+        """Execute after a real DBAPI rollback has occurred.
+        
+        Note that this event only fires when the *actual* rollback against
+        the database occurs - it does *not* fire each time the 
+        :meth:`.Session.rollback` method is called, if the underlying 
+        DBAPI transaction has already been rolled back.  In many
+        cases, the :class:`.Session` will not be in 
+        an "active" state during this event, as the current
+        transaction is not valid.   To acquire a :class:`.Session`
+        which is active after the outermost rollback has proceeded,
+        use the :meth:`.SessionEvents.after_soft_rollback` event, checking the
+        :attr:`.Session.is_active` flag.
 
-        Note that this may not be per-flush if a longer running
-        transaction is ongoing."""
+        :param session: The target :class:`.Session`.
+
+        """
+
+    def after_soft_rollback(self, session, previous_transaction):
+        """Execute after any rollback has occurred, including "soft" 
+        rollbacks that don't actually emit at the DBAPI level.
+        
+        This corresponds to both nested and outer rollbacks, i.e.
+        the innermost rollback that calls the DBAPI's 
+        rollback() method, as well as the enclosing rollback 
+        calls that only pop themselves from the transaction stack.
+        
+        The given :class:`.Session` can be used to invoke SQL and 
+        :meth:`.Session.query` operations after an outermost rollback 
+        by first checking the :attr:`.Session.is_active` flag::
+
+            @event.listens_for(Session, "after_soft_rollback")
+            def do_something(session, previous_transaction):
+                if session.is_active:
+                    session.execute("select * from some_table")
+        
+        :param session: The target :class:`.Session`.
+        :param previous_transaction: The :class:`.SessionTransaction` transactional
+         marker object which was just closed.   The current :class:`.SessionTransaction`
+         for the given :class:`.Session` is available via the
+         :attr:`.Session.transaction` attribute.
+
+        New in 0.7.3.
+
+        """
 
     def before_flush( self, session, flush_context, instances):
         """Execute before flush process has started.
 
         `instances` is an optional list of objects which were passed to
-        the ``flush()`` method. """
+        the ``flush()`` method. 
+        
+        :param session: The target :class:`.Session`.
+        :param flush_context: Internal :class:`.UOWTransaction` object
+         which handles the details of the flush.
+        :param instances: Usually ``None``, this is the collection of
+         objects which can be passed to the :meth:`.Session.flush` method
+         (note this usage is deprecated).
+
+        """
 
     def after_flush(self, session, flush_context):
         """Execute after flush has completed, but before commit has been
@@ -847,7 +904,13 @@ class SessionEvents(event.Events):
 
         Note that the session's state is still in pre-flush, i.e. 'new',
         'dirty', and 'deleted' lists still show pre-flush state as well
-        as the history settings on instance attributes."""
+        as the history settings on instance attributes.
+        
+        :param session: The target :class:`.Session`.
+        :param flush_context: Internal :class:`.UOWTransaction` object
+         which handles the details of the flush.
+
+        """
 
     def after_flush_postexec(self, session, flush_context):
         """Execute after flush has completed, and after the post-exec
@@ -856,13 +919,25 @@ class SessionEvents(event.Events):
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
         occurred, depending on whether or not the flush started its own
-        transaction or participated in a larger transaction. """
+        transaction or participated in a larger transaction. 
+        
+        :param session: The target :class:`.Session`.
+        :param flush_context: Internal :class:`.UOWTransaction` object
+         which handles the details of the flush.
+        """
 
     def after_begin( self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
 
         `transaction` is the SessionTransaction. This method is called
-        after an engine level transaction is begun on a connection. """
+        after an engine level transaction is begun on a connection. 
+        
+        :param session: The target :class:`.Session`.
+        :param transaction: The :class:`.SessionTransaction`.
+        :param connection: The :class:`~.engine.base.Connection` object 
+         which will be used for SQL statements.
+        
+        """
 
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.

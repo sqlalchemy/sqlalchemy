@@ -3,6 +3,18 @@
 =======
 CHANGES
 =======
+0.7.3
+=====
+- orm
+   - Added after_soft_rollback() Session event.  This
+     event fires unconditionally whenever rollback()
+     is called, regardless of if an actual DBAPI
+     level rollback occurred.  This event
+     is specifically designed to allow operations
+     with the Session to proceed after a rollback
+     when the Session.is_active is True.
+     [ticket:2241]
+
 0.7.2
 =====
 - orm

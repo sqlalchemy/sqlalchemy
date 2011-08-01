@@ -105,15 +105,35 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 class SessionTransaction(object):
     """A Session-level transaction.
 
-    This corresponds to one or more :class:`~sqlalchemy.engine.Transaction`
-    instances behind the scenes, with one ``Transaction`` per ``Engine`` in
-    use.
+    This corresponds to one or more Core :class:`~.engine.base.Transaction`
+    instances behind the scenes, with one :class:`~.engine.base.Transaction`
+    per :class:`~.engine.base.Engine` in use.
 
-    Direct usage of ``SessionTransaction`` is not necessary as of SQLAlchemy
-    0.4; use the ``begin()`` and ``commit()`` methods on ``Session`` itself.
+    Direct usage of :class:`.SessionTransaction` is not typically 
+    necessary as of SQLAlchemy 0.4; use the :meth:`.Session.rollback` and 
+    :meth:`.Session.commit` methods on :class:`.Session` itself to 
+    control the transaction.
+    
+    The current instance of :class:`.SessionTransaction` for a given
+    :class:`.Session` is available via the :attr:`.Session.transaction`
+    attribute.
 
-    The ``SessionTransaction`` object is **not** thread-safe.
+    The :class:`.SessionTransaction` object is **not** thread-safe.
 
+    See also:
+    
+    :meth:`.Session.rollback`
+    
+    :meth:`.Session.commit`
+
+    :attr:`.Session.is_active`
+    
+    :meth:`.SessionEvents.after_commit`
+    
+    :meth:`.SessionEvents.after_rollback`
+    
+    :meth:`.SessionEvents.after_soft_rollback`
+    
     .. index::
       single: thread safety; SessionTransaction
 
@@ -321,9 +341,14 @@ class SessionTransaction(object):
                 else:
                     transaction._deactivate()
 
+        sess = self.session
+
         self.close()
         if self._parent and _capture_exception:
             self._parent._rollback_exception = sys.exc_info()[1]
+
+        sess.dispatch.after_soft_rollback(sess, self)
+
         return self._parent
 
     def _rollback_impl(self):
@@ -527,6 +552,9 @@ class Session(object):
     dispatch = event.dispatcher(SessionEvents)
 
     connection_callable = None
+
+    transaction = None
+    """The current active or inactive :class:`.SessionTransaction`."""
 
     def begin(self, subtransactions=False, nested=False):
         """Begin a transaction on this Session.
@@ -1648,7 +1676,19 @@ class Session(object):
 
     @property
     def is_active(self):
-        """True if this Session has an active transaction."""
+        """True if this :class:`.Session` has an active transaction.
+        
+        This indicates if the :class:`.Session` is capable of emitting
+        SQL, as from the :meth:`.Session.execute`, :meth:`.Session.query`,
+        or :meth:`.Session.flush` methods.   If False, it indicates 
+        that the innermost transaction has been rolled back, but enclosing
+        :class:`.SessionTransaction` objects remain in the transactional
+        stack, which also must be rolled back.
+        
+        This flag is generally only useful with a :class:`.Session`
+        configured in its default mode of ``autocommit=False``.
+
+        """
 
         return self.transaction and self.transaction.is_active
 
