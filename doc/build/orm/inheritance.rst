@@ -1,3 +1,5 @@
+.. _inheritance_toplevel:
+
 Mapping Class Inheritance Hierarchies
 ======================================
 

@@ -381,29 +381,52 @@ class _ORMJoin(expression.Join):
 
 def join(left, right, onclause=None, isouter=False, join_to_left=True):
     """Produce an inner join between left and right clauses.
+    
+    :func:`.orm.join` is an extension to the core join interface
+    provided by :func:`.sql.expression.join()`, where the
+    left and right selectables may be not only core selectable
+    objects such as :class:`.Table`, but also mapped classes or
+    :class:`.AliasedClass` instances.   The "on" clause can
+    be a SQL expression, or an attribute or string name
+    referencing a configured :func:`.relationship`.
 
-    In addition to the interface provided by
-    :func:`~sqlalchemy.sql.expression.join()`, left and right may be mapped
-    classes or AliasedClass instances. The onclause may be a
-    string name of a relationship(), or a class-bound descriptor
-    representing a relationship.
-
-    join_to_left indicates to attempt aliasing the ON clause,
+    ``join_to_left`` indicates to attempt aliasing the ON clause,
     in whatever form it is passed, to the selectable
     passed as the left side.  If False, the onclause
     is used as is.
+    
+    :func:`.orm.join` is not commonly needed in modern usage,
+    as its functionality is encapsulated within that of the
+    :meth:`.Query.join` method, which features a
+    significant amount of automation beyond :func:`.orm.join`
+    by itself.  Explicit usage of :func:`.orm.join` 
+    with :class:`.Query` involves usage of the 
+    :meth:`.Query.select_from` method, as in::
+    
+        from sqlalchemy.orm import join
+        session.query(User).\\
+            select_from(join(User, Address, User.addresses)).\\
+            filter(Address.email_address=='foo@bar.com')
+    
+    In modern SQLAlchemy the above join can be written more 
+    succinctly as::
+    
+        session.query(User).\\
+                join(User.addresses).\\
+                filter(Address.email_address=='foo@bar.com')
 
+    See :meth:`.Query.join` for information on modern usage
+    of ORM level joins.
+    
     """
     return _ORMJoin(left, right, onclause, isouter, join_to_left)
 
 def outerjoin(left, right, onclause=None, join_to_left=True):
     """Produce a left outer join between left and right clauses.
 
-    In addition to the interface provided by
-    :func:`~sqlalchemy.sql.expression.outerjoin()`, left and right may be
-    mapped classes or AliasedClass instances. The onclause may be a string
-    name of a relationship(), or a class-bound descriptor representing a
-    relationship.
+    This is the "outer join" version of the :func:`.orm.join` function,
+    featuring the same behavior except that an OUTER JOIN is generated.
+    See that function's documentation for other usage details.
 
     """
     return _ORMJoin(left, right, onclause, True, join_to_left)
