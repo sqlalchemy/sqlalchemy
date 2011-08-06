@@ -54,33 +54,130 @@ A quick check to verify that we are on at least **version 0.7** of SQLAlchemy::
 Connecting
 ==========
 
-For this tutorial we will use an in-memory-only SQLite database.  To connect we use :func:`~sqlalchemy.create_engine`::
+For this tutorial we will use an in-memory-only SQLite database. To connect we
+use :func:`~sqlalchemy.create_engine`::
 
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine('sqlite:///:memory:', echo=True)
 
-The ``echo`` flag is a shortcut to setting up SQLAlchemy logging, which is accomplished via Python's standard ``logging`` module.  With it enabled, we'll see all the generated SQL produced.  If you are working through this tutorial and want less output generated, set it to ``False``.   This tutorial will format the SQL behind a popup window so it doesn't get in our way; just click the "SQL" links to see what's being generated.
+The ``echo`` flag is a shortcut to setting up SQLAlchemy logging, which is
+accomplished via Python's standard ``logging`` module. With it enabled, we'll
+see all the generated SQL produced. If you are working through this tutorial
+and want less output generated, set it to ``False``. This tutorial will format
+the SQL behind a popup window so it doesn't get in our way; just click the
+"SQL" links to see what's being generated.
 
-Define and Create a Table
-==========================
-Next we want to tell SQLAlchemy about our tables.  We will start with just a single table called ``users``, which will store records for the end-users using our application (lets assume it's a website).  We define our tables within a catalog called :class:`~sqlalchemy.schema.MetaData`, using the :class:`~sqlalchemy.schema.Table` construct, which is used in a manner similar to SQL's CREATE TABLE syntax::
+The return value of :func:`.create_engine` is an instance of :class:`.Engine`, and it represents
+the core interface to the database, adapted through a **dialect** that handles the details
+of the database and DBAPI in use, in this case the SQLite dialect.   It has not
+actually tried to connect to the database yet; that happens the first time the :class:`.Engine`
+is actually used to do something.  
 
-    >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
-    >>> metadata = MetaData()
-    >>> users_table = Table('users', metadata,
-    ...     Column('id', Integer, primary_key=True),
-    ...     Column('name', String),
-    ...     Column('fullname', String),
-    ...     Column('password', String)
-    ... )
-
-:ref:`metadata_toplevel` covers all about how to define :class:`~sqlalchemy.schema.Table` objects, as well as how to load their definition from an existing database (known as **reflection**).
-
-Next, we can issue CREATE TABLE statements derived from our table metadata, by calling :func:`~sqlalchemy.schema.MetaData.create_all` and passing it the ``engine`` instance which points to our database.  This will check for the presence of a table first before creating, so it's safe to call multiple times:
+Normally, the :class:`.Engine` is passed off to the ORM where it is used behind the scenes.
+We can execute SQL directly from it however, as we illustrate here:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> metadata.create_all(engine) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    {sql}>>> engine.execute("select 1").scalar()
+    select 1
+    ()
+    {stop}1
+
+We have now tested that the :class:`.Engine` is in fact able to connect to the database.
+
+Declare a Mapping
+=================
+
+When using the ORM, two key steps which occur before communicating with the
+database are to tell SQLAlchemy about our tables, as well as about the classes
+we're defining in our application and how they map to those tables. SQLAlchemy
+refers to these two steps as **defining table metadata** and **mapping
+classes**. In modern SQLAlchemy usage, these two tasks are performed together,
+using a system known as :ref:`declarative_toplevel`, which allows us to create our own
+mapped classes which also define how they will be mapped to an actual database
+table.
+
+We define our classes in terms of a base class which maintains a catalog of classes and
+tables relative to that base - this is known as the **declarative base class**.  Our
+application will usually have just one instance of this base in a commonly
+imported module.   We create this class using the :func:`.declarative_base`
+function, as follows::
+
+    >>> from sqlalchemy.ext.declarative import declarative_base
+
+    >>> Base = declarative_base()
+
+Now that we have a "base", we can define any number of mapped classes in terms
+of it.  We will start with just a single table called ``users``, which will store
+records for the end-users using our application (lets assume it's a website).
+A new class called ``User`` will be the class to which we map this table.  The 
+imports we'll need to accomplish this include objects that represent the components
+of our table, including the :class:`.Column` class which represents a column
+in a table, as well as the :class:`.Integer` and :class:`.String` type objects that 
+represent basic datatypes used in columns::
+
+    >>> from sqlalchemy import Column, Integer, String
+    >>> class User(Base):
+    ...     __tablename__ = 'users'
+    ...
+    ...     id = Column(Integer, primary_key=True)
+    ...     name = Column(String)
+    ...     fullname = Column(String)
+    ...     password = Column(String)
+    ...
+    ...     def __init__(self, name, fullname, password):
+    ...         self.name = name
+    ...         self.fullname = fullname
+    ...         self.password = password
+    ...
+    ...     def __repr__(self):
+    ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
+
+.. topic:: The Non Opinionated Philosophy
+
+    Above, the ``__tablename__`` attribute represents the name of the table in the
+    database to which we are mapping, and the :class:`.Column` object referenced by the
+    name ``id`` defines the **primary key** column of our table; the usage of :class:`.Integer`
+    states that it should be of type ``INT``.   SQLAlchemy never makes
+    assumptions about decisions like these - the developer using SQLAlchemy must
+    always decide on the specific conventions to be used.   However, that doesn't mean the
+    task can't be automated.  While this tutorial will keep things explicit, developers are
+    encouraged to make usage of helper functions as well as "Declarative Mixins" to
+    automate their tasks in large scale applications.  The section :ref:`declarative_mixins`
+    introduces many of these techniques.
+
+With our ``User`` class constructed via the Declarative system, we have defined **table metadata** as well as a
+**mapped class**.   This configuration is shorthand for what in SQLAlchemy is 
+called a "classical mapping",
+which would have us first create an object representing the 'users' table using a class known as
+:class:`.Table`, and then creating a mapping to this table through the usage of a function called
+:func:`.mapper`.  Declarative instead performs these steps for us, making available the
+:class:`.Table` it has created for us via the ``__table__`` attribute::
+
+    >>> User.__table__ # doctest: +NORMALIZE_WHITESPACE
+    Table('users', MetaData(None),
+                Column('id', Integer(), table=<users>, primary_key=True, nullable=False), 
+                Column('name', String(), table=<users>), 
+                Column('fullname', String(), table=<users>), 
+                Column('password', String(), table=<users>), schema=None)
+
+and while rarely needed, making available the :func:`.mapper` object via the ``__mapper__`` attribute::
+
+    >>> User.__mapper__ # doctest: +ELLIPSIS
+    <Mapper at 0x...; User>
+
+The Declarative base class also contains a catalog of all the :class:`.Table` objects
+that have been defined called :class:`.MetaData`, available via the ``.metadata``
+attribute.  In this example, we are defining
+new tables that have yet to be created in our SQLite database, so one helpful feature
+the :class:`.MetaData` object offers is the ability to issue CREATE TABLE statements
+to the database for all tables that don't yet exist.   We illustrate this
+by calling the :meth:`.MetaData.create_all` method, passing in our :class:`.Engine`
+as a source of database connectivity:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> Base.metadata.create_all(engine) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
     ()
     CREATE TABLE users (
@@ -100,7 +197,7 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     issue CREATE TABLE, a "length" may be provided to the :class:`~sqlalchemy.types.String` type as
     below::
 
-        Column('name', String(50))
+        Column(String(50))
 
     The length field on :class:`~sqlalchemy.types.String`, as well as similar precision/scale fields
     available on :class:`~sqlalchemy.types.Integer`, :class:`~sqlalchemy.types.Numeric`, etc. are not referenced by
@@ -111,59 +208,37 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     without being instructed. For that, you use the :class:`~sqlalchemy.schema.Sequence` construct::
 
         from sqlalchemy import Sequence
-        Column('id', Integer, Sequence('user_id_seq'), primary_key=True)
+        Column(Integer, Sequence('user_id_seq'), primary_key=True)
 
-    A full, foolproof :class:`~sqlalchemy.schema.Table` is therefore::
+    A full, foolproof :class:`~sqlalchemy.schema.Table` generated via our declarative 
+    mapping is therefore::
 
-        users_table = Table('users', metadata,
-           Column('id', Integer, Sequence('user_id_seq'), primary_key=True),
-           Column('name', String(50)),
-           Column('fullname', String(50)),
-           Column('password', String(12))
-        )
+        class User(Base):
+            __tablename__ = 'users'
+            id = Column(Integer, Sequence('user_id_seq'), primary_key=True)
+            name = Column(String(50))
+            fullname = Column(String(50))
+            password = Column(String(12))
 
-    We include this more verbose :class:`~.schema.Table` construct separately
+            def __init__(self, name, fullname, password):
+                self.name = name
+                self.fullname = fullname
+                self.password = password
+
+            def __repr__(self):
+                return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
+
+    We include this more verbose table definition separately
     to highlight the difference between a minimal construct geared primarily
     towards in-Python usage only, versus one that will be used to emit CREATE
     TABLE statements on a particular set of backends with more stringent
     requirements.
 
-Define a Python Class to be Mapped
-===================================
-While the :class:`~sqlalchemy.schema.Table` object defines information about
-our database, it does not say anything about the definition or behavior of the
-business objects used by our application; SQLAlchemy views this as a separate
-concern. To correspond to our ``users`` table, let's create a rudimentary
-``User`` class. It only need subclass Python's built-in ``object`` class (i.e.
-it's a new style class)::
+Create an Instance of the Mapped Class
+======================================
 
-    >>> class User(object):
-    ...     def __init__(self, name, fullname, password):
-    ...         self.name = name
-    ...         self.fullname = fullname
-    ...         self.password = password
-    ...
-    ...     def __repr__(self):
-    ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
-
-The class has an ``__init__()`` and a ``__repr__()`` method for convenience.
-These methods are both entirely optional, and can be of any form. SQLAlchemy
-never calls ``__init__()`` directly.
-
-Setting up the Mapping
-======================
-With our ``users_table`` and ``User`` class, we now want to map the two
-together. That's where the SQLAlchemy ORM package comes in. We'll use the
-:func:`~.orm.mapper` function to create a **mapping** between ``users_table`` and
-``User``::
-
-    >>> from sqlalchemy.orm import mapper
-    >>> mapper(User, users_table) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
-    <Mapper at 0x...; User>
-
-The :func:`~.orm.mapper` function creates a new :class:`~sqlalchemy.orm.mapper.Mapper`
-object and stores it away for future reference, associated with our class.
-Let's now create and inspect a ``User`` object::
+With our fully specified ``User`` class and associated table metadata,
+let's now create and inspect a ``User`` object::
 
     >>> ed_user = User('ed', 'Ed Jones', 'edspassword')
     >>> ed_user.name
@@ -174,10 +249,12 @@ Let's now create and inspect a ``User`` object::
     'None'
 
 The ``id`` attribute, which while not defined by our ``__init__()`` method,
-exists due to the ``id`` column present within the ``users_table`` object. By
-default, the :func:`~.orm.mapper` creates class attributes for all columns present
-within the :class:`~sqlalchemy.schema.Table`. These class attributes exist as
-Python descriptors, and define **instrumentation** for the mapped class. The
+exists with a value of ``None`` on our ``User`` instance due to the ``id`` 
+column we declared in our mapping.  By
+default, the ORM creates class attributes for all columns present
+in the table being mapped.   These class attributes exist as
+`Python descriptors <http://docs.python.org/howto/descriptor.html>`_, and 
+define **instrumentation** for the mapped class. The
 functionality of this instrumentation is very rich and includes the ability to
 track modifications and automatically load new data from the database when
 needed.
@@ -185,63 +262,6 @@ needed.
 Since we have not yet told SQLAlchemy to persist ``Ed Jones`` within the
 database, its id is ``None``. When we persist the object later, this attribute
 will be populated with a newly generated value.
-
-Creating Table, Class and Mapper All at Once Declaratively
-===========================================================
-The preceding approach to configuration involved a
-:class:`~sqlalchemy.schema.Table`, a user-defined class, and
-a call to :func:`~.orm.mapper`.  This illustrates classical SQLAlchemy usage, which values
-the highest separation of concerns possible.
-A large number of applications don't require this degree of
-separation, and for those SQLAlchemy offers an alternate "shorthand"
-configurational style called :mod:`~.sqlalchemy.ext.declarative`.
-For many applications, this is the only style of configuration needed.
-Our above example using this style is as follows:: 
-
-    >>> from sqlalchemy.ext.declarative import declarative_base
-
-    >>> Base = declarative_base()
-    >>> class User(Base):
-    ...     __tablename__ = 'users'
-    ...
-    ...     id = Column(Integer, primary_key=True)
-    ...     name = Column(String)
-    ...     fullname = Column(String)
-    ...     password = Column(String)
-    ...
-    ...     def __init__(self, name, fullname, password):
-    ...         self.name = name
-    ...         self.fullname = fullname
-    ...         self.password = password
-    ...
-    ...     def __repr__(self):
-    ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
-
-Above, the :func:`~sqlalchemy.ext.declarative.declarative_base` function defines a new class which
-we name ``Base``, from which all of our ORM-enabled classes will
-derive.  Note that we define :class:`~sqlalchemy.schema.Column`
-objects with no "name" field, since it's inferred from the given
-attribute name. 
-
-The underlying :class:`~sqlalchemy.schema.Table` object created by our
-:func:`~sqlalchemy.ext.declarative.declarative_base` version of ``User`` is accessible via the
-``__table__`` attribute:: 
-
-    >>> users_table = User.__table__
-
-The owning :class:`~sqlalchemy.schema.MetaData` object is available as well::
-
-    >>> metadata = Base.metadata
-
-
-:mod:`~sqlalchemy.ext.declarative` is covered at :ref:`declarative_toplevel`
-as well as throughout :ref:`mapper_config_toplevel`.
-
-Yet another "declarative" method is available for SQLAlchemy as a third party
-library called `Elixir <http://elixir.ematia.de/>`_. This is a full-featured
-configurational product which also includes many higher level mapping
-configurations built in. Like declarative, once classes and mappings are
-defined, ORM usage is the same as with a classical SQLAlchemy configuration.
 
 Creating a Session
 ==================
@@ -313,8 +333,8 @@ added:
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name = ?
-     LIMIT 1 OFFSET 0
-    ('ed',)
+     LIMIT ? OFFSET ?
+    ('ed', 1, 0)
     {stop}>>> our_user
     <User('ed','Ed Jones', 'edspassword')>
 
@@ -363,7 +383,7 @@ and that three new ``User`` objects are pending:
 
 .. sourcecode:: python+sql
 
-    >>> session.new  # doctest: +NORMALIZE_WHITESPACE
+    >>> session.new  # doctest: +SKIP
     IdentitySet([<User('wendy','Wendy Williams', 'foobar')>,
     <User('mary','Mary Contrary', 'xxg527')>,
     <User('fred','Fred Flinstone', 'blah')>])
@@ -545,8 +565,12 @@ scalar attributes and :class:`~.orm.aliased` for class constructs:
     >>> user_alias = aliased(User, name='user_alias')
     {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all(): #doctest: +NORMALIZE_WHITESPACE
     ...    print row.user_alias, row.name_label
-    SELECT users_1.id AS users_1_id, users_1.name AS users_1_name, users_1.fullname AS users_1_fullname, users_1.password AS users_1_password, users_1.name AS name_label
-    FROM users AS users_1
+    SELECT user_alias.id AS user_alias_id, 
+            user_alias.name AS user_alias_name, 
+            user_alias.fullname AS user_alias_fullname, 
+            user_alias.password AS user_alias_password, 
+            user_alias.name AS name_label
+    FROM users AS user_alias
     (){stop}
     <User('ed','Ed Jones', 'f8s7ccs')> ed
     <User('wendy','Wendy Williams', 'foobar')> wendy
@@ -563,8 +587,8 @@ conjunction with ORDER BY:
     ...    print u
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users ORDER BY users.id
-    LIMIT 2 OFFSET 1
-    (){stop}
+    LIMIT ? OFFSET ?
+    (2, 1){stop}
     <User('wendy','Wendy Williams', 'foobar')>
     <User('mary','Mary Contrary', 'xxg527')>
 
@@ -695,8 +719,8 @@ the first result as a scalar:
     SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
-     LIMIT 1 OFFSET 0
-    ('%ed',)
+     LIMIT ? OFFSET ?
+    ('%ed', 1, 0)
     {stop}<User('ed','Ed Jones', 'f8s7ccs')>
 
 :meth:`~sqlalchemy.orm.query.Query.one()`, fully fetches all rows, and if not
@@ -795,53 +819,35 @@ completely "raw", using string names to identify desired columns:
 Counting
 --------
 
-:class:`~sqlalchemy.orm.query.Query` includes a convenience method for counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
+:class:`~sqlalchemy.orm.query.Query` includes a convenience method for
+counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).filter(User.name.like('%ed')).count() #doctest: +NORMALIZE_WHITESPACE
-    SELECT count(1) AS count_1
-    FROM users
-    WHERE users.name LIKE ?
-    ('%ed',)
-    {stop}2
-
-The :meth:`~sqlalchemy.orm.query.Query.count()` method is used to determine
-how many rows the SQL statement would return, and is mainly intended to return
-a simple count of a single type of entity, in this case ``User``. For more
-complicated sets of columns or entities where the "thing to be counted" needs
-to be indicated more specifically, :meth:`~sqlalchemy.orm.query.Query.count()`
-is probably not what you want. Below, a query for individual columns does
-return the expected result:
-
-.. sourcecode:: python+sql
-
-    {sql}>>> session.query(User.id, User.name).filter(User.name.like('%ed')).count() #doctest: +NORMALIZE_WHITESPACE
-    SELECT count(1) AS count_1
-    FROM (SELECT users.id AS users_id, users.name AS users_name
-    FROM users
+    SELECT count(*) AS count_1 
+    FROM (SELECT users.id AS users_id, 
+                    users.name AS users_name, 
+                    users.fullname AS users_fullname, 
+                    users.password AS users_password 
+    FROM users 
     WHERE users.name LIKE ?) AS anon_1
     ('%ed',)
     {stop}2
 
-...but if you look at the generated SQL, SQLAlchemy saw that we were placing
-individual column expressions and decided to wrap whatever it was we were
-doing in a subquery, so as to be assured that it returns the "number of rows".
-This defensive behavior is not really needed here and in other cases is not
-what we want at all, such as if we wanted a grouping of counts per name:
+The :meth:`~.Query.count()` method is used to determine
+how many rows the SQL statement would return.   Looking
+at the generated SQL above, SQLAlchemy always places whatever it is we are 
+querying into a subquery, then counts the rows from that.   In some cases
+this can be reduced to a simpler ``SELECT count(*) FROM table``, however
+modern versions of SQLAlchemy don't try to guess when this is appropriate,
+as the exact SQL can be emitted using more explicit means.
 
-.. sourcecode:: python+sql
-
-    {sql}>>> session.query(User.name).group_by(User.name).count()  #doctest: +NORMALIZE_WHITESPACE
-    SELECT count(1) AS count_1
-    FROM (SELECT users.name AS users_name
-    FROM users GROUP BY users.name) AS anon_1
-    ()
-    {stop}4
-
-We don't want the number ``4``, we wanted some rows back. So for detailed
-queries where you need to count something specific, use the ``func.count()``
-function as a column expression:
+For situations where the "thing to be counted" needs
+to be indicated specifically, we can specify the "count" function 
+directly using the expression ``func.count()``, available from the
+:attr:`~sqlalchemy.sql.expression.func` construct.  Below we
+use it to return the count of each distinct user name:
 
 .. sourcecode:: python+sql
 
@@ -849,8 +855,29 @@ function as a column expression:
     {sql}>>> session.query(func.count(User.name), User.name).group_by(User.name).all()  #doctest: +NORMALIZE_WHITESPACE
     SELECT count(users.name) AS count_1, users.name AS users_name
     FROM users GROUP BY users.name
-    {stop}()
-    [(1, u'ed'), (1, u'fred'), (1, u'mary'), (1, u'wendy')]
+    ()
+    {stop}[(1, u'ed'), (1, u'fred'), (1, u'mary'), (1, u'wendy')]
+
+To achieve our simple ``SELECT count(*) FROM table``, we can apply it as:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> session.query(func.count('*')).select_from(User).scalar()
+    SELECT count(?) AS count_1 
+    FROM users
+    ('*',)
+    {stop}4
+
+The usage of :meth:`~.Query.select_from` can be removed if we express the count in terms
+of the ``User`` primary key directly:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> session.query(func.count(User.id)).scalar() #doctest: +NORMALIZE_WHITESPACE
+    SELECT count(users.id) AS count_1
+    FROM users
+    ()
+    {stop}4
 
 Building a Relationship
 =======================
@@ -933,7 +960,7 @@ already been created:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> Base.metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
     ()
     PRAGMA table_info("addresses")
@@ -947,6 +974,14 @@ already been created:
     )
     ()
     COMMIT
+
+One extra step here is to make the ORM aware that the mapping for ``User``
+has changed.  This is normally not necessary, except that we've already worked with 
+instances of ``User`` - so here we call :func:`.configure_mappers` so that the 
+``User.addresses`` attribute can be established::
+
+    >>> from sqlalchemy.orm import configure_mappers
+    >>> configure_mappers()
 
 Working with Related Objects
 =============================

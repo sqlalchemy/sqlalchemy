@@ -2068,6 +2068,12 @@ class Engine(Connectable, log.Identified):
     An :class:`.Engine` object is instantiated publically using the 
     :func:`~sqlalchemy.create_engine` function.
 
+    See also:
+    
+    :ref:`engines_toplevel`
+
+    :ref:`connections_toplevel`
+    
     """
 
     _execution_options = util.immutabledict()

@@ -130,6 +130,12 @@ def create_engine(*args, **kwargs):
     will establish the first actual DBAPI connection when this request
     is received.   The :func:`.create_engine` call itself does **not**
     establish any actual DBAPI connections directly.
+
+    See also:
+
+    :ref:`engines_toplevel`
+
+    :ref:`connections_toplevel`
     
     :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
         object is passed when SQLAlchemy would coerce into an encoding

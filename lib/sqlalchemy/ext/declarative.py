@@ -512,19 +512,31 @@ using the declarative form, via a special base class that defers
 the creation of the mapper.  That recipe is available at
 `DeclarativeAbstractConcreteBase <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_
 
-Mixin Classes
-==============
+.. _declarative_mixins:
+
+Mixin and Custom Base Classes
+==============================
 
 A common need when using :mod:`~sqlalchemy.ext.declarative` is to
-share some functionality, often a set of columns, across many
-classes. The normal Python idiom would be to put this common code into
-a base class and have all the other classes subclass this class.
+share some functionality, such as a set of common columns, some common
+table options, or other mapped properties, across many
+classes.  The standard Python idioms for this is to have the classes
+inherit from a base which includes these common features.
 
-When using :mod:`~sqlalchemy.ext.declarative`, this need is met by
-using a "mixin class". A mixin class is one that isn't mapped to a
-table and doesn't subclass the declarative :class:`.Base`. For example::
+When using :mod:`~sqlalchemy.ext.declarative`, this idiom is allowed
+via the usage of a custom declarative base class, as well as a "mixin" class
+which is inherited from in addition to the primary base.  Declarative
+includes several helper features to make this work in terms of how
+mappings are declared.   An example of some commonly mixed-in
+idioms is below::
 
+    from sqlalchemy.ext.declarative import declared_attr
+    
     class MyMixin(object):
+
+        @declared_attr
+        def __tablename__(cls):
+            return cls.__name__.lower()
 
         __table_args__ = {'mysql_engine': 'InnoDB'}
         __mapper_args__= {'always_refresh': True}
@@ -538,8 +550,39 @@ table and doesn't subclass the declarative :class:`.Base`. For example::
         name = Column(String(1000))
 
 Where above, the class ``MyModel`` will contain an "id" column
-as well as ``__table_args__`` and ``__mapper_args__`` defined
-by the ``MyMixin`` mixin class.
+as the primary key, a ``__tablename__`` attribute that derives
+from the name of the class itself, as well as ``__table_args__`` 
+and ``__mapper_args__`` defined by the ``MyMixin`` mixin class.
+
+Augmenting the Base
+~~~~~~~~~~~~~~~~~~~
+
+In addition to using a pure mixin, most of the techniques in this 
+section can also be applied to the base class itself, for patterns that
+should apply to all classes derived from a particular base.  This 
+is achieved using the ``cls`` argument of the :func:`.declarative_base` function::
+
+    from sqlalchemy.ext.declarative import declared_attr
+
+    class Base(object):
+        @declared_attr
+        def __tablename__(cls):
+            return cls.__name__.lower()
+            
+        __table_args__ = {'mysql_engine': 'InnoDB'}
+
+        id =  Column(Integer, primary_key=True)
+
+    from sqlalchemy.ext.declarative import declarative_base
+    
+    Base = declarative_base(cls=Base)
+
+    class MyModel(Base):
+        name = Column(String(1000))
+
+Where above, ``MyModel`` and all other classes that derive from ``Base`` will have 
+a table name derived from the class name, an ``id`` primary key column, as well as 
+the "InnoDB" engine for MySQL.
 
 Mixing in Columns
 ~~~~~~~~~~~~~~~~~

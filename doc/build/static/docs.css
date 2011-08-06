@@ -303,6 +303,10 @@ div.note, div.warning, p.deprecated  {
     background-color:#EEFFEF;
 }
 
+div.topic  {
+    background-color:#D5F0EE;
+}
+
 div.admonition, div.topic, p.deprecated {
     border:1px solid #CCCCCC;
     margin:5px 5px 5px 5px;
@@ -314,7 +318,7 @@ div.warning .admonition-title {
     color:#FF0000;
 }
 
-div.admonition .admonition-title {
+div.admonition .admonition-title, div.topic .topic-title {
     font-weight:bold;
 }
 
