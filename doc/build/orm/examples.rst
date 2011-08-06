@@ -16,6 +16,8 @@ Location: /examples/adjacency_list/
 
 .. automodule:: adjacency_list
 
+.. _examples_associations:
+
 Associations
 ------------
 

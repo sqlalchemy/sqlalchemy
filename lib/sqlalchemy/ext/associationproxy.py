@@ -18,7 +18,7 @@ import weakref
 from sqlalchemy import exceptions
 from sqlalchemy import orm
 from sqlalchemy import util
-from sqlalchemy.orm import collections
+from sqlalchemy.orm import collections, ColumnProperty
 from sqlalchemy.sql import not_
 
 
@@ -37,7 +37,7 @@ def association_proxy(target_collection, attr, **kw):
     Unlike the list comprehension, the collection returned by the property is
     always in sync with *target_collection*, and mutations made to either
     collection will be reflected in both.
-    
+
     The association proxy also works with scalar attributes, which in
     turn reference scalar attributes or collections.
 
@@ -46,8 +46,10 @@ def association_proxy(target_collection, attr, **kw):
     the target (list, dict or set), or, in the case of a one to one relationship,
     a simple scalar value.
 
-    :param target_collection: Name of the relationship attribute we'll proxy to,
-      usually created with :func:`~sqlalchemy.orm.relationship`.
+    :param target_collection: Name of the attribute we'll proxy to.  
+      This attribute is typically mapped by
+      :func:`~sqlalchemy.orm.relationship` to link to a target collection, but
+      can also be a many-to-one or non-scalar relationship.
 
     :param attr: Attribute on the associated instance or instances we'll proxy for.
 
@@ -92,20 +94,17 @@ class AssociationProxy(object):
     def __init__(self, target_collection, attr, creator=None,
                  getset_factory=None, proxy_factory=None, 
                  proxy_bulk_set=None):
-        """Arguments are:
+        """Construct a new :class:`.AssociationProxy`.
 
-        target_collection
-          Name of the collection we'll proxy to, usually created with
-          'relationship()' in a mapper setup.
+        :param target_collection: Name of the collection we'll proxy to, 
+          usually created with 'relationship()' in a mapper setup.
 
-        attr
-          Attribute on the collected instances we'll proxy for.  For example,
+        :param attr: Attribute on the collected instances we'll proxy for.  For example,
           given a target collection of [obj1, obj2], a list created by this
           proxy property would look like [getattr(obj1, attr), getattr(obj2,
           attr)]
 
-        creator
-          Optional. When new items are added to this proxied collection, new
+        :param creator: Optional. When new items are added to this proxied collection, new
           instances of the class collected by the target collection will be
           created.  For list and set collections, the target class constructor
           will be called with the 'value' for the new instance.  For dict
@@ -114,8 +113,7 @@ class AssociationProxy(object):
           If you want to construct instances differently, supply a 'creator'
           function that takes arguments as above and returns instances.
 
-        getset_factory
-          Optional.  Proxied attribute access is automatically handled by
+        :param getset_factory: Optional.  Proxied attribute access is automatically handled by
           routines that get and set values based on the `attr` argument for
           this proxy.
 
@@ -124,16 +122,14 @@ class AssociationProxy(object):
           `setter` functions.  The factory is called with two arguments, the
           abstract type of the underlying collection and this proxy instance.
 
-        proxy_factory
-          Optional.  The type of collection to emulate is determined by
+        :param proxy_factory: Optional.  The type of collection to emulate is determined by
           sniffing the target collection.  If your collection type can't be
           determined by duck typing or you'd like to use a different
           collection implementation, you may supply a factory function to
           produce those collections.  Only applicable to non-scalar relationships.
 
-        proxy_bulk_set
-          Optional, use with proxy_factory.  See the _set() method for
-          details.
+        :param proxy_bulk_set: Optional, use with proxy_factory.  See 
+          the _set() method for details.
 
         """
         self.target_collection = target_collection
@@ -148,6 +144,58 @@ class AssociationProxy(object):
             type(self).__name__, target_collection, id(self))
         self.collection_class = None
 
+    @property
+    def remote_attr(self):
+        """The 'remote' :class:`.MapperProperty` referenced by this
+        :class:`.AssociationProxy`.
+        
+        New in 0.7.3.
+        
+        See also:
+        
+        :attr:`.AssociationProxy.attr`
+
+        :attr:`.AssociationProxy.local_attr`
+
+        """
+        return getattr(self.target_class, self.value_attr)
+
+    @property
+    def local_attr(self):
+        """The 'local' :class:`.MapperProperty` referenced by this
+        :class:`.AssociationProxy`.
+
+        New in 0.7.3.
+        
+        See also:
+        
+        :attr:`.AssociationProxy.attr`
+
+        :attr:`.AssociationProxy.remote_attr`
+
+        """
+        return getattr(self.owning_class, self.target_collection)
+
+    @property
+    def attr(self):
+        """Return a tuple of ``(local_attr, remote_attr)``.
+        
+        This attribute is convenient when specifying a join 
+        using :meth:`.Query.join` across two relationships::
+        
+            sess.query(Parent).join(*Parent.proxied.attr)
+
+        New in 0.7.3.
+        
+        See also:
+        
+        :attr:`.AssociationProxy.local_attr`
+
+        :attr:`.AssociationProxy.remote_attr`
+        
+        """
+        return (self.local_attr, self.remote_attr)
+
     def _get_property(self):
         return (orm.class_mapper(self.owning_class).
                 get_property(self.target_collection))
@@ -159,6 +207,9 @@ class AssociationProxy(object):
 
     @util.memoized_property
     def scalar(self):
+        """Return true if this :class:`.AssociationProxy` proxies a scalar
+        relationship on the local side."""
+
         scalar = not self._get_property().uselist
         if scalar:
             self._initialize_scalar_accessors()
@@ -284,6 +335,8 @@ class AssociationProxy(object):
         return self._get_property().comparator
 
     def any(self, criterion=None, **kwargs):
+        """Produce a proxied 'any' expression using EXISTS."""
+
         if self._value_is_scalar:
             value_expr = getattr(self.target_class, self.value_attr).has(criterion, **kwargs)
         else:
@@ -302,11 +355,15 @@ class AssociationProxy(object):
                 )
 
     def has(self, criterion=None, **kwargs):
+        """Produce a proxied 'has' expression using EXISTS."""
+
         return self._comparator.has(
                     getattr(self.target_class, self.value_attr).has(criterion, **kwargs)
                 )
 
     def contains(self, obj):
+        """Produce a proxied 'contains' expression using EXISTS."""
+
         if self.scalar and not self._value_is_scalar:
             return self._comparator.has(
                 getattr(self.target_class, self.value_attr).contains(obj)

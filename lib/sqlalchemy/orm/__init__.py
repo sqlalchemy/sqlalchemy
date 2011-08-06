@@ -186,23 +186,64 @@ def relationship(argument, secondary=None, **kwargs):
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`.RelationshipProperty`.
 
-    A typical :func:`relationship`::
+    A typical :func:`.relationship`, used in a classical mapping::
 
        mapper(Parent, properties={
-         'children': relationship(Children)
+         'children': relationship(Child)
        })
 
+    Some arguments accepted by :func:`.relationship` optionally accept a 
+    callable function, which when called produces the desired value.
+    The callable is invoked by the parent :class:`.Mapper` at "mapper initialization"
+    time, which happens only when mappers are first used, and is assumed
+    to be after all mappings have been constructed.  This can be used
+    to resolve order-of-declaration and other dependency issues, such as 
+    if ``Child`` is declared below ``Parent`` in the same file::
+    
+        mapper(Parent, properties={
+            "children":relationship(lambda: Child, 
+                                order_by=lambda: Child.id)
+        })
+    
+    When using the :ref:`declarative_toplevel` extension, the Declarative
+    initializer allows string arguments to be passed to :func:`.relationship`.
+    These string arguments are converted into callables that evaluate 
+    the string as Python code, using the Declarative
+    class-registry as a namespace.  This allows the lookup of related
+    classes to be automatic via their string name, and removes the need to import
+    related classes at all into the local module space::
+    
+        from sqlalchemy.ext.declarative import declarative_base
+
+        Base = declarative_base()
+        
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            children = relationship("Child", order_by="Child.id")
+    
+    A full array of examples and reference documentation regarding
+    :func:`.relationship` is at :ref:`relationship_config_toplevel`.
+    
     :param argument:
-      a class or :class:`.Mapper` instance, representing the target of
-      the relationship.
+      a mapped class, or actual :class:`.Mapper` instance, representing the target of
+      the relationship.  
+      
+      ``argument`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
 
     :param secondary:
       for a many-to-many relationship, specifies the intermediary
-      table. The *secondary* keyword argument should generally only
+      table, and is an instance of :class:`.Table`.  The ``secondary`` keyword 
+      argument should generally only
       be used for a table that is not otherwise expressed in any class
-      mapping. In particular, using the Association Object Pattern is
-      generally mutually exclusive with the use of the *secondary*
-      keyword argument.
+      mapping, unless this relationship is declared as view only, otherwise
+      conflicting persistence operations can occur.   
+      
+      ``secondary`` may
+      also be passed as a callable function which is evaluated at 
+      mapper initialization time.
 
     :param active_history=False:
       When ``True``, indicates that the "previous" value for a
@@ -212,7 +253,7 @@ def relationship(argument, secondary=None, **kwargs):
       value in order to perform a flush. This flag is available
       for applications that make use of
       :func:`.attributes.get_history` which also need to know
-      the "previous" value of the attribute. (New in 0.6.6)
+      the "previous" value of the attribute.
 
     :param backref:
       indicates the string name of a property to be placed on the related
@@ -333,6 +374,10 @@ def relationship(argument, secondary=None, **kwargs):
       rare and exotic composite foreign key setups where some columns
       should artificially not be considered as foreign.
 
+      ``foreign_keys`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
+      
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
@@ -423,8 +468,15 @@ def relationship(argument, secondary=None, **kwargs):
 
     :param order_by:
       indicates the ordering that should be applied when loading these
-      items.
+      items.  ``order_by`` is expected to refer to one of the :class:`.Column`
+      objects to which the target class is mapped, or 
+      the attribute itself bound to the target class which refers
+      to the column.
 
+      ``order_by`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
+      
     :param passive_deletes=False:
        Indicates loading behavior during delete operations.
 
@@ -496,16 +548,24 @@ def relationship(argument, secondary=None, **kwargs):
       use ``post_update`` to "break" the cycle.
 
     :param primaryjoin:
-      a ColumnElement (i.e. WHERE criterion) that will be used as the primary
+      a SQL expression that will be used as the primary
       join of this child object against the parent object, or in a
       many-to-many relationship the join of the primary object to the
       association table. By default, this value is computed based on the
       foreign key relationships of the parent and child tables (or association
       table).
 
+      ``primaryjoin`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
+
     :param remote_side:
       used for self-referential relationships, indicates the column or
       list of columns that form the "remote side" of the relationship.
+
+      ``remote_side`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
 
     :param query_class:
       a :class:`.Query` subclass that will be used as the base of the
@@ -515,10 +575,14 @@ def relationship(argument, secondary=None, **kwargs):
       function.
       
     :param secondaryjoin:
-      a ColumnElement (i.e. WHERE criterion) that will be used as the join of
+      a SQL expression that will be used as the join of
       an association table to the child object. By default, this value is
       computed based on the foreign key relationships of the association and
       child tables.
+
+      ``secondaryjoin`` may also be passed as a callable function
+      which is evaluated at mapper initialization time, and may be passed as a 
+      Python-evaluable string when using Declarative.
 
     :param single_parent=(True|False):
       when True, installs a validator which will prevent objects
@@ -526,7 +590,7 @@ def relationship(argument, secondary=None, **kwargs):
       This is used for many-to-one or many-to-many relationships that
       should be treated either as one-to-one or one-to-many.  Its
       usage is optional unless delete-orphan cascade is also 
-      set on this relationship(), in which case its required (new in 0.5.2).
+      set on this relationship(), in which case its required.
 
     :param uselist=(True|False):
       a boolean that indicates if this property should be loaded as a

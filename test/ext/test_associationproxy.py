@@ -1006,7 +1006,8 @@ class PickleKeyFunc(object):
     def __call__(self, obj):
         return getattr(obj, self.name)
 
-class ComparatorTest(fixtures.MappedTest):
+class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
 
     run_inserts = 'once'
     run_deletes = None
@@ -1070,7 +1071,8 @@ class ComparatorTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        users, Keyword, UserKeyword, singular, userkeywords, User, keywords, Singular = (cls.tables.users,
+        users, Keyword, UserKeyword, singular, \
+            userkeywords, User, keywords, Singular = (cls.tables.users,
                                 cls.classes.Keyword,
                                 cls.classes.UserKeyword,
                                 cls.tables.singular,
@@ -1280,3 +1282,28 @@ class ComparatorTest(fixtures.MappedTest):
 
         assert_raises(exceptions.InvalidRequestError, lambda : \
                       User.keywords != self.kw)
+
+    def test_join_separate_attr(self):
+        User = self.classes.User
+        self.assert_compile(
+            self.session.query(User).join(
+                        User.keywords.local_attr, 
+                        User.keywords.remote_attr),
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users JOIN userkeywords ON users.id = "
+            "userkeywords.user_id JOIN keywords ON keywords.id = "
+            "userkeywords.keyword_id"
+        )
+
+    def test_join_single_attr(self):
+        User = self.classes.User
+        self.assert_compile(
+            self.session.query(User).join(
+                        *User.keywords.attr),
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "users.singular_id AS users_singular_id "
+            "FROM users JOIN userkeywords ON users.id = "
+            "userkeywords.user_id JOIN keywords ON keywords.id = "
+            "userkeywords.keyword_id"
+        )

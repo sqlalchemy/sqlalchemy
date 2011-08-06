@@ -188,6 +188,8 @@ The second example above as declarative::
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
 
+.. _relationships_many_to_many:
+
 Many To Many
 ~~~~~~~~~~~~~
 
@@ -249,6 +251,19 @@ plain schematic form::
     class Child(Base):
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
+
+The ``secondary`` argument of :func:`.relationship` also accepts a callable
+that returns the ultimate argument, which is evaluated only when mappers are 
+first used.   Using this, we can define the ``association_table`` at a later
+point, as long as it's available to the callable after all module initialization
+is complete::
+
+    class Parent(Base):
+        __tablename__ = 'left'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", 
+                        secondary=lambda: association_table, 
+                        backref="parents")
 
 .. _association_pattern:
 
