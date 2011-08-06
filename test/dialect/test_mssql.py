@@ -287,7 +287,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "SELECT TOP 10 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
-            {u'x_1': 5}
+            checkparams={u'x_1': 5}
+        )
+
+    def test_limit_zero_using_top(self):
+        t = table('t', column('x', Integer), column('y', Integer))
+
+        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(0)
+
+        self.assert_compile(
+            s,
+            "SELECT TOP 0 t.x, t.y FROM t WHERE t.x = :x_1 ORDER BY t.y",
+            checkparams={u'x_1': 5}
         )
 
     def test_offset_using_window(self):
@@ -301,7 +312,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS y, ROW_NUMBER() OVER (ORDER BY t.y) AS "
             "mssql_rn FROM t WHERE t.x = :x_1) AS "
             "anon_1 WHERE mssql_rn > :mssql_rn_1",
-            {u'mssql_rn_1': 20, u'x_1': 5}
+            checkparams={u'mssql_rn_1': 20, u'x_1': 5}
         )
 
     def test_limit_offset_using_window(self):
@@ -317,7 +328,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM t "
             "WHERE t.x = :x_1) AS anon_1 "
             "WHERE mssql_rn > :mssql_rn_1 AND mssql_rn <= :mssql_rn_2",
-            {u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
+            checkparams={u'mssql_rn_1': 20, u'mssql_rn_2': 30, u'x_1': 5}
+        )
+
+    def test_limit_zero_offset_using_window(self):
+        t = table('t', column('x', Integer), column('y', Integer))
+
+        s = select([t]).where(t.c.x==5).order_by(t.c.y).limit(0).offset(0)
+
+        # render the LIMIT of zero, but not the OFFSET
+        # of zero, so produces TOP 0
+        self.assert_compile(
+            s,
+            "SELECT TOP 0 t.x, t.y FROM t "
+            "WHERE t.x = :x_1 ORDER BY t.y",
+            checkparams={u'x_1': 5}
         )
 
 

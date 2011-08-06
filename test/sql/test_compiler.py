@@ -124,6 +124,21 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises(ValueError, select, offset="foo")
         assert_raises(ValueError, select, limit="foo")
 
+    def test_limit_offset(self):
+        for lim, offset, exp, params in [
+            (5, 10, "LIMIT :param_1 OFFSET :param_2", 
+                                {'param_1':5, 'param_2':10}),
+            (None, 10, "LIMIT -1 OFFSET :param_1", {'param_1':10}),
+            (5, None, "LIMIT :param_1", {'param_1':5}),
+            (0, 0, "LIMIT :param_1 OFFSET :param_2", 
+                                {'param_1':0, 'param_2':0}),
+        ]:
+            self.assert_compile(
+                select([1]).limit(lim).offset(offset),
+                "SELECT 1 " + exp,
+                checkparams =params
+            )
+
     def test_from_subquery(self):
         """tests placing select statements in the column clause of another select, for the
         purposes of selecting from the exported columns of that select."""

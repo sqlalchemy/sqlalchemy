@@ -754,13 +754,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def get_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
-        if select._distinct or select._limit:
+        if select._distinct or select._limit is not None:
             s = select._distinct and "DISTINCT " or ""
 
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
-            if select._limit:
+            if select._limit is not None:
                 if not select._offset:
                     s += "TOP %d " % select._limit
             return s

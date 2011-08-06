@@ -1859,6 +1859,9 @@ class Query(object):
         elif start is not None and stop is None:
             self._offset = (self._offset or 0) + start
 
+        if self._offset == 0:
+            self._offset = None
+
     @_generative(_no_statement_condition)
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting

@@ -21,6 +21,10 @@ CHANGES
     twice.  Thanks *much* to Dave Vitek 
     for the excellent fix here.  [ticket:2247]
 
+  - Query will convert an OFFSET of zero when
+    slicing into None, so that needless OFFSET
+    clauses are not invoked.
+
 - sqlite
   - Ensured that the same ValueError is raised for
     illegal date/time/datetime string parsed from
@@ -31,6 +35,10 @@ CHANGES
   - Use an atomic counter as the "random number" 
     source for server side cursor names; 
     conflicts have been reported in rare cases.
+
+- mssql
+  - "0" is accepted as an argument for limit() which
+    will produce "TOP 0". [ticket:2222]
 
 - ext
   - Added local_attr, remote_attr, attr accessors
