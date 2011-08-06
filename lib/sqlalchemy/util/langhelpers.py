@@ -616,14 +616,15 @@ def counter():
     lock = threading.Lock()
     counter = itertools.count(1L)
 
-    def next():
+    # avoid the 2to3 "next" transformation...
+    def _next():
         lock.acquire()
         try:
             return counter.next()
         finally:
             lock.release()
 
-    return next
+    return _next
 
 def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
