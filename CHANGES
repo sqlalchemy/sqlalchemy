@@ -21,6 +21,12 @@ CHANGES
     the database regardless of whether C 
     extensions are in use or not.
 
+- ext
+  - Added local_attr, remote_attr, attr accessors
+    to AssociationProxy, providing quick access
+    to the proxied attributes at the class
+    level. [ticket:2236]
+
 0.7.2
 =====
 - orm

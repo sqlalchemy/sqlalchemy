@@ -1301,7 +1301,7 @@ There is an explicit EXISTS construct, which looks like this:
 
 The :class:`~sqlalchemy.orm.query.Query` features several operators which make
 usage of EXISTS automatically. Above, the statement can be expressed along the
-``User.addresses`` relationship using ``any()``:
+``User.addresses`` relationship using :meth:`~.RelationshipProperty.Comparator.any`:
 
 .. sourcecode:: python+sql
 
@@ -1315,7 +1315,7 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     ()
     {stop}jack
 
-``any()`` takes criterion as well, to limit the rows matched:
+:meth:`~.RelationshipProperty.Comparator.any` takes criterion as well, to limit the rows matched:
 
 .. sourcecode:: python+sql
 
@@ -1330,7 +1330,7 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     ('%google%',)
     {stop}jack
 
-``has()`` is the same operator as ``any()`` for many-to-one relationships (note the ``~`` operator here too, which means "NOT"):
+:meth:`~.RelationshipProperty.Comparator.has` is the same operator as :meth:`~.RelationshipProperty.Comparator.any` for many-to-one relationships (note the ``~`` operator here too, which means "NOT"):
 
 .. sourcecode:: python+sql
 

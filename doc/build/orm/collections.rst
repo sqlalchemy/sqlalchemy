@@ -284,6 +284,8 @@ interface marked for SQLAlchemy's use. Append and remove methods will be
 called with a mapped entity as the single argument, and iterator methods are
 called with no arguments and must return an iterator.
 
+.. _dictionary_collections:
+
 Dictionary-Based Collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -364,6 +366,9 @@ automatically instrument all dict-like methods if you choose to subclass
 must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
+
+See also :ref:`proxying_dictionaries` for details on how to use association
+proxies to create flexible dictionary views.
 
 Instrumentation and Custom Types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

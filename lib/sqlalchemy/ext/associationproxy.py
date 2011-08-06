@@ -26,21 +26,9 @@ def association_proxy(target_collection, attr, **kw):
     """Return a Python property implementing a view of a target
     attribute which references an attribute on members of the 
     target.
-
-    Implements a read/write view over an instance's *target_collection*,
-    extracting *attr* from each member of the collection.  The property acts
-    somewhat like this list comprehension::
-
-      [getattr(member, *attr*)
-       for member in getattr(instance, *target_collection*)]
-
-    Unlike the list comprehension, the collection returned by the property is
-    always in sync with *target_collection*, and mutations made to either
-    collection will be reflected in both.
-
-    The association proxy also works with scalar attributes, which in
-    turn reference scalar attributes or collections.
-
+    
+    The returned value is an instance of :class:`.AssociationProxy`.
+    
     Implements a Python property representing a relationship as a collection of
     simpler values, or a scalar value.  The proxied property will mimic the collection type of
     the target (list, dict or set), or, in the case of a one to one relationship,
@@ -95,9 +83,13 @@ class AssociationProxy(object):
                  getset_factory=None, proxy_factory=None, 
                  proxy_bulk_set=None):
         """Construct a new :class:`.AssociationProxy`.
+        
+        The :func:`.association_proxy` function is provided as the usual
+        entrypoint here, though :class:`.AssociationProxy` can be instantiated
+        and/or subclassed directly.
 
         :param target_collection: Name of the collection we'll proxy to, 
-          usually created with 'relationship()' in a mapper setup.
+          usually created with :func:`.relationship`.
 
         :param attr: Attribute on the collected instances we'll proxy for.  For example,
           given a target collection of [obj1, obj2], a list created by this
@@ -202,12 +194,17 @@ class AssociationProxy(object):
 
     @util.memoized_property
     def target_class(self):
-        """The class the proxy is attached to."""
+        """The intermediary class handled by this :class:`.AssociationProxy`.
+        
+        Intercepted append/set/assignment events will result
+        in the generation of new instances of this class.
+        
+        """
         return self._get_property().mapper.class_
 
     @util.memoized_property
     def scalar(self):
-        """Return true if this :class:`.AssociationProxy` proxies a scalar
+        """Return ``True`` if this :class:`.AssociationProxy` proxies a scalar
         relationship on the local side."""
 
         scalar = not self._get_property().uselist
@@ -335,7 +332,14 @@ class AssociationProxy(object):
         return self._get_property().comparator
 
     def any(self, criterion=None, **kwargs):
-        """Produce a proxied 'any' expression using EXISTS."""
+        """Produce a proxied 'any' expression using EXISTS.
+        
+        This expression will be a composed product
+        using the :meth:`.RelationshipProperty.Comparator.any`
+        and/or :meth:`.RelationshipProperty.Comparator.has` 
+        operators of the underlying proxied attributes.
+
+        """
 
         if self._value_is_scalar:
             value_expr = getattr(self.target_class, self.value_attr).has(criterion, **kwargs)
@@ -355,14 +359,29 @@ class AssociationProxy(object):
                 )
 
     def has(self, criterion=None, **kwargs):
-        """Produce a proxied 'has' expression using EXISTS."""
+        """Produce a proxied 'has' expression using EXISTS.
+        
+        This expression will be a composed product
+        using the :meth:`.RelationshipProperty.Comparator.any`
+        and/or :meth:`.RelationshipProperty.Comparator.has` 
+        operators of the underlying proxied attributes.
+        
+        """
 
         return self._comparator.has(
-                    getattr(self.target_class, self.value_attr).has(criterion, **kwargs)
+                    getattr(self.target_class, self.value_attr).\
+                        has(criterion, **kwargs)
                 )
 
     def contains(self, obj):
-        """Produce a proxied 'contains' expression using EXISTS."""
+        """Produce a proxied 'contains' expression using EXISTS.
+        
+        This expression will be a composed product
+        using the :meth:`.RelationshipProperty.Comparator.any`
+        , :meth:`.RelationshipProperty.Comparator.has`,
+        and/or :meth:`.RelationshipProperty.Comparator.contains`
+        operators of the underlying proxied attributes.
+        """
 
         if self.scalar and not self._value_is_scalar:
             return self._comparator.has(
