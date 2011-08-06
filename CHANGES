@@ -21,6 +21,11 @@ CHANGES
     the database regardless of whether C 
     extensions are in use or not.
 
+- postgresql
+  - Use an atomic counter as the "random number" 
+    source for server side cursor names; 
+    conflicts have been reported in rare cases.
+
 - ext
   - Added local_attr, remote_attr, attr accessors
     to AssociationProxy, providing quick access

@@ -3161,14 +3161,4 @@ class AliasOption(interfaces.MapperOption):
         query._from_obj_alias = sql_util.ColumnAdapter(alias)
 
 
-_runid = 1L
-_id_lock = util.threading.Lock()
-
-def _new_runid():
-    global _runid
-    _id_lock.acquire()
-    try:
-        _runid += 1
-        return _runid
-    finally:
-        _id_lock.release()
+_new_runid = util.counter()

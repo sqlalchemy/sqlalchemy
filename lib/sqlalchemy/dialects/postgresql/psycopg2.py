@@ -97,7 +97,6 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
 
 """
 
-import random
 import re
 import logging
 
@@ -165,6 +164,8 @@ SERVER_SIDE_CURSOR_RE = re.compile(
     r'\s*SELECT',
     re.I | re.UNICODE)
 
+_server_side_id = util.counter()
+
 class PGExecutionContext_psycopg2(PGExecutionContext):
     def create_cursor(self):
         # TODO: coverage for server side cursors + select.for_update()
@@ -187,7 +188,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         if is_server_side:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-            ident = "c_%s_%s" % (hex(id(self))[2:], hex(random.randint(0, 65535))[2:])
+            ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
             return self._dbapi_connection.cursor(ident)
         else:
             return self._dbapi_connection.cursor()

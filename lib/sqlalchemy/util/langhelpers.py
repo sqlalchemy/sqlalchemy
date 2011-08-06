@@ -610,6 +610,21 @@ def constructor_copy(obj, cls, **kw):
     return cls(**kw)
 
 
+def counter():
+    """Return a threadsafe counter function."""
+
+    lock = threading.Lock()
+    counter = itertools.count(1L)
+
+    def next():
+        lock.acquire()
+        try:
+            return counter.next()
+        finally:
+            lock.release()
+
+    return next
+
 def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
