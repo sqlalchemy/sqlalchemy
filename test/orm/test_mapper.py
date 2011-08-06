@@ -246,8 +246,8 @@ class MapperTest(_fixtures.FixtureTest):
         """test that _sort_states() doesn't compare 
         insert_order to state.key, for set of mixed
         persistent/pending.  In particular Python 3 disallows
-        this.  
-        
+        this.
+
         """
         class Foo(object):
             def __init__(self, id):
@@ -429,6 +429,21 @@ class MapperTest(_fixtures.FixtureTest):
         sess.add(u3)
         sess.flush()
         sess.rollback()
+
+    def test_add_prop_via_backref_resets_memoizations_reconfigures(self):
+        users, User = self.tables.users, self.classes.User
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        m1 = mapper(User, users)
+        User()
+
+        m2 = mapper(Address, addresses, properties={
+            'user':relationship(User, backref="addresses")
+        })
+        # configure mappers takes place when User is generated
+        User()
+        assert hasattr(User, 'addresses')
+        assert "addresses" in [p.key for p in m1._polymorphic_properties]
 
     def test_replace_property(self):
         users, User = self.tables.users, self.classes.User

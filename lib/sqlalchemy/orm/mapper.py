@@ -48,6 +48,7 @@ _none_set = frozenset([None])
 
 _memoized_configured_property = util.group_expirable_memoized_property()
 
+
 # a constant returned by _get_attr_by_column to indicate
 # this mapper is not handling an attribute for a particular
 # column
@@ -1029,6 +1030,8 @@ class Mapper(object):
             prop.init()
             prop.post_instrument_class(self)
 
+        if self.configured:
+            self._expire_memoizations()
 
     def _post_configure_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
@@ -1072,7 +1075,6 @@ class Mapper(object):
         """
         self._init_properties[key] = prop
         self._configure_property(key, prop, init=self.configured)
-        self._expire_memoizations()
 
     def _expire_memoizations(self):
         for mapper in self.iterate_to_root():
@@ -2802,7 +2804,12 @@ def _event_on_load(state, ctx):
         instrumenting_mapper._reconstructor(state.obj())
 
 def _event_on_first_init(manager, cls):
-    """Trigger mapper compilation."""
+    """Initial mapper compilation trigger.
+    
+    instrumentation calls this one when InstanceState
+    is first generated, and is needed for legacy mutable
+    attributes to work.
+    """
 
     instrumenting_mapper = manager.info.get(_INSTRUMENTOR)
     if instrumenting_mapper:
@@ -2810,12 +2817,20 @@ def _event_on_first_init(manager, cls):
             configure_mappers()
 
 def _event_on_init(state, args, kwargs):
-    """Run init_instance hooks."""
+    """Run init_instance hooks.
+    
+    This also includes mapper compilation, normally not needed
+    here but helps with some piecemeal configuration
+    scenarios (such as in the ORM tutorial).
+    
+    """
 
     instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
-    if instrumenting_mapper and \
-        instrumenting_mapper._set_polymorphic_identity:
-        instrumenting_mapper._set_polymorphic_identity(state)
+    if instrumenting_mapper:
+        if _new_mappers:
+            configure_mappers()
+        if instrumenting_mapper._set_polymorphic_identity:
+            instrumenting_mapper._set_polymorphic_identity(state)
 
 def _event_on_resurrect(state):
     # re-populate the primary key elements

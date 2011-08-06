@@ -1406,6 +1406,7 @@ class RelationshipProperty(StrategizedProperty):
                 **kwargs
                 )
             mapper._configure_property(backref_key, relationship)
+
         if self.back_populates:
             self._add_reverse_property(self.back_populates)
 

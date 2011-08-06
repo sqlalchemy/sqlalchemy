@@ -71,7 +71,7 @@ The return value of :func:`.create_engine` is an instance of :class:`.Engine`, a
 the core interface to the database, adapted through a **dialect** that handles the details
 of the database and DBAPI in use, in this case the SQLite dialect.   It has not
 actually tried to connect to the database yet; that happens the first time the :class:`.Engine`
-is actually used to do something.  
+is actually used to do something.
 
 Normally, the :class:`.Engine` is passed off to the ORM where it is used behind the scenes.
 We can execute SQL directly from it however, as we illustrate here:
@@ -190,7 +190,9 @@ as a source of database connectivity:
     ()
     COMMIT
 
-.. note:: Users familiar with the syntax of CREATE TABLE may notice that the
+.. topic:: Minimal Table Descriptions vs. Full Descriptions
+
+    Users familiar with the syntax of CREATE TABLE may notice that the
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
@@ -263,6 +265,26 @@ Since we have not yet told SQLAlchemy to persist ``Ed Jones`` within the
 database, its id is ``None``. When we persist the object later, this attribute
 will be populated with a newly generated value.
 
+.. topic:: The default ``__init__()`` method
+
+   Note that in our ``User`` example we supplied an ``__init__()`` method,
+   which receives ``name``, ``fullname`` and ``password`` as positional arguments.
+   The declarative system supplies for us a default constructor if one is
+   not already present, which accepts keyword arguments of the same name
+   as that of the mapped attributes::
+
+       class User(Base):
+           __tablename__ = 'users'
+           id = Column(Integer, primary_key=True)
+           name = Column(String)
+           fullname = Column(String)
+           password = Column(String)
+
+   Our ``User`` class above will make usage of the default constructor, and provide
+   ``id``, ``name``, ``fullname``, and ``password`` as keyword arguments::
+
+       u1 = User(name='ed', fullname='Ed Jones', password='foobar')
+
 Creating a Session
 ==================
 
@@ -303,7 +325,7 @@ used, it retrieves a connection from a pool of connections maintained by the
 :class:`.Engine`, and holds onto it until we commit all changes and/or close the
 session object.
 
-Adding new Objects
+Adding New Objects
 ==================
 
 To persist our ``User`` object, we :meth:`~.Session.add` it to our :class:`~sqlalchemy.orm.session.Session`::
@@ -940,19 +962,13 @@ one-to-many relationships, but not for many-to-many relationships.
 When using the :mod:`~.sqlalchemy.ext.declarative` extension,
 :func:`~sqlalchemy.orm.relationship()` gives us the option to use strings for
 most arguments that concern the target class, in the case that the target
-class has not yet been defined. This **only** works in conjunction with
-:mod:`~.sqlalchemy.ext.declarative`:
+class has not yet been defined:
 
 .. sourcecode:: python+sql
 
     class User(Base):
         ....
         addresses = relationship("Address", order_by="Address.id", backref="user")
-
-When :mod:`~.sqlalchemy.ext.declarative` is not in use, you typically define your
-:func:`~sqlalchemy.orm.mapper()` well after the target classes and
-:class:`~sqlalchemy.schema.Table` objects have been defined, so string
-expressions are not needed.
 
 We'll need to create the ``addresses`` table in the database, so we will issue
 another CREATE from our metadata, which will skip over tables which have
@@ -974,14 +990,6 @@ already been created:
     )
     ()
     COMMIT
-
-One extra step here is to make the ORM aware that the mapping for ``User``
-has changed.  This is normally not necessary, except that we've already worked with 
-instances of ``User`` - so here we call :func:`.configure_mappers` so that the 
-``User.addresses`` attribute can be established::
-
-    >>> from sqlalchemy.orm import configure_mappers
-    >>> configure_mappers()
 
 Working with Related Objects
 =============================
@@ -1062,96 +1070,60 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
     {stop}[<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
 When we accessed the ``addresses`` collection, SQL was suddenly issued. This
-is an example of a **lazy loading relationship**. The ``addresses`` collection
-is now loaded and behaves just like an ordinary list.
-
-If you want to reduce the number of queries (dramatically, in many cases), we
-can apply an **eager load** to the query operation, using the
-:func:`~sqlalchemy.orm.joinedload` function. This function is a **query
-option** that gives additional instructions to the query on how we would like
-it to load, in this case we'd like to indicate that we'd like ``addresses`` to
-load "eagerly". SQLAlchemy then constructs an outer join between the ``users``
-and ``addresses`` tables, and loads them at once, populating the ``addresses``
-collection on each ``User`` object if it's not already populated:
-
-.. sourcecode:: python+sql
-
-    >>> from sqlalchemy.orm import joinedload
-
-    {sql}>>> jack = session.query(User).\
-    ...                        options(joinedload('addresses')).\
-    ...                        filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password, addresses_1.id AS addresses_1_id, addresses_1.email_address
-    AS addresses_1_email_address, addresses_1.user_id AS addresses_1_user_id
-    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    WHERE users.name = ? ORDER BY addresses_1.id
-    ('jack',)
-
-    {stop}>>> jack
-    <User('jack','Jack Bean', 'gjffdd')>
-
-    >>> jack.addresses
-    [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
-
-See :ref:`loading_toplevel` for information on
-:func:`~sqlalchemy.orm.joinedload` and its new brother,
-:func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
-load in the next section.
-
-.. note:: The join created by :func:`.joinedload` is anonymously aliased such that
-   it **does not affect the query results**.   An :meth:`.Query.order_by`
-   or :meth:`.Query.filter` call **cannot** reference these aliased
-   tables - so-called "user space" joins are constructed using 
-   :meth:`.Query.join`.   The rationale for this is that :func:`.joinedload` is only
-   applied in order to affect how related objects or collections are loaded
-   as an optimizing detail - it can be added or removed with no impact
-   on actual results.   See the section :ref:`zen_of_eager_loading` for 
-   a detailed description of how this is used, including how to use a single 
-   explicit JOIN for filtering/ordering and eager loading simultaneously.
+is an example of a **lazy loading relationship**.  The ``addresses`` collection
+is now loaded and behaves just like an ordinary list.  We'll cover ways
+to optimize the loading of this collection in a bit.
 
 .. _ormtutorial_joins:
 
 Querying with Joins
 ====================
 
-While :func:`~sqlalchemy.orm.joinedload` created an anonymous, non-accessible JOIN 
-specifically to
-populate a collection, we can also work explicitly with joins in many ways.
-For example, to construct a simple inner join between ``User`` and
-``Address``, we can just :meth:`~sqlalchemy.orm.query.Query.filter()` their
-related columns together. Below we load the ``User`` and ``Address`` entities
-at once using this method:
+Now that we have two tables, we can show some more features of :class:`.Query`,
+specifically how to create queries that deal with both tables at the same time.
+For those needing to brush up on this topic, the `Wikipedia page on SQL JOIN 
+<http://en.wikipedia.org/wiki/Join_%28SQL%29>`_ is a good place check.
+
+To construct a simple implicit join between ``User`` and ``Address``,
+we can use :meth:`.Query.filter()` to equate their related columns together. 
+Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql
 
     {sql}>>> for u, a in session.query(User, Address).filter(User.id==Address.user_id).\
     ...         filter(Address.email_address=='jack@google.com').all():   # doctest: +NORMALIZE_WHITESPACE
     ...     print u, a
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password, addresses.id AS addresses_id,
-    addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname,
+            users.password AS users_password, 
+            addresses.id AS addresses_id,
+            addresses.email_address AS addresses_email_address, 
+            addresses.user_id AS addresses_user_id
     FROM users, addresses
     WHERE users.id = addresses.user_id AND addresses.email_address = ?
     ('jack@google.com',)
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
-Or we can make a real JOIN construct; the most common way is to use
-:meth:`~sqlalchemy.orm.query.Query.join`:
+Next, to construct the actual SQL JOIN syntax, the most common way is
+to use :meth:`.Query.join`:
 
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).join(Address).\
     ...         filter(Address.email_address=='jack@google.com').all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
     ('jack@google.com',)
     {stop}[<User('jack','Jack Bean', 'gjffdd')>]
 
-:meth:`~sqlalchemy.orm.query.Query.join` knows how to join between ``User``
+:meth:`.Query.join` knows how to join between ``User``
 and ``Address`` because there's only one foreign key between them. If there
-were no foreign keys, or several, :meth:`~sqlalchemy.orm.query.Query.join`
+were no foreign keys, or several, :meth:`.Query.join`
 works better when one of the following forms are used::
 
     query.join(Address, User.id==Address.user_id)    # explicit condition
@@ -1166,45 +1138,6 @@ As you would expect, the same idea is used for "outer" joins, using the
 
 The reference documentation for :meth:`~.Query.join` contains detailed information
 and examples of the calling styles accepted.
-
-Using join() to Eagerly Load Collections/Attributes
--------------------------------------------------------
-
-The "eager loading" capabilities of the :func:`~sqlalchemy.orm.joinedload`
-function and the join-construction capabilities of
-:meth:`~sqlalchemy.orm.query.Query.join()` or an equivalent can be combined
-together using the :func:`~sqlalchemy.orm.contains_eager` option. This is
-typically used for a query that is already joining to some related entity
-(more often than not via many-to-one), and you'd like the related entity to
-also be loaded onto the resulting objects in one step without the need for
-additional queries and without the "automatic" join embedded by the
-:func:`~sqlalchemy.orm.joinedload` function:
-
-.. sourcecode:: python+sql
-
-    >>> from sqlalchemy.orm import contains_eager
-    {sql}>>> for address in session.query(Address).\
-    ...                join(Address.user).\
-    ...                filter(User.name=='jack').\
-    ...                options(contains_eager(Address.user)): #doctest: +NORMALIZE_WHITESPACE
-    ...         print address, address.user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-     users.password AS users_password, addresses.id AS addresses_id, 
-     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses JOIN users ON users.id = addresses.user_id 
-    WHERE users.name = ?
-    ('jack',)
-    {stop}<Address('jack@google.com')> <User('jack','Jack Bean', 'gjffdd')>
-    <Address('j25@yahoo.com')> <User('jack','Jack Bean', 'gjffdd')>
-
-Note that above the join was used both to limit the rows to just those
-``Address`` objects which had a related ``User`` object with the name "jack".
-It's safe to have the ``Address.user`` attribute populated with this user
-using an inner join. However, when filtering on a join that is filtering on a
-particular member of a collection, using
-:func:`~sqlalchemy.orm.contains_eager` to populate a related collection may
-populate the collection with only part of what it actually references, since
-the collection itself is filtered.
 
 Using Aliases
 -------------
@@ -1416,6 +1349,142 @@ and behavior:
 * :meth:`.Query.with_parent` (used for any relationship)::
 
     session.query(Address).with_parent(someuser, 'addresses')
+
+Eager Loading
+=============
+
+Recall earlier that we illustrated a **lazy loading** operation, when
+we accessed the ``User.addresses`` collection of a ``User`` and SQL
+was emitted.  If you want to reduce the number of queries (dramatically, in many cases), 
+we can apply an **eager load** to the query operation.   SQLAlchemy
+offers two types of eager loading, available via the :func:`.orm.joinedload`
+and :func:`.orm.subqueryload` functions.   These functions are **query options**
+that give additional instructions to the :class:`.Query` on how
+we would like various attributes to be loaded.  
+
+In this case we'd like to indicate that ``User.addresses`` should load eagerly.   
+A good choice for loading a set of objects as well as their related collections
+is the :func:`.orm.subqueryload` option, which emits a second SELECT statement
+that fully loads the collections associated with the results just loaded.
+The name "subquery" originates from the fact that the SELECT statement 
+constructed directly via the :class:`.Query` is re-used, embedded as a subquery
+into a SELECT against the related table.   This is a little elaborate but 
+very easy to use::
+
+.. sourcecode:: python+sql
+
+    >>> from sqlalchemy.orm import subqueryload
+    {sql}>>> jack = session.query(User).\
+    ...                 options(subqueryload(User.addresses)).\
+    ...                 filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password 
+    FROM users 
+    WHERE users.name = ?
+    ('jack',)
+    SELECT addresses.id AS addresses_id, 
+            addresses.email_address AS addresses_email_address, 
+            addresses.user_id AS addresses_user_id, 
+            anon_1.users_id AS anon_1_users_id 
+    FROM (SELECT users.id AS users_id 
+        FROM users WHERE users.name = ?) AS anon_1 
+    JOIN addresses ON anon_1.users_id = addresses.user_id 
+    ORDER BY anon_1.users_id, addresses.id
+    ('jack',)
+    {stop}>>> jack
+    <User('jack','Jack Bean', 'gjffdd')>
+
+    >>> jack.addresses
+    [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+
+
+, using the
+:func:`~sqlalchemy.orm.joinedload` function. This function is a **query
+option** that gives additional instructions to the query on how we would like
+it to load, in this case we'd like to indicate that we'd like ``addresses`` to
+load "eagerly". SQLAlchemy then constructs an outer join between the ``users``
+and ``addresses`` tables, and loads them at once, populating the ``addresses``
+collection on each ``User`` object if it's not already populated:
+
+.. sourcecode:: python+sql
+
+    >>> from sqlalchemy.orm import joinedload
+
+    {sql}>>> jack = session.query(User).\
+    ...                        options(joinedload('addresses')).\
+    ...                        filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
+    users.password AS users_password, addresses_1.id AS addresses_1_id, addresses_1.email_address
+    AS addresses_1_email_address, addresses_1.user_id AS addresses_1_user_id
+    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE users.name = ? ORDER BY addresses_1.id
+    ('jack',)
+
+    {stop}>>> jack
+    <User('jack','Jack Bean', 'gjffdd')>
+
+    >>> jack.addresses
+    [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
+
+See :ref:`loading_toplevel` for information on
+:func:`~sqlalchemy.orm.joinedload` and its new brother,
+:func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
+load in the next section.
+
+.. topic:: ``joinedload()`` is not how you construct a JOIN
+
+   The join created by :func:`.joinedload` is anonymously aliased such that
+   it **does not affect the query results**.   An :meth:`.Query.order_by`
+   or :meth:`.Query.filter` call **cannot** reference these aliased
+   tables - so-called "user space" joins are constructed using 
+   :meth:`.Query.join`.   The rationale for this is that :func:`.joinedload` is only
+   applied in order to affect how related objects or collections are loaded
+   as an optimizing detail - it can be added or removed with no impact
+   on actual results.   See the section :ref:`zen_of_eager_loading` for 
+   a detailed description of how this is used, including how to use a single 
+   explicit JOIN for filtering/ordering and eager loading simultaneously.
+
+
+Using join() to Eagerly Load Collections/Attributes
+-------------------------------------------------------
+
+The "eager loading" capabilities of the :func:`~sqlalchemy.orm.joinedload`
+function and the join-construction capabilities of
+:meth:`~sqlalchemy.orm.query.Query.join()` or an equivalent can be combined
+together using the :func:`~sqlalchemy.orm.contains_eager` option. This is
+typically used for a query that is already joining to some related entity
+(more often than not via many-to-one), and you'd like the related entity to
+also be loaded onto the resulting objects in one step without the need for
+additional queries and without the "automatic" join embedded by the
+:func:`~sqlalchemy.orm.joinedload` function:
+
+.. sourcecode:: python+sql
+
+    >>> from sqlalchemy.orm import contains_eager
+    {sql}>>> for address in session.query(Address).\
+    ...                join(Address.user).\
+    ...                filter(User.name=='jack').\
+    ...                options(contains_eager(Address.user)): #doctest: +NORMALIZE_WHITESPACE
+    ...         print address, address.user
+    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
+     users.password AS users_password, addresses.id AS addresses_id, 
+     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
+    FROM addresses JOIN users ON users.id = addresses.user_id 
+    WHERE users.name = ?
+    ('jack',)
+    {stop}<Address('jack@google.com')> <User('jack','Jack Bean', 'gjffdd')>
+    <Address('j25@yahoo.com')> <User('jack','Jack Bean', 'gjffdd')>
+
+Note that above the join was used both to limit the rows to just those
+``Address`` objects which had a related ``User`` object with the name "jack".
+It's safe to have the ``Address.user`` attribute populated with this user
+using an inner join. However, when filtering on a join that is filtering on a
+particular member of a collection, using
+:func:`~sqlalchemy.orm.contains_eager` to populate a related collection may
+populate the collection with only part of what it actually references, since
+the collection itself is filtered.
 
 Deleting
 ========

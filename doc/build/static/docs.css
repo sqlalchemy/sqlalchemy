@@ -299,13 +299,10 @@ th.field-name {
     text-align:right;
 }
 
-div.note, div.warning, p.deprecated  {
+div.note, div.warning, p.deprecated, div.topic  {
     background-color:#EEFFEF;
 }
 
-div.topic  {
-    background-color:#D5F0EE;
-}
 
 div.admonition, div.topic, p.deprecated {
     border:1px solid #CCCCCC;

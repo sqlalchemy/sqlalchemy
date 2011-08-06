@@ -25,6 +25,11 @@ CHANGES
     slicing into None, so that needless OFFSET
     clauses are not invoked.
 
+  - Repaired edge case where mapper would fail
+    to fully update internal state when a relationship
+    on a new mapper would establish a backref on the
+    first mapper.
+
 - sqlite
   - Ensured that the same ValueError is raised for
     illegal date/time/datetime string parsed from
