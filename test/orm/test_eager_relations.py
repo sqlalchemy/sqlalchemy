@@ -1976,8 +1976,9 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
         # test that the query isn't wrapping the initial query for eager loading.
         self.assert_sql_execution(testing.db, go, 
             CompiledSQL(
-                "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data FROM nodes "
-                "WHERE nodes.data = :data_1 ORDER BY nodes.id LIMIT :param_1 OFFSET :param_2",
+                "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
+                "nodes_parent_id, nodes.data AS nodes_data FROM nodes "
+                "WHERE nodes.data = :data_1 ORDER BY nodes.id LIMIT :param_1",
                 {'data_1': 'n1'}
             )
         )
