@@ -15,6 +15,12 @@ CHANGES
      when the Session.is_active is True.
      [ticket:2241]
 
+  - Fixed bug in query.join() which would occur
+    in a complex multiple-overlapping path scenario,
+    where the same table could be joined to
+    twice.  Thanks *much* to Dave Vitek 
+    for the excellent fix here.  [ticket:2247]
+
 - sqlite
   - Ensured that the same ValueError is raised for
     illegal date/time/datetime string parsed from

@@ -1507,6 +1507,18 @@ class Query(object):
                             outerjoin=True, create_aliases=aliased, 
                             from_joinpoint=from_joinpoint)
 
+    def _update_joinpoint(self, jp):
+        self._joinpoint = jp
+        # copy backwards to the root of the _joinpath
+        # dict, so that no existing dict in the path is mutated
+        while 'prev' in jp:
+            f, prev = jp['prev']
+            prev = prev.copy()
+            prev[f] = jp
+            jp['prev'] = (f, prev)
+            jp = prev
+        self._joinpath = jp
+
     @_generative(_no_statement_condition, _no_limit_offset)
     def _join(self, keys, outerjoin, create_aliases, from_joinpoint):
         """consumes arguments from join() or outerjoin(), places them into a
@@ -1586,11 +1598,18 @@ class Query(object):
                 if not create_aliases:
                     # check for this path already present.
                     # don't render in that case.
-                    if (left_entity, right_entity, prop.key) in \
-                                    self._joinpoint:
-                        self._joinpoint = \
-                                    self._joinpoint[
-                                    (left_entity, right_entity, prop.key)]
+                    edge = (left_entity, right_entity, prop.key)
+                    if edge in self._joinpoint:
+                        # The child's prev reference might be stale --
+                        # it could point to a parent older than the
+                        # current joinpoint.  If this is the case,
+                        # then we need to update it and then fix the
+                        # tree's spine with _update_joinpoint.  Copy
+                        # and then mutate the child, which might be
+                        # shared by a different query object.
+                        jp = self._joinpoint[edge].copy()
+                        jp['prev'] = (edge, self._joinpoint)
+                        self._update_joinpoint(jp)
                         continue
 
             elif onclause is not None and right_entity is None:
@@ -1661,23 +1680,10 @@ class Query(object):
         # if joining on a MapperProperty path,
         # track the path to prevent redundant joins
         if not create_aliases and prop:
-
-            self._joinpoint = jp = {
+            self._update_joinpoint({
                 '_joinpoint_entity':right,
                 'prev':((left, right, prop.key), self._joinpoint)
-            }
-
-            # copy backwards to the root of the _joinpath
-            # dict, so that no existing dict in the path is mutated
-            while 'prev' in jp:
-                f, prev = jp['prev']
-                prev = prev.copy()
-                prev[f] = jp
-                jp['prev'] = (f, prev)
-                jp = prev
-
-            self._joinpath = jp
-
+            })
         else:
             self._joinpoint = {
                 '_joinpoint_entity':right
