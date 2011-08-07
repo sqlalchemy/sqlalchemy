@@ -10,62 +10,41 @@ of its usage.   The reference material here continues into the next section,
 :ref:`collections_toplevel`, which has additional detail on configuration
 of collections via :func:`relationship`.
 
+.. _relationship_patterns:
+
 Basic Relational Patterns
 --------------------------
 
-A quick walkthrough of the basic relational patterns. In this section we
-illustrate the classical mapping using :func:`mapper` in conjunction with
-:func:`relationship`. Then (by popular demand), we illustrate the declarative
-form using the :mod:`~sqlalchemy.ext.declarative` module.
+A quick walkthrough of the basic relational patterns. 
 
-Note that :func:`.relationship` is historically known as
-:func:`.relation` in older versions of SQLAlchemy.
+The imports used for each of the following sections is as follows::
+
+    from sqlalchemy import Table, Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship, backref
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
 
 One To Many
 ~~~~~~~~~~~~
 
-A one to many relationship places a foreign key in the child table referencing
-the parent. SQLAlchemy creates the relationship as a collection on the parent
-object containing instances of the child object.
+A one to many relationship places a foreign key on the child table referencing
+the parent.  :func:`.relationship` is then specified on the parent, as referencing
+a collection of items represented by the child::
 
-.. sourcecode:: python+sql
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child")
 
-    parent_table = Table('parent', metadata,
-        Column('id', Integer, primary_key=True))
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('parent.id'))
 
-    child_table = Table('child', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('parent_id', Integer, ForeignKey('parent.id'))
-    )
-
-    class Parent(object):
-        pass
-
-    class Child(object):
-        pass
-
-    mapper(Parent, parent_table, properties={
-        'children': relationship(Child)
-    })
-
-    mapper(Child, child_table)
-
-To establish a bi-directional relationship in one-to-many, where the "reverse" side is a many to one, specify the ``backref`` option:
-
-.. sourcecode:: python+sql
-
-    mapper(Parent, parent_table, properties={
-        'children': relationship(Child, backref='parent')
-    })
-
-    mapper(Child, child_table)
-
-``Child`` will get a ``parent`` attribute with many-to-one semantics.
-
-Declarative::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
+To establish a bidirectional relationship in one-to-many, where the "reverse"
+side is a many to one, specify the ``backref`` option::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -77,48 +56,27 @@ Declarative::
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
 
+``Child`` will get a ``parent`` attribute with many-to-one semantics.
 
 Many To One
 ~~~~~~~~~~~~
 
 Many to one places a foreign key in the parent table referencing the child.
-The mapping setup is identical to one-to-many, however SQLAlchemy creates the
-relationship as a scalar attribute on the parent object referencing a single
-instance of the child object.
+:func:`.relationship` is declared on the parent, where a new scalar-holding
+attribute will be created::
 
-.. sourcecode:: python+sql
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        child_id = Column(Integer, ForeignKey('child.id'))
+        child = relationship("Child")
 
-    parent_table = Table('parent', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('child_id', Integer, ForeignKey('child.id')))
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
 
-    child_table = Table('child', metadata,
-        Column('id', Integer, primary_key=True),
-        )
-
-    class Parent(object):
-        pass
-
-    class Child(object):
-        pass
-
-    mapper(Parent, parent_table, properties={
-        'child': relationship(Child)
-    })
-
-    mapper(Child, child_table)
-
-Backref behavior is available here as well, where ``backref="parents"`` will
-place a one-to-many collection on the ``Child`` class::
-
-    mapper(Parent, parent_table, properties={
-        'child': relationship(Child, backref="parents")
-    })
-
-Declarative::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
+Bidirectional behavior is achieved by specifying ``backref="parents"``,
+which will place a one-to-many collection on the ``Child`` class::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -126,57 +84,26 @@ Declarative::
         child_id = Column(Integer, ForeignKey('child.id'))
         child = relationship("Child", backref="parents")
 
-    class Child(Base):
-        __tablename__ = 'child'
-        id = Column(Integer, primary_key=True)
-
 One To One
 ~~~~~~~~~~~
 
-One To One is essentially a bi-directional relationship with a scalar
+One To One is essentially a bidirectional relationship with a scalar
 attribute on both sides. To achieve this, the ``uselist=False`` flag indicates
 the placement of a scalar attribute instead of a collection on the "many" side
 of the relationship. To convert one-to-many into one-to-one::
 
-    parent_table = Table('parent', metadata,
-        Column('id', Integer, primary_key=True)
-    )
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+        child = relationship("Child", uselist=False, backref="parent")
 
-    child_table = Table('child', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('parent_id', Integer, ForeignKey('parent.id'))
-    )
-
-    mapper(Parent, parent_table, properties={
-        'child': relationship(Child, uselist=False, backref='parent')
-    })
-
-    mapper(Child, child_table)
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('parent.id'))
 
 Or to turn a one-to-many backref into one-to-one, use the :func:`.backref` function
 to provide arguments for the reverse side::
-
-    from sqlalchemy.orm import backref
-
-    parent_table = Table('parent', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('child_id', Integer, ForeignKey('child.id'))
-    )
-
-    child_table = Table('child', metadata,
-        Column('id', Integer, primary_key=True)
-    )
-
-    mapper(Parent, parent_table, properties={
-        'child': relationship(Child, backref=backref('parent', uselist=False))
-    })
-
-    mapper(Child, child_table)
-
-The second example above as declarative::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -195,46 +122,28 @@ Many To Many
 
 Many to Many adds an association table between two classes. The association
 table is indicated by the ``secondary`` argument to
-:func:`.relationship`.
+:func:`.relationship`.  Usually, the :class:`.Table` uses the :class:`.MetaData`
+object associated with the declarative base class, so that the :class:`.ForeignKey`
+directives can locate the remote tables with which to link::
 
-.. sourcecode:: python+sql
-
-    left_table = Table('left', metadata,
-        Column('id', Integer, primary_key=True)
-    )
-
-    right_table = Table('right', metadata,
-        Column('id', Integer, primary_key=True)
-    )
-
-    association_table = Table('association', metadata,
+    association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
         Column('right_id', Integer, ForeignKey('right.id'))
     )
 
-    mapper(Parent, left_table, properties={
-        'children': relationship(Child, secondary=association_table)
-    })
+    class Parent(Base):
+        __tablename__ = 'left'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", 
+                        secondary=association_table)
 
-    mapper(Child, right_table)
+    class Child(Base):
+        __tablename__ = 'right'
+        id = Column(Integer, primary_key=True)
 
-For a bi-directional relationship, both sides of the relationship contain a
+For a bidirectional relationship, both sides of the relationship contain a
 collection.  The ``backref`` keyword will automatically use
-the same ``secondary`` argument for the reverse relationship:
-
-.. sourcecode:: python+sql
-
-    mapper(Parent, left_table, properties={
-        'children': relationship(Child, secondary=association_table, 
-                                        backref='parents')
-    })
-
-With declarative, we still use the :class:`.Table` for the ``secondary`` 
-argument.  A class is not mapped to this table, so it remains in its 
-plain schematic form::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
+the same ``secondary`` argument for the reverse relationship::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -276,52 +185,24 @@ which are foreign keys to the left and right tables. Instead of using the
 ``secondary`` argument, you map a new class directly to the association table.
 The left side of the relationship references the association object via
 one-to-many, and the association class references the right side via
-many-to-one.
+many-to-one::
 
-.. sourcecode:: python+sql
+    class Association(Base):
+        __tablename__ = 'association'
+        left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
+        right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+        child = relationship("Child")
 
-    left_table = Table('left', metadata,
-        Column('id', Integer, primary_key=True)
-    )
+    class Parent(Base):
+        __tablename__ = 'left'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Association")
 
-    right_table = Table('right', metadata,
-        Column('id', Integer, primary_key=True)
-    )
+    class Child(Base):
+        __tablename__ = 'right'
+        id = Column(Integer, primary_key=True)
 
-    association_table = Table('association', metadata,
-        Column('left_id', Integer, ForeignKey('left.id'), primary_key=True),
-        Column('right_id', Integer, ForeignKey('right.id'), primary_key=True),
-        Column('data', String(50))
-    )
-
-    mapper(Parent, left_table, properties={
-        'children':relationship(Association)
-    })
-
-    mapper(Association, association_table, properties={
-        'child':relationship(Child)
-    })
-
-    mapper(Child, right_table)
-
-The bi-directional version adds backrefs to both relationships:
-
-.. sourcecode:: python+sql
-
-    mapper(Parent, left_table, properties={
-        'children':relationship(Association, backref="parent")
-    })
-
-    mapper(Association, association_table, properties={
-        'child':relationship(Child, backref="parent_assocs")
-    })
-
-    mapper(Child, right_table)
-
-Declarative::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
+The bidirectional version adds backrefs to both relationships::
 
     class Association(Base):
         __tablename__ = 'association'
@@ -332,7 +213,7 @@ Declarative::
     class Parent(Base):
         __tablename__ = 'left'
         id = Column(Integer, primary_key=True)
-        children = relationship(Association, backref="parent")
+        children = relationship("Association", backref="parent")
 
     class Child(Base):
         __tablename__ = 'right'
@@ -341,9 +222,7 @@ Declarative::
 Working with the association pattern in its direct form requires that child
 objects are associated with an association instance before being appended to
 the parent; similarly, access from parent to child goes through the
-association object:
-
-.. sourcecode:: python+sql
+association object::
 
     # create parent, append a child via association
     p = Parent()
@@ -378,26 +257,27 @@ Adjacency List Relationships
 -----------------------------
 
 The **adjacency list** pattern is a common relational pattern whereby a table
-contains a foreign key reference to itself. This is the most common and simple
-way to represent hierarchical data in flat tables. The other way is the
-"nested sets" model, sometimes called "modified preorder". Despite what many
-online articles say about modified preorder, the adjacency list model is
+contains a foreign key reference to itself. This is the most common 
+way to represent hierarchical data in flat tables.  Other methods
+include **nested sets**, sometimes called "modified preorder",
+as well as **materialized path**.  Despite the appeal that modified preorder
+has when evaluated for its fluency within SQL queries, the adjacency list model is
 probably the most appropriate pattern for the large majority of hierarchical
 storage needs, for reasons of concurrency, reduced complexity, and that
 modified preorder has little advantage over an application which can fully
 load subtrees into the application space.
 
-SQLAlchemy commonly refers to an adjacency list relationship as a
-**self-referential mapper**. In this example, we'll work with a single table
-called ``nodes`` to represent a tree structure::
+In this example, we'll work with a single mapped
+class called ``Node``, representing a tree structure::
 
-    nodes = Table('nodes', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('parent_id', Integer, ForeignKey('nodes.id')),
-        Column('data', String(50)),
-        )
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('node.id'))
+        data = Column(String(50))
+        children = relationship("Node")
 
-A graph such as the following::
+With this structure, a graph such as the following::
 
     root --+---> child1
            +---> child2 --+--> subchild1
@@ -415,57 +295,38 @@ Would be represented with data such as::
     5        3             subchild2
     6        1             child3
 
-SQLAlchemy's :func:`.mapper` configuration for a self-referential one-to-many
-relationship is exactly like a "normal" one-to-many relationship. When
-SQLAlchemy encounters the foreign key relationship from ``nodes`` to
-``nodes``, it assumes one-to-many unless told otherwise:
-
-.. sourcecode:: python+sql
-
-    # entity class
-    class Node(object):
-        pass
-
-    mapper(Node, nodes, properties={
-        'children': relationship(Node)
-    })
-
-To create a many-to-one relationship from child to parent, an extra indicator
-of the "remote side" is added, which contains the
-:class:`~sqlalchemy.schema.Column` object or objects indicating the remote
-side of the relationship:
-
-.. sourcecode:: python+sql
-
-    mapper(Node, nodes, properties={
-        'parent': relationship(Node, remote_side=[nodes.c.id])
-    })
-
-And the bi-directional version combines both:
-
-.. sourcecode:: python+sql
-
-    mapper(Node, nodes, properties={
-        'children': relationship(Node, 
-                            backref=backref('parent', remote_side=[nodes.c.id])
-                        )
-    })
-
-For comparison, the declarative version typically uses the inline ``id`` 
-:class:`.Column` attribute to declare remote_side (note the list form is optional
-when the collection is only one column)::
-
-    from sqlalchemy.ext.declarative import declarative_base
-    Base = declarative_base()
+The :func:`.relationship` configuration here works in the
+same way as a "normal" one-to-many relationship, with the 
+exception that the "direction", i.e. whether the relationship
+is one-to-many or many-to-one, is assumed by default to
+be one-to-many.   To establish the relationship as many-to-one,
+an extra directive is added known as ``remote_side``, which
+is a :class:`.Column` or collection of :class:`.Column` objects
+that indicate those which should be considered to be "remote"::
 
     class Node(Base):
-        __tablename__ = 'nodes'
+        __tablename__ = 'node'
         id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer, ForeignKey('nodes.id'))
+        parent_id = Column(Integer, ForeignKey('node.id'))
+        data = Column(String(50))
+        parent = relationship("Node", remote_side=[id])
+
+Where above, the ``id`` column is applied as the ``remote_side``
+of the ``parent`` :func:`.relationship`, thus establishing
+``parent_id`` as the "local" side, and the relationship
+then behaves as a many-to-one.
+
+As always, both directions can be combined into a bidirectional
+relationship using the :func:`.backref` function::
+
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('node.id'))
         data = Column(String(50))
         children = relationship("Node", 
-                        backref=backref('parent', remote_side=id)
-                    )
+                    backref=backref('parent', remote_side=[id])
+                )
 
 There are several examples included with SQLAlchemy illustrating
 self-referential strategies; these include :ref:`examples_adjacencylist` and
@@ -474,83 +335,142 @@ self-referential strategies; these include :ref:`examples_adjacencylist` and
 Self-Referential Query Strategies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-Querying self-referential structures is done in the same way as any other
-query in SQLAlchemy, such as below, we query for any node whose ``data``
-attribute stores the value ``child2``:
-
-.. sourcecode:: python+sql
+Querying of self-referential structures works like any other query::
 
     # get all nodes named 'child2'
     session.query(Node).filter(Node.data=='child2')
 
-On the subject of joins, i.e. those described in `datamapping_joins`,
-self-referential structures require the usage of aliases so that the same
-table can be referenced multiple times within the FROM clause of the query.
-Aliasing can be done either manually using the ``nodes``
-:class:`~sqlalchemy.schema.Table` object as a source of aliases:
+However extra care is needed when attempting to join along 
+the foreign key from one level of the tree to the next.  In SQL,
+a join from a table to itself requires that at least one side of the
+expression be "aliased" so that it can be unambiguously referred to.
+
+Recall from :ref:`ormtutorial_aliases` in the ORM tutorial that the
+:class:`.orm.aliased` construct is normally used to provide an "alias" of 
+an ORM entity.  Joining from ``Node`` to itself using this technique
+looks like:
 
 .. sourcecode:: python+sql
 
-    # get all nodes named 'subchild1' with a parent named 'child2'
-    nodealias = nodes.alias()
+    from sqlalchemy.orm import aliased
+
+    nodealias = aliased(Node)
     {sql}session.query(Node).filter(Node.data=='subchild1').\
-        filter(and_(Node.parent_id==nodealias.c.id, nodealias.c.data=='child2')).all()
-    SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data
-    FROM nodes, nodes AS nodes_1
-    WHERE nodes.data = ? AND nodes.parent_id = nodes_1.id AND nodes_1.data = ?
+                    join(nodealias, Node.parent).\
+                    filter(nodealias.data=="child2").\
+                    all()
+    SELECT node.id AS node_id, 
+            node.parent_id AS node_parent_id, 
+            node.data AS node_data
+    FROM node JOIN node AS node_1
+        ON node.parent_id = node_1.id 
+    WHERE node.data = ? 
+        AND node_1.data = ?
     ['subchild1', 'child2']
 
-or automatically, using ``join()`` with ``aliased=True``:
+:meth:`.Query.join` also includes a feature known as ``aliased=True`` that 
+can shorten the verbosity self-referential joins, at the expense
+of query flexibility.  This feature
+performs a similar "aliasing" step to that above, without the need for an 
+explicit entity.   Calls to :meth:`.Query.filter` and similar subsequent to 
+the aliased join will **adapt** the ``Node`` entity to be that of the alias:
 
 .. sourcecode:: python+sql
 
-    # get all nodes named 'subchild1' with a parent named 'child2'
     {sql}session.query(Node).filter(Node.data=='subchild1').\
-        join('parent', aliased=True).filter(Node.data=='child2').all()
-    SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data
-    FROM nodes JOIN nodes AS nodes_1 ON nodes_1.id = nodes.parent_id
-    WHERE nodes.data = ? AND nodes_1.data = ?
+            join(Node.parent, aliased=True).\
+            filter(Node.data=='child2').\
+            all()
+    SELECT node.id AS node_id, 
+            node.parent_id AS node_parent_id, 
+            node.data AS node_data
+    FROM node 
+        JOIN node AS node_1 ON node_1.id = node.parent_id
+    WHERE node.data = ? AND node_1.data = ?
     ['subchild1', 'child2']
 
-To add criterion to multiple points along a longer join, use ``from_joinpoint=True``:
+To add criterion to multiple points along a longer join, add ``from_joinpoint=True``
+to the additional :meth:`~.Query.join` calls:
 
 .. sourcecode:: python+sql
 
-    # get all nodes named 'subchild1' with a parent named 'child2' and a grandparent 'root'
-    {sql}session.query(Node).filter(Node.data=='subchild1').\
-        join('parent', aliased=True).filter(Node.data=='child2').\
-        join('parent', aliased=True, from_joinpoint=True).filter(Node.data=='root').all()
-    SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data
-    FROM nodes JOIN nodes AS nodes_1 ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 ON nodes_2.id = nodes_1.parent_id
-    WHERE nodes.data = ? AND nodes_1.data = ? AND nodes_2.data = ?
+    # get all nodes named 'subchild1' with a 
+    # parent named 'child2' and a grandparent 'root'
+    {sql}session.query(Node).\
+            filter(Node.data=='subchild1').\
+            join(Node.parent, aliased=True).\
+            filter(Node.data=='child2').\
+            join(Node.parent, aliased=True, from_joinpoint=True).\
+            filter(Node.data=='root').\
+            all()
+    SELECT node.id AS node_id, 
+            node.parent_id AS node_parent_id, 
+            node.data AS node_data
+    FROM node 
+        JOIN node AS node_1 ON node_1.id = node.parent_id 
+        JOIN node AS node_2 ON node_2.id = node_1.parent_id
+    WHERE node.data = ? 
+        AND node_1.data = ? 
+        AND node_2.data = ?
     ['subchild1', 'child2', 'root']
 
-Configuring Eager Loading
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+:meth:`.Query.reset_joinpoint` will also remove the "aliasing" from filtering 
+calls::
+
+    session.query(Node).\
+            join(Node.children, aliased=True).\
+            filter(Node.data == 'foo').\
+            reset_joinpoint().\
+            filter(Node.data == 'bar')
+
+For an example of using ``aliased=True`` to arbitrarily join along a chain of self-referential
+nodes, see :ref:`examples_xmlpersistence`.
+
+Configuring Self-Referential Eager Loading
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Eager loading of relationships occurs using joins or outerjoins from parent to
 child table during a normal query operation, such that the parent and its
-child collection can be populated from a single SQL statement, or a second
-statement for all collections at once. SQLAlchemy's joined and subquery eager
-loading uses aliased tables in all cases when joining to related items, so it
-is compatible with self-referential joining. However, to use eager loading
-with a self-referential relationship, SQLAlchemy needs to be told how many
-levels deep it should join; otherwise the eager load will not take place. This
-depth setting is configured via ``join_depth``:
+immediate child collection or reference can be populated from a single SQL
+statement, or a second statement for all immediate child collections.
+SQLAlchemy's joined and subquery eager loading use aliased tables in all cases
+when joining to related items, so are compatible with self-referential
+joining. However, to use eager loading with a self-referential relationship,
+SQLAlchemy needs to be told how many levels deep it should join and/or query;
+otherwise the eager load will not take place at all. This depth setting is
+configured via ``join_depth``:
 
 .. sourcecode:: python+sql
 
-    mapper(Node, nodes, properties={
-        'children': relationship(Node, lazy='joined', join_depth=2)
-    })
+    class Node(Base):
+        __tablename__ = 'node'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('node.id'))
+        data = Column(String(50))
+        children = relationship("Node",
+                        lazy="joined",
+                        join_depth=2)
 
     {sql}session.query(Node).all()
-    SELECT nodes_1.id AS nodes_1_id, nodes_1.parent_id AS nodes_1_parent_id, nodes_1.data AS nodes_1_data, nodes_2.id AS nodes_2_id, nodes_2.parent_id AS nodes_2_parent_id, nodes_2.data AS nodes_2_data, nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, nodes.data AS nodes_data
-    FROM nodes LEFT OUTER JOIN nodes AS nodes_2 ON nodes.id = nodes_2.parent_id LEFT OUTER JOIN nodes AS nodes_1 ON nodes_2.id = nodes_1.parent_id
+    SELECT node_1.id AS node_1_id, 
+            node_1.parent_id AS node_1_parent_id, 
+            node_1.data AS node_1_data, 
+            node_2.id AS node_2_id, 
+            node_2.parent_id AS node_2_parent_id, 
+            node_2.data AS node_2_data, 
+            node.id AS node_id, 
+            node.parent_id AS node_parent_id, 
+            node.data AS node_data
+    FROM node 
+        LEFT OUTER JOIN node AS node_2 
+            ON node.id = node_2.parent_id 
+        LEFT OUTER JOIN node AS node_1 
+            ON node_2.id = node_1.parent_id
     []
 
-Linking relationships with Backref
+.. _relationships_backref:
+
+Linking Relationships with Backref
 ----------------------------------
 
 The ``backref`` keyword argument was first introduced in :ref:`ormtutorial_toplevel`, and has been
@@ -608,7 +528,7 @@ in both directions.   The above configuration is equivalent to::
 
 Above, we add a ``.user`` relationship to ``Address`` explicitly.  On 
 both relationships, the ``back_populates`` directive tells each relationship 
-about the other one, indicating that they should establish "bi-directional"
+about the other one, indicating that they should establish "bidirectional"
 behavior between each other.   The primary effect of this configuration
 is that the relationship adds event handlers to both attributes 
 which have the behavior of "when an append or set event occurs here, set ourselves

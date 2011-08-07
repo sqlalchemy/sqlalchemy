@@ -1151,10 +1151,13 @@ placed inside of :func:`.relationship`, providing details about
 the relationship as expressed in reverse, that of a collection of ``Address``
 objects on ``User`` referenced by ``User.addresses``.  The reverse
 side of a many-to-one relationship is always **one-to-many**.
+A full catalog of available :func:`.relationship` configurations
+is at :ref:`relationship_patterns`.
 
 The two complementing relationships ``Address.user`` and ``User.addresses``
 are referred to as a **bidirectional relationship**, and is a key
-feature of the SQLAlchemy ORM.
+feature of the SQLAlchemy ORM.   The section :ref:`relationships_backref`
+discusses the "backref" feature in detail.
 
 Arguments to :func:`.relationship` which concern the remote class 
 can be specified using strings, assuming the Declarative system is in 
@@ -1366,6 +1369,8 @@ As you would expect, the same idea is used for "outer" joins, using the
 The reference documentation for :meth:`~.Query.join` contains detailed information
 and examples of the calling styles accepted by this method; :meth:`~.Query.join`
 is an important method at the center of usage for any SQL-fluent application.
+
+.. _ormtutorial_aliases:
 
 Using Aliases
 -------------
