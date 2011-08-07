@@ -196,56 +196,8 @@ DELETE statements against the underlying table.
 Defining SQL Expressions
 ========================
 
-The usage of :func:`.column_property` with Declarative to define
-load-time, mapped SQL expressions is
-pretty much the same as that described in
-:ref:`mapper_sql_expressions`. Local columns within the same
-class declaration can be referenced directly::
-
-    class User(Base):
-        __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String)
-        lastname = Column(String)
-        fullname = column_property(
-            firstname + " " + lastname
-        )
-
-Correlated subqueries reference the :class:`.Column` objects they
-need either from the local class definition or from remote 
-classes::
-
-    from sqlalchemy.sql import func
-
-    class Address(Base):
-        __tablename__ = 'address'
-
-        id = Column('id', Integer, primary_key=True)
-        user_id = Column(Integer, ForeignKey('user.id'))
-
-    class User(Base):
-        __tablename__ = 'user'
-
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
-
-        address_count = column_property(
-            select([func.count(Address.id)]).\\
-                where(Address.user_id==id)
-        )
-
-In the case that the ``address_count`` attribute above doesn't have access to
-``Address`` when ``User`` is defined, the ``address_count`` attribute should
-be added to ``User`` when both ``User`` and ``Address`` are available (i.e.
-there is no string based "late compilation" feature like there is with
-:func:`.relationship` at this time). Note we reference the ``id`` column
-attribute of ``User`` with its class when we are no longer in the declaration
-of the ``User`` class::
-
-    User.address_count = column_property(
-        select([func.count(Address.id)]).\\
-            where(Address.user_id==User.id)
-    ) 
+See :ref:`mapper_sql_expressions` for examples on declaratively
+mapping attributes to SQL expressions.
 
 .. _declarative_table_args:
 

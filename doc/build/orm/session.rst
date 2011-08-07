@@ -105,7 +105,7 @@ into a **registry** that maintains a single :class:`.Session` per
 application thread.   Information on using contextual sessions
 is at :ref:`unitofwork_contextual`.
 
-Adding additional configuration to an Existing sessionmaker()
+Adding Additional Configuration to an Existing sessionmaker()
 --------------------------------------------------------------
 
 A common scenario is where the :func:`.sessionmaker` is invoked 
