@@ -150,7 +150,7 @@ class PopupLatexFormatter(LatexFormatter):
         for ttype, value in apply_filters(tokensource, [StripDocTestFilter()]):
             if ttype in Token.Sql:
                 if ttype is not Token.Sql.Link and ttype is not Token.Sql.Open:
-                    yield Token.Literal, re.sub(r'(?:[{stop}|\n]*)$', '', value)
+                    yield Token.Literal, re.sub(r'{stop}', '', value)
                 else:
                     continue
             else:

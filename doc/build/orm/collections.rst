@@ -96,6 +96,8 @@ be persisted to the database as well as locally available for reading at the
 time they are added. However when instances of ``MyClass`` are freshly loaded
 from the database, the ``children`` collection stays empty.
 
+.. _passive_deletes:
+
 Using Passive Deletes
 ~~~~~~~~~~~~~~~~~~~~~~
 

@@ -387,7 +387,10 @@ added:
     BEGIN (implicit)
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
     ('ed', 'Ed Jones', 'edspassword')
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name = ?
      LIMIT ? OFFSET ?
@@ -430,7 +433,8 @@ Also, Ed has already decided his password isn't too secure, so lets change it:
 
     >>> ed_user.password = 'f8s7ccs'
 
-The :class:`~sqlalchemy.orm.session.Session` is paying attention.  It knows, for example, that ``Ed Jones`` has been modified:
+The :class:`~sqlalchemy.orm.session.Session` is paying attention. It knows,
+for example, that ``Ed Jones`` has been modified:
 
 .. sourcecode:: python+sql
 
@@ -475,7 +479,10 @@ If we look at Ed's ``id`` attribute, which earlier was ``None``, it now has a va
 
     {sql}>>> ed_user.id # doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.id = ?
     (1,)
@@ -525,13 +532,17 @@ Querying the session, we can see that they're flushed into the current transacti
     ('Edwardo', 1)
     INSERT INTO users (name, fullname, password) VALUES (?, ?, ?)
     ('fakeuser', 'Invalid', '12345')
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name IN (?, ?)
     ('Edwardo', 'fakeuser')
     {stop}[<User('Edwardo','Ed Jones', 'f8s7ccs')>, <User('fakeuser','Invalid', '12345')>]
 
-Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_user`` has been kicked out of the session:
+Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and
+``fake_user`` has been kicked out of the session:
 
 .. sourcecode:: python+sql
 
@@ -541,7 +552,10 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and ``fake_u
 
     {sql}>>> ed_user.name #doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.id = ?
     (1,)
@@ -554,7 +568,10 @@ issuing a SELECT illustrates the changes made to the database:
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).filter(User.name.in_(['ed', 'fakeuser'])).all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name IN (?, ?)
     ('ed', 'fakeuser')
@@ -578,8 +595,10 @@ returned:
 
     {sql}>>> for instance in session.query(User).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print instance.name, instance.fullname
-    SELECT users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name,
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users ORDER BY users.id
     ()
     {stop}ed Ed Jones
@@ -597,7 +616,8 @@ is expressed as tuples:
 
     {sql}>>> for name, fullname in session.query(User.name, User.fullname): # doctest: +NORMALIZE_WHITESPACE
     ...     print name, fullname
-    SELECT users.name AS users_name, users.fullname AS users_fullname
+    SELECT users.name AS users_name, 
+            users.fullname AS users_fullname
     FROM users
     ()
     {stop}ed Ed Jones
@@ -614,7 +634,10 @@ class:
 
     {sql}>>> for row in session.query(User, User.name).all(): #doctest: +NORMALIZE_WHITESPACE
     ...    print row.User, row.name
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     ()
     {stop}<User('ed','Ed Jones', 'f8s7ccs')> ed
@@ -669,7 +692,10 @@ conjunction with ORDER BY:
 
     {sql}>>> for u in session.query(User).order_by(User.id)[1:3]: #doctest: +NORMALIZE_WHITESPACE
     ...    print u
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users ORDER BY users.id
     LIMIT ? OFFSET ?
     (2, 1){stop}
@@ -681,7 +707,8 @@ and filtering results, which is accomplished either with
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for name, in session.query(User.name).filter_by(fullname='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for name, in session.query(User.name).\
+    ...             filter_by(fullname='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print name
     SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
@@ -694,7 +721,8 @@ operators with the class-level attributes on your mapped class:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for name, in session.query(User.name).filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for name, in session.query(User.name).\
+    ...             filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print name
     SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
@@ -710,9 +738,14 @@ users named "ed" with a full name of "Ed Jones", you can call
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for user in session.query(User).filter(User.name=='ed').filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for user in session.query(User).\
+    ...          filter(User.name=='ed').\
+    ...          filter(User.fullname=='Ed Jones'): # doctest: +NORMALIZE_WHITESPACE
     ...    print user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name = ? AND users.fullname = ?
     ('ed', 'Ed Jones')
@@ -788,7 +821,10 @@ non-iterator value. :meth:`~sqlalchemy.orm.query.Query.all()` returns a list:
 
     >>> query = session.query(User).filter(User.name.like('%ed')).order_by(User.id)
     {sql}>>> query.all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
     ('%ed',)
@@ -800,7 +836,10 @@ the first result as a scalar:
 .. sourcecode:: python+sql
 
     {sql}>>> query.first() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
      LIMIT ? OFFSET ?
@@ -818,7 +857,10 @@ an error:
     ...     user = query.one()
     ... except MultipleResultsFound, e:
     ...     print e
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name LIKE ? ORDER BY users.id
     ('%ed',)
@@ -831,7 +873,10 @@ an error:
     ...     user = query.filter(User.id == 99).one()
     ... except NoResultFound, e:
     ...     print e
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name LIKE ? AND users.id = ? ORDER BY users.id
     ('%ed', 99)
@@ -848,9 +893,14 @@ to SQLAlchemy clause constructs. For example,
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for user in session.query(User).filter("id<224").order_by("id").all(): #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for user in session.query(User).\
+    ...             filter("id<224").\
+    ...             order_by("id").all(): #doctest: +NORMALIZE_WHITESPACE
     ...     print user.name
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE id<224 ORDER BY id
     ()
@@ -867,7 +917,10 @@ method:
 
     {sql}>>> session.query(User).filter("id<:value and name=:name").\
     ...     params(value=224, name='fred').order_by(User.id).one() # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE id<? and name=? ORDER BY users.id
     (224, 'fred')
@@ -1173,7 +1226,9 @@ just assign a full list directly:
 
 .. sourcecode:: python+sql
 
-    >>> jack.addresses = [Address(email_address='jack@google.com'), Address(email_address='j25@yahoo.com')]
+    >>> jack.addresses = [
+    ...                 Address(email_address='jack@google.com'), 
+    ...                 Address(email_address='j25@yahoo.com')]
 
 When using a bidirectional relationship, elements added in one direction
 automatically become visible in the other direction.  This behavior occurs
@@ -1211,8 +1266,10 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
     {sql}>>> jack = session.query(User).\
     ... filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, 
-    users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name = ?
     ('jack',)
@@ -1225,8 +1282,10 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
 .. sourcecode:: python+sql
 
     {sql}>>> jack.addresses #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS 
-    addresses_email_address, addresses.user_id AS addresses_user_id
+    SELECT addresses.id AS addresses_id, 
+            addresses.email_address AS 
+            addresses_email_address, 
+            addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
     (5,)
@@ -1254,8 +1313,10 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for u, a in session.query(User, Address).filter(User.id==Address.user_id).\
-    ...         filter(Address.email_address=='jack@google.com').all():   # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for u, a in session.query(User, Address).\
+    ...                     filter(User.id==Address.user_id).\
+    ...                     filter(Address.email_address=='jack@google.com').\
+    ...                     all():   # doctest: +NORMALIZE_WHITESPACE
     ...     print u, a
     SELECT users.id AS users_id, 
             users.name AS users_name, 
@@ -1265,7 +1326,8 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
             addresses.email_address AS addresses_email_address, 
             addresses.user_id AS addresses_user_id
     FROM users, addresses
-    WHERE users.id = addresses.user_id AND addresses.email_address = ?
+    WHERE users.id = addresses.user_id 
+            AND addresses.email_address = ?
     ('jack@google.com',)
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
@@ -1275,7 +1337,8 @@ method:
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).join(Address).\
-    ...         filter(Address.email_address=='jack@google.com').all() #doctest: +NORMALIZE_WHITESPACE
+    ...         filter(Address.email_address=='jack@google.com').\
+    ...         all() #doctest: +NORMALIZE_WHITESPACE
     SELECT users.id AS users_id, 
             users.name AS users_name, 
             users.fullname AS users_fullname, 
@@ -1327,11 +1390,15 @@ same time:
     ...     filter(adalias1.email_address=='jack@google.com').\
     ...     filter(adalias2.email_address=='j25@yahoo.com'):
     ...     print username, email1, email2      # doctest: +NORMALIZE_WHITESPACE
-    SELECT users.name AS users_name, addresses_1.email_address AS addresses_1_email_address,
-    addresses_2.email_address AS addresses_2_email_address
-    FROM users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    JOIN addresses AS addresses_2 ON users.id = addresses_2.user_id
-    WHERE addresses_1.email_address = ? AND addresses_2.email_address = ?
+    SELECT users.name AS users_name, 
+            addresses_1.email_address AS addresses_1_email_address,
+            addresses_2.email_address AS addresses_2_email_address
+    FROM users JOIN addresses AS addresses_1 
+            ON users.id = addresses_1.user_id
+    JOIN addresses AS addresses_2 
+            ON users.id = addresses_2.user_id
+    WHERE addresses_1.email_address = ? 
+            AND addresses_2.email_address = ?
     ('jack@google.com', 'j25@yahoo.com')
     {stop}jack jack@google.com j25@yahoo.com
 
@@ -1346,7 +1413,8 @@ ids, and JOIN to the parent. In this case we use a LEFT OUTER JOIN so that we
 get rows back for those users who don't have any addresses, e.g.::
 
     SELECT users.*, adr_count.address_count FROM users LEFT OUTER JOIN
-        (SELECT user_id, count(*) AS address_count FROM addresses GROUP BY user_id) AS adr_count
+        (SELECT user_id, count(*) AS address_count 
+            FROM addresses GROUP BY user_id) AS adr_count
         ON users.id=adr_count.user_id
 
 Using the :class:`~sqlalchemy.orm.query.Query`, we build a statement like this
@@ -1356,7 +1424,9 @@ representing the statement generated by a particular
 construct, which are described in :ref:`sqlexpression_toplevel`::
 
     >>> from sqlalchemy.sql import func
-    >>> stmt = session.query(Address.user_id, func.count('*').label('address_count')).group_by(Address.user_id).subquery()
+    >>> stmt = session.query(Address.user_id, func.count('*').\
+    ...         label('address_count')).\
+    ...         group_by(Address.user_id).subquery()
 
 The ``func`` keyword generates SQL functions, and the ``subquery()`` method on
 :class:`~sqlalchemy.orm.query.Query` produces a SQL expression construct
@@ -1373,11 +1443,15 @@ accessible through an attribute called ``c``:
     {sql}>>> for u, count in session.query(User, stmt.c.address_count).\
     ...     outerjoin(stmt, User.id==stmt.c.user_id).order_by(User.id): # doctest: +NORMALIZE_WHITESPACE
     ...     print u, count
-    SELECT users.id AS users_id, users.name AS users_name,
-    users.fullname AS users_fullname, users.password AS users_password,
-    anon_1.address_count AS anon_1_address_count
-    FROM users LEFT OUTER JOIN (SELECT addresses.user_id AS user_id, count(?) AS address_count
-    FROM addresses GROUP BY addresses.user_id) AS anon_1 ON users.id = anon_1.user_id
+    SELECT users.id AS users_id, 
+            users.name AS users_name,
+            users.fullname AS users_fullname, 
+            users.password AS users_password,
+            anon_1.address_count AS anon_1_address_count
+    FROM users LEFT OUTER JOIN 
+        (SELECT addresses.user_id AS user_id, count(?) AS address_count
+        FROM addresses GROUP BY addresses.user_id) AS anon_1 
+        ON users.id = anon_1.user_id
     ORDER BY users.id
     ('*',)
     {stop}<User('ed','Ed Jones', 'f8s7ccs')> None
@@ -1395,16 +1469,27 @@ to associate an "alias" of a mapped class to a subquery:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> stmt = session.query(Address).filter(Address.email_address != 'j25@yahoo.com').subquery()
+    {sql}>>> stmt = session.query(Address).\
+    ...                 filter(Address.email_address != 'j25@yahoo.com').\
+    ...                 subquery()
     >>> adalias = aliased(Address, stmt)
-    >>> for user, address in session.query(User, adalias).join(adalias, User.addresses): # doctest: +NORMALIZE_WHITESPACE
+    >>> for user, address in session.query(User, adalias).\
+    ...         join(adalias, User.addresses): # doctest: +NORMALIZE_WHITESPACE
     ...     print user, address
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password, anon_1.id AS anon_1_id,
-    anon_1.email_address AS anon_1_email_address, anon_1.user_id AS anon_1_user_id
-    FROM users JOIN (SELECT addresses.id AS id, addresses.email_address AS email_address, addresses.user_id AS user_id
-    FROM addresses
-    WHERE addresses.email_address != ?) AS anon_1 ON users.id = anon_1.user_id
+    SELECT users.id AS users_id, 
+                users.name AS users_name, 
+                users.fullname AS users_fullname,
+                users.password AS users_password, 
+                anon_1.id AS anon_1_id,
+                anon_1.email_address AS anon_1_email_address, 
+                anon_1.user_id AS anon_1_user_id
+    FROM users JOIN 
+        (SELECT addresses.id AS id, 
+                addresses.email_address AS email_address, 
+                addresses.user_id AS user_id
+        FROM addresses
+        WHERE addresses.email_address != ?) AS anon_1 
+        ON users.id = anon_1.user_id
     ('j25@yahoo.com',)
     {stop}<User('jack','Jack Bean', 'gjffdd')> <Address('jack@google.com')>
 
@@ -1438,7 +1523,8 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
 
 .. sourcecode:: python+sql
 
-    {sql}>>> for name, in session.query(User.name).filter(User.addresses.any()):   # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> for name, in session.query(User.name).\
+    ...         filter(User.addresses.any()):   # doctest: +NORMALIZE_WHITESPACE
     ...     print name
     SELECT users.name AS users_name
     FROM users
@@ -1469,9 +1555,11 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(Address).filter(~Address.user.has(User.name=='jack')).all() # doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address,
-    addresses.user_id AS addresses_user_id
+    {sql}>>> session.query(Address).\
+    ...         filter(~Address.user.has(User.name=='jack')).all() # doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.id AS addresses_id, 
+            addresses.email_address AS addresses_email_address,
+            addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE NOT (EXISTS (SELECT 1
     FROM users
@@ -1768,7 +1856,10 @@ removing an address from his ``addresses`` collection will result in that
     # load Jack by primary key
     {sql}>>> jack = session.query(User).get(5)    #doctest: +NORMALIZE_WHITESPACE
     BEGIN (implicit)
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.id = ?
     (5,)
@@ -1776,7 +1867,9 @@ removing an address from his ``addresses`` collection will result in that
 
     # remove one Address (lazy load fires off)
     {sql}>>> del jack.addresses[1] #doctest: +NORMALIZE_WHITESPACE
-    SELECT addresses.id AS addresses_id, addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id
+    SELECT addresses.id AS addresses_id, 
+            addresses.email_address AS addresses_email_address, 
+            addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id
     (5,)
@@ -1829,6 +1922,13 @@ Deleting Jack will delete both Jack and his remaining ``Address``:
     WHERE addresses.email_address IN (?, ?)) AS anon_1
     ('jack@google.com', 'j25@yahoo.com')
     {stop}0
+
+.. topic:: More on Cascades
+
+   Further detail on configuration of cascades is at :ref:`unitofwork_cascades`.
+   The cascade functionality can also integrate smoothly with 
+   the ``ON DELETE CASCADE`` functionality of the relational database.
+   See :ref:`passive_deletes` for details.
 
 Building a Many To Many Relationship
 ====================================
@@ -1957,8 +2057,13 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
 
 .. sourcecode:: python+sql
 
-    {sql}>>> wendy = session.query(User).filter_by(name='wendy').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname, users.password AS users_password
+    {sql}>>> wendy = session.query(User).\
+    ...                 filter_by(name='wendy').\
+    ...                 one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname, 
+            users.password AS users_password
     FROM users
     WHERE users.name = ?
     ('wendy',)
@@ -1980,7 +2085,9 @@ keyword string 'firstpost'":
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(BlogPost).filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> session.query(BlogPost).\
+    ...             filter(BlogPost.keywords.any(keyword='firstpost')).\
+    ...             all() #doctest: +NORMALIZE_WHITESPACE
     INSERT INTO keywords (keyword) VALUES (?)
     ('wendy',)
     INSERT INTO keywords (keyword) VALUES (?)
@@ -1989,11 +2096,16 @@ keyword string 'firstpost'":
     (2, "Wendy's Blog Post", 'This is a test')
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
     ((1, 1), (1, 2))
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    SELECT posts.id AS posts_id, 
+            posts.user_id AS posts_user_id, 
+            posts.headline AS posts_headline, 
+            posts.body AS posts_body
     FROM posts
     WHERE EXISTS (SELECT 1
-    FROM post_keywords, keywords
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?)
+        FROM post_keywords, keywords
+        WHERE posts.id = post_keywords.post_id 
+            AND keywords.id = post_keywords.keyword_id 
+            AND keywords.keyword = ?)
     ('firstpost',)
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
@@ -2002,13 +2114,20 @@ to her as a parent:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> session.query(BlogPost).filter(BlogPost.author==wendy).\
-    ... filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    {sql}>>> session.query(BlogPost).\
+    ...             filter(BlogPost.author==wendy).\
+    ...             filter(BlogPost.keywords.any(keyword='firstpost')).\
+    ...             all() #doctest: +NORMALIZE_WHITESPACE
+    SELECT posts.id AS posts_id, 
+            posts.user_id AS posts_user_id, 
+            posts.headline AS posts_headline, 
+            posts.body AS posts_body
     FROM posts
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1
-    FROM post_keywords, keywords
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
+        FROM post_keywords, keywords
+        WHERE posts.id = post_keywords.post_id 
+            AND keywords.id = post_keywords.keyword_id 
+            AND keywords.keyword = ?))
     (2, 'firstpost')
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
@@ -2017,12 +2136,19 @@ relationship, to query straight from there:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> wendy.posts.filter(BlogPost.keywords.any(keyword='firstpost')).all() #doctest: +NORMALIZE_WHITESPACE
-    SELECT posts.id AS posts_id, posts.user_id AS posts_user_id, posts.headline AS posts_headline, posts.body AS posts_body
+    {sql}>>> wendy.posts.\
+    ...         filter(BlogPost.keywords.any(keyword='firstpost')).\
+    ...         all() #doctest: +NORMALIZE_WHITESPACE
+    SELECT posts.id AS posts_id, 
+            posts.user_id AS posts_user_id, 
+            posts.headline AS posts_headline, 
+            posts.body AS posts_body
     FROM posts
     WHERE ? = posts.user_id AND (EXISTS (SELECT 1
-    FROM post_keywords, keywords
-    WHERE posts.id = post_keywords.post_id AND keywords.id = post_keywords.keyword_id AND keywords.keyword = ?))
+        FROM post_keywords, keywords
+        WHERE posts.id = post_keywords.post_id 
+            AND keywords.id = post_keywords.keyword_id 
+            AND keywords.keyword = ?))
     (2, 'firstpost')
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User('wendy','Wendy Williams', 'foobar')>)]
 
