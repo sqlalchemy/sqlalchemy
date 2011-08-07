@@ -484,8 +484,8 @@ transactional context from which to emit a statement::
         def address_count(self):
             return object_session(self).\
                 scalar(
-                    select([func.count(address_table.c.address_id)]).\
-                        where(address_table.c.user_id==self.user_id)
+                    select([func.count(Address.id)]).\
+                        where(Address.user_id==self.id)
                 )
 
 For more information on using descriptors, including how they can 
