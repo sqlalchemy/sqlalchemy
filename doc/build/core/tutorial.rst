@@ -188,6 +188,8 @@ each table first before creating, so it's safe to call multiple times:
     TABLE statements on a particular set of backends with more stringent
     requirements.
 
+.. _coretutorial_insert_expressions:
+
 Insert Expressions
 ==================
 
@@ -384,6 +386,8 @@ attached:
 
 Detailed examples of connectionless and implicit execution are available in
 the "Engines" chapter: :ref:`dbengine_implicit`.
+
+.. _coretutorial_selecting:
 
 Selecting
 ==========

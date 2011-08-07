@@ -148,9 +148,6 @@ table include::
     # get the table related by a foreign key
     list(employees.c.employee_dept.foreign_keys)[0].column.table
 
-.. _metadata_binding:
-
-
 Creating and Dropping Database Tables
 -------------------------------------
 
@@ -253,6 +250,7 @@ To enable the "check first for the table existing" logic, add the
     employees.create(engine, checkfirst=True)
     employees.drop(engine, checkfirst=False)
 
+.. _metadata_binding:
 
 Binding MetaData to an Engine or Connection
 --------------------------------------------

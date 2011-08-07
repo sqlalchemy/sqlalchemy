@@ -170,6 +170,10 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
     string arguments, which will be converted as appropriate into
     either :func:`text()` or :func:`literal_column()` constructs.
 
+    See also:
+    
+    :ref:`coretutorial_selecting` - Core Tutorial description of :func:`.select`.
+    
     :param columns:
       A list of :class:`.ClauseElement` objects, typically
       :class:`.ColumnElement` objects or subclasses, which will form the
@@ -309,8 +313,12 @@ def subquery(alias, *args, **kwargs):
 def insert(table, values=None, inline=False, **kwargs):
     """Return an :class:`.Insert` clause element.
 
-    Similar functionality is available via the :func:`insert()` method on
-    :class:`~sqlalchemy.schema.Table`.
+    Similar functionality is available via the :meth:`~.schema.Table.insert` method on
+    :class:`~.schema.Table`.
+
+    See also:
+    
+    :ref:`coretutorial_insert_expressions` - Core Tutorial description of the :func:`.insert` construct.
 
     :param table: The table to be inserted into.
 
@@ -4063,7 +4071,7 @@ class _SelectBase(Executable, FromClause):
         """return a 'scalar' representation of this selectable, embedded as a
         subquery with a label.
 
-        See also ``as_scalar()``.
+        See also :meth:`~._SelectBase.as_scalar`.
 
         """
         return self.as_scalar().label(name)
@@ -4282,8 +4290,11 @@ class CompoundSelect(_SelectBase):
 class Select(_SelectBase):
     """Represents a ``SELECT`` statement.
 
-    Select statements support appendable clauses, as well as the
-    ability to execute themselves and return a result set.
+    See also:
+    
+    :func:`~.expression.select` - the function which creates a :class:`.Select` object.
+    
+    :ref:`coretutorial_selecting` - Core Tutorial description of :func:`.select`.
 
     """
 
@@ -4861,13 +4872,21 @@ class ValuesBase(UpdateBase):
         """specify the VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
-            \**kwargs
-                key=<somevalue> arguments
+        :param \**kwargs: key value pairs representing the string key 
+          of a :class:`.Column` mapped to the value to be rendered into the
+          VALUES or SET clause::
 
-            \*args
-                A single dictionary can be sent as the first positional
-                argument. This allows non-string based keys, such as Column
-                objects, to be used.
+                users.insert().values(name="some name")
+
+                users.update().where(users.c.id==5).values(name="some name")
+
+        :param \*args: A single dictionary can be sent as the first positional
+            argument. This allows non-string based keys, such as Column
+            objects, to be used::
+            
+                users.insert().values({users.c.name : "some name"})
+
+                users.update().where(users.c.id==5).values({users.c.name : "some name"})
 
         """
         if args:
@@ -4886,7 +4905,11 @@ class ValuesBase(UpdateBase):
 class Insert(ValuesBase):
     """Represent an INSERT construct.
 
-    The :class:`.Insert` object is created using the :func:`insert()` function.
+    The :class:`.Insert` object is created using the :func:`~.expression.insert()` function.
+    
+    See also:
+    
+    :ref:`coretutorial_insert_expressions`
 
     """
     __visit_name__ = 'insert'

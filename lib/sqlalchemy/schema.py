@@ -92,11 +92,15 @@ class Table(SchemaItem, expression.TableClause):
                    )
 
     The :class:`.Table` object constructs a unique instance of itself based on its
-    name and optionl schema name within the given :class:`.MetaData` object.   
+    name and optional schema name within the given :class:`.MetaData` object.   
     Calling the :class:`.Table`
     constructor with the same name and same :class:`.MetaData` argument 
     a second time will return the *same* :class:`.Table` object - in this way
     the :class:`.Table` constructor acts as a registry function.
+    
+    See also:
+    
+    :ref:`metadata_describing` - Introduction to database metadata
     
     Constructor arguments are as follows:
 
@@ -2180,14 +2184,15 @@ class Index(ColumnCollectionMixin, SchemaItem):
                       (self.unique and ', unique=True') or '')
 
 class MetaData(SchemaItem):
-    """A collection of Tables and their associated schema constructs.
+    """A collection of :class:`.Table` objects and their associated schema constructs.
 
-    Holds a collection of Tables and an optional binding to an ``Engine`` or
-    ``Connection``.  If bound, the :class:`~sqlalchemy.schema.Table` objects
+    Holds a collection of :class:`.Table` objects as well as 
+    an optional binding to an :class:`.Engine` or
+    :class:`.Connection`.  If bound, the :class:`.Table` objects
     in the collection and their columns may participate in implicit SQL
     execution.
 
-    The `Table` objects themselves are stored in the `metadata.tables`
+    The :class:`.Table` objects themselves are stored in the ``metadata.tables``
     dictionary.
 
     The ``bind`` property may be assigned to dynamically.  A common pattern is
@@ -2202,6 +2207,12 @@ class MetaData(SchemaItem):
 
     MetaData is a thread-safe object after tables have been explicitly defined
     or loaded via reflection.
+    
+    See also:
+    
+    :ref:`metadata_describing` - Introduction to database metadata
+    
+    :ref:`metadata_binding` - Information on binding connectables to :class:`.MetaData`
 
     .. index::
       single: thread safety; MetaData
