@@ -1,4 +1,4 @@
-.. _associationproxy:
+.. _associationproxy_toplevel:
 
 Association Proxy
 =================
@@ -336,6 +336,8 @@ We illustrate the ``.keywords`` collection as a dictionary, mapping the
 
     >>> print(user.keywords)
     {'sk1': Keyword('kw1'), 'sk2': Keyword('kw2')}
+
+.. _composite_association_proxy:
 
 Composite Association Proxies
 -----------------------------

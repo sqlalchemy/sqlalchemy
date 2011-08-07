@@ -359,7 +359,7 @@ association object:
 
 To enhance the association object pattern such that direct
 access to the ``Association`` object is optional, SQLAlchemy
-provides the :ref:`associationproxy` extension. This
+provides the :ref:`associationproxy_toplevel` extension. This
 extension allows the configuration of attributes which will
 access two "hops" with a single access, one "hop" to the
 associated object, and a second to a target attribute.

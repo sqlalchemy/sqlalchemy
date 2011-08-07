@@ -165,12 +165,163 @@ default list, by specifying the ``collection_class`` option on
     parent.children.add(child)
     assert child in parent.children
 
+Dictionary Collections
+~~~~~~~~~~~~~~~~~~~~~~~
+
+A little extra detail is needed when using a dictionary as a collection. 
+This because objects are always loaded from the database as lists, and a key-generation
+strategy must be available to populate the dictionary correctly.  The
+:func:`.orm.collections.attribute_mapped_collection` function is by far the most common way
+to achieve a simple dictionary collection.  It produces a dictionary class that will apply a particular attribute
+of the mapped class as a key.   Below we map an ``Item`` class containing
+a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
+
+    from sqlalchemy import Column, Integer, String, ForeignKey
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.orm.collections import attribute_mapped_collection
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class Item(Base):
+        __tablename__ = 'item'
+        id = Column(Integer, primary_key=True)
+        notes = relationship("Note", 
+                    collection_class=attribute_mapped_collection('keyword'), 
+                    cascade="all, delete-orphan")
+
+    class Note(Base):
+        __tablename__ = 'note'
+        id = Column(Integer, primary_key=True)
+        item_id = Column(Integer, ForeignKey('item.id'), nullable=False)
+        keyword = Column(String)
+        text = Column(String)
+
+        def __init__(self, keyword, text):
+            self.keyword = keyword
+            self.text = text
+
+``Item.notes`` is then a dictionary::
+
+    >>> item = Item()
+    >>> item.notes['a'] = Note('a', 'atext')
+    >>> item.notes.items()
+    {'a': <__main__.Note object at 0x2eaaf0>}
+
+:func:`.orm.collections.attribute_mapped_collection` will ensure that 
+the ``.keyword`` attribute of each ``Note`` complies with the key in the
+dictionary.   Such as, when assigning to ``Item.notes``, the dictionary
+key we supply must match that of the actual ``Note`` object::
+
+    item = Item()
+    item.notes = {
+                'a': Note('a', 'atext'), 
+                'b': Note('b', 'btext')
+            }
+
+The attribute which :func:`.orm.collections.attribute_mapped_collection` uses as a key
+does not need to be mapped at all !  Using a regular Python ``@property`` allows virtually
+any detail or combination of details about the object to be used as the key, as 
+below when we establish it as a tuple of ``Note.keyword`` and the first ten letters
+of the ``Note.text`` field::
+
+    class Item(Base):
+        __tablename__ = 'item'
+        id = Column(Integer, primary_key=True)
+        notes = relationship("Note", 
+                    collection_class=attribute_mapped_collection('note_key'), 
+                    backref="item",
+                    cascade="all, delete-orphan")
+
+    class Note(Base):
+        __tablename__ = 'note'
+        id = Column(Integer, primary_key=True)
+        item_id = Column(Integer, ForeignKey('item.id'), nullable=False)
+        keyword = Column(String)
+        text = Column(String)
+
+        @property
+        def note_key(self):
+            return (self.keyword, self.text[0:10])
+
+        def __init__(self, keyword, text):
+            self.keyword = keyword
+            self.text = text
+
+Above we added a ``Note.item`` backref.  Assigning to this reverse relationship, the ``Note``
+is added to the ``Item.notes`` dictionary and the key is generated for us automatically::
+
+    >>> item = Item()
+    >>> n1 = Note("a", "atext")
+    >>> n1.item = item
+    >>> item.notes
+    {('a', 'atext'): <__main__.Note object at 0x2eaaf0>}
+
+Other built-in dictionary types include :func:`.orm.collections.column_mapped_collection`,
+which is almost like ``attribute_mapped_collection`` except given the :class:`.Column`
+object directly::
+
+    from sqlalchemy.orm.collections import column_mapped_collection
+
+    class Item(Base):
+        __tablename__ = 'item'
+        id = Column(Integer, primary_key=True)
+        notes = relationship("Note", 
+                    collection_class=column_mapped_collection(Note.__table__.c.keyword), 
+                    cascade="all, delete-orphan")
+
+as well as :func:`.orm.collections.mapped_collection` which is passed any callable function.
+Note that it's usually easier to use :func:`.orm.collections.attribute_mapped_collection` along
+with a ``@property`` as mentioned earlier::
+
+    from sqlalchemy.orm.collections import mapped_collection
+
+    class Item(Base):
+        __tablename__ = 'item'
+        id = Column(Integer, primary_key=True)
+        notes = relationship("Note", 
+                    collection_class=mapped_collection(lambda note: note.text[0:10]), 
+                    cascade="all, delete-orphan")
+
+Dictionary mappings are often combined with the "Association Proxy" extension to produce
+streamlined dictionary views.  See :ref:`proxying_dictionaries` and :ref:`composite_association_proxy` 
+for examples.
+
 
 Custom Collection Implementations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use your own types for collections as well. For most cases, simply
-inherit from ``list`` or ``set`` and add the custom behavior.
+You can use your own types for collections as well.  In simple cases, simply 
+inherting from ``list`` or ``set``, adding custom behavior, is all that's needed.
+In other cases, special decorators are needed to tell SQLAlchemy more detail
+about how the collection operates.
+
+.. topic:: Do I need a custom collection implementation ?
+
+   In most cases not at all !   The most common use cases for a "custom" collection
+   is one that validates or marshals incoming values into a new form, such as
+   a string that becomes a class instance, or one which goes a
+   step beyond and represents the data internally in some fashion, presenting
+   a "view" of that data on the outside of a different form.
+
+   For the first use case, the :func:`.orm.validates` decorator is by far
+   the simplest way to intercept incoming values in all cases for the purposes
+   of validation and simple marshaling.  See :ref:`simple_validators` 
+   for an example of this.
+
+   For the second use case, the :ref:`associationproxy_toplevel` extension is a
+   well-tested, widely used system that provides a read/write "view" of a
+   collection in terms of some attribute present on the target object. As the
+   target attribute can be a ``@property`` that returns virtually anything, a
+   wide array of "alternative" views of a collection can be constructed with
+   just a few functions. This approach leaves the underlying mapped collection
+   unaffected and avoids the need to carefully tailor collection behavior on a
+   method-by-method basis.
+
+   Customized collections are useful when the collection needs to 
+   have special behaviors upon access or mutation operations that can't 
+   otherwise be modeled externally to the collection.   They can of course
+   be combined with the above two approaches.
 
 Collections in SQLAlchemy are transparently *instrumented*. Instrumentation
 means that normal operations on the collection are tracked and result in
@@ -202,7 +353,9 @@ interface are detected and instrumented via duck-typing:
         def foo(self):
             return 'foo'
 
-``append``, ``remove``, and ``extend`` are known list-like methods, and will be instrumented automatically.  ``__iter__`` is not a mutator method and won't be instrumented, and ``foo`` won't be either.
+``append``, ``remove``, and ``extend`` are known list-like methods, and will
+be instrumented automatically. ``__iter__`` is not a mutator method and won't
+be instrumented, and ``foo`` won't be either.
 
 Duck-typing (i.e. guesswork) isn't rock-solid, of course, so you can be
 explicit about the interface you are implementing by providing an
@@ -233,7 +386,7 @@ automatically when present. This set-like class does not provide the expected
 decorator.
 
 Annotating Custom Collections via Decorators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Decorators can be used to tag the individual methods the ORM needs to manage
 collections. Use them when your class doesn't quite meet the regular interface
@@ -286,34 +439,8 @@ called with no arguments and must return an iterator.
 
 .. _dictionary_collections:
 
-Dictionary-Based Collections
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-A ``dict`` can be used as a collection, but a keying strategy is needed to map
-entities loaded by the ORM to key, value pairs. The
-:mod:`sqlalchemy.orm.collections` package provides several built-in types for
-dictionary-based collections:
-
-.. sourcecode:: python+sql
-
-    from sqlalchemy.orm.collections import column_mapped_collection, attribute_mapped_collection, mapped_collection
-
-    mapper(Item, items_table, properties={
-        # key by column
-        'notes': relationship(Note, collection_class=column_mapped_collection(notes_table.c.keyword)),
-        # or named attribute
-        'notes2': relationship(Note, collection_class=attribute_mapped_collection('keyword')),
-        # or any callable
-        'notes3': relationship(Note, collection_class=mapped_collection(lambda entity: entity.a + entity.b))
-    })
-
-    # ...
-    item = Item()
-    item.notes['color'] = Note('color', 'blue')
-    print item.notes['color']
-
-These functions each provide a ``dict`` subclass with decorated ``set`` and
-``remove`` methods and the keying strategy of your choice.
+Custom Dictionary-Based Collections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :class:`sqlalchemy.orm.collections.MappedCollection` class can be used as
 a base class for your custom types or as a mix-in to quickly add ``dict``
@@ -367,11 +494,8 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
 
-See also :ref:`proxying_dictionaries` for details on how to use association
-proxies to create flexible dictionary views.
-
 Instrumentation and Custom Types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Many custom types and existing library classes can be used as a entity
 collection type as-is without further ado. However, it is important to note
