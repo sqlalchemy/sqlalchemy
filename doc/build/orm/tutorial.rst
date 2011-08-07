@@ -348,6 +348,18 @@ used, it retrieves a connection from a pool of connections maintained by the
 :class:`.Engine`, and holds onto it until we commit all changes and/or close the
 session object.
 
+.. topic:: Session Creational Patterns
+
+   The business of acquiring a :class:`.Session` has a good deal of variety based
+   on the variety of types of applications and frameworks out there.
+   Keep in mind the :class:`.Session` is just a workspace for your objects,
+   local to a particular database connection - if you think of 
+   an application thread as a guest at a dinner party, the :class:`.Session`
+   is the guest's plate and the objects it holds are the food 
+   (and the database...the kitchen?)!   Hints on 
+   how :class:`.Session` is integrated into an application are at
+   :ref:`session_faq`.
+
 Adding New Objects
 ==================
 
@@ -391,7 +403,8 @@ that which we just added::
     >>> ed_user is our_user
     True
 
-The ORM concept at work here is known as an **identity map** and ensures that
+The ORM concept at work here is known as an `identity map <http://martinfowler.com/eaaCatalog/identityMap.html>`_ 
+and ensures that
 all operations upon a particular row within a
 :class:`~sqlalchemy.orm.session.Session` operate upon the same set of data.
 Once an object with a particular primary key is present in the
@@ -477,6 +490,15 @@ by default refreshes data from a previous transaction the first time it's
 accessed within a new transaction, so that the most recent state is available.
 The level of reloading is configurable as is described in :ref:`session_toplevel`.
 
+.. topic:: Session Object States
+
+   As our ``User`` object moved from being outside the :class:`.Session`, to
+   inside the :class:`.Session` without a primary key, to actually being
+   inserted, it moved between three out of four
+   available "object states" - **transient**, **pending**, and **persistent**.
+   Being aware of these states and what they mean is always a good idea - 
+   be sure to read :ref:`session_object_states` for a quick overview.
+
 Rolling Back
 ============
 Since the :class:`~sqlalchemy.orm.session.Session` works within a transaction,
@@ -543,8 +565,8 @@ issuing a SELECT illustrates the changes made to the database:
 Querying
 ========
 
-A :class:`~sqlalchemy.orm.query.Query` is created using the
-:class:`~sqlalchemy.orm.session.Session.query()` function on
+A :class:`~sqlalchemy.orm.query.Query` object is created using the
+:class:`~sqlalchemy.orm.session.Session.query()` method on
 :class:`~sqlalchemy.orm.session.Session`. This function takes a variable
 number of arguments, which can be any combination of classes and
 class-instrumented descriptors. Below, we indicate a
@@ -600,26 +622,44 @@ class:
     <User('mary','Mary Contrary', 'xxg527')> mary
     <User('fred','Fred Flinstone', 'blah')> fred
 
-You can control the names using the :meth:`~._CompareMixin.label` construct for
-scalar attributes and :class:`~.orm.aliased` for class constructs:
+You can control the names of individual column expressions using the
+:meth:`~._CompareMixin.label` construct, which is available from
+any :class:`.ColumnElement`-derived object, as well as any class attribute which
+is mapped to one (such as ``User.name``):
+
+.. sourcecode:: python+sql
+
+    {sql}>>> for row in session.query(User.name.label('name_label')).all(): #doctest: +NORMALIZE_WHITESPACE
+    ...    print(row.name_label)
+    SELECT users.name AS name_label
+    FROM users
+    (){stop}
+    ed
+    wendy
+    mary
+    fred
+
+The name given to a full entity such as ``User``, assuming that multiple
+entities are present in the call to :meth:`~.Session.query`, can be controlled using
+:class:`~.orm.aliased` :
 
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy.orm import aliased
     >>> user_alias = aliased(User, name='user_alias')
-    {sql}>>> for row in session.query(user_alias, user_alias.name.label('name_label')).all(): #doctest: +NORMALIZE_WHITESPACE
-    ...    print row.user_alias, row.name_label
+
+    {sql}>>> for row in session.query(user_alias, user_alias.name).all(): #doctest: +NORMALIZE_WHITESPACE
+    ...    print row.user_alias
     SELECT user_alias.id AS user_alias_id, 
             user_alias.name AS user_alias_name, 
             user_alias.fullname AS user_alias_fullname, 
-            user_alias.password AS user_alias_password, 
-            user_alias.name AS name_label
+            user_alias.password AS user_alias_password
     FROM users AS user_alias
     (){stop}
-    <User('ed','Ed Jones', 'f8s7ccs')> ed
-    <User('wendy','Wendy Williams', 'foobar')> wendy
-    <User('mary','Mary Contrary', 'xxg527')> mary
-    <User('fred','Fred Flinstone', 'blah')> fred
+    <User('ed','Ed Jones', 'f8s7ccs')>
+    <User('wendy','Wendy Williams', 'foobar')>
+    <User('mary','Mary Contrary', 'xxg527')>
+    <User('fred','Fred Flinstone', 'blah')>
 
 Basic operations with :class:`~sqlalchemy.orm.query.Query` include issuing
 LIMIT and OFFSET, most conveniently using Python array slices and typically in
@@ -860,6 +900,92 @@ completely "raw", using string names to identify desired columns:
     ('ed',)
     {stop}[(1, u'ed', 12)]
 
+.. topic:: Pros and Cons of Literal SQL
+
+   :class:`.Query` is constructed like the rest of SQLAlchemy, in that it tries
+   to always allow "falling back" to a less automated, lower level approach to things.
+   Accepting strings for all SQL fragments is a big part of that, so that 
+   you can bypass the need to organize SQL constructs if you know specifically
+   what string output you'd like.
+   But when using literal strings, the :class:`.Query` no longer knows anything about
+   that part of the SQL construct being emitted, and has no ability to 
+   **transform** it to adapt to new contexts.
+
+   For example, suppose we selected ``User`` objects and ordered by the ``name``
+   column, using a string to indicate ``name``:
+
+   .. sourcecode:: python+sql
+
+       >>> q = session.query(User.id, User.name)
+       {sql}>>> q.order_by("name").all()
+       SELECT users.id AS users_id, users.name AS users_name 
+       FROM users ORDER BY name
+       ()
+       {stop}[(1, u'ed'), (4, u'fred'), (3, u'mary'), (2, u'wendy')]
+
+   Perfectly fine.  But suppose, before we got a hold of the :class:`.Query`,
+   some sophisticated transformations were applied to it, such as below
+   where we use :meth:`~.Query.from_self`, a particularly advanced
+   method, to retrieve pairs of user names with 
+   different numbers of characters::
+
+        >>> from sqlalchemy import func
+        >>> ua = aliased(User)
+        >>> q = q.from_self(User.id, User.name, ua.name).\
+        ...     filter(User.name < ua.name).\
+        ...     filter(func.length(ua.name) != func.length(User.name))
+
+   The :class:`.Query` now represents a select from a subquery, where 
+   ``User`` is represented twice both inside and outside of the subquery.
+   Telling the :class:`.Query` to order by "name" doesn't really give
+   us much guarantee which "name" it's going to order on.  In this 
+   case it assumes "name" is against the outer "aliased" ``User`` construct:
+
+   .. sourcecode:: python+sql
+
+       {sql}>>> q.order_by("name").all() #doctest: +NORMALIZE_WHITESPACE
+       SELECT anon_1.users_id AS anon_1_users_id, 
+                anon_1.users_name AS anon_1_users_name, 
+                users_1.name AS users_1_name 
+       FROM (SELECT users.id AS users_id, users.name AS users_name 
+            FROM users) AS anon_1, users AS users_1 
+       WHERE anon_1.users_name < users_1.name 
+            AND length(users_1.name) != length(anon_1.users_name) 
+       ORDER BY name
+       ()
+       {stop}[(1, u'ed', u'fred'), (1, u'ed', u'mary'), (1, u'ed', u'wendy'), (3, u'mary', u'wendy'), (4, u'fred', u'wendy')]
+
+   Only if we use the SQL element directly, in this case ``User.name``
+   or ``ua.name``, do we give :class:`.Query` enough information to know 
+   for sure which "name" we'd like to order on, where we can see we get different results
+   for each:
+
+   .. sourcecode:: python+sql
+
+       {sql}>>> q.order_by(ua.name).all() #doctest: +NORMALIZE_WHITESPACE
+       SELECT anon_1.users_id AS anon_1_users_id, 
+                anon_1.users_name AS anon_1_users_name, 
+                users_1.name AS users_1_name 
+       FROM (SELECT users.id AS users_id, users.name AS users_name 
+            FROM users) AS anon_1, users AS users_1 
+       WHERE anon_1.users_name < users_1.name 
+            AND length(users_1.name) != length(anon_1.users_name) 
+       ORDER BY users_1.name
+       ()
+       {stop}[(1, u'ed', u'fred'), (1, u'ed', u'mary'), (1, u'ed', u'wendy'), (3, u'mary', u'wendy'), (4, u'fred', u'wendy')]
+
+       {sql}>>> q.order_by(User.name).all() #doctest: +NORMALIZE_WHITESPACE
+       SELECT anon_1.users_id AS anon_1_users_id, 
+                anon_1.users_name AS anon_1_users_name, 
+                users_1.name AS users_1_name 
+       FROM (SELECT users.id AS users_id, users.name AS users_name 
+            FROM users) AS anon_1, users AS users_1 
+       WHERE anon_1.users_name < users_1.name 
+            AND length(users_1.name) != length(anon_1.users_name) 
+       ORDER BY anon_1.users_name
+       ()
+       {stop}[(1, u'ed', u'wendy'), (1, u'ed', u'mary'), (1, u'ed', u'fred'), (4, u'fred', u'wendy'), (3, u'mary', u'wendy')]
+
 Counting
 --------
 
@@ -926,9 +1052,10 @@ of the ``User`` primary key directly:
 Building a Relationship
 =======================
 
-Now let's consider a second table to be dealt with. Users in our system also
+Let's consider how a second table, related to ``User``, can be mapped and
+queried.  Users in our system 
 can store any number of email addresses associated with their username. This
-implies a basic one to many association from the ``users_table`` to a new
+implies a basic one to many association from the ``users`` to a new
 table which stores email addresses, which we will call ``addresses``. Using
 declarative, we define this table along with its mapped class, ``Address``:
 
@@ -936,6 +1063,7 @@ declarative, we define this table along with its mapped class, ``Address``:
 
     >>> from sqlalchemy import ForeignKey
     >>> from sqlalchemy.orm import relationship, backref
+
     >>> class Address(Base):
     ...     __tablename__ = 'addresses'
     ...     id = Column(Integer, primary_key=True)
@@ -950,28 +1078,39 @@ declarative, we define this table along with its mapped class, ``Address``:
     ...     def __repr__(self):
     ...         return "<Address('%s')>" % self.email_address
 
-The above class introduces a **foreign key** constraint, applied to the 
-:class:`.Column` named ``user_id``, using the :class:`.ForeignKey` construct.
-This configuration defines the relationship between the two tables
-as it exists in the database.   The relationship between the ``User`` and
-``Address`` classes themselves is defined separately using the
-:func:`~sqlalchemy.orm.relationship()` function, which defines an attribute
-``user`` to be placed on the ``Address`` class which links to ``User``, as well as an ``addresses``
-collection to be placed on the ``User`` class, defined by the :func:`.backref`
-class as a configuration nested inside the relationship.  Such a relationship is known as
-a **bidirectional** relationship, in that each of ``User`` and ``Address`` contains
-an explicit link to the other.
+The above class introduces the :class:`.ForeignKey` construct, which is a
+directive applied to :class:`.Column` that indicates that values in this
+column should be **constrained** to be values present in the named remote
+column. This is a core feature of relational databases, and is the "glue" that
+transforms an otherwise unconnected collection of tables to have rich
+overlapping relationships. The :class:`.ForeignKey` above expresses that
+values in the ``addresses.user_id`` column should be constrained to
+those values in the ``users.id`` column, i.e. its primary key.
 
-Based on the placement of the :class:`.ForeignKey`, :func:`.relationship` and
-:func:`.backref` know that the ``User.addresses`` relationship is **one to many**
-and that the ``Address.user`` relationship is **many to one** - this is established
-strictly based on the geometry of the tables involved.
+A second directive, known as :func:`.relationship`,
+tells the ORM that the ``Address`` class itself should be linked
+to the ``User`` class, using the attribute ``Address.user``.   
+:func:`.relationship` uses the foreign key
+relationships between the two tables to determine the nature of
+this linkage, determining that ``Address.user`` will be **many-to-one**.
+A subdirective of :func:`.relationship` called :func:`.backref` is
+placed inside of :func:`.relationship`, providing details about
+the relationship as expressed in reverse, that of a collection of ``Address``
+objects on ``User`` referenced by ``User.addresses``.  The reverse
+side of a many-to-one relationship is always **one-to-many**.
+
+The two complementing relationships ``Address.user`` and ``User.addresses``
+are referred to as a **bidirectional relationship**, and is a key
+feature of the SQLAlchemy ORM.
 
 Arguments to :func:`.relationship` which concern the remote class 
-can be specified using strings, which are evaluated once all mappings are complete
-as Python expressions.  The names which are allowed include, among other things, the names of all classes
-which have been created in terms of the declared base.  Below we illustrate creating
-the same "addresses/user" bidirectional relationship in terms of ``User`` instead of 
+can be specified using strings, assuming the Declarative system is in 
+use.   Once all mappings are complete, these strings are evaluated
+as Python expressions in order to produce the actual argument, in the 
+above case the ``User`` class.   The names which are allowed during 
+this evaluation include, among other things, the names of all classes
+which have been created in terms of the declared base.  Below we illustrate creation
+of the same "addresses/user" bidirectional relationship in terms of ``User`` instead of 
 ``Address``::
 
     class User(Base):
@@ -979,6 +1118,20 @@ the same "addresses/user" bidirectional relationship in terms of ``User`` instea
         addresses = relationship("Address", order_by="Address.id", backref="user")
 
 See the docstring for :func:`.relationship` for more detail on argument style.
+
+.. topic:: Did you know ?
+
+    * a FOREIGN KEY constraint in most (though not all) relational databases can 
+      only link to a primary key column, or a column that has a UNIQUE constraint.
+    * a FOREIGN KEY constraint that refers to a multiple column primary key, and itself
+      has multiple columns, is known as a "composite foreign key".  It can also
+      reference a subset of those columns.
+    * FOREIGN KEY columns can automatically update themselves, in response to a change
+      in the referenced column or row.  This is known as the CASCADE *referential action*,
+      and is a built in function of the relational database.
+    * FOREIGN KEY can refer to its own table.  This is referred to as a "self-referential"
+      foreign key.
+    * Read more about foreign keys at `Foreign Key - Wikipedia <http://en.wikipedia.org/wiki/Foreign_key>`_.
 
 We'll need to create the ``addresses`` table in the database, so we will issue
 another CREATE from our metadata, which will skip over tables which have
