@@ -29,7 +29,7 @@ The ``User`` example in the tutorial, using classical mapping, defines the
 :class:`.Table`, class, and :func:`.mapper` of the class separately.  Below we illustrate
 the full ``User``/``Address`` example using this style::
 
-    from sqlalchemy import Table, Metadata, Column, ForeignKey, Integer, String
+    from sqlalchemy import Table, MetaData, Column, ForeignKey, Integer, String
     from sqlalchemy.orm import mapper, relationship
 
     metadata = MetaData()
