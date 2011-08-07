@@ -429,7 +429,7 @@ to add an additional property after the fact::
 
     User.address_count = column_property(
             select([func.count(Address.id)]).\
-                where(Address.user_id==id)
+                where(Address.user_id==User.id)
         ) 
 
 For many-to-many relationships, use :func:`.and_` to join the fields of the
