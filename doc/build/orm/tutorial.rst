@@ -1298,7 +1298,9 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     ('%google%',)
     {stop}jack
 
-:meth:`~.RelationshipProperty.Comparator.has` is the same operator as :meth:`~.RelationshipProperty.Comparator.any` for many-to-one relationships (note the ``~`` operator here too, which means "NOT"):
+:meth:`~.RelationshipProperty.Comparator.has` is the same operator as
+:meth:`~.RelationshipProperty.Comparator.any` for many-to-one relationships
+(note the ``~`` operator here too, which means "NOT"):
 
 .. sourcecode:: python+sql
 
@@ -1369,7 +1371,7 @@ that fully loads the collections associated with the results just loaded.
 The name "subquery" originates from the fact that the SELECT statement 
 constructed directly via the :class:`.Query` is re-used, embedded as a subquery
 into a SELECT against the related table.   This is a little elaborate but 
-very easy to use::
+very easy to use:
 
 .. sourcecode:: python+sql
 
@@ -1399,26 +1401,30 @@ very easy to use::
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-
-, using the
-:func:`~sqlalchemy.orm.joinedload` function. This function is a **query
-option** that gives additional instructions to the query on how we would like
-it to load, in this case we'd like to indicate that we'd like ``addresses`` to
-load "eagerly". SQLAlchemy then constructs an outer join between the ``users``
-and ``addresses`` tables, and loads them at once, populating the ``addresses``
-collection on each ``User`` object if it's not already populated:
+The other eager loading function is more well known and is called
+:func:`.orm.joinedload`.   This style of loading emits a JOIN, by default
+a LEFT OUTER JOIN, so that the lead object as well as the related object
+or collection is loaded in one step.   We illustrate loading the same
+``addresses`` collection in this way - note that even though the ``User.addresses``
+collection on ``jack`` is actually populated right now, the query 
+will emit the extra join regardless:
 
 .. sourcecode:: python+sql
 
     >>> from sqlalchemy.orm import joinedload
 
     {sql}>>> jack = session.query(User).\
-    ...                        options(joinedload('addresses')).\
+    ...                        options(joinedload(User.addresses)).\
     ...                        filter_by(name='jack').one() #doctest: +NORMALIZE_WHITESPACE
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-    users.password AS users_password, addresses_1.id AS addresses_1_id, addresses_1.email_address
-    AS addresses_1_email_address, addresses_1.user_id AS addresses_1_user_id
-    FROM users LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    SELECT users.id AS users_id, 
+            users.name AS users_name, 
+            users.fullname AS users_fullname,
+            users.password AS users_password, 
+            addresses_1.id AS addresses_1_id, 
+            addresses_1.email_address AS addresses_1_email_address, 
+            addresses_1.user_id AS addresses_1_user_id
+    FROM users 
+        LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ? ORDER BY addresses_1.id
     ('jack',)
 
@@ -1428,12 +1434,42 @@ collection on each ``User`` object if it's not already populated:
     >>> jack.addresses
     [<Address('jack@google.com')>, <Address('j25@yahoo.com')>]
 
-See :ref:`loading_toplevel` for information on
-:func:`~sqlalchemy.orm.joinedload` and its new brother,
-:func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
-load in the next section.
+Note that even though the OUTER JOIN resulted in two rows, we still only got
+one instance of ``User`` back.  This is because :class:`.Query` applies a "uniquing"
+strategy, based on object identity, to the returned entities.  This is specifically
+so that joined eager loading can be applied without affecting the query results.
 
-.. topic:: ``joinedload()`` is not how you construct a JOIN
+While :func:`.joinedload` has been around for a long time, :func:`.subqueryload`
+is a newer form of eager loading.   :func:`.subqueryload` tends to be more appropriate
+for loading related collections while :func:`.joinedload` tends to be better suited
+for many-to-one relationships, due to the fact that only one row is loaded
+for both the lead and the related object.   Below we illustrate loading an ``Address``
+row, using :func:`.joinedload` to load the corresponding ``Address.user`` datamember:
+
+.. sourcecode:: python+sql
+
+    {sql}>>> jacks_address = session.query(Address).\
+    ...                            options(joinedload(Address.user)).\
+    ...                            filter_by(email_address='j25@yahoo.com').\
+    ...                            one() #doctest: +NORMALIZE_WHITESPACE
+    SELECT addresses.id AS addresses_id, 
+            addresses.email_address AS addresses_email_address, 
+            addresses.user_id AS addresses_user_id, 
+            users_1.id AS users_1_id, 
+            users_1.name AS users_1_name, 
+            users_1.fullname AS users_1_fullname, 
+            users_1.password AS users_1_password 
+    FROM addresses LEFT OUTER JOIN users AS users_1 ON users_1.id = addresses.user_id 
+    WHERE addresses.email_address = ?
+    ('j25@yahoo.com',)
+
+    {stop}>>> jacks_address
+    <Address('j25@yahoo.com')>
+
+    >>> jacks_address.user
+    <User('jack','Jack Bean', 'gjffdd')>
+
+.. topic:: ``joinedload()`` is not a replacement for ``join()``
 
    The join created by :func:`.joinedload` is anonymously aliased such that
    it **does not affect the query results**.   An :meth:`.Query.order_by`
@@ -1443,48 +1479,10 @@ load in the next section.
    applied in order to affect how related objects or collections are loaded
    as an optimizing detail - it can be added or removed with no impact
    on actual results.   See the section :ref:`zen_of_eager_loading` for 
-   a detailed description of how this is used, including how to use a single 
-   explicit JOIN for filtering/ordering and eager loading simultaneously.
+   a detailed description of how this is used.
 
-
-Using join() to Eagerly Load Collections/Attributes
--------------------------------------------------------
-
-The "eager loading" capabilities of the :func:`~sqlalchemy.orm.joinedload`
-function and the join-construction capabilities of
-:meth:`~sqlalchemy.orm.query.Query.join()` or an equivalent can be combined
-together using the :func:`~sqlalchemy.orm.contains_eager` option. This is
-typically used for a query that is already joining to some related entity
-(more often than not via many-to-one), and you'd like the related entity to
-also be loaded onto the resulting objects in one step without the need for
-additional queries and without the "automatic" join embedded by the
-:func:`~sqlalchemy.orm.joinedload` function:
-
-.. sourcecode:: python+sql
-
-    >>> from sqlalchemy.orm import contains_eager
-    {sql}>>> for address in session.query(Address).\
-    ...                join(Address.user).\
-    ...                filter(User.name=='jack').\
-    ...                options(contains_eager(Address.user)): #doctest: +NORMALIZE_WHITESPACE
-    ...         print address, address.user
-    SELECT users.id AS users_id, users.name AS users_name, users.fullname AS users_fullname,
-     users.password AS users_password, addresses.id AS addresses_id, 
-     addresses.email_address AS addresses_email_address, addresses.user_id AS addresses_user_id 
-    FROM addresses JOIN users ON users.id = addresses.user_id 
-    WHERE users.name = ?
-    ('jack',)
-    {stop}<Address('jack@google.com')> <User('jack','Jack Bean', 'gjffdd')>
-    <Address('j25@yahoo.com')> <User('jack','Jack Bean', 'gjffdd')>
-
-Note that above the join was used both to limit the rows to just those
-``Address`` objects which had a related ``User`` object with the name "jack".
-It's safe to have the ``Address.user`` attribute populated with this user
-using an inner join. However, when filtering on a join that is filtering on a
-particular member of a collection, using
-:func:`~sqlalchemy.orm.contains_eager` to populate a related collection may
-populate the collection with only part of what it actually references, since
-the collection itself is filtered.
+Full information on built in eager loading, as well as how to construct joined eager 
+loads explicitly using :meth:`.Query.join`, is available at :ref:`loading_toplevel`.
 
 Deleting
 ========
@@ -1533,37 +1531,41 @@ We will configure **cascade** options on the ``User.addresses`` relationship
 to change the behavior. While SQLAlchemy allows you to add new attributes and
 relationships to mappings at any point in time, in this case the existing
 relationship needs to be removed, so we need to tear down the mappings
-completely and start again.
+completely and start again - we'll close the :class:`.Session`::
 
-.. note:: Tearing down mappers with :func:`~.orm.clear_mappers` is not a typical
-    operation, and normal applications do not need to use this function. It is
-    here so that the tutorial code can be executed as a whole.
+    >>> session.close()
 
-.. sourcecode:: python+sql
+and use a new :func:`.declarative_base`::
 
-    >>> session.close()  # roll back and close the transaction
-    >>> from sqlalchemy.orm import clear_mappers
-    >>> clear_mappers() # remove all class mappings
+    >>> Base = declarative_base()
 
+Next we'll declare the ``User`` class, adding in the ``addresses`` relationship
+including the cascade configuration (we'll leave the constructor out too)::
 
-Below, we use :class:`~.orm.mapper` to reconfigure an ORM mapping for ``User`` and
-``Address``, on our existing but currently un-mapped classes. The
-``User.addresses`` relationship now has ``delete, delete-orphan`` cascade on
-it, which indicates that DELETE operations will cascade to attached
-``Address`` objects as well as ``Address`` objects which are removed from
-their parent:
+    >>> class User(Base):
+    ...     __tablename__ = 'users'
+    ...
+    ...     id = Column(Integer, primary_key=True)
+    ...     name = Column(String)
+    ...     fullname = Column(String)
+    ...     password = Column(String)
+    ...
+    ...     addresses = relationship("Address", backref='user', cascade="all, delete, delete-orphan")
+    ...
+    ...     def __repr__(self):
+    ...        return "<User('%s','%s', '%s')>" % (self.name, self.fullname, self.password)
 
-.. sourcecode:: python+sql
+Then we recreate ``Address``, noting that in this case we've created the ``Address.user`` relationship
+via the ``User`` class already::
 
-    >>> users_table = User.__table__
-    >>> mapper(User, users_table, properties={    # doctest: +ELLIPSIS
-    ...     'addresses':relationship(Address, backref='user', cascade="all, delete, delete-orphan")
-    ... })
-    <Mapper at 0x...; User>
-
-    >>> addresses_table = Address.__table__
-    >>> mapper(Address, addresses_table) # doctest: +ELLIPSIS
-    <Mapper at 0x...; Address>
+    >>> class Address(Base):
+    ...     __tablename__ = 'addresses'
+    ...     id = Column(Integer, primary_key=True)
+    ...     email_address = Column(String, nullable=False)
+    ...     user_id = Column(Integer, ForeignKey('users.id'))
+    ...
+    ...     def __repr__(self):
+    ...         return "<Address('%s')>" % self.email_address
 
 Now when we load Jack (below using :meth:`~.Query.get`, which loads by primary key),
 removing an address from his ``addresses`` collection will result in that
@@ -1634,17 +1636,24 @@ relationship. We'll sneak in some other features too, just to take a tour.
 We'll make our application a blog application, where users can write
 ``BlogPost`` items, which have ``Keyword`` items associated with them.
 
-The declarative setup is as follows:
+For a plain many-to-many, we need to create an un-mapped :class:`.Table` construct
+to serve as the association table.  This looks like the following::
 
-.. sourcecode:: python+sql
-
-    >>> from sqlalchemy import Text
-
+    >>> from sqlalchemy import Table, Text
     >>> # association table
-    >>> post_keywords = Table('post_keywords', metadata,
+    >>> post_keywords = Table('post_keywords', Base.metadata,
     ...     Column('post_id', Integer, ForeignKey('posts.id')),
     ...     Column('keyword_id', Integer, ForeignKey('keywords.id'))
     ... )
+
+Above, we can see declaring a :class:`.Table` directly is a little different
+than declaring a mapped class.  :class:`.Table` is a constructor function, so
+each individual :class:`.Column` argument is separated by a comma.  The 
+:class:`.Column` object is also given its name explicitly, rather than it being
+taken from an assigned attribute name.
+
+Next we define ``BlogPost`` and ``Keyword``, with a :func:`.relationship` linked
+via the ``post_keywords`` table::
 
     >>> class BlogPost(Base):
     ...     __tablename__ = 'posts'
@@ -1665,6 +1674,7 @@ The declarative setup is as follows:
     ...     def __repr__(self):
     ...         return "BlogPost(%r, %r, %r)" % (self.headline, self.body, self.author)
 
+
     >>> class Keyword(Base):
     ...     __tablename__ = 'keywords'
     ...
@@ -1682,12 +1692,6 @@ sides of the relationship; if it has *any* other columns, such as its own
 primary key, or foreign keys to other tables, SQLAlchemy requires a different
 usage pattern called the "association object", described at
 :ref:`association_pattern`.
-
-The many-to-many relationship is also bi-directional using the ``backref``
-keyword. This is the one case where usage of ``backref`` is generally
-required, since if a separate ``posts`` relationship were added to the
-``Keyword`` entity, both relationships would independently add and remove rows
-from the ``post_keywords`` table and produce conflicts.
 
 We would also like our ``BlogPost`` class to have an ``author`` field. We will
 add this as another bidirectional relationship, except one issue we'll have is
@@ -1709,7 +1713,7 @@ Create new tables:
 
 .. sourcecode:: python+sql
 
-    {sql}>>> metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
+    {sql}>>> Base.metadata.create_all(engine) # doctest: +NORMALIZE_WHITESPACE
     PRAGMA table_info("users")
     ()
     PRAGMA table_info("addresses")
@@ -1829,4 +1833,4 @@ Mapper Reference: :ref:`mapper_config_toplevel`
 
 Relationship Reference: :ref:`relationship_config_toplevel`
 
-Session Reference: :ref:`session_toplevel`.
+Session Reference: :ref:`session_toplevel`
