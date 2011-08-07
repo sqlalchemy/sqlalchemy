@@ -2336,7 +2336,7 @@ class Query(object):
         to count, to skip the usage of a subquery or
         otherwise control of the FROM clause,
         or to use other aggregate functions,
-        use :attr:`.func` expressions in conjunction
+        use :attr:`~sqlalchemy.sql.expression.func` expressions in conjunction
         with :meth:`~.Session.query`, i.e.::
         
             from sqlalchemy import func

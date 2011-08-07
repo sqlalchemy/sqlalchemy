@@ -2200,7 +2200,7 @@ class Engine(Connectable, log.Identified):
 
     @property
     @util.deprecated("0.7", 
-                "Use :attr:`.expression.func` to create function constructs.")
+                "Use :attr:`~sqlalchemy.sql.expression.func` to create function constructs.")
     def func(self):
         return expression._FunctionGenerator(bind=self)
 

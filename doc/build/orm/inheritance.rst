@@ -15,6 +15,11 @@ When mappers are configured in an inheritance relationship, SQLAlchemy has the
 ability to load elements "polymorphically", meaning that a single query can
 return objects of multiple types.
 
+.. note:: This section currently uses classical mappings to illustrate inheritance
+   configurations, and will soon be updated to standardize on Declarative.
+   Until then, please refer to :ref:`declarative_inheritance` for information on
+   how common inheritance mappings are constructed declaratively.
+
 For the following sections, assume this class relationship:
 
 .. sourcecode:: python+sql
@@ -525,6 +530,7 @@ Upon select, the polymorphic union produces a query like this:
 
 For a recipe that sets up concrete inheritance using declarative, see the `DeclarativeAbstractConcreteBase
 <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_ recipe on the wiki.
+Other helpers for concrete inheritance with declarative are currently under development.
 
 Using Relationships with Inheritance
 ------------------------------------
