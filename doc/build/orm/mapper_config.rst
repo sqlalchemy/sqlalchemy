@@ -758,6 +758,9 @@ A simple example represents pairs of columns as a ``Point`` object.
         def __composite_values__(self):
             return self.x, self.y
 
+        def __repr__(self):
+            return "Point(x=%r, y=%r)" % (self.x, self.y)
+
         def __eq__(self, other):
             return isinstance(other, Point) and \
                 other.x == self.x and \
@@ -780,12 +783,12 @@ attributes that will represent sets of columns via the ``Point`` class::
 
     from sqlalchemy import Column, Integer
     from sqlalchemy.orm import composite
-    from sqlalcehmy.ext.declarative import declarative_base
+    from sqlalchemy.ext.declarative import declarative_base
 
     Base = declarative_base()
 
     class Vertex(Base):
-        ___tablename__ = 'vertice'
+        __tablename__ = 'vertice'
 
         id = Column(Integer, primary_key=True)
         x1 = Column(Integer)
@@ -804,14 +807,28 @@ against the existing table::
         'end':composite(Point, vertice_table.c.x2, vertice_table.c.y2),
     })
 
-We can now use the ``Vertex`` instances as well as querying as though the
-``start`` and ``end`` attributes are regular scalar attributes::
+We can now persist and use ``Vertex`` instances, as well as query for them,
+using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
 
-    session = Session()
-    v = Vertex(Point(3, 4), Point(5, 6))
-    session.add(v)
+.. sourcecode:: python+sql
 
-    v2 = session.query(Vertex).filter(Vertex.start == Point(3, 4))
+    >>> v = Vertex(start=Point(3, 4), end=Point(5, 6))
+    >>> session.add(v)
+    >>> q = session.query(Vertex).filter(Vertex.start == Point(3, 4))
+    {sql}>>> print q.first().start
+    BEGIN (implicit)
+    INSERT INTO vertice (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
+    (3, 4, 5, 6)
+    SELECT vertice.id AS vertice_id, 
+            vertice.x1 AS vertice_x1, 
+            vertice.y1 AS vertice_y1, 
+            vertice.x2 AS vertice_x2, 
+            vertice.y2 AS vertice_y2 
+    FROM vertice 
+    WHERE vertice.x1 = ? AND vertice.y1 = ?
+     LIMIT ? OFFSET ?
+    (3, 4, 1, 0)
+    {stop}Point(x=3, y=4)
 
 .. autofunction:: composite
 
