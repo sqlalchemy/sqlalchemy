@@ -69,9 +69,11 @@ the SQL behind a popup window so it doesn't get in our way; just click the
 
 The return value of :func:`.create_engine` is an instance of :class:`.Engine`, and it represents
 the core interface to the database, adapted through a **dialect** that handles the details
-of the database and DBAPI in use, in this case the SQLite dialect.   It has not
-actually tried to connect to the database yet; that happens the first time the :class:`.Engine`
-is actually used to do something.
+of the database and DBAPI in use.  In this case the SQLite dialect will interpret instructions
+to the Python built-in ``sqlite3`` module.   
+
+The :class:`.Engine` has not actually tried to connect to the database yet; that happens 
+only the first time it is asked to perform a task against the database.
 
 Normally, the :class:`.Engine` is passed off to the ORM where it is used behind the scenes.
 We can execute SQL directly from it however, as we illustrate here:
@@ -83,21 +85,21 @@ We can execute SQL directly from it however, as we illustrate here:
     ()
     {stop}1
 
-We have now tested that the :class:`.Engine` is in fact able to connect to the database.
+Above, by executing a SQL statement, the :class:`.Engine` creates a connection which 
+by default remains pooled, and will be re-used for subsequent statement executions.
 
 Declare a Mapping
 =================
 
-When using the ORM, two key steps which occur before communicating with the
-database are to tell SQLAlchemy about our tables, as well as about the classes
-we're defining in our application and how they map to those tables. SQLAlchemy
-refers to these two steps as **defining table metadata** and **mapping
-classes**. In modern SQLAlchemy usage, these two tasks are performed together,
+When using the ORM, the basic configurational process is to define **table metadata**,
+which describes the database tables we'll be dealing with, and then to define
+our own classes which will be **mapped** to those tables.  In modern SQLAlchemy, 
+these two tasks are usually performed together,
 using a system known as :ref:`declarative_toplevel`, which allows us to create our own
-mapped classes which also define how they will be mapped to an actual database
+mapped classes that also define how they will be mapped to an actual database
 table.
 
-We define our classes in terms of a base class which maintains a catalog of classes and
+Mapped classes are defined in terms of a base class which maintains a catalog of classes and
 tables relative to that base - this is known as the **declarative base class**.  Our
 application will usually have just one instance of this base in a commonly
 imported module.   We create this class using the :func:`.declarative_base`
