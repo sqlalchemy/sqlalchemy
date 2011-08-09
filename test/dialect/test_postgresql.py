@@ -1255,119 +1255,22 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
             "t.b AS b FROM t) AS sq WHERE t.id = sq.id"
             )
 
-
-class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
-
-    __only_on__ = 'postgresql'
-
+class ReflectionTest(fixtures.TestBase):
     @testing.provide_metadata
-    def test_date_reflection(self):
-        metadata = self.metadata
-        t1 = Table('pgdate', metadata, Column('date1',
-                   DateTime(timezone=True)), Column('date2',
-                   DateTime(timezone=False)))
-        metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table('pgdate', m2, autoload=True)
-        assert t2.c.date1.type.timezone is True
-        assert t2.c.date2.type.timezone is False
-
-    @testing.fails_on('+zxjdbc',
-                      'The JDBC driver handles the version parsing')
-    def test_version_parsing(self):
-
-
-        class MockConn(object):
-
-            def __init__(self, res):
-                self.res = res
-
-            def execute(self, str):
-                return self
-
-            def scalar(self):
-                return self.res
-
-
-        for string, version in \
-            [('PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by '
-             'GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)', (8, 3,
-             8)),
-             ('PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, '
-             'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5))]:
-            eq_(testing.db.dialect._get_server_version_info(MockConn(string)),
-                version)
-
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
-    def test_psycopg2_version(self):
-        v = testing.db.dialect.psycopg2_version
-        assert testing.db.dialect.dbapi.__version__.\
-                    startswith(".".join(str(x) for x in v))
-
-    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
-    def test_notice_logging(self):
-        log = logging.getLogger('sqlalchemy.dialects.postgresql')
-        buf = logging.handlers.BufferingHandler(100)
-        lev = log.level
-        log.addHandler(buf)
-        log.setLevel(logging.INFO)
-        try:
-            conn = testing.db.connect()
-            trans = conn.begin()
-            try:
-                conn.execute('create table foo (id serial primary key)')
-            finally:
-                trans.rollback()
-        finally:
-            log.removeHandler(buf)
-            log.setLevel(lev)
-        msgs = ' '.join(b.msg for b in buf.buffer)
-        assert 'will create implicit sequence' in msgs
-        assert 'will create implicit index' in msgs
-
     def test_pg_weirdchar_reflection(self):
-        meta1 = MetaData(testing.db)
+        meta1 = self.metadata
         subject = Table('subject', meta1, Column('id$', Integer,
                         primary_key=True))
         referer = Table('referer', meta1, Column('id', Integer,
                         primary_key=True), Column('ref', Integer,
                         ForeignKey('subject.id$')))
         meta1.create_all()
-        try:
-            meta2 = MetaData(testing.db)
-            subject = Table('subject', meta2, autoload=True)
-            referer = Table('referer', meta2, autoload=True)
-            print str(subject.join(referer).onclause)
-            self.assert_((subject.c['id$']
-                         == referer.c.ref).compare(
-                            subject.join(referer).onclause))
-        finally:
-            meta1.drop_all()
-
-    @testing.fails_on('+zxjdbc',
-                      "Can't infer the SQL type to use for an instance "
-                      "of org.python.core.PyObjectDerived.")
-    @testing.fails_on('+pg8000', "Can't determine correct type.")
-    def test_extract(self):
-        fivedaysago = datetime.datetime.now() \
-            - datetime.timedelta(days=5)
-        for field, exp in ('year', fivedaysago.year), ('month',
-                fivedaysago.month), ('day', fivedaysago.day):
-            r = testing.db.execute(select([extract(field, func.now()
-                                   + datetime.timedelta(days=-5))])).scalar()
-            eq_(r, exp)
-
-    def test_checksfor_sequence(self):
-        meta1 = MetaData(testing.db)
-        seq = Sequence('fooseq')
-        t = Table('mytable', meta1, Column('col1', Integer,
-                  seq))
-        seq.drop()
-        try:
-            testing.db.execute('CREATE SEQUENCE fooseq')
-            t.create(checkfirst=True)
-        finally:
-            t.drop(checkfirst=True)
+        meta2 = MetaData(testing.db)
+        subject = Table('subject', meta2, autoload=True)
+        referer = Table('referer', meta2, autoload=True)
+        self.assert_((subject.c['id$']
+                     == referer.c.ref).compare(
+                        subject.join(referer).onclause))
 
     @testing.provide_metadata
     def test_renamed_sequence_reflection(self):
@@ -1390,11 +1293,13 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         r = t3.insert().execute()
         eq_(r.inserted_primary_key, [2])
 
+    @testing.provide_metadata
     def test_schema_reflection(self):
         """note: this test requires that the 'test_schema' schema be
         separate and accessible by the test user"""
 
-        meta1 = MetaData(testing.db)
+        meta1 = self.metadata
+
         users = Table('users', meta1, Column('user_id', Integer,
                       primary_key=True), Column('user_name',
                       String(30), nullable=False), schema='test_schema')
@@ -1408,43 +1313,35 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             schema='test_schema',
             )
         meta1.create_all()
-        try:
-            meta2 = MetaData(testing.db)
-            addresses = Table('email_addresses', meta2, autoload=True,
-                              schema='test_schema')
-            users = Table('users', meta2, mustexist=True,
+        meta2 = MetaData(testing.db)
+        addresses = Table('email_addresses', meta2, autoload=True,
                           schema='test_schema')
-            print users
-            print addresses
-            j = join(users, addresses)
-            print str(j.onclause)
-            self.assert_((users.c.user_id
-                         == addresses.c.remote_user_id).compare(j.onclause))
-        finally:
-            meta1.drop_all()
+        users = Table('users', meta2, mustexist=True,
+                      schema='test_schema')
+        j = join(users, addresses)
+        self.assert_((users.c.user_id
+                     == addresses.c.remote_user_id).compare(j.onclause))
 
+    @testing.provide_metadata
     def test_schema_reflection_2(self):
-        meta1 = MetaData(testing.db)
+        meta1 = self.metadata
         subject = Table('subject', meta1, Column('id', Integer,
                         primary_key=True))
         referer = Table('referer', meta1, Column('id', Integer,
                         primary_key=True), Column('ref', Integer,
                         ForeignKey('subject.id')), schema='test_schema')
         meta1.create_all()
-        try:
-            meta2 = MetaData(testing.db)
-            subject = Table('subject', meta2, autoload=True)
-            referer = Table('referer', meta2, schema='test_schema',
-                            autoload=True)
-            print str(subject.join(referer).onclause)
-            self.assert_((subject.c.id
-                         == referer.c.ref).compare(
-                            subject.join(referer).onclause))
-        finally:
-            meta1.drop_all()
+        meta2 = MetaData(testing.db)
+        subject = Table('subject', meta2, autoload=True)
+        referer = Table('referer', meta2, schema='test_schema',
+                        autoload=True)
+        self.assert_((subject.c.id
+                     == referer.c.ref).compare(
+                        subject.join(referer).onclause))
 
+    @testing.provide_metadata
     def test_schema_reflection_3(self):
-        meta1 = MetaData(testing.db)
+        meta1 = self.metadata
         subject = Table('subject', meta1, Column('id', Integer,
                         primary_key=True), schema='test_schema_2')
         referer = Table('referer', meta1, Column('id', Integer,
@@ -1452,68 +1349,77 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
                         ForeignKey('test_schema_2.subject.id')),
                         schema='test_schema')
         meta1.create_all()
+        meta2 = MetaData(testing.db)
+        subject = Table('subject', meta2, autoload=True,
+                        schema='test_schema_2')
+        referer = Table('referer', meta2, schema='test_schema',
+                        autoload=True)
+        self.assert_((subject.c.id
+                     == referer.c.ref).compare(
+                        subject.join(referer).onclause))
+
+    def test_schema_reflection_multi_search_path(self):
+        """test the 'set the same schema' rule when
+        multiple schemas/search paths are in effect."""
+
+        db = engines.testing_engine()
+        conn = db.connect()
+        trans = conn.begin()
         try:
-            meta2 = MetaData(testing.db)
-            subject = Table('subject', meta2, autoload=True,
-                            schema='test_schema_2')
-            referer = Table('referer', meta2, schema='test_schema',
-                            autoload=True)
-            print str(subject.join(referer).onclause)
-            self.assert_((subject.c.id
-                         == referer.c.ref).compare(
-                            subject.join(referer).onclause))
-        finally:
-            meta1.drop_all()
+            conn.execute("set search_path to test_schema_2, "
+                                "test_schema, public")
+            conn.dialect.default_schema_name = "test_schema_2"
 
-    def test_schema_roundtrips(self):
-        meta = MetaData(testing.db)
-        users = Table('users', meta, Column('id', Integer,
-                      primary_key=True), Column('name', String(50)),
-                      schema='test_schema')
-        users.create()
-        try:
-            users.insert().execute(id=1, name='name1')
-            users.insert().execute(id=2, name='name2')
-            users.insert().execute(id=3, name='name3')
-            users.insert().execute(id=4, name='name4')
-            eq_(users.select().where(users.c.name == 'name2'
-                ).execute().fetchall(), [(2, 'name2')])
-            eq_(users.select(use_labels=True).where(users.c.name
-                == 'name2').execute().fetchall(), [(2, 'name2')])
-            users.delete().where(users.c.id == 3).execute()
-            eq_(users.select().where(users.c.name == 'name3'
-                ).execute().fetchall(), [])
-            users.update().where(users.c.name == 'name4'
-                                 ).execute(name='newname')
-            eq_(users.select(use_labels=True).where(users.c.id
-                == 4).execute().fetchall(), [(4, 'newname')])
-        finally:
-            users.drop()
-
-    def test_preexecute_passivedefault(self):
-        """test that when we get a primary key column back from
-        reflecting a table which has a default value on it, we pre-
-        execute that DefaultClause upon insert."""
-
-        try:
-            meta = MetaData(testing.db)
-            testing.db.execute("""
-             CREATE TABLE speedy_users
-             (
-                 speedy_user_id   SERIAL     PRIMARY KEY,
-
-                 user_name        VARCHAR    NOT NULL,
-                 user_password    VARCHAR    NOT NULL
-             );
+            conn.execute("""
+            CREATE TABLE test_schema.some_table (
+                id SERIAL not null primary key
+            )
             """)
-            t = Table('speedy_users', meta, autoload=True)
-            r = t.insert().execute(user_name='user',
-                                   user_password='lala')
-            assert r.inserted_primary_key == [1]
-            l = t.select().execute().fetchall()
-            assert l == [(1, 'user', 'lala')]
+
+            conn.execute("""
+            CREATE TABLE test_schema_2.some_other_table (
+                id SERIAL not null primary key,
+                sid INTEGER REFERENCES test_schema.some_table(id)
+            )
+            """)
+
+            m1 = MetaData()
+
+            t2_schema = Table('some_other_table', 
+                                m1, 
+                                schema="test_schema_2", 
+                                autoload=True, 
+                                autoload_with=conn)
+            t1_schema = Table('some_table', 
+                                m1, 
+                                schema="test_schema", 
+                                autoload=True,
+                                autoload_with=conn)
+
+            t2_no_schema = Table('some_other_table', 
+                                m1, 
+                                autoload=True, 
+                                autoload_with=conn)
+
+            t1_no_schema = Table('some_table', 
+                                m1, 
+                                autoload=True, 
+                                autoload_with=conn)
+
+            # OK, this because, "test_schema" is 
+            # in the search path, and might as well be
+            # the default too.  why would we assign
+            # a "schema" to the Table ?
+            assert t2_schema.c.sid.references(
+                                t1_no_schema.c.id)
+
+            assert t2_no_schema.c.sid.references(
+                                t1_no_schema.c.id)
+
         finally:
-            testing.db.execute('drop table speedy_users')
+            trans.rollback()
+            conn.close()
+            db.dispose()
 
     @testing.provide_metadata
     def test_index_reflection(self):
@@ -1585,6 +1491,152 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         ind = testing.db.dialect.get_indexes(conn, "t", None)
         eq_(ind, [{'unique': False, 'column_names': [u'y'], 'name': u'idx1'}])
         conn.close()
+
+class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
+
+    __only_on__ = 'postgresql'
+
+    @testing.provide_metadata
+    def test_date_reflection(self):
+        metadata = self.metadata
+        t1 = Table('pgdate', metadata, Column('date1',
+                   DateTime(timezone=True)), Column('date2',
+                   DateTime(timezone=False)))
+        metadata.create_all()
+        m2 = MetaData(testing.db)
+        t2 = Table('pgdate', m2, autoload=True)
+        assert t2.c.date1.type.timezone is True
+        assert t2.c.date2.type.timezone is False
+
+    @testing.fails_on('+zxjdbc',
+                      'The JDBC driver handles the version parsing')
+    def test_version_parsing(self):
+
+
+        class MockConn(object):
+
+            def __init__(self, res):
+                self.res = res
+
+            def execute(self, str):
+                return self
+
+            def scalar(self):
+                return self.res
+
+
+        for string, version in \
+            [('PostgreSQL 8.3.8 on i686-redhat-linux-gnu, compiled by '
+             'GCC gcc (GCC) 4.1.2 20070925 (Red Hat 4.1.2-33)', (8, 3,
+             8)),
+             ('PostgreSQL 8.5devel on x86_64-unknown-linux-gnu, '
+             'compiled by GCC gcc (GCC) 4.4.2, 64-bit', (8, 5))]:
+            eq_(testing.db.dialect._get_server_version_info(MockConn(string)),
+                version)
+
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_psycopg2_version(self):
+        v = testing.db.dialect.psycopg2_version
+        assert testing.db.dialect.dbapi.__version__.\
+                    startswith(".".join(str(x) for x in v))
+
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    def test_notice_logging(self):
+        log = logging.getLogger('sqlalchemy.dialects.postgresql')
+        buf = logging.handlers.BufferingHandler(100)
+        lev = log.level
+        log.addHandler(buf)
+        log.setLevel(logging.INFO)
+        try:
+            conn = testing.db.connect()
+            trans = conn.begin()
+            try:
+                conn.execute('create table foo (id serial primary key)')
+            finally:
+                trans.rollback()
+        finally:
+            log.removeHandler(buf)
+            log.setLevel(lev)
+        msgs = ' '.join(b.msg for b in buf.buffer)
+        assert 'will create implicit sequence' in msgs
+        assert 'will create implicit index' in msgs
+
+
+    @testing.fails_on('+zxjdbc',
+                      "Can't infer the SQL type to use for an instance "
+                      "of org.python.core.PyObjectDerived.")
+    @testing.fails_on('+pg8000', "Can't determine correct type.")
+    def test_extract(self):
+        fivedaysago = datetime.datetime.now() \
+            - datetime.timedelta(days=5)
+        for field, exp in ('year', fivedaysago.year), ('month',
+                fivedaysago.month), ('day', fivedaysago.day):
+            r = testing.db.execute(select([extract(field, func.now()
+                                   + datetime.timedelta(days=-5))])).scalar()
+            eq_(r, exp)
+
+    def test_checksfor_sequence(self):
+        meta1 = MetaData(testing.db)
+        seq = Sequence('fooseq')
+        t = Table('mytable', meta1, Column('col1', Integer,
+                  seq))
+        seq.drop()
+        try:
+            testing.db.execute('CREATE SEQUENCE fooseq')
+            t.create(checkfirst=True)
+        finally:
+            t.drop(checkfirst=True)
+
+    def test_schema_roundtrips(self):
+        meta = MetaData(testing.db)
+        users = Table('users', meta, Column('id', Integer,
+                      primary_key=True), Column('name', String(50)),
+                      schema='test_schema')
+        users.create()
+        try:
+            users.insert().execute(id=1, name='name1')
+            users.insert().execute(id=2, name='name2')
+            users.insert().execute(id=3, name='name3')
+            users.insert().execute(id=4, name='name4')
+            eq_(users.select().where(users.c.name == 'name2'
+                ).execute().fetchall(), [(2, 'name2')])
+            eq_(users.select(use_labels=True).where(users.c.name
+                == 'name2').execute().fetchall(), [(2, 'name2')])
+            users.delete().where(users.c.id == 3).execute()
+            eq_(users.select().where(users.c.name == 'name3'
+                ).execute().fetchall(), [])
+            users.update().where(users.c.name == 'name4'
+                                 ).execute(name='newname')
+            eq_(users.select(use_labels=True).where(users.c.id
+                == 4).execute().fetchall(), [(4, 'newname')])
+        finally:
+            users.drop()
+
+    def test_preexecute_passivedefault(self):
+        """test that when we get a primary key column back from
+        reflecting a table which has a default value on it, we pre-
+        execute that DefaultClause upon insert."""
+
+        try:
+            meta = MetaData(testing.db)
+            testing.db.execute("""
+             CREATE TABLE speedy_users
+             (
+                 speedy_user_id   SERIAL     PRIMARY KEY,
+
+                 user_name        VARCHAR    NOT NULL,
+                 user_password    VARCHAR    NOT NULL
+             );
+            """)
+            t = Table('speedy_users', meta, autoload=True)
+            r = t.insert().execute(user_name='user',
+                                   user_password='lala')
+            assert r.inserted_primary_key == [1]
+            l = t.select().execute().fetchall()
+            assert l == [(1, 'user', 'lala')]
+        finally:
+            testing.db.execute('drop table speedy_users')
+
 
     @testing.fails_on('+zxjdbc', 'psycopg2/pg8000 specific assertion')
     @testing.fails_on('pypostgresql',

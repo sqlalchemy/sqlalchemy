@@ -51,6 +51,35 @@ parameter are ``READ_COMMITTED``, ``READ_UNCOMMITTED``, ``REPEATABLE_READ``,
 and ``SERIALIZABLE``.  Note that the psycopg2 dialect does *not* use this
 technique and uses psycopg2-specific APIs (see that dialect for details).
 
+Remote / Cross-Schema Table Introspection
+-----------------------------------------
+
+Tables can be introspected from any accessible schema, including
+inter-schema foreign key relationships.   However, care must be taken
+when specifying the "schema" argument for a given :class:`.Table`, when
+the given schema is also present in PostgreSQL's ``search_path`` variable
+for the current connection.
+
+If a FOREIGN KEY constraint reports that the remote table's schema is within
+the current ``search_path``, the "schema" attribute of the resulting
+:class:`.Table` will be set to ``None``, unless the actual schema of the
+remote table matches that of the referencing table, and the "schema" argument
+was explicitly stated on the referencing table.
+
+The best practice here is to not use the ``schema`` argument 
+on :class:`.Table` for any schemas that are present in ``search_path``.
+``search_path`` defaults to "public", but care should be taken
+to inspect the actual value using::
+
+    SHOW search_path;
+
+Prior to version 0.7.3, cross-schema foreign keys when the schemas
+were also in the ``search_path`` could make an incorrect assumption
+if the schemas were explicitly stated on each :class:`.Table`.
+
+Background on PG's ``search_path`` is at: 
+http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH
+
 INSERT/UPDATE...RETURNING
 -------------------------
 
@@ -1298,10 +1327,19 @@ class PGDialect(default.DefaultDialect):
         preparer = self.identifier_preparer
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
+
         FK_SQL = """
-          SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef
-          FROM  pg_catalog.pg_constraint r
-          WHERE r.conrelid = :table AND r.contype = 'f'
+          SELECT r.conname, 
+                pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
+                n.nspname as conschema
+          FROM  pg_catalog.pg_constraint r,
+                pg_namespace n,
+                pg_class c
+
+          WHERE r.conrelid = :table AND 
+                r.contype = 'f' AND
+                c.oid = confrelid AND
+                n.oid = c.relnamespace
           ORDER BY 1
         """
 
@@ -1310,20 +1348,24 @@ class PGDialect(default.DefaultDialect):
                                 'condef':sqltypes.Unicode})
         c = connection.execute(t, table=table_oid)
         fkeys = []
-        for conname, condef in c.fetchall():
+        for conname, condef, conschema in c.fetchall():
             m = re.search('FOREIGN KEY \((.*?)\) REFERENCES '
                             '(?:(.*?)\.)?(.*?)\((.*?)\)', condef).groups()
             constrained_columns, referred_schema, \
                     referred_table, referred_columns = m
             constrained_columns = [preparer._unquote_identifier(x) 
                         for x in re.split(r'\s*,\s*', constrained_columns)]
+
             if referred_schema:
                 referred_schema =\
                                 preparer._unquote_identifier(referred_schema)
-            elif schema is not None and schema == self.default_schema_name:
-                # no schema (i.e. its the default schema), and the table we're
-                # reflecting has the default schema explicit, then use that.
-                # i.e. try to use the user's conventions
+            elif schema is not None and schema == conschema:
+                # no schema was returned by pg_get_constraintdef().  This
+                # means the schema is in the search path.   We will leave
+                # it as None, unless the actual schema, which we pull out
+                # from pg_namespace even though pg_get_constraintdef() doesn't
+                # want to give it to us, matches that of the referencing table,
+                # and an explicit schema was given for the referencing table.
                 referred_schema = schema
             referred_table = preparer._unquote_identifier(referred_table)
             referred_columns = [preparer._unquote_identifier(x) 

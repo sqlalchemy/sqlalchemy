@@ -963,6 +963,7 @@ class SchemaTest(fixtures.TestBase):
     @testing.fails_on('sybase', 'FIXME: unknown')
     def test_explicit_default_schema(self):
         engine = testing.db
+        engine.connect().close()
 
         if testing.against('sqlite'):
             # Works for CREATE TABLE main.foo, SELECT FROM main.foo, etc.,

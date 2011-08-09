@@ -41,6 +41,15 @@ CHANGES
     source for server side cursor names; 
     conflicts have been reported in rare cases.
 
+  - Narrowed the assumption made when reflecting
+    a foreign-key referenced table with schema in
+    the current search path; an explicit schema will
+    be applied to the referenced table only if 
+    it actually matches that of the referencing table,
+    which also has an explicit schema.   Previously
+    it was assumed that "current" schema was synonymous
+    with the full search_path.  [ticket:2249]
+
 - mssql
   - "0" is accepted as an argument for limit() which
     will produce "TOP 0". [ticket:2222]
