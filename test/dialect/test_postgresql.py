@@ -1256,6 +1256,8 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
 class ReflectionTest(fixtures.TestBase):
+    __only_on__ = 'postgresql'
+
     @testing.provide_metadata
     def test_pg_weirdchar_reflection(self):
         meta1 = self.metadata
