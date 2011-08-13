@@ -195,4 +195,79 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
                 p.child
         go()
 
+class MergeBackrefsTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('a', metadata,
+            Column('id', Integer, primary_key=True), 
+            Column('c_id', Integer, ForeignKey('c.id'))
+        )
+        Table('b', metadata,
+            Column('id', Integer, primary_key=True), 
+            Column('a_id', Integer, ForeignKey('a.id'))
+        )
+        Table('c', metadata,
+            Column('id', Integer, primary_key=True), 
+        )
+        Table('d', metadata,
+            Column('id', Integer, primary_key=True), 
+            Column('a_id', Integer, ForeignKey('a.id'))
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class A(cls.Basic):
+            pass
+        class B(cls.Basic):
+            pass
+        class C(cls.Basic):
+            pass
+        class D(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D = cls.classes.A, cls.classes.B, \
+                    cls.classes.C, cls.classes.D
+        a, b, c, d= cls.tables.a, cls.tables.b, \
+                    cls.tables.c, cls.tables.d
+        mapper(A, a, properties={
+            'bs':relationship(B, backref='a'),
+            'c':relationship(C, backref='as'),
+            'ds':relationship(D, backref='a'),
+        })
+        mapper(B, b)
+        mapper(C, c)
+        mapper(D, d)
+
+    @classmethod
+    def insert_data(cls):
+        A, B, C, D = cls.classes.A, cls.classes.B, \
+                    cls.classes.C, cls.classes.D
+        s = Session()
+        s.add_all([
+            A(id=i, 
+                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                c=C(id=i),
+                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+            )
+            for i in xrange(1, 50)
+        ])
+        s.commit()
+
+    @profiling.function_call_count(1092497, variance=.10)
+    def test_merge_pending_with_all_pks(self):
+        A, B, C, D = self.classes.A, self.classes.B, \
+                    self.classes.C, self.classes.D
+        s = Session()
+        for a in [
+            A(id=i, 
+                bs=[B(id=(i * 50) + j) for j in xrange(1, 50)],
+                c=C(id=i),
+                ds=[D(id=(i * 50) + j) for j in xrange(1, 50)]
+            )
+            for i in xrange(1, 50)
+        ]:
+            s.merge(a)
+
 
