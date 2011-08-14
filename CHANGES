@@ -34,6 +34,13 @@ CHANGES
     on a new mapper would establish a backref on the
     first mapper.
 
+- engine
+  - The recreate() method in all pool classes uses
+    self.__class__ to get at the type of pool
+    to produce, in the case of subclassing.  Note 
+    there's no usual need to subclass pools.
+    [ticket:2254]
+
 - sqlite
   - Ensured that the same ValueError is raised for
     illegal date/time/datetime string parsed from

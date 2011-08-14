@@ -512,7 +512,7 @@ class SingletonThreadPool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return SingletonThreadPool(self._creator, 
+        return self.__class__(self._creator, 
             pool_size=self.size, 
             recycle=self._recycle, 
             echo=self.echo, 
@@ -645,7 +645,7 @@ class QueuePool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return QueuePool(self._creator, pool_size=self._pool.maxsize, 
+        return self.__class__(self._creator, pool_size=self._pool.maxsize, 
                           max_overflow=self._max_overflow,
                           timeout=self._timeout, 
                           recycle=self._recycle, echo=self.echo, 
@@ -759,7 +759,7 @@ class NullPool(Pool):
     def recreate(self):
         self.logger.info("Pool recreating")
 
-        return NullPool(self._creator, 
+        return self.__class__(self._creator, 
             recycle=self._recycle, 
             echo=self.echo, 
             logging_name=self._orig_logging_name,
@@ -851,7 +851,7 @@ class AssertionPool(Pool):
 
     def recreate(self):
         self.logger.info("Pool recreating")
-        return AssertionPool(self._creator, echo=self.echo, 
+        return self.__class__(self._creator, echo=self.echo, 
                             logging_name=self._orig_logging_name,
                             _dispatch=self.dispatch)
 

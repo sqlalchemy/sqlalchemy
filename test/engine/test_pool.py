@@ -99,7 +99,8 @@ class PoolTest(PoolTestBase):
                     pool.QueuePool, pool.NullPool, pool.AssertionPool):
             p = cls(creator=creator)
             p.dispose()
-            p.recreate()
+            p2 = p.recreate()
+            assert p2.__class__ is cls
 
             mock_dbapi = MockDBAPI()
             p = cls(creator=mock_dbapi.connect)
