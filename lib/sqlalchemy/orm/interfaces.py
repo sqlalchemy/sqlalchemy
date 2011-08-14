@@ -392,7 +392,8 @@ class MapperOption(object):
 
 class PropertyOption(MapperOption):
     """A MapperOption that is applied to a property off the mapper or
-    one of its child mappers, identified by a dot-separated key. """
+    one of its child mappers, identified by a dot-separated key
+    or list of class-bound attributes. """
 
     def __init__(self, key, mapper=None):
         self.key = key

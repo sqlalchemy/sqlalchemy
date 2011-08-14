@@ -762,7 +762,11 @@ def deferred(*columns, **kwargs):
     object attributes should only be loaded from its corresponding
     table column when first accessed.
 
-    Used with the `properties` dictionary sent to :func:`mapper`.
+    Used with the "properties" dictionary sent to :func:`mapper`.
+
+    See also:
+    
+    :ref:`deferred`
 
     """
     return ColumnProperty(deferred=True, *columns, **kwargs)
@@ -1343,29 +1347,114 @@ def contains_eager(*keys, **kwargs):
             propagate_to_loaders=False, chained=True), \
         strategies.LoadEagerFromAliasOption(keys, alias=alias, chained=True)
 
-def defer(*keys):
-    """Return a ``MapperOption`` that will convert the column property of the
-    given name into a deferred load.
+def defer(*key):
+    """Return a :class:`.MapperOption` that will convert the column property
+    of the given name into a deferred load.
 
-    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+    Used with :meth:`.Query.options`.
+    
+    e.g.::
+    
+        from sqlalchemy.orm import defer
+
+        query(MyClass).options(defer("attribute_one"), 
+                            defer("attribute_two"))
+    
+    A class bound descriptor is also accepted::
+        
+        query(MyClass).options(
+                            defer(MyClass.attribute_one), 
+                            defer(MyClass.attribute_two))
+    
+    A "path" can be specified onto a related or collection object using a
+    dotted name. The :func:`.orm.defer` option will be applied to that object
+    when loaded::
+    
+        query(MyClass).options(
+                            defer("related.attribute_one"), 
+                            defer("related.attribute_two"))
+    
+    To specify a path via class, send multiple arguments::
+
+        query(MyClass).options(
+                            defer(MyClass.related, MyOtherClass.attribute_one), 
+                            defer(MyClass.related, MyOtherClass.attribute_two))
+    
+    See also:
+    
+    :ref:`deferred`
+
+    :param \*key: A key representing an individual path.   Multiple entries
+     are accepted to allow a multiple-token path for a single target, not
+     multiple targets.
 
     """
-    return strategies.DeferredOption(keys, defer=True)
+    return strategies.DeferredOption(key, defer=True)
 
-def undefer(*keys):
-    """Return a ``MapperOption`` that will convert the column property of the
-    given name into a non-deferred (regular column) load.
+def undefer(*key):
+    """Return a :class:`.MapperOption` that will convert the column property
+    of the given name into a non-deferred (regular column) load.
 
-    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+    Used with :meth:`.Query.options`.
+    
+    e.g.::
+    
+        from sqlalchemy.orm import undefer
+
+        query(MyClass).options(undefer("attribute_one"), 
+                                undefer("attribute_two"))
+    
+    A class bound descriptor is also accepted::
+        
+        query(MyClass).options(
+                            undefer(MyClass.attribute_one), 
+                            undefer(MyClass.attribute_two))
+    
+    A "path" can be specified onto a related or collection object using a
+    dotted name. The :func:`.orm.undefer` option will be applied to that
+    object when loaded::
+    
+        query(MyClass).options(
+                            undefer("related.attribute_one"), 
+                            undefer("related.attribute_two"))
+    
+    To specify a path via class, send multiple arguments::
+
+        query(MyClass).options(
+                            undefer(MyClass.related, MyOtherClass.attribute_one), 
+                            undefer(MyClass.related, MyOtherClass.attribute_two))
+    
+    See also:
+    
+    :func:`.orm.undefer_group` as a means to "undefer" a group
+    of attributes at once.
+    
+    :ref:`deferred`
+    
+    :param \*key: A key representing an individual path.   Multiple entries
+     are accepted to allow a multiple-token path for a single target, not
+     multiple targets.
 
     """
-    return strategies.DeferredOption(keys, defer=False)
+    return strategies.DeferredOption(key, defer=False)
 
 def undefer_group(name):
-    """Return a ``MapperOption`` that will convert the given group of deferred
+    """Return a :class:`.MapperOption` that will convert the given group of deferred
     column properties into a non-deferred (regular column) load.
 
-    Used with :meth:`~sqlalchemy.orm.query.Query.options`.
+    Used with :meth:`.Query.options`.
+    
+    e.g.::
+    
+        query(MyClass).options(undefer("group_one"))
+
+    See also:
+    
+    :ref:`deferred`
+    
+    :param name: String name of the deferred group.   This name is 
+     established using the "group" name to the :func:`.orm.deferred` 
+     configurational function.
 
     """
     return strategies.UndeferGroupOption(name)
