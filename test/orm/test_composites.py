@@ -622,3 +622,15 @@ class ConfigurationTest(fixtures.MappedTest):
         m.add_property('end', sa.orm.composite(Point, 'x2', 'y2'))
 
         self._test_roundtrip()
+
+    def test_deferred(self):
+        edge, Edge, Point = (self.tables.edge,
+                                self.classes.Edge,
+                                self.classes.Point)
+        mapper(Edge, edge, properties={
+            'start':sa.orm.composite(Point, edge.c.x1, edge.c.y1, 
+                                            deferred=True, group='s'),
+            'end': sa.orm.composite(Point, edge.c.x2, edge.c.y2, 
+                                            deferred=True)
+        })
+        self._test_roundtrip()

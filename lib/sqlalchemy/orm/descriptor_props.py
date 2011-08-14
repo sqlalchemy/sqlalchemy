@@ -13,7 +13,7 @@ as actively in the load/persist ORM loop.
 from sqlalchemy.orm.interfaces import \
     MapperProperty, PropComparator, StrategizedProperty
 from sqlalchemy.orm.mapper import _none_set
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, strategies
 from sqlalchemy import util, sql, exc as sa_exc, event, schema
 from sqlalchemy.sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')

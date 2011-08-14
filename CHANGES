@@ -15,6 +15,10 @@ CHANGES
      when the Session.is_active is True.
      [ticket:2241]
 
+  - Fixed regression in new composite rewrite where
+    deferred=True option failed due to missing
+    import [ticket:2253]
+
   - Fixed bug in query.join() which would occur
     in a complex multiple-overlapping path scenario,
     where the same table could be joined to
