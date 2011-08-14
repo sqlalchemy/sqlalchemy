@@ -237,9 +237,12 @@ def generic_repr(obj):
             for arg in args[1:-default_len]:
                 yield repr(getattr(obj, arg, None))
             for (arg, defval) in zip(args[-default_len:], defaults):
-                val = getattr(obj, arg, None)
-                if val != defval:
-                    yield '%s=%r' % (arg, val)
+                try:
+                    val = getattr(obj, arg, None)
+                    if val != defval:
+                        yield '%s=%r' % (arg, val)
+                except:
+                    pass
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
 
 class portable_instancemethod(object):

@@ -196,6 +196,8 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         go()
 
 class MergeBackrefsTest(fixtures.MappedTest):
+    __only_on__ = 'sqlite'  # keep things simple
+
     @classmethod
     def define_tables(cls, metadata):
         Table('a', metadata,

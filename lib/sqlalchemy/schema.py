@@ -68,7 +68,7 @@ class SchemaItem(events.SchemaEventTarget, visitors.Visitable):
         return []
 
     def __repr__(self):
-        return "%s()" % self.__class__.__name__
+        return util.generic_repr(self)
 
     @util.memoized_property
     def info(self):
@@ -918,7 +918,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [repr(x) for x in self.foreign_keys if x is not None] +
             [repr(x) for x in self.constraints] +
             [(self.table is not None and "table=<%s>" % 
-                    self.table.description or "")] +
+                    self.table.description or "table=None")] +
             ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg])
 
     def _set_parent(self, table):
@@ -1401,9 +1401,6 @@ class DefaultGenerator(_NotAColumnExpr, SchemaItem):
         else:
             return None
 
-    def __repr__(self):
-        return "DefaultGenerator()"
-
 
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.
@@ -1600,12 +1597,6 @@ class Sequence(DefaultGenerator):
         """
         return expression.func.next_value(self, bind=self.bind)
 
-    def __repr__(self):
-        return "Sequence(%s)" % ', '.join(
-            [repr(self.name)] +
-            ["%s=%s" % (k, repr(getattr(self, k)))
-             for k in ['start', 'increment', 'optional']])
-
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column._on_table_attach(self._set_table)
@@ -1681,8 +1672,7 @@ class FetchedValue(_NotAColumnExpr, events.SchemaEventTarget):
             self.column.server_default = self
 
     def __repr__(self):
-        return 'FetchedValue(for_update=%r)' % self.for_update
-
+        return util.generic_repr(self)
 
 class DefaultClause(FetchedValue):
     """A DDL-specified DEFAULT column value.
@@ -2178,10 +2168,12 @@ class Index(ColumnCollectionMixin, SchemaItem):
         bind._run_visitor(ddl.SchemaDropper, self)
 
     def __repr__(self):
-        return 'Index("%s", %s%s)' % (
-                    self.name,
-                      ', '.join(repr(c) for c in self.columns),
-                      (self.unique and ', unique=True') or '')
+        return 'Index(%s)' % (
+                    ", ".join(
+                        [repr(self.name)] + 
+                        [repr(c) for c in self.columns] +
+                        (self.unique and ["unique=True"] or [])
+                    ))
 
 class MetaData(SchemaItem):
     """A collection of :class:`.Table` objects and their associated schema constructs.
@@ -2248,7 +2240,7 @@ class MetaData(SchemaItem):
             self.reflect()
 
     def __repr__(self):
-        return 'MetaData(%r)' % self.bind
+        return 'MetaData(bind=%r)' % self.bind
 
     def __contains__(self, table_or_key):
         if not isinstance(table_or_key, basestring):

@@ -34,6 +34,14 @@ CHANGES
     on a new mapper would establish a backref on the
     first mapper.
 
+- schema
+  - Added a slightly nicer __repr__() to SchemaItem
+    classes.  Note the repr here can't fully support
+    the "repr is the constructor" idea since schema
+    items can be very deeply nested/cyclical, have
+    late initialization of some things, etc.
+    [ticket:2223]
+
 - engine
   - The recreate() method in all pool classes uses
     self.__class__ to get at the type of pool

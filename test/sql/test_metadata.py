@@ -549,6 +549,35 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                           'fake_table',
                           MetaData(testing.db), autoload=True)
 
+    def test_assorted_repr(self):
+        t1 = Table("foo", MetaData(), Column("x", Integer))
+        i1 = Index("bar", t1.c.x)
+        ck = schema.CheckConstraint("x > y", name="someconstraint")
+
+        for const, exp in (
+            (Sequence("my_seq"), 
+                "Sequence('my_seq')"),
+            (Sequence("my_seq", start=5), 
+                "Sequence('my_seq', start=5)"),
+            (Column("foo", Integer), 
+                "Column('foo', Integer(), table=None)"),
+            (Table("bar", MetaData(), Column("x", String)), 
+                "Table('bar', MetaData(bind=None), "
+                "Column('x', String(), table=<bar>), schema=None)"),
+            (schema.DefaultGenerator(for_update=True), 
+                "DefaultGenerator(for_update=True)"),
+            (schema.Index("bar"), "Index('bar')"),
+            (i1, "Index('bar', Column('x', Integer(), table=<foo>))"),
+            (schema.FetchedValue(), "FetchedValue()"),
+            (ck, 
+                    "CheckConstraint("
+                    "%s"
+                    ", name='someconstraint')" % repr(ck.sqltext)),
+        ):
+            eq_(
+                repr(const),
+                exp
+            )
 
 class TableTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_prefixes(self):
@@ -1138,7 +1167,7 @@ class CatchAllEventsTest(fixtures.TestBase):
             canary.append("%s->%s" % (obj.__class__.__name__, parent.__class__.__name__))
 
         def after_attach(obj, parent):
-            canary.append("%s->%s" % (obj, parent))
+            canary.append("%s->%s" % (obj.__class__.__name__, parent))
 
         event.listen(schema.SchemaItem, "before_parent_attach", before_attach)
         event.listen(schema.SchemaItem, "after_parent_attach", after_attach)
@@ -1154,22 +1183,15 @@ class CatchAllEventsTest(fixtures.TestBase):
 
         eq_(
             canary,
-            [
-                'Sequence->Column', 
-                "Sequence('foo_id', start=None, increment=None, optional=False)->id", 
-                'ForeignKey->Column', 
-                "ForeignKey('t2.id')->bar", 
-                'Table->MetaData', 
-                'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint()->t1',
-                'Column->Table', 't1.id->t1', 
-                'Column->Table', 't1.bar->t1', 
-                'ForeignKeyConstraint->Table', 
-                'ForeignKeyConstraint()->t1', 
-                't1->MetaData(None)', 
-                'Table->MetaData', 
-                'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint()->t2', 
-                'Column->Table', 
-                't2.id->t2', 't2->MetaData(None)']
+            ['Sequence->Column', 'Sequence->id', 'ForeignKey->Column',
+             'ForeignKey->bar', 'Table->MetaData',
+             'PrimaryKeyConstraint->Table', 'PrimaryKeyConstraint->t1',
+             'Column->Table', 'Column->t1', 'Column->Table',
+             'Column->t1', 'ForeignKeyConstraint->Table',
+             'ForeignKeyConstraint->t1', 'Table->MetaData(bind=None)',
+             'Table->MetaData', 'PrimaryKeyConstraint->Table',
+             'PrimaryKeyConstraint->t2', 'Column->Table', 'Column->t2',
+             'Table->MetaData(bind=None)']
         )
 
     def test_events_per_constraint(self):
