@@ -1395,9 +1395,17 @@ class Float(Numeric):
           defaults to ``False``.   Note that setting this flag to ``True``
           results in floating point conversion.
 
+        :param \**kwargs: deprecated.  Additional arguments here are ignored
+         by the default :class:`.Float` type.  For database specific 
+         floats that support additional arguments, see that dialect's 
+         documentation for details, such as :class:`sqlalchemy.dialects.mysql.FLOAT`.
+         
         """
         self.precision = precision
         self.asdecimal = asdecimal
+        if kwargs:
+            util.warn_deprecated("Additional keyword arguments "
+                                "passed to Float ignored.")
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:

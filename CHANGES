@@ -49,6 +49,12 @@ CHANGES
     there's no usual need to subclass pools.
     [ticket:2254]
 
+- types
+  - Extra keyword arguments to the base Float 
+    type beyond "precision" and "asdecimal" are ignored;
+    added a deprecation warning here and additional
+    docs, related to [ticket:2258]
+
 - sqlite
   - Ensured that the same ValueError is raised for
     illegal date/time/datetime string parsed from
