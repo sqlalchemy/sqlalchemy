@@ -879,7 +879,31 @@ class Session(object):
         For a multiply-bound or unbound :class:`.Session`, the 
         ``mapper`` or ``clause`` arguments are used to determine the 
         appropriate bind to return.
-
+        
+        Note that the "mapper" argument is usually present
+        when :meth:`.Session.get_bind` is called via an ORM
+        operation such as a :meth:`.Session.query`, each 
+        individual INSERT/UPDATE/DELETE operation within a 
+        :meth:`.Session.flush`, call, etc.
+        
+        The order of resolution is:
+        
+        1. if mapper given and session.binds is present,
+           locate a bind based on mapper.
+        2. if clause given and session.binds is present,
+           locate a bind based on :class:`.Table` objects
+           found in the given clause present in session.binds.
+        3. if session.bind is present, return that.
+        4. if clause given, attempt to return a bind 
+           linked to the :class:`.MetaData` ultimately
+           associated with the clause.
+        5. if mapper given, attempt to return a bind
+           linked to the :class:`.MetaData` ultimately 
+           associated with the :class:`.Table` or other
+           selectable to which the mapper is mapped.
+        6. No bind can be found, :class:`.UnboundExecutionError`
+           is raised.
+         
         :param mapper:
           Optional :func:`.mapper` mapped class or instance of
           :class:`.Mapper`.   The bind can be derived from a :class:`.Mapper`
