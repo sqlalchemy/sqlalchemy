@@ -219,6 +219,10 @@ Classes
   :members: where, values
   :show-inheritance:
 
+.. autoclass:: UpdateBase
+  :members: params, bind, returning
+  :show-inheritance:
+
 .. autoclass:: ValuesBase
     :members:
     :show-inheritance:

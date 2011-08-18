@@ -655,7 +655,9 @@ class MSExecutionContext(default.DefaultExecutionContext):
             seq_column = tbl._autoincrement_column
             insert_has_sequence = seq_column is not None
 
-            if insert_has_sequence:
+            if getattr(self.compiled._mssql_requires_identity_insert, False):
+                self._enable_identity_insert = True
+            elif insert_has_sequence:
                 self._enable_identity_insert = \
                         seq_column.key in self.compiled_parameters[0]
             else:

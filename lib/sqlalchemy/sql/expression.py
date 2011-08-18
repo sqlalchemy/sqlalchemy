@@ -4782,7 +4782,9 @@ class Select(_SelectBase):
     bind = property(bind, _set_bind)
 
 class UpdateBase(Executable, ClauseElement):
-    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
+    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
+    
+    """
 
     __visit_name__ = 'update_base'
 
@@ -4800,12 +4802,23 @@ class UpdateBase(Executable, ClauseElement):
             return parameters
 
     def params(self, *arg, **kw):
+        """Set the parameters for the statement.
+        
+        This method raises ``NotImplementedError`` on the base class,
+        and is overridden by :class:`.ValuesBase` to provide the
+        SET/VALUES clause of UPDATE and INSERT.
+        
+        """
         raise NotImplementedError(
             "params() is not supported for INSERT/UPDATE/DELETE statements."
             " To set the values for an INSERT or UPDATE statement, use"
             " stmt.values(**parameters).")
 
     def bind(self):
+        """Return a 'bind' linked to this :class:`.UpdateBase`
+        or a :class:`.Table` associated with it.
+        
+        """
         return self._bind or self.table.bind
 
     def _set_bind(self, bind):

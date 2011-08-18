@@ -177,6 +177,7 @@ one exists.
 .. index::
    single: thread safety; transactions
 
+.. _autocommit:
 
 Understanding Autocommit
 ========================
@@ -184,18 +185,30 @@ Understanding Autocommit
 The previous transaction example illustrates how to use :class:`.Transaction`
 so that several executions can take part in the same transaction. What happens
 when we issue an INSERT, UPDATE or DELETE call without using
-:class:`.Transaction`? The answer is **autocommit**. While many DBAPI
-implementation provide various special "non-transactional" modes, the current
-SQLAlchemy behavior is such that it implements its own "autocommit" which
+:class:`.Transaction`?  While some DBAPI
+implementations provide various special "non-transactional" modes, the core
+behavior of DBAPI per PEP-0249 is that a *transaction is always in progress*,
+providing only ``rollback()`` and ``commit()`` methods but no ``begin()``.
+SQLAlchemy assumes this is the case for any given DBAPI.
+
+Given this requirement, SQLAlchemy implements its own "autocommit" feature which
 works completely consistently across all backends. This is achieved by
 detecting statements which represent data-changing operations, i.e. INSERT,
 UPDATE, DELETE, as well as data definition language (DDL) statements such as
 CREATE TABLE, ALTER TABLE, and then issuing a COMMIT automatically if no
-transaction is in progress. The detection is based on compiled statement
-attributes, or in the case of a text-only statement via regular expressions::
+transaction is in progress. The detection is based on the presence of the
+``autocommit=True`` execution option on the statement.   If the statement
+is a text-only statement and the flag is not set, a regular expression is used
+to detect INSERT, UPDATE, DELETE, as well as a variety of other commands 
+for a particular backend::
 
     conn = engine.connect()
     conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
+
+The "autocommit" feature is only in effect when no :class:`.Transaction` has
+otherwise been declared.   This means the feature is not generally used with 
+the ORM, as the :class:`.Session` object by default always maintains an 
+ongoing :class:`.Transaction`.
 
 Full control of the "autocommit" behavior is available using the generative
 :meth:`.Connection.execution_options` method provided on :class:`.Connection`,
