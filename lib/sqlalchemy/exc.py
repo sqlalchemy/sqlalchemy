@@ -146,15 +146,11 @@ class StatementError(SQLAlchemyError):
         self.orig = orig
 
     def __str__(self):
-        if isinstance(self.params, (list, tuple)) and \
-            len(self.params) > 10 and \
-            isinstance(self.params[0], (list, dict, tuple)):
-            return ' '.join((SQLAlchemyError.__str__(self),
-                             repr(self.statement),
-                             repr(self.params[:2]),
-                             '... and a total of %i bound parameter sets' % len(self.params)))
+        from sqlalchemy.sql import util
+        params_repr = util._repr_params(self.params, 10)
         return ' '.join((SQLAlchemyError.__str__(self),
-                         repr(self.statement), repr(self.params)))
+                         repr(self.statement), repr(params_repr)))
+
 
 class DBAPIError(StatementError):
     """Raised when the execution of a database operation fails.

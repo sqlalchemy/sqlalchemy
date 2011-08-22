@@ -170,6 +170,28 @@ def _quote_ddl_expr(element):
     else:
         return repr(element)
 
+class _repr_params(object):
+    """A string view of bound parameters, truncating
+    display to the given number of 'multi' parameter sets.
+    
+    """
+    def __init__(self, params, batches):
+        self.params = params
+        self.batches = batches
+
+    def __repr__(self):
+        if isinstance(self.params, (list, tuple)) and \
+            len(self.params) > self.batches and \
+            isinstance(self.params[0], (list, dict, tuple)):
+            return ' '.join((
+                        repr(self.params[:self.batches - 2])[0:-1],
+                        " ... displaying %i of %i total bound parameter sets ... " % (self.batches, len(self.params)),
+                        repr(self.params[-2:])[1:]
+                    ))
+        else:
+            return repr(self.params)
+
+
 def expression_as_ddl(clause):
     """Given a SQL expression, convert for usage in DDL, such as 
      CREATE INDEX and CHECK CONSTRAINT.

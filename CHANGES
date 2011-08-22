@@ -49,6 +49,13 @@ CHANGES
     there's no usual need to subclass pools.
     [ticket:2254]
 
+  - Improvement to multi-param statement logging,
+    long lists of bound parameter sets will be 
+    compressed with an informative indicator
+    of the compression taking place.  Exception
+    messages use the same improved formatting.  
+    [ticket:2243]
+
 - types
   - Extra keyword arguments to the base Float 
     type beyond "precision" and "asdecimal" are ignored;

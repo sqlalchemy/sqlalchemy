@@ -272,11 +272,87 @@ class CompiledCacheTest(fixtures.TestBase):
         assert len(cache) == 1
         eq_(conn.execute("select count(*) from users").scalar(), 3)
 
+class LogParamsTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
+    __requires__ = 'ad_hoc_engines',
+
+    def setup(self):
+        self.eng = engines.testing_engine(options={'echo':True})
+        self.eng.execute("create table foo (data string)")
+        self.buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger('sqlalchemy.engine'),
+            logging.getLogger('sqlalchemy.pool')
+        ]:
+            log.addHandler(self.buf)
+
+    def teardown(self):
+        self.eng.execute("drop table foo")
+        for log in [
+            logging.getLogger('sqlalchemy.engine'),
+            logging.getLogger('sqlalchemy.pool')
+        ]:
+            log.removeHandler(self.buf)
+
+    def test_log_large_dict(self):
+        self.eng.execute(
+            "INSERT INTO foo (data) values (:data)", 
+            [{"data":str(i)} for i in xrange(100)]
+        )
+        eq_(
+            self.buf.buffer[1].message,
+            "[{'data': '0'}, {'data': '1'}, {'data': '2'}, {'data': '3'}, "
+            "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
+            "  ... displaying 10 of 100 total bound "
+            "parameter sets ...  {'data': '98'}, {'data': '99'}]"
+        )
+
+    def test_log_large_list(self):
+        self.eng.execute(
+            "INSERT INTO foo (data) values (?)", 
+            [(str(i), ) for i in xrange(100)]
+        )
+        eq_(
+            self.buf.buffer[1].message,
+            "[('0',), ('1',), ('2',), ('3',), ('4',), ('5',), "
+            "('6',), ('7',)  ... displaying 10 of 100 total "
+            "bound parameter sets ...  ('98',), ('99',)]"
+        )
+
+    def test_error_large_dict(self):
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            r".*'INSERT INTO nonexistent \(data\) values \(:data\)' "
+            "\[{'data': '0'}, {'data': '1'}, {'data': '2'}, "
+            "{'data': '3'}, {'data': '4'}, {'data': '5'}, "
+            "{'data': '6'}, {'data': '7'}  ... displaying 10 of "
+            "100 total bound parameter sets ...  {'data': '98'}, {'data': '99'}\]",
+            lambda: self.eng.execute(
+                "INSERT INTO nonexistent (data) values (:data)", 
+                [{"data":str(i)} for i in xrange(100)]
+            )
+        )
+
+    def test_error_large_list(self):
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            r".*INSERT INTO nonexistent \(data\) values "
+            "\(\?\)' \[\('0',\), \('1',\), \('2',\), \('3',\), "
+            "\('4',\), \('5',\), \('6',\), \('7',\)  ... displaying "
+            "10 of 100 total bound parameter sets ...  "
+            "\('98',\), \('99',\)\]",
+            lambda: self.eng.execute(
+                "INSERT INTO nonexistent (data) values (?)", 
+                [(str(i), ) for i in xrange(100)]
+            )
+        )
+
 class LoggingNameTest(fixtures.TestBase):
     __requires__ = 'ad_hoc_engines',
 
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
         eng.execute(select([1]))
+        assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
                 'sqlalchemy.engine.base.Engine.%s' % eng_name,
@@ -286,6 +362,7 @@ class LoggingNameTest(fixtures.TestBase):
 
     def _assert_no_name_in_execute(self, eng):
         eng.execute(select([1]))
+        assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
                 'sqlalchemy.engine.base.Engine',
@@ -295,12 +372,14 @@ class LoggingNameTest(fixtures.TestBase):
     def _named_engine(self, **kw):
         options = {
             'logging_name':'myenginename',
-            'pool_logging_name':'mypoolname'
+            'pool_logging_name':'mypoolname',
+            'echo':True
         }
         options.update(kw)
         return engines.testing_engine(options=options)
 
     def _unnamed_engine(self, **kw):
+        kw.update({'echo':True})
         return engines.testing_engine(options=kw)
 
     def setup(self):
