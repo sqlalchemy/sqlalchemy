@@ -3,6 +3,7 @@
 
 from sqlalchemy import exc as sa_exceptions
 from test.lib import fixtures
+from test.lib.testing import eq_
 
 # Py3K 
 #StandardError = BaseException 
@@ -77,19 +78,22 @@ class WrapTest(fixtures.TestBase):
                 {1: 1}, {1:1}, {1: 1}, {1: 1},], 
                 OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
-            assert str(exc) \
-                == "(OperationalError)  'this is a message' [{1: 1}, "\
+            eq_(str(exc) ,
+                "(OperationalError)  'this is a message' [{1: 1}, "\
                 "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: "\
-                "1}, {1: 1}, {1: 1}]", str(exc)
+                "1}, {1: 1}, {1: 1}]")
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, 
                 {1:1}, {1: 1}, {1: 1}, {1: 1},
                 ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
-            assert str(exc) \
-                == "(OperationalError)  'this is a message' [{1: 1}, "\
-                "{1: 1}] ... and a total of 11 bound parameter sets"
+            eq_(str(exc) ,
+                "(OperationalError)  'this is a message' [{1: 1}, "
+                "{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, "
+                "{1: 1}, {1: 1}  ... displaying 10 of 11 total "
+                "bound parameter sets ...  {1: 1}, {1: 1}]"
+            )
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', 
                 [
@@ -97,18 +101,21 @@ class WrapTest(fixtures.TestBase):
                 (1, ),
                 ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
-            assert str(exc) \
-                == "(OperationalError)  'this is a message' [(1,), "\
-                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]"
+            eq_(str(exc),
+                "(OperationalError)  'this is a message' [(1,), "\
+                "(1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,), (1,)]")
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
                 (1, ), (1, ),
                 ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
-            assert str(exc) \
-                == "(OperationalError)  'this is a message' [(1,), "\
-                "(1,)] ... and a total of 11 bound parameter sets"
+            eq_(str(exc),
+                "(OperationalError)  'this is a message' [(1,), "
+                "(1,), (1,), (1,), (1,), (1,), (1,), (1,)  "
+                "... displaying 10 of 11 total bound "
+                "parameter sets ...  (1,), (1,)]"
+            )
 
     def test_db_error_busted_dbapi(self):
         try:
