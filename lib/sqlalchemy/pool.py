@@ -189,9 +189,10 @@ class Pool(log.Identified):
         """Dispose of this pool.
 
         This method leaves the possibility of checked-out connections
-        remaining open, It is advised to not reuse the pool once dispose()
-        is called, and to instead use a new pool constructed by the
-        recreate() method.
+        remaining open, as it only affects connections that are
+        idle in the pool.
+        
+        See also the :meth:`Pool.recreate` method.
 
         """
 
