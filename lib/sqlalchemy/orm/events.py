@@ -586,7 +586,7 @@ class MapperEvents(event.Events):
         should any other ORM-based operation such as :class:`.Session.add`
         take place here.   Attribute changes on objects that were
         already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.Session.before_flush`
+        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
         to change the flush plan on flush.
         
         :param mapper: the :class:`.Mapper` which is the target
@@ -702,7 +702,7 @@ class MapperEvents(event.Events):
         should any other ORM-based operation such as :class:`.Session.add`
         take place here.   Attribute changes on objects that were
         already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.Session.before_flush`
+        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
         to change the flush plan on flush.
 
         :param mapper: the :class:`.Mapper` which is the target
@@ -770,7 +770,7 @@ class MapperEvents(event.Events):
         should any other ORM-based operation such as :class:`.Session.add`
         take place here.   Attribute changes on objects that were
         already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.Session.before_flush`
+        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
         to change the flush plan on flush.
 
         :param mapper: the :class:`.Mapper` which is the target
