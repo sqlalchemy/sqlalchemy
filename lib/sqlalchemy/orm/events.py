@@ -581,6 +581,14 @@ class MapperEvents(event.Events):
         into individual (and more poorly performing)
         event->persist->event steps.
 
+        Handlers should **not** alter mapped attributes on the objects
+        just flushed or on other objects of the same class, nor
+        should any other ORM-based operation such as :class:`.Session.add`
+        take place here.   Attribute changes on objects that were
+        already flushed will be discarded, and changes to the flush
+        plan will also not take place.  Use :meth:`.Session.before_flush`
+        to change the flush plan on flush.
+        
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
         :param connection: the :class:`.Connection` being used to 
@@ -689,6 +697,14 @@ class MapperEvents(event.Events):
         (and more poorly performing) event->persist->event
         steps.
 
+        Handlers should **not** alter mapped attributes on the objects
+        just flushed or on other objects of the same class, nor
+        should any other ORM-based operation such as :class:`.Session.add`
+        take place here.   Attribute changes on objects that were
+        already flushed will be discarded, and changes to the flush
+        plan will also not take place.  Use :meth:`.Session.before_flush`
+        to change the flush plan on flush.
+
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
         :param connection: the :class:`.Connection` being used to 
@@ -748,6 +764,14 @@ class MapperEvents(event.Events):
         The event is often called for a batch of objects of the
         same class after their DELETE statements have been emitted at
         once in a previous step. 
+
+        Handlers should **not** alter mapped attributes on the objects
+        just flushed or on other objects of the same class, nor
+        should any other ORM-based operation such as :class:`.Session.add`
+        take place here.   Attribute changes on objects that were
+        already flushed will be discarded, and changes to the flush
+        plan will also not take place.  Use :meth:`.Session.before_flush`
+        to change the flush plan on flush.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
