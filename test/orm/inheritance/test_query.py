@@ -186,13 +186,6 @@ def _produce_test(select_type):
                 eq_(sess.query(Person).all(), all_employees)
             self.assert_sql_count(testing.db, go, {'':14, 'Polymorphic':9}.get(select_type, 10))
 
-        def test_foo(self):
-            sess = create_session()
-
-            def go():
-                eq_(sess.query(Person).options(subqueryload(Engineer.machines)).all(), all_employees)
-            self.assert_sql_count(testing.db, go, {'':14, 'Unions':8, 'Polymorphic':7}.get(select_type, 8))
-
         def test_primary_eager_aliasing(self):
             sess = create_session()
 

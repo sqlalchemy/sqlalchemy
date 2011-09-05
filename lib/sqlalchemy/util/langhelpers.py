@@ -496,8 +496,10 @@ def reset_memoized(instance, name):
 class group_expirable_memoized_property(object):
     """A family of @memoized_properties that can be expired in tandem."""
 
-    def __init__(self):
+    def __init__(self, attributes=()):
         self.attributes = []
+        if attributes:
+            self.attributes.extend(attributes)
 
     def expire_instance(self, instance):
         """Expire all memoized properties for *instance*."""
@@ -508,6 +510,10 @@ class group_expirable_memoized_property(object):
     def __call__(self, fn):
         self.attributes.append(fn.__name__)
         return memoized_property(fn)
+
+    def method(self, fn):
+        self.attributes.append(fn.__name__)
+        return memoized_instancemethod(fn)
 
 class importlater(object):
     """Deferred import object.

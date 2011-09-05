@@ -34,6 +34,23 @@ CHANGES
     on a new mapper would establish a backref on the
     first mapper.
 
+-sql
+  - Fixed bug regarding calculation of "from" list 
+    for a select() element.  The "from" calc is now
+    delayed, so that if the construct uses a Column
+    object that is not yet attached to a Table,
+    but is later associated with a Table, it generates
+    SQL using the table as a FROM.   This change
+    impacted fairly deeply the mechanics of how 
+    the FROM list as well as the "correlates" collection
+    is calculated, as some "clause adaption" schemes
+    (these are used very heavily in the ORM)
+    were relying upon the fact that the "froms" 
+    collection would typically be cached before the 
+    adaption completed.   The rework allows it
+    such that the "froms" collection can be cleared
+    and re-generated at any time.  [ticket:2261]
+
 - schema
   - Added a slightly nicer __repr__() to SchemaItem
     classes.  Note the repr here can't fully support

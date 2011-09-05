@@ -60,7 +60,6 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         subset_select = select([common.c.id, common.c.data]).alias()
         subset_mapper = mapper(Subset, subset_select)
-
         sess = Session(bind=testing.db)
         sess.add(Subset(data=1))
         sess.flush()

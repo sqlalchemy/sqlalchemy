@@ -64,16 +64,16 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         assert s1.corresponding_column(scalar_select) is s1.c.foo
         assert s2.corresponding_column(scalar_select) is s2.c.foo
-    
+
     def test_label_grouped_still_corresponds(self):
         label = select([table1.c.col1]).label('foo')
         label2 = label.self_group()
-        
+
         s1 = select([label])
         s2 = select([label2])
         assert s1.corresponding_column(label) is s1.c.foo
         assert s2.corresponding_column(label) is s2.c.foo
-        
+
     def test_direct_correspondence_on_labels(self):
         # this test depends on labels being part
         # of the proxy set to get the right result
@@ -375,6 +375,117 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             list(s.c),
             [s.c.col1, s.corresponding_column(c2)]
         )
+
+    def test_from_list_deferred_constructor(self):
+        c1 = Column('c1', Integer)
+        c2 = Column('c2', Integer)
+
+        s = select([c1])
+
+        t = Table('t', MetaData(), c1, c2)
+
+        eq_(c1._from_objects, [t])
+        eq_(c2._from_objects, [t])
+
+        self.assert_compile(select([c1]), 
+                    "SELECT t.c1 FROM t")
+        self.assert_compile(select([c2]), 
+                    "SELECT t.c2 FROM t")
+
+    def test_from_list_deferred_whereclause(self):
+        c1 = Column('c1', Integer)
+        c2 = Column('c2', Integer)
+
+        s = select([c1]).where(c1==5)
+
+        t = Table('t', MetaData(), c1, c2)
+
+        eq_(c1._from_objects, [t])
+        eq_(c2._from_objects, [t])
+
+        self.assert_compile(select([c1]), 
+                    "SELECT t.c1 FROM t")
+        self.assert_compile(select([c2]), 
+                    "SELECT t.c2 FROM t")
+
+    def test_from_list_deferred_fromlist(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer))
+
+        c1 = Column('c1', Integer)
+        s = select([c1]).where(c1==5).select_from(t1)
+
+        t2 = Table('t2', MetaData(), c1)
+
+        eq_(c1._from_objects, [t2])
+
+        self.assert_compile(select([c1]), 
+                    "SELECT t2.c1 FROM t2")
+
+    def test_from_list_deferred_cloning(self):
+        c1 = Column('c1', Integer)
+        c2 = Column('c2', Integer)
+
+        s = select([c1])
+        s2 = select([c2])
+        s3 = sql_util.ClauseAdapter(s).traverse(s2)
+
+        # the adaptation process needs the full
+        # FROM list so can't avoid the warning on
+        # this one
+        assert_raises_message(
+            exc.SAWarning,
+            r"\<class 'sqlalchemy.schema.Table'\> being associated ",
+            Table, 't', MetaData(), c1
+        )
+
+    def test_from_list_warning_against_existing(self):
+        c1 = Column('c1', Integer)
+        s = select([c1])
+
+        # force a compile.  
+        eq_(str(s), "SELECT c1")
+
+        # this will emit a warning
+        assert_raises_message(
+            exc.SAWarning,
+            r"\<class 'sqlalchemy.schema.Table'\> being associated "
+            r"with \<class 'sqlalchemy.schema.Column'\> object after "
+            r"the \<class 'sqlalchemy.schema.Column'\> has already "
+            r"been used in a SQL generation; previously "
+            r"generated constructs may contain stale state.",
+            Table, 't', MetaData(), c1
+        )
+
+    def test_from_list_recovers_after_warning(self):
+        c1 = Column('c1', Integer)
+        c2 = Column('c2', Integer)
+
+        s = select([c1])
+
+        # force a compile.  
+        eq_(str(s), "SELECT c1")
+
+        @testing.emits_warning()
+        def go():
+            return Table('t', MetaData(), c1, c2)
+        t = go()
+
+        eq_(c1._from_objects, [t])
+        eq_(c2._from_objects, [t])
+
+        # 's' has been baked.  Can't afford
+        # not caching select._froms.
+        # hopefully the warning will clue the user
+        self.assert_compile(s, "SELECT t.c1")
+        self.assert_compile(select([c1]), "SELECT t.c1 FROM t")
+        self.assert_compile(select([c2]), "SELECT t.c2 FROM t")
+
+    def test_label_gen_resets_on_table(self):
+        c1 = Column('c1', Integer)
+        eq_(c1._label, "c1")
+        Table('t1', MetaData(), c1)
+        eq_(c1._label, "t1_c1")
 
 class AnonLabelTest(fixtures.TestBase):
     """Test behaviors that we hope to change with [ticket:2168]."""

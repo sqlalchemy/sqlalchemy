@@ -449,7 +449,8 @@ class RelationshipProperty(StrategizedProperty):
 
             crit = j & criterion
 
-            return sql.exists([1], crit, from_obj=dest).correlate(source)
+            return sql.exists([1], crit, from_obj=dest).\
+                            correlate(source._annotate({'_orm_adapt':True}))
 
         def any(self, criterion=None, **kwargs):
             """Produce an expression that tests a collection against
