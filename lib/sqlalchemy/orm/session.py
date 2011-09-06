@@ -1511,7 +1511,7 @@ class Session(object):
         Writes out all pending object creations, deletions and modifications
         to the database as INSERTs, DELETEs, UPDATEs, etc.  Operations are
         automatically ordered by the Session's unit of work dependency
-        solver..
+        solver.
 
         Database operations will be issued in the current transactional
         context and do not affect the state of the transaction, unless an
