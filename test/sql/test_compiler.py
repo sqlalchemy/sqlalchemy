@@ -702,6 +702,27 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams = {'othername_1': 'asdf', 'othername_2':'foo', 'otherid_1': 9, 'myid_1': 12}
         )
 
+    def test_nested_conjunctions_short_circuit(self):
+        """test that empty or_(), and_() conjunctions are collapsed by
+        an enclosing conjunction."""
+
+        t = table('t', column('x'))
+
+        self.assert_compile(
+            select([t]).where(and_(t.c.x==5, 
+                or_(and_(or_(t.c.x==7))))),
+            "SELECT t.x FROM t WHERE t.x = :x_1 AND t.x = :x_2"
+        )
+        self.assert_compile(
+            select([t]).where(and_(or_(t.c.x==12, 
+                and_(or_(t.c.x==8))))),
+            "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2"
+        )
+        self.assert_compile(
+            select([t]).where(and_(or_(or_(t.c.x==12), 
+                and_(or_(), or_(and_(t.c.x==8)), and_())))),
+            "SELECT t.x FROM t WHERE t.x = :x_1 OR t.x = :x_2"
+        )
 
     def test_distinct(self):
         self.assert_compile(

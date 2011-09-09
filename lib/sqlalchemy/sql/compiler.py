@@ -445,7 +445,7 @@ class SQLCompiler(engine.Compiled):
                     s for s in 
                     (c._compiler_dispatch(self, **kwargs) 
                     for c in clauselist.clauses)
-                    if s is not None)
+                    if s)
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "

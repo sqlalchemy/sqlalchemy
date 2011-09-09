@@ -40,6 +40,12 @@ CHANGES
     Does not apply to 0.6.9.
 
 -sql
+  - Behavioral improvement: empty
+    conjunctions such as and_() and or_() will be
+    flattened in the context of an enclosing conjunction,
+    i.e. and_(x, or_()) will produce 'X' and not 'X AND
+    ()'. [ticket:2257].
+
   - Fixed bug regarding calculation of "from" list 
     for a select() element.  The "from" calc is now
     delayed, so that if the construct uses a Column

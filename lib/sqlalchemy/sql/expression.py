@@ -2902,6 +2902,12 @@ class BooleanClauseList(ClauseList, ColumnElement):
     def _select_iterable(self):
         return (self, )
 
+    def self_group(self, against=None):
+        if not self.clauses:
+            return self
+        else:
+            return super(BooleanClauseList, self).self_group(against=against)
+
 class _Tuple(ClauseList, ColumnElement):
 
     def __init__(self, *clauses, **kw):
