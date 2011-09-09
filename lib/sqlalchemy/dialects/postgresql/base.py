@@ -938,9 +938,9 @@ class PGDialect(default.DefaultDialect):
                 sql.text(
                 "select relname from pg_class c join pg_namespace n on "
                 "n.oid=c.relnamespace where n.nspname=current_schema() and "
-                "lower(relname)=:name",
+                "relname=:name",
                 bindparams=[
-                        sql.bindparam('name', unicode(table_name.lower()),
+                        sql.bindparam('name', unicode(table_name),
                         type_=sqltypes.Unicode)]
                 )
             )
@@ -949,10 +949,10 @@ class PGDialect(default.DefaultDialect):
                 sql.text(
                 "select relname from pg_class c join pg_namespace n on "
                 "n.oid=c.relnamespace where n.nspname=:schema and "
-                "lower(relname)=:name",
+                "relname=:name",
                     bindparams=[
                         sql.bindparam('name', 
-                        unicode(table_name.lower()), type_=sqltypes.Unicode),
+                        unicode(table_name), type_=sqltypes.Unicode),
                         sql.bindparam('schema', 
                         unicode(schema), type_=sqltypes.Unicode)] 
                 )
@@ -966,9 +966,9 @@ class PGDialect(default.DefaultDialect):
                     "SELECT relname FROM pg_class c join pg_namespace n on "
                     "n.oid=c.relnamespace where relkind='S' and "
                     "n.nspname=current_schema() "
-                    "and lower(relname)=:name",
+                    "and relname=:name",
                     bindparams=[
-                        sql.bindparam('name', unicode(sequence_name.lower()),
+                        sql.bindparam('name', unicode(sequence_name),
                         type_=sqltypes.Unicode)
                     ] 
                 )
@@ -978,9 +978,9 @@ class PGDialect(default.DefaultDialect):
                 sql.text(
                 "SELECT relname FROM pg_class c join pg_namespace n on "
                 "n.oid=c.relnamespace where relkind='S' and "
-                "n.nspname=:schema and lower(relname)=:name",
+                "n.nspname=:schema and relname=:name",
                 bindparams=[
-                    sql.bindparam('name', unicode(sequence_name.lower()),
+                    sql.bindparam('name', unicode(sequence_name),
                      type_=sqltypes.Unicode),
                     sql.bindparam('schema', 
                                 unicode(schema), type_=sqltypes.Unicode)

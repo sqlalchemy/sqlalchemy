@@ -107,6 +107,10 @@ CHANGES
     extensions are in use or not.
 
 - postgresql
+  - Reflection functions for Table, Sequence no longer
+    case insensitive.  Names can be differ only in case
+    and will be correctly distinguished.  [ticket:2256]
+
   - Use an atomic counter as the "random number" 
     source for server side cursor names; 
     conflicts have been reported in rare cases.

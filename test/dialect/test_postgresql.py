@@ -1360,6 +1360,33 @@ class ReflectionTest(fixtures.TestBase):
                      == referer.c.ref).compare(
                         subject.join(referer).onclause))
 
+    @testing.provide_metadata
+    def test_uppercase_lowercase_table(self):
+        metadata = self.metadata
+
+        a_table = Table('a', metadata, Column('x', Integer))
+        A_table = Table('A', metadata, Column('x', Integer))
+
+        a_table.create()
+        assert testing.db.has_table("a")
+        assert not testing.db.has_table("A")
+        A_table.create(checkfirst=True)
+        assert testing.db.has_table("A")
+
+    def test_uppercase_lowercase_sequence(self):
+
+        a_seq = Sequence('a')
+        A_seq = Sequence('A')
+
+        a_seq.create(testing.db)
+        assert testing.db.dialect.has_sequence(testing.db, "a")
+        assert not testing.db.dialect.has_sequence(testing.db, "A")
+        A_seq.create(testing.db, checkfirst=True)
+        assert testing.db.dialect.has_sequence(testing.db, "A")
+
+        a_seq.drop(testing.db)
+        A_seq.drop(testing.db)
+
     def test_schema_reflection_multi_search_path(self):
         """test the 'set the same schema' rule when
         multiple schemas/search paths are in effect."""
