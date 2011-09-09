@@ -1374,7 +1374,17 @@ class MapperTest(_fixtures.FixtureTest):
             'addresses':relationship(Address)
         })
 
-        assert_raises(sa.orm.exc.UnmappedClassError, sa.orm.configure_mappers)
+        assert_raises_message(
+            sa.orm.exc.UnmappedClassError, 
+            "Class 'test.orm._fixtures.Address' is not mapped",
+            sa.orm.configure_mappers)
+
+    def test_unmapped_not_type_error(self):
+        assert_raises_message(
+            sa.exc.ArgumentError, 
+            "Class object expected, got '5'.",
+            class_mapper, 5
+        )
 
     def test_unmapped_subclass_error_postmap(self):
         users = self.tables.users

@@ -555,9 +555,12 @@ def object_mapper(instance):
         raise exc.UnmappedInstanceError(instance)
 
 def class_mapper(class_, compile=True):
-    """Given a class, return the primary Mapper associated with the key.
+    """Given a class, return the primary :class:`.Mapper` associated 
+    with the key.
 
-    Raises UnmappedClassError if no mapping is configured.
+    Raises :class:`.UnmappedClassError` if no mapping is configured
+    on the given class, or :class:`.ArgumentError` if a non-class
+    object is passed.
 
     """
 
@@ -566,6 +569,8 @@ def class_mapper(class_, compile=True):
         mapper = class_manager.mapper
 
     except exc.NO_STATE:
+        if not isinstance(class_, type): 
+            raise sa_exc.ArgumentError("Class object expected, got '%r'." % class_) 
         raise exc.UnmappedClassError(class_)
 
     if compile and mapperlib.module._new_mappers:

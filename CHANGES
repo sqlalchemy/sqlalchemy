@@ -43,6 +43,12 @@ CHANGES
     would hit the __eq__() and fail.  [ticket:2260]
     Does not apply to 0.6.9.
 
+  - Calling class_mapper() and passing in an object
+    that is not a "type" (i.e. a class that could 
+    potentially be mapped) now raises an informative
+    ArgumentError, rather than UnmappedClassError.
+    [ticket:2196]
+
 -sql
   - Behavioral improvement: empty
     conjunctions such as and_() and or_() will be
