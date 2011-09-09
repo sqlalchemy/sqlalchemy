@@ -690,6 +690,28 @@ class MapperTest(_fixtures.FixtureTest):
         s.add(A())
         s.commit()
 
+    def test_we_dont_call_eq(self):
+        class NoEqAllowed(object):
+            def __eq__(self, other):
+                raise Exception("nope")
+
+        addresses, users = self.tables.addresses, self.tables.users
+        Address = self.classes.Address
+
+        mapper(NoEqAllowed, users, properties={
+            'addresses':relationship(Address, backref='user')
+        })
+        mapper(Address, addresses)
+
+        u1 = NoEqAllowed()
+        u1.name = "some name"
+        u1.addresses = [Address(id=12, email_address='a1')]
+        s = Session(testing.db)
+        s.add(u1)
+        s.commit()
+
+        a1 = s.query(Address).filter_by(id=12).one()
+        assert a1.user is u1
 
     def test_mapping_to_join_raises(self):
         """Test implicit merging of two cols raises."""

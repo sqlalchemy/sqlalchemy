@@ -279,6 +279,12 @@ class SQLSoupTest(fixtures.TestBase):
         db.users.relate('loans', db.loans, order_by=db.loans.loan_date,
                         cascade='all, delete-orphan')
 
+    def test_relate_m2o(self):
+        db = sqlsoup.SqlSoup(engine)
+        db.loans.relate('user', db.users)
+        u1 = db.users.filter(db.users.c.name=='Joe Student').one()
+        eq_(db.loans.first().user, u1)
+
     def test_explicit_session(self):
         Session = scoped_session(sessionmaker())
         db = sqlsoup.SqlSoup(engine, session=Session)

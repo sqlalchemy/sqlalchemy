@@ -421,7 +421,7 @@ class AttributeImpl(object):
                 else:
                     value = ATTR_EMPTY
 
-                if value in (PASSIVE_NO_RESULT, NEVER_SET):
+                if value is PASSIVE_NO_RESULT or value is NEVER_SET:
                     return value
                 elif value is ATTR_WAS_SET:
                     try:

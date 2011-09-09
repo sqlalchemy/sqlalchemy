@@ -34,6 +34,11 @@ CHANGES
     on a new mapper would establish a backref on the
     first mapper.
 
+  - Fixed bug whereby if __eq__() was
+    redefined, a relationship many-to-one lazyload
+    would hit the __eq__() and fail.  [ticket:2260]
+    Does not apply to 0.6.9.
+
 -sql
   - Fixed bug regarding calculation of "from" list 
     for a select() element.  The "from" calc is now
