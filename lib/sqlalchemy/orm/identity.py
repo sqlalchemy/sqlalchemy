@@ -193,7 +193,7 @@ class WeakInstanceDict(IdentityMap):
     def discard(self, state):
         st = dict.get(self, state.key, None)
         if st is state:
-            dict.__delitem__(self, state.key)
+            dict.pop(self, state.key, None)
             self._manage_removed_state(state)
 
     def prune(self):
@@ -234,7 +234,7 @@ class StrongInstanceDict(IdentityMap):
         if obj is not None:
             st = attributes.instance_state(obj)
             if st is state:
-                dict.__delitem__(self, state.key)
+                dict.pop(self, state.key, None)
                 self._manage_removed_state(state)
 
     def prune(self):

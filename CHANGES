@@ -15,6 +15,10 @@ CHANGES
      when the Session.is_active is True.
      [ticket:2241]
 
+  - Identity map .discard() uses dict.pop(,None) 
+    internally instead of "del" to avoid KeyError/warning 
+    during a non-determinate gc teardown [ticket:2267]
+
   - Fixed regression in new composite rewrite where
     deferred=True option failed due to missing
     import [ticket:2253]
