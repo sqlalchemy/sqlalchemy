@@ -466,7 +466,7 @@ New helper classes released in 0.7.3 provides a simpler pattern for concrete inh
 With these objects, the ``__declare_last__`` helper is used to configure the "polymorphic"
 loader for the mapper after all subclasses have been declared.
 
-A basic abstract example of the :class:`.AbstractConcreteBase` class::
+An abstract base can be declared using the :class:`.AbstractConcreteBase` class::
 
     from sqlalchemy.ext.declarative import AbstractConcreteBase
     
