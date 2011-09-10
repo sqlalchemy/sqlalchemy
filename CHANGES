@@ -49,6 +49,29 @@ CHANGES
     ArgumentError, rather than UnmappedClassError.
     [ticket:2196]
 
+  - New event hook, MapperEvents.after_configured().  
+    Called after a configure() step has completed and
+    mappers were in fact affected.   Theoretically this
+    event is called once per application, unless new mappings
+    are constructed after existing ones have been used
+    already.
+
+  - New declarative features:
+        - __declare_last__() method, establishes an event
+        listener for the class method that will be called
+        when mappers are completed with the final "configure"
+        step.
+        - __abstract__ flag.   The class will not be mapped
+        at all when this flag is present on the class.
+        - New helper classes ConcreteBase, AbstractConcreteBase.
+        Allow concrete mappings using declarative which automatically
+        set up the "polymorphic_union" when the "configure"
+        mapper step is invoked.
+        - The mapper itself has semi-private methods that allow
+        the "with_polymorphic" selectable to be assigned
+        to the mapper after it has already been configured.
+        [ticket:2239]
+
 -sql
   - Behavioral improvement: empty
     conjunctions such as and_() and or_() will be

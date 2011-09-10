@@ -404,6 +404,21 @@ class MapperEvents(event.Events):
         """
         # TODO: need coverage for this event
 
+    def after_configured(self):
+        """Called after a series of mappers have been configured.
+
+        This corresponds to the :func:`.orm.configure_mappers` call, which
+        note is usually called automatically as mappings are first
+        used.
+        
+        Theoretically this event is called once per
+        application, but is actually called any time new mappers
+        have been affected by a :func:`.orm.configure_mappers` call.   If new mappings
+        are constructed after existing ones have already been used, 
+        this event can be called again.
+
+        """
+
     def translate_row(self, mapper, context, row):
         """Perform pre-processing on the given result row and return a
         new row instance.

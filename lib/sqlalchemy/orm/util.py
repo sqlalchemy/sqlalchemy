@@ -601,6 +601,9 @@ def has_identity(object):
     return state.has_identity
 
 def _is_mapped_class(cls):
+    """Return True if the given object is a mapped class, 
+    :class:`.Mapper`, or :class:`.AliasedClass`."""
+
     if isinstance(cls, (AliasedClass, mapperlib.Mapper)):
         return True
     if isinstance(cls, expression.ClauseElement):
@@ -609,6 +612,16 @@ def _is_mapped_class(cls):
         manager = attributes.manager_of_class(cls)
         return manager and _INSTRUMENTOR in manager.info
     return False
+
+def _mapper_or_none(cls):
+    """Return the :class:`.Mapper` for the given class or None if the 
+    class is not mapped."""
+
+    manager = attributes.manager_of_class(cls)
+    if manager is not None and _INSTRUMENTOR in manager.info:
+        return manager.info[_INSTRUMENTOR]
+    else:
+        return None
 
 def instance_str(instance):
     """Return a string describing an instance."""

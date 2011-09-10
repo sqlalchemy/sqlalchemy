@@ -14,7 +14,7 @@ from sqlalchemy.orm import relationship, create_session, class_mapper, \
     Session
 from test.lib.testing import eq_
 from sqlalchemy.util import classproperty
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
 from test.lib import fixtures
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
@@ -2014,7 +2014,30 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         assert A.__mapper__.inherits is a_1.__mapper__
 
-    def test_concrete(self):
+from test.orm.test_events import _RemoveListeners
+class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
+    def _roundtrip(self, Employee, Manager, Engineer, polymorphic=True):
+        Base.metadata.create_all()
+        sess = create_session()
+        e1 = Engineer(name='dilbert', primary_language='java')
+        e2 = Engineer(name='wally', primary_language='c++')
+        m1 = Manager(name='dogbert', golf_swing='fore!')
+        e3 = Engineer(name='vlad', primary_language='cobol')
+        sess.add_all([e1, e2, m1, e3])
+        sess.flush()
+        sess.expunge_all()
+        if polymorphic:
+            eq_(sess.query(Employee).order_by(Employee.name).all(),
+                [Engineer(name='dilbert'), Manager(name='dogbert'),
+                Engineer(name='vlad'), Engineer(name='wally')])
+        else:
+            eq_(sess.query(Engineer).order_by(Engineer.name).all(),
+                [Engineer(name='dilbert'), Engineer(name='vlad'),
+                Engineer(name='wally')])
+            eq_(sess.query(Manager).all(), [Manager(name='dogbert')])
+
+
+    def test_explicit(self):
         engineers = Table('engineers', Base.metadata, Column('id',
                           Integer, primary_key=True,
                           test_needs_autoincrement=True), Column('name'
@@ -2027,47 +2050,35 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         punion = polymorphic_union({'engineer': engineers, 'manager'
                                    : managers}, 'type', 'punion')
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Employee(Base, fixtures.ComparableEntity):
 
             __table__ = punion
             __mapper_args__ = {'polymorphic_on': punion.c.type}
 
-        class Engineer(Person):
+        class Engineer(Employee):
 
             __table__ = engineers
             __mapper_args__ = {'polymorphic_identity': 'engineer',
                                'concrete': True}
 
-        class Manager(Person):
+        class Manager(Employee):
 
             __table__ = managers
             __mapper_args__ = {'polymorphic_identity': 'manager',
                                'concrete': True}
-
-        Base.metadata.create_all()
-        sess = create_session()
-        e1 = Engineer(name='dilbert', primary_language='java')
-        e2 = Engineer(name='wally', primary_language='c++')
-        m1 = Manager(name='dogbert', golf_swing='fore!')
-        e3 = Engineer(name='vlad', primary_language='cobol')
-        sess.add_all([e1, e2, m1, e3])
-        sess.flush()
-        sess.expunge_all()
-        eq_(sess.query(Person).order_by(Person.name).all(),
-            [Engineer(name='dilbert'), Manager(name='dogbert'),
-            Engineer(name='vlad'), Engineer(name='wally')])
+        self._roundtrip(Employee, Manager, Engineer)
 
     def test_concrete_inline_non_polymorphic(self):
         """test the example from the declarative docs."""
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Employee(Base, fixtures.ComparableEntity):
 
             __tablename__ = 'people'
             id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
             name = Column(String(50))
 
-        class Engineer(Person):
+        class Engineer(Employee):
 
             __tablename__ = 'engineers'
             __mapper_args__ = {'concrete': True}
@@ -2076,7 +2087,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column(String(50))
             name = Column(String(50))
 
-        class Manager(Person):
+        class Manager(Employee):
 
             __tablename__ = 'manager'
             __mapper_args__ = {'concrete': True}
@@ -2084,20 +2095,57 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                         test_needs_autoincrement=True)
             golf_swing = Column(String(50))
             name = Column(String(50))
+        self._roundtrip(Employee, Manager, Engineer, polymorphic=False)
 
-        Base.metadata.create_all()
-        sess = create_session()
-        e1 = Engineer(name='dilbert', primary_language='java')
-        e2 = Engineer(name='wally', primary_language='c++')
-        m1 = Manager(name='dogbert', golf_swing='fore!')
-        e3 = Engineer(name='vlad', primary_language='cobol')
-        sess.add_all([e1, e2, m1, e3])
-        sess.flush()
-        sess.expunge_all()
-        eq_(sess.query(Engineer).order_by(Engineer.name).all(),
-            [Engineer(name='dilbert'), Engineer(name='vlad'),
-            Engineer(name='wally')])
-        eq_(sess.query(Manager).all(), [Manager(name='dogbert')])
+    def test_abstract_concrete_extension(self):
+        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            pass
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            golf_swing = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'manager', 
+                            'concrete':True}
+
+        class Engineer(Employee):
+            __tablename__ = 'engineer'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            primary_language = Column(String(40))
+            __mapper_args__ = {'polymorphic_identity':'engineer', 
+                            'concrete':True}
+
+        self._roundtrip(Employee, Manager, Engineer)
+
+    def test_concrete_extension(self):
+        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+            __tablename__ = 'employee'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            __mapper_args__ = {
+                            'polymorphic_identity':'employee', 
+                            'concrete':True}
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            golf_swing = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'manager', 
+                            'concrete':True}
+
+        class Engineer(Employee):
+            __tablename__ = 'engineer'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            primary_language = Column(String(40))
+            __mapper_args__ = {'polymorphic_identity':'engineer', 
+                            'concrete':True}
+        self._roundtrip(Employee, Manager, Engineer)
+
 
 def _produce_test(inline, stringbased):
 

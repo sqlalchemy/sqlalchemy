@@ -21,3 +21,8 @@ API Reference
 .. autofunction:: comparable_using
 
 .. autofunction:: instrument_declarative
+
+.. autoclass:: AbstractConcreteBase
+
+.. autoclass:: ConcreteBase
+

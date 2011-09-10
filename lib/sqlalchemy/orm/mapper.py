@@ -151,17 +151,7 @@ class Mapper(object):
 
         self.allow_partial_pks = allow_partial_pks
 
-        if with_polymorphic == '*':
-            self.with_polymorphic = ('*', None)
-        elif isinstance(with_polymorphic, (tuple, list)):
-            if isinstance(with_polymorphic[0], (basestring, tuple, list)):
-                self.with_polymorphic = with_polymorphic
-            else:
-                self.with_polymorphic = (with_polymorphic, None)
-        elif with_polymorphic is not None:
-            raise sa_exc.ArgumentError("Invalid setting for with_polymorphic")
-        else:
-            self.with_polymorphic = None
+        self._set_with_polymorphic(with_polymorphic)
 
         if isinstance(self.local_table, expression._SelectBase):
             raise sa_exc.InvalidRequestError(
@@ -225,10 +215,10 @@ class Mapper(object):
 
     local_table = None
     """The :class:`.Selectable` which this :class:`.Mapper` manages.
-    
+
     Typically is an instance of :class:`.Table` or :class:`.Alias`. 
     May also be ``None``. 
-    
+
     The "local" table is the
     selectable that the :class:`.Mapper` is directly responsible for 
     managing from an attribute access and flush perspective.   For
@@ -239,15 +229,15 @@ class Mapper(object):
     single-table inheriting mapper, local_table will be ``None``.
 
     See also :attr:`~.Mapper.mapped_table`.
-    
+
     """
 
     mapped_table = None
     """The :class:`.Selectable` to which this :class:`.Mapper` is mapped.
-    
+
     Typically an instance of :class:`.Table`, :class:`.Join`, or 
-    :class:`.Alias`.  
-    
+    :class:`.Alias`.
+
     The "mapped" table is the selectable that 
     the mapper selects from during queries.   For non-inheriting 
     mappers, the mapped table is the same as the "local" table.
@@ -255,99 +245,99 @@ class Mapper(object):
     full :class:`.Join` representing full rows for this particular
     subclass.  For single-table inheritance mappers, mapped_table
     references the base table.
-    
+
     See also :attr:`~.Mapper.local_table`.
-    
+
     """
 
     inherits = None
     """References the :class:`.Mapper` which this :class:`.Mapper` 
     inherits from, if any.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     configured = None
     """Represent ``True`` if this :class:`.Mapper` has been configured.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     See also :func:`.configure_mappers`.
-    
+
     """
 
     concrete = None
     """Represent ``True`` if this :class:`.Mapper` is a concrete 
     inheritance mapper.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     tables = None
     """An iterable containing the collection of :class:`.Table` objects
     which this :class:`.Mapper` is aware of.
-    
+
     If the mapper is mapped to a :class:`.Join`, or an :class:`.Alias`
     representing a :class:`.Select`, the individual :class:`.Table`
     objects that comprise the full construct will be represented here.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     primary_key = None
     """An iterable containing the collection of :class:`.Column` objects
     which comprise the 'primary key' of the mapped table, from the 
     perspective of this :class:`.Mapper`.
-    
+
     This list is against the selectable in :attr:`~.Mapper.mapped_table`.  In the
     case of inheriting mappers, some columns may be managed by a superclass
     mapper.  For example, in the case of a :class:`.Join`, the primary
     key is determined by all of the primary key columns across all tables
     referenced by the :class:`.Join`.
-    
+
     The list is also not necessarily the same as the primary key column
     collection associated with the underlying tables; the :class:`.Mapper` 
     features a ``primary_key`` argument that can override what the
     :class:`.Mapper` considers as primary key columns.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     class_ = None
     """The Python class which this :class:`.Mapper` maps.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     class_manager = None
     """The :class:`.ClassManager` which maintains event listeners
     and class-bound descriptors for this :class:`.Mapper`.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
 
     """
 
     single = None
     """Represent ``True`` if this :class:`.Mapper` is a single table 
-    inheritance mapper.   
-    
+    inheritance mapper.
+
     :attr:`~.Mapper.local_table` will be ``None`` if this flag is set.
-    
-    This is a *read only* attribute determined during mapper construction.  
+
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     non_primary = None
@@ -355,35 +345,35 @@ class Mapper(object):
     mapper, e.g. a mapper that is used only to selet rows but not for 
     persistence management.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     polymorphic_on = None
     """The :class:`.Column` specified as the ``polymorphic_on`` column
     for this :class:`.Mapper`, within an inheritance scenario.
-    
+
     This attribute may also be of other types besides :class:`.Column`
     in a future SQLAlchemy release.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     polymorphic_map = None
     """A mapping of "polymorphic identity" identifiers mapped to :class:`.Mapper`
     instances, within an inheritance scenario.
-    
+
     The identifiers can be of any type which is comparable to the 
     type of column represented by :attr:`~.Mapper.polymorphic_on`.
-    
+
     An inheritance chain of mappers will all reference the same 
     polymorphic map object.  The object is used to correlate incoming
     result rows to target mappers.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
 
     """
@@ -391,32 +381,32 @@ class Mapper(object):
     polymorphic_identity = None
     """Represent an identifier which is matched against the :attr:`~.Mapper.polymorphic_on`
     column during result row loading.
-    
+
     Used only with inheritance, this object can be of any type which is
     comparable to the type of column represented by :attr:`~.Mapper.polymorphic_on`.
-    
-    This is a *read only* attribute determined during mapper construction.  
+
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     base_mapper = None
     """The base-most :class:`.Mapper` in an inheritance chain.
-    
+
     In a non-inheriting scenario, this attribute will always be this
     :class:`.Mapper`.   In an inheritance scenario, it references
     the :class:`.Mapper` which is parent to all other :class:`.Mapper`
     objects in the inheritance chain.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     columns = None
     """A collection of :class:`.Column` or other scalar expression 
     objects maintained by this :class:`.Mapper`.
-    
+
     The collection behaves the same as that of the ``c`` attribute on 
     any :class:`.Table` object, except that only those columns included in
     this mapping are present, and are keyed based on the attribute name
@@ -424,9 +414,9 @@ class Mapper(object):
     :class:`.Column` itself.   Additionally, scalar expressions mapped
     by :func:`.column_property` are also present here.
 
-    This is a *read only* attribute determined during mapper construction.  
+    This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
-    
+
     """
 
     validators = None
@@ -530,16 +520,6 @@ class Mapper(object):
             if self.polymorphic_identity is not None:
                 self.polymorphic_map[self.polymorphic_identity] = self
 
-            if self.polymorphic_on is None:
-                for mapper in self.iterate_to_root():
-                    # try to set up polymorphic on using
-                    # correesponding_column(); else leave
-                    # as None
-                    if mapper.polymorphic_on is not None:
-                        self.polymorphic_on = \
-                                self.mapped_table.corresponding_column(
-                                                    mapper.polymorphic_on)
-                        break
         else:
             self._all_tables = set()
             self.base_mapper = self
@@ -552,6 +532,59 @@ class Mapper(object):
             raise sa_exc.ArgumentError(
                     "Mapper '%s' does not have a mapped_table specified." 
                     % self)
+
+    def _set_with_polymorphic(self, with_polymorphic):
+        if with_polymorphic == '*':
+            self.with_polymorphic = ('*', None)
+        elif isinstance(with_polymorphic, (tuple, list)):
+            if isinstance(with_polymorphic[0], (basestring, tuple, list)):
+                self.with_polymorphic = with_polymorphic
+            else:
+                self.with_polymorphic = (with_polymorphic, None)
+        elif with_polymorphic is not None:
+            raise sa_exc.ArgumentError("Invalid setting for with_polymorphic")
+        else:
+            self.with_polymorphic = None
+
+        if isinstance(self.local_table, expression._SelectBase):
+            raise sa_exc.InvalidRequestError(
+                "When mapping against a select() construct, map against "
+                "an alias() of the construct instead."
+                "This because several databases don't allow a "
+                "SELECT from a subquery that does not have an alias."
+                )
+
+        if self.with_polymorphic and \
+                    isinstance(self.with_polymorphic[1],
+                                expression._SelectBase):
+            self.with_polymorphic = (self.with_polymorphic[0],
+                                self.with_polymorphic[1].alias())
+        if self.configured:
+            self._expire_memoizations()
+
+    def _set_concrete_base(self, mapper):
+        """Set the given :class:`.Mapper` as the 'inherits' for this :class:`.Mapper`,
+        assuming this :class:`.Mapper` is concrete and does not already have
+        an inherits."""
+
+        assert self.concrete
+        assert not self.inherits
+        assert isinstance(mapper, Mapper)
+        self.inherits = mapper
+        self.inherits.polymorphic_map.update(self.polymorphic_map)
+        self.polymorphic_map = self.inherits.polymorphic_map
+        for mapper in self.iterate_to_root():
+            if mapper.polymorphic_on is not None:
+                mapper._requires_row_aliasing = True
+        self.batch = self.inherits.batch
+        self.base_mapper = self.inherits.base_mapper
+        self.inherits._inheriting_mappers.add(self)
+        self.passive_updates = self.inherits.passive_updates
+        self._all_tables = self.inherits._all_tables
+
+    def _set_polymorphic_on(self, polymorphic_on):
+        self.polymorphic_on = polymorphic_on
+        self._configure_polymorphic_setter(True)
 
     def _configure_legacy_instrument_class(self):
 
@@ -818,7 +851,7 @@ class Mapper(object):
                                     init=False, 
                                     setparent=True)
 
-    def _configure_polymorphic_setter(self):
+    def _configure_polymorphic_setter(self, init=False):
         """Configure an attribute on the mapper representing the 
         'polymorphic_on' column, if applicable, and not 
         already generated by _configure_properties (which is typical).
@@ -833,6 +866,17 @@ class Mapper(object):
         # may only be present in the 'with_polymorphic' selectable 
         # but we need it for the base mapper
         setter = False
+
+        if self.polymorphic_on is None:
+            for mapper in self.iterate_to_root():
+                # try to set up polymorphic on using
+                # correesponding_column(); else leave
+                # as None
+                if mapper.polymorphic_on is not None:
+                    self.polymorphic_on = \
+                            self.mapped_table.corresponding_column(
+                                                mapper.polymorphic_on)
+                    break
 
         if self.polymorphic_on is not None:
             setter = True
@@ -861,7 +905,7 @@ class Mapper(object):
                 self._configure_property(
                                 col.key, 
                                 properties.ColumnProperty(col, _instrument=instrument),
-                                init=False, setparent=True)
+                                init=init, setparent=True)
                 polymorphic_key = col.key
             else:
                 polymorphic_key = self._columntoproperty[self.polymorphic_on].key
@@ -2714,6 +2758,7 @@ def configure_mappers():
     if not _new_mappers:
         return 
 
+    _call_configured = None
     _COMPILE_MUTEX.acquire()
     try:
         global _already_compiling
@@ -2744,6 +2789,7 @@ def configure_mappers():
                         mapper._post_configure_properties()
                         mapper._expire_memoizations()
                         mapper.dispatch.mapper_configured(mapper, mapper.class_)
+                        _call_configured = mapper
                     except:
                         exc = sys.exc_info()[1]
                         if not hasattr(exc, '_configure_failed'):
@@ -2755,7 +2801,8 @@ def configure_mappers():
             _already_compiling = False
     finally:
         _COMPILE_MUTEX.release()
-
+    if _call_configured is not None:
+        _call_configured.dispatch.after_configured()
 
 def reconstructor(fn):
     """Decorate a method as the 'reconstructor' hook.

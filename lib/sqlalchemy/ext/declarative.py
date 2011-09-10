@@ -459,10 +459,52 @@ before the class is built::
         __table__ = managers
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
 
-There is a recipe which allows the above pattern to be executed
-using the declarative form, via a special base class that defers
-the creation of the mapper.  That recipe is available at
-`DeclarativeAbstractConcreteBase <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_
+Using the Concrete Helpers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+New helper classes released in 0.7.3 provides a simpler pattern for concrete inheritance.
+With these objects, the ``__declare_last__`` helper is used to configure the "polymorphic"
+loader for the mapper after all subclasses have been declared.
+
+A basic abstract example of the :class:`.AbstractConcreteBase` class::
+
+    from sqlalchemy.ext.declarative import AbstractConcreteBase
+    
+    class Employee(AbstractConcreteBase, Base):
+        pass
+
+To have a concrete ``employee`` table, use :class:`.ConcreteBase` instead::
+
+    from sqlalchemy.ext.declarative import ConcreteBase
+    
+    class Employee(ConcreteBase, Base):
+        __tablename__ = 'employee'
+        employee_id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        __mapper_args__ = {
+                        'polymorphic_identity':'employee', 
+                        'concrete':True}
+    
+
+Either ``Employee`` base can be used in the normal fashion::
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        employee_id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        manager_data = Column(String(40))
+        __mapper_args__ = {
+                        'polymorphic_identity':'manager', 
+                        'concrete':True}
+
+    class Engineer(Employee):
+        __tablename__ = 'engineer'
+        employee_id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        engineer_info = Column(String(40))
+        __mapper_args__ = {'polymorphic_identity':'engineer', 
+                        'concrete':True}
+
 
 .. _declarative_mixins:
 
@@ -825,6 +867,44 @@ it as part of ``__table_args__``::
         __tablename__ = 'atable'
         c =  Column(Integer,primary_key=True)
 
+Special Directives
+==================
+
+``__declare_last__()``
+~~~~~~~~~~~~~~~~~~~~~~
+
+The ``__declare_last__()`` hook, introduced in 0.7.3, allows definition of 
+a class level function that is automatically called by the :meth:`.MapperEvents.after_configured`
+event, which occurs after mappings are assumed to be completed and the 'configure' step
+has finished::
+
+    class MyClass(Base):
+        @classmethod
+        def __declare_last__(cls):
+            ""
+            # do something with mappings
+
+
+``__abstract__``
+~~~~~~~~~~~~~~~~~~~
+
+``__abstract__`` is introduced in 0.7.3 and causes declarative to skip the production
+of a table or mapper for the class entirely.  A class can be added within a hierarchy
+in the same way as mixin (see :ref:`declarative_mixins`), allowing subclasses to extend
+just from the special class::
+
+    class SomeAbstractBase(Base):
+        __abstract__ = True
+        
+        def some_helpful_method(self):
+            ""
+            
+        @declared_attr
+        def __mapper_args__(cls):
+            return {"helpful mapper arguments":True}
+
+    class MyMappedClass(SomeAbstractBase):
+        ""
 
 Class Constructor
 =================
@@ -862,6 +942,8 @@ from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty, Comp
 from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy import util, exc
 from sqlalchemy.sql import util as sql_util, expression
+from sqlalchemy import event
+from sqlalchemy.orm.util import polymorphic_union, _mapper_or_none
 
 
 __all__ = 'declarative_base', 'synonym_for', \
@@ -906,6 +988,18 @@ def _as_declarative(cls, classname, dict_):
     declarative_props = (declared_attr, util.classproperty)
 
     for base in cls.__mro__:
+        _is_declarative_inherits = hasattr(base, '_decl_class_registry')
+
+        if '__declare_last__' in base.__dict__:
+            @event.listens_for(mapper, "after_configured")
+            def go():
+                cls.__declare_last__()
+        if '__abstract__' in base.__dict__:
+            if (base is cls or 
+                (base in cls.__bases__ and not _is_declarative_inherits)
+            ):
+                return
+
         class_mapped = _is_mapped_class(base)
         if class_mapped:
             parent_columns = base.__table__.c.keys()
@@ -1156,8 +1250,8 @@ class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
         if '_decl_class_registry' in cls.__dict__:
             return type.__init__(cls, classname, bases, dict_)
-
-        _as_declarative(cls, classname, cls.__dict__)
+        else:
+            _as_declarative(cls, classname, cls.__dict__)
         return type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):
@@ -1454,3 +1548,108 @@ def _undefer_column_name(key, column):
         column.key = key
     if column.name is None:
         column.name = key
+
+class ConcreteBase(object):
+    """A helper class for 'concrete' declarative mappings.
+    
+    :class:`.ConcreteBase` will use the :func:`.polymorphic_union`
+    function automatically, against all tables mapped as a subclass
+    to this class.   The function is called via the
+    ``__declare_last__()`` function, which is essentially
+    a hook for the :func:`.MapperEvents.after_configured` event.
+
+    :class:`.ConcreteBase` produces a mapped
+    table for the class itself.  Compare to :class:`.AbstractConcreteBase`,
+    which does not.
+    
+    Example::
+
+        from sqlalchemy.ext.declarative import ConcreteBase
+
+        class Employee(ConcreteBase, Base):
+            __tablename__ = 'employee'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            __mapper_args__ = {
+                            'polymorphic_identity':'employee', 
+                            'concrete':True}
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            manager_data = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'manager', 
+                            'concrete':True}
+
+    """
+
+    @classmethod
+    def _create_polymorphic_union(cls, mappers):
+        return polymorphic_union(dict(
+            (mapper.polymorphic_identity, mapper.local_table)
+            for mapper in mappers
+         ), 'type', 'pjoin')
+
+    @classmethod
+    def __declare_last__(cls):
+        m = cls.__mapper__
+        if m.with_polymorphic:
+            return
+        mappers = [  sm for sm in [
+                    _mapper_or_none(klass)
+                    for klass in cls.__subclasses__()
+                ] if sm is not None] + [m]
+        pjoin = cls._create_polymorphic_union(mappers)
+        m._set_with_polymorphic(("*",pjoin))
+        m._set_polymorphic_on(pjoin.c.type)
+
+class AbstractConcreteBase(ConcreteBase):
+    """A helper class for 'concrete' declarative mappings.
+    
+    :class:`.AbstractConcreteBase` will use the :func:`.polymorphic_union`
+    function automatically, against all tables mapped as a subclass
+    to this class.   The function is called via the
+    ``__declare_last__()`` function, which is essentially
+    a hook for the :func:`.MapperEvents.after_configured` event.
+    
+    :class:`.AbstractConcreteBase` does not produce a mapped
+    table for the class itself.  Compare to :class:`.ConcreteBase`,
+    which does.
+    
+    Example::
+
+        from sqlalchemy.ext.declarative import ConcreteBase
+
+        class Employee(AbstractConcreteBase, Base):
+            pass
+
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            employee_id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            manager_data = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'manager', 
+                            'concrete':True}
+
+    """
+
+    __abstract__ = True
+
+    @classmethod
+    def __declare_last__(cls):
+        if hasattr(cls, '__mapper__'):
+            return
+        table = cls._create_polymorphic_union(
+            m for m in [
+                _mapper_or_none(klass)
+                for klass in cls.__subclasses__()
+            ] if m is not None
+        )
+        cls.__mapper__ = m = mapper(cls, table, polymorphic_on=table.c.type)
+        for scls in cls.__subclasses__():
+            sm = _mapper_or_none(scls)
+            if sm.concrete and cls in scls.__bases__:
+                sm._set_concrete_base(m)
