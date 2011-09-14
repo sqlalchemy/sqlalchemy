@@ -4699,7 +4699,7 @@ class Select(_SelectBase):
 
         """
         self._should_correlate = False
-        if fromclauses == (None,):
+        if fromclauses and fromclauses[0] is None:
             self._correlate = set()
         else:
             self._correlate = self._correlate.union(fromclauses)

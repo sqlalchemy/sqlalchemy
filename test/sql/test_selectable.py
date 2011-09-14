@@ -161,7 +161,6 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         criterion = a.c.col1 == table2.c.col2
         self.assert_(criterion.compare(j.onclause))
 
-
     def test_union(self):
 
         # tests that we can correspond a column in a Select statement

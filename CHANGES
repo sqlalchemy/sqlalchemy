@@ -157,6 +157,13 @@ CHANGES
     to the proxied attributes at the class
     level. [ticket:2236]
 
+  - Changed the update() method on association proxy
+    dictionary to use a duck typing approach, i.e.
+    checks for "keys", to discern between update({}) 
+    and update((a, b)).   Previously, passing a 
+    dictionary that had tuples as keys would be misinterpreted
+    as a sequence. [ticket:2275]
+
 0.7.2
 =====
 - orm

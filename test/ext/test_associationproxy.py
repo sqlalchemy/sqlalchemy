@@ -4,10 +4,11 @@ import pickle
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.orm.collections import collection
+from sqlalchemy.orm.collections import collection, attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import *
 from sqlalchemy.ext.associationproxy import _AssociationList
 from test.lib import *
+from test.lib.testing import assert_raises_message
 from test.lib.util import gc_collect
 from sqlalchemy.sql import not_
 from test.lib import fixtures
@@ -1306,4 +1307,63 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             "FROM users JOIN userkeywords ON users.id = "
             "userkeywords.user_id JOIN keywords ON keywords.id = "
             "userkeywords.keyword_id"
+        )
+
+class DictOfTupleUpdateTest(fixtures.TestBase):
+    def setup(self):
+        class B(object):
+            def __init__(self, key, elem):
+                self.key = key
+                self.elem = elem
+
+        class A(object):
+            elements = association_proxy("orig", "elem", creator=B)
+
+        m = MetaData()
+        a = Table('a', m, Column('id', Integer, primary_key=True))
+        b = Table('b', m, Column('id', Integer, primary_key=True), 
+                    Column('aid', Integer, ForeignKey('a.id')))
+        mapper(A, a, properties={
+            'orig':relationship(B, collection_class=attribute_mapped_collection('key'))
+        })
+        mapper(B, b)
+        self.A = A
+        self.B = B
+
+    def test_update_one_elem_dict(self):
+        a1 = self.A()
+        a1.elements.update({("B", 3): 'elem2'})
+        eq_(a1.elements, {("B",3):'elem2'})
+
+    def test_update_multi_elem_dict(self):
+        a1 = self.A()
+        a1.elements.update({("B", 3): 'elem2', ("C", 4): "elem3"})
+        eq_(a1.elements, {("B",3):'elem2', ("C", 4): "elem3"})
+
+    def test_update_one_elem_list(self):
+        a1 = self.A()
+        a1.elements.update([(("B", 3), 'elem2')])
+        eq_(a1.elements, {("B",3):'elem2'})
+
+    def test_update_multi_elem_list(self):
+        a1 = self.A()
+        a1.elements.update([(("B", 3), 'elem2'), (("C", 4), "elem3")])
+        eq_(a1.elements, {("B",3):'elem2', ("C", 4): "elem3"})
+
+    def test_update_one_elem_varg(self):
+        a1 = self.A()
+        assert_raises_message(
+            ValueError,
+            "dictionary update sequence requires "
+            "2-element tuples",
+            a1.elements.update, (("B", 3), 'elem2')
+        )
+
+    def test_update_multi_elem_varg(self):
+        a1 = self.A()
+        assert_raises_message(
+            TypeError,
+            "update expected at most 1 arguments, got 2",
+            a1.elements.update,
+            (("B", 3), 'elem2'), (("C", 4), "elem3")
         )

@@ -768,11 +768,20 @@ class _AssociationDict(_AssociationCollection):
                             len(a))
         elif len(a) == 1:
             seq_or_map = a[0]
-            for item in seq_or_map:
-                if isinstance(item, tuple):
-                    self[item[0]] = item[1]
-                else:
+            # discern dict from sequence - took the advice
+            # from http://www.voidspace.org.uk/python/articles/duck_typing.shtml
+            # still not perfect :(
+            if hasattr(seq_or_map, 'keys'):
+                for item in seq_or_map:
                     self[item] = seq_or_map[item]
+            else:
+                try:
+                    for k, v in seq_or_map:
+                        self[k] = v
+                except ValueError:
+                    raise ValueError(
+                            "dictionary update sequence "
+                            "requires 2-element tuples")
 
         for key, value in kw:
             self[key] = value
