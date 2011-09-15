@@ -360,6 +360,8 @@ class SynonymProperty(DescriptorProperty):
 
         if self.comparator_factory:
             comp = self.comparator_factory(prop, mapper)
+        elif isinstance(prop, DescriptorProperty):
+            comp = prop._comparator_factory(mapper)
         else:
             comp = prop.comparator_factory(prop, mapper)
         return comp

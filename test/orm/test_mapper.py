@@ -1074,6 +1074,20 @@ class MapperTest(_fixtures.FixtureTest):
         eq_(User.uname.attribute, 123)
         eq_(User.uname['key'], 'value')
 
+    def test_synonym_of_synonym(self):
+        users,  User = (self.tables.users,
+                                self.classes.User)
+
+        mapper(User, users, properties={
+            'x':synonym('id'),
+            'y':synonym('x')
+        })
+
+        s = Session()
+        u = s.query(User).filter(User.y==8).one()
+        eq_(u.y, 8)
+
+
     def test_synonym_column_location(self):
         users, User = self.tables.users, self.classes.User
 
