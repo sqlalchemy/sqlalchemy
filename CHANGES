@@ -19,6 +19,9 @@ CHANGES
     in 0.7, can now make a synonym() of a synonym()
     again.
 
+  - Another previously unknown feature from 0.6, synonyms
+    of relationship() can again be passed to join().
+
   - Identity map .discard() uses dict.pop(,None) 
     internally instead of "del" to avoid KeyError/warning 
     during a non-determinate gc teardown [ticket:2267]

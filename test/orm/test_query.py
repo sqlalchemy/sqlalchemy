@@ -1793,8 +1793,6 @@ class SynonymTest(QueryTest):
         })
         mapper(Keyword, keywords)
 
-    @testing.fails_if(lambda: True, "0.7 regression, may not support "
-                                "synonyms for relationship")
     def test_joins(self):
         User = self.classes.User
 

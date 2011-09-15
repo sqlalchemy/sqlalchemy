@@ -386,6 +386,24 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses.id = orders.address_id"
         )
 
+    def test_join_on_synonym(self):
+
+        class User(object):
+            pass
+        class Address(object):
+            pass
+        users, addresses = (self.tables.users, self.tables.addresses)
+        mapper(User, users, properties={
+            'addresses':relationship(Address),
+            'ad_syn':synonym("addresses")
+        })
+        mapper(Address, addresses)
+        self.assert_compile(
+            Session().query(User).join(User.ad_syn),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
+        )
+
     def test_multi_tuple_form(self):
         """test the 'tuple' form of join, now superseded by the two-element join() form.
 

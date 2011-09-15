@@ -1582,16 +1582,16 @@ class Query(object):
 
             if isinstance(onclause, interfaces.PropComparator):
                 if right_entity is None:
-                    right_entity = onclause.property.mapper
+                    right_entity = onclause.property._synonym_resolved_property.mapper
                     of_type = getattr(onclause, '_of_type', None)
                     if of_type:
                         right_entity = of_type
                     else:
-                        right_entity = onclause.property.mapper
+                        right_entity = onclause.property._synonym_resolved_property.mapper
 
                 left_entity = onclause.parententity
 
-                prop = onclause.property
+                prop = onclause.property._synonym_resolved_property
                 if not isinstance(onclause,  attributes.QueryableAttribute):
                     onclause = prop
 

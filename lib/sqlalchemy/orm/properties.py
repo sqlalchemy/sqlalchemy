@@ -266,6 +266,9 @@ class RelationshipProperty(StrategizedProperty):
             self.backref = None
         else:
             self.backref = backref
+    @property
+    def _synonym_resolved_property(self):
+        return self
 
     def instrument_class(self, mapper):
         attributes.register_descriptor(
