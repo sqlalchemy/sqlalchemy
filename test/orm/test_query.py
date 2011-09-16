@@ -1780,7 +1780,8 @@ class SynonymTest(QueryTest):
             'name_syn':synonym('name'),
             'addresses':relationship(Address),
             'orders':relationship(Order, backref='user'), # o2m, m2o
-            'orders_syn':synonym('orders')
+            'orders_syn':synonym('orders'),
+            'orders_syn_2':synonym('orders_syn')
         })
         mapper(Address, addresses)
         mapper(Order, orders, properties={
@@ -1793,20 +1794,52 @@ class SynonymTest(QueryTest):
         })
         mapper(Keyword, keywords)
 
+    def test_options(self):
+        User, Order = self.classes.User, self.classes.Order
+
+        s = create_session()
+        def go():
+            result = s.query(User).filter_by(name='jack').\
+                        options(joinedload(User.orders_syn)).all()
+            eq_(result, [
+                User(id=7, name='jack', orders=[
+                    Order(description=u'order 1'), 
+                    Order(description=u'order 3'), 
+                    Order(description=u'order 5')
+                ])
+            ])
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_options_syn_of_syn(self):
+        User, Order = self.classes.User, self.classes.Order
+
+        s = create_session()
+        def go():
+            result = s.query(User).filter_by(name='jack').\
+                        options(joinedload(User.orders_syn_2)).all()
+            eq_(result, [
+                User(id=7, name='jack', orders=[
+                    Order(description=u'order 1'), 
+                    Order(description=u'order 3'), 
+                    Order(description=u'order 5')
+                ])
+            ])
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_joins(self):
         User = self.classes.User
 
         for j in (
             ['orders', 'items'],
             ['orders_syn', 'items'],
+            ['orders_syn_2', 'items'],
             ['orders', 'items_syn'],
             ['orders_syn', 'items_syn'],
+            ['orders_syn_2', 'items_syn'],
         ):
             result = create_session().query(User).join(*j).filter_by(id=3).all()
             assert [User(id=7, name='jack'), User(id=9, name='fred')] == result
 
-    @testing.fails_if(lambda: True, "0.7 regression, may not support "
-                                "synonyms for relationship")
     def test_with_parent(self):
         Order, User = self.classes.Order, self.classes.User
 
@@ -1814,7 +1847,9 @@ class SynonymTest(QueryTest):
             ('name', 'orders'),
             ('name_syn', 'orders'),
             ('name', 'orders_syn'),
+            ('name', 'orders_syn_2'),
             ('name_syn', 'orders_syn'),
+            ('name_syn', 'orders_syn_2'),
         ):
             sess = create_session()
             q = sess.query(User)
@@ -1822,7 +1857,8 @@ class SynonymTest(QueryTest):
             u1 = q.filter_by(**{nameprop:'jack'}).one()
 
             o = sess.query(Order).with_parent(u1, property=orderprop).all()
-            assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
+            assert [Order(description="order 1"), 
+                    Order(description="order 3"), Order(description="order 5")] == o
 
 
 class ImmediateTest(_fixtures.FixtureTest):

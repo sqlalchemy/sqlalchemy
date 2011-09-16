@@ -405,7 +405,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_multi_tuple_form(self):
-        """test the 'tuple' form of join, now superseded by the two-element join() form.
+        """test the 'tuple' form of join, now superseded 
+        by the two-element join() form.
 
         Not deprecating this style as of yet.
 

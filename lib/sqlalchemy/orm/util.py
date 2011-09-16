@@ -459,7 +459,7 @@ def with_parent(instance, prop):
     """
     if isinstance(prop, basestring):
         mapper = object_mapper(instance)
-        prop = mapper.get_property(prop)
+        prop = getattr(mapper.class_, prop).property
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 

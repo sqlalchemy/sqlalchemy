@@ -67,7 +67,6 @@ class DescriptorProperty(MapperProperty):
                         lambda: self._comparator_factory(mapper),
                         doc=self.doc
                     )
-        proxy_attr.property = self
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
@@ -355,17 +354,11 @@ class SynonymProperty(DescriptorProperty):
     def _proxied_property(self):
         return getattr(self.parent.class_, self.name).property
 
-    @property
-    def _synonym_resolved_property(self):
-        return self._proxied_property
-
     def _comparator_factory(self, mapper):
         prop = self._proxied_property
 
         if self.comparator_factory:
             comp = self.comparator_factory(prop, mapper)
-        elif isinstance(prop, DescriptorProperty):
-            comp = prop._comparator_factory(mapper)
         else:
             comp = prop.comparator_factory(prop, mapper)
         return comp

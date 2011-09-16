@@ -193,6 +193,10 @@ def create_proxied_attribute(descriptor):
             self.adapter = adapter
             self.__doc__ = doc
 
+        @property
+        def property(self):
+            return self.comparator.property
+
         @util.memoized_property
         def comparator(self):
             if util.callable(self._comparator):

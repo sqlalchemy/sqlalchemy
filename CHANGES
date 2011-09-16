@@ -15,12 +15,13 @@ CHANGES
      when the Session.is_active is True.
      [ticket:2241]
 
-  - Fixed previously untested function which regressed
-    in 0.7, can now make a synonym() of a synonym()
-    again.
-
-  - Another previously unknown feature from 0.6, synonyms
-    of relationship() can again be passed to join().
+  - Fixed a variety of synonym()-related regressions
+    from 0.6:
+        - making a synonym against a synonym now works.
+        - synonyms made against a relationship() can
+          be passed to query.join(), options sent
+          to query.options(), passed by name
+          to query.with_parent().
 
   - Identity map .discard() uses dict.pop(,None) 
     internally instead of "del" to avoid KeyError/warning 
