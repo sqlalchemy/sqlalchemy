@@ -1779,7 +1779,7 @@ class SynonymTest(QueryTest):
         mapper(User, users, properties={
             'name_syn':synonym('name'),
             'addresses':relationship(Address),
-            'orders':relationship(Order, backref='user'), # o2m, m2o
+            'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
             'orders_syn':synonym('orders'),
             'orders_syn_2':synonym('orders_syn')
         })
