@@ -29,6 +29,10 @@ class PyODBCConnector(Connector):
     # if the freetds.so is detected
     freetds = False
 
+    # will be set to the string version of
+    # the FreeTDS driver if freetds is detected
+    freetds_driver_version = None
+
     # will be set to True after initialize()
     # if the libessqlsrv.so is detected
     easysoft = False
@@ -108,11 +112,15 @@ class PyODBCConnector(Connector):
         self.easysoft = bool(re.match(r".*libessqlsrv.*\.so", _sql_driver_name
                             ))
 
+        if self.freetds:
+            self.freetds_driver_version = dbapi_con.getinfo(pyodbc.SQL_DRIVER_VER)
+
         # the "Py2K only" part here is theoretical.
         # have not tried pyodbc + python3.1 yet.
         # Py2K
         self.supports_unicode_statements = not self.freetds and not self.easysoft
-        self.supports_unicode_binds = not self.freetds and not self.easysoft
+        self.supports_unicode_binds =  (not self.freetds or 
+                                            self.freetds_driver_version >= '0.91') and not self.easysoft
         # end Py2K
 
         # run other initialization which asks for user name, etc.

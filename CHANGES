@@ -156,6 +156,18 @@ CHANGES
     with the full search_path.  [ticket:2249]
 
 - mssql
+  - Changes to attempt support of FreeTDS 0.91 with 
+    Pyodbc.  This includes that string binds are sent as 
+    Python unicode objects when FreeTDS 0.91 is detected,
+    and a CAST(? AS NVARCHAR) is used when we detect 
+    for a table.   However, I'd continue
+    to characterize Pyodbc + FreeTDS 0.91 behavior as 
+    pretty crappy, there are still many queries such 
+    as used in reflection which cause a core dump on 
+    Linux, and it is not really usable at all
+    on OSX, MemoryErrors abound and just plain broken 
+    unicode support.   [ticket:2273]
+
   - "0" is accepted as an argument for limit() which
     will produce "TOP 0". [ticket:2222]
 

@@ -171,7 +171,7 @@ import datetime, operator, re
 from sqlalchemy import sql, schema as sa_schema, exc, util
 from sqlalchemy.sql import select, compiler, expression, \
                             operators as sql_operators, \
-                            util as sql_util
+                            util as sql_util, cast
 from sqlalchemy.engine import default, base, reflection
 from sqlalchemy import types as sqltypes
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
@@ -1135,11 +1135,10 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, schema=None):
         current_schema = schema or self.default_schema_name
         columns = ischema.columns
+        whereclause = cast(columns.c.table_name, NVARCHAR(_warn_on_bytestring=False))==tablename
         if current_schema:
-            whereclause = sql.and_(columns.c.table_name==tablename,
+            whereclause = sql.and_(whereclause,
                                    columns.c.table_schema==current_schema)
-        else:
-            whereclause = columns.c.table_name==tablename
         s = sql.select([columns], whereclause)
         c = connection.execute(s)
         return c.first() is not None
