@@ -770,6 +770,16 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             "ON users.id = addresses.user_id) AS anon_1"
         )
 
+    def test_aliased_sql_construct_raises_adapt_on_names(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        j = join(User, Address)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "adapt_on_names only applies to ORM elements",
+            aliased, j, adapt_on_names=True
+        )
+
     def test_scalar_subquery_compile_whereclause(self):
         User = self.classes.User
         Address = self.classes.Address

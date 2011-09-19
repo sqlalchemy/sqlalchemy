@@ -675,18 +675,18 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
       s.c.col1 == table2.c.col1
 
     """
-    def __init__(self, selectable, equivalents=None, include=None, exclude=None):
+    def __init__(self, selectable, equivalents=None, include=None, exclude=None, adapt_on_names=False):
         self.__traverse_options__ = {'stop_on':[selectable]}
         self.selectable = selectable
         self.include = include
         self.exclude = exclude
         self.equivalents = util.column_dict(equivalents or {})
+        self.adapt_on_names = adapt_on_names
 
     def _corresponding_column(self, col, require_embedded, _seen=util.EMPTY_SET):
         newcol = self.selectable.corresponding_column(
                                     col, 
                                     require_embedded=require_embedded)
-
         if newcol is None and col in self.equivalents and col not in _seen:
             for equiv in self.equivalents[col]:
                 newcol = self._corresponding_column(equiv, 
@@ -694,6 +694,8 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
                                 _seen=_seen.union([col]))
                 if newcol is not None:
                     return newcol
+        if self.adapt_on_names and newcol is None:
+            newcol = self.selectable.c.get(col.name)
         return newcol
 
     def replace(self, col):

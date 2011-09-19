@@ -1576,6 +1576,37 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             q = q.join(j)
             self.assert_compile(q, exp)
 
+    def test_aliased_adapt_on_names(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = Session()
+        agg_address = sess.query(Address.id, 
+                        func.sum(func.length(Address.email_address)).label('email_address')
+                        ).group_by(Address.user_id)
+        ag1 = aliased(Address, agg_address.subquery())
+        ag2 = aliased(Address, agg_address.subquery(), adapt_on_names=True)
+
+        # first, without adapt on names, 'email_address' isn't matched up - we get the raw "address"
+        # element in the SELECT
+        self.assert_compile(
+            sess.query(User, ag1.email_address).join(ag1, User.addresses).filter(ag1.email_address > 5),
+            "SELECT users.id AS users_id, users.name AS users_name, addresses.email_address "
+            "AS addresses_email_address FROM addresses, users JOIN "
+            "(SELECT addresses.id AS id, sum(length(addresses.email_address)) "
+            "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
+            "anon_1 ON users.id = addresses.user_id WHERE addresses.email_address > :email_address_1"
+        )
+
+        # second, 'email_address' matches up to the aggreagte, and we get a smooth JOIN
+        # from users->subquery and that's it
+        self.assert_compile(
+            sess.query(User, ag2.email_address).join(ag2, User.addresses).filter(ag2.email_address > 5),
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "anon_1.email_address AS anon_1_email_address FROM users "
+            "JOIN (SELECT addresses.id AS id, sum(length(addresses.email_address)) "
+            "AS email_address FROM addresses GROUP BY addresses.user_id) AS "
+            "anon_1 ON users.id = addresses.user_id WHERE anon_1.email_address > :email_address_1",
+        )
 
 class SelectFromTest(QueryTest, AssertsCompiledSQL):
     run_setup_mappers = None

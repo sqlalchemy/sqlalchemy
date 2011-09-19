@@ -221,15 +221,61 @@ class AliasedClass(object):
         session.query(User, user_alias).\\
                         join((user_alias, User.id > user_alias.id)).\\
                         filter(User.name==user_alias.name)
-
+    
+    The resulting object is an instance of :class:`.AliasedClass`, however
+    it implements a ``__getattribute__()`` scheme which will proxy attribute
+    access to that of the ORM class being aliased.  All classmethods
+    on the mapped entity should also be available here, including 
+    hybrids created with the :ref:`hybrids_toplevel` extension,
+    which will receive the :class:`.AliasedClass` as the "class" argument
+    when classmethods are called.
+    
+    :param cls: ORM mapped entity which will be "wrapped" around an alias.
+    :param alias: a selectable, such as an :func:`.alias` or :func:`.select`
+     construct, which will be rendered in place of the mapped table of the
+     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the 
+     ORM entity's mapped table will be generated.
+    :param name: A name which will be applied both to the :class:`.Alias`
+     if one is generated, as well as the name present in the "named tuple"
+     returned by the :class:`.Query` object when results are returned.
+    :param adapt_on_names: if True, more liberal "matching" will be used when
+     mapping the mapped columns of the ORM entity to those of the given selectable - 
+     a name-based match will be performed if the given selectable doesn't 
+     otherwise have a column that corresponds to one on the entity.  The 
+     use case for this is when associating an entity with some derived
+     selectable such as one that uses aggregate functions::
+     
+        class UnitPrice(Base):
+            __tablename__ = 'unit_price'
+            ...
+            unit_id = Column(Integer)
+            price = Column(Numeric)
+        
+        aggregated_unit_price = Session.query(
+                                    func.sum(UnitPrice.price).label('price')
+                                ).group_by(UnitPrice.unit_id).subquery()
+                                
+        aggregated_unit_price = aliased(UnitPrice, alias=aggregated_unit_price, adapt_on_names=True)
+    
+     Above, functions on ``aggregated_unit_price`` which
+     refer to ``.price`` will return the
+     ``fund.sum(UnitPrice.price).label('price')`` column,
+     as it is matched on the name "price".  Ordinarily, the "price" function wouldn't
+     have any "column correspondence" to the actual ``UnitPrice.price`` column
+     as it is not a proxy of the original.
+     
+     ``adapt_on_names`` is new in 0.7.3.
+        
     """
-    def __init__(self, cls, alias=None, name=None):
+    def __init__(self, cls, alias=None, name=None, adapt_on_names=False):
         self.__mapper = _class_to_mapper(cls)
         self.__target = self.__mapper.class_
+        self.__adapt_on_names = adapt_on_names
         if alias is None:
             alias = self.__mapper._with_polymorphic_selectable.alias(name=name)
         self.__adapter = sql_util.ClauseAdapter(alias,
-                                equivalents=self.__mapper._equivalent_columns)
+                                equivalents=self.__mapper._equivalent_columns,
+                                adapt_on_names=self.__adapt_on_names)
         self.__alias = alias
         # used to assign a name to the RowTuple object
         # returned by Query.
@@ -240,15 +286,18 @@ class AliasedClass(object):
         return {
             'mapper':self.__mapper, 
             'alias':self.__alias, 
-            'name':self._sa_label_name
+            'name':self._sa_label_name,
+            'adapt_on_names':self.__adapt_on_names,
         }
 
     def __setstate__(self, state):
         self.__mapper = state['mapper']
         self.__target = self.__mapper.class_
+        self.__adapt_on_names = state['adapt_on_names']
         alias = state['alias']
         self.__adapter = sql_util.ClauseAdapter(alias,
-                                equivalents=self.__mapper._equivalent_columns)
+                                equivalents=self.__mapper._equivalent_columns,
+                                adapt_on_names=self.__adapt_on_names)
         self.__alias = alias
         name = state['name']
         self._sa_label_name = name
@@ -300,11 +349,13 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
-def aliased(element, alias=None, name=None):
+def aliased(element, alias=None, name=None, adapt_on_names=False):
     if isinstance(element, expression.FromClause):
+        if adapt_on_names:
+            raise sa_exc.ArgumentError("adapt_on_names only applies to ORM elements")
         return element.alias(name)
     else:
-        return AliasedClass(element, alias=alias, name=name)
+        return AliasedClass(element, alias=alias, name=name, adapt_on_names=adapt_on_names)
 
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the

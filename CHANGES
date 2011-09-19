@@ -14,6 +14,13 @@ CHANGES
      with the Session to proceed after a rollback
      when the Session.is_active is True.
      [ticket:2241]
+ 
+  - added "adapt_on_names" boolean flag to orm.aliased()
+    construct.  Allows an aliased() construct
+    to link the ORM entity to a selectable that contains
+    aggregates or other derived forms of a particular
+    attribute, provided the name is the same as that
+    of the entity mapped column.
 
   - Fixed a variety of synonym()-related regressions
     from 0.6:
