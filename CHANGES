@@ -132,6 +132,10 @@ CHANGES
     messages use the same improved formatting.  
     [ticket:2243]
 
+  - Added optional "sa_pool_key" argument to 
+    pool.manage(dbapi).connect() so that serialization
+    of args is not necessary.
+
 - types
   - Extra keyword arguments to the base Float 
     type beyond "precision" and "asdecimal" are ignored;

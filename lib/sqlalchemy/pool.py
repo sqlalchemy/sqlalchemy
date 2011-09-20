@@ -953,6 +953,9 @@ class _DBProxy(object):
             pass
 
     def _serialize(self, *args, **kw):
+        if "sa_pool_key" in kw:
+            return kw['sa_pool_key']
+
         return tuple(
             list(args) + 
             [(k, kw[k]) for k in sorted(kw)]
