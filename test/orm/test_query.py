@@ -1836,13 +1836,31 @@ class SynonymTest(QueryTest):
             ])
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_options_syn_of_syn_string(self):
+        User, Order = self.classes.User, self.classes.Order
+
+        s = create_session()
+        def go():
+            result = s.query(User).filter_by(name='jack').\
+                        options(joinedload('orders_syn_2')).all()
+            eq_(result, [
+                User(id=7, name='jack', orders=[
+                    Order(description=u'order 1'), 
+                    Order(description=u'order 3'), 
+                    Order(description=u'order 5')
+                ])
+            ])
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_joins(self):
-        User = self.classes.User
+        User, Order = self.classes.User, self.classes.Order
 
         for j in (
             ['orders', 'items'],
             ['orders_syn', 'items'],
+            [User.orders_syn, Order.items],
             ['orders_syn_2', 'items'],
+            [User.orders_syn_2, 'items'],
             ['orders', 'items_syn'],
             ['orders_syn', 'items_syn'],
             ['orders_syn_2', 'items_syn'],

@@ -517,8 +517,8 @@ class PropertyOption(MapperOption):
                     path_element = entity.path_entity
                     mapper = entity.mapper
                 mappers.append(mapper)
-                if mapper.has_property(token):
-                    prop = mapper.get_property(token)
+                if hasattr(mapper.class_, token):
+                    prop = getattr(mapper.class_, token).property
                 else:
                     if raiseerr:
                         raise sa_exc.ArgumentError(

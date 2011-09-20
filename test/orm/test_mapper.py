@@ -1540,8 +1540,6 @@ class ORMLoggingTest(_fixtures.FixtureTest):
 
 class OptionsTest(_fixtures.FixtureTest):
 
-    @testing.fails_if(lambda: True, "0.7 regression, may not support "
-                                "synonyms for relationship")
     @testing.fails_on('maxdb', 'FIXME: unknown')
     def test_synonym_options(self):
         Address, addresses, users, User = (self.classes.Address,

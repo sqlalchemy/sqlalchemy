@@ -408,7 +408,7 @@ class _ORMJoin(expression.Join):
 
             if prop:
                 pj, sj, source, dest, \
-                secondary, target_adapter = prop._synonym_resolved_property._create_joins(
+                secondary, target_adapter = prop._create_joins(
                                 source_selectable=adapt_from,
                                 dest_selectable=adapt_to,
                                 source_polymorphic=True,
