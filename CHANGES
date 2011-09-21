@@ -195,6 +195,10 @@ CHANGES
   - "0" is accepted as an argument for limit() which
     will produce "TOP 0". [ticket:2222]
 
+- oracle
+  - Fixed ReturningResultProxy for zxjdbc dialect.
+    [ticket:2272].  Also in 0.6.9
+
 - ext
   - Added local_attr, remote_attr, attr accessors
     to AssociationProxy, providing quick access
