@@ -918,6 +918,7 @@ class _DBProxy(object):
             self._create_pool_mutex.acquire()
             try:
                 if key not in self.pools:
+                    kw.pop('sa_pool_key', None)
                     pool = self.poolclass(lambda: 
                                 self.module.connect(*args, **kw), **self.kw)
                     self.pools[key] = pool

@@ -68,6 +68,21 @@ class PoolTest(PoolTestBase):
         assert c4 is c6
         assert c4 is not c5
 
+    def test_manager_with_key(self):
+        class NoKws(object):
+            def connect(self, arg):
+                return MockConnection()
+
+        manager = pool.manage(NoKws(), use_threadlocal=True)
+
+        c1 = manager.connect('foo.db', sa_pool_key="a")
+        c2 = manager.connect('foo.db', sa_pool_key="b")
+        c3 = manager.connect('bar.db', sa_pool_key="a")
+
+        assert c1.cursor() is not None
+        assert c1 is not c2
+        assert c1 is  c3
+
     def test_bad_args(self):
         manager = pool.manage(MockDBAPI())
         connection = manager.connect(None)
