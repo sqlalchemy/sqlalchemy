@@ -168,6 +168,35 @@ available.
 
     update(..., mysql_limit=10)
 
+CAST Support
+------------
+
+MySQL documents the CAST operator as available in version 4.0.2.  When using the
+SQLAlchemy :func:`.cast` function, SQLAlchemy
+will not render the CAST token on MySQL before this version, based on server version
+detection, instead rendering the internal expression directly.
+
+CAST may still not be desirable on an early MySQL version post-4.0.2, as it didn't
+add all datatype support until 4.1.1.   If your application falls into this
+narrow area, the behavior of CAST can be controlled using the :ref:`sqlalchemy.ext.compiler_toplevel`
+system, as per the recipe below::
+
+    from sqlalchemy.sql.expression import _Cast
+    from sqlalchemy.ext.compiler import compiles
+
+    @compiles(_Cast, 'mysql')
+    def _check_mysql_version(element, compiler, **kw):
+        if compiler.dialect.server_version_info < (4, 1, 0):
+            return compiler.process(element.clause, **kw)
+        else:
+            return compiler.visit_cast(element, **kw)
+
+The above function, which only needs to be declared once
+within an application, overrides the compilation of the
+:func:`.cast` construct to check for version 4.1.0 before
+fully rendering CAST; else the internal element of the
+construct is rendered directly.
+
 """
 
 import datetime, inspect, re, sys
