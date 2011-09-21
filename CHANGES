@@ -197,7 +197,7 @@ CHANGES
 
 - oracle
   - Fixed ReturningResultProxy for zxjdbc dialect.
-    [ticket:2272].  Also in 0.6.9
+    [ticket:2272].  Regression from 0.6.
 
 - ext
   - Added local_attr, remote_attr, attr accessors
