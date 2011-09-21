@@ -127,6 +127,14 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         sel3 = visitors.ReplacingCloningVisitor().traverse(sel2)
         assert sel3.corresponding_column(col) is sel3.c.foo
 
+    def test_with_only_generative(self):
+        s1 = table1.select().as_scalar()
+        self.assert_compile(
+            s1.with_only_columns([s1]),
+            "SELECT (SELECT table1.col1, table1.col2, "
+            "table1.col3, table1.colx FROM table1) AS anon_1"
+        )
+
 
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)

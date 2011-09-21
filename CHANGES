@@ -119,6 +119,10 @@ CHANGES
     such that the "froms" collection can be cleared
     and re-generated at any time.  [ticket:2261]
 
+  - Fixed bug whereby with_only_columns() method of
+    Select would fail if a selectable were passed.
+    [ticket:2270].  Also in 0.6.9.
+
 - schema
   - Added a slightly nicer __repr__() to SchemaItem
     classes.  Note the repr here can't fully support
