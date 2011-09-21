@@ -527,37 +527,67 @@ class importlater(object):
         from mypackage.somemodule import somesubmod
 
     except evaluted upon attribute access to "somesubmod".
+    
+    importlater() currently requires that resolve_all() be
+    called, typically at the bottom of a package's __init__.py.
+    This is so that __import__ still called only at 
+    module import time, and not potentially within
+    a non-main thread later on.
 
     """
+
+    _unresolved = set()
+
     def __init__(self, path, addtl=None):
         self._il_path = path
         self._il_addtl = addtl
+        importlater._unresolved.add(self)
+
+    @classmethod
+    def resolve_all(cls):
+        for m in list(importlater._unresolved):
+            m._resolve()
+
+    @property
+    def _full_path(self):
+        if self._il_addtl:
+            return self._il_path + "." + self._il_addtl
+        else:
+            return self._il_path
 
     @memoized_property
     def module(self):
+        if self in importlater._unresolved:
+            raise ImportError(
+                    "importlater.resolve_all() hasn't been called")
+
+        m = self._initial_import
         if self._il_addtl:
-            m = __import__(self._il_path, globals(), locals(),
-                                [self._il_addtl])
-            try:
-                return getattr(m, self._il_addtl)
-            except AttributeError:
-                raise ImportError(
-                        "Module %s has no attribute '%s'" %
-                        (self._il_path, self._il_addtl)
-                    )
+            m = getattr(m, self._il_addtl)
         else:
-            m = __import__(self._il_path)
             for token in self._il_path.split(".")[1:]:
                 m = getattr(m, token)
-            return m
+        return m
+
+    def _resolve(self):
+        importlater._unresolved.discard(self)
+        if self._il_addtl:
+            self._initial_import = __import__(
+                                self._il_path, globals(), locals(), 
+                                [self._il_addtl])
+        else:
+            self._initial_import = __import__(self._il_path)
 
     def __getattr__(self, key):
+        if key == 'module':
+            raise ImportError("Could not resolve module %s" 
+                                % self._full_path)
         try:
             attr = getattr(self.module, key)
         except AttributeError:
             raise AttributeError(
                         "Module %s has no attribute '%s'" %
-                        (self._il_path, key)
+                        (self._full_path, key)
                     )
         self.__dict__[key] = attr
         return attr

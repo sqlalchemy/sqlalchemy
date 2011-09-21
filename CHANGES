@@ -5,6 +5,15 @@ CHANGES
 =======
 0.7.3
 =====
+- general
+   - Adjusted the "importlater" mechanism, which is
+     used internally to resolve import cycles,
+     such that the usage of __import__ is completed
+     when the import of sqlalchemy or sqlalchemy.orm
+     is done, thereby avoiding any usage of __import__
+     after the application starts new threads,
+     fixes [ticket:2279].  Also in 0.6.9.
+
 - orm
    - Added after_soft_rollback() Session event.  This
      event fires unconditionally whenever rollback()

@@ -21,7 +21,7 @@ from itertools import chain
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util
 from sqlalchemy.sql import operators
-deque = util.importlater('collections').deque
+deque = __import__('collections').deque
 
 mapperutil = util.importlater('sqlalchemy.orm', 'util')
 

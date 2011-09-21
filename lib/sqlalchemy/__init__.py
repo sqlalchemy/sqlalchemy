@@ -120,3 +120,6 @@ __all__ = sorted(name for name, obj in locals().items()
 __version__ = '0.7.3'
 
 del inspect, sys
+
+from sqlalchemy import util as _sa_util
+_sa_util.importlater.resolve_all()
