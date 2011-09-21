@@ -69,6 +69,12 @@ CHANGES
     when used with certain dialects.  This
     bug is not in 0.7.
 
+  - Fixed bug whereby with_only_columns() method of
+    Select would fail if a selectable were passed.
+    [ticket:2270].   However, the FROM behavior is 
+    still incorrect here, so you need 0.7 in 
+    any case for this use case to be usable.
+
 - schema
   - Added an informative error message when 
     ForeignKeyConstraint refers to a column name in 

@@ -125,6 +125,18 @@ class SelectableTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         sel3 = visitors.ReplacingCloningVisitor().traverse(sel2)
         assert sel3.corresponding_column(col) is sel3.c.foo
 
+    def test_with_only_generative(self):
+        s1 = table1.select().as_scalar()
+        s2 = table1.select().as_scalar()
+        self.assert_compile(
+            s1.with_only_columns([s2]),
+            # this is the wrong SQL - 0.7 does it correctly.
+            # but the test here at the moment is just that with_only_columns()
+            # doesn't try to evaluate the selectable as a boolean.
+            "SELECT (SELECT table1.col1, table1.col2, "
+            "table1.col3, table1.colx FROM table1) AS anon_1 FROM table1"
+        )
+
 
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)

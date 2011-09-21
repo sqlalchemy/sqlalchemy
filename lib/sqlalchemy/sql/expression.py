@@ -4267,12 +4267,13 @@ class Select(_SelectBaseMixin, FromClause):
             with the given columns.
 
         """
-
-        self._raw_columns = [
-                isinstance(c, _ScalarSelect) and 
-                c.self_group(against=operators.comma_op) or c
-                for c in [_literal_as_column(c) for c in columns]
-            ]
+        rc = []
+        for c in columns:
+            c = _literal_as_column(c)
+            if isinstance(c, _ScalarSelect):
+                c = c.self_group(against=operators.comma_op)
+            rc.append(c)
+        self._raw_columns = rc
 
     @_generative
     def where(self, whereclause):
