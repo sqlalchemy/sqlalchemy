@@ -96,6 +96,9 @@ CHANGES
   - added CURRENT to reserved word list.
     [ticket:2212]
 
+  - Fixed ReturningResultProxy for zxjdbc dialect.
+    [ticket:2272]
+
 0.6.8
 =====
 - orm
