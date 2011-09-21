@@ -5,6 +5,15 @@ CHANGES
 =======
 0.6.9
 =====
+- general
+   - Adjusted the "importlater" mechanism, which is
+     used internally to resolve import cycles,
+     such that the usage of __import__ is completed
+     when the import of sqlalchemy or sqlalchemy.orm
+     is done, thereby avoiding any usage of __import__
+     after the application starts new threads,
+     fixes [ticket:2279].
+
 - orm
   - Fixed bug whereby the source clause
     used by query.join() would be inconsistent
