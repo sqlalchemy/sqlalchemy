@@ -21,7 +21,6 @@ from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, OracleExecutionContext
 from sqlalchemy.engine import base, default
 from sqlalchemy.sql import expression
-import collections
 
 SQLException = zxJDBC = None
 
@@ -139,7 +138,7 @@ class ReturningResultProxy(base.FullyBufferedResultProxy):
         return ret
 
     def _buffer_rows(self):
-        return collections.deque([self._returning_row])
+        return [self._returning_row]
 
 
 class ReturningParam(object):
