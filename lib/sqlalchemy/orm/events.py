@@ -7,7 +7,8 @@
 """ORM event interfaces.
 
 """
-from sqlalchemy import event, exc
+from sqlalchemy import event, exc, util
+orm = util.importlater("sqlalchemy", "orm")
 import inspect
 
 class InstrumentationEvents(event.Events):
@@ -24,10 +25,8 @@ class InstrumentationEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        from sqlalchemy.orm.instrumentation import instrumentation_registry
-
         if isinstance(target, type):
-            return instrumentation_registry
+            return orm.instrumentation.instrumentation_registry
         else:
             return None
 
@@ -103,20 +102,17 @@ class InstanceEvents(event.Events):
     """
     @classmethod
     def _accept_with(cls, target):
-        from sqlalchemy.orm.instrumentation import ClassManager, manager_of_class
-        from sqlalchemy.orm import Mapper, mapper
-
-        if isinstance(target, ClassManager):
+        if isinstance(target, orm.instrumentation.ClassManager):
             return target
-        elif isinstance(target, Mapper):
+        elif isinstance(target, orm.Mapper):
             return target.class_manager
-        elif target is mapper:
-            return ClassManager
+        elif target is orm.mapper:
+            return orm.instrumentation.ClassManager
         elif isinstance(target, type):
-            if issubclass(target, Mapper):
-                return ClassManager
+            if issubclass(target, orm.Mapper):
+                return orm.instrumentation.ClassManager
             else:
-                manager = manager_of_class(target)
+                manager = orm.instrumentation.manager_of_class(target)
                 if manager:
                     return manager
         return None
@@ -333,21 +329,19 @@ class MapperEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        from sqlalchemy.orm import mapper, class_mapper, Mapper
-        if target is mapper:
-            return Mapper
+        if target is orm.mapper:
+            return orm.Mapper
         elif isinstance(target, type):
-            if issubclass(target, Mapper):
+            if issubclass(target, orm.Mapper):
                 return target
             else:
-                return class_mapper(target)
+                return orm.class_mapper(target)
         else:
             return target
 
     @classmethod
     def _listen(cls, target, identifier, fn, 
                             raw=False, retval=False, propagate=False):
-        from sqlalchemy.orm.interfaces import EXT_CONTINUE
 
         if not raw or not retval:
             if not raw:
@@ -364,7 +358,7 @@ class MapperEvents(event.Events):
                     arg[target_index] = arg[target_index].obj()
                 if not retval:
                     wrapped_fn(*arg, **kw)
-                    return EXT_CONTINUE
+                    return orm.interfaces.EXT_CONTINUE
                 else:
                     return wrapped_fn(*arg, **kw)
             fn = wrap
@@ -833,21 +827,20 @@ class SessionEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        from sqlalchemy.orm import ScopedSession, Session
-        if isinstance(target, ScopedSession):
+        if isinstance(target, orm.ScopedSession):
             if not isinstance(target.session_factory, type) or \
-                not issubclass(target.session_factory, Session):
+                not issubclass(target.session_factory, orm.Session):
                 raise exc.ArgumentError(
                             "Session event listen on a ScopedSession "
                             "requires that its creation callable "
                             "is a Session subclass.")
             return target.session_factory
         elif isinstance(target, type):
-            if issubclass(target, ScopedSession):
-                return Session
-            elif issubclass(target, Session):
+            if issubclass(target, orm.ScopedSession):
+                return orm.Session
+            elif issubclass(target, orm.Session):
                 return target
-        elif isinstance(target, Session):
+        elif isinstance(target, orm.Session):
             return target
         else:
             return None
@@ -1063,9 +1056,8 @@ class AttributeEvents(event.Events):
 
     @classmethod
     def _accept_with(cls, target):
-        from sqlalchemy.orm import interfaces
         # TODO: coverage
-        if isinstance(target, interfaces.MapperProperty):
+        if isinstance(target, orm.interfaces.MapperProperty):
             return getattr(target.parent.class_, target.key)
         else:
             return target
@@ -1095,9 +1087,7 @@ class AttributeEvents(event.Events):
         event.Events._listen(target, identifier, fn, propagate)
 
         if propagate:
-            from sqlalchemy.orm.instrumentation import manager_of_class
-
-            manager = manager_of_class(target.class_)
+            manager = orm.instrumentation.manager_of_class(target.class_)
 
             for mgr in manager.subclass_managers(True):
                 event.Events._listen(mgr[target.key], identifier, fn, True)
