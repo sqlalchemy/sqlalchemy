@@ -31,6 +31,15 @@ CHANGES
     attribute, provided the name is the same as that
     of the entity mapped column.
 
+  - Fixed bug in unit of work whereby detection of 
+    "cycles" among classes in highly interlinked patterns
+    would not produce a deterministic
+    result; thereby sometimes missing some nodes that
+    should be considered cycles and causing further
+    issues down the road.  Note this bug is in 0.6 
+    also; not backported at the moment.
+    [ticket:2282]
+
   - Fixed a variety of synonym()-related regressions
     from 0.6:
         - making a synonym against a synonym now works.

@@ -168,7 +168,7 @@ post_configure.append(_set_table_options)
 def _reverse_topological(options, file_config):
     if options.reversetop:
         from sqlalchemy.orm import unitofwork, session, mapper, dependency
-        from sqlalchemy import topological
+        from sqlalchemy.util import topological
         from test.lib.util import RandomSet
         topological.set = unitofwork.set = session.set = mapper.set = dependency.set = RandomSet
 post_configure.append(_reverse_topological)
