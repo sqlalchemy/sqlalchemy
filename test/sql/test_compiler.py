@@ -2091,7 +2091,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # then the Oracle engine
         check_results(oracle.dialect(), ['NUMERIC', 'NUMERIC(12, 9)',
-                      'DATE', 'CLOB', 'VARCHAR(20 CHAR)'], ':param_1')
+                      'DATE', 'CLOB', 'VARCHAR2(20 CHAR)'], ':param_1')
 
         # then the sqlite engine
         check_results(sqlite.dialect(), ['NUMERIC', 'NUMERIC(12, 9)',
