@@ -163,6 +163,14 @@ CHANGES
     pool.manage(dbapi).connect() so that serialization
     of args is not necessary.
 
+  - The entry point resolution supported by 
+    create_engine() now supports resolution of
+    individual DBAPI drivers on top of a built-in
+    or entry point-resolved dialect, using the 
+    standard '+' notation - it's converted to
+    a '.' before being resolved as an entry
+    point.  [ticket:2286]
+
 - types
   - Extra keyword arguments to the base Float 
     type beyond "precision" and "asdecimal" are ignored;

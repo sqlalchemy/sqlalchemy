@@ -104,7 +104,14 @@ class URL(object):
 
             module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
             module = getattr(module, dialect)
-            module = getattr(module, driver)
+            if hasattr(module, driver):
+                module = getattr(module, driver)
+            else:
+                module = self._load_entry_point()
+                if module is None:
+                    raise exc.ArgumentError(
+                        "Could not determine dialect for '%s'." % 
+                        self.drivername)
 
             return module.dialect
         except ImportError:
@@ -128,7 +135,7 @@ class URL(object):
             return None
 
         for res in pkg_resources.iter_entry_points('sqlalchemy.dialects'):
-            if res.name == self.drivername:
+            if res.name == self.drivername.replace("+", "."):
                 return res.load()
         else:
             return None
