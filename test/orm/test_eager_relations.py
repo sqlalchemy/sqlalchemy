@@ -2540,7 +2540,12 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             stuff_view = select([salias.c.id]).where(salias.c.user_id==users.c.id).\
                                     correlate(users).order_by(salias.c.date.desc()).limit(1)
 
-        operator = operators.in_op
+        # can't win on this one
+        if testing.against("mssql"):
+            operator = operators.in_op
+        else:
+            operator = operators.eq
+
         if labeled == 'label':
             stuff_view = stuff_view.label('foo')
             operator = operators.eq
