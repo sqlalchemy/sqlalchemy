@@ -238,6 +238,18 @@ CHANGES
   - Fixed ReturningResultProxy for zxjdbc dialect.
     [ticket:2272].  Regression from 0.6.
 
+  - The String type now generates VARCHAR2 on Oracle
+    which is recommended as the default VARCHAR.
+    Added an explicit VARCHAR2 and NVARCHAR2 to the Oracle
+    dialect as well.   Using NVARCHAR still generates
+    "NVARCHAR2" - there is no "NVARCHAR" on Oracle -
+    this remains a slight breakage of the "uppercase types
+    always give exactly that" policy.  VARCHAR still 
+    generates "VARCHAR", keeping with the policy.   If
+    Oracle were to ever define "VARCHAR" as something 
+    different as they claim (IMHO this will never happen), 
+    the type would be available.  [ticket:2252]
+
 - ext
   - Added local_attr, remote_attr, attr accessors
     to AssociationProxy, providing quick access

@@ -170,7 +170,9 @@ OracleRaw = RAW
 class NCLOB(sqltypes.Text):
     __visit_name__ = 'NCLOB'
 
-VARCHAR2 = VARCHAR
+class VARCHAR2(VARCHAR):
+    __visit_name__ = 'VARCHAR2'
+
 NVARCHAR2 = NVARCHAR
 
 class NUMBER(sqltypes.Numeric, sqltypes.Integer):
@@ -293,9 +295,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_unicode(self, type_):
         if self.dialect._supports_nchar:
-            return self.visit_NVARCHAR(type_)
+            return self.visit_NVARCHAR2(type_)
         else:
-            return self.visit_VARCHAR(type_)
+            return self.visit_VARCHAR2(type_)
 
     def visit_INTERVAL(self, type_):
         return "INTERVAL DAY%s TO SECOND%s" % (
@@ -333,14 +335,27 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "%(name)s(%(precision)s, %(scale)s)" % {'name':name,'precision': precision, 'scale' : scale}
 
-    def visit_VARCHAR(self, type_):
-        if self.dialect._supports_char_length:
-            return "VARCHAR(%(length)s CHAR)" % {'length' : type_.length}
-        else:
-            return "VARCHAR(%(length)s)" % {'length' : type_.length}
+    def visit_string(self, type_): 
+        return self.visit_VARCHAR2(type_)
 
-    def visit_NVARCHAR(self, type_):
-        return "NVARCHAR2(%(length)s)" % {'length' : type_.length}
+    def visit_VARCHAR2(self, type_):
+        return self._visit_varchar(type_, '', '2')
+
+    def visit_NVARCHAR2(self, type_):
+        return self._visit_varchar(type_, 'N', '2')
+    visit_NVARCHAR = visit_NVARCHAR2
+
+    def visit_VARCHAR(self, type_):
+        return self._visit_varchar(type_, '', '')
+
+    def _visit_varchar(self, type_, n, num):
+        if not n and self.dialect._supports_char_length:
+            return "VARCHAR%(two)s(%(length)s CHAR)" % {
+                                                    'length' : type_.length, 
+                                                    'two':num}
+        else:
+            return "%(n)sVARCHAR%(two)s(%(length)s)" % {'length' : type_.length, 
+                                                        'two':num, 'n':n}
 
     def visit_text(self, type_):
         return self.visit_CLOB(type_)

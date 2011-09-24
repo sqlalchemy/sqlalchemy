@@ -436,8 +436,8 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not dialect._supports_char_length
         assert not dialect._supports_nchar
         assert not dialect.use_ansi
-        self.assert_compile(String(50),"VARCHAR(50)",dialect=dialect)
-        self.assert_compile(Unicode(50),"VARCHAR(50)",dialect=dialect)
+        self.assert_compile(String(50),"VARCHAR2(50)",dialect=dialect)
+        self.assert_compile(Unicode(50),"VARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"CLOB",dialect=dialect)
 
         dialect = oracle.dialect(implicit_returning=True, 
@@ -454,7 +454,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         assert dialect._supports_char_length
         assert dialect._supports_nchar
         assert dialect.use_ansi
-        self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
+        self.assert_compile(String(50),"VARCHAR2(50 CHAR)",dialect=dialect)
         self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
 
@@ -467,7 +467,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         assert dialect._supports_char_length
         assert dialect._supports_nchar
         assert dialect.use_ansi
-        self.assert_compile(String(50),"VARCHAR(50 CHAR)",dialect=dialect)
+        self.assert_compile(String(50),"VARCHAR2(50 CHAR)",dialect=dialect)
         self.assert_compile(Unicode(50),"NVARCHAR2(50)",dialect=dialect)
         self.assert_compile(UnicodeText(),"NCLOB",dialect=dialect)
 
@@ -1086,7 +1086,19 @@ class TypesTest(fixtures.TestBase, AssertsCompiledSQL):
             eq_(t2.c.c3.type.length, 200)
         finally:
             t1.drop()
- 
+
+    def test_varchar_types(self):
+        dialect = oracle.dialect()
+        for typ, exp in [
+            (String(50), "VARCHAR2(50 CHAR)"),
+            (Unicode(50), "NVARCHAR2(50)"),
+            (NVARCHAR(50), "NVARCHAR2(50)"),
+            (VARCHAR(50), "VARCHAR(50 CHAR)"),
+            (oracle.NVARCHAR2(50), "NVARCHAR2(50)"),
+            (oracle.VARCHAR2(50), "VARCHAR2(50 CHAR)"),
+        ]:
+            self.assert_compile(typ, exp, dialect=dialect)
+
     def test_longstring(self):
         metadata = MetaData(testing.db)
         testing.db.execute("""
