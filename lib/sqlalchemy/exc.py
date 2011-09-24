@@ -33,9 +33,10 @@ class CircularDependencyError(SQLAlchemyError):
     
     * In a Session flush operation, if two objects are mutually dependent
       on each other, they can not be inserted or deleted via INSERT or 
-      DELETE statements alone; an UPDATE will be needed to deassociate
-      one of the foreign key constraints first.  The ``post_update`` flag
-      described at :ref:`post_update` can resolve this cycle.
+      DELETE statements alone; an UPDATE will be needed to post-associate
+      or pre-deassociate one of the foreign key constrained values.
+      The ``post_update`` flag described at :ref:`post_update` can resolve 
+      this cycle.
     * In a :meth:`.MetaData.create_all`, :meth:`.MetaData.drop_all`,
       :attr:`.MetaData.sorted_tables` operation, two :class:`.ForeignKey`
       or :class:`.ForeignKeyConstraint` objects mutually refer to each
