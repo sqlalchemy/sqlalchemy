@@ -10,6 +10,7 @@ from sqlalchemy import Integer, String, Date, ForeignKey, and_, select, \
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
     lazyload, aliased, column_property
+from sqlalchemy.sql import operators
 from test.lib.testing import eq_, assert_raises, \
     assert_raises_message
 from test.lib.assertsql import CompiledSQL
@@ -2539,18 +2540,20 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             stuff_view = select([salias.c.id]).where(salias.c.user_id==users.c.id).\
                                     correlate(users).order_by(salias.c.date.desc()).limit(1)
 
+        operator = operators.in_op
         if labeled == 'label':
             stuff_view = stuff_view.label('foo')
+            operator = operators.eq
         elif labeled == 'scalar':
             stuff_view = stuff_view.as_scalar()
 
         if ondate:
             mapper(User, users, properties={
-                'stuff':relationship(Stuff, primaryjoin=and_(users.c.id==stuff.c.user_id, stuff.c.date==stuff_view))
+                'stuff':relationship(Stuff, primaryjoin=and_(users.c.id==stuff.c.user_id, operator(stuff.c.date, stuff_view)))
             })
         else:
             mapper(User, users, properties={
-                'stuff':relationship(Stuff, primaryjoin=and_(users.c.id==stuff.c.user_id, stuff.c.id==stuff_view))
+                'stuff':relationship(Stuff, primaryjoin=and_(users.c.id==stuff.c.user_id, operator(stuff.c.id, stuff_view)))
             })
 
         sess = create_session()

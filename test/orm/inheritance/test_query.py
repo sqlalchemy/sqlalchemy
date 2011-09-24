@@ -753,7 +753,7 @@ def _produce_test(select_type):
             # the subquery and usually results in recursion overflow errors within the adaption.
             subq = sess.query(engineers.c.person_id).filter(Engineer.primary_language=='java').statement.as_scalar()
 
-            eq_(sess.query(Person).filter(Person.person_id==subq).one(), e1)
+            eq_(sess.query(Person).filter(Person.person_id.in_(subq)).one(), e1)
 
         def test_mixed_entities(self):
             sess = create_session()

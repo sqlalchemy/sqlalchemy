@@ -206,6 +206,16 @@ CHANGES
     on OSX, MemoryErrors abound and just plain broken 
     unicode support.   [ticket:2273]
 
+  - The behavior of =/!= when comparing a scalar select
+    to a value will no longer produce IN/NOT IN as of 0.8;
+    this behavior is a little too heavy handed (use in_() if
+    you want to emit IN) and now emits a deprecation warning.   
+    To get the 0.8 behavior immediately and remove the warning, 
+    a compiler recipe is given at 
+    http://www.sqlalchemy.org/docs/07/dialects/mssql.html#scalar-select-comparisons
+    to override the behavior of visit_binary().
+    [ticket:2277]
+
   - "0" is accepted as an argument for limit() which
     will produce "TOP 0". [ticket:2222]
 

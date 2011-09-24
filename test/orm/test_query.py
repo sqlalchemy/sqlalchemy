@@ -836,7 +836,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
                             'IN (SELECT users.id FROM users WHERE '
                             'users.id = :id_1)')
 
-
+    @testing.fails_on('mssql', "mssql doesn't allow col = <subquery>, sqla deprecated workaround")
     def test_param_transfer(self):
         User = self.classes.User
 

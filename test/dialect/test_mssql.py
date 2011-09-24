@@ -63,6 +63,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)
 
+    @testing.uses_deprecated
     def test_in_with_subqueries(self):
         """Test that when using subqueries in a binary expression
         the == and != are changed to IN and NOT IN respectively.
@@ -117,7 +118,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'DELETE FROM paj.test WHERE paj.test.id = '
                             ':id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id == s),
+        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM paj.test WHERE paj.test.id IN '
                             '(SELECT test_1.id FROM paj.test AS test_1 '
                             'WHERE test_1.id = :id_1)')
@@ -130,7 +131,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'DELETE FROM banana.paj.test WHERE '
                             'banana.paj.test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id == s),
+        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM banana.paj.test WHERE '
                             'banana.paj.test.id IN (SELECT test_1.id '
                             'FROM banana.paj.test AS test_1 WHERE '
@@ -144,7 +145,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'DELETE FROM [banana split].paj.test WHERE '
                             '[banana split].paj.test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id == s),
+        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM [banana split].paj.test WHERE '
                             '[banana split].paj.test.id IN (SELECT '
                             'test_1.id FROM [banana split].paj.test AS '
@@ -160,7 +161,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'space].test WHERE [banana split].[paj '
                             'with a space].test.id = :id_1')
         s = select([tbl.c.id]).where(tbl.c.id == 1)
-        self.assert_compile(tbl.delete().where(tbl.c.id == s),
+        self.assert_compile(tbl.delete().where(tbl.c.id.in_(s)),
                             'DELETE FROM [banana split].[paj with a '
                             'space].test WHERE [banana split].[paj '
                             'with a space].test.id IN (SELECT '
