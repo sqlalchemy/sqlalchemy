@@ -526,7 +526,7 @@ class Session(object):
         self.__binds = {}
         self._flushing = False
         self.transaction = None
-        self.hash_key = id(self)
+        self.hash_key = _new_sessionid()
         self.autoflush = autoflush
         self.autocommit = autocommit
         self.expire_on_commit = expire_on_commit
@@ -1814,3 +1814,4 @@ def _state_session(state):
             pass
     return None
 
+_new_sessionid = util.counter()
