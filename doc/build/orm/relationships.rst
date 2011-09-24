@@ -966,6 +966,7 @@ to complement the ``boston_addresses`` attribute:
                     addresses_table.c.city=='New York')),
     })
 
+.. _post_update:
 
 Rows that point to themselves / Mutually Dependent Rows
 -------------------------------------------------------

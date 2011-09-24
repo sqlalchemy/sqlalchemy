@@ -28,7 +28,7 @@ def sort_as_subsets(tuples, allitems):
 
         if not output:
             raise CircularDependencyError(
-                    "Circular dependency detected",
+                    "Circular dependency detected.",
                     find_cycles(tuples, allitems), 
                     _gen_edges(edges)
                 )

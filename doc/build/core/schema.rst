@@ -925,6 +925,8 @@ would not be aware that these two values should be paired together - it would
 be two individual foreign key constraints instead of a single composite
 foreign key referencing two columns.
 
+.. _use_alter:
+
 Creating/Dropping Foreign Key Constraints via ALTER
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
