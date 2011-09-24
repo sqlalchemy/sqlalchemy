@@ -89,6 +89,13 @@ CHANGES
     are constructed after existing ones have been used
     already.
 
+  - When an open Session is garbage collected, the objects
+    within it which remain are considered detached again
+    when they are add()-ed to a new Session.
+    This is accomplished by an extra check that the previous
+    "session_key" doesn't actually exist among the pool
+    of Sessions.  [ticket:2281]
+
   - New declarative features:
         - __declare_last__() method, establishes an event
         listener for the class method that will be called

@@ -1285,6 +1285,35 @@ class SessionTest(_fixtures.FixtureTest):
                 del u3
                 gc_collect()
 
+    def test_auto_detach_on_gc_session(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        # can't add u1 to Session,
+        # already belongs to u2
+        s2 = Session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r".*is already attached to session",
+            s2.add, u1
+        )
+
+        # garbage collect sess
+        del sess
+        gc_collect()
+
+        # s2 lets it in now despite u1 having
+        # session_key
+        s2.add(u1)
+        assert u1 in s2
+
 class SessionDataTest(_fixtures.FixtureTest):
     def test_expunge_cascade(self):
         Address, addresses, users, User = (self.classes.Address,

@@ -1473,7 +1473,9 @@ class Session(object):
                     "present in this session."
                     % (mapperutil.state_str(state), state.key))
 
-        if state.session_id and state.session_id is not self.hash_key:
+        if state.session_id and \
+                state.session_id is not self.hash_key and \
+                state.session_id in _sessions:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' is already attached to session '%s' "
                 "(this is '%s')" % (mapperutil.state_str(state),
