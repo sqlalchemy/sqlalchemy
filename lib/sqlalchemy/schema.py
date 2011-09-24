@@ -990,7 +990,7 @@ class Column(SchemaItem, expression.ColumnClause):
             [c.copy(**kw) for c in self.constraints] + \
             [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
-        c = Column(
+        c = self._constructor(
                 name=self.name, 
                 type_=self.type, 
                 key = self.key, 

@@ -69,6 +69,21 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 assert a1 is not a2
                 eq_(a2._colspec, 'bat.blah')
 
+    def test_col_subclass_copy(self):
+        class MyColumn(schema.Column):
+            def __init__(self, *args, **kw):
+                self.widget = kw.pop('widget', None)
+                super(MyColumn, self).__init__(*args, **kw)
+
+            def copy(self, *arg, **kw):
+                c = super(MyColumn, self).copy(*arg, **kw)
+                c.widget = self.widget
+                return c
+        c1 = MyColumn('foo', Integer, widget='x')
+        c2 = c1.copy()
+        assert isinstance(c2, MyColumn)
+        eq_(c2.widget, 'x')
+
     def test_uninitialized_column_copy_events(self):
         msgs = []
         def write(c, t):

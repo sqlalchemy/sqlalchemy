@@ -133,6 +133,11 @@ CHANGES
     [ticket:2270].  Also in 0.6.9.
 
 - schema
+  - Modified Column.copy() to use _constructor(), 
+    which defaults to self.__class__, in order to 
+    create the new object.  This allows easier support
+    of subclassing Column.  [ticket:2284]
+
   - Added a slightly nicer __repr__() to SchemaItem
     classes.  Note the repr here can't fully support
     the "repr is the constructor" idea since schema
