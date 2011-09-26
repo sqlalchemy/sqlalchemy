@@ -5,6 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
+
+.. note:: SQLSoup will no longer be included with SQLAlchemy as of 0.8.
+   Look for a third party project replicating its functionality soon.
+
+
 Introduction
 ============
 

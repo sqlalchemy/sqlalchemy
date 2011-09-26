@@ -262,6 +262,13 @@ CHANGES
     the type would be available.  [ticket:2252]
 
 - ext
+  - SQLSoup will not be included in version 0.8
+    of SQLAlchemy; while useful, we would like to
+    keep SQLAlchemy itself focused on one ORM
+    usage paradigm.  SQLSoup will hopefully
+    soon be superseded by a third party 
+    project.  [ticket:2262]
+
   - Added local_attr, remote_attr, attr accessors
     to AssociationProxy, providing quick access
     to the proxied attributes at the class
