@@ -3318,8 +3318,9 @@ class _Exists(_UnaryExpression):
         return e
 
     def select_from(self, clause):
-        """return a new exists() construct with the given expression set as
-        its FROM clause.
+        """return a new :class:`._Exists` construct, applying the given expression
+        to the :meth:`.Select.select_from` method of the select statement
+        contained.
 
         """
         e = self._clone()
@@ -4677,8 +4678,16 @@ class Select(_SelectBase):
 
     @_generative
     def select_from(self, fromclause):
-        """return a new select() construct with the given FROM expression
-        applied to its list of FROM objects.
+        """return a new :class:`.Select` construct with the given FROM expression
+        merged into its list of FROM objects.
+        
+        The "from" list is a unique set on the identity of each element,
+        so adding an already present :class:`.Table` or other selectable
+        will have no effect.   Passing a :class:`.Join` that refers
+        to an already present :class:`.Table` or other selectable will have 
+        the effect of concealing the presence of that selectable as 
+        an individual element in the rendered FROM list, instead rendering it into a
+        JOIN clause.
 
         """
         self.append_from(fromclause)
