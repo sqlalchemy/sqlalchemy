@@ -96,6 +96,11 @@ CHANGES
   - added CURRENT to reserved word list.
     [ticket:2212]
 
+- examples
+  - Adjusted dictlike-polymorphic.py example
+    to apply the CAST such that it works on 
+    PG, other databases.  [ticket:2266]
+
 0.6.8
 =====
 - orm

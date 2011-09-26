@@ -85,14 +85,14 @@ class PolymorphicVerticalProperty(object):
 
         def _case(self):
             cls = self.prop.parent.class_
-            whens = [(text("'%s'" % p[0]), getattr(cls, p[1]))
+            whens = [(text("'%s'" % p[0]), cast(getattr(cls, p[1]), String))
                      for p in cls.type_map.values()
                      if p[1] is not None]
             return case(whens, cls.type, null())
         def __eq__(self, other):
-            return cast(self._case(), String) == cast(other, String)
+            return self._case() == cast(other, String)
         def __ne__(self, other):
-            return cast(self._case(), String) != cast(other, String)
+            return self._case() != cast(other, String)
 
     def __init__(self, key, value=None):
         self.key = key
@@ -131,7 +131,7 @@ class PolymorphicVerticalProperty(object):
 if __name__ == '__main__':
     from sqlalchemy import (MetaData, Table, Column, Integer, Unicode,
         ForeignKey, UnicodeText, and_, not_, or_, String, Boolean, cast, text,
-        null, case)
+        null, case, create_engine)
     from sqlalchemy.orm import mapper, relationship, Session
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
@@ -189,9 +189,10 @@ if __name__ == '__main__':
         'value': comparable_property(AnimalFact.Comparator, AnimalFact.value)
         })
 
-    metadata.bind = 'sqlite:///'
-    metadata.create_all()
-    session = Session()
+    engine = create_engine('sqlite://', echo=True)
+
+    metadata.create_all(engine)
+    session = Session(engine)
 
     stoat = Animal(u'stoat')
     stoat[u'color'] = u'red'
@@ -208,9 +209,7 @@ if __name__ == '__main__':
     print "changing cuteness value and type:"
     critter[u'cuteness'] = u'very cute'
 
-    metadata.bind.echo = True
     session.commit()
-    metadata.bind.echo = False
 
     marten = Animal(u'marten')
     marten[u'cuteness'] = 5
@@ -260,5 +259,5 @@ if __name__ == '__main__':
          filter(with_characteristic(u'cuteness', u'very cute')))
     print q.all()
 
-
-    metadata.drop_all()
+    session.close()
+    metadata.drop_all(engine)
