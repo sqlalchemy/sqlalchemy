@@ -113,14 +113,14 @@ class PolymorphicVerticalProperty(object):
             self.cls = cls
 
         def _case(self):
-            whens = [(text("'%s'" % p[0]), getattr(self.cls, p[1]))
+            whens = [(text("'%s'" % p[0]), cast(getattr(self.cls, p[1]), String))
                      for p in self.cls.type_map.values()
                      if p[1] is not None]
             return case(whens, self.cls.type, null())
         def __eq__(self, other):
-            return cast(self._case(), String) == cast(other, String)
+            return self._case() == cast(other, String)
         def __ne__(self, other):
-            return cast(self._case(), String) != cast(other, String)
+            return self._case() != cast(other, String)
 
     def __repr__(self):
         return '<%s %r=%r>' % (self.__class__.__name__, self.key, self.value)
@@ -185,9 +185,10 @@ if __name__ == '__main__':
 
     mapper(AnimalFact, chars)
 
-    metadata.bind = create_engine('sqlite://', echo=True)
-    metadata.create_all()
-    session = Session()
+    engine = create_engine('sqlite://', echo=True)
+
+    metadata.create_all(engine)
+    session = Session(engine)
 
     stoat = Animal(u'stoat')
     stoat[u'color'] = u'red'
@@ -254,5 +255,5 @@ if __name__ == '__main__':
          filter(with_characteristic(u'cuteness', u'very cute')))
     print q.all()
 
-
-    metadata.drop_all()
+    session.close()
+    metadata.drop_all(engine)

@@ -270,6 +270,12 @@ CHANGES
     dictionary that had tuples as keys would be misinterpreted
     as a sequence. [ticket:2275]
 
+- examples
+  - Adjusted dictlike-polymorphic.py example
+    to apply the CAST such that it works on 
+    PG, other databases.  [ticket:2266]
+    Also in 0.6.9.
+
 0.7.2
 =====
 - orm
