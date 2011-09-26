@@ -799,6 +799,27 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(sess.query(User).all(), [User(name='u1', address_count=2,
             addresses=[Address(email='one'), Address(email='two')])])
 
+    def test_useless_declared_attr_warns_on_subclass(self):
+        def go():
+            class MyBase(Base):
+                __tablename__ = 'foo'
+                id = Column(Integer, primary_key=True)
+                @declared_attr
+                def somecol(cls):
+                    return Column(Integer)
+
+            class MyClass(MyBase):
+                __tablename__ = 'bar'
+        assert_raises_message(
+            sa.exc.SAWarning,
+            r"Regular \(i.e. not __special__\) attribute 'MyBase.somecol' "
+            "uses @declared_attr, but owning class "
+            "<class 'test.ext.test_declarative.MyBase'> is "
+            "mapped - not applying to subclass <class "
+            "'test.ext.test_declarative.MyClass'>.",
+            go
+        )
+
     def test_column(self):
 
         class User(Base, fixtures.ComparableEntity):

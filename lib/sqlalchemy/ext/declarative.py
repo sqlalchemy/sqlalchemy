@@ -1030,6 +1030,12 @@ def _as_declarative(cls, classname, dict_):
                     if base is not cls:
                         inherited_table_args = True
             elif class_mapped:
+                if isinstance(obj, declarative_props):
+                    util.warn("Regular (i.e. not __special__) "
+                            "attribute '%s.%s' uses @declared_attr, "
+                            "but owning class %s is mapped - "
+                            "not applying to subclass %s." 
+                            % (base.__name__, name, base, cls))
                 continue
             elif base is not cls:
                 # we're a mixin.
