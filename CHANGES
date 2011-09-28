@@ -32,6 +32,10 @@ CHANGES
     table would convert the lead entity into the 
     joined one inappropriately.  [ticket:2234]
 
+  - Fixed bug whereby mapper.order_by attribute would
+    be ignored in the "inner" query within a 
+    subquery eager load.  [ticket:2287].
+
   - Fixed bug whereby if a mapped class
     redefined __hash__() or __eq__() to something
     non-standard, which is a supported use case
