@@ -671,6 +671,26 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         l = q.order_by(sa.desc(User.id)).limit(2).offset(2).all()
         eq_(list(reversed(self.static.user_all_result[0:2])), l)
 
+    def test_mapper_order_by(self):
+        users, User, Address, addresses = (self.tables.users,
+                                self.classes.User,
+                                self.classes.Address,
+                                self.tables.addresses)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relationship(Address,
+                            lazy='subquery',
+                            order_by=addresses.c.id),
+        },order_by=users.c.id.desc())
+
+        sess = create_session()
+        q = sess.query(User)
+
+        l = q.limit(2).all()
+        eq_(l, list(reversed(self.static.user_address_result[2:4])))
+
+
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (self.classes.Address,
                                 self.tables.addresses,

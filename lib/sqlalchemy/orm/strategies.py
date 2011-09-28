@@ -748,6 +748,9 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # with polymorphic loading ?
         q._set_entities(q._adapt_col_list(leftmost_attr))
 
+        if q._order_by is False:
+            q._order_by = leftmost_mapper.order_by
+
         # don't need ORDER BY if no limit/offset
         if q._limit is None and q._offset is None:
             q._order_by = None
@@ -800,6 +803,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             getattr(parent_alias, self.parent._columntoproperty[c].key)
             for c in local_cols
         ]
+
         q = q.order_by(*local_attr)
         q = q.add_columns(*local_attr)
 
