@@ -656,6 +656,7 @@ def __init__(%(apply_pos)s):
 
     # Py3K
     #func_defaults = getattr(original__init__, '__defaults__', None)
+    #func_kw_defaults = getattr(original__init__, '__kwdefaults__', None)
     # Py2K
     func = getattr(original__init__, 'im_func', original__init__)
     func_defaults = getattr(func, 'func_defaults', None)
@@ -667,4 +668,7 @@ def __init__(%(apply_pos)s):
     __init__.__doc__ = original__init__.__doc__
     if func_defaults:
         __init__.func_defaults = func_defaults
+    # Py3K
+    #if func_kw_defaults:
+    #    __init__.__kwdefaults__ = func_kw_defaults
     return __init__

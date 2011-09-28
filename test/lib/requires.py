@@ -328,6 +328,15 @@ def python2(fn):
             )
     )
 
+def python3(fn):
+    return _chain_decorators_on(
+        fn,
+        skip_if(
+            lambda: sys.version_info < (3,),
+            "Python version 3.xx is required."
+            )
+    )
+
 def python26(fn):
     return _chain_decorators_on(
         fn,

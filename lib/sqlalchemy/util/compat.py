@@ -90,6 +90,11 @@ else:
     from urlparse import parse_qsl
 
 if py3k:
+    from inspect import getfullargspec as inspect_getfullargspec
+else:
+    from inspect import getargspec as inspect_getfullargspec
+
+if py3k:
     # they're bringing it back in 3.2.  brilliant !
     def callable(fn):
         return hasattr(fn, '__call__')

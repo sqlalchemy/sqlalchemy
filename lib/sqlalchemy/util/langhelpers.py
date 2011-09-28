@@ -15,7 +15,7 @@ import re
 import sys
 import types
 import warnings
-from compat import update_wrapper, set_types, threading
+from compat import update_wrapper, set_types, threading, callable, inspect_getfullargspec, py3k
 from sqlalchemy import exc
 
 def _unique_symbols(used, *bases):
@@ -38,7 +38,7 @@ def decorator(target):
     def decorate(fn):
         if not inspect.isfunction(fn):
             raise Exception("not a decoratable function")
-        spec = inspect.getargspec(fn)
+        spec = inspect_getfullargspec(fn)
         names = tuple(spec[0]) + spec[1:3] + (fn.func_name,)
         targ_name, fn_name = _unique_symbols(names, 'target', 'fn')
 
@@ -149,7 +149,11 @@ def format_argspec_plus(fn, grouped=True):
        'apply_pos': '(self, a, b, c, **d)'}
 
     """
-    spec = callable(fn) and inspect.getargspec(fn) or fn
+    if callable(fn):
+        spec = inspect_getfullargspec(fn)
+    else:
+        # we accept an existing argspec...
+        spec = fn
     args = inspect.formatargspec(*spec)
     if spec[0]:
         self_arg = spec[0][0]
@@ -157,9 +161,28 @@ def format_argspec_plus(fn, grouped=True):
         self_arg = '%s[0]' % spec[1]
     else:
         self_arg = None
-    apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
-    defaulted_vals = spec[3] is not None and spec[0][0-len(spec[3]):] or ()
-    apply_kw = inspect.formatargspec(spec[0], spec[1], spec[2], defaulted_vals,
+
+    if py3k:
+        apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2], None, spec[4])
+        num_defaults = 0
+        if spec[3]:
+            num_defaults += len(spec[3])
+        if spec[4]:
+            num_defaults += len(spec[4])
+        name_args = spec[0] + spec[4]
+    else:
+        apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2])
+        num_defaults = 0
+        if spec[3]:
+            num_defaults += len(spec[3])
+        name_args = spec[0]
+
+    if num_defaults:
+        defaulted_vals = name_args[0-num_defaults:]
+    else:
+        defaulted_vals = ()
+
+    apply_kw = inspect.formatargspec(name_args, spec[1], spec[2], defaulted_vals,
                                      formatvalue=lambda x: '=' + x)
     if grouped:
         return dict(args=args, self_arg=self_arg,

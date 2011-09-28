@@ -31,6 +31,13 @@ CHANGES
     attribute, provided the name is the same as that
     of the entity mapped column.
 
+  - Enhanced the instrumentation in the ORM to support
+    Py3K's new argument style of "required kw arguments",
+    i.e. fn(a, b, *, c, d), fn(a, b, *args, c, d).
+    Argument signatures of mapped object's __init__
+    method will be preserved, including required kw rules.
+    [ticket:2237]
+
   - Fixed bug in unit of work whereby detection of 
     "cycles" among classes in highly interlinked patterns
     would not produce a deterministic

@@ -8,7 +8,7 @@ from test.lib.schema import Table
 from test.lib.schema import Column
 from test.lib.testing import eq_, ne_
 from test.lib.util import decorator
-from test.lib import fixtures
+from test.lib import fixtures, testing
 
 @decorator
 def modifies_instrumentation_finders(fn, *args, **kw):
@@ -622,6 +622,82 @@ class NativeInstrumentationTest(fixtures.ORMTest):
         class T(object): pass
         assert_raises(KeyError, mapper, T, t)
 
+class Py3KFunctionInstTest(fixtures.ORMTest):
+    __requires__ = ("python3", )
+
+    # Py3K
+    #def _kw_only_fixture(self):
+    #    class A(object):
+    #        def __init__(self, a, *, b, c):
+    #            self.a = a
+    #            self.b = b
+    #            self.c = c
+    #    return self._instrument(A)
+    #
+    #def _kw_plus_posn_fixture(self):
+    #    class A(object):
+    #        def __init__(self, a, *args, b, c):
+    #            self.a = a
+    #            self.b = b
+    #            self.c = c
+    #    return self._instrument(A)
+    #
+    #def _kw_opt_fixture(self):
+    #    class A(object):
+    #        def __init__(self, a, *, b, c="c"):
+    #            self.a = a
+    #            self.b = b
+    #            self.c = c
+    #    return self._instrument(A)
+
+    def _instrument(self, cls):
+        manager = instrumentation.register_class(cls)
+        canary = []
+        def check(target, args, kwargs):
+            canary.append((args, kwargs))
+        event.listen(manager, "init", check)
+        return cls, canary
+
+    def test_kw_only_args(self):
+        cls, canary = self._kw_only_fixture()
+
+        a = cls("a", b="b", c="c")
+        eq_(canary, [(('a', ), {'b':'b','c':'c'})])
+
+    def test_kw_plus_posn_args(self):
+        cls, canary = self._kw_plus_posn_fixture()
+
+        a = cls("a", 1, 2, 3, b="b", c="c")
+        eq_(canary, [(('a', 1, 2, 3), {'b':'b','c':'c'})])
+
+    def test_kw_only_args_plus_opt(self):
+        cls, canary = self._kw_opt_fixture()
+
+        a = cls("a", b="b")
+        eq_(canary, [(('a', ), {'b':'b','c':'c'})])
+
+        canary[:] = []
+        a = cls("a", b="b", c="d")
+        eq_(canary, [(('a', ), {'b':'b','c':'d'})])
+
+    def test_kw_only_sig(self):
+        cls, canary = self._kw_only_fixture()
+        assert_raises(
+            TypeError,
+            cls, "a", "b", "c"
+        )
+
+    def test_kw_plus_opt_sig(self):
+        cls, canary = self._kw_only_fixture()
+        assert_raises(
+            TypeError,
+            cls, "a", "b", "c"
+        )
+
+        assert_raises(
+            TypeError,
+            cls, "a", "b", c="c"
+        )
 
 class MiscTest(fixtures.ORMTest):
     """Seems basic, but not directly covered elsewhere!"""
