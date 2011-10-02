@@ -214,6 +214,11 @@ CHANGES
     extensions are in use or not.
 
 - postgresql
+  - Added "postgresql_using" argument to Index(), produces
+    USING clause to specify index implementation for
+    PG.  [ticket:2290].  Thanks to Ryan P. Kelly for
+    the patch.
+
   - Reflection functions for Table, Sequence no longer
     case insensitive.  Names can be differ only in case
     and will be correctly distinguished.  [ticket:2256]

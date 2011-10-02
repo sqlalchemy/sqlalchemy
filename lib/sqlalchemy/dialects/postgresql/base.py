@@ -141,6 +141,20 @@ the :class:`.Column`, i.e. the name used to access it from the ``.c`` collection
 of :class:`.Table`, which can be configured to be different than the actual
 name of the column as expressed in the database.
 
+Index Types
+^^^^^^^^^^^^
+
+PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well as
+the ability for users to create their own (see
+http://www.postgresql.org/docs/8.3/static/indexes-types.html). These can be
+specified on :class:`.Index` using the ``postgresql_using`` keyword argument::
+
+    Index('my_index', my_table.c.data, postgresql_using='gin')
+
+The value passed to the keyword argument will be simply passed through to the
+underlying CREATE INDEX command, so it *must* be a valid index type for your
+version of PostgreSQL.
+
 """
 
 import re
@@ -629,11 +643,18 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if index.unique:
             text += "UNIQUE "
         ops = index.kwargs.get('postgresql_ops', {})
-        text += "INDEX %s ON %s (%s)" \
-                % (
+        text += "INDEX %s ON %s " % (
                     preparer.quote(
                         self._index_identifier(index.name), index.quote),
-                    preparer.format_table(index.table),
+                    preparer.format_table(index.table)
+                )
+
+        if 'postgresql_using' in index.kwargs:
+            using = index.kwargs['postgresql_using']
+            text += "USING %s " % preparer.quote(using, index.quote)
+
+        text += "(%s)" \
+                % (
                     ', '.join([
                         preparer.format_column(c) + 
                         (c.key in ops and (' ' + ops[c.key]) or '')

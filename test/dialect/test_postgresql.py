@@ -174,6 +174,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             '(data text_pattern_ops, data2 int4_ops)',
                             dialect=postgresql.dialect())
 
+    def test_create_index_with_using(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String))
+
+        idx1 = Index('test_idx1', tbl.c.data)
+        idx2 = Index('test_idx2', tbl.c.data, postgresql_using='btree')
+        idx3 = Index('test_idx3', tbl.c.data, postgresql_using='hash')
+
+        self.assert_compile(schema.CreateIndex(idx1),
+                            'CREATE INDEX test_idx1 ON testtbl '
+                            '(data)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            'CREATE INDEX test_idx2 ON testtbl '
+                            'USING btree (data)',
+                            dialect=postgresql.dialect())
+        self.assert_compile(schema.CreateIndex(idx3),
+                            'CREATE INDEX test_idx3 ON testtbl '
+                            'USING hash (data)',
+                            dialect=postgresql.dialect())
+
     @testing.uses_deprecated(r".*'postgres_where' argument has been "
                              "renamed.*")
     def test_old_create_partial_index(self):
