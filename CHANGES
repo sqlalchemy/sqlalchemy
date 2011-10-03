@@ -89,6 +89,11 @@ CHANGES
     quote symbol "'" for XA commands instead
     of '"'.  [ticket:2186].
 
+  - a CREATE TABLE will put the COLLATE option 
+    after CHARSET, which appears to be part of 
+    MySQL's arbitrary rules regarding if it will actually
+    work or not.  [ticket:2225]
+
 - oracle
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,

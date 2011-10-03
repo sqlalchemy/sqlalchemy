@@ -334,6 +334,21 @@ class TypesTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         charset_table.drop()
 
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
+    @testing.provide_metadata
+    def test_charset_collate_table(self):
+        t = Table('foo', metadata,
+            Column('id', Integer),
+            mysql_default_charset='utf8',
+            mysql_collate='utf8_unicode_ci'
+        )
+        t.create()
+        m2 = MetaData(testing.db)
+        t2 = Table('foo', m2, autoload=True)
+        eq_(t2.kwargs['mysql_collate'], 'utf8_unicode_ci')
+        # note we changed this to have an _ in 0.7.3
+        eq_(t2.kwargs['mysql_default charset'], 'utf8')
+
+    @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
     @testing.fails_on('mysql+oursql', 'some round trips fail, oursql bug ?')
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""

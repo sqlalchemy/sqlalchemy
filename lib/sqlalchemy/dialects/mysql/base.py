@@ -174,7 +174,7 @@ from array import array as _array
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
-
+from sqlalchemy import topological
 from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME, \
                                 BLOB, BINARY, VARBINARY
 
@@ -1310,25 +1310,35 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         """Build table-level CREATE options like ENGINE and COLLATE."""
 
         table_opts = []
-        for k in table.kwargs:
-            if k.startswith('mysql_'):
-                opt = k[6:].upper()
+        opts = dict(
+            (
+                k[len(self.dialect.name)+1:].upper(), 
+                v
+            )
+            for k, v in table.kwargs.items()
+            if k.startswith('%s_' % self.dialect.name)
+        )
 
-                arg = table.kwargs[k]
-                if opt in _options_of_type_string:
-                    arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+        for opt in topological.sort([
+            ('DEFAULT_CHARSET', 'COLLATE'),
+            ('DEFAULT_CHARACTER_SET', 'COLLATE')
+         ], opts):
+            arg = opts[opt]
+            if opt in _options_of_type_string:
+                arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
 
-                if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                           'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 'DEFAULT_CHARSET',
-                           'DEFAULT_COLLATE'):
-                    opt = opt.replace('_', ' ')
+            if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
+                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
+                       'DEFAULT_CHARSET',
+                       'DEFAULT_COLLATE'):
+                opt = opt.replace('_', ' ')
 
-                joiner = '='
-                if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
-                           'CHARACTER SET', 'COLLATE'):
-                    joiner = ' '
+            joiner = '='
+            if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
+                       'CHARACTER SET', 'COLLATE'):
+                joiner = ' '
 
-                table_opts.append(joiner.join((opt, arg)))
+            table_opts.append(joiner.join((opt, arg)))
         return ' '.join(table_opts)
 
     def visit_drop_index(self, drop):
