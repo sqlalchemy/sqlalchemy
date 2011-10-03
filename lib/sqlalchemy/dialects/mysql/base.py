@@ -2262,7 +2262,7 @@ class MySQLTableDefinitionParser(object):
             options.pop(nope, None)
 
         for opt, val in options.items():
-            state.table_options['%s_%s' % (self.dialect.name, opt.replace(' ', '_'))] = val
+            state.table_options['%s_%s' % (self.dialect.name, opt)] = val
 
     def _parse_column(self, line, state):
         """Extract column details.
