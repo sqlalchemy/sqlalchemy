@@ -332,6 +332,22 @@ class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         charset_table.drop()
 
     @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
+    @testing.provide_metadata
+    def test_charset_collate_table(self):
+        t = Table('foo', self.metadata,
+            Column('id', Integer),
+            mysql_default_charset='utf8',
+            mysql_collate='utf8_unicode_ci'
+        )
+        t.create()
+        m2 = MetaData(testing.db)
+        t2 = Table('foo', m2, autoload=True)
+        eq_(t2.kwargs['mysql_collate'], 'utf8_unicode_ci')
+        # this is also testing that the names coming
+        # back get an underscore _ in them
+        eq_(t2.kwargs['mysql_default_charset'], 'utf8')
+
+    @testing.exclude('mysql', '<', (5, 0, 5), 'a 5.0+ feature')
     @testing.fails_on('mysql+oursql', 'some round trips fail, oursql bug ?')
     def test_bit_50(self):
         """Exercise BIT types on 5.0+ (not valid for all engine types)"""
@@ -878,7 +894,7 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
         assert reflected.kwargs['mysql_engine'] == 'MEMORY'
         assert reflected.kwargs['mysql_comment'] == comment
-        assert reflected.kwargs['mysql_default charset'] == 'utf8'
+        assert reflected.kwargs['mysql_default_charset'] == 'utf8'
         assert reflected.kwargs['mysql_avg_row_length'] == '3'
         assert reflected.kwargs['mysql_connection'] == 'fish'
 

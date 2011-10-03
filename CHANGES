@@ -236,6 +236,19 @@ CHANGES
     it was assumed that "current" schema was synonymous
     with the full search_path.  [ticket:2249]
 
+- mysql
+  - a CREATE TABLE will put the COLLATE option 
+    after CHARSET, which appears to be part of 
+    MySQL's arbitrary rules regarding if it will actually
+    work or not.  [ticket:2225]
+
+  - reflecting a MySQL table will ensure that the 
+    options added to the Table at the table.kwargs
+    level have spaces converted to underscores.
+    This is a slight behavioral change specifically
+    to the "mysql_default_charset" option which 
+    previously would not be symmetrical.
+
 - mssql
   - Changes to attempt support of FreeTDS 0.91 with 
     Pyodbc.  This includes that string binds are sent as 

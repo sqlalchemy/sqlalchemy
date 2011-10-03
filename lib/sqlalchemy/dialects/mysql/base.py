@@ -211,7 +211,7 @@ from array import array as _array
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine import base as engine_base, default
 from sqlalchemy import types as sqltypes
-
+from sqlalchemy.util import topological
 from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME, \
                                 BLOB, BINARY, VARBINARY
 
@@ -1363,26 +1363,36 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         """Build table-level CREATE options like ENGINE and COLLATE."""
 
         table_opts = []
-        for k in table.kwargs:
-            if k.startswith('%s_' % self.dialect.name):
-                opt = k[len(self.dialect.name)+1:].upper()
 
-                arg = table.kwargs[k]
-                if opt in _options_of_type_string:
-                    arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
+        opts = dict(
+            (
+                k[len(self.dialect.name)+1:].upper(), 
+                v
+            )
+            for k, v in table.kwargs.items()
+            if k.startswith('%s_' % self.dialect.name)
+        )
 
-                if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
-                           'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
-                           'DEFAULT_CHARSET',
-                           'DEFAULT_COLLATE'):
-                    opt = opt.replace('_', ' ')
+        for opt in topological.sort([
+            ('DEFAULT_CHARSET', 'COLLATE'),
+            ('DEFAULT_CHARACTER_SET', 'COLLATE')
+        ], opts):
+            arg = opts[opt]
+            if opt in _options_of_type_string:
+                arg = "'%s'" % arg.replace("\\", "\\\\").replace("'", "''")
 
-                joiner = '='
-                if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
-                           'CHARACTER SET', 'COLLATE'):
-                    joiner = ' '
+            if opt in ('DATA_DIRECTORY', 'INDEX_DIRECTORY',
+                       'DEFAULT_CHARACTER_SET', 'CHARACTER_SET', 
+                       'DEFAULT_CHARSET',
+                       'DEFAULT_COLLATE'):
+                opt = opt.replace('_', ' ')
 
-                table_opts.append(joiner.join((opt, arg)))
+            joiner = '='
+            if opt in ('TABLESPACE', 'DEFAULT CHARACTER SET',
+                       'CHARACTER SET', 'COLLATE'):
+                joiner = ' '
+
+            table_opts.append(joiner.join((opt, arg)))
         return ' '.join(table_opts)
 
     def visit_drop_index(self, drop):
@@ -2252,7 +2262,7 @@ class MySQLTableDefinitionParser(object):
             options.pop(nope, None)
 
         for opt, val in options.items():
-            state.table_options['%s_%s' % (self.dialect.name, opt)] = val
+            state.table_options['%s_%s' % (self.dialect.name, opt.replace(' ', '_'))] = val
 
     def _parse_column(self, line, state):
         """Extract column details.
