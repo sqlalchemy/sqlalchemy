@@ -1317,6 +1317,17 @@ class ReflectionTest(fixtures.TestBase):
         eq_(r.inserted_primary_key, [2])
 
     @testing.provide_metadata
+    def test_renamed_pk_reflection(self):
+        metadata = self.metadata
+        t = Table('t', metadata, Column('id', Integer, primary_key=True))
+        metadata.create_all()
+        testing.db.connect().execution_options(autocommit=True).\
+            execute('alter table t rename id to t_id')
+        m2 = MetaData(testing.db)
+        t2 = Table('t', m2, autoload=True)
+        eq_([c.name for c in t2.primary_key], ['t_id'])
+
+    @testing.provide_metadata
     def test_schema_reflection(self):
         """note: this test requires that the 'test_schema' schema be
         separate and accessible by the test user"""
