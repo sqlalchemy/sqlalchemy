@@ -219,6 +219,11 @@ CHANGES
     PG.  [ticket:2290].  Thanks to Ryan P. Kelly for
     the patch.
 
+  - Fixed bug related to [ticket:2141] whereby the 
+    same modified index behavior in PG 9 affected
+    primary key reflection on a renamed column.
+    [ticket:2291].  Also in 0.6.9.
+
   - Reflection functions for Table, Sequence no longer
     case insensitive.  Names can be differ only in case
     and will be correctly distinguished.  [ticket:2256]

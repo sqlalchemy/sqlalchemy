@@ -1308,13 +1308,19 @@ class PGDialect(default.DefaultDialect):
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
+
         PK_SQL = """
-          SELECT attname FROM pg_attribute
-          WHERE attrelid = (
-             SELECT indexrelid FROM pg_index i
-             WHERE i.indrelid = :table_oid
-             AND i.indisprimary = 't')
-          ORDER BY attnum
+            SELECT a.attname
+                FROM 
+                    pg_class t
+                    join pg_index ix on t.oid = ix.indrelid
+                    join pg_attribute a 
+                        on t.oid=a.attrelid and a.attnum=ANY(ix.indkey)
+          WHERE
+              t.oid = :table_oid and
+              ix.indisprimary = 't'
+          ORDER BY
+            a.attnum
         """
         t = sql.text(PK_SQL, typemap={'attname':sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
