@@ -477,6 +477,16 @@ class EnumTest(TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             metadata.drop_all()
 
+    @testing.provide_metadata
+    def test_renamed_pk_reflection(self):
+        t = Table('t', metadata, Column('id', Integer, primary_key=True))
+        metadata.create_all()
+        testing.db.connect().execution_options(autocommit=True).\
+            execute('alter table t rename id to t_id')
+        m2 = MetaData(testing.db)
+        t2 = Table('t', m2, autoload=True)
+        eq_([c.name for c in t2.primary_key], ['t_id'])
+
     def test_schema_reflection(self):
         metadata = MetaData(testing.db)
         etype = Enum(

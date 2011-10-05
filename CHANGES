@@ -84,6 +84,12 @@ CHANGES
     ForeignKeyConstraint refers to a column name in 
     the parent that is not found.
 
+- postgresql
+  - Fixed bug related to [ticket:2141] whereby the 
+    same modified index behavior in PG 9 affected
+    primary key reflection on a renamed column.
+    [ticket:2291].
+
 - mysql
   - Fixed OurSQL dialect to use ansi-neutral 
     quote symbol "'" for XA commands instead
