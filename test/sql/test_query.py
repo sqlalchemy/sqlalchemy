@@ -188,11 +188,13 @@ class QueryTest(fixtures.TestBase):
     @testing.fails_on('sqlite', "sqlite autoincremnt doesn't work with composite pks")
     def test_misordered_lastrow(self):
         related = Table('related', metadata,
-            Column('id', Integer, primary_key=True)
+            Column('id', Integer, primary_key=True),
+            mysql_engine='MyISAM'
         )
         t6 = Table("t6", metadata,
             Column('manual_id', Integer, ForeignKey('related.id'), primary_key=True),
             Column('auto_id', Integer, primary_key=True, test_needs_autoincrement=True),
+            mysql_engine='MyISAM'
         )
 
         metadata.create_all()

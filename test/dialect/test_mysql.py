@@ -29,6 +29,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(x, 
             '''SELECT mysql_table.col1, mysql_table.`master_ssl_verify_server_cert` FROM mysql_table''')
 
+    def test_create_index_with_length(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)))
+        idx = Index('test_idx1', tbl.c.data,
+                    mysql_length=10)
+        idx2 = Index('test_idx2', tbl.c.data,
+                    mysql_length=5)
+
+        self.assert_compile(schema.CreateIndex(idx),
+                            'CREATE INDEX test_idx1 ON testtbl (data(10))',
+                            dialect=mysql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+                            "CREATE INDEX test_idx2 ON testtbl (data(5))",
+                            dialect=mysql.dialect())
+
 class DialectTest(fixtures.TestBase):
     __only_on__ = 'mysql'
 
@@ -1002,39 +1017,47 @@ class ReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             Table('ai_1', meta,
                   Column('int_y', Integer, primary_key=True),
                   Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True))
+                         primary_key=True),
+                         mysql_engine='MyISAM')
             Table('ai_2', meta,
                   Column('int_y', Integer, primary_key=True),
                   Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True))
+                         primary_key=True),
+                         mysql_engine='MyISAM')
             Table('ai_3', meta,
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
-                  Column('int_y', Integer, primary_key=True))
+                  Column('int_y', Integer, primary_key=True),
+                         mysql_engine='MyISAM')
             Table('ai_4', meta,
                   Column('int_n', Integer, DefaultClause('0'),
                          primary_key=True, autoincrement=False),
                   Column('int_n2', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False))
+                         primary_key=True, autoincrement=False),
+                         mysql_engine='MyISAM')
             Table('ai_5', meta,
                   Column('int_y', Integer, primary_key=True),
                   Column('int_n', Integer, DefaultClause('0'),
-                         primary_key=True, autoincrement=False))
+                         primary_key=True, autoincrement=False),
+                         mysql_engine='MyISAM')
             Table('ai_6', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('int_y', Integer, primary_key=True))
+                  Column('int_y', Integer, primary_key=True),
+                         mysql_engine='MyISAM')
             Table('ai_7', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('o2', String(1), DefaultClause('x'),
                          primary_key=True),
-                  Column('int_y', Integer, primary_key=True))
+                  Column('int_y', Integer, primary_key=True),
+                         mysql_engine='MyISAM')
             Table('ai_8', meta,
                   Column('o1', String(1), DefaultClause('x'),
                          primary_key=True),
                   Column('o2', String(1), DefaultClause('x'),
-                         primary_key=True))
+                         primary_key=True),
+                         mysql_engine='MyISAM')
             meta.create_all()
 
             table_names = ['ai_1', 'ai_2', 'ai_3', 'ai_4',
@@ -1438,11 +1461,13 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         cattable = Table('cattable', metadata,
             Column('id', Integer, primary_key=True),
             Column('description', String(50)),
+            mysql_engine='MyISAM'
         )
         matchtable = Table('matchtable', metadata,
             Column('id', Integer, primary_key=True),
             Column('title', String(200)),
             Column('category_id', Integer, ForeignKey('cattable.id')),
+            mysql_engine='MyISAM'
         )
         metadata.create_all()
 

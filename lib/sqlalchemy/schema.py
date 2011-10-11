@@ -2086,6 +2086,8 @@ class Index(ColumnCollectionMixin, SchemaItem):
     :ref:`schema_indexes` - General information on :class:`.Index`.
 
     :ref:`postgresql_indexes` - PostgreSQL-specific options available for the :class:`.Index` construct.
+
+    :ref:`mysql_indexes` - MySQL-specific options available for the :class:`.Index` construct.
     """
 
     __visit_name__ = 'index'

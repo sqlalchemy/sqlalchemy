@@ -298,6 +298,7 @@ class TransactionTest(fixtures.TestBase):
     # PG emergency shutdown:
     # select * from pg_prepared_xacts
     # ROLLBACK PREPARED '<xid>'
+    @testing.crashes('mysql', 'Crashing on 5.5, not worth it')
     @testing.requires.skip_mysql_on_windows
     @testing.requires.two_phase_transactions
     @testing.requires.savepoints

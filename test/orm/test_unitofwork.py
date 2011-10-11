@@ -746,11 +746,13 @@ class DefaultTest(fixtures.MappedTest):
                    test_needs_autoincrement=True),
             Column('hoho', hohotype, server_default=str(hohoval)),
             Column('counter', Integer, default=sa.func.char_length("1234567", type_=Integer)),
-            Column('foober', String(30), default="im foober", onupdate="im the update"))
+            Column('foober', String(30), default="im foober", onupdate="im the update"),
+            mysql_engine='MyISAM')
 
         st = Table('secondary_table', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', String(50)))
+            Column('data', String(50)),
+            mysql_engine='MyISAM')
 
         if testing.against('postgresql', 'oracle'):
             dt.append_column(

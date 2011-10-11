@@ -247,6 +247,9 @@ CHANGES
     MySQL's arbitrary rules regarding if it will actually
     work or not.  [ticket:2225]  Also in 0.6.9.
 
+  - Added mysql_length parameter to Index construct,
+    specifies "length" for indexes.  [ticket:2293]
+
 - mssql
   - Changes to attempt support of FreeTDS 0.91 with 
     Pyodbc.  This includes that string binds are sent as 
