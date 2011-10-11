@@ -686,6 +686,22 @@ def column_property(*args, **kwargs):
     :param doc:
           optional string that will be applied as the doc on the
           class-bound descriptor.
+    
+    :param expire_on_flush=True:
+        Disable expiry on flush.   A column_property() which refers
+        to a SQL expression (and not a single table-bound column)
+        is considered to be a "read only" property; populating it
+        has no effect on the state of data, and it can only return
+        database state.   For this reason a column_property()'s value
+        is expired whenever the parent object is involved in a 
+        flush, that is, has any kind of "dirty" state within a flush.
+        Setting this parameter to ``False`` will have the effect of
+        leaving any existing value present after the flush proceeds.
+        Note however that the :class:`.Session` with default expiration
+        settings still expires 
+        all attributes after a :meth:`.Session.commit` call, however.
+        New in 0.7.3.
+        
 
     :param extension:
         an

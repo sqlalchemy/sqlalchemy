@@ -55,6 +55,8 @@ class ColumnProperty(StrategizedProperty):
 
         :param descriptor:
 
+        :param expire_on_flush:
+
         :param extension:
 
         """
@@ -67,6 +69,7 @@ class ColumnProperty(StrategizedProperty):
         self.descriptor = kwargs.pop('descriptor', None)
         self.extension = kwargs.pop('extension', None)
         self.active_history = kwargs.pop('active_history', False)
+        self.expire_on_flush = kwargs.pop('expire_on_flush', True)
 
         if 'doc' in kwargs:
             self.doc = kwargs.pop('doc')

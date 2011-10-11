@@ -2250,7 +2250,8 @@ class Mapper(object):
 
             if mapper._readonly_props:
                 readonly = state.unmodified_intersection(
-                    [p.key for p in mapper._readonly_props]
+                    [p.key for p in mapper._readonly_props 
+                        if p.expire_on_flush or p.key not in state.dict]
                 )
                 if readonly:
                     state.expire_attributes(state.dict, readonly)

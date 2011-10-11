@@ -31,6 +31,12 @@ CHANGES
     attribute, provided the name is the same as that
     of the entity mapped column.
 
+  - Added new flag expire_on_flush=False to column_property(),
+    marks those properties that would otherwise be considered
+    to be "readonly", i.e. derived from SQL expressions,
+    to retain their value after a flush has occurred, including
+    if the parent object itself was involved in an update.
+
   - Enhanced the instrumentation in the ORM to support
     Py3K's new argument style of "required kw arguments",
     i.e. fn(a, b, *, c, d), fn(a, b, *args, c, d).
