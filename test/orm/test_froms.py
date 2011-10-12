@@ -1610,6 +1610,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
 class SelectFromTest(QueryTest, AssertsCompiledSQL):
     run_setup_mappers = None
+    __dialect__ = 'default'
 
     def test_replace_with_select(self):
         users, Address, addresses, User = (self.tables.users,
@@ -1676,7 +1677,6 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name FROM "
             "users JOIN (SELECT users.id AS id, users.name AS name FROM "
             "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 ON users.id > anon_1.id",
-            use_default_dialect=True
         )
 
         self.assert_compile(
@@ -1684,18 +1684,22 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name FROM "
             "users AS users_1, (SELECT users.id AS id, users.name AS name FROM "
             "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 WHERE users_1.id > anon_1.id",
-            use_default_dialect=True
         )
 
-        # these two are essentially saying, "join ualias to ualias", so an 
-        # error is raised.  join() deals with entities, not what's in
-        # select_from().
-        assert_raises(sa_exc.InvalidRequestError,
-            sess.query(ualias).select_from(sel).join, ualias, ualias.id>sel.c.id
+        self.assert_compile(
+            sess.query(ualias).select_from(sel).join(ualias, ualias.id>sel.c.id),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "JOIN users AS users_1 ON users_1.id > anon_1.id"
         )
 
-        assert_raises(sa_exc.InvalidRequestError,
-            sess.query(ualias).select_from(sel).join, ualias, ualias.id>User.id
+        self.assert_compile(
+            sess.query(ualias).select_from(sel).join(ualias, ualias.id>User.id),
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users WHERE users.id IN (:id_1, :id_2)) AS anon_1 "
+            "JOIN users AS users_1 ON anon_1.id < users_1.id"
         )
 
         salias = aliased(User, sel)
@@ -1704,7 +1708,6 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name FROM "
             "(SELECT users.id AS id, users.name AS name FROM users WHERE users.id "
             "IN (:id_1, :id_2)) AS anon_1 JOIN users AS users_1 ON users_1.id > anon_1.id",
-            use_default_dialect=True
         )
 
 

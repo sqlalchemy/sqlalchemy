@@ -881,7 +881,11 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        assert_raises_message(sa.exc.InvalidRequestError, "Could not find a FROM clause to join from", sess.query(users).join, addresses)
+        self.assert_compile(
+            sess.query(users).join(addresses),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id"
+        )
 
 
     def test_orderby_arg_bug(self):
@@ -1261,13 +1265,19 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Could not find a FROM",
+            "Could not find a FROM clause to join from.  Tried joining "
+            "to .*?, but got: "
+            "Can't find any foreign key relationships "
+            "between 'users' and 'users'.",
             sess.query(users.c.id).join, User
         )
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "Could not find a FROM",
+            "Could not find a FROM clause to join from.  Tried joining "
+            "to .*?, but got: "
+            "Can't find any foreign key relationships "
+            "between 'users' and 'users'.",
             sess.query(users.c.id).select_from(users).join, User
         )
 
@@ -1322,6 +1332,151 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
+class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+    run_setup_mappers = 'once'
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('table1', metadata, 
+            Column('id', Integer, primary_key=True)
+        )
+        Table('table2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('t1_id', Integer)
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        table1, table2 = cls.tables.table1, cls.tables.table2
+        class T1(cls.Comparable):
+            pass
+
+        class T2(cls.Comparable):
+            pass
+
+        mapper(T1, table1)
+        mapper(T2, table2)
+
+    def test_select_mapped_to_mapped_explicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(subq.c.count, T1.id).select_from(subq).join(T1, subq.c.t1_id==T1.id),
+            "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
+            "FROM (SELECT table2.t1_id AS t1_id, "
+            "count(table2.id) AS count FROM table2 "
+            "GROUP BY table2.t1_id) AS anon_1 JOIN table1 ON anon_1.t1_id = table1.id"
+        )
+
+    def test_select_mapped_to_mapped_implicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(subq.c.count, T1.id).join(T1, subq.c.t1_id==T1.id),
+            "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
+            "FROM (SELECT table2.t1_id AS t1_id, "
+            "count(table2.id) AS count FROM table2 "
+            "GROUP BY table2.t1_id) AS anon_1 JOIN table1 ON anon_1.t1_id = table1.id"
+        )
+
+    def test_select_mapped_to_select_explicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(subq.c.count, T1.id).select_from(T1).join(subq, subq.c.t1_id==T1.id),
+            "SELECT anon_1.count AS anon_1_count, table1.id AS table1_id "
+            "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, "
+            "count(table2.id) AS count FROM table2 GROUP BY table2.t1_id) "
+            "AS anon_1 ON anon_1.t1_id = table1.id"
+        )
+
+    def test_select_mapped_to_select_implicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't construct a join from ",
+            sess.query(subq.c.count, T1.id).join, subq, subq.c.t1_id==T1.id,
+        )
+
+    def test_mapped_select_to_mapped_implicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        # this query is wrong, but verifying behavior stays the same
+        # (or improves, like an error message)
+        self.assert_compile(
+            sess.query(T1.id, subq.c.count).join(T1, subq.c.t1_id==T1.id),
+            "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count FROM "
+            "(SELECT table2.t1_id AS t1_id, count(table2.id) AS count FROM "
+            "table2 GROUP BY table2.t1_id) AS anon_1, table1 JOIN table1 "
+            "ON anon_1.t1_id = table1.id"
+        )
+
+    def test_mapped_select_to_mapped_explicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(T1.id, subq.c.count).select_from(subq).join(T1, subq.c.t1_id==T1.id),
+            "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
+            "FROM (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) AS anon_1 JOIN table1 "
+            "ON anon_1.t1_id = table1.id"
+        )
+
+    def test_mapped_select_to_select_explicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(T1.id, subq.c.count).select_from(T1).join(subq, subq.c.t1_id==T1.id),
+            "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
+            "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
+            "ON anon_1.t1_id = table1.id"
+        )
+
+    def test_mapped_select_to_select_implicit_left(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = sess.query(T2.t1_id, func.count(T2.id).label('count')).\
+                    group_by(T2.t1_id).subquery()
+
+        self.assert_compile(
+            sess.query(T1.id, subq.c.count).join(subq, subq.c.t1_id==T1.id),
+            "SELECT table1.id AS table1_id, anon_1.count AS anon_1_count "
+            "FROM table1 JOIN (SELECT table2.t1_id AS t1_id, count(table2.id) AS count "
+            "FROM table2 GROUP BY table2.t1_id) AS anon_1 "
+            "ON anon_1.t1_id = table1.id"
+        )
 
 class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
     @classmethod

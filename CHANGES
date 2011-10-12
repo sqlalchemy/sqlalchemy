@@ -15,6 +15,17 @@ CHANGES
      fixes [ticket:2279].  Also in 0.6.9.
 
 - orm
+   - Improved query.join() such that the "left" side
+     can more flexibly be a non-ORM selectable, 
+     such as a subquery.   A selectable placed
+     in select_from() will now be used as the left
+     side, favored over implicit usage
+     of a mapped entity.
+     If the join still fails based on lack of
+     foreign keys, the error message includes 
+     this detail.  Thanks to brianrhude
+     on IRC for the test case.  [ticket:2298]
+
    - Added after_soft_rollback() Session event.  This
      event fires unconditionally whenever rollback()
      is called, regardless of if an actual DBAPI

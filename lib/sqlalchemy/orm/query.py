@@ -1626,7 +1626,10 @@ class Query(object):
         """append a JOIN to the query's from clause."""
 
         if left is None:
-            left = self._joinpoint_zero()
+            if self._from_obj:
+                left = self._from_obj[0]
+            elif self._entities:
+                left = self._entities[0].entity_zero_or_selectable
 
         if left is right and \
                 not create_aliases:
@@ -1742,10 +1745,15 @@ class Query(object):
                     sql_util.clause_is_present(left_selectable, clause):
                     join_to_left = False
 
-                clause = orm_join(clause, 
+                try:
+                    clause = orm_join(clause, 
                                     right, 
                                     onclause, isouter=outerjoin, 
                                     join_to_left=join_to_left)
+                except sa_exc.ArgumentError, ae:
+                    raise sa_exc.InvalidRequestError(
+                            "Could not find a FROM clause to join from.  "
+                            "Tried joining to %s, but got: %s" % (right, ae))
 
                 self._from_obj = \
                         self._from_obj[:replace_clause_index] + \
@@ -1760,6 +1768,8 @@ class Query(object):
                     break
             else:
                 clause = left
+        elif left_selectable is not None:
+            clause = left_selectable
         else:
             clause = None
 
@@ -1767,8 +1777,13 @@ class Query(object):
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from")
 
-        clause = orm_join(clause, right, onclause, 
+        try:
+            clause = orm_join(clause, right, onclause, 
                                 isouter=outerjoin, join_to_left=join_to_left)
+        except sa_exc.ArgumentError, ae:
+            raise sa_exc.InvalidRequestError(
+                    "Could not find a FROM clause to join from.  "
+                    "Tried joining to %s, but got: %s" % (right, ae))
 
         self._from_obj = self._from_obj + (clause,)
 
@@ -2890,6 +2905,10 @@ class _MapperEntity(_QueryEntity):
     def type(self):
         return self.mapper.class_
 
+    @property
+    def entity_zero_or_selectable(self):
+        return self.entity_zero
+
     def corresponds_to(self, entity):
         if _is_aliased_class(entity) or self.is_aliased_class:
             return entity is self.path_entity
@@ -3055,7 +3074,7 @@ class _ColumnEntity(_QueryEntity):
         # of FROMs for the overall expression - this helps
         # subqueries which were built from ORM constructs from
         # leaking out their entities into the main select construct
-        actual_froms = set(column._from_objects)
+        self.actual_froms = actual_froms = set(column._from_objects)
 
         self.entities = util.OrderedSet(
             elem._annotations['parententity']
@@ -3068,6 +3087,15 @@ class _ColumnEntity(_QueryEntity):
             self.entity_zero = list(self.entities)[0]
         else:
             self.entity_zero = None
+
+    @property
+    def entity_zero_or_selectable(self):
+        if self.entity_zero:
+            return self.entity_zero
+        elif self.actual_froms:
+            return list(self.actual_froms)[0]
+        else:
+            return None
 
     @property
     def type(self):
