@@ -1622,6 +1622,25 @@ class MiscTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         assert 'will create implicit sequence' in msgs
         assert 'will create implicit index' in msgs
 
+    @testing.only_on('postgresql+psycopg2', 'psycopg2-specific feature')
+    @engines.close_open_connections
+    def test_client_encoding(self):
+        c = testing.db.connect()
+        current_encoding = c.connection.connection.encoding
+        c.close()
+
+        # attempt to use an encoding that's not 
+        # already set
+        if current_encoding == 'UTF8':
+            test_encoding = 'LATIN1'
+        else:
+            test_encoding = 'UTF8'
+
+        e = engines.testing_engine(
+                        options={'client_encoding':test_encoding}
+                    )
+        c = e.connect()
+        eq_(c.connection.connection.encoding, test_encoding)
 
     @testing.fails_on('+zxjdbc',
                       "Can't infer the SQL type to use for an instance "

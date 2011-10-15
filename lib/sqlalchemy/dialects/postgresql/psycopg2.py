@@ -76,6 +76,21 @@ Transactions
 
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
+Client Encoding
+---------------
+
+The psycopg2 dialect accepts a parameter ``client_encoding`` via :func:`.create_engine`
+which will call the psycopg2 ``set_client_encoding()`` method for each new 
+connection::
+
+    engine = create_engine("postgresql://user:pass@host/dbname", client_encoding='utf8')
+
+This overrides the encoding specified in the Postgresql client configuration.
+
+See: http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding
+
+New in 0.7.3.
+
 Transaction Isolation Level
 ---------------------------
 
@@ -247,11 +262,13 @@ class PGDialect_psycopg2(PGDialect):
         }
     )
 
-    def __init__(self, server_side_cursors=False, use_native_unicode=True, **kwargs):
+    def __init__(self, server_side_cursors=False, use_native_unicode=True, 
+                        client_encoding=None, **kwargs):
         PGDialect.__init__(self, **kwargs)
         self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         self.supports_unicode_binds = use_native_unicode
+        self.client_encoding = client_encoding
         if self.dbapi and hasattr(self.dbapi, '__version__'):
             m = re.match(r'(\d+)\.(\d+)(?:\.(\d+))?', 
                                 self.dbapi.__version__)
@@ -289,21 +306,30 @@ class PGDialect_psycopg2(PGDialect):
         connection.set_isolation_level(level)
 
     def on_connect(self):
+        fns = []
+        if self.client_encoding is not None:
+            def on_connect(conn):
+                conn.set_client_encoding(self.client_encoding)
+            fns.append(on_connect)
+
         if self.isolation_level is not None:
-            def base_on_connect(conn):
+            def on_connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
-        else:
-            base_on_connect = None
+            fns.append(on_connect)
 
         if self.dbapi and self.use_native_unicode:
             extensions = __import__('psycopg2.extensions').extensions
-            def connect(conn):
+            def on_connect(conn):
                 extensions.register_type(extensions.UNICODE, conn)
-                if base_on_connect:
-                    base_on_connect(conn)
-            return connect
+            fns.append(on_connect)
+
+        if fns:
+            def on_connect(conn):
+                for fn in fns:
+                    fn(conn)
+            return on_connect
         else:
-            return base_on_connect
+            return None
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username='user')

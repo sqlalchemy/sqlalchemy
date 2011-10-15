@@ -246,6 +246,11 @@ CHANGES
     PG.  [ticket:2290].  Thanks to Ryan P. Kelly for
     the patch.
 
+  - Added client_encoding parameter to create_engine()
+    when the postgresql+psycopg2 dialect is used;
+    calls the psycopg2 set_client_encoding() method
+    with the value upon connect.  [ticket:1839]
+
   - Fixed bug related to [ticket:2141] whereby the 
     same modified index behavior in PG 9 affected
     primary key reflection on a renamed column.
