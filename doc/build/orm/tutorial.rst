@@ -148,7 +148,7 @@ are of course entirely feasible as well.
 We define a constructor via ``__init__()`` and also a ``__repr__()`` method - both are optional.  The
 class of course can have any number of other methods and attributes as required by the application, 
 as it's basically just a plain Python class.   Inheriting from ``Base`` is also only a requirement
-of the declarative configurational system, which itself is optional and relatively open ended; at it's 
+of the declarative configurational system, which itself is optional and relatively open ended; at its 
 core, the SQLAlchemy ORM only requires that a class be a so-called "new style class", that is, it inherits 
 from ``object`` in Python 2, in order to be mapped.   All classes in Python 3 are "new style" classes.
 

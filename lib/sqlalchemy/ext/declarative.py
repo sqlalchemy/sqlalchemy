@@ -537,10 +537,7 @@ idioms is below::
 
         id =  Column(Integer, primary_key=True)
 
-
     class MyModel(Base,MyMixin):
-        __tablename__ = 'test'
-
         name = Column(String(1000))
 
 Where above, the class ``MyModel`` will contain an "id" column
