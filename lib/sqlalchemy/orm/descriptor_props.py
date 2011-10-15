@@ -79,6 +79,8 @@ class CompositeProperty(DescriptorProperty):
         self.active_history = kwargs.get('active_history', False)
         self.deferred = kwargs.get('deferred', False)
         self.group = kwargs.get('group', None)
+        self.comparator_factory = kwargs.pop('comparator_factory',
+                                            self.__class__.Comparator)
         util.set_creation_order(self)
         self._create_descriptor()
 
@@ -257,11 +259,11 @@ class CompositeProperty(DescriptorProperty):
             )
 
     def _comparator_factory(self, mapper):
-        return CompositeProperty.Comparator(self)
+        return self.comparator_factory(self)
 
     class Comparator(PropComparator):
         def __init__(self, prop, adapter=None):
-            self.prop = prop
+            self.prop = self.property = prop
             self.adapter = adapter
 
         def __clause_element__(self):

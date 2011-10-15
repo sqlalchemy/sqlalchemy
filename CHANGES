@@ -85,6 +85,10 @@ CHANGES
     deferred=True option failed due to missing
     import [ticket:2253]
 
+  - Reinstated "comparator_factory" argument to 
+    composite(), removed when 0.7 was released.  
+    [ticket:2248]
+
   - Fixed bug in query.join() which would occur
     in a complex multiple-overlapping path scenario,
     where the same table could be joined to
