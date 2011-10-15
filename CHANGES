@@ -218,6 +218,12 @@ CHANGES
     a '.' before being resolved as an entry
     point.  [ticket:2286]
 
+  - Added an exception catch + warning for the
+    "return unicode detection" step within connect,
+    allows databases that crash on NVARCHAR to
+    continue initializing, assuming no NVARCHAR
+    type implemented.  [ticket:2299]
+
 - types
   - Extra keyword arguments to the base Float 
     type beyond "precision" and "asdecimal" are ignored;

@@ -239,6 +239,21 @@ class ExecuteTest(fixtures.TestBase):
         conn = eng.contextual_connect()
         eq_(conn._execution_options['foo'], 'hoho')
 
+    def test_unicode_test_fails_warning(self):
+        class MockCursor(engines.DBAPIProxyCursor):
+            def execute(self, stmt, params=None):
+                if "test unicode returns" in stmt:
+                    raise self.engine.dialect.dbapi.DatabaseError("boom")
+                else:
+                    return super(MockCursor, self).execute(stmt, params)
+        eng = engines.proxying_engine(cursor_cls=MockCursor)
+        assert_raises_message(
+            tsa.exc.SAWarning,
+            "Exception attempting to detect unicode returns",
+            eng.connect
+        )
+        assert eng.dialect.returns_unicode_strings in (True, False)
+        eng.dispose()
 
 class CompiledCacheTest(fixtures.TestBase):
     @classmethod

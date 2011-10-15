@@ -255,6 +255,60 @@ def mock_engine(dialect_name=None):
     engine.assert_sql = assert_sql
     return engine
 
+class DBAPIProxyCursor(object):
+    """Proxy a DBAPI cursor.
+    
+    Tests can provide subclasses of this to intercept
+    DBAPI-level cursor operations.
+    
+    """
+    def __init__(self, engine, conn):
+        self.engine = engine
+        self.connection = conn
+        self.cursor = conn.cursor()
+
+    def execute(self, stmt, parameters=None):
+        if parameters:
+            return self.cursor.execute(stmt, parameters)
+        else:
+            return self.cursor.execute(stmt)
+
+    def executemany(self, stmt, params):
+        return self.cursor.executemany(stmt, params)
+
+    def __getattr__(self, key):
+        return getattr(self.cursor, key)
+
+class DBAPIProxyConnection(object):
+    """Proxy a DBAPI connection.
+    
+    Tests can provide subclasses of this to intercept
+    DBAPI-level cursor operations.
+    
+    """
+    def __init__(self, engine, cursor_cls):
+        self.conn = self._sqla_unwrap = engine.pool._creator()
+        self.engine = engine
+        self.cursor_cls = cursor_cls
+
+    def cursor(self):
+        return self.cursor_cls(self.engine, self.conn)
+
+    def close(self):
+        self.conn.close()
+
+    def __getattr__(self, key):
+        return getattr(self.conn, key)
+
+def proxying_engine(conn_cls=DBAPIProxyConnection, cursor_cls=DBAPIProxyCursor):
+    """Produce an engine that provides proxy hooks for 
+    common methods.
+    
+    """
+    def mock_conn():
+        return conn_cls(config.db, cursor_cls)
+    return testing_engine(options={'creator':mock_conn})
+
 class ReplayableSession(object):
     """A simple record/playback tool.
 
