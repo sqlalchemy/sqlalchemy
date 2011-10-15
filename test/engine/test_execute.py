@@ -241,11 +241,11 @@ class ExecuteTest(fixtures.TestBase):
 
     def test_unicode_test_fails_warning(self):
         class MockCursor(engines.DBAPIProxyCursor):
-            def execute(self, stmt, params=None):
+            def execute(self, stmt, params=None, **kw):
                 if "test unicode returns" in stmt:
                     raise self.engine.dialect.dbapi.DatabaseError("boom")
                 else:
-                    return super(MockCursor, self).execute(stmt, params)
+                    return super(MockCursor, self).execute(stmt, params, **kw)
         eng = engines.proxying_engine(cursor_cls=MockCursor)
         assert_raises_message(
             tsa.exc.SAWarning,

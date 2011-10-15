@@ -267,14 +267,14 @@ class DBAPIProxyCursor(object):
         self.connection = conn
         self.cursor = conn.cursor()
 
-    def execute(self, stmt, parameters=None):
+    def execute(self, stmt, parameters=None, **kw):
         if parameters:
-            return self.cursor.execute(stmt, parameters)
+            return self.cursor.execute(stmt, parameters, **kw)
         else:
-            return self.cursor.execute(stmt)
+            return self.cursor.execute(stmt, **kw)
 
-    def executemany(self, stmt, params):
-        return self.cursor.executemany(stmt, params)
+    def executemany(self, stmt, params, **kw):
+        return self.cursor.executemany(stmt, params, **kw)
 
     def __getattr__(self, key):
         return getattr(self.cursor, key)
@@ -283,7 +283,7 @@ class DBAPIProxyConnection(object):
     """Proxy a DBAPI connection.
     
     Tests can provide subclasses of this to intercept
-    DBAPI-level cursor operations.
+    DBAPI-level connection operations.
     
     """
     def __init__(self, engine, cursor_cls):
