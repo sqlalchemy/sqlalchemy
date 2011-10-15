@@ -2124,7 +2124,8 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
 
         class Manager(Employee):
             __tablename__ = 'manager'
-            employee_id = Column(Integer, primary_key=True)
+            employee_id = Column(Integer, primary_key=True, 
+                                    test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
@@ -2133,7 +2134,8 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
 
         class Engineer(Employee):
             __tablename__ = 'engineer'
-            employee_id = Column(Integer, primary_key=True)
+            employee_id = Column(Integer, primary_key=True, 
+                                    test_needs_autoincrement=True)
             name = Column(String(50))
             primary_language = Column(String(40))
             __mapper_args__ = {'polymorphic_identity':'engineer', 
@@ -2144,14 +2146,16 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
     def test_concrete_extension(self):
         class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
             __tablename__ = 'employee'
-            employee_id = Column(Integer, primary_key=True)
+            employee_id = Column(Integer, primary_key=True, 
+                                test_needs_autoincrement=True)
             name = Column(String(50))
             __mapper_args__ = {
                             'polymorphic_identity':'employee', 
                             'concrete':True}
         class Manager(Employee):
             __tablename__ = 'manager'
-            employee_id = Column(Integer, primary_key=True)
+            employee_id = Column(Integer, primary_key=True, 
+                            test_needs_autoincrement=True)
             name = Column(String(50))
             golf_swing = Column(String(40))
             __mapper_args__ = {
@@ -2160,7 +2164,8 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
 
         class Engineer(Employee):
             __tablename__ = 'engineer'
-            employee_id = Column(Integer, primary_key=True)
+            employee_id = Column(Integer, primary_key=True, 
+                            test_needs_autoincrement=True)
             name = Column(String(50))
             primary_language = Column(String(40))
             __mapper_args__ = {'polymorphic_identity':'engineer', 
