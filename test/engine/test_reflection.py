@@ -1178,7 +1178,7 @@ class CaseSensitiveTest(fixtures.TablesTest):
         assert "SomeTable" in m.tables
 
     @testing.fails_if(testing.requires._has_mysql_fully_case_sensitive)
-    @testing.fails_on_everything_except('sqlite', 'mysql')
+    @testing.fails_on_everything_except('sqlite', 'mysql', 'mssql')
     def test_reflect_case_insensitive(self):
         m = MetaData()
         t2 = Table("sOmEtAbLe", m, autoload=True, autoload_with=testing.db)
