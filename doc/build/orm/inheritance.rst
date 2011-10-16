@@ -528,9 +528,11 @@ Upon select, the polymorphic union produces a query like this:
     ) AS pjoin
     []
 
-For a recipe that sets up concrete inheritance using declarative, see the `DeclarativeAbstractConcreteBase
-<http://www.sqlalchemy.org/trac/wiki/UsageRecipes/DeclarativeAbstractConcreteBase>`_ recipe on the wiki.
-Other helpers for concrete inheritance with declarative are currently under development.
+Concrete Inheritance with Declarative
+++++++++++++++++++++++++++++++++++++++
+
+As of 0.7.3, the :ref:`declarative_toplevel` module includes helpers for concrete inheritance.
+See :ref:`declarative_concrete_helpers` for more information.
 
 Using Relationships with Inheritance
 ------------------------------------

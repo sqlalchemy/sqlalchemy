@@ -459,6 +459,8 @@ before the class is built::
         __table__ = managers
         __mapper_args__ = {'polymorphic_identity':'manager', 'concrete':True}
 
+.. _declarative_concrete_helpers:
+
 Using the Concrete Helpers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
