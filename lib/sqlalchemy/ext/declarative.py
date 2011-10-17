@@ -539,13 +539,22 @@ idioms is below::
 
         id =  Column(Integer, primary_key=True)
 
-    class MyModel(Base,MyMixin):
+    class MyModel(MyMixin, Base):
         name = Column(String(1000))
 
 Where above, the class ``MyModel`` will contain an "id" column
 as the primary key, a ``__tablename__`` attribute that derives
 from the name of the class itself, as well as ``__table_args__`` 
 and ``__mapper_args__`` defined by the ``MyMixin`` mixin class.
+
+There's no fixed convention over whether ``MyMixin`` precedes 
+``Base`` or not.  Normal Python method resolution rules apply, and 
+the above example would work just as well with::
+
+    class MyModel(Base, MyMixin):
+        name = Column(String(1000))
+
+Because "name" is only present on ``MyMixin``.
 
 Augmenting the Base
 ~~~~~~~~~~~~~~~~~~~
@@ -586,7 +595,7 @@ declaration::
     class TimestampMixin(object):
         created_at = Column(DateTime, default=func.now())
 
-    class MyModel(Base, TimestampMixin):
+    class MyModel(TimestampMixin, Base):
         __tablename__ = 'test'
 
         id =  Column(Integer, primary_key=True)
@@ -626,7 +635,7 @@ patterns common to many classes can be defined as callables::
         def address_id(cls):
             return Column(Integer, ForeignKey('address.id'))
 
-    class User(Base, ReferenceAddressMixin):
+    class User(ReferenceAddressMixin, Base):
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
 
@@ -648,7 +657,7 @@ will resolve them at class construction time::
 
         __mapper_args__= {'polymorphic_on':type_}
 
-    class MyModel(Base,MyMixin):
+    class MyModel(MyMixin, Base):
         __tablename__='test'
         id =  Column(Integer, primary_key=True)
 
@@ -672,11 +681,11 @@ reference a common target class via many-to-one::
         def target(cls):
             return relationship("Target")
 
-    class Foo(Base, RefTargetMixin):
+    class Foo(RefTargetMixin, Base):
         __tablename__ = 'foo'
         id = Column(Integer, primary_key=True)
 
-    class Bar(Base, RefTargetMixin):
+    class Bar(RefTargetMixin, Base):
         __tablename__ = 'bar'
         id = Column(Integer, primary_key=True)
 
@@ -717,7 +726,7 @@ requirement so that no reliance on copying is needed::
         def dprop(cls):
             return deferred(Column(Integer))
 
-    class Something(Base, SomethingMixin):
+    class Something(SomethingMixin, Base):
         __tablename__ = "something"
 
 
@@ -745,7 +754,7 @@ indicate that the class should not have a table mapped::
         def __tablename__(cls):
             return cls.__name__.lower()
 
-    class Person(Base,Tablename):
+    class Person(Tablename, Base):
         id = Column(Integer, primary_key=True)
         discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
@@ -768,14 +777,14 @@ inheritance::
     from sqlalchemy.ext.declarative import declared_attr
     from sqlalchemy.ext.declarative import has_inherited_table
 
-    class Tablename:
+    class Tablename(object):
         @declared_attr
         def __tablename__(cls):
             if has_inherited_table(cls):
                 return None
             return cls.__name__.lower()
 
-    class Person(Base,Tablename):
+    class Person(Tablename, Base):
         id = Column(Integer, primary_key=True)
         discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
@@ -792,7 +801,7 @@ classes::
     from sqlalchemy.ext.declarative import declared_attr
     from sqlalchemy.ext.declarative import has_inherited_table
 
-    class Tablename:
+    class Tablename(object):
         @declared_attr
         def __tablename__(cls):
             if (has_inherited_table(cls) and
@@ -800,7 +809,7 @@ classes::
                 return None
             return cls.__name__.lower()
 
-    class Person(Base,Tablename):
+    class Person(Tablename, Base):
         id = Column(Integer, primary_key=True)
         discriminator = Column('type', String(50))
         __mapper_args__ = {'polymorphic_on': discriminator}
@@ -811,7 +820,7 @@ classes::
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
 
     # This is joined table inheritance
-    class Manager(Person,Tablename):
+    class Manager(Tablename, Person):
         id = Column(Integer, ForeignKey('person.id'), primary_key=True)
         preferred_recreation = Column(String(50))
         __mapper_args__ = {'polymorphic_identity': 'engineer'}
@@ -829,13 +838,13 @@ from multiple collections::
 
     from sqlalchemy.ext.declarative import declared_attr
 
-    class MySQLSettings:
+    class MySQLSettings(object):
         __table_args__ = {'mysql_engine':'InnoDB'}
 
-    class MyOtherMixin:
+    class MyOtherMixin(object):
         __table_args__ = {'info':'foo'}
 
-    class MyModel(Base,MySQLSettings,MyOtherMixin):
+    class MyModel(MySQLSettings, MyOtherMixin, Base):
         __tablename__='my_model'
 
         @declared_attr
@@ -862,7 +871,7 @@ it as part of ``__table_args__``::
         def __table_args__(cls):
             return (Index('test_idx_%s' % cls.__tablename__, 'a', 'b'),)
 
-    class MyModel(Base,MyMixin):
+    class MyModel(MyMixin, Base):
         __tablename__ = 'atable'
         c =  Column(Integer,primary_key=True)
 
