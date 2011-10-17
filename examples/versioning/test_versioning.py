@@ -228,7 +228,7 @@ class TestVersioning(TestCase):
 
         class SubClass(BaseClass):
 
-            subname = Column(String(50))
+            subname = Column(String(50), unique=True)
             __mapper_args__ = {'polymorphic_identity':'sub'}
 
         self.create_tables()
@@ -262,6 +262,11 @@ class TestVersioning(TestCase):
                 SubClassHistory(id=2, name=u's1', type=u'sub', version=1)
             ]
         )
+
+        # test the unique constraint on the subclass
+        # column
+        sc.name ="modifyagain"
+        sess.flush()
 
     def test_unique(self):
         class SomeClass(Versioned, Base, ComparableEntity):

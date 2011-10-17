@@ -60,6 +60,7 @@ def _history_mapper(local_mapper):
         for column in local_mapper.local_table.c:
             if column.key not in super_history_mapper.local_table.c:
                 col = column.copy()
+                col.unique = False
                 super_history_mapper.local_table.append_column(col)
         table = None
 

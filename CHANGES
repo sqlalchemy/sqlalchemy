@@ -3,6 +3,14 @@
 =======
 CHANGES
 =======
+0.7.4
+=====
+- examples
+   - Fixed bug in history_meta.py example where
+     the "unique" flag was not removed from a 
+     single-table-inheritance subclass which 
+     generates columns to put up onto the base.
+
 0.7.3
 =====
 - general
