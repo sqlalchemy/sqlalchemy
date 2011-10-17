@@ -559,7 +559,7 @@ variables that ``MyMixin`` defines, i.e. ``__tablename__``,
 ``__table_args__``, ``id``, etc.   If the ``Base`` did define 
 an attribute of the same name, the class placed first in the 
 inherits list would determine which attribute is used on the 
-newly defined class
+newly defined class.
 
 Augmenting the Base
 ~~~~~~~~~~~~~~~~~~~
