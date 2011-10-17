@@ -554,7 +554,12 @@ the above example would work just as well with::
     class MyModel(Base, MyMixin):
         name = Column(String(1000))
 
-Because "name" is only present on ``MyMixin``.
+This works because ``Base`` here doesn't define any of the 
+variables that ``MyMixin`` defines, i.e. ``__tablename__``, 
+``__table_args__``, ``id``, etc.   If the ``Base`` did define 
+an attribute of the same name, the class placed first in the 
+inherits list would determine which attribute is used on the 
+newly defined class
 
 Augmenting the Base
 ~~~~~~~~~~~~~~~~~~~
