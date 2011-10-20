@@ -28,7 +28,7 @@ ATTR_EMPTY = util.symbol('ATTR_EMPTY')
 NO_VALUE = util.symbol('NO_VALUE')
 NEVER_SET = util.symbol('NEVER_SET')
 
-PASSIVE_RETURN_NEVER_SET = util.symbol('PASSIVE_RETURN_NEVER_SET'
+PASSIVE_RETURN_NEVER_SET = util.symbol('PASSIVE_RETURN_NEVER_SET',
 """Symbol indicating that loader callables can be 
 fired off, but if no callable is applicable and no value is
 present, the attribute should remain non-initialized.
