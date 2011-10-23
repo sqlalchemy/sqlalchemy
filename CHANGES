@@ -61,6 +61,9 @@ CHANGES
     after from_statement() were called.
     [ticket:2199].
 
+  - Cls.column.collate("some collation") now
+    works.  [ticket:1776]
+
 - sql
   - Fixed two subtle bugs involving column 
     correspondence in a selectable,

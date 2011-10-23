@@ -619,6 +619,13 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(User.id.between('a', 'b'),
                    "users.id BETWEEN :id_1 AND :id_2")
 
+    def test_collate(self):
+        self._test(collate(User.id, 'binary'),
+                   "users.id COLLATE binary")
+
+        self._test(User.id.collate('binary'),
+                   "users.id COLLATE binary")
+
     def test_selfref_between(self):
         ualias = aliased(User)
         self._test(User.id.between(ualias.id, ualias.id), "users.id BETWEEN users_1.id AND users_1.id")
