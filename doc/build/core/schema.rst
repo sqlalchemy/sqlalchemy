@@ -1458,3 +1458,13 @@ DDL Expression Constructs API
     :undoc-members:
     :show-inheritance:
 
+.. autoclass:: CreateSchema
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. autoclass:: DropSchema
+    :members:
+    :undoc-members:
+    :show-inheritance:
+

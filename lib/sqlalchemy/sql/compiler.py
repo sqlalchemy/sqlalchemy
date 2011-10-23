@@ -965,7 +965,7 @@ class SQLCompiler(engine.Compiled):
         if colparams or not supports_default_values:
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
                        for c in colparams])
-        
+
         if self.returning or insert_stmt._returning:
             self.returning = self.returning or insert_stmt._returning
             returning_clause = self.returning_clause(
@@ -1246,6 +1246,15 @@ class DDLCompiler(engine.Compiled):
             context.setdefault('fullname', preparer.format_table(ddl.target))
 
         return self.sql_compiler.post_process_text(ddl.statement % context)
+
+    def visit_create_schema(self, create):
+        return "CREATE SCHEMA " + self.preparer.format_schema(create.element, create.quote)
+
+    def visit_drop_schema(self, drop):
+        text = "DROP SCHEMA " + self.preparer.format_schema(drop.element, drop.quote)
+        if drop.cascade:
+            text += " CASCADE"
+        return text
 
     def visit_create_table(self, create):
         table = create.element
@@ -1731,6 +1740,11 @@ class IdentifierPreparer(object):
             result = self.quote_schema(table.schema, table.quote_schema) + \
                                 "." + result
         return result
+
+    def format_schema(self, name, quote):
+        """Prepare a quoted schema name."""
+
+        return self.quote(name, quote)
 
     def format_column(self, column, use_table=False, 
                             name=None, table_name=None):

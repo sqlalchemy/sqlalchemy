@@ -940,23 +940,11 @@ class UnicodeReflectionTest(fixtures.TestBase):
 
 class SchemaTest(fixtures.TestBase):
 
-    def test_iteration(self):
-        metadata = MetaData()
-        table1 = Table('table1', metadata, Column('col1', sa.Integer,
-                       primary_key=True), schema='someschema')
-        table2 = Table('table2', metadata, Column('col1', sa.Integer,
-                       primary_key=True), Column('col2', sa.Integer,
-                       sa.ForeignKey('someschema.table1.col1')),
-                       schema='someschema')
-
-        t1 = str(schema.CreateTable(table1).compile(bind=testing.db))
-        t2 = str(schema.CreateTable(table2).compile(bind=testing.db))
-        if testing.db.dialect.preparer(testing.db.dialect).omit_schema:
-            assert t1.index("CREATE TABLE table1") > -1
-            assert t2.index("CREATE TABLE table2") > -1
-        else:
-            assert t1.index("CREATE TABLE someschema.table1") > -1
-            assert t2.index("CREATE TABLE someschema.table2") > -1
+    @testing.requires.schemas
+    @testing.fails_on_everything_except("postgresql", "unimplemented feature")
+    def test_has_schema(self):
+        eq_(testing.db.dialect.has_schema(testing.db, 'test_schema'), True)
+        eq_(testing.db.dialect.has_schema(testing.db, 'sa_fake_schema_123'), False)
 
     @testing.crashes('firebird', 'No schema support')
     @testing.fails_on('sqlite', 'FIXME: unknown')
@@ -1000,6 +988,55 @@ class SchemaTest(fixtures.TestBase):
         finally:
             metadata.drop_all()
 
+    @testing.crashes('firebird', 'No schema support')
+    # fixme: revisit these below.
+    @testing.fails_on('access', 'FIXME: unknown')
+    @testing.fails_on('sybase', 'FIXME: unknown')
+    def test_explicit_default_schema_metadata(self):
+        engine = testing.db
+
+        if testing.against('sqlite'):
+            # Works for CREATE TABLE main.foo, SELECT FROM main.foo, etc.,
+            # but fails on:
+            #   FOREIGN KEY(col2) REFERENCES main.table1 (col1)
+            schema = 'main'
+        else:
+            schema = engine.dialect.default_schema_name
+
+        assert bool(schema)
+
+        metadata = MetaData(engine, schema=schema)
+        table1 = Table('table1', metadata,
+                       Column('col1', sa.Integer, primary_key=True),
+                       test_needs_fk=True)
+        table2 = Table('table2', metadata,
+                       Column('col1', sa.Integer, primary_key=True),
+                       Column('col2', sa.Integer,
+                              sa.ForeignKey('table1.col1')),
+                       test_needs_fk=True)
+        try:
+            metadata.create_all()
+            metadata.create_all(checkfirst=True)
+            assert len(metadata.tables) == 2
+            metadata.clear()
+
+            table1 = Table('table1', metadata, autoload=True)
+            table2 = Table('table2', metadata, autoload=True)
+            assert len(metadata.tables) == 2
+        finally:
+            metadata.drop_all()
+
+    @testing.requires.schemas
+    @testing.provide_metadata
+    def test_metadata_reflect_schema(self):
+        metadata = self.metadata
+        createTables(metadata, "test_schema")
+        metadata.create_all()
+        m2 = MetaData(schema="test_schema", bind=testing.db)
+        m2.reflect()
+        eq_(m2.tables.keys(), 
+            [u'test_schema.users', u'test_schema.email_addresses']
+        )
 
 class HasSequenceTest(fixtures.TestBase):
 
@@ -1040,6 +1077,8 @@ class HasSequenceTest(fixtures.TestBase):
             schema=test_schema), False)
         eq_(testing.db.dialect.has_sequence(testing.db, 'user_id_seq'),
             False)
+
+
 
 # Tests related to engine.reflection
 

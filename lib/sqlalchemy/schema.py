@@ -231,6 +231,8 @@ class Table(SchemaItem, expression.TableClause):
             raise TypeError("Table() takes at least two arguments")
 
         schema = kw.get('schema', None)
+        if schema is None:
+            schema = metadata.schema
         keep_existing = kw.pop('keep_existing', False)
         extend_existing = kw.pop('extend_existing', False)
         if 'useexisting' in kw:
@@ -288,6 +290,12 @@ class Table(SchemaItem, expression.TableClause):
         super(Table, self).__init__(name)
         self.metadata = metadata
         self.schema = kwargs.pop('schema', None)
+        if self.schema is None:
+            self.schema = metadata.schema
+            self.quote_schema = kwargs.pop('quote_schema', metadata.quote_schema)
+        else:
+            self.quote_schema = kwargs.pop('quote_schema', None)
+
         self.indexes = set()
         self.constraints = set()
         self._columns = expression.ColumnCollection()
@@ -306,7 +314,6 @@ class Table(SchemaItem, expression.TableClause):
 
         self.implicit_returning = kwargs.pop('implicit_returning', True)
         self.quote = kwargs.pop('quote', None)
-        self.quote_schema = kwargs.pop('quote_schema', None)
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
         if 'listeners' in kwargs:
@@ -562,6 +569,8 @@ class Table(SchemaItem, expression.TableClause):
 
         if schema is RETAIN_SCHEMA:
             schema = self.schema
+        elif schema is None:
+            schema = metadata.schema
         key = _get_table_key(self.name, schema)
         if key in metadata.tables:
             util.warn("Table '%s' already exists within the given "
@@ -1108,6 +1117,7 @@ class ForeignKey(SchemaItem):
 
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
                     onupdate=None, ondelete=None, deferrable=None,
+                    schema=None,
                     initially=None, link_to_name=False):
         """
         Construct a column-level FOREIGN KEY.
@@ -1122,6 +1132,10 @@ class ForeignKey(SchemaItem):
             ``columnkey`` is the ``key`` which has been assigned to the column
             (defaults to the column name itself), unless ``link_to_name`` is
             ``True`` in which case the rendered name of the column is used.
+
+            Note that if the schema name is not included, and the underlying
+            :class:`.MetaData` has a "schema", that value will be used.
+            (new in 0.7.4)
 
         :param name: Optional string. An in-database name for the key if
             `constraint` is not provided.
@@ -1285,6 +1299,9 @@ class ForeignKey(SchemaItem):
             # will never appear *within* any component of the FK.
 
             (schema, tname, colname) = (None, None, None)
+            if schema is None and parenttable.metadata.schema is not None:
+                schema = parenttable.metadata.schema
+
             if (len(m) == 1):
                 tname   = m.pop()
             else:
@@ -1520,6 +1537,7 @@ class Sequence(DefaultGenerator):
 
     def __init__(self, name, start=None, increment=None, schema=None,
                  optional=False, quote=None, metadata=None, 
+                 quote_schema=None,
                  for_update=False):
         """Construct a :class:`.Sequence` object.
 
@@ -1575,7 +1593,12 @@ class Sequence(DefaultGenerator):
         self.increment = increment
         self.optional = optional
         self.quote = quote
-        self.schema = schema
+        if metadata is not None and schema is None and metadata.schema:
+            self.schema = schema = metadata.schema
+            self.quote_schema = metadata.quote_schema
+        else:
+            self.schema = schema
+            self.quote_schema = quote_schema
         self.metadata = metadata
         self._key = _get_table_key(name, schema)
         if metadata:
@@ -2215,7 +2238,7 @@ class MetaData(SchemaItem):
 
     __visit_name__ = 'metadata'
 
-    def __init__(self, bind=None, reflect=False):
+    def __init__(self, bind=None, reflect=False, schema=None, quote_schema=None):
         """Create a new MetaData object.
 
         :param bind:
@@ -2229,8 +2252,20 @@ class MetaData(SchemaItem):
           For finer control over loaded tables, use the ``reflect`` method of
           ``MetaData``.
 
+        :param schema:
+           The default schema to use for the :class:`.Table`, :class:`.Sequence`, and other
+           objects associated with this :class:`.MetaData`.
+           Defaults to ``None``.  New in 0.7.4.
+ 
+        :param quote_schema:
+            Sets the ``quote_schema`` flag for those :class:`.Table`, :class:`.Sequence`,
+            and other objects which make usage of the local ``schema`` name.
+            New in 0.7.4.
+
         """
         self.tables = util.immutabledict()
+        self.schema = schema
+        self.quote_schema = quote_schema
         self._schemas = set()
         self._sequences = {}
         self.bind = bind
@@ -2264,11 +2299,15 @@ class MetaData(SchemaItem):
                                 if t.schema is not None])
 
     def __getstate__(self):
-        return {'tables': self.tables, 'schemas':self._schemas, 
+        return {'tables': self.tables, 'schema':self.schema,
+                'quote_schema':self.quote_schema,
+                'schemas':self._schemas, 
                 'sequences':self._sequences}
 
     def __setstate__(self, state):
         self.tables = state['tables']
+        self.schema = state['schema']
+        self.quote_schema = state['quote_schema']
         self._bind = None
         self._sequences = state['sequences']
         self._schemas = state['schemas']
@@ -2332,6 +2371,8 @@ class MetaData(SchemaItem):
 
         :param schema:
           Optional, query and reflect tables from an alterate schema.
+          If None, the schema associated with this :class:`.MetaData`
+          is used, if any.
 
         :param views:
           If True, also reflect views.
@@ -2358,6 +2399,9 @@ class MetaData(SchemaItem):
         else:
             reflect_opts['autoload_with'] = bind
             conn = bind.contextual_connect()
+
+        if schema is None:
+            schema = self.schema
 
         if schema is not None:
             reflect_opts['schema'] = schema
@@ -2932,6 +2976,41 @@ class _CreateDropBase(DDLElement):
 
         """
         return False
+
+class CreateSchema(_CreateDropBase):
+    """Represent a CREATE SCHEMA statement.
+    
+    New in 0.7.4.
+    
+    The argument here is the string name of the schema.
+
+    """
+
+    __visit_name__ = "create_schema"
+
+    def __init__(self, name, quote=None, **kw):
+        """Create a new :class:`.CreateSchema` construct."""
+
+        self.quote = quote
+        super(CreateSchema, self).__init__(name, **kw)
+
+class DropSchema(_CreateDropBase):
+    """Represent a DROP SCHEMA statement.
+
+    The argument here is the string name of the schema.
+    
+    New in 0.7.4.
+    """
+
+    __visit_name__ = "drop_schema"
+
+    def __init__(self, name, quote=None, cascade=False, **kw):
+        """Create a new :class:`.DropSchema` construct."""
+
+        self.quote = quote
+        self.cascade=cascade
+        super(DropSchema, self).__init__(name, **kw)
+
 
 class CreateTable(_CreateDropBase):
     """Represent a CREATE TABLE statement."""

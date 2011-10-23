@@ -952,6 +952,19 @@ class PGDialect(default.DefaultDialect):
     def _get_default_schema_name(self, connection):
         return connection.scalar("select current_schema()")
 
+    def has_schema(self, connection, schema):
+        cursor = connection.execute(
+            sql.text(
+                "select nspname from pg_namespace where lower(nspname)=:schema",
+                bindparams=[
+                    sql.bindparam(
+                        'schema', unicode(schema.lower()),
+                        type_=sqltypes.Unicode)]
+            )
+        )
+
+        return bool(cursor.first())
+
     def has_table(self, connection, table_name, schema=None):
         # seems like case gets folded in pg_class...
         if schema is None:

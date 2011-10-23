@@ -6,23 +6,47 @@ CHANGES
 0.7.4
 =====
 - examples
-   - Fixed bug in history_meta.py example where
+   - [bug] Fixed bug in history_meta.py example where
      the "unique" flag was not removed from a 
      single-table-inheritance subclass which 
      generates columns to put up onto the base.
 
 - orm
-   - Added missing comma to PASSIVE_RETURN_NEVER_SET
+   - [bug] Added missing comma to PASSIVE_RETURN_NEVER_SET
      symbol [ticket:2304]
 
-   - Cls.column.collate("some collation") now
+   - [bug] Cls.column.collate("some collation") now
      works.  [ticket:1776]  Also in 0.6.9
 
 - sql
-   - Added accessor to types called "python_type",
+   - [feature] Added accessor to types called "python_type",
      returns the rudimentary Python type object
      for a particular TypeEngine instance, if known,
      else raises NotImplementedError.  [ticket:77]
+
+- schema
+  - [feature] Added new support for remote "schemas":
+    - MetaData() accepts "schema" and "quote_schema"
+      arguments, which will be applied to the same-named
+      arguments of a Table
+      or Sequence which leaves these at their default
+      of ``None``.
+    - Sequence accepts "quote_schema" argument
+    - tometadata() for Table will use the "schema"
+      of the incoming MetaData for the new Table
+      if the schema argument is explicitly "None"
+    - Added CreateSchema and DropSchema DDL
+      constructs - these accept just the string
+      name of a schema and a "quote" flag.
+    - When using default "schema" with MetaData,
+      ForeignKey will also assume the "default" schema
+      when locating remote table.  This allows the "schema"
+      argument on MetaData to be applied to any 
+      set of Table objects that otherwise don't have 
+      a "schema".
+    - a "has_schema" method has been implemented
+      on dialect, but only works on Postgresql so far.
+    Courtesy Manlio Perillo, [ticket:1679]
 
 0.7.3
 =====

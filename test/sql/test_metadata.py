@@ -429,6 +429,36 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(str(table_c.join(table2_c).onclause),
             'someschema.mytable.myid = someschema.othertable.myid')
 
+    def test_tometadata_with_default_schema(self):
+        meta = MetaData()
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(40), nullable=True),
+            Column('description', String(30),
+                        CheckConstraint("description='hi'")),
+            UniqueConstraint('name'),
+            test_needs_fk=True,
+            schema='myschema',
+        )
+
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
+            test_needs_fk=True,
+            schema='myschema',
+            )
+
+        meta2 = MetaData()
+        table_c = table.tometadata(meta2)
+        table2_c = table2.tometadata(meta2)
+
+        eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid
+            == table2_c.c.myid))
+        eq_(str(table_c.join(table2_c).onclause),
+            'myschema.mytable.myid = myschema.othertable.myid')
+
+
     def test_tometadata_kwargs(self):
         meta = MetaData()
 
@@ -485,34 +515,41 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         # d'oh!
         assert table_c is table_d
 
-    def test_tometadata_default_schema(self):
-        meta = MetaData()
+    def test_metadata_schema_arg(self):
+        m1 = MetaData(schema='sch1')
+        m2 = MetaData(schema='sch1', quote_schema=True)
+        m3 = MetaData(schema='sch1', quote_schema=False)
+        m4 = MetaData()
 
-        table = Table('mytable', meta,
-            Column('myid', Integer, primary_key=True),
-            Column('name', String(40), nullable=True),
-            Column('description', String(30),
-                        CheckConstraint("description='hi'")),
-            UniqueConstraint('name'),
-            test_needs_fk=True,
-            schema='myschema',
-        )
-
-        table2 = Table('othertable', meta,
-            Column('id', Integer, primary_key=True),
-            Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
-            test_needs_fk=True,
-            schema='myschema',
-            )
-
-        meta2 = MetaData()
-        table_c = table.tometadata(meta2)
-        table2_c = table2.tometadata(meta2)
-
-        eq_(str(table_c.join(table2_c).onclause), str(table_c.c.myid
-            == table2_c.c.myid))
-        eq_(str(table_c.join(table2_c).onclause),
-            'myschema.mytable.myid = myschema.othertable.myid')
+        for i, (name, metadata, schema, quote_schema, exp_schema, exp_quote_schema) in enumerate([
+            ('t1', m1, None, None, 'sch1', None),
+            ('t2', m1, 'sch2', None, 'sch2', None),
+            ('t3', m1, 'sch2', True, 'sch2', True),
+            ('t4', m1, 'sch1', None, 'sch1', None),
+            ('t1', m2, None, None, 'sch1', True),
+            ('t2', m2, 'sch2', None, 'sch2', None),
+            ('t3', m2, 'sch2', True, 'sch2', True),
+            ('t4', m2, 'sch1', None, 'sch1', None),
+            ('t1', m3, None, None, 'sch1', False),
+            ('t2', m3, 'sch2', None, 'sch2', None),
+            ('t3', m3, 'sch2', True, 'sch2', True),
+            ('t4', m3, 'sch1', None, 'sch1', None),
+            ('t1', m4, None, None, None, None),
+            ('t2', m4, 'sch2', None, 'sch2', None),
+            ('t3', m4, 'sch2', True, 'sch2', True),
+            ('t4', m4, 'sch1', None, 'sch1', None),
+        ]):
+            kw = {}
+            if schema is not None:
+                kw['schema'] = schema
+            if quote_schema is not None:
+                kw['quote_schema'] = quote_schema
+            t = Table(name, metadata, **kw)
+            eq_(t.schema, exp_schema, "test %d, table schema" % i)
+            eq_(t.quote_schema, exp_quote_schema, "test %d, table quote_schema" % i)
+            seq = Sequence(name, metadata=metadata, **kw)
+            eq_(seq.schema, exp_schema, "test %d, seq schema" % i)
+            eq_(seq.quote_schema, exp_quote_schema, "test %d, seq quote_schema" % i)
 
     def test_manual_dependencies(self):
         meta = MetaData()
@@ -531,6 +568,32 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             meta.sorted_tables,
             [d, b, a, c, e]
         )
+
+    def test_tometadata_default_schema_metadata(self):
+        meta = MetaData(schema='myschema')
+
+        table = Table('mytable', meta,
+            Column('myid', Integer, primary_key=True),
+            Column('name', String(40), nullable=True),
+            Column('description', String(30), CheckConstraint("description='hi'")),
+            UniqueConstraint('name'),
+            test_needs_fk=True
+        )
+
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('myschema.mytable.myid')),
+            test_needs_fk=True
+            )
+
+        meta2 = MetaData(schema='someschema')
+        table_c = table.tometadata(meta2, schema=None)
+        table2_c = table2.tometadata(meta2, schema=None)
+
+        eq_(str(table_c.join(table2_c).onclause), 
+                str(table_c.c.myid == table2_c.c.myid))
+        eq_(str(table_c.join(table2_c).onclause), 
+                "someschema.mytable.myid = someschema.othertable.myid")
 
     def test_tometadata_strip_schema(self):
         meta = MetaData()
@@ -646,6 +709,79 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             TypeError,
             assign
         )
+
+class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
+
+    def test_default_schema_metadata_fk(self):
+        m = MetaData(schema="foo")
+        t1 = Table('t1', m, Column('x', Integer))
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')))
+        assert t2.c.x.references(t1.c.x)
+
+    def test_ad_hoc_schema_equiv_fk(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer), schema="foo")
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')), schema="foo")
+        assert_raises(
+            exc.NoReferencedTableError,
+            lambda: t2.c.x.references(t1.c.x)
+        )
+
+    def test_default_schema_metadata_fk_alt_remote(self):
+        m = MetaData(schema="foo")
+        t1 = Table('t1', m, Column('x', Integer))
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')), 
+                                schema="bar")
+        assert t2.c.x.references(t1.c.x)
+
+    def test_default_schema_metadata_fk_alt_local_raises(self):
+        m = MetaData(schema="foo")
+        t1 = Table('t1', m, Column('x', Integer), schema="bar")
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')))
+        assert_raises(
+            exc.NoReferencedTableError,
+            lambda: t2.c.x.references(t1.c.x)
+        )
+
+    def test_default_schema_metadata_fk_alt_local(self):
+        m = MetaData(schema="foo")
+        t1 = Table('t1', m, Column('x', Integer), schema="bar")
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('bar.t1.x')))
+        assert t2.c.x.references(t1.c.x)
+
+    def test_create_drop_schema(self):
+
+        self.assert_compile(
+            schema.CreateSchema("sa_schema"),
+            "CREATE SCHEMA sa_schema"
+        )
+        self.assert_compile(
+            schema.DropSchema("sa_schema"),
+            "DROP SCHEMA sa_schema"
+        )
+        self.assert_compile(
+            schema.DropSchema("sa_schema", cascade=True),
+            "DROP SCHEMA sa_schema CASCADE"
+        )
+
+    def test_iteration(self):
+        metadata = MetaData()
+        table1 = Table('table1', metadata, Column('col1', Integer,
+                       primary_key=True), schema='someschema')
+        table2 = Table('table2', metadata, Column('col1', Integer,
+                       primary_key=True), Column('col2', Integer,
+                       ForeignKey('someschema.table1.col1')),
+                       schema='someschema')
+
+        t1 = str(schema.CreateTable(table1).compile(bind=testing.db))
+        t2 = str(schema.CreateTable(table2).compile(bind=testing.db))
+        if testing.db.dialect.preparer(testing.db.dialect).omit_schema:
+            assert t1.index("CREATE TABLE table1") > -1
+            assert t2.index("CREATE TABLE table2") > -1
+        else:
+            assert t1.index("CREATE TABLE someschema.table1") > -1
+            assert t2.index("CREATE TABLE someschema.table2") > -1
+
 
 class UseExistingTest(fixtures.TablesTest):
     @classmethod
