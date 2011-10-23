@@ -453,14 +453,14 @@ def as_():
 def exists():
     raise NotImplementedError()
 
-def is_():
-    raise NotImplementedError()
+def is_(a, b):
+    return a.is_(b)
 
-def isnot():
-    raise NotImplementedError()
+def isnot(a, b):
+    return a.isnot(b)
 
-def collate():
-    raise NotImplementedError()
+def collate(a, b):
+    return a.collate(b)
 
 def op(a, opstring, b):
     return a.op(opstring)(b)
