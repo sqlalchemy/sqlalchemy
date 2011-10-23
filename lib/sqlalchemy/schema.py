@@ -322,29 +322,26 @@ class Table(SchemaItem, expression.TableClause):
         # we do it after the table is in the singleton dictionary to support
         # circular foreign keys
         if autoload:
-            self._autoload(metadata, autoload_with, include_columns)
+            if autoload_with:
+                autoload_with.run_callable(
+                    autoload_with.dialect.reflecttable,
+                    self, include_columns
+                )
+            else:
+                bind = _bind_or_error(metadata, 
+                        msg="No engine is bound to this Table's MetaData. "
+                        "Pass an engine to the Table via "
+                        "autoload_with=<someengine>, "
+                        "or associate the MetaData with an engine via "
+                        "metadata.bind=<someengine>")
+                bind.run_callable(
+                        bind.dialect.reflecttable,
+                        self, include_columns
+                    )
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
         self._init_items(*args)
-
-    def _autoload(self, metadata, autoload_with, include_columns):
-        if autoload_with:
-            autoload_with.run_callable(
-                autoload_with.dialect.reflecttable,
-                self, include_columns
-            )
-        else:
-            bind = _bind_or_error(metadata, 
-                    msg="No engine is bound to this Table's MetaData. "
-                    "Pass an engine to the Table via "
-                    "autoload_with=<someengine>, "
-                    "or associate the MetaData with an engine via "
-                    "metadata.bind=<someengine>")
-            bind.run_callable(
-                    bind.dialect.reflecttable,
-                    self, include_columns
-                )
 
     @property
     def _sorted_constraints(self):
@@ -373,9 +370,6 @@ class Table(SchemaItem, expression.TableClause):
 
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
-
-        if autoload:
-            self._autoload(self.metadata, autoload_with, include_columns)
 
         self._extra_kwargs(**kwargs)
         self._init_items(*args)

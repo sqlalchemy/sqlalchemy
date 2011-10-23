@@ -1584,7 +1584,7 @@ class _Binary(TypeEngine):
 
     @property
     def python_type(self):
-        # Py3K
+        #Py3K
         #return bytes
         # Py2K
         return str
