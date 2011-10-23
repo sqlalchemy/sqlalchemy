@@ -112,6 +112,25 @@ class TypeEngine(AbstractType):
         """
         return None
 
+    @property
+    def python_type(self):
+        """Return the Python type object expected to be returned
+        by instances of this type, if known.   
+        
+        Basically, for those types which enforce a return type,
+        or are known across the board to do such for all common 
+        DBAPIs (like ``int`` for example), will return that type.
+        
+        If a return type is not defined, raises
+        ``NotImplementedError``.
+        
+        Note that any type also accommodates NULL in SQL which
+        means you can also get back ``None`` from any type
+        in practice.
+
+        """
+        raise NotImplementedError()
+
     def with_variant(self, type_, dialect_name):
         """Produce a new type object that will utilize the given 
         type when applied to the dialect of the given name.
@@ -1069,6 +1088,13 @@ class String(Concatenable, TypeEngine):
         else:
             return None
 
+    @property
+    def python_type(self):
+        if self.convert_unicode:
+            return unicode
+        else:
+            return str
+
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
@@ -1175,6 +1201,10 @@ class Integer(_DateAffinity, TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
+
+    @property
+    def python_type(self):
+        return int
 
     @util.memoized_property
     def _expression_adaptations(self):
@@ -1310,6 +1340,13 @@ class Numeric(_DateAffinity, TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
+
+    @property
+    def python_type(self):
+        if self.asdecimal:
+            return decimal.Decimal
+        else:
+            return float
 
     def bind_processor(self, dialect):
         if dialect.supports_native_decimal:
@@ -1456,6 +1493,10 @@ class DateTime(_DateAffinity, TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+    @property
+    def python_type(self):
+        return dt.datetime
+
     @util.memoized_property
     def _expression_adaptations(self):
         return {
@@ -1476,6 +1517,10 @@ class Date(_DateAffinity,TypeEngine):
 
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
+
+    @property
+    def python_type(self):
+        return dt.date
 
     @util.memoized_property
     def _expression_adaptations(self):
@@ -1513,6 +1558,10 @@ class Time(_DateAffinity,TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+    @property
+    def python_type(self):
+        return dt.time
+
     @util.memoized_property
     def _expression_adaptations(self):
         return {
@@ -1532,6 +1581,14 @@ class _Binary(TypeEngine):
 
     def __init__(self, length=None):
         self.length = length
+
+    @property
+    def python_type(self):
+        #Py3K
+        #return bytes
+        # Py2K
+        return str
+        # end Py2K
 
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
     # here, though pg8000 does to indicate "bytea"
@@ -1948,6 +2005,10 @@ class Boolean(TypeEngine, SchemaType):
                     )
         table.append_constraint(e)
 
+    @property
+    def python_type(self):
+        return bool
+
     def bind_processor(self, dialect):
         if dialect.supports_native_boolean:
             return None
@@ -2013,6 +2074,10 @@ class Interval(_DateAffinity, TypeDecorator):
                         second_precision=self.second_precision, 
                         day_precision=self.day_precision,
                         **kw)
+
+    @property
+    def python_type(self):
+        return dt.timedelta
 
     def bind_processor(self, dialect):
         impl_processor = self.impl.bind_processor(dialect)

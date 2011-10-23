@@ -130,6 +130,32 @@ class AdaptTest(fixtures.TestBase):
                         getattr(t2, k) == t1.__dict__[k] or \
                         t1.__dict__[k] is None
 
+    def test_python_type(self):
+        eq_(types.Integer().python_type, int)
+        eq_(types.Numeric().python_type, decimal.Decimal)
+        eq_(types.Numeric(asdecimal=False).python_type, float)
+        # Py3K
+        #eq_(types.LargeBinary().python_type, bytes)
+        # Py2K
+        eq_(types.LargeBinary().python_type, str)
+        # end Py2K
+        eq_(types.Float().python_type, float)
+        eq_(types.Interval().python_type, datetime.timedelta)
+        eq_(types.Date().python_type, datetime.date)
+        eq_(types.DateTime().python_type, datetime.datetime)
+        # Py3K
+        #eq_(types.String().python_type, unicode)
+        # Py2K
+        eq_(types.String().python_type, str)
+        # end Py2K
+        eq_(types.Unicode().python_type, unicode)
+        eq_(types.String(convert_unicode=True).python_type, unicode)
+
+        assert_raises(
+            NotImplementedError,
+            lambda: types.TypeEngine().python_type
+        )
+
     @testing.uses_deprecated()
     def test_repr(self):
         for typ in self._all_types():
