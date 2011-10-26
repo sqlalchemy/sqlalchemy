@@ -27,8 +27,7 @@ class PointTest(fixtures.MappedTest):
             Column('id', Integer, primary_key=True, 
                                 test_needs_autoincrement=True),
             Column('graph_id', Integer, 
-                                ForeignKey('graphs.id'), 
-                                nullable=False),
+                                ForeignKey('graphs.id')),
             Column('x1', Integer),
             Column('y1', Integer),
             Column('x2', Integer),
@@ -114,6 +113,32 @@ class PointTest(fixtures.MappedTest):
 
         e = sess.query(Edge).get(g.edges[1].id)
         eq_(e.end, Point(18, 4))
+
+    def test_not_none(self):
+        Graph, Edge, Point = (self.classes.Graph,
+                                self.classes.Edge,
+                                self.classes.Point)
+
+        # current contract.   the composite is None
+        # when hasn't been populated etc. on a 
+        # pending/transient object.
+        e1 = Edge()
+        assert e1.end is None
+        sess = Session()
+        sess.add(e1)
+
+        # however, once it's persistent, the code as of 0.7.3
+        # would unconditionally populate it, even though it's
+        # all None.  I think this usage contract is inconsistent,
+        # and it would be better that the composite is just
+        # created unconditionally in all cases.
+        # but as we are just trying to fix [ticket:2308] and
+        # [ticket:2309] without changing behavior we maintain
+        # that only "persistent" gets the composite with the 
+        # Nones
+
+        sess.flush()
+        assert e1.end is not None
 
     def test_eager_load(self):
         Graph, Point = self.classes.Graph, self.classes.Point
@@ -322,7 +347,7 @@ class DefaultsTest(fixtures.MappedTest):
                                 test_needs_autoincrement=True),
             Column('x1', Integer, default=2),
             Column('x2', Integer),
-            Column('x3', Integer, default=15),
+            Column('x3', Integer, server_default="15"),
             Column('x4', Integer)
         )
 
@@ -335,21 +360,24 @@ class DefaultsTest(fixtures.MappedTest):
 
         class FBComposite(cls.Comparable):
             def __init__(self, x1, x2, x3, x4):
-                self.x1 = x1
+                self.goofy_x1 = x1
                 self.x2 = x2
                 self.x3 = x3
                 self.x4 = x4
             def __composite_values__(self):
-                return self.x1, self.x2, self.x3, self.x4
+                return self.goofy_x1, self.x2, self.x3, self.x4
             __hash__ = None
             def __eq__(self, other):
-                return other.x1 == self.x1 and \
+                return other.goofy_x1 == self.goofy_x1 and \
                         other.x2 == self.x2 and \
                         other.x3 == self.x3 and \
                         other.x4 == self.x4
             def __ne__(self, other):
                 return not self.__eq__(other)
-
+            def __repr__(self):
+                return "FBComposite(%r, %r, %r, %r)" % (
+                    self.goofy_x1, self.x2, self.x3, self.x4
+                )
         mapper(Foobar, foobars, properties=dict(
             foob=sa.orm.composite(FBComposite, 
                                 foobars.c.x1, 
@@ -368,12 +396,12 @@ class DefaultsTest(fixtures.MappedTest):
         sess.add(f1)
         sess.flush()
 
-        assert f1.foob == FBComposite(2, 5, 15, None)
+        eq_(f1.foob, FBComposite(2, 5, 15, None))
 
         f2 = Foobar()
         sess.add(f2)
         sess.flush()
-        assert f2.foob == FBComposite(2, None, 15, None)
+        eq_(f2.foob, FBComposite(2, None, 15, None))
 
     def test_set_composite_values(self):
         Foobar, FBComposite = self.classes.Foobar, self.classes.FBComposite
@@ -384,7 +412,8 @@ class DefaultsTest(fixtures.MappedTest):
         sess.add(f1)
         sess.flush()
 
-        assert f1.foob == FBComposite(2, 5, 15, None)
+        eq_(f1.foob, FBComposite(2, 5, 15, None))
+
 
 class MappedSelectTest(fixtures.MappedTest):
     @classmethod

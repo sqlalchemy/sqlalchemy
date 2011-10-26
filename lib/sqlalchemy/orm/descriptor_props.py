@@ -104,6 +104,7 @@ class CompositeProperty(DescriptorProperty):
 
         def fget(instance):
             dict_ = attributes.instance_dict(instance)
+            state = attributes.instance_state(instance)
 
             if self.key not in dict_:
                 # key not present.  Iterate through related
@@ -111,11 +112,17 @@ class CompositeProperty(DescriptorProperty):
                 # ensures they all load.
                 values = [getattr(instance, key) for key in self._attribute_keys]
 
-                # usually, the load() event will have loaded our key
-                # at this point, unless we only loaded relationship()
-                # attributes above.  Populate here if that's the case.
-                if self.key not in dict_ and not _none_set.issuperset(values):
+                # current expected behavior here is that the composite is
+                # created on access if the object is persistent or if 
+                # col attributes have non-None.  This would be better 
+                # if the composite were created unconditionally,
+                # but that would be a behavioral change.
+                if self.key not in dict_ and (
+                    state.key is not None or 
+                    not _none_set.issuperset(values)
+                ):
                     dict_[self.key] = self.composite_class(*values)
+                    state.manager.dispatch.refresh(state, None, [self.key])
 
             return dict_.get(self.key, None)
 
@@ -197,6 +204,7 @@ class CompositeProperty(DescriptorProperty):
                 if k not in dict_:
                     return
 
+            #assert self.key not in dict_
             dict_[self.key] = self.composite_class(
                     *[state.dict[key] for key in 
                     self._attribute_keys]
@@ -207,10 +215,14 @@ class CompositeProperty(DescriptorProperty):
                 state.dict.pop(self.key, None)
 
         def insert_update_handler(mapper, connection, state):
-            state.dict[self.key] = self.composite_class(
-                    *[state.dict.get(key, None) for key in 
-                    self._attribute_keys]
-                )
+            """After an insert or update, some columns may be expired due
+            to server side defaults, or re-populated due to client side
+            defaults.  Pop out the composite value here so that it 
+            recreates.
+            
+            """
+
+            state.dict.pop(self.key, None)
 
         event.listen(self.parent, 'after_insert', 
                                     insert_update_handler, raw=True)

@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, ForeignKey
+from sqlalchemy import Integer, ForeignKey, String
 from sqlalchemy.types import PickleType, TypeDecorator, VARCHAR
 from sqlalchemy.orm import mapper, Session, composite
 from sqlalchemy.orm.mapper import Mapper
@@ -115,6 +115,17 @@ class _MutableDictTestBase(object):
             f2.data['a'] = 'c'
             assert f2 in sess.dirty
 
+    def test_unrelated_flush(self):
+        sess = Session()
+        f1 = Foo(data={"a":"b"}, unrelated_data="unrelated")
+        sess.add(f1)
+        sess.flush()
+        f1.unrelated_data = "unrelated 2"
+        sess.flush()
+        f1.data["a"] = "c"
+        sess.commit()
+        eq_(f1.data["a"], "c")
+
     def _test_non_mutable(self):
         sess = Session()
 
@@ -137,7 +148,8 @@ class MutableWithScalarPickleTest(_MutableDictTestBase, fixtures.MappedTest):
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('skip', mutable_pickle),
             Column('data', mutable_pickle),
-            Column('non_mutable_data', PickleType)
+            Column('non_mutable_data', PickleType),
+            Column('unrelated_data', String(50))
         )
 
     def test_non_mutable(self):
@@ -170,7 +182,8 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', MutationDict.as_mutable(JSONEncodedDict)),
-            Column('non_mutable_data', JSONEncodedDict)
+            Column('non_mutable_data', JSONEncodedDict),
+            Column('unrelated_data', String(50))
         )
 
     def test_non_mutable(self):
@@ -184,7 +197,8 @@ class MutableAssocWithAttrInheritTest(_MutableDictTestBase, fixtures.MappedTest)
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('data', PickleType),
-            Column('non_mutable_data', PickleType)
+            Column('non_mutable_data', PickleType),
+            Column('unrelated_data', String(50))
         )
 
         Table('subfoo', metadata,
@@ -230,7 +244,8 @@ class MutableAssociationScalarPickleTest(_MutableDictTestBase, fixtures.MappedTe
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('skip', PickleType),
-            Column('data', PickleType)
+            Column('data', PickleType),
+            Column('unrelated_data', String(50))
         )
 
 class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
@@ -260,7 +275,8 @@ class MutableAssociationScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest
 
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-            Column('data', JSONEncodedDict)
+            Column('data', JSONEncodedDict),
+            Column('unrelated_data', String(50))
         )
 
 
@@ -270,7 +286,8 @@ class _CompositeTestBase(object):
         Table('foo', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('x', Integer),
-            Column('y', Integer)
+            Column('y', Integer),
+            Column('unrelated_data', String(50))
         )
 
     def teardown(self):
@@ -373,6 +390,18 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
             "Attribute 'data' does not accept objects",
             setattr, f1, 'data', 'foo'
         )
+
+    def test_unrelated_flush(self):
+        sess = Session()
+        f1 = Foo(data=Point(3, 4), unrelated_data="unrelated")
+        sess.add(f1)
+        sess.flush()
+        f1.unrelated_data = "unrelated 2"
+        sess.flush()
+        f1.data.x = 5
+        sess.commit()
+
+        eq_(f1.data.x, 5)
 
 class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
     @classmethod

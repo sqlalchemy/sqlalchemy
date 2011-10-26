@@ -18,6 +18,22 @@ CHANGES
    - [bug] Cls.column.collate("some collation") now
      works.  [ticket:1776]  Also in 0.6.9
 
+   - [bug] the value of a composite attribute is now
+     expired after an insert or update operation, instead
+     of regenerated in place.  This ensures that a 
+     column value which is expired within a flush
+     will be loaded first, before the composite
+     is regenerated using that value.  [ticket:2309]
+
+   - [bug] The fix in [ticket:2309] also emits the
+     "refresh" event when the composite value is
+     loaded on access, even if all column
+     values were already present, as is appropriate.
+     This fixes the "mutable" extension which relies
+     upon the "load" event to ensure the _parents 
+     dictionary is up to date, fixes [ticket:2308].
+     Thanks to Scott Torborg for the test case here.
+
 - sql
    - [feature] Added accessor to types called "python_type",
      returns the rudimentary Python type object
