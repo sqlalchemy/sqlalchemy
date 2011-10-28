@@ -577,7 +577,8 @@ class Mapper(object):
             if mapper.polymorphic_on is not None:
                 mapper._requires_row_aliasing = True
         self.batch = self.inherits.batch
-        self.base_mapper = self.inherits.base_mapper
+        for mp in self.self_and_descendants:
+            mp.base_mapper = self.inherits.base_mapper
         self.inherits._inheriting_mappers.add(self)
         self.passive_updates = self.inherits.passive_updates
         self._all_tables = self.inherits._all_tables

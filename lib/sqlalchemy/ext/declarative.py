@@ -1616,10 +1616,8 @@ class ConcreteBase(object):
         m = cls.__mapper__
         if m.with_polymorphic:
             return
-        mappers = [  sm for sm in [
-                    _mapper_or_none(klass)
-                    for klass in cls.__subclasses__()
-                ] if sm is not None] + [m]
+
+        mappers = list(m.self_and_descendants)
         pjoin = cls._create_polymorphic_union(mappers)
         m._set_with_polymorphic(("*",pjoin))
         m._set_polymorphic_on(pjoin.c.type)
@@ -1661,13 +1659,22 @@ class AbstractConcreteBase(ConcreteBase):
     def __declare_last__(cls):
         if hasattr(cls, '__mapper__'):
             return
-        table = cls._create_polymorphic_union(
-            m for m in [
-                _mapper_or_none(klass)
-                for klass in cls.__subclasses__()
-            ] if m is not None
-        )
-        cls.__mapper__ = m = mapper(cls, table, polymorphic_on=table.c.type)
+
+        # can't rely on 'self_and_descendants' here
+        # since technically an immediate subclass
+        # might not be mapped, but a subclass
+        # may be.
+        mappers = []
+        stack = list(cls.__subclasses__())
+        while stack:
+            klass = stack.pop()
+            stack.extend(klass.__subclasses__())
+            mn = _mapper_or_none(klass)
+            if mn is not None:
+                mappers.append(mn)
+        pjoin = cls._create_polymorphic_union(mappers)
+        cls.__mapper__ = m = mapper(cls, pjoin, polymorphic_on=pjoin.c.type)
+
         for scls in cls.__subclasses__():
             sm = _mapper_or_none(scls)
             if sm.concrete and cls in scls.__bases__:

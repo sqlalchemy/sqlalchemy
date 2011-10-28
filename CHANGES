@@ -38,6 +38,19 @@ CHANGES
      dictionary is up to date, fixes [ticket:2308].
      Thanks to Scott Torborg for the test case here.
 
+   - [bug] Fixed bug whereby a subclass of a subclass
+     using concrete inheritance in conjunction with
+     the new ConcreteBase or AbstractConcreteBase
+     would fail to apply the subclasses deeper than
+     one level to the "polymorphic loader" of each
+     base  [ticket:2312]
+
+   - [bug] Fixed bug whereby a subclass of a subclass
+     using the new AbstractConcreteBase would fail
+     to acquire the correct "base_mapper" attribute
+     when the "base" mapper was generated, thereby
+     causing failures later on.  [ticket:2312]
+
 - sql
    - [feature] Added accessor to types called "python_type",
      returns the rudimentary Python type object

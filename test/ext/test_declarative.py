@@ -2037,25 +2037,27 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
 from test.orm.test_events import _RemoveListeners
 class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
-    def _roundtrip(self, Employee, Manager, Engineer, polymorphic=True):
+    def _roundtrip(self, Employee, Manager, Engineer, Boss, polymorphic=True):
         Base.metadata.create_all()
         sess = create_session()
         e1 = Engineer(name='dilbert', primary_language='java')
         e2 = Engineer(name='wally', primary_language='c++')
         m1 = Manager(name='dogbert', golf_swing='fore!')
         e3 = Engineer(name='vlad', primary_language='cobol')
-        sess.add_all([e1, e2, m1, e3])
+        b1 = Boss(name="pointy haired")
+        sess.add_all([e1, e2, m1, e3, b1])
         sess.flush()
         sess.expunge_all()
         if polymorphic:
             eq_(sess.query(Employee).order_by(Employee.name).all(),
                 [Engineer(name='dilbert'), Manager(name='dogbert'),
-                Engineer(name='vlad'), Engineer(name='wally')])
+                Boss(name='pointy haired'), Engineer(name='vlad'), Engineer(name='wally')])
         else:
             eq_(sess.query(Engineer).order_by(Engineer.name).all(),
                 [Engineer(name='dilbert'), Engineer(name='vlad'),
                 Engineer(name='wally')])
             eq_(sess.query(Manager).all(), [Manager(name='dogbert')])
+            eq_(sess.query(Boss).all(), [Boss(name='pointy haired')])
 
 
     def test_explicit(self):
@@ -2064,12 +2066,20 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                           test_needs_autoincrement=True), Column('name'
                           , String(50)), Column('primary_language',
                           String(50)))
-        managers = Table('managers', Base.metadata, Column('id',
-                         Integer, primary_key=True,
-                         test_needs_autoincrement=True), Column('name',
-                         String(50)), Column('golf_swing', String(50)))
-        punion = polymorphic_union({'engineer': engineers, 'manager'
-                                   : managers}, 'type', 'punion')
+        managers = Table('managers', Base.metadata, 
+                    Column('id',Integer, primary_key=True, test_needs_autoincrement=True), 
+                    Column('name', String(50)), 
+                    Column('golf_swing', String(50))
+                )
+        boss = Table('boss', Base.metadata, 
+                    Column('id',Integer, primary_key=True, test_needs_autoincrement=True), 
+                    Column('name', String(50)), 
+                    Column('golf_swing', String(50))
+                )
+        punion = polymorphic_union({
+                                'engineer': engineers, 
+                                'manager' : managers,
+                                'boss': boss}, 'type', 'punion')
 
         class Employee(Base, fixtures.ComparableEntity):
 
@@ -2087,7 +2097,13 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             __table__ = managers
             __mapper_args__ = {'polymorphic_identity': 'manager',
                                'concrete': True}
-        self._roundtrip(Employee, Manager, Engineer)
+
+        class Boss(Manager):
+            __table__ = boss
+            __mapper_args__ = {'polymorphic_identity': 'boss',
+                               'concrete': True}
+
+        self._roundtrip(Employee, Manager, Engineer, Boss)
 
     def test_concrete_inline_non_polymorphic(self):
         """test the example from the declarative docs."""
@@ -2116,7 +2132,16 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                         test_needs_autoincrement=True)
             golf_swing = Column(String(50))
             name = Column(String(50))
-        self._roundtrip(Employee, Manager, Engineer, polymorphic=False)
+
+        class Boss(Manager):
+            __tablename__ = 'boss'
+            __mapper_args__ = {'concrete': True}
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            golf_swing = Column(String(50))
+            name = Column(String(50))
+
+        self._roundtrip(Employee, Manager, Engineer, Boss, polymorphic=False)
 
     def test_abstract_concrete_extension(self):
         class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
@@ -2132,6 +2157,16 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                             'polymorphic_identity':'manager', 
                             'concrete':True}
 
+        class Boss(Manager):
+            __tablename__ = 'boss'
+            employee_id = Column(Integer, primary_key=True, 
+                                    test_needs_autoincrement=True)
+            name = Column(String(50))
+            golf_swing = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'boss', 
+                            'concrete':True}
+
         class Engineer(Employee):
             __tablename__ = 'engineer'
             employee_id = Column(Integer, primary_key=True, 
@@ -2141,7 +2176,7 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             __mapper_args__ = {'polymorphic_identity':'engineer', 
                             'concrete':True}
 
-        self._roundtrip(Employee, Manager, Engineer)
+        self._roundtrip(Employee, Manager, Engineer, Boss)
 
     def test_concrete_extension(self):
         class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
@@ -2162,6 +2197,16 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
                             'polymorphic_identity':'manager', 
                             'concrete':True}
 
+        class Boss(Manager):
+            __tablename__ = 'boss'
+            employee_id = Column(Integer, primary_key=True, 
+                                    test_needs_autoincrement=True)
+            name = Column(String(50))
+            golf_swing = Column(String(40))
+            __mapper_args__ = {
+                            'polymorphic_identity':'boss', 
+                            'concrete':True}
+
         class Engineer(Employee):
             __tablename__ = 'engineer'
             employee_id = Column(Integer, primary_key=True, 
@@ -2170,7 +2215,7 @@ class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
             primary_language = Column(String(40))
             __mapper_args__ = {'polymorphic_identity':'engineer', 
                             'concrete':True}
-        self._roundtrip(Employee, Manager, Engineer)
+        self._roundtrip(Employee, Manager, Engineer, Boss)
 
 
 def _produce_test(inline, stringbased):
