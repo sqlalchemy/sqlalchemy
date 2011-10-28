@@ -690,6 +690,18 @@ class MapperTest(_fixtures.FixtureTest):
         s.add(A())
         s.commit()
 
+    def test_we_dont_call_bool(self):
+        class NoBoolAllowed(object):
+            def __nonzero__(self):
+                raise Exception("nope")
+        mapper(NoBoolAllowed, self.tables.users)
+        u1 = NoBoolAllowed()
+        u1.name = "some name"
+        s = Session(testing.db)
+        s.add(u1)
+        s.commit()
+        assert s.query(NoBoolAllowed).get(u1.id) is u1
+
     def test_we_dont_call_eq(self):
         class NoEqAllowed(object):
             def __eq__(self, other):

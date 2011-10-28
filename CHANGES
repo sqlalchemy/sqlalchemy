@@ -12,6 +12,10 @@ CHANGES
      generates columns to put up onto the base.
 
 - orm
+   - [bug] fixed inappropriate evaluation of user-mapped
+     object in a boolean context within query.get()
+     [ticket:2310].  Also in 0.6.9.
+
    - [bug] Added missing comma to PASSIVE_RETURN_NEVER_SET
      symbol [ticket:2304]
 

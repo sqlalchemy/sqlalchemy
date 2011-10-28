@@ -2240,7 +2240,7 @@ class Query(object):
 
         """
         instance = session.identity_map.get(key)
-        if instance:
+        if instance is not None:
 
             state = attributes.instance_state(instance)
 
