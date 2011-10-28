@@ -660,6 +660,18 @@ class MapperTest(_fixtures.FixtureTest):
         a1 = s.query(Address).filter_by(id=12).one()
         assert a1.user is u1
 
+    @testing.resolve_artifact_names
+    def test_we_dont_call_bool(self):
+        class NoBoolAllowed(object):
+            def __nonzero__(self):
+                raise Exception("nope")
+        mapper(NoBoolAllowed, users)
+        u1 = NoBoolAllowed()
+        u1.name = "some name"
+        s = Session(testing.db)
+        s.add(u1)
+        s.commit()
+        assert s.query(NoBoolAllowed).get(u1.id) is u1
 
     @testing.resolve_artifact_names
     def test_mapping_to_join_raises(self):

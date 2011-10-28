@@ -1957,7 +1957,7 @@ class Query(object):
                 not mapper.always_refresh and \
                 lockmode is None:
             instance = self.session.identity_map.get(key)
-            if instance:
+            if instance is not None:
                 # item present in identity map with a different class
                 if not issubclass(instance.__class__, mapper.class_):
                     return None
