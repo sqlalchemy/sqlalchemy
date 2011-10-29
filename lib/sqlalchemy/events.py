@@ -78,10 +78,11 @@ class DDLEvents(event.Events):
         :param connection: the :class:`.Connection` where the
          CREATE statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
-         to the event.  Currently this includes the ``tables``
-         argument in the case of a :class:`.MetaData` object,
-         which is the list of :class:`.Table` objects for which
-         CREATE will be emitted.
+         to the event.  The contents of this dictionary
+         may vary across releases, and include the
+         list of tables being generated for a metadata-level
+         event, the checkfirst flag, and other 
+         elements used by internal events.
 
         """
 
@@ -93,10 +94,11 @@ class DDLEvents(event.Events):
         :param connection: the :class:`.Connection` where the
          CREATE statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
-         to the event.  Currently this includes the ``tables``
-         argument in the case of a :class:`.MetaData` object,
-         which is the list of :class:`.Table` objects for which
-         CREATE has been emitted.
+         to the event.  The contents of this dictionary
+         may vary across releases, and include the
+         list of tables being generated for a metadata-level
+         event, the checkfirst flag, and other 
+         elements used by internal events.
 
         """
 
@@ -108,10 +110,11 @@ class DDLEvents(event.Events):
         :param connection: the :class:`.Connection` where the
          DROP statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
-         to the event.  Currently this includes the ``tables``
-         argument in the case of a :class:`.MetaData` object,
-         which is the list of :class:`.Table` objects for which
-         DROP will be emitted.
+         to the event.  The contents of this dictionary
+         may vary across releases, and include the
+         list of tables being generated for a metadata-level
+         event, the checkfirst flag, and other 
+         elements used by internal events.
 
         """
 
@@ -123,10 +126,11 @@ class DDLEvents(event.Events):
         :param connection: the :class:`.Connection` where the
          DROP statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
-         to the event.  Currently this includes the ``tables``
-         argument in the case of a :class:`.MetaData` object,
-         which is the list of :class:`.Table` objects for which
-         DROP has been emitted.
+         to the event.  The contents of this dictionary
+         may vary across releases, and include the
+         list of tables being generated for a metadata-level
+         event, the checkfirst flag, and other 
+         elements used by internal events.
 
         """
 

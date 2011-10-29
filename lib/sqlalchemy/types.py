@@ -30,7 +30,7 @@ from sqlalchemy.util import pickle
 from sqlalchemy.util.compat import decimal
 from sqlalchemy.sql.visitors import Visitable
 from sqlalchemy import util
-from sqlalchemy import processors, events
+from sqlalchemy import processors, events, event
 import collections
 default = util.importlater("sqlalchemy.engine", "default")
 
@@ -1686,26 +1686,45 @@ class SchemaType(events.SchemaEventTarget):
         self.schema = kw.pop('schema', None)
         self.metadata = kw.pop('metadata', None)
         if self.metadata:
-            self.metadata.append_ddl_listener('before-create',
-                    util.portable_instancemethod(self._on_metadata_create))
-            self.metadata.append_ddl_listener('after-drop',
-                    util.portable_instancemethod(self._on_metadata_drop))
+            event.listen(
+                self.metadata,
+                "before_create",
+                util.portable_instancemethod(self._on_metadata_create)
+            )
+            event.listen(
+                self.metadata,
+                "after_drop",
+                util.portable_instancemethod(self._on_metadata_drop)
+            )
 
     def _set_parent(self, column):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _set_table(self, column, table):
-        table.append_ddl_listener('before-create',
-                                  util.portable_instancemethod(
-                                        self._on_table_create))
-        table.append_ddl_listener('after-drop',
-                                  util.portable_instancemethod(
-                                        self._on_table_drop))
+        event.listen(
+            table,
+            "before_create",
+              util.portable_instancemethod(
+                    self._on_table_create)
+        )
+        event.listen(
+            table,
+            "after_drop",
+            util.portable_instancemethod(self._on_table_drop)
+        )
         if self.metadata is None:
-            table.metadata.append_ddl_listener('before-create',
-                    util.portable_instancemethod(self._on_metadata_create))
-            table.metadata.append_ddl_listener('after-drop',
-                    util.portable_instancemethod(self._on_metadata_drop))
+            # TODO: what's the difference between self.metadata
+            # and table.metadata here ?
+            event.listen(
+                table.metadata,
+                "before_create",
+                util.portable_instancemethod(self._on_metadata_create)
+            )
+            event.listen(
+                table.metadata,
+                "after_drop",
+                util.portable_instancemethod(self._on_metadata_drop)
+            )
 
     @property
     def bind(self):
@@ -1729,25 +1748,25 @@ class SchemaType(events.SchemaEventTarget):
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
             t.drop(bind=bind, checkfirst=checkfirst)
 
-    def _on_table_create(self, event, target, bind, **kw):
+    def _on_table_create(self, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t._on_table_create(event, target, bind, **kw)
+            t._on_table_create(target, bind, **kw)
 
-    def _on_table_drop(self, event, target, bind, **kw):
+    def _on_table_drop(self, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t._on_table_drop(event, target, bind, **kw)
+            t._on_table_drop(target, bind, **kw)
 
-    def _on_metadata_create(self, event, target, bind, **kw):
+    def _on_metadata_create(self, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t._on_metadata_create(event, target, bind, **kw)
+            t._on_metadata_create(target, bind, **kw)
 
-    def _on_metadata_drop(self, event, target, bind, **kw):
+    def _on_metadata_drop(self, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t._on_metadata_drop(event, target, bind, **kw)
+            t._on_metadata_drop(target, bind, **kw)
 
 class Enum(String, SchemaType):
     """Generic Enum Type.

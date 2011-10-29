@@ -247,12 +247,18 @@ def mock_engine(dialect_name=None):
     def assert_sql(stmts):
         recv = [re.sub(r'[\n\t]', '', str(s)) for s in buffer]
         assert  recv == stmts, recv
-
+    def print_sql():
+        d = engine.dialect
+        return "\n".join(
+            str(s.compile(dialect=d)) 
+            for s in engine.mock
+        )
     engine = create_engine(dialect_name + '://',
                            strategy='mock', executor=executor)
     assert not hasattr(engine, 'mock')
     engine.mock = buffer
     engine.assert_sql = assert_sql
+    engine.print_sql = print_sql
     return engine
 
 class DBAPIProxyCursor(object):

@@ -956,6 +956,20 @@ class EnumTest(fixtures.TestBase):
             {'id':4, 'someenum':'four'}
         )
 
+    def test_mock_engine_no_prob(self):
+        """ensure no 'checkfirst' queries are run when enums
+        are created with checkfirst=False"""
+
+        e = engines.mock_engine()
+        t = Table('t1', MetaData(),
+            Column('x', Enum("x", "y", name="pge"))
+        )
+        t.create(e, checkfirst=False)
+        # basically looking for the start of 
+        # the constraint, or the ENUM def itself,
+        # depending on backend.
+        assert "('x'," in e.print_sql()
+
 class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     __excluded_on__ = (
         ('mysql', '<', (4, 1, 1)),  # screwy varbinary types

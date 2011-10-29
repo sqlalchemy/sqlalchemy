@@ -449,15 +449,40 @@ class ENUM(sqltypes.Enum):
             bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(DropEnumType(self))
 
-    def _on_table_create(self, event, target, bind, **kw):
-        self.create(bind=bind, checkfirst=True)
+    def _check_for_name_in_memos(self, checkfirst, kw):
+        """Look in the 'ddl runner' for 'memos', then
+        note our name in that collection.
+        
+        This to ensure a particular named enum is operated
+        upon only once within any kind of create/drop
+        sequence without relying upon "checkfirst".
 
-    def _on_metadata_create(self, event, target, bind, **kw):
-        if self.metadata is not None:
-            self.create(bind=bind, checkfirst=True)
+        """
 
-    def _on_metadata_drop(self, event, target, bind, **kw):
-        self.drop(bind=bind, checkfirst=True)
+        if '_ddl_runner' in kw:
+            ddl_runner = kw['_ddl_runner']
+            if '_pg_enums' in ddl_runner.memo:
+                pg_enums = ddl_runner.memo['_pg_enums']
+            else:
+                pg_enums = ddl_runner.memo['_pg_enums'] = set()
+            present = self.name in pg_enums
+            pg_enums.add(self.name)
+            return present
+        else:
+            return False
+
+    def _on_table_create(self, target, bind, checkfirst, **kw):
+        if not self._check_for_name_in_memos(checkfirst, kw):
+            self.create(bind=bind, checkfirst=checkfirst)
+
+    def _on_metadata_create(self, target, bind, checkfirst, **kw):
+        if self.metadata is not None and \
+            not self._check_for_name_in_memos(checkfirst, kw):
+            self.create(bind=bind, checkfirst=checkfirst)
+
+    def _on_metadata_drop(self, target, bind, checkfirst, **kw):
+        if not self._check_for_name_in_memos(checkfirst, kw):
+            self.drop(bind=bind, checkfirst=checkfirst)
 
 colspecs = {
     sqltypes.Interval:INTERVAL,

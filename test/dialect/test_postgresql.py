@@ -450,6 +450,30 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
         finally:
             metadata.drop_all(testing.db)
 
+    @testing.provide_metadata
+    def test_generate_multiple(self):
+        """Test that the same enum twice only generates once
+        for the create_all() call, without using checkfirst.
+        
+        A 'memo' collection held by the DDL runner
+        now handles this.
+        
+        """
+        metadata = self.metadata
+
+        e1 = Enum('one', 'two', 'three', 
+                            name="myenum")
+        t1 = Table('e1', metadata,
+            Column('c1', e1)
+        )
+
+        t2 = Table('e2', metadata,
+            Column('c1', e1)
+        )
+
+        metadata.create_all(checkfirst=False)
+        metadata.drop_all(checkfirst=False)
+
     def test_non_native_dialect(self):
         engine = engines.testing_engine()
         engine.connect()

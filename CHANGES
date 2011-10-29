@@ -81,6 +81,16 @@ CHANGES
       on dialect, but only works on Postgresql so far.
     Courtesy Manlio Perillo, [ticket:1679]
 
+- postgresql
+   - [bug] Postgresql dialect memoizes that an ENUM of a 
+     particular name was processed
+     during a create/drop sequence.  This allows
+     a create/drop sequence to work without any
+     calls to "checkfirst", and also means with
+     "checkfirst" turned on it only needs to 
+     check for the ENUM once.  [ticket:2311]
+
+
 0.7.3
 =====
 - general

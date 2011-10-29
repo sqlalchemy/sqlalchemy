@@ -21,6 +21,7 @@ class SchemaGenerator(DDLBase):
         self.tables = tables and set(tables) or None
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
+        self.memo = {}
 
     def _can_create_table(self, table):
         self.dialect.validate_identifier(table.name)
@@ -56,7 +57,8 @@ class SchemaGenerator(DDLBase):
 
         metadata.dispatch.before_create(metadata, self.connection,
                                     tables=collection,
-                                    checkfirst=self.checkfirst)
+                                    checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
         for seq in seq_coll:
             self.traverse_single(seq, create_ok=True)
@@ -66,14 +68,16 @@ class SchemaGenerator(DDLBase):
 
         metadata.dispatch.after_create(metadata, self.connection,
                                     tables=collection,
-                                    checkfirst=self.checkfirst)
+                                    checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
     def visit_table(self, table, create_ok=False):
         if not create_ok and not self._can_create_table(table):
             return
 
         table.dispatch.before_create(table, self.connection,
-                                        checkfirst=self.checkfirst)
+                                        checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
         for column in table.columns:
             if column.default is not None:
@@ -86,7 +90,8 @@ class SchemaGenerator(DDLBase):
                 self.traverse_single(index)
 
         table.dispatch.after_create(table, self.connection,
-                                        checkfirst=self.checkfirst)
+                                        checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
     def visit_sequence(self, sequence, create_ok=False):
         if not create_ok and not self._can_create_sequence(sequence):
@@ -104,6 +109,7 @@ class SchemaDropper(DDLBase):
         self.tables = tables
         self.preparer = dialect.identifier_preparer
         self.dialect = dialect
+        self.memo = {}
 
     def visit_metadata(self, metadata):
         if self.tables:
@@ -117,7 +123,8 @@ class SchemaDropper(DDLBase):
 
         metadata.dispatch.before_drop(metadata, self.connection,
                                             tables=collection,
-                                            checkfirst=self.checkfirst)
+                                            checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
         for table in collection:
             self.traverse_single(table, drop_ok=True)
@@ -127,7 +134,8 @@ class SchemaDropper(DDLBase):
 
         metadata.dispatch.after_drop(metadata, self.connection,
                                             tables=collection,
-                                            checkfirst=self.checkfirst)
+                                            checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
     def _can_drop_table(self, table):
         self.dialect.validate_identifier(table.name)
@@ -155,7 +163,8 @@ class SchemaDropper(DDLBase):
             return
 
         table.dispatch.before_drop(table, self.connection,
-                                    checkfirst=self.checkfirst)
+                                    checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
         for column in table.columns:
             if column.default is not None:
@@ -164,7 +173,8 @@ class SchemaDropper(DDLBase):
         self.connection.execute(schema.DropTable(table))
 
         table.dispatch.after_drop(table, self.connection,
-                                        checkfirst=self.checkfirst)
+                                        checkfirst=self.checkfirst,
+                                            _ddl_runner=self)
 
     def visit_sequence(self, sequence, drop_ok=False):
         if not drop_ok and not self._can_drop_sequence(sequence):
