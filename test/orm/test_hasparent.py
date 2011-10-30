@@ -27,12 +27,19 @@ class ParentRemovalTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        if testing.against('oracle'):
+            fk_args = dict(deferrable=True, initially='deferred')
+        elif testing.against('mysql'):
+            fk_args = {}
+        else:
+            fk_args = dict(onupdate='cascade')
+
         Table('users', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
         )
         Table('addresses', metadata,
               Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
-              Column('user_id', Integer, ForeignKey('users.id')),
+              Column('user_id', Integer, ForeignKey('users.id', **fk_args)),
         )
 
     @classmethod
