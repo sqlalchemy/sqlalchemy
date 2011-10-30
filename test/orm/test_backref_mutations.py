@@ -673,3 +673,65 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
         sess.commit()
         assert i1.keyword is None
         assert i2.keyword is k1
+
+class O2MStaleBackrefTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    def setup_mappers(cls):
+        Address, addresses, users, User = (cls.classes.Address,
+                                cls.tables.addresses,
+                                cls.tables.users,
+                                cls.classes.User)
+
+        mapper(Address, addresses)
+        mapper(User, users, properties = dict(
+            addresses = relationship(Address, backref="user"),
+        ))
+
+
+    def test_backref_pop_m2o(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        u1 = User()
+        u2 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        u2.addresses.append(a1)
+
+        # events haven't updated
+        # u1.addresses here.
+        u1.addresses.remove(a1)
+
+        assert a1.user is u2
+        assert a1 in u2.addresses
+
+class M2MStaleBackrefTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    @classmethod
+    def setup_mappers(cls):
+        keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
+                                cls.tables.items,
+                                cls.tables.item_keywords,
+                                cls.classes.Keyword,
+                                cls.classes.Item)
+
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, secondary=item_keywords, 
+                                    backref='items')
+        })
+        mapper(Keyword, keywords)
+
+    def test_backref_pop_m2m(self):
+        Keyword, Item = self.classes.Keyword, self.classes.Item
+
+        k1 = Keyword()
+        k2 = Keyword()
+        i1 = Item()
+        k1.items.append(i1)
+        k2.items.append(i1)
+        k2.items.append(i1)
+        i1.keywords = []
+        k2.items.remove(i1)
+        assert len(k2.items) == 0

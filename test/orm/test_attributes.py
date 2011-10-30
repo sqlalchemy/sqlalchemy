@@ -16,6 +16,151 @@ MyTest = None
 MyTest2 = None
 
 
+class AttributeImplAPITest(fixtures.MappedTest):
+    def _scalar_obj_fixture(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        attributes.register_attribute(A, "b", uselist=False, useobject=True)
+        return A, B
+
+    def _collection_obj_fixture(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        attributes.register_attribute(A, "b", uselist=True, useobject=True)
+        return A, B
+
+    def test_scalar_obj_remove_invalid(self):
+        A, B = self._scalar_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+        b2 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b is b1
+
+        assert_raises_message(
+            ValueError,
+            "Object <B at .*?> not "
+            "associated with <A at .*?> on attribute 'b'",
+            A.b.impl.remove,
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), b2, None
+        )
+
+    def test_scalar_obj_pop_invalid(self):
+        A, B = self._scalar_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+        b2 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b is b1
+
+        A.b.impl.pop(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b2, None
+        )
+        assert a1.b is b1
+
+    def test_scalar_obj_pop_valid(self):
+        A, B = self._scalar_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b is b1
+
+        A.b.impl.pop(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+        assert a1.b is None
+
+    def test_collection_obj_remove_invalid(self):
+        A, B = self._collection_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+        b2 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b == [b1]
+
+        assert_raises_message(
+            ValueError,
+            r"list.remove\(x\): x not in list",
+            A.b.impl.remove,
+                attributes.instance_state(a1), 
+                attributes.instance_dict(a1), b2, None
+        )
+
+    def test_collection_obj_pop_invalid(self):
+        A, B = self._collection_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+        b2 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b == [b1]
+
+        A.b.impl.pop(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b2, None
+        )
+        assert a1.b == [b1]
+
+    def test_collection_obj_pop_valid(self):
+        A, B = self._collection_obj_fixture()
+
+        a1 = A()
+        b1 = B()
+
+        A.b.impl.append(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+
+        assert a1.b == [b1]
+
+        A.b.impl.pop(
+            attributes.instance_state(a1), 
+            attributes.instance_dict(a1), b1, None
+        )
+        assert a1.b == []
+
+
 class AttributesTest(fixtures.ORMTest):
     def setup(self):
         global MyTest, MyTest2
@@ -506,6 +651,25 @@ class AttributesTest(fixtures.ORMTest):
         b2.posts.append(p2)
         assert attributes.has_parent(Blog, p2, 'posts')
         assert attributes.has_parent(Post, b2, 'blog')
+
+    def test_illegal_trackparent(self):
+        class Post(object):pass
+        class Blog(object):pass
+        instrumentation.register_class(Post)
+        instrumentation.register_class(Blog)
+
+        attributes.register_attribute(Post, 'blog', useobject=True)
+        assert_raises_message(
+            AssertionError,
+            "This AttributeImpl is not configured to track parents.",
+            attributes.has_parent, Post, Blog(), 'blog'
+        )
+        assert_raises_message(
+            AssertionError,
+            "This AttributeImpl is not configured to track parents.",
+            Post.blog.impl.sethasparent, "x", "x", True
+        )
+
 
     def test_inheritance(self):
         """tests that attributes are polymorphic"""

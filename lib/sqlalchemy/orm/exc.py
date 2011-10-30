@@ -15,7 +15,7 @@ NO_STATE = (AttributeError, KeyError)
 class StaleDataError(sa.exc.SQLAlchemyError):
     """An operation encountered database state that is unaccounted for.
 
-    Two conditions cause this to happen:
+    Conditions which cause this to happen include:
 
     * A flush may have attempted to update or delete rows
       and an unexpected number of rows were matched during 
@@ -27,6 +27,12 @@ class StaleDataError(sa.exc.SQLAlchemyError):
     * A mapped object with version_id_col was refreshed, 
       and the version number coming back from the database does
       not match that of the object itself.
+      
+    * A object is detached from its parent object, however
+      the object was previously attached to a different parent
+      identity which was garbage collected, and a decision
+      cannot be made if the new parent was really the most
+      recent "parent" (new in 0.7.4).
 
     """
 

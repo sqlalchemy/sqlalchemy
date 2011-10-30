@@ -12,6 +12,36 @@ CHANGES
      generates columns to put up onto the base.
 
 - orm
+   - [bug] Fixed backref behavior when "popping" the 
+     value off of a many-to-one in response to 
+     a removal from a stale one-to-many - the operation
+     is skipped, since the many-to-one has since
+     been updated.  [ticket:2315]
+
+   - [bug] After some years of not doing this, added
+     more granularity to the "is X a parent of Y" 
+     functionality, which is used when determining
+     if the FK on "Y" needs to be "nulled out" as well
+     as if "Y" should be deleted with delete-orphan
+     cascade.   The test now takes into account the
+     Python identity of the parent as well its identity 
+     key, to see if the last known parent of Y is
+     definitely X.   If a decision
+     can't be made, a StaleDataError is raised.  The
+     conditions where this error is raised are fairly
+     rare, requiring that the previous parent was
+     garbage collected, and previously
+     could very well inappropriately update/delete
+     a record that's since moved onto a new parent,
+     though there may be some cases where 
+     "silent success" occurred previously that will now 
+     raise in the face of ambiguity.
+     Expiring "Y" resets the "parent" tracker, meaning
+     X.remove(Y) could then end up deleting Y even 
+     if X is stale, but this is the same behavior
+     as before; it's advised to expire X also in that 
+     case.  [ticket:2264]
+
    - [bug] fixed inappropriate evaluation of user-mapped
      object in a boolean context within query.get()
      [ticket:2310].  Also in 0.6.9.

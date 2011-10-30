@@ -80,14 +80,14 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             value = fn(state, value, initiator or self)
 
         if self.trackparent and value is not None:
-            self.sethasparent(attributes.instance_state(value), True)
+            self.sethasparent(attributes.instance_state(value), state, True)
 
     def fire_remove_event(self, state, dict_, value, initiator):
         collection_history = self._modified_event(state, dict_)
         collection_history.deleted_items.append(value)
 
         if self.trackparent and value is not None:
-            self.sethasparent(attributes.instance_state(value), False)
+            self.sethasparent(attributes.instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
@@ -107,11 +107,15 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return state.committed_state[self.key]
 
     def set(self, state, dict_, value, initiator,
-                        passive=attributes.PASSIVE_OFF):
+                        passive=attributes.PASSIVE_OFF, 
+                        check_old=None, pop=False):
         if initiator and initiator.parent_token is self.parent_token:
             return
 
+        if pop and value is None:
+            return
         self._set_iterable(state, dict_, value)
+
 
     def _set_iterable(self, state, dict_, iterable, adapter=None):
         collection_history = self._modified_event(state, dict_)

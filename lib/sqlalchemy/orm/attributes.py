@@ -17,7 +17,7 @@ import operator
 from operator import itemgetter
 
 from sqlalchemy import util, event, exc as sa_exc
-from sqlalchemy.orm import interfaces, collections, events
+from sqlalchemy.orm import interfaces, collections, events, exc as orm_exc
 
 
 mapperutil = util.importlater("sqlalchemy.orm", "util")
@@ -126,7 +126,7 @@ class QueryableAttribute(interfaces.PropComparator):
         return op(other, self.comparator, **kwargs)
 
     def hasparent(self, state, optimistic=False):
-        return self.impl.hasparent(state, optimistic=optimistic)
+        return self.impl.hasparent(state, optimistic=optimistic) is not False
 
     def __getattr__(self, key):
         try:
@@ -346,15 +346,44 @@ class AttributeImpl(object):
         will also not have a `hasparent` flag.
 
         """
-        return state.parents.get(id(self.parent_token), optimistic)
+        assert self.trackparent, "This AttributeImpl is not configured to track parents."
 
-    def sethasparent(self, state, value):
+        return state.parents.get(id(self.parent_token), optimistic) \
+                is not False
+
+    def sethasparent(self, state, parent_state, value):
         """Set a boolean flag on the given item corresponding to
         whether or not it is attached to a parent object via the
         attribute represented by this ``InstrumentedAttribute``.
 
         """
-        state.parents[id(self.parent_token)] = value
+        assert self.trackparent, "This AttributeImpl is not configured to track parents."
+
+        id_ = id(self.parent_token)
+        if value:
+            state.parents[id_] = parent_state
+        else:
+            if id_ in state.parents:
+                last_parent = state.parents[id_]
+
+                if last_parent is not False and \
+                    last_parent.key != parent_state.key:
+
+                    if last_parent.obj() is None:
+                        raise orm_exc.StaleDataError(
+                            "Removing state %s from parent "
+                            "state %s along attribute '%s', "
+                            "but the parent record "
+                            "has gone stale, can't be sure this "
+                            "is the most recent parent." % 
+                            (mapperutil.state_str(state), 
+                            mapperutil.state_str(parent_state),
+                            self.key))
+
+                    return
+
+            state.parents[id_] = False
+
 
     def set_callable(self, state, callable_):
         """Set a callable function for this attribute on the given object.
@@ -449,9 +478,15 @@ class AttributeImpl(object):
         self.set(state, dict_, value, initiator, passive=passive)
 
     def remove(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        self.set(state, dict_, None, initiator, passive=passive)
+        self.set(state, dict_, None, initiator, 
+                    passive=passive, check_old=value)
 
-    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+    def pop(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+        self.set(state, dict_, None, initiator, 
+                    passive=passive, check_old=value, pop=True)
+
+    def set(self, state, dict_, value, initiator, 
+                passive=PASSIVE_OFF, check_old=None, pop=False):
         raise NotImplementedError()
 
     def get_committed_value(self, state, dict_, passive=PASSIVE_OFF):
@@ -497,7 +532,8 @@ class ScalarAttributeImpl(AttributeImpl):
         return History.from_scalar_attribute(
             self, state, dict_.get(self.key, NO_VALUE))
 
-    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+    def set(self, state, dict_, value, initiator, 
+                passive=PASSIVE_OFF, check_old=None, pop=False):
         if initiator and initiator.parent_token is self.parent_token:
             return
 
@@ -575,8 +611,10 @@ class MutableScalarAttributeImpl(ScalarAttributeImpl):
         ScalarAttributeImpl.delete(self, state, dict_)
         state.mutable_dict.pop(self.key)
 
-    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
-        ScalarAttributeImpl.set(self, state, dict_, value, initiator, passive)
+    def set(self, state, dict_, value, initiator, 
+            passive=PASSIVE_OFF, check_old=None, pop=False):
+        ScalarAttributeImpl.set(self, state, dict_, value, 
+                initiator, passive, check_old=check_old, pop=pop)
         state.mutable_dict[self.key] = value
 
 
@@ -627,7 +665,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             return []
 
-    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+    def set(self, state, dict_, value, initiator, 
+                passive=PASSIVE_OFF, check_old=None, pop=False):
         """Set a value on the given InstanceState.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
@@ -643,12 +682,24 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             old = self.get(state, dict_, passive=PASSIVE_NO_FETCH)
 
+        if check_old is not None and \
+             old is not PASSIVE_NO_RESULT and \
+             check_old is not old:
+            if pop:
+                 return
+            else:
+                raise ValueError(
+                    "Object %s not associated with %s on attribute '%s'" % (
+                    mapperutil.instance_str(check_old),
+                   mapperutil.state_str(state),
+                   self.key
+                ))
         value = self.fire_replace_event(state, dict_, value, old, initiator)
         dict_[self.key] = value
 
     def fire_remove_event(self, state, dict_, value, initiator):
         if self.trackparent and value is not None:
-            self.sethasparent(instance_state(value), False)
+            self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
@@ -660,7 +711,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             if (previous is not value and
                 previous is not None and
                 previous is not PASSIVE_NO_RESULT):
-                self.sethasparent(instance_state(previous), False)
+                self.sethasparent(instance_state(previous), state, False)
 
         for fn in self.dispatch.set:
             value = fn(state, value, previous, initiator or self)
@@ -669,7 +720,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
         if self.trackparent:
             if value is not None:
-                self.sethasparent(instance_state(value), True)
+                self.sethasparent(instance_state(value), state, True)
 
         return value
 
@@ -751,7 +802,7 @@ class CollectionAttributeImpl(AttributeImpl):
         state.modified_event(dict_, self, NEVER_SET, True)
 
         if self.trackparent and value is not None:
-            self.sethasparent(instance_state(value), True)
+            self.sethasparent(instance_state(value), state, True)
 
         return value
 
@@ -760,7 +811,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
     def fire_remove_event(self, state, dict_, value, initiator):
         if self.trackparent and value is not None:
-            self.sethasparent(instance_state(value), False)
+            self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
             fn(state, value, initiator or self)
@@ -815,7 +866,17 @@ class CollectionAttributeImpl(AttributeImpl):
         else:
             collection.remove_with_event(value, initiator)
 
-    def set(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+    def pop(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
+        try:
+            # TODO: better solution here would be to add
+            # a "popper" role to collections.py to complement 
+            # "remover".
+            self.remove(state, dict_, value, initiator, passive=passive)
+        except (ValueError, KeyError, IndexError):
+            pass
+
+    def set(self, state, dict_, value, initiator, 
+                    passive=PASSIVE_OFF, pop=False):
         """Set a value on the given object.
 
         `initiator` is the ``InstrumentedAttribute`` that initiated the
@@ -922,13 +983,10 @@ def backref_listeners(attribute, key, uselist):
             old_state, old_dict = instance_state(oldchild),\
                                     instance_dict(oldchild)
             impl = old_state.manager[key].impl
-            try:
-                impl.remove(old_state, 
-                            old_dict, 
-                            state.obj(), 
-                            initiator, passive=PASSIVE_NO_FETCH)
-            except (ValueError, KeyError, IndexError):
-                pass
+            impl.pop(old_state, 
+                        old_dict, 
+                        state.obj(), 
+                        initiator, passive=PASSIVE_NO_FETCH)
 
         if child is not None:
             child_state, child_dict = instance_state(child),\
@@ -956,7 +1014,7 @@ def backref_listeners(attribute, key, uselist):
         if child is not None:
             child_state, child_dict = instance_state(child),\
                                         instance_dict(child)
-            child_state.manager[key].impl.remove(
+            child_state.manager[key].impl.pop(
                                             child_state, 
                                             child_dict, 
                                             state.obj(), 

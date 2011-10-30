@@ -77,7 +77,7 @@ def _register_attribute(strategy, mapper, useobject,
                 compare_function=compare_function, 
                 useobject=useobject,
                 extension=attribute_ext, 
-                trackparent=useobject, 
+                trackparent=useobject and (prop.single_parent or prop.direction is interfaces.ONETOMANY), 
                 typecallable=typecallable,
                 callable_=callable_, 
                 active_history=active_history,
@@ -1308,7 +1308,7 @@ class LoadEagerFromAliasOption(PropertyOption):
 
 def single_parent_validator(desc, prop):
     def _do_check(state, value, oldvalue, initiator):
-        if value is not None:
+        if value is not None and initiator.key == prop.key:
             hasparent = initiator.hasparent(attributes.instance_state(value))
             if hasparent and oldvalue is not value: 
                 raise sa_exc.InvalidRequestError(

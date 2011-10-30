@@ -132,11 +132,11 @@ class InstanceState(object):
 
     def __getstate__(self):
         d = {'instance':self.obj()}
-
         d.update(
             (k, self.__dict__[k]) for k in (
-                'committed_state', 'pending', 'parents', 'modified', 'expired', 
-                'callables', 'key', 'load_options', 'mutable_dict'
+                'committed_state', 'pending', 'modified', 'expired', 
+                'callables', 'key', 'parents', 'load_options', 'mutable_dict',
+                'class_',
             ) if k in self.__dict__ 
         )
         if self.load_path:
@@ -148,12 +148,20 @@ class InstanceState(object):
 
     def __setstate__(self, state):
         from sqlalchemy.orm import instrumentation
-        self.obj = weakref.ref(state['instance'], self._cleanup)
-        self.class_ = state['instance'].__class__
+        inst = state['instance']
+        if inst is not None:
+            self.obj = weakref.ref(inst, self._cleanup)
+            self.class_ = inst.__class__
+        else:
+            # None being possible here generally new as of 0.7.4
+            # due to storage of state in "parents".  "class_"
+            # also new.
+            self.obj = None
+            self.class_ = state['class_']
         self.manager = manager = instrumentation.manager_of_class(self.class_)
         if manager is None:
             raise orm_exc.UnmappedInstanceError(
-                        state['instance'],
+                        inst,
                         "Cannot deserialize object of type %r - no mapper() has"
                         " been configured for this class within the current Python process!" %
                         self.class_)
@@ -168,7 +176,7 @@ class InstanceState(object):
         self.callables = state.get('callables', {})
 
         if self.modified:
-            self._strong_obj = state['instance']
+            self._strong_obj = inst
 
         self.__dict__.update([
             (k, state[k]) for k in (
@@ -220,13 +228,15 @@ class InstanceState(object):
 
         self.modified = False
 
-        pending = self.__dict__.get('pending', None)
-        mutable_dict = self.mutable_dict
         self.committed_state.clear()
-        if mutable_dict:
-            mutable_dict.clear()
-        if pending:
-            pending.clear()
+
+        self.__dict__.pop('pending', None)
+        self.__dict__.pop('mutable_dict', None)
+
+        # clear out 'parents' collection.  not
+        # entirely clear how we can best determine
+        # which to remove, or not.
+        self.__dict__.pop('parents', None)
 
         for key in self.manager:
             impl = self.manager[key].impl
