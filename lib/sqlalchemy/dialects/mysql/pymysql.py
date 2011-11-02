@@ -31,6 +31,7 @@ from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect_mysqldb
 class MySQLDialect_pymysql(MySQLDialect_mysqldb): 
     driver = 'pymysql'
 
+    description_encoding = None
     @classmethod 
     def dbapi(cls): 
         return __import__('pymysql') 

@@ -120,6 +120,9 @@ CHANGES
      "checkfirst" turned on it only needs to 
      check for the ENUM once.  [ticket:2311]
 
+- mysql
+  - [bug] Unicode adjustments allow latest pymysql 
+    (post 0.4) to pass 100% on Python 2.
 
 0.7.3
 =====
