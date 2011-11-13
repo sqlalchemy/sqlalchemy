@@ -735,11 +735,12 @@ class RelationshipProperty(StrategizedProperty):
                     dest_state,
                     dest_dict, 
                     load, _recursive):
+
         if load:
-            # TODO: no test coverage for recursive check
             for r in self._reverse_property:
                 if (source_state, r) in _recursive:
                     return
+
 
         if not "merge" in self.cascade:
             return
@@ -790,6 +791,7 @@ class RelationshipProperty(StrategizedProperty):
                         load=load, _recursive=_recursive)
             else:
                 obj = None
+
             if not load:
                 dest_dict[self.key] = obj
             else:
