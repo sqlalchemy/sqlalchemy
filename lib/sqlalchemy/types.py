@@ -1488,6 +1488,14 @@ class DateTime(_DateAffinity, TypeEngine):
     __visit_name__ = 'datetime'
 
     def __init__(self, timezone=False):
+        """Construct a new :class:`.DateTime`.
+        
+        :param timezone: boolean.  If True, and supported by the
+        backend, will produce 'TIMESTAMP WITH TIMEZONE'. For backends
+        that don't support timezone aware timestamps, has no
+        effect.
+        
+        """
         self.timezone = timezone
 
     def get_dbapi_type(self, dbapi):
