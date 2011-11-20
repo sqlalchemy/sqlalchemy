@@ -87,6 +87,15 @@ CHANGES
      for a particular TypeEngine instance, if known,
      else raises NotImplementedError.  [ticket:77]
 
+   - [bug] further tweak to the fix from [ticket:2261],
+     so that generative methods work a bit better
+     off of cloned (this is almost a non-use case though).
+     In particular this allows with_only_columns()
+     to behave more consistently.   Added additional
+     documentation to with_only_columns() to clarify
+     expected behavior, which changed as a result
+     of [ticket:2261].  [ticket:2319]
+
 - schema
   - [feature] Added new support for remote "schemas":
     - MetaData() accepts "schema" and "quote_schema"

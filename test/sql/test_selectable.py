@@ -446,6 +446,27 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             Table, 't', MetaData(), c1
         )
 
+    def test_from_list_with_columns(self):
+        table1 = table('t1', column('a'))
+        table2 = table('t2', column('b'))
+        s1 = select([table1.c.a, table2.c.b])
+        self.assert_compile(s1, 
+                "SELECT t1.a, t2.b FROM t1, t2"
+            )
+        s2 = s1.with_only_columns([table2.c.b])
+        self.assert_compile(s2, 
+                "SELECT t2.b FROM t2"
+            )
+
+        s3 = sql_util.ClauseAdapter(table1).traverse(s1)
+        self.assert_compile(s3, 
+            "SELECT t1.a, t2.b FROM t1, t2"
+        )
+        s4 = s3.with_only_columns([table2.c.b])
+        self.assert_compile(s4, 
+            "SELECT t2.b FROM t2"
+        )
+
     def test_from_list_warning_against_existing(self):
         c1 = Column('c1', Integer)
         s = select([c1])

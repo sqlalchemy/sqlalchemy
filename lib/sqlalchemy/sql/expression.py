@@ -4544,19 +4544,15 @@ class Select(_SelectBase):
         # given clone function.  Apply the cloning function to internal
         # objects
 
-        # 1.  Fill up the persistent "_from_obj" collection with a baked
-        # "_froms" collection.  "_froms" gets cleared anytime a
-        # generative call like where(), select_from() occurs.  _from_obj
-        # will keep a persistent version of it.  Whether or not this is
-        # done affects a pair of tests in test.sql.test_generative.
-        self._from_obj = self._from_obj.union(self._froms)
-
-        # 2. keep a dictionary of the froms we've cloned, and what
+        # 1. keep a dictionary of the froms we've cloned, and what
         # they've become.  This is consulted later when we derive
         # additional froms from "whereclause" and the columns clause,
-        # which may still reference the uncloned parent table
+        # which may still reference the uncloned parent table.
+        # as of 0.7.4 we also put the current version of _froms, which
+        # gets cleared on each generation.  previously we were "baking"
+        # _froms into self._from_obj.
         self._from_cloned = from_cloned = dict((f, clone(f, **kw))
-                for f in self._from_obj)
+                for f in self._from_obj.union(self._froms))
 
         # 3. update persistent _from_obj with the cloned versions.
         self._from_obj = util.OrderedSet(from_cloned[f] for f in
@@ -4606,9 +4602,89 @@ class Select(_SelectBase):
 
     @_generative
     def with_only_columns(self, columns):
-        """return a new select() construct with its columns clause replaced 
-            with the given columns.
+        """Return a new :func:`.select` construct with its columns 
+        clause replaced with the given columns.
+        
+        .. note:: Due to a bug fix, this method has a slight 
+           behavioral change as of version 0.7.3.  
+           Prior to version 0.7.3, the FROM clause of 
+           a :func:`.select` was calculated upfront and as new columns
+           were added; in 0.7.3 and later it's calculated 
+           at compile time, fixing an issue regarding late binding
+           of columns to parent tables.  This changes the behavior of 
+           :meth:`.Select.with_only_columns` in that FROM clauses no
+           longer represented in the new list are dropped, 
+           but this behavior is more consistent in 
+           that the FROM clauses are consistently derived from the
+           current columns clause.  The original intent of this method
+           is to allow trimming of the existing columns list to be fewer
+           columns than originally present; the use case of replacing
+           the columns list with an entirely different one hadn't
+           been anticipated until 0.7.3 was released; the usage
+           guidelines below illustrate how this should be done.
+           
+        This method is exactly equivalent to as if the original 
+        :func:`.select` had been called with the given columns 
+        clause.   I.e. a statement::
+        
+            s = select([table1.c.a, table1.c.b])
+            s = s.with_only_columns([table1.c.b])
+            
+        should be exactly equivalent to::
+        
+            s = select([table1.c.b])
+        
+        This means that FROM clauses which are only derived 
+        from the column list will be discarded if the new column 
+        list no longer contains that FROM::
+        
+            >>> table1 = table('t1', column('a'), column('b'))
+            >>> table2 = table('t2', column('a'), column('b'))
+            >>> s1 = select([table1.c.a, table2.c.b])
+            >>> print s1
+            SELECT t1.a, t2.b FROM t1, t2
+            >>> s2 = s1.with_only_columns([table2.c.b])
+            >>> print s2
+            SELECT t2.b FROM t1
+        
+        The preferred way to maintain a specific FROM clause
+        in the construct, assuming it won't be represented anywhere
+        else (i.e. not in the WHERE clause, etc.) is to set it using 
+        :meth:`.Select.select_from`::
+        
+            >>> s1 = select([table1.c.a, table2.c.b]).\\
+            ...         select_from(table1.join(table2, table1.c.a==table2.c.a))
+            >>> s2 = s1.with_only_columns([table2.c.b])
+            >>> print s2
+            SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
+            
+        Care should also be taken to use the correct
+        set of column objects passed to :meth:`.Select.with_only_columns`.
+        Since the method is essentially equivalent to calling the
+        :func:`.select` construct in the first place with the given 
+        columns, the columns passed to :meth:`.Select.with_only_columns` 
+        should usually be a subset of those which were passed 
+        to the :func:`.select` construct, not those which are available
+        from the ``.c`` collection of that :func:`.select`.  That
+        is::
+        
+            s = select([table1.c.a, table1.c.b]).select_from(table1)
+            s = s.with_only_columns([table1.c.b])
+        
+        and **not**::
+        
+            # usually incorrect
+            s = s.with_only_columns([s.c.b])
 
+        The latter would produce the SQL::
+
+            SELECT b 
+            FROM (SELECT t1.a AS a, t1.b AS b 
+            FROM t1), t1
+        
+        Since the :func:`.select` construct is essentially being
+        asked to select both from ``table1`` as well as itself.
+        
         """
         self._reset_exported()
         rc = []
@@ -4678,8 +4754,17 @@ class Select(_SelectBase):
 
     @_generative
     def select_from(self, fromclause):
-        """return a new :class:`.Select` construct with the given FROM expression
+        """return a new :func:`.select` construct with the given FROM expression
         merged into its list of FROM objects.
+        
+        E.g.::
+        
+            table1 = table('t1', column('a'))
+            table2 = table('t2', column('b'))
+            s = select([table1.c.a]).\\
+                select_from(
+                    table1.join(table2, table1.c.a==table2.c.b)
+                )
         
         The "from" list is a unique set on the identity of each element,
         so adding an already present :class:`.Table` or other selectable
@@ -4688,7 +4773,14 @@ class Select(_SelectBase):
         the effect of concealing the presence of that selectable as 
         an individual element in the rendered FROM list, instead rendering it into a
         JOIN clause.
-
+        
+        While the typical purpose of :meth:`.Select.select_from` is to replace
+        the default, derived FROM clause with a join, it can also be called with
+        individual table elements, multiple times if desired, in the case that the 
+        FROM clause cannot be fully derived from the columns clause::
+        
+            select([func.count('*')]).select_from(table1)
+        
         """
         self.append_from(fromclause)
 
@@ -4788,9 +4880,9 @@ class Select(_SelectBase):
         """return a 'grouping' construct as per the ClauseElement
         specification.
 
-         This produces an element that can be embedded in an expression. Note
+        This produces an element that can be embedded in an expression. Note
         that this method is called automatically as needed when constructing
-        expressions.
+        expressions and should not require explicit use.
 
         """
         if isinstance(against, CompoundSelect):
