@@ -14,8 +14,6 @@ class _UpdateFromTestBase(object):
               Column('id', Integer, primary_key=True, 
                             test_needs_autoincrement=True),
               Column('name', String(30), nullable=False),
-              test_needs_acid=True,
-              test_needs_fk=True
         )
 
         Table('addresses', metadata,
@@ -24,8 +22,6 @@ class _UpdateFromTestBase(object):
               Column('user_id', None, ForeignKey('users.id')),
               Column('name', String(30), nullable=False),
               Column('email_address', String(50), nullable=False),
-              test_needs_acid=True,
-              test_needs_fk=True
         )
 
         Table("dingalings", metadata,
@@ -33,8 +29,6 @@ class _UpdateFromTestBase(object):
                             test_needs_autoincrement=True),
               Column('address_id', None, ForeignKey('addresses.id')),
               Column('data', String(30)),
-              test_needs_acid=True,
-              test_needs_fk=True
         )
 
     @classmethod
@@ -220,5 +214,107 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
                 (8, 'ed2'),
                 (9, 'fred'),
                 (10, 'chuck')
+            ]
+        )
+
+class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase, fixtures.TablesTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+              Column('some_update', String(30), onupdate="im the update")
+        )
+
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+              Column('user_id', None, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+        )
+
+    @classmethod
+    def fixtures(cls):
+        return dict(
+            users = (
+                ('id', 'name', 'some_update'),
+                (8, 'ed', 'value'),
+                (9, 'fred', 'value'),
+            ),
+
+            addresses = (
+                ('id', 'user_id', 'email_address'),
+                (2, 8, "ed@wood.com"),
+                (3, 8, "ed@bettyboop.com"),
+                (4, 9, "fred@fred.com")
+            ),
+        )
+
+    @testing.only_on('mysql', 'Multi table update')
+    def test_defaults_second_table(self):
+        users, addresses = self.tables.users, self.tables.addresses
+        ret = testing.db.execute(
+            addresses.update().\
+                values({
+                        addresses.c.email_address:users.c.name, 
+                        users.c.name:'ed2'
+                }).\
+                where(users.c.id==addresses.c.user_id).\
+                where(users.c.name=='ed')
+        )
+        eq_(
+            set(ret.prefetch_cols()),
+            set([users.c.some_update])
+        )
+        eq_(
+            testing.db.execute(
+                addresses.select().order_by(addresses.c.id)).fetchall(),
+            [
+                (2, 8, "ed"),
+                (3, 8, "ed"),
+                (4, 9, "fred@fred.com")
+            ]
+        )
+        eq_(
+            testing.db.execute(
+                users.select().order_by(users.c.id)).fetchall(),
+            [
+                (8, 'ed2', 'im the update'),
+                (9, 'fred', 'value'),
+            ]
+        )
+
+    @testing.only_on('mysql', 'Multi table update')
+    def test_no_defaults_second_table(self):
+        users, addresses = self.tables.users, self.tables.addresses
+        ret = testing.db.execute(
+            addresses.update().\
+                values({
+                        'email_address':users.c.name, 
+                }).\
+                where(users.c.id==addresses.c.user_id).\
+                where(users.c.name=='ed')
+        )
+        eq_(
+            ret.prefetch_cols(),[]
+        )
+        eq_(
+            testing.db.execute(
+                addresses.select().order_by(addresses.c.id)).fetchall(),
+            [
+                (2, 8, "ed"),
+                (3, 8, "ed"),
+                (4, 9, "fred@fred.com")
+            ]
+        )
+        # users table not actually updated, 
+        # so no onupdate
+        eq_(
+            testing.db.execute(
+                users.select().order_by(users.c.id)).fetchall(),
+            [
+                (8, 'ed', 'value'),
+                (9, 'fred', 'value'),
             ]
         )
