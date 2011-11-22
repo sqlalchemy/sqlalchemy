@@ -769,7 +769,7 @@ def tuple_(*expr):
 def type_coerce(expr, type_):
     """Coerce the given expression into the given type, on the Python side only.
 
-    :func:`.type_coerce` is roughly similar to :func:.`cast`, except no
+    :func:`.type_coerce` is roughly similar to :func:`.cast`, except no
     "CAST" expression is rendered - the given type is only applied towards
     expression typing and against received result values.
 
