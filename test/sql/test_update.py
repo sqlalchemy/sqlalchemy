@@ -7,9 +7,7 @@ from test.lib import *
 from test.lib.schema import Table, Column
 from sqlalchemy.dialects import mysql
 
-class UpdateFromTest(fixtures.TablesTest, AssertsCompiledSQL):
-    __dialect__ = 'default'
-
+class _UpdateFromTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
@@ -64,6 +62,12 @@ class UpdateFromTest(fixtures.TablesTest, AssertsCompiledSQL):
                 (2, 5, 'ding 2/5')
             ),
         )
+
+
+class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    run_create_tables = run_inserts = run_deletes = None
 
     def test_render_table(self):
         users, addresses = self.tables.users, self.tables.addresses
@@ -133,6 +137,8 @@ class UpdateFromTest(fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={u'email_address_1': 'e1', 
                             u'id_1': 7, 'name': 'newname'}
         )
+
+class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
 
     @testing.requires.update_from
     def test_exec_two_table(self):

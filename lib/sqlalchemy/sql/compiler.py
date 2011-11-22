@@ -1025,11 +1025,7 @@ class SQLCompiler(engine.Compiled):
 
         self.isupdate = True
 
-        if update_stmt._whereclause is not None:
-            extra_froms = set(update_stmt._whereclause._from_objects).\
-                            difference([update_stmt.table])
-        else:
-            extra_froms = None
+        extra_froms = update_stmt._extra_froms
 
         colparams = self._get_colparams(update_stmt, extra_froms)
 
@@ -1038,20 +1034,17 @@ class SQLCompiler(engine.Compiled):
                                         update_stmt.table, 
                                         extra_froms, **kw)
 
+        text += ' SET '
         if extra_froms and self.render_table_with_column_in_update_from:
-            text += ' SET ' + \
-                    ', '.join(
+            text += ', '.join(
                             self.visit_column(c[0]) + 
-                            '=' + c[1]
-                          for c in colparams
-                    )
+                            '=' + c[1] for c in colparams
+                            )
         else:
-            text += ' SET ' + \
-                ', '.join(
+            text += ', '.join(
                         self.preparer.quote(c[0].name, c[0].quote) + 
-                        '=' + c[1]
-                      for c in colparams
-                )
+                        '=' + c[1] for c in colparams
+                            )
 
         if update_stmt._returning:
             self.returning = update_stmt._returning
@@ -1144,6 +1137,8 @@ class SQLCompiler(engine.Compiled):
         postfetch_lastrowid = need_pks and self.dialect.postfetch_lastrowid
 
         check_columns = {}
+        # special logic that only occurs for multi-table UPDATE 
+        # statements
         if extra_tables and stmt.parameters:
             for t in extra_tables:
                 for c in t.c:
@@ -1186,7 +1181,7 @@ class SQLCompiler(engine.Compiled):
                     (
                         implicit_returning or 
                         not postfetch_lastrowid or 
-                        c is not t._autoincrement_column
+                        c is not stmt.table._autoincrement_column
                     ):
 
                     if implicit_returning:
@@ -1213,7 +1208,7 @@ class SQLCompiler(engine.Compiled):
                             self.returning.append(c)
                     else:
                         if c.default is not None or \
-                            c is t._autoincrement_column and (
+                            c is stmt.table._autoincrement_column and (
                                 self.dialect.supports_sequences or
                                 self.dialect.preexecute_autoincrement_sequences
                             ):
