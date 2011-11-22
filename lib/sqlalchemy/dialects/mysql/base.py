@@ -1329,8 +1329,8 @@ class MySQLCompiler(compiler.SQLCompiler):
     def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
         return None
 
-    def should_render_table_with_col_in_update(self, update_stmt, from_table, extra_froms):
-        return bool(extra_froms)
+    render_table_with_column_in_update = True
+
 
 # ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
 #       Starting with MySQL 4.1.2, these indexes are created automatically.
