@@ -1408,11 +1408,13 @@ indicate ascending or descending.
     ()
     {stop}[(2, 1, u'jack@msn.com')]
 
+.. _inserts_and_updates:
+
 Inserts and Updates
 ===================
 
 Finally, we're back to INSERT for some more detail. The
-:func:`~sqlalchemy.sql.expression.insert` construct provides a ``values()``
+:func:`~sqlalchemy.sql.expression.insert` construct provides a :meth:`~.ValuesBase.values`
 method which can be used to send any value or clause expression to the VALUES
 portion of the INSERT::
 
@@ -1445,7 +1447,8 @@ of bind names::
         ]
     )
 
-Updates work a lot like INSERTS, except there is an additional WHERE clause
+An UPDATE statement is emitted using the :func:`.update` construct.  These
+work much like an INSERT, except there is an additional WHERE clause
 that can be specified:
 
 .. sourcecode:: pycon+sql
@@ -1508,10 +1511,60 @@ table, or the same table:
     COMMIT
     {stop}<sqlalchemy.engine.base.ResultProxy object at 0x...>
 
+Multiple Table Updates
+----------------------
+
+.. note:: This feature is new as of version 0.7.4.
+
+The Postgresql, Microsoft SQL Server, and MySQL backends all support UPDATE statements
+that refer to multiple tables.   For PG and MSSQL, this is the "UPDATE FROM" syntax,
+which updates one table at a time, but can reference additional tables in an additional
+"FROM" clause that can then be referenced in the WHERE clause directly.   On MySQL,
+multiple tables can be embedded into a single UPDATE statement separated by a comma.
+The SQLAlchemy :func:`.update` construct supports both of these modes 
+implicitly, simply by specifying multiple tables in the WHERE clause::
+
+    stmt = users.update().\
+            values(name='ed wood').\
+            where(users.c.id==addresses.c.id).\
+            where(addresses.c.email_address.startswith('ed%'))
+    conn.execute(stmt)
+
+The resulting SQL from the above statement would render as::
+
+    UPDATE users SET name=:name FROM addresses 
+    WHERE users.id = addresses.id AND 
+    addresses.email_address LIKE :email_address_1 || '%%'
+
+When using MySQL, columns from each table can be assigned to in the
+SET clause directly, using the dictionary form passed to :meth:`.Update.values`::
+
+    stmt = users.update().\
+            values({
+                users.c.name:'ed wood', 
+                addresses.c.email_address:'ed.wood@foo.com'
+            }).\
+            where(users.c.id==addresses.c.id).\
+            where(addresses.c.email_address.startswith('ed%'))
+
+The tables are referenced explicitly in the SET clause::
+
+    UPDATE users, addresses SET addresses.email_address=%s, 
+            users.name=%s WHERE users.id = addresses.id 
+            AND addresses.email_address LIKE concat(%s, '%%')
+
+SQLAlchemy doesn't do anything special when these constructs are used on 
+a non-supporting database.  The ``UPDATE FROM`` syntax generates by default
+when multiple tables are present, and the statement will simply be rejected
+by the database if this syntax is not supported.
+
+.. _deletes:
+
 Deletes
 ========
 
-Finally, a delete.  Easy enough:
+Finally, a delete.  This is accomplished easily enough using the
+:func:`~.expression.delete` construct:
 
 .. sourcecode:: pycon+sql
 
