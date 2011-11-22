@@ -5,12 +5,6 @@ CHANGES
 =======
 0.7.4
 =====
-- examples
-   - [bug] Fixed bug in history_meta.py example where
-     the "unique" flag was not removed from a 
-     single-table-inheritance subclass which 
-     generates columns to put up onto the base.
-
 - orm
    - [bug] Fixed backref behavior when "popping" the 
      value off of a many-to-one in response to 
@@ -82,6 +76,16 @@ CHANGES
      causing failures later on.  [ticket:2312]
 
 - sql
+   - [feature] The update() construct can now accommodate
+     multiple tables in the WHERE clause, which will
+     render an "UPDATE..FROM" construct, recognized by 
+     Postgresql and MSSQL.  When compiled on MySQL,
+     will instead generate "UPDATE t1, t2, ..".  MySQL
+     additionally can render against multiple tables in the
+     SET clause, if Column objects are used as keys
+     in the "values" parameter or generative method.
+     [ticket:2166] [ticket:1944]
+
    - [feature] Added accessor to types called "python_type",
      returns the rudimentary Python type object
      for a particular TypeEngine instance, if known,
@@ -132,6 +136,12 @@ CHANGES
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.
+
+- examples
+   - [bug] Fixed bug in history_meta.py example where
+     the "unique" flag was not removed from a 
+     single-table-inheritance subclass which 
+     generates columns to put up onto the base.
 
 0.7.3
 =====
