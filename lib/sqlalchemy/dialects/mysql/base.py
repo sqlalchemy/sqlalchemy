@@ -1180,6 +1180,9 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 
 class MySQLCompiler(compiler.SQLCompiler):
 
+    render_table_with_column_in_update_from = True
+    """Overridden from base SQLCompiler value"""
+
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update ({
         'milliseconds': 'millisecond',
@@ -1328,8 +1331,6 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
         return None
-
-    render_table_with_column_in_update = True
 
 
 # ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].

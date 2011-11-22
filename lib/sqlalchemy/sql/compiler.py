@@ -177,26 +177,36 @@ class SQLCompiler(engine.Compiled):
 
     compound_keywords = COMPOUND_KEYWORDS
 
-    # class-level defaults which can be set at the instance
-    # level to define if this Compiled instance represents
-    # INSERT/UPDATE/DELETE
     isdelete = isinsert = isupdate = False
+    """class-level defaults which can be set at the instance
+    level to define if this Compiled instance represents
+    INSERT/UPDATE/DELETE
+    """
 
-    # holds the "returning" collection of columns if
-    # the statement is CRUD and defines returning columns
-    # either implicitly or explicitly
     returning = None
+    """holds the "returning" collection of columns if
+    the statement is CRUD and defines returning columns
+    either implicitly or explicitly
+    """
 
-    # set to True classwide to generate RETURNING
-    # clauses before the VALUES or WHERE clause (i.e. MSSQL)
     returning_precedes_values = False
+    """set to True classwide to generate RETURNING
+    clauses before the VALUES or WHERE clause (i.e. MSSQL)
+    """
 
-    # SQL 92 doesn't allow bind parameters to be used
-    # in the columns clause of a SELECT, nor does it allow
-    # ambiguous expressions like "? = ?".  A compiler
-    # subclass can set this flag to False if the target
-    # driver/DB enforces this
+    render_table_with_column_in_update_from = False
+    """set to True classwide to indicate the SET clause
+    in a multi-table UPDATE statement should qualify
+    columns with the table name (i.e. MySQL only)
+    """
+
     ansi_bind_rules = False
+    """SQL 92 doesn't allow bind parameters to be used
+    in the columns clause of a SELECT, nor does it allow
+    ambiguous expressions like "? = ?".  A compiler
+    subclass can set this flag to False if the target
+    driver/DB enforces this
+    """
 
     def __init__(self, dialect, statement, column_keys=None, 
                     inline=False, **kwargs):
@@ -986,15 +996,29 @@ class SQLCompiler(engine.Compiled):
         return text
 
     def update_limit_clause(self, update_stmt):
+        """Provide a hook for MySQL to add LIMIT to the UPDATE"""
         return None
 
-    def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
+    def update_tables_clause(self, update_stmt, from_table, 
+                                            extra_froms, **kw):
+        """Provide a hook to override the initial table clause
+        in an UPDATE statement.
+        
+        MySQL overrides this.
+
+        """
         return self.preparer.format_table(from_table)
 
     def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
-        return "FROM " + ', '.join(t._compiler_dispatch(self, asfrom=True, **kw) for t in extra_froms)
+        """Provide a hook to override the generation of an 
+        UPDATE..FROM clause.
+        
+        MySQL overrides this.
 
-    render_table_with_column_in_update = False
+        """
+        return "FROM " + ', '.join(
+                    t._compiler_dispatch(self, asfrom=True, **kw) 
+                    for t in extra_froms)
 
     def visit_update(self, update_stmt, **kw):
         self.stack.append({'from': set([update_stmt.table])})
@@ -1005,20 +1029,16 @@ class SQLCompiler(engine.Compiled):
             extra_froms = set(update_stmt._whereclause._from_objects).\
                             difference([update_stmt.table])
         else:
-            extra_froms = set()
+            extra_froms = None
 
         colparams = self._get_colparams(update_stmt, extra_froms)
-
-        #for c in colparams:
-        #    if hasattr(c[1], '_from_objects'):
-        #        extra_froms.update(c[1]._from_objects)
 
         text = "UPDATE " + self.update_tables_clause(
                                         update_stmt, 
                                         update_stmt.table, 
                                         extra_froms, **kw)
 
-        if extra_froms and self.render_table_with_column_in_update:
+        if extra_froms and self.render_table_with_column_in_update_from:
             text += ' SET ' + \
                     ', '.join(
                             self.visit_column(c[0]) + 
