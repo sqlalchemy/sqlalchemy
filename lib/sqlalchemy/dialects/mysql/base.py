@@ -1315,25 +1315,22 @@ class MySQLCompiler(compiler.SQLCompiler):
             # No offset provided, so just use the limit
             return ' \n LIMIT %s' % (self.process(sql.literal(limit)),)
 
-    def visit_update(self, update_stmt):
-        self.stack.append({'from': set([update_stmt.table])})
-
-        self.isupdate = True
-        colparams = self._get_colparams(update_stmt)
-
-        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + \
-                " SET " + ', '.join(["%s=%s" % (self.preparer.format_column(c[0]), c[1]) for c in colparams])
-
-        if update_stmt._whereclause is not None:
-            text += " WHERE " + self.process(update_stmt._whereclause)
-
+    def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get('%s_limit' % self.dialect.name, None)
         if limit:
-            text += " LIMIT %s" % limit
+            return "LIMIT %s" % limit
+        else:
+            return None
 
-        self.stack.pop(-1)
+    def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
+        return ', '.join(t._compiler_dispatch(self, asfrom=True, **kw) 
+                    for t in [from_table] + list(extra_froms))
 
-        return text
+    def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
+        return None
+
+    def should_render_table_with_col_in_update(self, update_stmt, from_table, extra_froms):
+        return bool(extra_froms)
 
 # ug.  "InnoDB needs indexes on foreign keys and referenced keys [...].
 #       Starting with MySQL 4.1.2, these indexes are created automatically.

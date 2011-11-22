@@ -124,6 +124,14 @@ def correlated_outer_joins(fn):
         no_support('oracle', 'Raises "ORA-01799: a column may not be outer-joined to a subquery"')
     )
 
+def update_from(fn):
+    """Target must support UPDATE..FROM syntax"""
+    return _chain_decorators_on(
+        fn,
+        only_on(('postgresql', 'mssql', 'mysql'), 
+            "Backend does not support UPDATE..FROM")
+    )
+
 def savepoints(fn):
     """Target database must support savepoints."""
     return _chain_decorators_on(

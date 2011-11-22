@@ -2663,6 +2663,18 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                 "(SELECT myothertable.othername FROM myothertable "
                 "WHERE myothertable.otherid = mytable.myid)")
 
+        # test correlated FROM implicit in WHERE and SET clauses
+        u = table1.update().values(name=table2.c.othername)\
+                  .where(table2.c.otherid == table1.c.myid)
+        self.assert_compile(u,
+                "UPDATE mytable SET name=myothertable.othername "
+                "FROM myothertable WHERE myothertable.otherid = mytable.myid")
+        u = table1.update().values(name='foo')\
+                  .where(table2.c.otherid == table1.c.myid)
+        self.assert_compile(u,
+                "UPDATE mytable SET name=:name "
+                "FROM myothertable WHERE myothertable.otherid = mytable.myid")
+
     def test_delete(self):
         self.assert_compile(
                         delete(table1, table1.c.myid == 7), 
