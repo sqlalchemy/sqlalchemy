@@ -1522,7 +1522,7 @@ which updates one table at a time, but can reference additional tables in an add
 "FROM" clause that can then be referenced in the WHERE clause directly.   On MySQL,
 multiple tables can be embedded into a single UPDATE statement separated by a comma.
 The SQLAlchemy :func:`.update` construct supports both of these modes 
-implicitly, simply by specifying multiple tables in the WHERE clause::
+implicitly, by specifying multiple tables in the WHERE clause::
 
     stmt = users.update().\
             values(name='ed wood').\
@@ -1555,7 +1555,7 @@ The tables are referenced explicitly in the SET clause::
 
 SQLAlchemy doesn't do anything special when these constructs are used on 
 a non-supporting database.  The ``UPDATE FROM`` syntax generates by default
-when multiple tables are present, and the statement will simply be rejected
+when multiple tables are present, and the statement will be rejected
 by the database if this syntax is not supported.
 
 .. _deletes:
