@@ -1182,7 +1182,7 @@ def joinedload_all(*keys, **kw):
 
         query.options(joinedload_all('orders.items.keywords'))...
 
-    will set all of 'orders', 'orders.items', and 'orders.items.keywords' to
+    will set all of ``orders``, ``orders.items``, and ``orders.items.keywords`` to
     load in one joined eager load.
 
     Individual descriptors are accepted as arguments as well::
@@ -1249,7 +1249,7 @@ def subqueryload_all(*keys):
 
         query.options(subqueryload_all('orders.items.keywords'))...
 
-    will set all of 'orders', 'orders.items', and 'orders.items.keywords' to
+    will set all of ``orders``, ``orders.items``, and ``orders.items.keywords`` to
     load in one subquery eager load.
 
     Individual descriptors are accepted as arguments as well::
@@ -1300,6 +1300,17 @@ def noload(*keys):
 def immediateload(*keys):
     """Return a ``MapperOption`` that will convert the property of the given 
     name or series of mapped attributes into an immediate load.
+    
+    The "immediate" load means the attribute will be fetched
+    with a separate SELECT statement per parent in the 
+    same way as lazy loading - except the loader is guaranteed
+    to be called at load time before the parent object
+    is returned in the result.
+    
+    The normal behavior of lazy loading applies - if
+    the relationship is a simple many-to-one, and the child
+    object is already present in the :class:`.Session`,
+    no SELECT statement will be emitted.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1311,11 +1322,35 @@ def immediateload(*keys):
     return strategies.EagerLazyOption(keys, lazy='immediate')
 
 def contains_alias(alias):
-    """Return a ``MapperOption`` that will indicate to the query that
+    """Return a :class:`.MapperOption` that will indicate to the query that
     the main table has been aliased.
 
-    `alias` is the string name or ``Alias`` object representing the
-    alias.
+    This is used in the very rare case that :func:`.contains_eager`
+    is being used in conjunction with a user-defined SELECT 
+    statement that aliases the parent table.  E.g.::
+
+        # define an aliased UNION called 'ulist'
+        statement = users.select(users.c.user_id==7).\\
+                        union(users.select(users.c.user_id>7)).\\
+                        alias('ulist')
+
+        # add on an eager load of "addresses"
+        statement = statement.outerjoin(addresses).\\
+                        select().apply_labels()
+
+        # create query, indicating "ulist" will be an 
+        # alias for the main table, "addresses" 
+        # property should be eager loaded
+        query = session.query(User).options(
+                                contains_alias('ulist'), 
+                                contains_eager('addresses'))
+
+        # then get results via the statement
+        results = query.from_statement(statement).all()
+
+    :param alias: is the string name of an alias, or a 
+     :class:`~.sql.expression.Alias` object representing 
+     the alias.
 
     """
     return AliasOption(alias)

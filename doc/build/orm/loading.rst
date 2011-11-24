@@ -383,8 +383,8 @@ explicitly. Below it's used with a ``from_statement`` load::
     # get results normally
     r = query.from_statement(statement)
 
-It works just as well with an inline ``Query.join()`` or
-``Query.outerjoin()``::
+It works just as well with an inline :meth:`.Query.join` or
+:meth:`.Query.outerjoin`::
 
     session.query(User).outerjoin(User.addresses).options(contains_eager(User.addresses)).all()
 
@@ -410,9 +410,9 @@ This is a string alias name or reference to an actual
     FROM users LEFT OUTER JOIN email_addresses AS email_addresses_1 ON users.user_id = email_addresses_1.user_id
 
 The ``alias`` argument is used only as a source of columns to match up to the
-result set. You can use it even to match up the result to arbitrary label
-names in a string SQL statement, by passing a selectable() which links those
-labels to the mapped :class:`~sqlalchemy.schema.Table`::
+result set. You can use it to match up the result to arbitrary label
+names in a string SQL statement, by passing a :func:`.select` which links those
+labels to the mapped :class:`.Table`::
 
     # label the columns of the addresses table
     eager_columns = select([
@@ -428,7 +428,7 @@ labels to the mapped :class:`~sqlalchemy.schema.Table`::
                 "from users left outer join addresses on users.user_id=addresses.user_id").\
         options(contains_eager(User.addresses, alias=eager_columns))
 
-The path given as the argument to :func:`~sqlalchemy.orm.contains_eager` needs
+The path given as the argument to :func:`.contains_eager` needs
 to be a full path from the starting entity. For example if we were loading
 ``Users->orders->Order->items->Item``, the string version would look like::
 
@@ -438,22 +438,6 @@ Or using the class-bound descriptor::
 
     query(User).options(contains_eager(User.orders, Order.items))
 
-A variant on :func:`~sqlalchemy.orm.contains_eager` is the
-``contains_alias()`` option, which is used in the rare case that the parent
-object is loaded from an alias within a user-defined SELECT statement::
-
-    # define an aliased UNION called 'ulist'
-    statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
-
-    # add on an eager load of "addresses"
-    statement = statement.outerjoin(addresses).select().apply_labels()
-
-    # create query, indicating "ulist" is an alias for the main table, "addresses" property should
-    # be eager loaded
-    query = session.query(User).options(contains_alias('ulist'), contains_eager('addresses'))
-
-    # results
-    r = query.from_statement(statement)
 
 Relation Loader API
 --------------------
@@ -465,6 +449,8 @@ Relation Loader API
 .. autofunction:: eagerload
 
 .. autofunction:: eagerload_all
+
+.. autofunction:: immediateload
 
 .. autofunction:: joinedload
 
