@@ -6,14 +6,6 @@
 %>
 </%text>
 
-<div style="text-align:right">
-<b>Jump to Version:</b> ${" | ".join('<a href="/docs/%s/">%s</a>' % (link, vers) for vers, link in versions)}
-</div>
-
-<div style="text-align:right">
-<b>PDF Download:</b> <a href="${pathto('sqlalchemy_' + release.replace('.', '_') + '.pdf', 1)}">download</a>
-</div>
-
 ${'<%text>'}
 ${next.body()}
 ${'</%text>'}
@@ -29,4 +21,5 @@ ${'</%text>'}
 
 <%!
     local_script_files = []
+    site_layout=True
 %>
