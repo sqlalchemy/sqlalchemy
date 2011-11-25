@@ -4,9 +4,6 @@
 SQL Expression Language Tutorial
 ================================
 
-Introduction
-=============
-
 The SQLAlchemy Expression Language presents a system of representing
 relational database structures and expressions using Python constructs. These
 constructs are modeled to resemble those of the underlying database as closely

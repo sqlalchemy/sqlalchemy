@@ -16,4 +16,5 @@
 
 <%!
     local_script_files = []
+    site_layout=False
 %>
