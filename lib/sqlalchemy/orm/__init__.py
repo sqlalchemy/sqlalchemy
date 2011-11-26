@@ -645,7 +645,7 @@ def dynamic_loader(argument, **kw):
     kw['lazy'] = 'dynamic'
     return relationship(argument, **kw)
 
-def column_property(*args, **kwargs):
+def column_property(*cols, **kw):
     """Provide a column-level property for use with a Mapper.
 
     Column-based properties can normally be applied to the mapper's
@@ -714,7 +714,7 @@ def column_property(*args, **kwargs):
 
     """
 
-    return ColumnProperty(*args, **kwargs)
+    return ColumnProperty(*cols, **kw)
 
 def composite(class_, *cols, **kwargs):
     """Return a composite column-based property for use with a Mapper.
