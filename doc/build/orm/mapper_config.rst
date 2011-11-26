@@ -16,8 +16,8 @@ Classical Mappings
 ==================
 
 A *Classical Mapping* refers to the configuration of a mapped class using the
-:func:`.mapper` function, without using the Declarative system.   An example
-would be the declarative mapping introduced in :ref:`ormtutorial_toplevel`::
+:func:`.mapper` function, without using the Declarative system.   As an example,
+start with the declarative mapping introduced in :ref:`ormtutorial_toplevel`::
 
     class User(Base):
         __tablename__ = 'users'
@@ -68,19 +68,25 @@ object, mapped to a class called ``Address``, then linked to ``User`` via :func:
 
 When using classical mappings, classes must be provided directly without the benefit
 of the "string lookup" system provided by Declarative.  SQL expressions are typically
-specified in terms of table metadata.
+specified in terms of the :class:`.Table` objects, i.e. ``address.c.id`` above
+for the ``Address`` relationship, and not ``Address.id``, as ``Address`` may not
+yet be linked to table metadata, nor can we specify a string here.
 
 Some examples in the documentation still use the classical approach, but note that
-the classical as well as Declarative are **fully interchangeable** approaches.  Both 
+the classical as well as Declarative approaches are **fully interchangeable**.  Both 
 systems ultimately create the same configuration, consisting of a :class:`.Table`, 
-user-defined class, and a :func:`.mapper` in between.
+user-defined class, linked together with a :func:`.mapper`.  When we talk about
+"the behavior of :func:`.mapper`", this includes when using the Declarative system
+as well - it's still used, just behind the scenes.
 
 Customizing Column Properties
 ==============================
 
 The default behavior of :func:`~.orm.mapper` is to assemble all the columns in
-the mapped :class:`.Table` into mapped object attributes. This behavior can be
-modified in several ways, as well as enhanced by SQL expressions.
+the mapped :class:`.Table` into mapped object attributes, each of which are
+named according to the name of the column itself (specifically, the ``key``
+attribute of :class:`.Column`).  This behavior can be
+modified in several ways.
 
 Naming Columns Distinctly from Attribute Names
 ----------------------------------------------
@@ -132,71 +138,18 @@ The classical version of the above::
 
     mapper(User, user_table, column_prefix='_')
 
-Mapping Multiple Columns to a Single Attribute
-----------------------------------------------
-
-To place multiple columns which are known to be "synonymous" based on foreign
-key relationship or join condition into the same mapped attribute, 
-they can be mapped as a list.  Below we map to a :func:`~.expression.join`::
-
-    from sqlalchemy import join, Table, Column, String, Integer, ForeignKey
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    user_table = Table('user', Base.metadata,
-                Column('id', Integer, primary_key=True),
-                Column('name', String(50)),
-                Column('fullname', String(50)),
-                Column('password', String(12))
-            )
-
-    address_table = Table('address', Base.metadata,
-                Column('id', Integer, primary_key=True),
-                Column('user_id', Integer, ForeignKey('user.id')),
-                Column('email_address', String(50))
-                )
-
-    # "user JOIN address ON user.id=address.user_id"
-    useraddress = join(user_table, address_table, \
-        user_table.c.id == address_table.c.user_id)
-
-    class User(Base):
-        __table__ = useraddress
-
-        # assign "user.id", "address.user_id" to the
-        # "id" attribute
-        id = [user_table.c.id, address_table.c.user_id]
-
-        # assign "address.id" to the "address_id"
-        # attribute, to avoid name conflicts
-        address_id = address_table.c.id
-
-In the above mapping, the value assigned to ``user.id`` will
-also be persisted to the ``address.user_id`` column during a
-flush.  The two columns are also not independently queryable
-from the perspective of the mapped class (they of course are 
-still available from their original tables).
-
-Classical version::
-
-    mapper(User, useraddress, properties={
-        'id':[user_table.c.id, address_table.c.user_id],
-        'address_id':address_table.c.id
-    })
-
-For further examples on this particular use case, see :ref:`maptojoin`.
-
 Using column_property for column level options
 -----------------------------------------------
 
-The mapping of a :class:`.Column` with a particular :func:`.mapper` can be 
-customized using the :func:`.orm.column_property` function.  This function
-explicitly creates the :class:`.ColumnProperty` object which handles the job of 
-mapping a :class:`.Column`, instead of relying upon the :func:`.mapper`
-function to create it automatically.   Used with Declarative,
-the :class:`.Column` can be embedded directly into the
-function::
+Options can be specified when mapping a :class:`.Column` using the
+:func:`.column_property` function.  This function
+explicitly creates the :class:`.ColumnProperty` used by the
+:func:`.mapper` to keep track of the :class:`.Column`; normally, the
+:func:`.mapper` creates this automatically.   Using :func:`.column_property`,
+we can pass additional arguments about how we'd like the :class:`.Column`
+to be mapped.   Below, we pass an option ``active_history``,
+which specifies that a change to this column's value should
+result in the former value being loaded first::
 
     from sqlalchemy.orm import column_property
 
@@ -206,36 +159,62 @@ function::
         id = Column(Integer, primary_key=True)
         name = column_property(Column(String(50)), active_history=True)
 
-Or with a classical mapping, in the ``properties`` dictionary::
+:func:`.column_property` is also used to map a single attribute to 
+multiple columns.  This use case arises when mapping to a :func:`.join`
+which has attributes which are equated to each other::
 
-    from sqlalchemy.orm import column_property
+    class User(Base):
+        __table__ = user.join(address)
 
-    mapper(User, user, properties={
-        'name':column_property(user.c.name, active_history=True)
-    })
+        # assign "user.id", "address.user_id" to the
+        # "id" attribute
+        id = column_property(user_table.c.id, address_table.c.user_id)
 
-Further examples of :func:`.orm.column_property` are at :ref:`mapper_sql_expressions`.
+For more examples about this pattern, see :ref:`maptojoin`.
+
+Another place where :func:`.column_property` is needed is to specify SQL expressions as 
+mapped attributes, such as::
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        firstname = Column(String(50))
+        lastname = Column(String(50))
+        fullname = column_property(firstname + " " + lastname)
+
+See examples of this usage at :ref:`mapper_sql_expressions`.
 
 .. autofunction:: column_property
 
 Mapping a Subset of Table Columns
 ---------------------------------
 
-To reference a subset of columns referenced by a table as mapped attributes,
-use the ``include_properties`` or ``exclude_properties`` arguments. For
-example::
+Sometimes, a :class:`.Table` object was made available using the 
+reflection process described at :ref:`metadata_reflection` to load 
+the table's structure from the database.
+For such a table that has lots of columns that don't need to be referenced
+in the application, the ``include_properties`` or ``exclude_properties`` 
+arguments can specify that only a subset of columns should be mapped.
+For example::
 
-    mapper(User, user_table, include_properties=['user_id', 'user_name'])
+    class User(Base):
+        __table__ = user_table
+        __mapper_args__ = {
+            'include_properties' :['user_id', 'user_name']
+        }
 
 ...will map the ``User`` class to the ``user_table`` table, only including
-the "user_id" and "user_name" columns - the rest are not refererenced.
+the ``user_id`` and ``user_name`` columns - the rest are not referenced.
 Similarly::
 
-    mapper(Address, address_table, 
-                exclude_properties=['street', 'city', 'state', 'zip'])
+    class Address(Base):
+        __table__ = address_table
+        __mapper_args__ = {
+            'exclude_properties' : ['street', 'city', 'state', 'zip']
+        }
 
 ...will map the ``Address`` class to the ``address_table`` table, including
-all columns present except "street", "city", "state", and "zip".
+all columns present except ``street``, ``city``, ``state``, and ``zip``.
 
 When this mapping is used, the columns that are not included will not be
 referenced in any SELECT statements emitted by :class:`.Query`, nor will there
@@ -244,22 +223,30 @@ assigning an attribute of that name will have no effect beyond that of
 a normal Python attribute assignment.
 
 In some cases, multiple columns may have the same name, such as when
-mapping to a join of two or more tables that share some column name.  To 
-exclude or include individual columns, :class:`.Column` objects
-may also be placed within the "include_properties" and "exclude_properties"
-collections (new feature as of 0.6.4)::
+mapping to a join of two or more tables that share some column name.  
+``include_properties`` and ``exclude_properties`` can also accommodate
+:class:`.Column` objects to more accurately describe which columns
+should be included or excluded::
 
-    mapper(UserAddress, user_table.join(addresse_table),
-                exclude_properties=[address_table.c.id],
-                primary_key=[user_table.c.id]
-            )
+    class UserAddress(Base):
+        __table__ = user_table.join(addresses_table)
+        __mapper_args__ = {
+            'exclude_properties' :[address_table.c.id],
+            'primary_key' : [user_table.c.id]
+        }
 
-It should be noted that insert and update defaults configured on individal
-:class:`.Column` objects, such as those configured by the "default",
-"update", "server_default" and "server_onupdate" arguments, will continue
-to function normally even if those :class:`.Column` objects are not mapped.
-This functionality is part of the SQL expression and execution system and
-occurs below the level of the ORM.
+.. note:: insert and update defaults configured on individual
+    :class:`.Column` objects, i.e. those described at :ref:`metadata_defaults`
+    including those configured by the ``default``, ``update``,
+    ``server_default`` and ``server_onupdate`` arguments, will continue to
+    function normally even if those :class:`.Column` objects are not mapped.
+    This is because in the case of ``default`` and ``update``, the
+    :class:`.Column` object is still present on the underlying
+    :class:`.Table`, thus allowing the default functions to take place when
+    the ORM emits an INSERT or UPDATE, and in the case of ``server_default``
+    and ``server_onupdate``, the relational database itself maintains these
+    functions.
+
 
 .. _deferred:
 
@@ -672,16 +659,19 @@ each type of property.  For example, to allow a column-mapped attribute to
 do case-insensitive comparison::
 
     from sqlalchemy.orm.properties import ColumnProperty
-    from sqlalchemy.sql import func
+    from sqlalchemy.sql import func, Column, Integer, String
 
     class MyComparator(ColumnProperty.Comparator):
         def __eq__(self, other):
             return func.lower(self.__clause_element__()) == func.lower(other)
 
-    mapper(EmailAddress, address_table, properties={
-        'email':column_property(address_table.c.email,
-                                comparator_factory=MyComparator)
-    })
+    class EmailAddress(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        email = column_property(
+                        Column('email', String),
+                        comparator_factory=MyComparator
+                    )
 
 Above, comparisons on the ``email`` column are wrapped in the SQL lower()
 function to produce case-insensitive matching::
@@ -846,49 +836,25 @@ Mapping a Class against Multiple Tables
 ========================================
 
 Mappers can be constructed against arbitrary relational units (called
-``Selectables``) as well as plain ``Tables``. For example, The ``join``
-keyword from the SQL package creates a neat selectable unit comprised of
+*selectables*) as well as plain tables. For example, The :func:`join`
+function from the SQL package creates a neat selectable unit comprised of
 multiple tables, complete with its own composite primary key, which can be
-passed in to a mapper as the table.
-
-.. sourcecode:: python+sql
+passed in to a mapper as the table::
 
     from sqlalchemy.orm import mapper
     from sqlalchemy.sql import join
-
-    class AddressUser(object):
-        pass
 
     # define a Join
     j = join(user_table, address_table)
 
     # map to it - the identity of an AddressUser object will be
-    # based on (user_id, address_id) since those are the primary keys involved
-    mapper(AddressUser, j, properties={
-        'user_id': [user_table.c.user_id, address_table.c.user_id]
-    })
-
-Note that the list of columns is equivalent to the usage of :func:`.orm.column_property`
-with multiple columns::
-
-    from sqlalchemy.orm import mapper, column_property
-
-    mapper(AddressUser, j, properties={
-        'user_id': column_property(user_table.c.user_id, address_table.c.user_id)
-    })
-
-The usage of :func:`.orm.column_property` is required when using declarative to map 
-to multiple columns, since the declarative class parser won't recognize a plain 
-list of columns::
-
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
+    # based on (user.id, address.id) since those are the primary keys 
+    # involved.
 
     class AddressUser(Base):
         __table__ = j
 
-        user_id = column_property(user_table.c.user_id, address_table.c.user_id)
+        id = column_property(user_table.c.id, address_table.c.user_id)
 
 A second example::
 
