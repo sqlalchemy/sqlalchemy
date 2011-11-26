@@ -15,22 +15,23 @@ know how to construct and use rudimentary mappers and relationships.
 Classical Mappings
 ==================
 
-Recall from :ref:`ormtutorial_toplevel` that we normally use the :ref:`declarative_toplevel`
-system to define mappings.   The "Classical Mapping" refers to the process
-of defining :class:`.Table` metadata and mapped class via :func:`.mapper` separately.
-While direct usage of :func:`.mapper` is not prominent in modern SQLAlchemy, 
-the function can be used
-to create alternative mappings for an already mapped class, offers greater configurational
-flexibility in certain highly circular configurations, and is also at the base of
-alternative configurational systems not based upon Declarative.   Many SQLAlchemy
-applications in fact use classical mappings directly for configuration.
+A *Classical Mapping* refers to the configuration of a mapped class using the
+:func:`.mapper` function, without using the Declarative system.   An example
+would be the declarative mapping introduced in :ref:`ormtutorial_toplevel`::
 
-The ``User`` example in the tutorial, using classical mapping, defines the 
-:class:`.Table`, class, and :func:`.mapper` of the class separately.  Below we illustrate
-the full ``User``/``Address`` example using this style::
+    class User(Base):
+        __tablename__ = 'users'
+
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+        fullname = Column(String)
+        password = Column(String)
+
+In "classical" form, the table metadata is created separately with the :class:`.Table`
+construct, then associated with the ``User`` class via the :func:`.mapper` function::
 
     from sqlalchemy import Table, MetaData, Column, ForeignKey, Integer, String
-    from sqlalchemy.orm import mapper, relationship
+    from sqlalchemy.orm import mapper
 
     metadata = MetaData()
 
@@ -41,82 +42,38 @@ the full ``User``/``Address`` example using this style::
                 Column('password', String(12))
             )
 
-    address = Table('address', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('user_id', Integer, ForeignKey('user.id')),
-                Column('email_address', String(50))
-                )
-
     class User(object):
         def __init__(self, name, fullname, password):
             self.name = name
             self.fullname = fullname
             self.password = password
 
-    class Address(object):
-        def __init__(self, email_address):
-            self.email_address = email_address
+    mapper(User, user)
 
+Information about mapped attributes, such as relationships to other classes, are provided
+via the ``properties`` dictionary.  The example below illustrates a second :class:`.Table` 
+object, mapped to a class called ``Address``, then linked to ``User`` via :func:`.relationship`::
+
+    address = Table('address', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('user_id', Integer, ForeignKey('user.id')),
+                Column('email_address', String(50))
+                )
 
     mapper(User, user, properties={
-        'addresses':relationship(Address, order_by=address.c.id, backref="user")
+        'addresses' : relationship(Address, backref='user', order_by=address.c.id)
     })
+
     mapper(Address, address)
 
-When the above is complete we now have a :class:`.Table`/:func:`.mapper` setup the same as that
-set up using Declarative in the tutorial.   Note that the mappings do not have the
-benefit of the instrumented ``User`` and ``Address`` classes available, nor is the "string" argument
-system of :func:`.relationship` available, as this is a feature of Declarative.  The ``order_by`` 
-argument of the ``User.addresses`` relationship is defined in terms of the actual ``address``
-table instead of the ``Address`` class.
+When using classical mappings, classes must be provided directly without the benefit
+of the "string lookup" system provided by Declarative.  SQL expressions are typically
+specified in terms of table metadata.
 
-It's also worth noting that the "Classical" and "Declarative" mapping systems are not in 
-any way exclusive of each other.    The two can be mixed freely - below we can
-define a new class ``Order`` using a declarative base, which links back to ``User``- 
-no problem, except that we can't specify ``User`` as a string since it's not available
-in the "base" registry::
-
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    class Order(Base):
-        __tablename__ = 'order'
-
-        id = Column(Integer, primary_key=True)
-        user_id = Column(ForeignKey('user.id'))
-        order_number = Column(String(50))
-        user = relationship(User, backref="orders")
-
-This reference document uses a mix of Declarative and classical mappings for
-examples. However, all patterns here apply both to the usage of explicit
-:func:`~.orm.mapper` and :class:`.Table` objects as well as when using
-Declarative, where options that are specific to the :func:`.mapper` function
-can be specified with Declarative via the ``__mapper__`` attribute. Any
-example in this section which takes a form such as::
-
-    mapper(User, user_table, primary_key=[user_table.c.id])
-
-Would translate into declarative as::
-
-    class User(Base):
-        __table__ = user_table
-        __mapper_args__ = {
-            'primary_key':[user_table.c.id]
-        }
-
-:class:`.Column` objects which are declared inline can also
-be used directly in ``__mapper_args__``::
-
-    class User(Base):
-        __tablename__ = 'user'
-
-        id = Column(Integer)
-
-        __mapper_args__ = {
-            'primary_key':[id]
-        }
-
+Some examples in the documentation still use the classical approach, but note that
+the classical as well as Declarative are **fully interchangeable** approaches.  Both 
+systems ultimately create the same configuration, consisting of a :class:`.Table`, 
+user-defined class, and a :func:`.mapper` in between.
 
 Customizing Column Properties
 ==============================
@@ -141,21 +98,28 @@ as we illustrate here in a Declarative mapping::
 Where above ``User.id`` resolves to a column named ``user_id``
 and ``User.name`` resolves to a column named ``user_name``.
 
-In a classical mapping, the :class:`.Column` objects
-can be placed directly in the ``properties`` dictionary
-using an alternate key::
+When mapping to an existing table, the :class:`.Column` object
+can be referenced directly::
+
+    class User(Base):
+        __table__ = user_table
+        id = user_table.c.user_id
+        name = user_table.c.user_name
+
+Or in a classical mapping, placed in the ``properties`` dictionary
+with the desired key::
 
     mapper(User, user_table, properties={
        'id': user_table.c.user_id,
        'name': user_table.c.user_name,
     })
 
-When mapping to an already constructed :class:`.Table`,
-a prefix can be specified using the ``column_prefix``
-option, which will cause the automated mapping of
-each :class:`.Column` to name the attribute starting
-with the given prefix, prepended to the actual :class:`.Column`
-name::
+Naming All Columns with a Prefix
+--------------------------------
+
+A way to automate the assignment of a prefix to 
+the mapped attribute names relative to the column name
+is to use ``column_prefix``::
 
     class User(Base):
         __table__ = user_table
