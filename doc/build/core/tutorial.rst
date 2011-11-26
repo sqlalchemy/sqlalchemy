@@ -1432,11 +1432,11 @@ portion of the INSERT::
 the names of the table's columns are reserved for the "automatic" generation
 of bind names::
 
-    users.insert().values(id=bindparam('_id'), name=bindaparam('_name'))
+    users.insert().values(id=bindparam('_id'), name=bindparam('_name'))
 
     # insert many rows at once:
     conn.execute(
-        users.insert().values(id=bindparam('_id'), name=bindaparam('_name')),
+        users.insert().values(id=bindparam('_id'), name=bindparam('_name')),
         [
             {'_id':1, '_name':'name1'},
             {'_id':2, '_name':'name2'},
