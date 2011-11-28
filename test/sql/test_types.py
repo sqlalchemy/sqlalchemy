@@ -199,6 +199,23 @@ class TypeAffinityTest(fixtures.TestBase):
         ]:
             eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
 
+    def test_decorator_doesnt_cache(self):
+        from sqlalchemy.dialects import postgresql
+
+        class MyType(TypeDecorator):
+            impl = CHAR
+
+            def load_dialect_impl(self, dialect):
+                if dialect.name == 'postgresql':
+                    return dialect.type_descriptor(postgresql.UUID())
+                else:
+                    return dialect.type_descriptor(CHAR(32))
+
+        t1 = MyType()
+        d = postgresql.dialect()
+        assert t1._type_affinity is String
+        assert t1.dialect_impl(d)._type_affinity is postgresql.UUID
+
 class PickleMetadataTest(fixtures.TestBase):
     def testmeta(self):
         for loads, dumps in picklers():

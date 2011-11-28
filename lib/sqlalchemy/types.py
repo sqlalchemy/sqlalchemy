@@ -490,7 +490,7 @@ class TypeDecorator(TypeEngine):
         tt.impl = typedesc
         return tt
 
-    @util.memoized_property
+    @property
     def _type_affinity(self):
         return self.impl._type_affinity
 

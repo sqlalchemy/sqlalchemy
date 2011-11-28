@@ -124,6 +124,11 @@ CHANGES
       on dialect, but only works on Postgresql so far.
     Courtesy Manlio Perillo, [ticket:1679]
 
+  - [bug] Fixed bug whereby TypeDecorator would
+    return a stale value for _type_affinity, when
+    using a TypeDecorator that "switches" types,
+    like the CHAR/UUID type.
+
 - postgresql
    - [bug] Postgresql dialect memoizes that an ENUM of a 
      particular name was processed
