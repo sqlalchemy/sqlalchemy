@@ -58,7 +58,7 @@ Standard Types`_ and the other sections of this chapter.
 
 .. autoclass:: Enum
   :show-inheritance:
-  :members:
+  :members: __init__, create, drop
 
 .. autoclass:: Float
   :show-inheritance:

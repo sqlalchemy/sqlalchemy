@@ -432,8 +432,74 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
 PGArray = ARRAY
 
 class ENUM(sqltypes.Enum):
+    """Postgresql ENUM type.
+    
+    This is a subclass of :class:`.types.Enum` which includes
+    support for PG's ``CREATE TYPE``.
+    
+    :class:`~.postgresql.ENUM` is used automatically when 
+    using the :class:`.types.Enum` type on PG assuming
+    the ``native_enum`` is left as ``True``.   However, the 
+    :class:`~.postgresql.ENUM` class can also be instantiated
+    directly in order to access some additional Postgresql-specific
+    options, namely finer control over whether or not 
+    ``CREATE TYPE`` should be emitted.
+    
+    Note that both :class:`.types.Enum` as well as 
+    :class:`~.postgresql.ENUM` feature create/drop
+    methods; the base :class:`.types.Enum` type ultimately
+    delegates to the :meth:`~.postgresql.ENUM.create` and
+    :meth:`~.postgresql.ENUM.drop` methods present here.
+    
+    """
+
+    def __init__(self, *enums, **kw):
+        """Construct an :class:`~.postgresql.ENUM`.
+        
+        Arguments are the same as that of
+        :class:`.types.Enum`, but also including
+        the following parameters.
+        
+        :param create_type: Defaults to True.  
+         Indicates that ``CREATE TYPE`` should be 
+         emitted, after optionally checking for the 
+         presence of the type, when the parent 
+         table is being created; and additionally
+         that ``DROP TYPE`` is called when the table
+         is dropped.    When ``False``, no check
+         will be performed and no ``CREATE TYPE``
+         or ``DROP TYPE`` is emitted, unless
+         :meth:`~.postgresql.ENUM.create`
+         or :meth:`~.postgresql.ENUM.drop`
+         are called directly.
+         Setting to ``False`` is helpful
+         when invoking a creation scheme to a SQL file
+         without access to the actual database - 
+         the :meth:`~.postgresql.ENUM.create` and
+         :meth:`~.postgresql.ENUM.drop` methods can
+         be used to emit SQL to a target bind.
+         (new in 0.7.4)
+         
+        """
+        self.create_type = kw.pop("create_type", True)
+        super(ENUM, self).__init__(*enums, **kw)
 
     def create(self, bind=None, checkfirst=True):
+        """Emit ``CREATE TYPE`` for this 
+        :class:`~.postgresql.ENUM`.
+        
+        If the underlying dialect does not support
+        Postgresql CREATE TYPE, no action is taken.
+        
+        :param bind: a connectable :class:`.Engine`,
+         :class:`.Connection`, or similar object to emit
+         SQL.
+        :param checkfirst: if ``True``, a query against 
+         the PG catalog will be first performed to see
+         if the type does not exist already before
+         creating.
+         
+        """
         if not bind.dialect.supports_native_enum:
             return
 
@@ -442,6 +508,20 @@ class ENUM(sqltypes.Enum):
             bind.execute(CreateEnumType(self))
 
     def drop(self, bind=None, checkfirst=True):
+        """Emit ``DROP TYPE`` for this 
+        :class:`~.postgresql.ENUM`.
+        
+        If the underlying dialect does not support
+        Postgresql DROP TYPE, no action is taken.
+        
+        :param bind: a connectable :class:`.Engine`,
+         :class:`.Connection`, or similar object to emit
+         SQL.
+        :param checkfirst: if ``True``, a query against 
+         the PG catalog will be first performed to see
+         if the type actually exists before dropping.
+         
+        """
         if not bind.dialect.supports_native_enum:
             return
 
@@ -458,7 +538,8 @@ class ENUM(sqltypes.Enum):
         sequence without relying upon "checkfirst".
 
         """
-
+        if not self.create_type:
+            return True
         if '_ddl_runner' in kw:
             ddl_runner = kw['_ddl_runner']
             if '_pg_enums' in ddl_runner.memo:

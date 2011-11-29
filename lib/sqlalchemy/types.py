@@ -1784,6 +1784,12 @@ class Enum(String, SchemaType):
 
     By default, uses the backend's native ENUM type if available, 
     else uses VARCHAR + a CHECK constraint.
+    
+    See also:
+    
+        :class:`~.postgresql.ENUM` - PostgreSQL-specific type,
+        which has additional functionality.
+        
     """
 
     __visit_name__ = 'enum'

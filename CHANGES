@@ -138,6 +138,14 @@ CHANGES
      "checkfirst" turned on it only needs to 
      check for the ENUM once.  [ticket:2311]
 
+   - [feature] Added create_type constructor argument 
+     to pg.ENUM.  When False, no CREATE/DROP or 
+     checking for the type will be performed as part
+     of a table create/drop event; only the 
+     create()/drop)() methods called directly
+     will do this.  Helps with Alembic "offline"
+     scripts.
+
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.

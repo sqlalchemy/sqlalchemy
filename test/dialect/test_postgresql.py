@@ -451,6 +451,24 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
             metadata.drop_all(testing.db)
 
     @testing.provide_metadata
+    def test_disable_create(self):
+        metadata = self.metadata
+
+        e1 = postgresql.ENUM('one', 'two', 'three', 
+                            name="myenum",
+                            create_type=False)
+
+        t1 = Table('e1', metadata, 
+            Column('c1', e1)
+        )
+        # table can be created separately
+        # without conflict
+        e1.create(bind=testing.db)
+        t1.create(testing.db)
+        t1.drop(testing.db)
+        e1.drop(bind=testing.db)
+
+    @testing.provide_metadata
     def test_generate_multiple(self):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.

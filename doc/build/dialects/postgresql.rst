@@ -44,7 +44,7 @@ construction arguments, are as follows:
     :show-inheritance:
 
 .. autoclass:: ENUM
-    :members: __init__
+    :members: __init__, create, drop
     :show-inheritance:
 
 .. autoclass:: INET
