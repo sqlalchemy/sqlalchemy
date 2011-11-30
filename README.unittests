@@ -42,7 +42,7 @@ sys.modules if it sees a package with the same name in a different location.
 Setting this argument disables that behavior.
 
 Assuming all tests pass, this is a very unexciting output.  To make it more 
-intersesting:
+interesting:
 
     $ ./sqla_nose.py -v
 
@@ -110,7 +110,7 @@ Additional steps specific to individual databases are as follows:
     The primary database user needs to be able to create and drop tables,
     synonyms, and constraints within the "test_schema" user.   For this
     to work fully, including that the user has the "REFERENCES" role
-    in a remote shcema for tables not yet defined (REFERENCES is per-table),
+    in a remote schema for tables not yet defined (REFERENCES is per-table),
     it is required that the test the user be present in the "DBA" role:
 
         grant dba to scott;
@@ -118,7 +118,7 @@ Additional steps specific to individual databases are as follows:
     SYBASE: Similar to Oracle, "test_schema" is created as a user, and the
     primary test user needs to have the "sa_role". 
  
-    It's also recommened to turn on "trunc log on chkpt" and to use a
+    It's also recommended to turn on "trunc log on chkpt" and to use a
     separate transaction log device - Sybase basically seizes up when 
     the transaction log is full otherwise.
 
@@ -141,7 +141,7 @@ Additional steps specific to individual databases are as follows:
         dump tran sqlalchemy with truncate_only
 
     MSSQL: Tests that involve multiple connections require Snapshot Isolation
-    ability implented on the test database in order to prevent deadlocks that
+    ability implemented on the test database in order to prevent deadlocks that
     will occur with record locking isolation. This feature is only available
     with MSSQL 2005 and greater. You must enable snapshot isolation at the
     database level and set the default cursor isolation with two SQL commands:
