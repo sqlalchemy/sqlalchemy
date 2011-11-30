@@ -58,38 +58,44 @@ Unicode
 By default, the psycopg2 driver uses the ``psycopg2.extensions.UNICODE``
 extension, such that the DBAPI receives and returns all strings as Python
 Unicode objects directly - SQLAlchemy passes these values through without
-change. Note that this setting requires that the PG client encoding be set to
-one which can accomodate the kind of character data being passed - typically
-``utf-8``. If the Postgresql database is configured for ``SQL_ASCII``
-encoding, which is often the default for PG installations, it may be necessary
-for non-ascii strings to be encoded into a specific encoding before being
-passed to the DBAPI. If changing the database's client encoding setting is not
-an option, specify ``use_native_unicode=False`` as a keyword argument to
-``create_engine()``, and take note of the ``encoding`` setting as well, which
-also defaults to ``utf-8``. Note that disabling "native unicode" mode has a
-slight performance penalty, as SQLAlchemy now must translate unicode strings
-to/from an encoding such as utf-8, a task that is handled more efficiently
-within the Psycopg2 driver natively.
+change.   Psycopg2 here will encode/decode string values based on the
+current "client encoding" setting; by default this is the value in 
+the ``postgresql.conf`` file, which often defaults to ``SQL_ASCII``.   
+Typically, this can be changed to ``utf-8``, as a more useful default::
+
+    #client_encoding = sql_ascii # actually, defaults to database
+                                 # encoding
+    client_encoding = utf8
+
+A second way to affect the client encoding is to set it within Psycopg2
+locally.   SQLAlchemy will call psycopg2's ``set_client_encoding()``
+method (see: http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding)
+on all new connections based on the value passed to 
+:func:`.create_engine` using the ``client_encoding`` parameter::
+
+    engine = create_engine("postgresql://user:pass@host/dbname", client_encoding='utf8')
+
+This overrides the encoding specified in the Postgresql client configuration.
+The psycopg2-specific ``client_encoding`` parameter to :func:`.create_engine` is new as of 
+SQLAlchemy 0.7.3.
+
+SQLAlchemy can also be instructed to skip the usage of the psycopg2
+``UNICODE`` extension and to instead utilize it's own unicode encode/decode
+services, which are normally reserved only for those DBAPIs that don't 
+fully support unicode directly.  Passing ``use_native_unicode=False`` 
+to :func:`.create_engine` will disable usage of ``psycopg2.extensions.UNICODE``.
+SQLAlchemy will instead encode data itself into Python bytestrings on the way 
+in and coerce from bytes on the way back,
+using the value of the :func:`.create_engine` ``encoding`` parameter, which 
+defaults to ``utf-8``.
+SQLAlchemy's own unicode encode/decode functionality is steadily becoming
+obsolete as more DBAPIs support unicode fully along with the approach of 
+Python 3; in modern usage psycopg2 should be relied upon to handle unicode.
 
 Transactions
 ------------
 
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
-
-Client Encoding
----------------
-
-The psycopg2 dialect accepts a parameter ``client_encoding`` via :func:`.create_engine`
-which will call the psycopg2 ``set_client_encoding()`` method for each new 
-connection::
-
-    engine = create_engine("postgresql://user:pass@host/dbname", client_encoding='utf8')
-
-This overrides the encoding specified in the Postgresql client configuration.
-
-See: http://initd.org/psycopg/docs/connection.html#connection.set_client_encoding
-
-New in 0.7.3.
 
 Transaction Isolation Level
 ---------------------------
