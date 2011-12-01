@@ -129,6 +129,11 @@ CHANGES
     using a TypeDecorator that "switches" types,
     like the CHAR/UUID type.
 
+  - [bug] Fixed bug whereby "order_by='foreign_key'"
+    option to Inspector.get_table_names 
+    wasn't implementing the sort properly, replaced
+    with the existing sort algorithm
+
 - postgresql
    - [bug] Postgresql dialect memoizes that an ENUM of a 
      particular name was processed

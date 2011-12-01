@@ -27,6 +27,7 @@ methods such as get_table_names, get_columns, etc.
 import sqlalchemy
 from sqlalchemy import exc, sql
 from sqlalchemy import util
+from sqlalchemy.util import topological
 from sqlalchemy.types import TypeEngine
 from sqlalchemy import schema as sa_schema
 
@@ -150,27 +151,19 @@ class Inspector(object):
 
         if hasattr(self.dialect, 'get_table_names'):
             tnames = self.dialect.get_table_names(self.bind,
-            schema,
-                                                    info_cache=self.info_cache)
+            schema, info_cache=self.info_cache)
         else:
             tnames = self.engine.table_names(schema)
         if order_by == 'foreign_key':
-            ordered_tnames = tnames[:]
-            # Order based on foreign key dependencies.
+            import random
+            random.shuffle(tnames)
+
+            tuples = []
             for tname in tnames:
-                table_pos = tnames.index(tname)
-                fkeys = self.get_foreign_keys(tname, schema)
-                for fkey in fkeys:
-                    rtable = fkey['referred_table']
-                    if rtable in ordered_tnames:
-                        ref_pos = ordered_tnames.index(rtable)
-                        # Make sure it's lower in the list than anything it
-                        # references.
-                        if table_pos > ref_pos:
-                            ordered_tnames.pop(table_pos) # rtable moves up 1
-                            # insert just below rtable
-                            ordered_tnames.index(ref_pos, tname)
-            tnames = ordered_tnames
+                for fkey in self.get_foreign_keys(tname, schema):
+                    if tname != fkey['referred_table']:
+                        tuples.append((tname, fkey['referred_table']))
+            tnames = list(topological.sort(tuples, tnames))
         return tnames
 
     def get_table_options(self, table_name, schema=None, **kw):
