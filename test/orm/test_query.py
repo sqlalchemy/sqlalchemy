@@ -432,6 +432,13 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         q = s.query(User)
         assert_raises(sa_exc.InvalidRequestError, q.add_column, object())
 
+    def test_invalid_column_tuple(self):
+        User = self.classes.User
+
+        s = create_session()
+        q = s.query(User)
+        assert_raises(sa_exc.InvalidRequestError, q.add_column, (1, 1))
+
     def test_distinct(self):
         """test that a distinct() call is not valid before 'clauseelement' conditions."""
 

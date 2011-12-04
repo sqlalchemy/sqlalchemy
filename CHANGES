@@ -80,6 +80,10 @@ CHANGES
      a distinct entity when producing certain
      kinds of joined-inh joins.  [ticket:2316]
 
+   - [bug] Fixed the error formatting raised when 
+     a tuple is inadvertently passed to session.query()
+     [ticket:2297].  Also in 0.6.9.
+
 - sql
    - [bug] related to [ticket:2316], made some 
      adjustments to the change from [ticket:2261]

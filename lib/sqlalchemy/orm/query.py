@@ -3052,7 +3052,7 @@ class _ColumnEntity(_QueryEntity):
         if not isinstance(column, sql.ColumnElement):
             raise sa_exc.InvalidRequestError(
                 "SQL expression, column, or mapped entity "
-                "expected - got '%r'" % column
+                "expected - got '%r'" % (column, )
             )
 
         # If the Column is unnamed, give it a
