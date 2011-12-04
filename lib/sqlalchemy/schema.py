@@ -138,13 +138,34 @@ class Table(SchemaItem, expression.TableClause):
         or Connection instance to be used for the table reflection. If
         ``None``, the underlying MetaData's bound connectable will be used.
 
-    :param extend_existing: When ``True``, indicates that if this Table is already
+    :param extend_existing: When ``True``, indicates that if this :class:`.Table` is already
         present in the given :class:`.MetaData`, apply further arguments within
         the constructor to the existing :class:`.Table`.  
         
-        If extend_existing or keep_existing are not set, an error is
+        If ``extend_existing`` or ``keep_existing`` are not set, an error is
         raised if additional table modifiers are specified when 
         the given :class:`.Table` is already present in the :class:`.MetaData`.
+        
+        As of version 0.7.4, ``extend_existing`` will work in conjunction
+        with ``autoload=True`` to run a new reflection operation against
+        the database; new :class:`.Column` objects will be produced
+        from database metadata to replace those existing with the same
+        name, and additional :class:`.Column` objects not present
+        in the :class:`.Table` will be added.
+        As is always the case with ``autoload=True``, :class:`.Column`
+        objects can be specified in the same :class:`.Table` constructor,
+        which will take precedence.  I.e.::
+        
+            Table("mytable", metadata,
+                        Column('y', Integer),
+                        extend_existing=True,
+                        autoload=True,
+                        autoload_with=engine
+                    )
+        
+        The above will overwrite all columns within ``mytable`` which are present
+        in the database, except for ``y`` which will be used as is
+        from the above definition.
 
     :param implicit_returning: True by default - indicates that 
         RETURNING can be used by default to fetch newly inserted primary key 
@@ -329,26 +350,29 @@ class Table(SchemaItem, expression.TableClause):
         # we do it after the table is in the singleton dictionary to support
         # circular foreign keys
         if autoload:
-            if autoload_with:
-                autoload_with.run_callable(
-                    autoload_with.dialect.reflecttable,
-                    self, include_columns
-                )
-            else:
-                bind = _bind_or_error(metadata, 
-                        msg="No engine is bound to this Table's MetaData. "
-                        "Pass an engine to the Table via "
-                        "autoload_with=<someengine>, "
-                        "or associate the MetaData with an engine via "
-                        "metadata.bind=<someengine>")
-                bind.run_callable(
-                        bind.dialect.reflecttable,
-                        self, include_columns
-                    )
+            self._autoload(metadata, autoload_with, include_columns)
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
         self._init_items(*args)
+
+    def _autoload(self, metadata, autoload_with, include_columns):
+        if autoload_with:
+            autoload_with.run_callable(
+                autoload_with.dialect.reflecttable,
+                self, include_columns
+            )
+        else:
+            bind = _bind_or_error(metadata, 
+                    msg="No engine is bound to this Table's MetaData. "
+                    "Pass an engine to the Table via "
+                    "autoload_with=<someengine>, "
+                    "or associate the MetaData with an engine via "
+                    "metadata.bind=<someengine>")
+            bind.run_callable(
+                    bind.dialect.reflecttable,
+                    self, include_columns
+                )
 
     @property
     def _sorted_constraints(self):
@@ -377,6 +401,9 @@ class Table(SchemaItem, expression.TableClause):
 
         if 'info' in kwargs:
             self.info = kwargs.pop('info')
+
+        if autoload:
+            self._autoload(self.metadata, autoload_with, include_columns)
 
         self._extra_kwargs(**kwargs)
         self._init_items(*args)

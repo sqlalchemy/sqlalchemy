@@ -164,6 +164,18 @@ CHANGES
       on dialect, but only works on Postgresql so far.
     Courtesy Manlio Perillo, [ticket:1679]
 
+  - [feature] The "extend_existing" flag on Table
+    now allows for the reflection process to take
+    effect for a Table object that's already been 
+    defined; when autoload=True and extend_existing=True
+    are both set, the full set of columns will be
+    reflected from the Table which will then 
+    *overwrite* those columns already present,
+    rather than no activity occurring.  Columns that
+    are present directly in the autoload run
+    will be used as always, however.
+    [ticket:1410]
+
   - [bug] Fixed bug whereby TypeDecorator would
     return a stale value for _type_affinity, when
     using a TypeDecorator that "switches" types,

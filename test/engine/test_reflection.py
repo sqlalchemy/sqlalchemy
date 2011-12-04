@@ -3,7 +3,7 @@ import StringIO, unicodedata
 from sqlalchemy import types as sql_types
 from sqlalchemy import schema, events, event
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy import MetaData, Integer
+from sqlalchemy import MetaData, Integer, String
 from test.lib.schema import Table, Column
 import sqlalchemy as sa
 from test.lib import ComparesTables, \
@@ -117,6 +117,45 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             assert c in foo.c
         for c in ('a', 'c', 'd'):
             assert c not in foo.c
+
+    @testing.provide_metadata
+    def test_extend_existing(self):
+        meta = self.metadata
+
+        t1 = Table('t', meta,
+            Column('x', Integer),
+            Column('y', Integer),
+            Column('z', Integer, server_default="5"),
+        )
+        meta.create_all()
+
+        m2 = MetaData()
+        old_z = Column('z', String)
+        old_y = Column('y', String)
+        old_q = Column('q', Integer)
+        t2 = Table('t', m2, old_z, old_q)
+        t2 = Table('t', m2, old_y,
+                        extend_existing=True, 
+                        autoload=True, 
+                        autoload_with=testing.db)
+        eq_(
+            set(t2.columns.keys()), 
+            set(['x', 'y', 'z', 'q'])
+        )
+        assert t2.c.z is not old_z
+        assert t2.c.y is old_y
+        assert t2.c.z.type._type_affinity is Integer
+        assert t2.c.q is old_q
+
+        m3 = MetaData()
+        t3 = Table('t', m3, Column('z', Integer))
+        t3 = Table('t', m3, extend_existing=False, 
+                        autoload=True, 
+                        autoload_with=testing.db)
+        eq_(
+            set(t3.columns.keys()), 
+            set(['z'])
+        )
 
     @testing.emits_warning(r".*omitted columns")
     @testing.provide_metadata
