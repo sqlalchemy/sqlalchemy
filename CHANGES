@@ -174,6 +174,11 @@ CHANGES
     wasn't implementing the sort properly, replaced
     with the existing sort algorithm
 
+  - [bug] the "name" of a column-level CHECK constraint,
+    if present, is now rendered in the CREATE TABLE 
+    statement using "CONSTRAINT <name> CHECK <expression>". 
+    [ticket:2305]
+
 - pyodbc
    - [bug] pyodbc-based dialects now parse the 
      pyodbc accurately as far as observed

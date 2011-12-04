@@ -1511,7 +1511,11 @@ class DDLCompiler(engine.Compiled):
         return text
 
     def visit_column_check_constraint(self, constraint):
-        text = "CHECK (%s)" % constraint.sqltext
+        text = ""
+        if constraint.name is not None:
+            text += "CONSTRAINT %s " % \
+                        self.preparer.format_constraint(constraint)
+        text += "CHECK (%s)" % constraint.sqltext
         text += self.define_constraint_deferrability(constraint)
         return text
 

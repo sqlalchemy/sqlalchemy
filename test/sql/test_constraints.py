@@ -295,6 +295,15 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         assert 'NOT DEFERRABLE' not in sql
         assert 'INITIALLY DEFERRED' in sql
 
+    def test_column_level_ck_name(self):
+        t = Table('tbl', MetaData(),
+            Column('a', Integer, CheckConstraint("a > 5", name="ck_a_greater_five"))
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER CONSTRAINT "
+            "ck_a_greater_five CHECK (a > 5))"
+        )
     def test_deferrable_pk(self):
         factory = lambda **kw: PrimaryKeyConstraint('a', **kw)
         self._test_deferrable(factory)
@@ -312,7 +321,9 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE tbl (a INTEGER, b INTEGER, FOREIGN KEY(b) REFERENCES tbl (a) DEFERRABLE INITIALLY DEFERRED)",
+            "CREATE TABLE tbl (a INTEGER, b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES tbl "
+            "(a) DEFERRABLE INITIALLY DEFERRED)",
         )
 
     def test_deferrable_unique(self):
