@@ -857,9 +857,11 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True)
             name = Column('name', String(50))
+
             adr_count = \
-                sa.orm.column_property(sa.select([sa.func.count(Address.id)],
-                    Address.user_id == id).as_scalar())
+                sa.orm.column_property(
+                    sa.select([sa.func.count(Address.id)],
+                        Address.user_id == id).as_scalar())
             addresses = relationship(Address)
 
         Base.metadata.create_all()

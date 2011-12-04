@@ -37,7 +37,7 @@ class ZooMarkTest(fixtures.TestBase):
         recorder = lambda : dbapi_session.recorder(creator())
         engine = engines.testing_engine(options={'creator': recorder, 'use_reaper':False})
         metadata = MetaData(engine)
-        session = sessionmaker()()
+        session = sessionmaker(engine)()
         engine.connect()
 
     def test_baseline_1_create_tables(self):
@@ -244,12 +244,12 @@ class ZooMarkTest(fixtures.TestBase):
         Zoo = metadata.tables['Zoo']
 
         # TODO: convert to ORM
-
+        engine = metadata.bind
         for x in xrange(ITERATIONS):
 
             # views
 
-            view = select([Animal.c.Legs]).execute().fetchall()
+            view = engine.execute(select([Animal.c.Legs])).fetchall()
             legs = [x[0] for x in view]
             legs.sort()
             expected = {
@@ -266,20 +266,20 @@ class ZooMarkTest(fixtures.TestBase):
                 'Ape': None,
                 'Tick': None,
                 }
-            for species, lifespan in select([Animal.c.Species,
-                    Animal.c.Lifespan]).execute().fetchall():
+            for species, lifespan in engine.execute(select([Animal.c.Species,
+                    Animal.c.Lifespan])).fetchall():
                 assert lifespan == expected[species]
             expected = [u'Montr\xe9al Biod\xf4me', 'Wild Animal Park']
             e = select([Zoo.c.Name], and_(Zoo.c.Founded != None,
                        Zoo.c.Founded <= func.current_timestamp(),
                        Zoo.c.Founded >= datetime.date(1990, 1, 1)))
-            values = [val[0] for val in e.execute().fetchall()]
+            values = [val[0] for val in engine.execute(e).fetchall()]
             assert set(values) == set(expected)
 
             # distinct
 
-            legs = [x[0] for x in select([Animal.c.Legs],
-                    distinct=True).execute().fetchall()]
+            legs = [x[0] for x in engine.execute(select([Animal.c.Legs],
+                    distinct=True)).fetchall()]
             legs.sort()
 
     def test_baseline_6_editing(self):
@@ -328,7 +328,7 @@ class ZooMarkTest(fixtures.TestBase):
         player = lambda : dbapi_session.player()
         engine = create_engine('postgresql:///', creator=player)
         metadata = MetaData(engine)
-        session = sessionmaker()()
+        session = sessionmaker(engine)()
         engine.connect()
 
     @profiling.function_call_count(5600)

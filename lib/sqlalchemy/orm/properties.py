@@ -19,6 +19,7 @@ from sqlalchemy.orm import attributes, dependency, mapper, \
     object_mapper, strategies, configure_mappers
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
     _orm_annotate, _orm_deannotate
+
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
     MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
@@ -60,7 +61,8 @@ class ColumnProperty(StrategizedProperty):
         :param extension:
 
         """
-        self.columns = [expression._labeled(c) for c in columns]
+        self.columns = [expression._labeled(_orm_deannotate(c)) 
+                            for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
         self.instrument = kwargs.pop('_instrument', True)

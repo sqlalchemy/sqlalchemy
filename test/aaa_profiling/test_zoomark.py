@@ -69,61 +69,62 @@ class ZooMarkTest(fixtures.TestBase):
     def test_baseline_1a_populate(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
-        wap = Zoo.insert().execute(Name=u'Wild Animal Park',
+        engine = metadata.bind
+        wap = engine.execute(Zoo.insert(), Name=u'Wild Animal Park',
                                    Founded=datetime.date(2000, 1, 1),
                                    Opens=datetime.time(8, 15, 59),
                                    LastEscape=
                                   datetime.datetime(2004, 7, 29, 5, 6, 7),
                                   Admission=4.95).inserted_primary_key[0]
-        sdz = Zoo.insert().execute(Name=u'San Diego Zoo',
+        sdz = engine.execute(Zoo.insert(), Name=u'San Diego Zoo',
                                    Founded=datetime.date(1935, 9, 13),
                                    Opens=datetime.time(9, 0, 0),
                                    Admission=0).inserted_primary_key[0]
-        Zoo.insert(inline=True).execute(Name=u'Montr\xe9al Biod\xf4me',
+        engine.execute(Zoo.insert(inline=True), Name=u'Montr\xe9al Biod\xf4me',
                 Founded=datetime.date(1992, 6, 19),
                 Opens=datetime.time(9, 0, 0), Admission=11.75)
-        seaworld = Zoo.insert().execute(Name=u'Sea_World',
+        seaworld = engine.execute(Zoo.insert(), Name=u'Sea_World',
                 Admission=60).inserted_primary_key[0]
 
         # Let's add a crazy futuristic Zoo to test large date values.
 
-        lp = Zoo.insert().execute(Name=u'Luna Park',
+        lp = engine.execute(Zoo.insert(), Name=u'Luna Park',
                                   Founded=datetime.date(2072, 7, 17),
                                   Opens=datetime.time(0, 0, 0),
                                   Admission=134.95).inserted_primary_key[0]
 
         # Animals
 
-        leopardid = Animal.insert().execute(Species=u'Leopard',
+        leopardid = engine.execute(Animal.insert(), Species=u'Leopard',
                 Lifespan=73.5).inserted_primary_key[0]
-        Animal.update(Animal.c.ID == leopardid).execute(ZooID=wap,
+        engine.execute(Animal.update(Animal.c.ID == leopardid), ZooID=wap,
                 LastEscape=datetime.datetime( 2004, 12, 21, 8, 15, 0, 999907,)
                 )
-        lion = Animal.insert().execute(Species=u'Lion',
+        lion = engine.execute(Animal.insert(), Species=u'Lion',
                 ZooID=wap).inserted_primary_key[0]
-        Animal.insert().execute(Species=u'Slug', Legs=1, Lifespan=.75)
-        tiger = Animal.insert().execute(Species=u'Tiger',
+        engine.execute(Animal.insert(), Species=u'Slug', Legs=1, Lifespan=.75)
+        tiger = engine.execute(Animal.insert(), Species=u'Tiger',
                 ZooID=sdz).inserted_primary_key[0]
 
         # Override Legs.default with itself just to make sure it works.
 
-        Animal.insert(inline=True).execute(Species=u'Bear', Legs=4)
-        Animal.insert(inline=True).execute(Species=u'Ostrich', Legs=2,
+        engine.execute(Animal.insert(inline=True), Species=u'Bear', Legs=4)
+        engine.execute(Animal.insert(inline=True), Species=u'Ostrich', Legs=2,
                 Lifespan=103.2)
-        Animal.insert(inline=True).execute(Species=u'Centipede',
+        engine.execute(Animal.insert(inline=True), Species=u'Centipede',
                 Legs=100)
-        emp = Animal.insert().execute(Species=u'Emperor Penguin',
+        emp = engine.execute(Animal.insert(), Species=u'Emperor Penguin',
                 Legs=2, ZooID=seaworld).inserted_primary_key[0]
-        adelie = Animal.insert().execute(Species=u'Adelie Penguin',
+        adelie = engine.execute(Animal.insert(), Species=u'Adelie Penguin',
                 Legs=2, ZooID=seaworld).inserted_primary_key[0]
-        Animal.insert(inline=True).execute(Species=u'Millipede',
+        engine.execute(Animal.insert(inline=True), Species=u'Millipede',
                 Legs=1000000, ZooID=sdz)
 
         # Add a mother and child to test relationships
 
-        bai_yun = Animal.insert().execute(Species=u'Ape',
+        bai_yun = engine.execute(Animal.insert(), Species=u'Ape',
                 Name=u'Bai Yun', Legs=2).inserted_primary_key[0]
-        Animal.insert(inline=True).execute(Species=u'Ape',
+        engine.execute(Animal.insert(inline=True), Species=u'Ape',
                 Name=u'Hua Mei', Legs=2, MotherID=bai_yun)
 
     def test_baseline_2_insert(self):
@@ -136,11 +137,12 @@ class ZooMarkTest(fixtures.TestBase):
     def test_baseline_3_properties(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
+        engine = metadata.bind
 
         def fullobject(select):
             """Iterate over the full result row."""
 
-            return list(select.execute().first())
+            return list(engine.execute(select).first())
 
         for x in xrange(ITERATIONS):
 
@@ -169,11 +171,12 @@ class ZooMarkTest(fixtures.TestBase):
     def test_baseline_4_expressions(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
+        engine = metadata.bind
 
         def fulltable(select):
             """Iterate over the full result table."""
 
-            return [list(row) for row in select.execute().fetchall()]
+            return [list(row) for row in engine.execute(select).fetchall()]
 
         for x in xrange(ITERATIONS):
             assert len(fulltable(Zoo.select())) == 5
@@ -243,11 +246,13 @@ class ZooMarkTest(fixtures.TestBase):
     def test_baseline_5_aggregates(self):
         Animal = metadata.tables['Animal']
         Zoo = metadata.tables['Zoo']
+        engine = metadata.bind
+
         for x in xrange(ITERATIONS):
 
             # views
 
-            view = select([Animal.c.Legs]).execute().fetchall()
+            view = engine.execute(select([Animal.c.Legs])).fetchall()
             legs = [x[0] for x in view]
             legs.sort()
             expected = {
@@ -264,65 +269,67 @@ class ZooMarkTest(fixtures.TestBase):
                 'Ape': None,
                 'Tick': None,
                 }
-            for species, lifespan in select([Animal.c.Species,
-                    Animal.c.Lifespan]).execute().fetchall():
+            for species, lifespan in engine.execute(select([Animal.c.Species,
+                    Animal.c.Lifespan])).fetchall():
                 assert lifespan == expected[species]
             expected = [u'Montr\xe9al Biod\xf4me', 'Wild Animal Park']
             e = select([Zoo.c.Name], and_(Zoo.c.Founded != None,
                        Zoo.c.Founded <= func.current_timestamp(),
                        Zoo.c.Founded >= datetime.date(1990, 1, 1)))
-            values = [val[0] for val in e.execute().fetchall()]
+            values = [val[0] for val in engine.execute(e).fetchall()]
             assert set(values) == set(expected)
 
             # distinct
 
-            legs = [x[0] for x in select([Animal.c.Legs],
-                    distinct=True).execute().fetchall()]
+            legs = [x[0] for x in engine.execute(select([Animal.c.Legs],
+                    distinct=True)).fetchall()]
             legs.sort()
 
     def test_baseline_6_editing(self):
         Zoo = metadata.tables['Zoo']
+        engine = metadata.bind
         for x in xrange(ITERATIONS):
 
             # Edit
 
-            SDZ = Zoo.select(Zoo.c.Name == u'San Diego Zoo'
-                             ).execute().first()
-            Zoo.update(Zoo.c.ID == SDZ['ID'
-                       ]).execute(Name=u'The San Diego Zoo',
+            SDZ = engine.execute(Zoo.select(Zoo.c.Name == u'San Diego Zoo'
+                             )).first()
+            engine.execute(Zoo.update(Zoo.c.ID == SDZ['ID'
+                       ]), Name=u'The San Diego Zoo',
                                   Founded=datetime.date(1900, 1, 1),
                                   Opens=datetime.time(7, 30, 0),
                                   Admission='35.00')
 
             # Test edits
 
-            SDZ = Zoo.select(Zoo.c.Name == u'The San Diego Zoo'
-                             ).execute().first()
+            SDZ = engine.execute(Zoo.select(Zoo.c.Name == u'The San Diego Zoo'
+                             )).first()
             assert SDZ['Founded'] == datetime.date(1900, 1, 1), \
                 SDZ['Founded']
 
             # Change it back
 
-            Zoo.update(Zoo.c.ID == SDZ['ID'
-                       ]).execute(Name=u'San Diego Zoo',
+            engine.execute(Zoo.update(Zoo.c.ID == SDZ['ID'
+                       ]), Name=u'San Diego Zoo',
                                   Founded=datetime.date(1935, 9, 13),
                                   Opens=datetime.time(9, 0, 0),
                                   Admission='0')
 
             # Test re-edits
 
-            SDZ = Zoo.select(Zoo.c.Name == u'San Diego Zoo'
-                             ).execute().first()
+            SDZ = engine.execute(Zoo.select(Zoo.c.Name == u'San Diego Zoo'
+                             )).first()
             assert SDZ['Founded'] == datetime.date(1935, 9, 13)
 
     def test_baseline_7_multiview(self):
         Zoo = metadata.tables['Zoo']
         Animal = metadata.tables['Animal']
+        engine = metadata.bind
 
         def fulltable(select):
             """Iterate over the full result table."""
 
-            return [list(row) for row in select.execute().fetchall()]
+            return [list(row) for row in engine.execute(select).fetchall()]
 
         for x in xrange(ITERATIONS):
             za = fulltable(select([Zoo.c.ID] + list(Animal.c),

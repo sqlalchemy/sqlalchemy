@@ -3905,12 +3905,6 @@ class ColumnClause(_Immutable, ColumnElement):
     def _get_table(self):
         return self.__dict__['table']
     def _set_table(self, table):
-        if '_from_objects' in self.__dict__:
-            util.warn("%s being associated with %s object after "
-                        "the %s has already been used in a SQL "
-                        "generation; previously generated "
-                        "constructs may contain stale state." % 
-                        (type(table), type(self), type(self)))
         self._memoized_property.expire_instance(self)
         self.__dict__['table'] = table
     table = property(_get_table, _set_table)
@@ -4502,12 +4496,15 @@ class Select(_SelectBase):
 
         _SelectBase.__init__(self, **kwargs)
 
-    @_memoized_property
+    @property
     def _froms(self):
+        # would love to cache this,
+        # but there's just enough edge cases, particularly now that
+        # declarative encourages construction of SQL expressions 
+        # without tables present, to just regen this each time.
         froms = []
         seen = set()
         translate = self._from_cloned
-
         def add(items):
             for item in items:
                 if translate and item in translate:
@@ -4613,7 +4610,8 @@ class Select(_SelectBase):
         actually be rendered.
 
         """
-        return self._froms + list(_from_objects(*self._froms))
+        froms = self._froms
+        return froms + list(_from_objects(*froms))
 
     @property
     def inner_columns(self):
@@ -5026,14 +5024,15 @@ class Select(_SelectBase):
     def bind(self):
         if self._bind:
             return self._bind
-        if not self._froms:
+        froms = self._froms
+        if not froms:
             for c in self._raw_columns:
                 e = c.bind
                 if e:
                     self._bind = e
                     return e
         else:
-            e = list(self._froms)[0].bind
+            e = list(froms)[0].bind
             if e:
                 self._bind = e
                 return e

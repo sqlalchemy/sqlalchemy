@@ -100,7 +100,7 @@ class MergeTest(fixtures.MappedTest):
 
         # one more time, count the SQL
 
-        sess2 = sessionmaker()()
+        sess2 = sessionmaker(testing.db)()
         self.assert_sql_count(testing.db, go, 2)
 
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):

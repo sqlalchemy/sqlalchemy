@@ -75,7 +75,31 @@ CHANGES
      when the "base" mapper was generated, thereby
      causing failures later on.  [ticket:2312]
 
+   - [bug] Fixed bug whereby column_property() created
+     against ORM-level column could be treated as
+     a distinct entity when producing certain
+     kinds of joined-inh joins.  [ticket:2316]
+
 - sql
+   - [bug] related to [ticket:2316], made some 
+     adjustments to the change from [ticket:2261]
+     regarding the "from" list on a select(). The
+     _froms collection is no longer memoized, as this
+     simplifies various use cases and removes the 
+     need for a "warning" if a column is attached
+     to a table after it was already used in an 
+     expression - the select() construct will now
+     always produce the correct expression.  
+     There's probably no real-world
+     performance hit here; select() objects are 
+     almost always made ad-hoc, and systems that 
+     wish to optimize the re-use of a select()
+     would be using the "compiled_cache" feature.
+     A hit which would occur when calling select.bind
+     has been reduced, but the vast majority
+     of users shouldn't be using "bound metadata"
+     anyway :).
+
    - [feature] The update() construct can now accommodate
      multiple tables in the WHERE clause, which will
      render an "UPDATE..FROM" construct, recognized by 

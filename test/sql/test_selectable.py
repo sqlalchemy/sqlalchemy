@@ -437,13 +437,11 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         s2 = select([c2])
         s3 = sql_util.ClauseAdapter(s).traverse(s2)
 
-        # the adaptation process needs the full
-        # FROM list so can't avoid the warning on
-        # this one
-        assert_raises_message(
-            exc.SAWarning,
-            r"\<class 'sqlalchemy.schema.Table'\> being associated ",
-            Table, 't', MetaData(), c1
+        Table('t', MetaData(), c1, c2)
+
+        self.assert_compile(
+            s3,
+            "SELECT t.c2 FROM t"
         )
 
     def test_from_list_with_columns(self):
@@ -471,18 +469,17 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         c1 = Column('c1', Integer)
         s = select([c1])
 
-        # force a compile.  
-        eq_(str(s), "SELECT c1")
+        # force a compile.
+        self.assert_compile(
+            s,
+            "SELECT c1"
+        )
 
-        # this will emit a warning
-        assert_raises_message(
-            exc.SAWarning,
-            r"\<class 'sqlalchemy.schema.Table'\> being associated "
-            r"with \<class 'sqlalchemy.schema.Column'\> object after "
-            r"the \<class 'sqlalchemy.schema.Column'\> has already "
-            r"been used in a SQL generation; previously "
-            r"generated constructs may contain stale state.",
-            Table, 't', MetaData(), c1
+        Table('t', MetaData(), c1)
+
+        self.assert_compile(
+            s,
+            "SELECT t.c1 FROM t"
         )
 
     def test_from_list_recovers_after_warning(self):
@@ -491,7 +488,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
 
         s = select([c1])
 
-        # force a compile.  
+        # force a compile.
         eq_(str(s), "SELECT c1")
 
         @testing.emits_warning()
@@ -505,7 +502,7 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         # 's' has been baked.  Can't afford
         # not caching select._froms.
         # hopefully the warning will clue the user
-        self.assert_compile(s, "SELECT t.c1")
+        self.assert_compile(s, "SELECT t.c1 FROM t")
         self.assert_compile(select([c1]), "SELECT t.c1 FROM t")
         self.assert_compile(select([c2]), "SELECT t.c2 FROM t")
 
