@@ -280,6 +280,27 @@ class RealReconnectTest(fixtures.TestBase):
             conn.execute, select([1])
         )
 
+    def test_rollback_on_invalid_plain(self):
+        conn = engine.connect()
+        trans = conn.begin()
+        conn.invalidate()
+        trans.rollback()
+
+    @testing.requires.two_phase_transactions
+    def test_rollback_on_invalid_twophase(self):
+        conn = engine.connect()
+        trans = conn.begin_twophase()
+        conn.invalidate()
+        trans.rollback()
+
+    @testing.requires.savepoints
+    def test_rollback_on_invalid_savepoint(self):
+        conn = engine.connect()
+        trans = conn.begin()
+        trans2 = conn.begin_nested()
+        conn.invalidate()
+        trans2.rollback()
+
     def test_invalidate_twice(self):
         conn = engine.connect()
         conn.invalidate()

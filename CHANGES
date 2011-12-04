@@ -140,6 +140,17 @@ CHANGES
      expected behavior, which changed as a result
      of [ticket:2261].  [ticket:2319]
 
+- engine
+  - [bug] Fixed bug whereby transaction.rollback()
+    would throw an error on an invalidated 
+    connection if the transaction were a 
+    two-phase or savepoint transaction.
+    For plain transactions, rollback() is a no-op
+    if the connection is invalidated, so while
+    it wasn't 100% clear if it should be a no-op,
+    at least now the interface is consistent.
+    [ticket:2317]
+
 - schema
   - [feature] Added new support for remote "schemas":
     - MetaData() accepts "schema" and "quote_schema"
