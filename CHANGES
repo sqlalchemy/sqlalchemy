@@ -174,6 +174,12 @@ CHANGES
     wasn't implementing the sort properly, replaced
     with the existing sort algorithm
 
+- pyodbc
+   - [bug] pyodbc-based dialects now parse the 
+     pyodbc accurately as far as observed
+     pyodbc strings, including such gems
+     as "py3-3.0.1-beta4" [ticket:2318]
+
 - postgresql
    - [bug] Postgresql dialect memoizes that an ENUM of a 
      particular name was processed
@@ -198,6 +204,9 @@ CHANGES
     (which you shouldn't be using anyway ! 
     use snapshot isolation instead :) )
     [ticket:2336]
+
+  - [bug] use new pyodbc version detection for
+    _need_decimal_fix option, [ticket:2318]
 
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 

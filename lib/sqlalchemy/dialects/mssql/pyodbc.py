@@ -216,6 +216,6 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         self.use_scope_identity = self.dbapi and \
                         hasattr(self.dbapi.Cursor, 'nextset')
         self._need_decimal_fix = self.dbapi and \
-                                tuple(self.dbapi.version.split(".")) < (2, 1, 8)
+                            self._dbapi_version() < (2, 1, 8)
 
 dialect = MSDialect_pyodbc

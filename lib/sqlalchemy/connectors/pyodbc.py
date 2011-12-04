@@ -126,6 +126,23 @@ class PyODBCConnector(Connector):
         # run other initialization which asks for user name, etc.
         super(PyODBCConnector, self).initialize(connection)
 
+    def _dbapi_version(self):
+        if not self.dbapi:
+            return ()
+        return self._parse_dbapi_version(self.dbapi.version)
+
+    def _parse_dbapi_version(self, vers):
+        m = re.match(
+                r'(?:py.*-)?([\d\.]+)(?:-(\w+))?',
+                vers
+            )
+        if not m:
+            return ()
+        vers = tuple([int(x) for x in m.group(1).split(".")])
+        if m.group(2):
+            vers += (m.group(2),)
+        return vers
+
     def _get_server_version_info(self, connection):
         dbapi_con = connection.connection
         version = []
