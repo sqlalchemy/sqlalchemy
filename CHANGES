@@ -68,6 +68,10 @@ CHANGES
   - Cls.column.collate("some collation") now
     works.  [ticket:1776]
 
+   - [bug] Fixed the error formatting raised when 
+     a tuple is inadvertently passed to session.query()
+     [ticket:2297].
+
 - sql
   - Fixed two subtle bugs involving column 
     correspondence in a selectable,
