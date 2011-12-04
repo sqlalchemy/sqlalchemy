@@ -357,6 +357,9 @@ class Table(SchemaItem, expression.TableClause):
         self._init_items(*args)
 
     def _autoload(self, metadata, autoload_with, include_columns):
+        if self.primary_key.columns:
+            PrimaryKeyConstraint()._set_parent_with_dispatch(self)
+
         if autoload_with:
             autoload_with.run_callable(
                 autoload_with.dialect.reflecttable,

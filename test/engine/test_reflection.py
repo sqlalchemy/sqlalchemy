@@ -123,6 +123,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta = self.metadata
 
         t1 = Table('t', meta,
+            Column('id', Integer, primary_key=True),
             Column('x', Integer),
             Column('y', Integer),
             Column('z', Integer, server_default="5"),
@@ -130,18 +131,20 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta.create_all()
 
         m2 = MetaData()
-        old_z = Column('z', String)
+        old_z = Column('z', String, primary_key=True)
         old_y = Column('y', String)
         old_q = Column('q', Integer)
         t2 = Table('t', m2, old_z, old_q)
+        eq_(t2.primary_key.columns, (t2.c.z, ))
         t2 = Table('t', m2, old_y,
                         extend_existing=True, 
                         autoload=True, 
                         autoload_with=testing.db)
         eq_(
             set(t2.columns.keys()), 
-            set(['x', 'y', 'z', 'q'])
+            set(['x', 'y', 'z', 'q', 'id'])
         )
+        eq_(t2.primary_key.columns, (t2.c.id, ))
         assert t2.c.z is not old_z
         assert t2.c.y is old_y
         assert t2.c.z.type._type_affinity is Integer
