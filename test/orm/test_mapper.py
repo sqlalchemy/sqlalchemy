@@ -95,13 +95,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                           getattr, sa.orm.class_mapper(User), 'properties')
 
 
-    def test_bad_cascade(self):
-        addresses, Address = self.tables.addresses, self.classes.Address
-
-        mapper(Address, addresses)
-        assert_raises(sa.exc.ArgumentError,
-                          relationship, Address, cascade="fake, all, delete-orphan")
-
     def test_friendly_attribute_str_on_uncompiled_boom(self):
         User, users = self.classes.User, self.tables.users
 

@@ -101,6 +101,13 @@ CHANGES
     [ticket:2339].  Thanks to Fayaz Yusuf Khan
     for the patch.
 
+  - [bug] Updated warning message when setting
+    delete-orphan without delete to no longer
+    refer to 0.6, as we never got around to 
+    upgrading this to an exception.  Ideally
+    this might be better as an exception but
+    it's not critical either way.  [ticket:2325]
+
 - sql
    - [bug] related to [ticket:2316], made some 
      adjustments to the change from [ticket:2261]

@@ -41,7 +41,7 @@ class CascadeOptions(dict):
 
         if self.delete_orphan and not self.delete:
             util.warn("The 'delete-orphan' cascade option requires "
-                        "'delete'.  This will raise an error in 0.6.")
+                        "'delete'.")
 
         for x in values:
             if x not in all_cascades:

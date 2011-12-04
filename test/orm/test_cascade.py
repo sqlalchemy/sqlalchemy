@@ -11,6 +11,50 @@ from test.lib.testing import eq_
 from test.lib import fixtures
 from test.orm import _fixtures
 
+class CascadeArgTest(fixtures.MappedTest):
+    run_inserts = None
+    run_create_tables = None
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('users', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('name', String(30), nullable=False),
+        )
+        Table('addresses', metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('user_id', Integer, ForeignKey('users.id')),
+              Column('email_address', String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Basic):
+            pass
+        class Address(cls.Basic):
+            pass
+
+    def test_delete_orphan_without_delete(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        assert_raises_message(
+            sa_exc.SAWarning,
+            "The 'delete-orphan' cascade option requires 'delete'.",
+            relationship, Address, cascade="save-update, delete-orphan"
+        )
+
+    def test_bad_cascade(self):
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        mapper(Address, addresses)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Invalid cascade option 'fake'",
+            relationship, Address, cascade="fake, all, delete-orphan"
+        )
+
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     run_inserts = None
