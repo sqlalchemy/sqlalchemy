@@ -922,12 +922,15 @@ collection:
 
 .. sourcecode:: python+sql
 
-    mapper(Address, addresses_table)
-    mapper(User, users_table, properties={
-        'addresses': relationship(Address, primaryjoin=
-                    users_table.c.user_id==addresses_table.c.user_id,
-                    foreign_keys=[addresses_table.c.user_id])
-    })
+    class Address(Base):
+        __table__ = addresses_table
+
+    class User(Base):
+        __table__ = users_table
+        addresses = relationship(Address, 
+                        primaryjoin=
+                        users_table.c.user_id==addresses_table.c.user_id,
+                        foreign_keys=[addresses_table.c.user_id])
 
 Building Query-Enabled Properties
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -942,7 +945,10 @@ conjunction with :class:`~sqlalchemy.orm.query.Query` as follows:
 
 .. sourcecode:: python+sql
 
-    class User(object):
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+
         def _get_addresses(self):
             return object_session(self).query(Address).with_parent(self).filter(...).all()
         addresses = property(_get_addresses)
@@ -953,18 +959,29 @@ Multiple Relationships against the Same Parent/Child
 Theres no restriction on how many times you can relate from parent to child.
 SQLAlchemy can usually figure out what you want, particularly if the join
 conditions are straightforward. Below we add a ``newyork_addresses`` attribute
-to complement the ``boston_addresses`` attribute:
+to complement the ``boston_addresses`` attribute.   We illustrate
+the quoted-style of configuration for ``newyork_address``, contrasted
+against the immediate Python style for ``boston_addresses``::
 
-.. sourcecode:: python+sql
+    class User(Base):
+        __tablename__ = 'user'
 
-    mapper(User, users_table, properties={
-        'boston_addresses': relationship(Address, primaryjoin=
-                    and_(users_table.c.user_id==addresses_table.c.user_id,
-                    addresses_table.c.city=='Boston')),
-        'newyork_addresses': relationship(Address, primaryjoin=
-                    and_(users_table.c.user_id==addresses_table.c.user_id,
-                    addresses_table.c.city=='New York')),
-    })
+        id = Column(Integer, primary_key=True)
+
+        # primaryjoin rendered as Python
+        boston_addresses = relationship(Address, 
+                        primaryjoin=
+                                and_(id==Address.user_id, 
+                                    Address.city=='Boston')
+                        )
+
+        # primaryjoin rendered as a string which will
+        # be passed to eval()
+        newyork_addresses = relationship("Address", 
+                        primaryjoin=
+                                "and_(User.id==Address.user_id, "
+                                "Address.city=='Boston')"
+                        )
 
 .. _post_update:
 
@@ -1015,10 +1032,17 @@ To enable the UPDATE after INSERT / UPDATE before DELETE behavior on
 :func:`~sqlalchemy.orm.relationship`, use the ``post_update`` flag on *one* of
 the relationships, preferably the many-to-one side::
 
-    mapper(Widget, widget, properties={
-        'entries':relationship(Entry, primaryjoin=widget.c.widget_id==entry.c.widget_id),
-        'favorite_entry':relationship(Entry, primaryjoin=widget.c.favorite_entry_id==entry.c.entry_id, post_update=True)
-    })
+    class Widget(Base):
+        __table__ = widget_table
+
+        entries = relationship(Entry, primaryjoin=
+                                        widget_table.c.widget_id==
+                                        entry_table.c.widget_id)
+        favorite_entry = relationship(Entry, 
+                                    primaryjoin=
+                                        widget_table.c.favorite_entry_id==
+                                        entry_table.c.entry_id, 
+                                    post_update=True)
 
 When a structure using the above mapping is flushed, the "widget" row will be
 INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will
@@ -1051,30 +1075,25 @@ conjunction with ON UPDATE CASCADE functionality,
 although in that case the unit of work will be issuing
 extra SELECT and UPDATE statements unnecessarily.
 
-A typical mutable primary key setup might look like:
+A typical mutable primary key setup might look like::
 
-.. sourcecode:: python+sql
+    class User(Base):
+        __tablename__ = 'user'
 
-    users = Table('users', metadata,
-        Column('username', String(50), primary_key=True),
-        Column('fullname', String(100)))
+        username = Column(String(50), primary_key=True)
+        fullname = Column(String(100))
 
-    addresses = Table('addresses', metadata,
-        Column('email', String(50), primary_key=True),
-        Column('username', String(50), ForeignKey('users.username', onupdate="cascade")))
+        # passive_updates=False *only* needed if the database
+        # does not implement ON UPDATE CASCADE
+        addresses = relationship("Address", passive_updates=False)
 
-    class User(object):
-        pass
-    class Address(object):
-        pass
+    class Address(Base):
+        __tablename__ = 'address'
 
-    # passive_updates=False *only* needed if the database
-    # does not implement ON UPDATE CASCADE
-
-    mapper(User, users, properties={
-        'addresses': relationship(Address, passive_updates=False)
-    })
-    mapper(Address, addresses)
+        email = Column(String(50), primary_key=True)
+        username = Column(String(50), 
+                    ForeignKey('user.username', onupdate="cascade")
+                )
 
 ``passive_updates`` is set to ``True`` by default,
 indicating that ON UPDATE CASCADE is expected to be in
