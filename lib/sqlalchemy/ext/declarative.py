@@ -1153,15 +1153,15 @@ def _as_declarative(cls, classname, dict_):
     if '__table__' not in dict_:
         if tablename is not None:
 
-            if isinstance(table_args, dict):
-                args, table_kw = (), table_args
-            elif isinstance(table_args, tuple):
-                if isinstance(table_args[-1], dict):
-                    args, table_kw = table_args[0:-1], table_args[-1]
-                else:
-                    args, table_kw = table_args, {}
-            else:
-                args, table_kw = (), {}
+            args, table_kw = (), {}
+            if table_args:
+                if isinstance(table_args, dict):
+                    table_kw = table_args
+                elif isinstance(table_args, tuple):
+                    if isinstance(table_args[-1], dict):
+                        args, table_kw = table_args[0:-1], table_args[-1]
+                    else:
+                        args = table_args
 
             autoload = dict_.get('__autoload__')
             if autoload:

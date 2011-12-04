@@ -96,6 +96,11 @@ CHANGES
      single table inheritance joins.  
      [ticket:2328]
 
+  - [bug] __table_args__ can now be passed as 
+    an empty tuple as well as an empty dict.
+    [ticket:2339].  Thanks to Fayaz Yusuf Khan
+    for the patch.
+
 - sql
    - [bug] related to [ticket:2316], made some 
      adjustments to the change from [ticket:2261]

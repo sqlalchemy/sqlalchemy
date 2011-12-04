@@ -78,6 +78,20 @@ class DeclarativeTest(DeclarativeTestBase):
         assert_raises_message(sa.exc.InvalidRequestError,
                               'does not have a __table__', go)
 
+    def test_table_args_empty_dict(self):
+
+        class MyModel(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            __table_args__ = {}
+
+    def test_table_args_empty_tuple(self):
+
+        class MyModel(Base):
+            __tablename__ = 'test'
+            id = Column(Integer, primary_key=True)
+            __table_args__ = ()
+
     def test_cant_add_columns(self):
         t = Table('t', Base.metadata, Column('id', Integer,
                   primary_key=True), Column('data', String))
