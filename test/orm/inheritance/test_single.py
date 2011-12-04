@@ -295,7 +295,9 @@ class RelationshipFromSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest
                             use_default_dialect=True
                             )
 
-class RelationshipToSingleTest(fixtures.MappedTest):
+class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
+    __dialect__ = 'default'
+
     @classmethod
     def define_tables(cls, metadata):
         Table('employees', metadata,
@@ -327,7 +329,8 @@ class RelationshipToSingleTest(fixtures.MappedTest):
             pass
 
     def test_of_type(self):
-        JuniorEngineer, Company, companies, Manager, Employee, employees, Engineer = (self.classes.JuniorEngineer,
+        JuniorEngineer, Company, companies, Manager,\
+                Employee, employees, Engineer = (self.classes.JuniorEngineer,
                                 self.classes.Company,
                                 self.tables.companies,
                                 self.classes.Manager,
@@ -366,6 +369,50 @@ class RelationshipToSingleTest(fixtures.MappedTest):
             [
                 Company(name='c1'),
             ]
+        )
+
+    def test_outer_join(self):
+        Company, Employee, Engineer = self.classes.Company,\
+                                self.classes.Employee,\
+                                self.classes.Engineer
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'engineers':relationship(Engineer)
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company, Engineer.name).outerjoin("engineers"),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, employees.name AS employees_name "
+            "FROM companies LEFT OUTER JOIN employees ON companies.company_id "
+            "= employees.company_id AND employees.type IN (:type_1)" 
+        )
+
+    def test_outer_join_alias(self):
+        Company, Employee, Engineer = self.classes.Company,\
+                                self.classes.Employee,\
+                                self.classes.Engineer
+        companies, employees = self.tables.companies, self.tables.employees
+
+        mapper(Company, companies, properties={
+            'engineers':relationship(Engineer)
+        })
+        mapper(Employee, employees, polymorphic_on=employees.c.type)
+        mapper(Engineer, inherits=Employee, polymorphic_identity='engineer')
+
+        eng_alias = aliased(Engineer)
+        sess = create_session()
+        self.assert_compile(
+            sess.query(Company, eng_alias.name).outerjoin(eng_alias, Company.engineers),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name, employees_1.name AS "
+            "employees_1_name FROM companies LEFT OUTER "
+            "JOIN employees AS employees_1 ON companies.company_id "
+            "= employees_1.company_id AND employees_1.type IN (:type_1)"
         )
 
 

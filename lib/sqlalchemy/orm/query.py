@@ -89,6 +89,7 @@ class Query(object):
     _only_load_props = None
     _refresh_state = None
     _from_obj = ()
+    _join_entities = ()
     _select_from_entity = None
     _filter_aliases = None
     _from_obj_alias = None
@@ -1641,6 +1642,9 @@ class Query(object):
         left_mapper, left_selectable, left_is_aliased = _entity_info(left)
         right_mapper, right_selectable, right_is_aliased = _entity_info(right)
 
+        if right_mapper:
+            self._join_entities += (right, )
+
         if right_mapper and prop and \
                 not right_mapper.common_parent(prop.mapper):
             raise sa_exc.InvalidRequestError(
@@ -2818,9 +2822,10 @@ class Query(object):
         selected from the total results.
 
         """
-
         for entity, (mapper, adapter, s, i, w) in \
                             self._mapper_adapter_map.iteritems():
+            if entity in self._join_entities:
+                continue
             single_crit = mapper._single_table_criterion
             if single_crit is not None:
                 if adapter:

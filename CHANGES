@@ -84,6 +84,18 @@ CHANGES
      a tuple is inadvertently passed to session.query()
      [ticket:2297].  Also in 0.6.9.
 
+   - [bug] Calls to query.join() to a single-table
+     inheritance subclass are now tracked, and
+     are used to eliminate the additional WHERE..
+     IN criterion normally tacked on with single
+     table inheritance, since the join should
+     accommodate it.  This allows OUTER JOIN
+     to a single table subclass to produce
+     the correct results, and overall will produce
+     fewer WHERE criterion when dealing with 
+     single table inheritance joins.  
+     [ticket:2328]
+
 - sql
    - [bug] related to [ticket:2316], made some 
      adjustments to the change from [ticket:2261]
