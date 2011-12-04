@@ -239,7 +239,6 @@ RESERVED_WORDS = set(
      'writetext',
     ])
 
-
 class REAL(sqltypes.REAL):
     __visit_name__ = 'REAL'
 
@@ -789,7 +788,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return s
         return compiler.SQLCompiler.get_select_precolumns(self, select)
 
-    def get_from_hint_text(self, text):
+    def get_from_hint_text(self, table, text):
         return text
 
     def limit_clause(self, select):

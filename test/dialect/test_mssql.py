@@ -20,6 +20,35 @@ from sqlalchemy.engine.reflection import Inspector
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
 
+    def test_select(self):
+        t = table('sometable', column('somecolumn'))
+        self.assert_compile(t.select(),
+                            'SELECT sometable.somecolumn FROM sometable')
+
+    def test_select_with_nolock(self):
+        t = table('sometable', column('somecolumn'))
+        self.assert_compile(t.select().with_hint(t, 'WITH (NOLOCK)'),
+                            'SELECT sometable.somecolumn FROM sometable WITH (NOLOCK)')
+
+    def test_join_with_hint (self):
+        t1 = table('t1',
+            column('a', Integer),
+            column('b', String),
+            column('c', String),
+        )
+        t2 = table('t2',
+            column("a", Integer),
+            column("b", Integer),
+            column("c", Integer),
+        )
+        join = t1.join(t2, t1.c.a==t2.c.a).\
+                        select().with_hint(t1, 'WITH (NOLOCK)')
+        self.assert_compile(
+            join,
+            'SELECT t1.a, t1.b, t1.c, t2.a, t2.b, t2.c '
+            'FROM t1 WITH (NOLOCK) JOIN t2 ON t1.a = t2.a'
+        )
+
     def test_insert(self):
         t = table('sometable', column('somecolumn'))
         self.assert_compile(t.insert(),

@@ -175,6 +175,14 @@ CHANGES
      will do this.  Helps with Alembic "offline"
      scripts.
 
+- mssql
+  - [bug] repaired the with_hint() feature which
+    wasn't implemented correctly on MSSQL - 
+    usually used for the "WITH (NOLOCK)" hint
+    (which you shouldn't be using anyway ! 
+    use snapshot isolation instead :) )
+    [ticket:2336]
+
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.
