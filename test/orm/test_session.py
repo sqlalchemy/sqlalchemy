@@ -916,53 +916,6 @@ class SessionTest(_fixtures.FixtureTest):
         assert user not in s
         assert s.query(User).count() == 0
 
-    def test_is_modified(self):
-        User, Address, addresses, users = (self.classes.User,
-                                self.classes.Address,
-                                self.tables.addresses,
-                                self.tables.users)
-
-        s = create_session()
-
-        mapper(User, users, properties={'addresses':relationship(Address)})
-        mapper(Address, addresses)
-
-        # save user
-        u = User(name='fred')
-        s.add(u)
-        s.flush()
-        s.expunge_all()
-
-        user = s.query(User).one()
-        assert user not in s.dirty
-        assert not s.is_modified(user)
-        user.name = 'fred'
-        assert user in s.dirty
-        assert not s.is_modified(user)
-        user.name = 'ed'
-        assert user in s.dirty
-        assert s.is_modified(user)
-        s.flush()
-        assert user not in s.dirty
-        assert not s.is_modified(user)
-
-        a = Address()
-        user.addresses.append(a)
-        assert user in s.dirty
-        assert s.is_modified(user)
-        assert not s.is_modified(user, include_collections=False)
-
-    def test_is_modified_syn(self):
-        User, users = self.classes.User, self.tables.users
-
-        s = sessionmaker()()
-
-        mapper(User, users, properties={'uname':sa.orm.synonym('name')})
-        u = User(uname='fred')
-        assert s.is_modified(u)
-        s.add(u)
-        s.commit()
-        assert not s.is_modified(u)
 
     def test_weak_ref(self):
         """test the weak-referencing identity map, which strongly-
@@ -1368,6 +1321,113 @@ class SessionDataTest(_fixtures.FixtureTest):
         # pending objects dont get expired
         assert newad.email_address == 'a new address'
 
+class IsModifiedTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def _default_mapping_fixture(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+        mapper(User, users, properties={
+            "addresses":relationship(Address)
+        })
+        mapper(Address, addresses)
+        return User, Address
+
+    def test_is_modified(self):
+        User, Address = self._default_mapping_fixture()
+
+        s = create_session()
+
+        # save user
+        u = User(name='fred')
+        s.add(u)
+        s.flush()
+        s.expunge_all()
+
+        user = s.query(User).one()
+        assert user not in s.dirty
+        assert not s.is_modified(user)
+        user.name = 'fred'
+        assert user in s.dirty
+        assert not s.is_modified(user)
+        user.name = 'ed'
+        assert user in s.dirty
+        assert s.is_modified(user)
+        s.flush()
+        assert user not in s.dirty
+        assert not s.is_modified(user)
+
+        a = Address()
+        user.addresses.append(a)
+        assert user in s.dirty
+        assert s.is_modified(user)
+        assert not s.is_modified(user, include_collections=False)
+
+    def test_is_modified_passive_off(self):
+        User, Address = self._default_mapping_fixture()
+
+        s = Session()
+        u = User(name='fred', addresses=[
+                    Address(email_address='foo')])
+        s.add(u)
+        s.commit()
+
+        u.id
+        def go():
+            assert not s.is_modified(u)
+        self.assert_sql_count(
+            testing.db,
+            go,
+            1
+        )
+
+        s.expire_all()
+        u.name = 'newname'
+
+        # can't predict result here 
+        # deterministically, depending on if
+        # 'name' or 'addresses' is tested first
+        mod  = s.is_modified(u)
+        addresses_loaded = 'addresses' in u.__dict__
+        assert mod is not addresses_loaded
+
+    def test_is_modified_passive_on(self):
+        User, Address = self._default_mapping_fixture()
+
+        s = Session()
+        u = User(name='fred', addresses=[Address(email_address='foo')])
+        s.add(u)
+        s.commit()
+
+        u.id
+        def go():
+            assert not s.is_modified(u, passive=True)
+        self.assert_sql_count(
+            testing.db,
+            go,
+            0
+        )
+
+        u.name = 'newname'
+        def go():
+            assert s.is_modified(u, passive=True)
+        self.assert_sql_count(
+            testing.db,
+            go,
+            0
+        )
+
+    def test_is_modified_syn(self):
+        User, users = self.classes.User, self.tables.users
+
+        s = sessionmaker()()
+
+        mapper(User, users, properties={'uname':sa.orm.synonym('name')})
+        u = User(uname='fred')
+        assert s.is_modified(u)
+        s.add(u)
+        s.commit()
+        assert not s.is_modified(u)
 
 class DisposedStates(fixtures.MappedTest):
     run_setup_mappers = 'once'

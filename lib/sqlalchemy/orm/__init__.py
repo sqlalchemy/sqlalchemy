@@ -667,7 +667,8 @@ def column_property(*cols, **kw):
       simple non-primary-key scalar values only needs to be
       aware of the "new" value in order to perform a flush. This
       flag is available for applications that make use of
-      :func:`.attributes.get_history` which also need to know
+      :func:`.attributes.get_history` or :meth:`.Session.is_modified`
+      which also need to know
       the "previous" value of the attribute. (new in 0.6.6)
 
     :param comparator_factory: a class which extends

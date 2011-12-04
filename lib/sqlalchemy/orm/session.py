@@ -1637,29 +1637,41 @@ class Session(object):
 
     def is_modified(self, instance, include_collections=True, 
                             passive=attributes.PASSIVE_OFF):
-        """Return ``True`` if instance has modified attributes.
+        """Return ``True`` if the given instance has locally 
+        modified attributes.
 
-        This method retrieves a history instance for each instrumented
+        This method retrieves the history for each instrumented
         attribute on the instance and performs a comparison of the current
-        value to its previously committed value.
-
-        ``include_collections`` indicates if multivalued collections should be
-        included in the operation.  Setting this to False is a way to detect
-        only local-column based properties (i.e. scalar columns or many-to-one
-        foreign keys) that would result in an UPDATE for this instance upon
-        flush.
-
-        The ``passive`` flag indicates if unloaded attributes and collections
-        should not be loaded in the course of performing this test.
-        Allowed values include :attr:`.PASSIVE_OFF`, :attr:`.PASSIVE_NO_INITIALIZE`.
-
+        value to its previously committed value, if any.
+        
+        It is in effect a more expensive and accurate
+        version of checking for the given instance in the 
+        :attr:`.Session.dirty` collection; a full test for 
+        each attribute's net "dirty" status is performed.
+        
+        E.g.::
+        
+            return session.is_modified(someobject, passive=True)
+            
+        .. note:: In SQLAlchemy 0.7 and earlier, the ``passive`` 
+           flag should **always** be explicitly set to ``True``. 
+           The current default value of :data:`.attributes.PASSIVE_OFF`
+           for this flag is incorrect, in that it loads unloaded
+           collections and attributes which by definition 
+           have no modified state, and furthermore trips off 
+           autoflush which then causes all subsequent, possibly
+           modified attributes to lose their modified state.   
+           The default value of the flag will be changed in 0.8.
+           
         A few caveats to this method apply:
 
-        * Instances present in the 'dirty' collection may result in a value 
-          of ``False`` when tested with this method.  This because while
-          the object may have received attribute set events, there may be
-          no net changes on its state.
-        * Scalar attributes may not have recorded the "previously" set
+        * Instances present in the :attr:`.Session.dirty` collection may report 
+          ``False`` when tested with this method.  This is because 
+          the object may have received change events via attribute
+          mutation, thus placing it in :attr:`.Session.dirty`, 
+          but ultimately the state is the same as that loaded from
+          the database, resulting in no net change here.
+        * Scalar attributes may not have recorded the previously set
           value when a new value was applied, if the attribute was not loaded,
           or was expired, at the time the new value was received - in these
           cases, the attribute is assumed to have a change, even if there is
@@ -1671,9 +1683,33 @@ class Session(object):
           expensive on average than issuing a defensive SELECT. 
 
           The "old" value is fetched unconditionally only if the attribute
-          container has the "active_history" flag set to ``True``. This flag
-          is set typically for primary key attributes and scalar references
-          that are not a simple many-to-one.
+          container has the ``active_history`` flag set to ``True``. This flag
+          is set typically for primary key attributes and scalar object references
+          that are not a simple many-to-one.  To set this flag for 
+          any arbitrary mapped column, use the ``active_history`` argument
+          with :func:`.column_property`.
+          
+        :param instance: mapped instance to be tested for pending changes.
+        :param include_collections: Indicates if multivalued collections should be
+         included in the operation.  Setting this to ``False`` is a way to detect
+         only local-column based properties (i.e. scalar columns or many-to-one
+         foreign keys) that would result in an UPDATE for this instance upon
+         flush.
+        :param passive: Indicates if unloaded attributes and 
+         collections should be loaded in the course of performing 
+         this test.  If set to ``False``, or left at its default
+         value of :data:`.PASSIVE_OFF`, unloaded attributes
+         will be loaded.  If set to ``True`` or 
+         :data:`.PASSIVE_NO_INITIALIZE`, unloaded 
+         collections and attributes will remain unloaded.  As 
+         noted previously, the existence of this flag here
+         is a bug, as unloaded attributes by definition have 
+         no changes, and the load operation also triggers an
+         autoflush which then cancels out subsequent changes.
+         This flag should **always be set to 
+         True**.  In 0.8 the flag will be deprecated and the default
+         set to ``True``.
+
 
         """
         try:
@@ -1681,10 +1717,12 @@ class Session(object):
         except exc.NO_STATE:
             raise exc.UnmappedInstanceError(instance)
         dict_ = state.dict
+
         if passive is True:
             passive = attributes.PASSIVE_NO_INITIALIZE
         elif passive is False:
             passive = attributes.PASSIVE_OFF
+
         for attr in state.manager.attributes:
             if \
                 (
@@ -1731,6 +1769,10 @@ class Session(object):
     @property
     def dirty(self):
         """The set of all persistent instances considered dirty.
+        
+        E.g.::
+        
+            some_mapped_object in session.dirty
 
         Instances are considered dirty when they were modified but not
         deleted.
@@ -1745,7 +1787,7 @@ class Session(object):
         it's only done at flush time).
 
         To check if an instance has actionable net changes to its
-        attributes, use the is_modified() method.
+        attributes, use the :meth:`.Session.is_modified` method.
 
         """
         return util.IdentitySet(
