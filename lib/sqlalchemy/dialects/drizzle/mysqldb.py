@@ -13,10 +13,11 @@ Connect string format::
 
     drizzle+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
 
-Character Sets
---------------
+Unicode
+-------
 
-Drizzle is all utf8 all the time.
+Drizzle accommodates Python ``unicode`` objects directly and 
+uses the ``utf8`` encoding in all cases.
 
 Known Issues
 -------------

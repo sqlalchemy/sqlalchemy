@@ -63,7 +63,10 @@ class DisconnectionError(SQLAlchemyError):
     """A disconnect is detected on a raw DB-API connection.
 
     This error is raised and consumed internally by a connection pool.  It can
-    be raised by a ``PoolListener`` so that the host pool forces a disconnect.
+    be raised by the :meth:`.PoolEvents.checkout` event 
+    so that the host pool forces a retry; the exception will be caught
+    three times in a row before the pool gives up and raises 
+    :class:`~sqlalchemy.exc.InvalidRequestError` regarding the connection attempt.
 
     """
 

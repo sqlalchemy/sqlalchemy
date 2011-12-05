@@ -234,6 +234,8 @@ application, rather than creating a new one for each connection.
 .. autoclass:: sqlalchemy.engine.url.URL
     :members:
 
+.. _custom_dbapi_args:
+
 Custom DBAPI connect() arguments
 =================================
 

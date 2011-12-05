@@ -137,31 +137,31 @@ def create_engine(*args, **kwargs):
 
     :ref:`connections_toplevel`
     
-    :param assert_unicode:  Deprecated.  A warning is raised in all cases when a non-Unicode
-        object is passed when SQLAlchemy would coerce into an encoding
-        (note: but **not** when the DBAPI handles unicode objects natively).
-        To suppress or raise this warning to an 
-        error, use the Python warnings filter documented at:
-        http://docs.python.org/library/warnings.html
+    :param assert_unicode:  Deprecated.  This flag
+        sets an engine-wide default value for
+        the ``assert_unicode`` flag on the 
+        :class:`.String` type - see that 
+        type for further details.
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
-        additional keyword arguments.
+        additional keyword arguments.  See the example
+        at :ref:`custom_dbapi_args`.
 
-    :param convert_unicode=False: if set to True, all
-        String/character based types will convert Python Unicode values to raw
-        byte values sent to the DBAPI as bind parameters, and all raw byte values to
-        Python Unicode coming out in result sets. This is an
-        engine-wide method to provide Unicode conversion across the
-        board for those DBAPIs that do not accept Python Unicode objects
-        as input.  For Unicode conversion on a column-by-column level, use
-        the ``Unicode`` column type instead, described in :ref:`types_toplevel`.  Note that
-        many DBAPIs have the ability to return Python Unicode objects in
-        result sets directly - SQLAlchemy will use these modes of operation
-        if possible and will also attempt to detect "Unicode returns" 
-        behavior by the DBAPI upon first connect by the 
-        :class:`.Engine`.  When this is detected, string values in 
-        result sets are passed through without further processing.
+    :param convert_unicode=False: if set to True, sets
+        the default behavior of ``convert_unicode`` on the
+        :class:`.String` type to ``True``, regardless
+        of a setting of ``False`` on an individual 
+        :class:`.String` type, thus causing all :class:`.String`
+        -based columns
+        to accommodate Python ``unicode`` objects.  This flag
+        is useful as an engine-wide setting when using a 
+        DBAPI that does not natively support Python
+        ``unicode`` objects and raises an error when
+        one is received (such as pyodbc with FreeTDS).
+        
+        See :class:`.String` for further details on 
+        what this flag indicates.
 
     :param creator: a callable which returns a DBAPI connection.
         This creation function will be passed to the underlying
@@ -184,9 +184,50 @@ def create_engine(*args, **kwargs):
         :ref:`dbengine_logging` for information on how to configure logging
         directly.
 
-    :param encoding='utf-8': the encoding to use for all Unicode
-        translations, both by engine-wide unicode conversion as well as
-        the ``Unicode`` type object.
+    :param encoding: Defaults to ``utf-8``.  This is the string 
+        encoding used by SQLAlchemy for string encode/decode 
+        operations which occur within SQLAlchemy, **outside of 
+        the DBAPI.**  Most modern DBAPIs feature some degree of 
+        direct support for Python ``unicode`` objects,
+        what you see in Python 2 as a string of the form
+        ``u'some string'``.  For those scenarios where the 
+        DBAPI is detected as not supporting a Python ``unicode``
+        object, this encoding is used to determine the 
+        source/destination encoding.  It is **not used**
+        for those cases where the DBAPI handles unicode
+        directly.
+        
+        To properly configure a system to accommodate Python
+        ``unicode`` objects, the DBAPI should be 
+        configured to handle unicode to the greatest
+        degree as is appropriate - see
+        the notes on unicode pertaining to the specific
+        target database in use at :ref:`dialect_toplevel`. 
+        
+        Areas where string encoding may need to be accommodated 
+        outside of the DBAPI include zero or more of: 
+        
+        * the values passed to bound parameters, corresponding to 
+          the :class:`.Unicode` type or the :class:`.String` type
+          when ``convert_unicode`` is ``True``;
+        * the values returned in result set columns corresponding 
+          to the :class:`.Unicode` type or the :class:`.String` 
+          type when ``convert_unicode`` is ``True``;
+        * the string SQL statement passed to the DBAPI's 
+          ``cursor.execute()`` method; 
+        * the string names of the keys in the bound parameter 
+          dictionary passed to the DBAPI's ``cursor.execute()`` 
+          as well as ``cursor.setinputsizes()`` methods;
+        * the string column names retrieved from the DBAPI's 
+          ``cursor.description`` attribute.
+          
+        When using Python 3, the DBAPI is required to support
+        *all* of the above values as Python ``unicode`` objects,
+        which in Python 3 are just known as ``str``.  In Python 2,
+        the DBAPI does not specify unicode behavior at all,
+        so SQLAlchemy must make decisions for each of the above
+        values on a per-DBAPI basis - implementations are
+        completely inconsistent in their behavior.
 
     :param execution_options: Dictionary execution options which will
         be applied to all connections.  See

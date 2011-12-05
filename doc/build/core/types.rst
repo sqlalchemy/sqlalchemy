@@ -297,6 +297,8 @@ TypeDecorator Recipes
 ~~~~~~~~~~~~~~~~~~~~~
 A few key :class:`.TypeDecorator` recipes follow.
 
+.. _coerce_to_unicode:
+
 Coercing Encoded Strings to Unicode
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

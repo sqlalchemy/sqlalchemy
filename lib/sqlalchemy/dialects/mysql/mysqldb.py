@@ -19,35 +19,38 @@ Connect string format::
 
     mysql+mysqldb://<user>:<password>@<host>[:<port>]/<dbname>
 
-Character Sets
---------------
+Unicode
+-------
 
-Many MySQL server installations default to a ``latin1`` encoding for client
-connections.  All data sent through the connection will be converted into
-``latin1``, even if you have ``utf8`` or another character set on your tables
+MySQLdb will accommodate Python ``unicode`` objects if the
+``use_unicode=1`` parameter, or the ``charset`` parameter,
+is passed as a connection argument.
+
+Without this setting, many MySQL server installations default to 
+a ``latin1`` encoding for client connections, which has the effect
+of all data being converted into ``latin1``, even if you have ``utf8`` 
+or another character set configured on your tables
 and columns.  With versions 4.1 and higher, you can change the connection
 character set either through server configuration or by including the
-``charset`` parameter in the URL used for ``create_engine``.  The ``charset``
-option is passed through to MySQL-Python and has the side-effect of also
-enabling ``use_unicode`` in the driver by default.  For regular encoded
-strings, also pass ``use_unicode=0`` in the connection arguments::
+``charset`` parameter.  The ``charset``
+parameter as received by MySQL-Python also has the side-effect of 
+enabling ``use_unicode=1``::
 
-  # set client encoding to utf8; all strings come back as unicode
-  create_engine('mysql+mysqldb:///mydb?charset=utf8')
+    # set client encoding to utf8; all strings come back as unicode
+    create_engine('mysql+mysqldb:///mydb?charset=utf8')
 
-  # set client encoding to utf8; all strings come back as utf8 str
-  create_engine('mysql+mysqldb:///mydb?charset=utf8&use_unicode=0')
+Manually configuring ``use_unicode=0`` will cause MySQL-python to 
+return encoded strings::
+
+    # set client encoding to utf8; all strings come back as utf8 str
+    create_engine('mysql+mysqldb:///mydb?charset=utf8&use_unicode=0')
 
 Known Issues
 -------------
 
 MySQL-python version 1.2.2 has a serious memory leak related
 to unicode conversion, a feature which is disabled via ``use_unicode=0``.
-Using a more recent version of MySQL-python is recommended. The 
-recommended connection form with SQLAlchemy is::
-  
-    engine = create_engine('mysql://scott:tiger@localhost/test?charset=utf8&use_unicode=0', pool_recycle=3600)
-
+It is strongly advised to use the latest version of MySQL-Python.
 
 """
 

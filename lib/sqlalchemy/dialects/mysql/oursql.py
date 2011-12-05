@@ -17,8 +17,8 @@ Connect string format::
 
     mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
 
-Character Sets
---------------
+Unicode
+-------
 
 oursql defaults to using ``utf8`` as the connection charset, but other
 encodings may be used instead. Like the MySQL-Python driver, unicode support

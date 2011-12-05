@@ -122,7 +122,7 @@ __instrumentation_mutex = util.threading.Lock()
 def column_mapped_collection(mapping_spec):
     """A dictionary-based collection type with column-based keying.
 
-    Returns a MappedCollection factory with a keying function generated
+    Returns a :class:`.MappedCollection` factory with a keying function generated
     from mapping_spec, which may be a Column or a sequence of Columns.
 
     The key value must be immutable for the lifetime of the object.  You
@@ -153,7 +153,7 @@ def column_mapped_collection(mapping_spec):
 def attribute_mapped_collection(attr_name):
     """A dictionary-based collection type with attribute-based keying.
 
-    Returns a MappedCollection factory with a keying based on the
+    Returns a :class:`.MappedCollection` factory with a keying based on the
     'attr_name' attribute of entities in the collection, where ``attr_name``
     is the string name of the attribute.
 
@@ -169,7 +169,7 @@ def attribute_mapped_collection(attr_name):
 def mapped_collection(keyfunc):
     """A dictionary-based collection type with arbitrary keying.
 
-    Returns a MappedCollection factory with a keying function generated
+    Returns a :class:`.MappedCollection` factory with a keying function generated
     from keyfunc, a callable that takes an entity and returns a key value.
 
     The key value must be immutable for the lifetime of the object.  You
@@ -200,10 +200,6 @@ class collection(object):
 
         @collection.removes_return()
         def popitem(self): ...
-
-    Decorators can be specified in long-hand for Python 2.3, or with
-    the class-level dict attribute '__instrumentation__'- see the source
-    for details.
 
     """
     # Bundled as a class solely for ease of use: packaging, doc strings,
@@ -474,7 +470,7 @@ class CollectionAdapter(object):
     to the underlying Python collection, and emits add/remove events for
     entities entering or leaving the collection.
 
-    The ORM uses an CollectionAdapter exclusively for interaction with
+    The ORM uses :class:`.CollectionAdapter` exclusively for interaction with
     entity collections.
 
     The usage of getattr()/setattr() is currently to allow injection
@@ -664,14 +660,11 @@ def bulk_replace(values, existing_adapter, new_adapter):
     instances in ``existing_adapter`` not present in ``values`` will have
     remove events fired upon them.
 
-    values
-      An iterable of collection member instances
+    :param values: An iterable of collection member instances
 
-    existing_adapter
-      A CollectionAdapter of instances to be replaced
+    :param existing_adapter: A :class:`.CollectionAdapter` of instances to be replaced
 
-    new_adapter
-      An empty CollectionAdapter to load with ``values``
+    :param new_adapter: An empty :class:`.CollectionAdapter` to load with ``values``
 
 
     """

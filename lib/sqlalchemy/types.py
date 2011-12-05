@@ -962,53 +962,55 @@ class String(Concatenable, TypeEngine):
         :param length: optional, a length for the column for use in
           DDL statements.  May be safely omitted if no ``CREATE
           TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.  Whether the value is
+          ``length`` for use in DDL, and will raise an exception when
+          the ``CREATE TABLE`` DDL is issued if a ``VARCHAR``
+          with no length is included.  Whether the value is
           interpreted as bytes or characters is database specific.
 
-        :param convert_unicode: defaults to False.  If True, the 
-          type will do what is necessary in order to accept 
-          Python Unicode objects as bind parameters, and to return
-          Python Unicode objects in result rows.   This may
-          require SQLAlchemy to explicitly coerce incoming Python 
-          unicodes into an encoding, and from an encoding 
-          back to Unicode, or it may not require any interaction
-          from SQLAlchemy at all, depending on the DBAPI in use.
+        :param convert_unicode: When set to ``True``, the 
+          :class:`.String` type will assume that
+          input is to be passed as Python ``unicode`` objects,
+          and results returned as Python ``unicode`` objects.
+          If the DBAPI in use does not support Python unicode
+          (which is fewer and fewer these days), SQLAlchemy
+          will encode/decode the value, using the 
+          value of the ``encoding`` parameter passed to 
+          :func:`.create_engine` as the encoding.
+          
+          When using a DBAPI that natively supports Python
+          unicode objects, this flag generally does not 
+          need to be set.  For columns that are explicitly
+          intended to store non-ASCII data, the :class:`.Unicode`
+          or :class:`UnicodeText` 
+          types should be used regardless, which feature
+          the same behavior of ``convert_unicode`` but 
+          also indicate an underlying column type that
+          directly supports unicode, such as ``NVARCHAR``.
 
-          When SQLAlchemy performs the encoding/decoding, 
-          the encoding used is configured via
-          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
-          defaults to `utf-8`.
+          For the extremely rare case that Python ``unicode``
+          is to be encoded/decoded by SQLAlchemy on a backend
+          that does natively support Python ``unicode``,
+          the value ``force`` can be passed here which will
+          cause SQLAlchemy's encode/decode services to be
+          used unconditionally.
 
-          The "convert_unicode" behavior can also be turned on
-          for all String types by setting 
-          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`
-          on create_engine().
-
-          To instruct SQLAlchemy to perform Unicode encoding/decoding
-          even on a platform that already handles Unicode natively,
-          set convert_unicode='force'.  This will incur significant
-          performance overhead when fetching unicode result columns.
-
-        :param assert_unicode: Deprecated.  A warning is raised in all cases
-          when a non-Unicode object is passed when SQLAlchemy would coerce
-          into an encoding (note: but **not** when the DBAPI handles unicode
-          objects natively). To suppress or raise this warning to an error,
-          use the Python warnings filter documented at:
-          http://docs.python.org/library/warnings.html
+        :param assert_unicode: Deprecated.  A warning is emitted 
+          when a non-``unicode`` object is passed to the 
+          :class:`.Unicode` subtype of :class:`.String`, 
+          or the :class:`.UnicodeText` subtype of :class:`.Text`.   
+          See :class:`.Unicode` for information on how to 
+          control this warning.
 
         :param unicode_error: Optional, a method to use to handle Unicode
-          conversion errors. Behaves like the 'errors' keyword argument to
-          the standard library's string.decode() functions.   This flag
-          requires that `convert_unicode` is set to `"force"` - otherwise,
+          conversion errors. Behaves like the ``errors`` keyword argument to
+          the standard library's ``string.decode()`` functions.   This flag
+          requires that ``convert_unicode`` is set to ``force`` - otherwise,
           SQLAlchemy is not guaranteed to handle the task of unicode
           conversion.   Note that this flag adds significant performance
           overhead to row-fetching operations for backends that already
           return unicode objects natively (which most DBAPIs do).  This
-          flag should only be used as an absolute last resort for reading
-          strings from a column with varied or corrupted encodings,
-          which only applies to databases that accept invalid encodings 
-          in the first place (i.e. MySQL.  *not* PG, Sqlite, etc.)
+          flag should only be used as a last resort for reading
+          strings from a column with varied or corrupted encodings.
 
         """
         if unicode_error is not None and convert_unicode != 'force':
@@ -1109,37 +1111,57 @@ class Text(String):
     __visit_name__ = 'text'
 
 class Unicode(String):
-    """A variable length Unicode string.
+    """A variable length Unicode string type.
 
-    The ``Unicode`` type is a :class:`.String` which converts Python
-    ``unicode`` objects (i.e., strings that are defined as
-    ``u'somevalue'``) into encoded bytestrings when passing the value
-    to the database driver, and similarly decodes values from the
-    database back into Python ``unicode`` objects.
+    The :class:`.Unicode` type is a :class:`.String` subclass
+    that assumes input and output as Python ``unicode`` data,
+    and in that regard is equivalent to the usage of the
+    ``convert_unicode`` flag with the :class:`.String` type.
+    However, unlike plain :class:`.String`, it also implies an 
+    underlying column type that is explicitly supporting of non-ASCII
+    data, such as ``NVARCHAR`` on Oracle and SQL Server.
+    This can impact the output of ``CREATE TABLE`` statements 
+    and ``CAST`` functions at the dialect level, and can 
+    also affect the handling of bound parameters in some
+    specific DBAPI scenarios.
+    
+    The encoding used by the :class:`.Unicode` type is usually
+    determined by the DBAPI itself; most modern DBAPIs 
+    feature support for Python ``unicode`` objects as bound
+    values and result set values, and the encoding should
+    be configured as detailed in the notes for the target
+    DBAPI in the :ref:`dialect_toplevel` section.
+    
+    For those DBAPIs which do not support, or are not configured
+    to accommodate Python ``unicode`` objects
+    directly, SQLAlchemy does the encoding and decoding
+    outside of the DBAPI.   The encoding in this scenario 
+    is determined by the ``encoding`` flag passed to 
+    :func:`.create_engine`.
 
-    It's roughly equivalent to using a ``String`` object with
-    ``convert_unicode=True``, however
-    the type has other significances in that it implies the usage 
-    of a unicode-capable type being used on the backend, such as NVARCHAR.
-    This may affect what type is emitted when issuing CREATE TABLE
-    and also may effect some DBAPI-specific details, such as type
-    information passed along to ``setinputsizes()``.
-
-    When using the ``Unicode`` type, it is only appropriate to pass
-    Python ``unicode`` objects, and not plain ``str``.  If a
-    bytestring (``str``) is passed, a runtime warning is issued.  If
-    you notice your application raising these warnings but you're not
-    sure where, the Python ``warnings`` filter can be used to turn
-    these warnings into exceptions which will illustrate a stack
-    trace::
+    When using the :class:`.Unicode` type, it is only appropriate 
+    to pass Python ``unicode`` objects, and not plain ``str``.
+    If a plain ``str`` is passed under Python 2, a warning
+    is emitted.  If you notice your application emitting these warnings but 
+    you're not sure of the source of them, the Python 
+    ``warnings`` filter, documented at 
+    http://docs.python.org/library/warnings.html, 
+    can be used to turn these warnings into exceptions 
+    which will illustrate a stack trace::
 
       import warnings
       warnings.simplefilter('error')
 
-    Bytestrings sent to and received from the database are encoded
-    using the dialect's
-    :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which defaults
-    to `utf-8`.
+    For an application that wishes to pass plain bytestrings
+    and Python ``unicode`` objects to the ``Unicode`` type
+    equally, the bytestrings must first be decoded into 
+    unicode.  The recipe at :ref:`coerce_to_unicode` illustrates
+    how this is done.
+
+    See also:
+
+        :class:`.UnicodeText` - unlengthed textual counterpart
+        to :class:`.Unicode`.
 
     """
 
@@ -1147,17 +1169,11 @@ class Unicode(String):
 
     def __init__(self, length=None, **kwargs):
         """
-        Create a Unicode-converting String type.
-
-        :param length: optional, a length for the column for use in
-          DDL statements.  May be safely omitted if no ``CREATE
-          TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.  Whether the value is
-          interpreted as bytes or characters is database specific.
-
-        :param \**kwargs: passed through to the underlying ``String``
-          type.
+        Create a :class:`.Unicode` object.
+        
+        Parameters are the same as that of :class:`.String`,
+        with the exception that ``convert_unicode``
+        defaults to ``True``.
 
         """
         kwargs.setdefault('convert_unicode', True)
@@ -1165,13 +1181,14 @@ class Unicode(String):
         super(Unicode, self).__init__(length=length, **kwargs)
 
 class UnicodeText(Text):
-    """An unbounded-length Unicode string.
+    """An unbounded-length Unicode string type.
 
     See :class:`.Unicode` for details on the unicode
     behavior of this object.
 
-    Like ``Unicode``, usage the ``UnicodeText`` type implies a 
-    unicode-capable type being used on the backend, such as NCLOB.
+    Like :class:`.Unicode`, usage the :class:`.UnicodeText` type implies a 
+    unicode-capable type being used on the backend, such as 
+    ``NCLOB``, ``NTEXT``.
 
     """
 
@@ -1181,12 +1198,9 @@ class UnicodeText(Text):
         """
         Create a Unicode-converting Text type.
 
-        :param length: optional, a length for the column for use in
-          DDL statements.  May be safely omitted if no ``CREATE
-          TABLE`` will be issued.  Certain databases may require a
-          *length* for use in DDL, and will raise an exception when
-          the ``CREATE TABLE`` DDL is issued.  Whether the value is
-          interpreted as bytes or characters is database specific.
+        Parameters are the same as that of :class:`.Text`,
+        with the exception that ``convert_unicode``
+        defaults to ``True``.
 
         """
         kwargs.setdefault('convert_unicode', True)

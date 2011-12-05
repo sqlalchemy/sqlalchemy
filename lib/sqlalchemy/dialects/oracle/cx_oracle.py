@@ -50,6 +50,8 @@ Unicode
 cx_oracle 5 fully supports Python unicode objects.   SQLAlchemy will pass
 all unicode strings directly to cx_oracle, and additionally uses an output
 handler so that all string based result values are returned as unicode as well.
+Generally, the ``NLS_LANG`` environment variable determines the nature
+of the encoding to be used.
 
 Note that this behavior is disabled when Oracle 8 is detected, as it has been 
 observed that issues remain when passing Python unicodes to cx_oracle with Oracle 8.

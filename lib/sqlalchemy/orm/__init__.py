@@ -427,11 +427,8 @@ def relationship(argument, secondary=None, **kwargs):
       * ``dynamic`` - the attribute will return a pre-configured
         :class:`~sqlalchemy.orm.query.Query` object for all read 
         operations, onto which further filtering operations can be
-        applied before iterating the results.  The dynamic 
-        collection supports a limited set of mutation operations,
-        allowing ``append()`` and ``remove()``.  Changes to the
-        collection will not be visible until flushed 
-        to the database, where it is then refetched upon iteration.
+        applied before iterating the results.  See
+        the section :ref:`dynamic_relationship` for more details.
 
       * True - a synonym for 'select'
 
@@ -627,19 +624,12 @@ def dynamic_loader(argument, **kw):
 
         dynamic_loader(SomeClass)
         
-        # vs.
+        # is the same as
         
         relationship(SomeClass, lazy="dynamic")
 
-    A :func:`relationship` that is "dynamic" features the behavior
-    that read operations return an active :class:`.Query` object which 
-    reads from the database when accessed. Items may be appended to the
-    attribute via ``append()``, or removed via ``remove()``; changes will be
-    persisted to the database during a :meth:`Sesion.flush`. However, no other
-    Python list or collection mutation operations are available.
-
-    All arguments accepted by :func:`relationship` are
-    accepted here, other than ``lazy`` which is fixed at ``dynamic``.
+    See the section :ref:`dynamic_relationship` for more details
+    on dynamic loading.
 
     """
     kw['lazy'] = 'dynamic'

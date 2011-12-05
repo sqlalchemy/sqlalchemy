@@ -146,7 +146,7 @@ place joinedloads for both:
 
     session.query(A).options(joinedload('atob'), joinedload('atob.btoc')).all()
 
-or more simply just use :func:`~sqlalchemy.orm.joinedload_all` or
+or more succinctly just use :func:`~sqlalchemy.orm.joinedload_all` or
 :func:`~sqlalchemy.orm.subqueryload_all`:
 
 .. sourcecode:: python+sql

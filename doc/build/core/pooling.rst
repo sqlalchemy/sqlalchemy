@@ -5,10 +5,13 @@ Connection Pooling
 
 .. module:: sqlalchemy.pool
 
-The establishment of a
-database connection is typically a somewhat expensive operation, and
-applications need a way to get at database connections repeatedly
-with minimal overhead.  Particularly for
+A connection pool is a standard technique used to maintain
+long running connections in memory for efficient re-use, 
+as well as to provide
+management for the total number of connections an application
+might use simultaneously.
+
+Particularly for
 server-side web applications, a connection pool is the standard way to
 maintain a "pool" of active database connections in memory which are
 reused across requests.
@@ -21,10 +24,10 @@ plain DBAPI approach.
 Connection Pool Configuration
 -----------------------------
 
-The :class:`~sqlalchemy.engine.Engine` returned by the
+The :class:`~.engine.base.Engine` returned by the
 :func:`~sqlalchemy.create_engine` function in most cases has a :class:`.QueuePool`
 integrated, pre-configured with reasonable pooling defaults.  If
-you're reading this section to simply enable pooling- congratulations!
+you're reading this section only to learn how to enable pooling - congratulations!
 You're already done.
 
 The most common :class:`.QueuePool` tuning parameters can be passed
@@ -91,9 +94,9 @@ the same name::
     engine = create_engine('postgresql+psycopg2://', creator=getconn)
 
 For most "initialize on connection" routines, it's more convenient
-to use a :class:`.PoolListener`, so that the usual URL argument to
+to use the :class:`.PoolEvents` event hooks, so that the usual URL argument to
 :func:`.create_engine` is still usable.  ``creator`` is there as
-a total last resort for when a DBAPI has some form of ``connect``
+a last resort for when a DBAPI has some form of ``connect``
 that is not at all supported by SQLAlchemy.
 
 Constructing a Pool
@@ -141,12 +144,12 @@ engines by passing it to the ``pool`` argument of :func:`.create_engine`::
 
     e = create_engine('postgresql://', pool=mypool)
 
-Pool Event Listeners
---------------------
+Pool Events
+-----------
 
 Connection pools support an event interface that allows hooks to execute
 upon first connect, upon each new connection, and upon checkout and 
-checkin of connections.   See :class:`.PoolListener` for details.
+checkin of connections.   See :class:`.PoolEvents` for details.
 
 Dealing with Disconnects
 ------------------------
@@ -239,8 +242,9 @@ can detect an invalid connection before it's used::
             raise exc.DisconnectionError()
         cursor.close()
 
-Above, the :class:`.Pool` object specifically catches :class:`.DisconnectionError` and attempts
-to create a new DBAPI connection, up to three times before giving up.   This recipe will ensure 
+Above, the :class:`.Pool` object specifically catches :class:`~sqlalchemy.exc.DisconnectionError` and attempts
+to create a new DBAPI connection, up to three times, before giving up and then raising
+:class:`~sqlalchemy.exc.InvalidRequestError`, failing the connection.   This recipe will ensure 
 that a new :class:`.Connection` will succeed even if connections
 in the pool have gone stale, provided that the database server is actually running.   The expense
 is that of an additional execution performed per checkout.   When using the ORM :class:`.Session`,

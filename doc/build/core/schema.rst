@@ -412,8 +412,8 @@ Reflecting Database Objects
 
 A :class:`~sqlalchemy.schema.Table` object can be instructed to load
 information about itself from the corresponding database schema object already
-existing within the database. This process is called *reflection*. Most simply
-you need only specify the table name, a :class:`~sqlalchemy.schema.MetaData`
+existing within the database. This process is called *reflection*. In the
+most simple case you need only specify the table name, a :class:`~sqlalchemy.schema.MetaData`
 object, and the ``autoload=True`` flag. If the
 :class:`~sqlalchemy.schema.MetaData` is not persistently bound, also add the
 ``autoload_with`` argument::

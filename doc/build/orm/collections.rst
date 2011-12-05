@@ -2,6 +2,7 @@
 
 .. currentmodule:: sqlalchemy.orm
 
+=======================================
 Collection Configuration and Techniques
 =======================================
 
@@ -15,32 +16,33 @@ and techniques.
 .. currentmodule:: sqlalchemy.orm
 
 Working with Large Collections
--------------------------------
+===============================
 
 The default behavior of :func:`.relationship` is to fully load
 the collection of items in, as according to the loading strategy of the
-relationship. Additionally, the Session by default only knows how to delete
+relationship. Additionally, the :class:`.Session` by default only knows how to delete
 objects which are actually present within the session. When a parent instance
-is marked for deletion and flushed, the Session loads its full list of child
+is marked for deletion and flushed, the :class:`.Session` loads its full list of child
 items in so that they may either be deleted as well, or have their foreign key
 value set to null; this is to avoid constraint violations. For large
 collections of child items, there are several strategies to bypass full
 loading of child items both at load time as well as deletion time.
 
+.. _dynamic_relationship:
+
 Dynamic Relationship Loaders
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
 A key feature to enable management of a large collection is the so-called "dynamic"
 relationship.  This is an optional form of :func:`~sqlalchemy.orm.relationship` which
 returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection
 when accessed. :func:`~sqlalchemy.orm.query.Query.filter` criterion may be
-applied as well as limits and offsets, either explicitly or via array slices:
+applied as well as limits and offsets, either explicitly or via array slices::
 
-.. sourcecode:: python+sql
+    class User(Base):
+        __tablename__ = 'user'
 
-    mapper(User, users_table, properties={
-        'posts': relationship(Post, lazy="dynamic")
-    })
+        posts = relationship(Post, lazy="dynamic")
 
     jack = session.query(User).get(id)
 
@@ -66,13 +68,14 @@ automatically each time the collection is about to emit a
 query.
 
 To place a dynamic relationship on a backref, use the :func:`~.orm.backref`
-function in conjunction with ``lazy='dynamic'``:
+function in conjunction with ``lazy='dynamic'``::
 
-.. sourcecode:: python+sql
+    class Post(Base):
+        __table__ = posts_table
 
-    mapper(Post, posts_table, properties={
-        'user': relationship(User, backref=backref('posts', lazy='dynamic'))
-    })
+        user = relationship(User, 
+                    backref=backref('posts', lazy='dynamic')
+                )
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
 
@@ -81,15 +84,15 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
 
 
 Setting Noload
-~~~~~~~~~~~~~~~
+---------------
 
-The opposite of the dynamic relationship is simply "noload", specified using ``lazy='noload'``:
+A "noload" relationship never loads from the database, even when 
+accessed.   It is configured using ``lazy='noload'``::
 
-.. sourcecode:: python+sql
+    class MyClass(Base):
+        __tablename__ = 'some_table'
 
-    mapper(MyClass, table, properties={
-        'children': relationship(MyOtherClass, lazy='noload')
-    })
+        children = relationship(MyOtherClass, lazy='noload')
 
 Above, the ``children`` collection is fully writeable, and changes to it will
 be persisted to the database as well as locally available for reading at the
@@ -99,30 +102,26 @@ from the database, the ``children`` collection stays empty.
 .. _passive_deletes:
 
 Using Passive Deletes
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 Use ``passive_deletes=True`` to disable child object loading on a DELETE
 operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
 to automatically cascade deletes to child objects. Note that "ON DELETE" is
-not supported on SQLite, and requires ``InnoDB`` tables when using MySQL:
+not supported on SQLite, and requires ``InnoDB`` tables when using MySQL::
 
-.. sourcecode:: python+sql
+    class MyClass(Base):
+        __tablename__ = 'mytable'
+        id = Column(Integer, primary_key=True)
+        children = relationship("MyOtherClass", 
+                        cascade="all, delete-orphan", 
+                        passive_deletes=True)
 
-        mytable = Table('mytable', meta,
-            Column('id', Integer, primary_key=True),
-            )
-
-        myothertable = Table('myothertable', meta,
-            Column('id', Integer, primary_key=True),
-            Column('parent_id', Integer),
-            ForeignKeyConstraint(['parent_id'], ['mytable.id'], ondelete="CASCADE"),
-            )
-
-        mapper(MyOtherClass, myothertable)
-
-        mapper(MyClass, mytable, properties={
-            'children': relationship(MyOtherClass, cascade="all, delete-orphan", passive_deletes=True)
-        })
+    class MyOtherClass(Base):
+        __tablename__ = 'myothertable'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, 
+                    ForeignKey('mytable.id', ondelete='CASCADE')
+                        )
 
 When ``passive_deletes`` is applied, the ``children`` relationship will not be
 loaded into memory when an instance of ``MyClass`` is marked for deletion. The
@@ -130,21 +129,23 @@ loaded into memory when an instance of ``MyClass`` is marked for deletion. The
 ``MyOtherClass`` which are currently present in the session; however for
 instances of ``MyOtherClass`` which are not loaded, SQLAlchemy assumes that
 "ON DELETE CASCADE" rules will ensure that those rows are deleted by the
-database and that no foreign key violation will occur.
+database.
 
 .. currentmodule:: sqlalchemy.orm.collections
 .. _custom_collections:
 
 Customizing Collection Access
------------------------------
+=============================
 
 Mapping a one-to-many or many-to-many relationship results in a collection of
 values accessible through an attribute on the parent instance. By default,
 this collection is a ``list``::
 
-    mapper(Parent, properties={
-        'children' : relationship(Child)
-    })
+    class Parent(Base):
+        __tablename__ = 'parent'
+        parent_id = Column(Integer, primary_key=True)
+
+        children = relationship(Child)
 
     parent = Parent()
     parent.children.append(Child())
@@ -153,14 +154,14 @@ this collection is a ``list``::
 Collections are not limited to lists. Sets, mutable sequences and almost any
 other Python object that can act as a container can be used in place of the
 default list, by specifying the ``collection_class`` option on
-:func:`~sqlalchemy.orm.relationship`.
+:func:`~sqlalchemy.orm.relationship`::
 
-.. sourcecode:: python+sql
+    class Parent(Base):
+        __tablename__ = 'parent'
+        parent_id = Column(Integer, primary_key=True)
 
-    # use a set
-    mapper(Parent, properties={
-        'children' : relationship(Child, collection_class=set)
-    })
+        # use a set
+        children = relationship(Child, collection_class=set)
 
     parent = Parent()
     child = Child()
@@ -168,12 +169,12 @@ default list, by specifying the ``collection_class`` option on
     assert child in parent.children
 
 Dictionary Collections
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 A little extra detail is needed when using a dictionary as a collection. 
 This because objects are always loaded from the database as lists, and a key-generation
 strategy must be available to populate the dictionary correctly.  The
-:func:`.orm.collections.attribute_mapped_collection` function is by far the most common way
+:func:`.attribute_mapped_collection` function is by far the most common way
 to achieve a simple dictionary collection.  It produces a dictionary class that will apply a particular attribute
 of the mapped class as a key.   Below we map an ``Item`` class containing
 a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
@@ -210,7 +211,7 @@ a dictionary of ``Note`` items keyed to the ``Note.keyword`` attribute::
     >>> item.notes.items()
     {'a': <__main__.Note object at 0x2eaaf0>}
 
-:func:`.orm.collections.attribute_mapped_collection` will ensure that 
+:func:`.attribute_mapped_collection` will ensure that 
 the ``.keyword`` attribute of each ``Note`` complies with the key in the
 dictionary.   Such as, when assigning to ``Item.notes``, the dictionary
 key we supply must match that of the actual ``Note`` object::
@@ -221,8 +222,8 @@ key we supply must match that of the actual ``Note`` object::
                 'b': Note('b', 'btext')
             }
 
-The attribute which :func:`.orm.collections.attribute_mapped_collection` uses as a key
-does not need to be mapped at all !  Using a regular Python ``@property`` allows virtually
+The attribute which :func:`.attribute_mapped_collection` uses as a key
+does not need to be mapped at all!  Using a regular Python ``@property`` allows virtually
 any detail or combination of details about the object to be used as the key, as 
 below when we establish it as a tuple of ``Note.keyword`` and the first ten letters
 of the ``Note.text`` field::
@@ -259,8 +260,8 @@ is added to the ``Item.notes`` dictionary and the key is generated for us automa
     >>> item.notes
     {('a', 'atext'): <__main__.Note object at 0x2eaaf0>}
 
-Other built-in dictionary types include :func:`.orm.collections.column_mapped_collection`,
-which is almost like ``attribute_mapped_collection`` except given the :class:`.Column`
+Other built-in dictionary types include :func:`.column_mapped_collection`,
+which is almost like :func:`.attribute_mapped_collection` except given the :class:`.Column`
 object directly::
 
     from sqlalchemy.orm.collections import column_mapped_collection
@@ -272,8 +273,8 @@ object directly::
                     collection_class=column_mapped_collection(Note.__table__.c.keyword), 
                     cascade="all, delete-orphan")
 
-as well as :func:`.orm.collections.mapped_collection` which is passed any callable function.
-Note that it's usually easier to use :func:`.orm.collections.attribute_mapped_collection` along
+as well as :func:`.mapped_collection` which is passed any callable function.
+Note that it's usually easier to use :func:`.attribute_mapped_collection` along
 with a ``@property`` as mentioned earlier::
 
     from sqlalchemy.orm.collections import mapped_collection
@@ -289,18 +290,23 @@ Dictionary mappings are often combined with the "Association Proxy" extension to
 streamlined dictionary views.  See :ref:`proxying_dictionaries` and :ref:`composite_association_proxy` 
 for examples.
 
+.. autofunction:: attribute_mapped_collection
+
+.. autofunction:: column_mapped_collection
+
+.. autofunction:: mapped_collection
 
 Custom Collection Implementations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+==================================
 
-You can use your own types for collections as well.  In simple cases, simply 
+You can use your own types for collections as well.  In simple cases,  
 inherting from ``list`` or ``set``, adding custom behavior, is all that's needed.
 In other cases, special decorators are needed to tell SQLAlchemy more detail
 about how the collection operates.
 
-.. topic:: Do I need a custom collection implementation ?
+.. topic:: Do I need a custom collection implementation?
 
-   In most cases not at all !   The most common use cases for a "custom" collection
+   In most cases not at all!   The most common use cases for a "custom" collection
    is one that validates or marshals incoming values into a new form, such as
    a string that becomes a class instance, or one which goes a
    step beyond and represents the data internally in some fashion, presenting
@@ -332,7 +338,7 @@ operations can fire *events* which indicate some secondary operation must take
 place. Examples of a secondary operation include saving the child item in the
 parent's :class:`~sqlalchemy.orm.session.Session` (i.e. the ``save-update``
 cascade), as well as synchronizing the state of a bi-directional relationship
-(i.e. a ``backref``).
+(i.e. a :func:`.backref`).
 
 The collections package understands the basic interface of lists, sets and
 dicts and will automatically apply instrumentation to those built-in types and
@@ -388,11 +394,11 @@ automatically when present. This set-like class does not provide the expected
 decorator.
 
 Annotating Custom Collections via Decorators
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------------
 
 Decorators can be used to tag the individual methods the ORM needs to manage
 collections. Use them when your class doesn't quite meet the regular interface
-for its container type, or you simply would like to use a different method to
+for its container type, or when you otherwise would like to use a different method to
 get the job done.
 
 .. sourcecode:: python+sql
@@ -439,12 +445,15 @@ interface marked for SQLAlchemy's use. Append and remove methods will be
 called with a mapped entity as the single argument, and iterator methods are
 called with no arguments and must return an iterator.
 
+.. autoclass:: collection
+    :members:
+
 .. _dictionary_collections:
 
 Custom Dictionary-Based Collections
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------
 
-The :class:`sqlalchemy.orm.collections.MappedCollection` class can be used as
+The :class:`.MappedCollection` class can be used as
 a base class for your custom types or as a mix-in to quickly add ``dict``
 collection support to other classes. It uses a keying function to delegate to
 ``__setitem__`` and ``__delitem__``:
@@ -496,12 +505,15 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
 
+.. autoclass:: sqlalchemy.orm.collections.MappedCollection
+   :members:
+
 Instrumentation and Custom Types
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------
 
 Many custom types and existing library classes can be used as a entity
 collection type as-is without further ado. However, it is important to note
-that the instrumentation process _will_ modify the type, adding decorators
+that the instrumentation process will modify the type, adding decorators
 around methods automatically.
 
 The decorations are lightweight and no-op outside of relationships, but they
@@ -519,26 +531,21 @@ to restrict the decorations to just your usage in relationships. For example:
 The ORM uses this approach for built-ins, quietly substituting a trivial
 subclass when a ``list``, ``set`` or ``dict`` is used directly.
 
-The collections package provides additional decorators and support for
-authoring custom types. See the :mod:`sqlalchemy.orm.collections` package for
-more information and discussion of advanced usage and Python 2.3-compatible
-decoration options.
+Collection Internals
+=====================
 
-Collections API
-~~~~~~~~~~~~~~~
+Various internal methods.
 
-.. autofunction:: attribute_mapped_collection
-
-.. autoclass:: collection
-    :members:
+.. autofunction:: bulk_replace
 
 .. autofunction:: collection_adapter
 
-.. autofunction:: column_mapped_collection
+.. autoclass:: CollectionAdapter
 
-.. autofunction:: mapped_collection
+.. autoclass:: InstrumentedDict
 
-.. autoclass:: sqlalchemy.orm.collections.MappedCollection
-   :members:
+.. autoclass:: InstrumentedList
 
+.. autoclass:: InstrumentedSet
 
+.. autofunction:: prepare_instrumentation
