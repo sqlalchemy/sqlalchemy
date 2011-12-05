@@ -489,16 +489,30 @@ using :attr:`.Operators.eq` against the left and right sides, passing into
 We can modify the pattern to be more verbose but flexible by separating
 the "join" step from the "filter" step.  The tricky part here is ensuring
 that successive instances of ``GrandparentTransformer`` use the same
-:class:`.AliasedClass` object against ``Node`` - we put it at the 
-class level here but other memoizing approaches can be used::
+:class:`.AliasedClass` object against ``Node``.  Below we use a simple
+memoizing approach that associates a ``GrandparentTransformer``
+with each class::
+
+    class Node(Base):
+
+        # ...
+
+        @grandparent.comparator
+        def grandparent(cls):
+            # memoize a GrandparentTransformer
+            # per class
+            if '_gp' not in cls.__dict__:
+                cls._gp = GrandparentTransformer(cls)
+            return cls._gp
 
     class GrandparentTransformer(Comparator):
-        parent_alias = aliased(Node)
+
+        def __init__(self, cls):
+            self.parent_alias = aliased(cls)
 
         @property
         def join(self):
             def go(q):
-                expression = self.__clause_element__()
                 return q.join(self.parent_alias, Node.parent)
             return go
 
