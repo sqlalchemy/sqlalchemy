@@ -386,6 +386,140 @@ Python only expression::
 The Hybrid Value pattern is very useful for any kind of value that may have multiple representations,
 such as timestamps, time deltas, units of measurement, currencies and encrypted passwords.
 
+See Also:
+
+`Hybrids and Value Agnostic Types <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_ - on the techspot.zzzeek.org blog
+
+`Value Agnostic Types, Part II <http://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ - on the techspot.zzzeek.org blog
+
+.. _hybrid_transformers:
+
+Building Transformers
+----------------------
+
+A *transformer* is an object which can receive a :class:`.Query` object and return a
+new one.   The :class:`.Query` object includes a method :meth:`.with_transformation` 
+that simply returns a new :class:`.Query` transformed by the given function.
+
+We can combine this with the :class:`.Comparator` class to produce one type
+of recipe which can both set up the FROM clause of a query as well as assign
+filtering criterion.
+
+Consider a mapped class ``Node``, which assembles using adjacency list into a hierarchical
+tree pattern::
+    
+    from sqlalchemy import Column, Integer, ForeignKey
+    from sqlalchemy.orm import relationship
+    from sqlalchemy.ext.declarative import declarative_base
+    Base = declarative_base()
+    
+    class Node(Base):
+        __tablename__ = 'node'
+        id =Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent = relationship("Node", remote_side=id)
+    
+Suppose we wanted to add an accessor ``grandparent``.  This would return the ``parent`` of
+``Node.parent``.  When we have an instance of ``Node``, this is simple::
+
+    from sqlalchemy.ext.hybrid import hybrid_property
+
+    class Node(Base):
+        # ...
+        
+        @hybrid_property
+        def grandparent(self):
+            return self.parent.parent
+
+For the expression, things are not so clear.   We'd need to construct a :class:`.Query` where we
+:meth:`~.Query.join` twice along ``Node.parent`` to get to the ``grandparent``.   We can instead
+return a transforming callable that we'll combine with the :class:`.Comparator` class
+to receive any :class:`.Query` object, and return a new one that's joined to the ``Node.parent``
+attribute and filtered based on the given criterion::
+
+    from sqlalchemy.ext.hybrid import Comparator
+
+    class GrandparentTransformer(Comparator):
+        def operate(self, op, other):
+            def transform(q):
+                cls = self.__clause_element__()
+                parent_alias = aliased(cls)
+                return q.join(parent_alias, cls.parent).\\
+                            filter(op(parent_alias.parent, other))
+            return transform
+
+    Base = declarative_base()
+
+    class Node(Base):
+        __tablename__ = 'node'
+        id =Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('node.id'))
+        parent = relationship("Node", remote_side=id)
+        
+        @hybrid_property
+        def grandparent(self):
+            return self.parent.parent
+
+        @grandparent.comparator
+        def grandparent(cls):
+            return GrandparentTransformer(cls)
+
+The ``GrandparentTransformer`` overrides the core :meth:`.Operators.operate` method
+at the base of the :class:`.Comparator` hierarchy to return a query-transforming
+callable, which then runs the given comparison operation in a particular context.
+Such as, in the example above, the ``operate`` method is called, given the
+:attr:`.Operators.eq` callable as well as the right side of the comparison
+``Node(id=5)``.  A function ``transform`` is then returned which will transform
+a :class:`.Query` first to join to ``Node.parent``, then to compare ``parent_alias``
+using :attr:`.Operators.eq` against the left and right sides, passing into
+:class:`.Query.filter`:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.orm import Session
+    >>> session = Session()
+    {sql}>>> session.query(Node).\\
+    ...        with_transformation(Node.grandparent==Node(id=5)).\\
+    ...        all()
+    SELECT node.id AS node_id, node.parent_id AS node_parent_id 
+    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id 
+    WHERE :param_1 = node_1.parent_id
+    {stop}
+
+We can modify the pattern to be more verbose but flexible by separating
+the "join" step from the "filter" step.  The tricky part here is ensuring
+that successive instances of ``GrandparentTransformer`` use the same
+:class:`.AliasedClass` object against ``Node`` - we put it at the 
+class level here but other memoizing approaches can be used::
+
+    class GrandparentTransformer(Comparator):
+        parent_alias = aliased(Node)
+
+        @property
+        def join(self):
+            def go(q):
+                expression = self.__clause_element__()
+                return q.join(self.parent_alias, Node.parent)
+            return go
+
+        def operate(self, op, other):
+            return op(self.parent_alias.parent, other)
+
+.. sourcecode:: pycon+sql
+
+    {sql}>>> session.query(Node).\\
+    ...            with_transformation(Node.grandparent.join).\\
+    ...            filter(Node.grandparent==Node(id=5))
+    SELECT node.id AS node_id, node.parent_id AS node_parent_id 
+    FROM node JOIN node AS node_1 ON node_1.id = node.parent_id 
+    WHERE :param_1 = node_1.parent_id
+    {stop}
+
+The "transformer" pattern is an experimental pattern that starts
+to make usage of some functional programming paradigms.
+While it's only recommended for advanced and/or patient developers, 
+there's probably a whole lot of amazing things it can be used for.
+
 """
 from sqlalchemy import util
 from sqlalchemy.orm import attributes, interfaces

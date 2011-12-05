@@ -252,6 +252,15 @@ CHANGES
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.
 
+- ext
+   - [feature] Added an example to the hybrid docs
+     of a "transformer" - a hybrid that returns a
+     query-transforming callable in combination
+     with a custom comparator.   Uses a new method
+     on Query called with_transformation().  The use
+     case here is fairly experimental, but only
+     adds one line of code to Query.
+
 - examples
    - [bug] Fixed bug in history_meta.py example where
      the "unique" flag was not removed from a 

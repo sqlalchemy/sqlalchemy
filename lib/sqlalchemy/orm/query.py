@@ -989,6 +989,27 @@ class Query(object):
             for opt in opts:
                 opt.process_query(self)
 
+    def with_transformation(self, fn):
+        """Return a new :class:`.Query` object transformed by
+        the given function.
+        
+        E.g.::
+        
+            def filter_something(criterion):
+                def transform(q):
+                    return q.filter(criterion)
+                return transform
+            
+            q = q.with_transformation(filter_something(x==5))
+        
+        This allows ad-hoc recipes to be created for :class:`.Query`
+        objects.  See the example at :ref:`hybrid_transformers`.
+
+        :meth:`~.Query.with_transformation` is new in SQLAlchemy 0.7.4.
+
+        """
+        return fn(self)
+
     @_generative()
     def with_hint(self, selectable, text, dialect_name='*'):
         """Add an indexing hint for the given entity or selectable to 
