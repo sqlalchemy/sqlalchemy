@@ -248,7 +248,7 @@ class PoolEvents(event.Events):
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
 
-        events.listen(Pool, 'checkout', my_on_checkout)
+        event.listen(Pool, 'checkout', my_on_checkout)
 
     In addition to accepting the :class:`.Pool` class and :class:`.Pool` instances,
     :class:`.PoolEvents` also accepts :class:`.Engine` objects and
@@ -259,7 +259,7 @@ class PoolEvents(event.Events):
         engine = create_engine("postgresql://scott:tiger@localhost/test")
 
         # will associate with engine.pool
-        events.listen(engine, 'checkout', my_on_checkout)
+        event.listen(engine, 'checkout', my_on_checkout)
 
     """
 
