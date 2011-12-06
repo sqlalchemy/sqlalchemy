@@ -6,7 +6,9 @@ from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
 
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import exc
 from sqlalchemy.sql import table, column, visitors
+from test.lib.testing import assert_raises_message
 from test.lib import *
 
 class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -103,6 +105,21 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z "
             "FROM mytable WHERE mytable.x > :x_1)"
+        )
+
+    def test_no_default_message(self):
+        class MyThingy(ColumnClause):
+            pass
+
+        @compiles(MyThingy, "psotgresql")
+        def visit_thingy(thingy, compiler, **kw):
+            return "mythingy"
+
+        assert_raises_message(
+            exc.CompileError,
+            "<class 'test.ext.test_compiler.MyThingy'> "
+            "construct has no default compilation handler.",
+            str, MyThingy('x')
         )
 
     def test_annotations(self):

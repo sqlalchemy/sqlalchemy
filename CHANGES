@@ -261,6 +261,11 @@ CHANGES
      case here is fairly experimental, but only
      adds one line of code to Query.
 
+   - [bug] the @compiles decorator raises an
+     informative error message when no "default"
+     compilation handler is present, rather
+     than KeyError.
+
 - examples
    - [bug] Fixed bug in history_meta.py example where
      the "unique" flag was not removed from a 

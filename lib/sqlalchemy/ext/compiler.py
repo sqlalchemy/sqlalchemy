@@ -367,6 +367,7 @@ Example usage::
     )
     
 """
+from sqlalchemy import exc
 
 def compiles(class_, *specs):
     def decorate(fn):
@@ -399,6 +400,11 @@ class _dispatcher(object):
         # TODO: yes, this could also switch off of DBAPI in use.
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
-            fn = self.specs['default']
+            try:
+                fn = self.specs['default']
+            except KeyError:
+                raise exc.CompileError(
+                        "%s construct has no default "
+                        "compilation handler." % type(element))
         return fn(element, compiler, **kw)
 
