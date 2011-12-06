@@ -111,6 +111,11 @@ CHANGES
     MySQL's arbitrary rules regarding if it will actually
     work or not.  [ticket:2225]
 
+- mssql
+  - [bug] Decode incoming values when retrieving
+    list of index names and the names of columns
+    within those indexes.  [ticket:2269]
+
 - oracle
   - Added ORA-00028 to disconnect codes, use 
     cx_oracle _Error.code to get at the code,
