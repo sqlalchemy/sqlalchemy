@@ -1234,7 +1234,10 @@ class MSDialect(default.DefaultDialect):
                                     sqltypes.String(convert_unicode=True)),
                     sql.bindparam('schname', current_schema, 
                                     sqltypes.String(convert_unicode=True))
-                ]
+                ],
+                typemap = {
+                    'name':sqltypes.Unicode()
+                }
             )
         )
         indexes = {}
@@ -1260,7 +1263,11 @@ class MSDialect(default.DefaultDialect):
                                     sqltypes.String(convert_unicode=True)),
                             sql.bindparam('schname', current_schema, 
                                     sqltypes.String(convert_unicode=True))
-                        ]),
+                        ],
+                        typemap = {
+                            'name':sqltypes.Unicode()
+                        }
+                        ),
             )
         for row in rp:
             if row['index_id'] in indexes:

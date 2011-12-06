@@ -258,6 +258,10 @@ CHANGES
     work fully with FreeTDS 0.91 here, however.
     [ticket:2343]
 
+  - [bug] Decode incoming values when retrieving
+    list of index names and the names of columns
+    within those indexes.  [ticket:2269]
+
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.

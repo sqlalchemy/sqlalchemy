@@ -900,54 +900,115 @@ class SchemaManipulationTest(fixtures.TestBase):
         assert addresses.constraints == set([addresses.primary_key, fk])
 
 class UnicodeReflectionTest(fixtures.TestBase):
+    @classmethod
+    def setup_class(cls):
+        # trigger mysql _server_casing check...
+        testing.db.connect().close()
+
+        cls.bind = bind = engines.utf8_engine(
+                            options={'convert_unicode' : True})
+
+        cls.metadata = metadata = MetaData()
+
+        no_multibyte_period = set([
+            (u'plain', u'col_plain', u'ix_plain')
+        ])
+        no_has_table = [
+            (u'no_has_table_1', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
+            (u'no_has_table_2', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+        ]
+        no_case_sensitivity = [
+            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+            (u'unit\u00e9ble', u'col_unit\u00e9ble', u'ix_unit\u00e9ble'),
+        ]
+        full = [
+            (u'Unit\u00e9ble', u'col_Unit\u00e9ble', u'ix_Unit\u00e9ble'),
+            (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
+        ]
+
+        # as you can see, our options for this kind of thing 
+        # are really limited unless you're on PG or SQLite
+
+        # forget about it on these backends
+        if testing.against('sybase', 'maxdb', 'oracle'):
+            names = no_multibyte_period
+        # mysql can't handle casing usually
+        elif testing.against("mysql") and \
+            not testing.requires._has_mysql_fully_case_sensitive():
+            names = no_multibyte_period.union(no_case_sensitivity)
+        # mssql + pyodbc + freetds can't compare multibyte names to 
+        # information_schema.tables.table_name
+        elif testing.against("mssql"):
+            names = no_multibyte_period.union(no_has_table)
+        else:
+            names = no_multibyte_period.union(full)
+
+        for tname, cname, ixname in names:
+            t = Table(tname, metadata, Column('id', sa.Integer,
+                  sa.Sequence(cname + '_id_seq'), primary_key=True),
+                  Column(cname, Integer)
+                  )
+            schema.Index(ixname, t.c[cname])
+
+        metadata.create_all(bind)
+        cls.names = names
+
+    @classmethod
+    def teardown_class(cls):
+        cls.metadata.drop_all(cls.bind, checkfirst=False)
+        cls.bind.dispose()
+
+    @testing.requires.unicode_connections
+    def test_has_table(self):
+        for tname, cname, ixname in self.names:
+            assert self.bind.has_table(tname), "Can't detect name %s" % tname
 
     @testing.requires.unicode_connections
     def test_basic(self):
-        try:
+        # the 'convert_unicode' should not get in the way of the
+        # reflection process.  reflecttable for oracle, postgresql
+        # (others?) expect non-unicode strings in result sets/bind
+        # params
 
-            # the 'convert_unicode' should not get in the way of the
-            # reflection process.  reflecttable for oracle, postgresql
-            # (others?) expect non-unicode strings in result sets/bind
-            # params
+        bind = self.bind
+        names = set([rec[0] for rec in self.names])
 
-            bind = engines.utf8_engine(options={'convert_unicode'
-                    : True})
-            metadata = MetaData(bind)
-            if testing.against('sybase', 'maxdb', 'oracle', 'mssql'):
-                names = set([u'plain'])
-            else:
-                names = set([u'plain', u'Unit\u00e9ble', u'\u6e2c\u8a66'
-                            ])
-            for name in names:
-                Table(name, metadata, Column('id', sa.Integer,
-                      sa.Sequence(name + '_id_seq'), primary_key=True))
-            metadata.create_all()
-            reflected = set(bind.table_names())
+        reflected = set(bind.table_names())
 
-            # Jython 2.5 on Java 5 lacks unicodedata.normalize
+        # Jython 2.5 on Java 5 lacks unicodedata.normalize
 
-            if not names.issubset(reflected) and hasattr(unicodedata,
-                    'normalize'):
+        if not names.issubset(reflected) and hasattr(unicodedata,'normalize'):
 
-                # Python source files in the utf-8 coding seem to
-                # normalize literals as NFC (and the above are
-                # explicitly NFC).  Maybe this database normalizes NFD
-                # on reflection.
+            # Python source files in the utf-8 coding seem to
+            # normalize literals as NFC (and the above are
+            # explicitly NFC).  Maybe this database normalizes NFD
+            # on reflection.
 
-                nfc = set([unicodedata.normalize('NFC', n) for n in
-                          names])
-                self.assert_(nfc == names)
+            nfc = set([unicodedata.normalize('NFC', n) for n in names])
+            self.assert_(nfc == names)
 
-                # Yep.  But still ensure that bulk reflection and
-                # create/drop work with either normalization.
+            # Yep.  But still ensure that bulk reflection and
+            # create/drop work with either normalization.
 
-            r = MetaData(bind, reflect=True)
-            r.drop_all()
-            r.create_all()
-        finally:
-            metadata.drop_all()
-            bind.dispose()
+        r = MetaData(bind, reflect=True)
+        r.drop_all(checkfirst=False)
+        r.create_all(checkfirst=False)
 
+    @testing.requires.unicode_connections
+    def test_get_names(self):
+        inspector = Inspector.from_engine(self.bind)
+        names = dict(
+            (tname, (cname, ixname)) for tname, cname, ixname in self.names
+        )
+        for tname in inspector.get_table_names():
+            assert tname in names
+            eq_(
+                [
+                    (rec['name'], rec['column_names'][0])
+                    for rec in inspector.get_indexes(tname)
+                ],
+                [(names[tname][1], names[tname][0])]
+            )
 
 class SchemaTest(fixtures.TestBase):
 
