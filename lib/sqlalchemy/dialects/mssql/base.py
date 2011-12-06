@@ -1157,11 +1157,17 @@ class MSDialect(default.DefaultDialect):
                 pass
         return self.schema_name
 
+    def _unicode_cast(self, column):
+        if self.server_version_info >= MS_2005_VERSION:
+            return cast(column, NVARCHAR(_warn_on_bytestring=False))
+        else:
+            return column
 
     def has_table(self, connection, tablename, schema=None):
         current_schema = schema or self.default_schema_name
         columns = ischema.columns
-        whereclause = cast(columns.c.table_name, NVARCHAR(_warn_on_bytestring=False))==tablename
+
+        whereclause = self._unicode_cast(columns.c.table_name)==tablename
         if current_schema:
             whereclause = sql.and_(whereclause,
                                    columns.c.table_schema==current_schema)

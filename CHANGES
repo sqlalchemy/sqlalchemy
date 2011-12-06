@@ -252,6 +252,12 @@ CHANGES
   - [bug] use new pyodbc version detection for
     _need_decimal_fix option, [ticket:2318]
 
+  - [bug] don't cast "table name" as NVARCHAR
+    on SQL Server 2000.  Still mostly in the dark
+    what incantations are needed to make PyODBC
+    work fully with FreeTDS 0.91 here, however.
+    [ticket:2343]
+
 - mysql
   - [bug] Unicode adjustments allow latest pymysql 
     (post 0.4) to pass 100% on Python 2.
