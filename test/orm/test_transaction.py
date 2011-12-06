@@ -592,6 +592,7 @@ class AutoCommitTest(TransactionTest):
             []
         )
 
+    @testing.requires.updateable_autoincrement_pks
     def test_accounting_no_select_needed(self):
         """test that flush accounting works on non-expired instances
         when autocommit=True/expire_on_commit=True."""

@@ -854,6 +854,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return 'DATEPART("%s", %s)' % \
                         (field, self.process(extract.expr, **kw))
 
+    def visit_savepoint(self, savepoint_stmt):
+        return "SAVE TRANSACTION %s" % self.preparer.format_savepoint(savepoint_stmt)
+
     def visit_rollback_to_savepoint(self, savepoint_stmt):
         return ("ROLLBACK TRANSACTION %s" 
                 % self.preparer.format_savepoint(savepoint_stmt))
@@ -1115,12 +1118,12 @@ class MSDialect(default.DefaultDialect):
         super(MSDialect, self).__init__(**opts)
 
     def do_savepoint(self, connection, name):
-        util.warn("Savepoint support in mssql is experimental and "
-                  "may lead to data loss.")
+        # give the DBAPI a push
         connection.execute("IF @@TRANCOUNT = 0 BEGIN TRANSACTION")
-        connection.execute("SAVE TRANSACTION %s" % name)
+        super(MSDialect, self).do_savepoint(connection, name)
 
     def do_release_savepoint(self, connection, name):
+        # SQL Server does not support RELEASE SAVEPOINT
         pass
 
     def initialize(self, connection):

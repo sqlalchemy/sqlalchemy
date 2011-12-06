@@ -242,6 +242,11 @@ CHANGES
      scripts.
 
 - mssql
+  - [feature] lifted the restriction on SAVEPOINT
+    for SQL Server.  All tests pass using it,
+    it's not known if there are deeper issues
+    however.   [ticket:822]
+
   - [bug] repaired the with_hint() feature which
     wasn't implemented correctly on MSSQL - 
     usually used for the "WITH (NOLOCK)" hint
