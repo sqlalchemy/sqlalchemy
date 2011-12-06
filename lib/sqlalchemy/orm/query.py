@@ -2407,7 +2407,7 @@ class Query(object):
         :param synchronize_session: chooses the strategy for the removal of
             matched objects from the session. Valid values are:
 
-            False - don't synchronize the session. This option is the most
+            ``False`` - don't synchronize the session. This option is the most
             efficient and is reliable once the session is expired, which
             typically occurs after a commit(), or explicitly using
             expire_all(). Before the expiration, objects may still remain in
@@ -2415,12 +2415,12 @@ class Query(object):
             results if they are accessed via get() or already loaded
             collections.
 
-            'fetch' - performs a select query before the delete to find
+            ``'fetch'`` - performs a select query before the delete to find
             objects that are matched by the delete query and need to be
             removed from the session. Matched objects are removed from the
             session.
 
-            'evaluate' - Evaluate the query's criteria in Python straight on
+            ``'evaluate'`` - Evaluate the query's criteria in Python straight on
             the objects in the session. If evaluation of the criteria isn't
             implemented, an error is raised.  In that case you probably 
             want to use the 'fetch' strategy as a fallback.
@@ -2437,10 +2437,10 @@ class Query(object):
         state of dependent objects subject to delete or delete-orphan cascade
         to be correctly represented.
 
-        Also, the ``before_delete()`` and ``after_delete()``
-        :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
-        called from this method. For a delete hook here, use the
-        :meth:`.SessionExtension.after_bulk_delete()` event hook.
+        Note that the :meth:`.MapperEvents.before_delete` and 
+        :meth:`.MapperEvents.after_delete`
+        events are **not** invoked from this method.  It instead
+        invokes :meth:`.SessionEvents.after_bulk_delete`.
 
         """
         #TODO: lots of duplication and ifs - probably needs to be 
@@ -2535,18 +2535,18 @@ class Query(object):
         :param synchronize_session: chooses the strategy to update the
             attributes on objects in the session. Valid values are:
 
-            False - don't synchronize the session. This option is the most
+            ``False`` - don't synchronize the session. This option is the most
             efficient and is reliable once the session is expired, which
             typically occurs after a commit(), or explicitly using
             expire_all(). Before the expiration, updated objects may still
             remain in the session with stale values on their attributes, which
             can lead to confusing results.
 
-            'fetch' - performs a select query before the update to find
+            ``'fetch'`` - performs a select query before the update to find
             objects that are matched by the update query. The updated
             attributes are expired on matched objects.
 
-            'evaluate' - Evaluate the Query's criteria in Python straight on
+            ``'evaluate'`` - Evaluate the Query's criteria in Python straight on
             the objects in the session. If evaluation of the criteria isn't
             implemented, an exception is raised.
 
@@ -2563,10 +2563,10 @@ class Query(object):
         or call expire_all()) in order for the state of dependent objects
         subject foreign key cascade to be correctly represented.
 
-        Also, the ``before_update()`` and ``after_update()``
-        :class:`~sqlalchemy.orm.interfaces.MapperExtension` methods are not
-        called from this method. For an update hook here, use the
-        :meth:`.SessionExtension.after_bulk_update()` event hook.
+        Note that the :meth:`.MapperEvents.before_update` and 
+        :meth:`.MapperEvents.after_update`
+        events are **not** invoked from this method.  It instead
+        invokes :meth:`.SessionEvents.after_bulk_update`.
 
         """
 

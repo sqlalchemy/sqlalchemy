@@ -918,9 +918,6 @@ class SessionEvents(event.Events):
     def before_flush( self, session, flush_context, instances):
         """Execute before flush process has started.
 
-        `instances` is an optional list of objects which were passed to
-        the ``flush()`` method. 
-        
         :param session: The target :class:`.Session`.
         :param flush_context: Internal :class:`.UOWTransaction` object
          which handles the details of the flush.
@@ -961,9 +958,6 @@ class SessionEvents(event.Events):
     def after_begin( self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
 
-        `transaction` is the SessionTransaction. This method is called
-        after an engine level transaction is begun on a connection. 
-        
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
         :param connection: The :class:`~.engine.base.Connection` object 
@@ -979,21 +973,29 @@ class SessionEvents(event.Events):
     def after_bulk_update( self, session, query, query_context, result):
         """Execute after a bulk update operation to the session.
 
-        This is called after a session.query(...).update()
+        This is called as a result of the :meth:`.Query.update` method.
 
-        `query` is the query object that this update operation was
-        called on. `query_context` was the query context object.
-        `result` is the result object returned from the bulk operation.
+        :param query: the :class:`.Query` object that this update operation was
+         called upon. 
+        :param query_context: The :class:`.QueryContext` object, corresponding
+         to the invocation of an ORM query.
+        :param result: the :class:`.ResultProxy` returned as a result of the
+         bulk UPDATE operation.
+
         """
 
     def after_bulk_delete( self, session, query, query_context, result):
         """Execute after a bulk delete operation to the session.
 
-        This is called after a session.query(...).delete()
+        This is called as a result of the :meth:`.Query.delete` method.
 
-        `query` is the query object that this delete operation was
-        called on. `query_context` was the query context object.
-        `result` is the result object returned from the bulk operation.
+        :param query: the :class:`.Query` object that this update operation was
+         called upon. 
+        :param query_context: The :class:`.QueryContext` object, corresponding
+         to the invocation of an ORM query.
+        :param result: the :class:`.ResultProxy` returned as a result of the
+         bulk DELETE operation.
+
         """
 
 
