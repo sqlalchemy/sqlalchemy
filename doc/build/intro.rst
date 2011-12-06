@@ -99,6 +99,9 @@ SQLAlchemy supports installation using standard Python "distutils" or
   rides on top of ``setuptools`` or ``distribute``, replacing the usage
   of ``easy_install``.  It is often preferred for its simpler mode of usage.
 
+.. note:: It is strongly recommended that either ``setuptools`` or ``distribute`` be installed.
+   Python's built-in ``distutils`` lacks many widely used installation features.
+
 Install via easy_install or pip
 -------------------------------
 
@@ -137,6 +140,11 @@ To run the build/install without even attempting to compile the C extensions,
 pass the flag ``--without-cextensions`` to the ``setup.py`` script::
 
     python setup.py --without-cextensions install
+
+.. note:: The ``--without-cextensions`` flag is available **only** if ``setuptools``
+   or ``distribute`` is installed.  It is not available on a plain Python ``distutils``
+   installation.  The library will still install without the C extensions if they
+   cannot be built, however.
 
 Installing on Python 3
 ----------------------------------
