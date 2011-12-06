@@ -179,18 +179,22 @@ is complete::
 Association Object
 ~~~~~~~~~~~~~~~~~~
 
-The association object pattern is a variant on many-to-many: it specifically
-is used when your association table contains additional columns beyond those
+The association object pattern is a variant on many-to-many: it's 
+used when your association table contains additional columns beyond those
 which are foreign keys to the left and right tables. Instead of using the
 ``secondary`` argument, you map a new class directly to the association table.
 The left side of the relationship references the association object via
 one-to-many, and the association class references the right side via
-many-to-one::
+many-to-one.  Below we illustrate an association table mapped to the 
+``Association`` class which includes a column called ``extra_data``,
+which is a string value that is stored along with each association
+between ``Parent`` and ``Child``::
 
     class Association(Base):
         __tablename__ = 'association'
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+        extra_data = Column(String(50))
         child = relationship("Child")
 
     class Parent(Base):
@@ -208,6 +212,7 @@ The bidirectional version adds backrefs to both relationships::
         __tablename__ = 'association'
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+        extra_data = Column(String(50))
         child = relationship("Child", backref="parent_assocs")
 
     class Parent(Base):
@@ -226,14 +231,14 @@ association object::
 
     # create parent, append a child via association
     p = Parent()
-    a = Association()
+    a = Association(extra_data="some data")
     a.child = Child()
     p.children.append(a)
 
     # iterate through child objects via association, including association
     # attributes
     for assoc in p.children:
-        print assoc.data
+        print assoc.extra_data
         print assoc.child
 
 To enhance the association object pattern such that direct
