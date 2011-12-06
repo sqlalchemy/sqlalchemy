@@ -295,10 +295,13 @@ def relationship(argument, secondary=None, **kwargs):
       * ``delete`` - cascade the :meth:`.Session.delete`
         operation
 
-      * ``delete-orphan`` - if an item of the child's type with no
-        parent is detected, mark it for deletion.  Note that this
-        option prevents a pending item of the child's class from being
-        persisted without a parent present.
+      * ``delete-orphan`` - if an item of the child's type is 
+        detached from its parent, mark it for deletion.  
+        As of version 0.7, this option does not prevent
+        a new instance of the child object from being persisted
+        without a parent to start with; to constrain against
+        that case, ensure the child's foreign key column(s)
+        is configured as NOT NULL
 
       * ``refresh-expire`` - cascade the :meth:`.Session.expire` 
         and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
@@ -306,6 +309,9 @@ def relationship(argument, secondary=None, **kwargs):
       * ``all`` - shorthand for "save-update,merge, refresh-expire,
         expunge, delete"
 
+     See the section :ref:`unitofwork_cascades` for more background
+     on configuring cascades.
+     
     :param cascade_backrefs=True:
       a boolean value indicating if the ``save-update`` cascade should
       operate along an assignment event intercepted by a backref.   
@@ -332,7 +338,8 @@ def relationship(argument, secondary=None, **kwargs):
                 )
         })
       
-      ``cascade_backrefs`` is new in 0.6.5.
+      See the section :ref:`unitofwork_cascades` for more background
+      on configuring cascades.
 
     :param collection_class:
       a class or callable that returns a new list-holding object. will
