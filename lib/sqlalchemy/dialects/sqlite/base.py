@@ -46,10 +46,12 @@ to the Table construct::
 Transaction Isolation Level
 ---------------------------
 
-:func:`create_engine` accepts an ``isolation_level`` parameter which results in 
+:func:`.create_engine` accepts an ``isolation_level`` parameter which results in 
 the command ``PRAGMA read_uncommitted <level>`` being invoked for every new 
 connection.   Valid values for this parameter are ``SERIALIZABLE`` and 
 ``READ UNCOMMITTED`` corresponding to a value of 0 and 1, respectively.
+See the section :ref:`pysqlite_serializable` for an important workaround
+when using serializable isolation with Pysqlite.
 
 """
 

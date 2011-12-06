@@ -182,6 +182,31 @@ require unicode, however, so that non-``unicode`` values passed inadvertently
 will emit a warning.  Pysqlite will emit an error if a non-``unicode`` string
 is passed containing non-ASCII characters.
 
+.. _pysqlite_serializable:
+
+Serializable Transaction Isolation
+----------------------------------
+
+The pysqlite DBAPI driver has a long-standing bug in which transactional
+state is not begun until the first DML statement, that is INSERT, UPDATE
+or DELETE, is emitted.  A SELECT statement will not cause transactional
+state to begin.   While this mode of usage is fine for typical situations
+and has the advantage that the SQLite database file is not prematurely 
+locked, it breaks serializable transaction isolation, which requires
+that the database file be locked upon any SQL being emitted.
+
+To work around this issue, the ``BEGIN`` keyword can be emitted
+at the start of each transaction.   The following recipe establishes
+a :meth:`.ConnectionEvents.begin` handler to achieve this::
+
+    from sqlalchemy import create_engine, event
+
+    engine = create_engine("sqlite:///myfile.db", isolation_level='SERIALIZABLE')
+
+    @event.listens_for(engine, "begin")
+    def do_begin(conn):
+        conn.execute("BEGIN")
+
 """
 
 from sqlalchemy.dialects.sqlite.base import SQLiteDialect, DATETIME, DATE
