@@ -290,6 +290,19 @@ class IdentitySetTest(fixtures.TestBase):
                 ids.add(data[i])
             self.assert_eq(ids, data)
 
+    def test_dunder_sub(self):
+        IdentitySet = util.IdentitySet
+        o1, o2, o3 = object(), object(), object()
+        ids1 = IdentitySet([o1])
+        ids2 = IdentitySet([o1, o2, o3])
+        eq_(
+            ids2 - ids1,
+            IdentitySet([o2, o3])
+        )
+        
+        ids2 -= ids1
+        eq_(ids2, IdentitySet([o2, o3]))
+
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
 

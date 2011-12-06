@@ -376,6 +376,9 @@ class IdentitySet(object):
     def clear(self):
         self._members.clear()
 
+    def __sub__(self, other):
+        return self.difference(other)
+
     def __cmp__(self, other):
         raise TypeError('cannot compare sets using cmp()')
 
