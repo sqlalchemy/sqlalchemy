@@ -552,6 +552,30 @@ class AutoIncrementTest(fixtures.TablesTest):
         )
         assert t._autoincrement_column is None
 
+    def test_autoincrement_ignore_fk(self):
+        m = MetaData()
+        y = Table('y', m,
+            Column('id', Integer(), primary_key=True)
+        )
+        x = Table('x', m,
+            Column('id', Integer(), 
+                ForeignKey('y.id'), 
+                autoincrement="ignore_fk", primary_key=True)
+        )
+        assert x._autoincrement_column is x.c.id
+
+    def test_autoincrement_fk_disqualifies(self):
+        m = MetaData()
+        y = Table('y', m,
+            Column('id', Integer(), primary_key=True)
+        )
+        x = Table('x', m,
+            Column('id', Integer(), 
+                ForeignKey('y.id'), 
+                primary_key=True)
+        )
+        assert x._autoincrement_column is None
+
     @testing.fails_on('sqlite', 'FIXME: unknown')
     def test_non_autoincrement(self):
         # sqlite INT primary keys can be non-unique! (only for ints)
