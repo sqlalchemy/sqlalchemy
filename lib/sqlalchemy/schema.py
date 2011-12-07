@@ -433,7 +433,7 @@ class Table(SchemaItem, expression.TableClause):
             if col.autoincrement and \
                 col.type._type_affinity is not None and \
                 issubclass(col.type._type_affinity, sqltypes.Integer) and \
-                not col.foreign_keys and \
+                (not col.foreign_keys or col.autoincrement=='ignore_fk') and \
                 isinstance(col.default, (type(None), Sequence)) and \
                 (col.server_default is None or col.server_default.reflected):
                 return col
@@ -700,7 +700,8 @@ class Column(SchemaItem, expression.ColumnClause):
 
           * Part of the primary key
 
-          * Are not referenced by any foreign keys
+          * Are not referenced by any foreign keys, unless
+            the value is specified as ``'ignore_fk'`` (new in 0.7.4)
 
           * have no server side or client side defaults (with the exception
             of Postgresql SERIAL).
@@ -724,6 +725,12 @@ class Column(SchemaItem, expression.ColumnClause):
             any effect in this regard for databases that use sequences 
             to generate primary key identifiers (i.e. Firebird, Postgresql, 
             Oracle).
+            
+          As of 0.7.4, ``autoincrement`` accepts a special value ``'ignore_fk'``
+          to indicate that autoincrementing status regardless of foreign key
+          references.  This applies to certain composite foreign key
+          setups, such as the one demonstrated in the ORM documentation
+          at :ref:`post_update`.
 
         :param default: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing the

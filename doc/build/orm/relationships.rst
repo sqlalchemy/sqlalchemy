@@ -737,38 +737,91 @@ these to a minimum overall.
 
 .. _relationship_primaryjoin:
 
-Specifying Alternate Join Conditions to relationship()
-------------------------------------------------------
+Setting the primaryjoin and secondaryjoin
+-----------------------------------------
 
-The :func:`~sqlalchemy.orm.relationship` function uses the foreign key
-relationship between the parent and child tables to formulate the **primary
-join condition** between parent and child; in the case of a many-to-many
-relationship it also formulates the **secondary join condition**::
+A common scenario arises when we attempt to relate two 
+classes together, where there exist multiple ways to join the
+two tables.
 
-      one to many/many to one:
-      ------------------------
+Consider a ``Customer`` class that contains two foreign keys to an ``Address``
+class::
 
-      parent_table -->  parent_table.c.id == child_table.c.parent_id -->  child_table
-                                     primaryjoin
+    from sqlalchemy import Integer, ForeignKey, String, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
 
-      many to many:
-      -------------
+    Base = declarative_base()
 
-      parent_table -->  parent_table.c.id == secondary_table.c.parent_id -->
-                                     primaryjoin
+    class Customer(Base):
+        __tablename__ = 'customer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
 
-                        secondary_table.c.child_id == child_table.c.id --> child_table
-                                    secondaryjoin
+        billing_address_id = Column(Integer, ForeignKey("address.id"))
+        shipping_address_id = Column(Integer, ForeignKey("address.id"))
 
-If you are working with a :class:`.Table` which has no
-:class:`.ForeignKey` metadata established (which can be the case
-when using reflected tables with MySQL), or if the join condition cannot be
-expressed by a simple foreign key relationship, use the ``primaryjoin``, and
-for many-to-many relationships ``secondaryjoin``, directives 
-to create the appropriate relationship.
+        billing_address = relationship("Address")
+        shipping_address = relationship("Address")
 
-In this example, using the ``User`` class as well as an ``Address`` class
-which stores a street address,  we create a relationship ``boston_addresses`` which will only
+    class Address(Base):
+        __tablename__ = 'address'
+        id = Column(Integer, primary_key=True)
+        street = Column(String)
+        city = Column(String)
+        state = Column(String)
+        zip = Column(String)
+
+The above mapping, when we attempt to use it, will produce the error::
+
+    sqlalchemy.exc.ArgumentError: Could not determine join condition between
+    parent/child tables on relationship Customer.billing_address. Specify a
+    'primaryjoin' expression. If 'secondary' is present, 'secondaryjoin' is
+    needed as well.
+
+What this error means is that if you have a ``Customer`` object, and wish
+to load in an associated ``Address``, there is the choice of retrieving
+the ``Address`` referred to by the ``billing_address_id`` column or the one
+referred to by the ``shipping_address_id`` column.  The :func:`.relationship`,
+as it is, cannot determine its full configuration.   The examples at 
+:ref:`relationship_patterns` didn't have this issue, because in each of those examples
+there was only **one** way to refer to the related table.
+
+To resolve this issue, :func:`.relationship` accepts an argument named 
+``primaryjoin`` which accepts a Python-based SQL expression, using the system described
+at :ref:`sqlexpression_toplevel`, that describes how the two tables should be joined
+together.  When using the declarative system, we often will specify this Python
+expression within a string, which is late-evaluated by the mapping configuration
+system so that it has access to the full namespace of available classes::
+
+    class Customer(Base):
+        __tablename__ = 'customer'
+        id = Column(Integer, primary_key=True)
+        name = Column(String)
+
+        billing_address_id = Column(Integer, ForeignKey("address.id"))
+        shipping_address_id = Column(Integer, ForeignKey("address.id"))
+
+        billing_address = relationship("Address", 
+                        primaryjoin="Address.id==Customer.billing_address_id")
+        shipping_address = relationship("Address", 
+                        primaryjoin="Address.id==Customer.shipping_address_id")
+
+Above, loading the ``Customer.billing_address`` relationship from a ``Customer``
+object will use the value present in ``billing_address_id`` in order to 
+identify the row in ``Address`` to be loaded; similarly, ``shipping_address_id``
+is used for the ``shipping_address`` relationship.   The linkage of the two 
+columns also plays a role during persistence; the newly generated primary key
+of a just-inserted ``Address`` object will be copied into the appropriate 
+foreign key column of an associated ``Customer`` object during a flush.
+
+Specifying Alternate Join Conditions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The open-ended nature of ``primaryjoin`` also allows us to customize how 
+related items are loaded.   In the example below, using the ``User`` class 
+as well as an ``Address`` class which stores a street address,  we 
+create a relationship ``boston_addresses`` which will only
 load those ``Address`` objects which specify a city of "Boston"::
 
     from sqlalchemy import Integer, ForeignKey, String, Column
@@ -795,18 +848,11 @@ load those ``Address`` objects which specify a city of "Boston"::
         state = Column(String)
         zip = Column(String)
 
-Note above we specified the ``primaryjoin`` argument as a string - this feature
-is available only when the mapping is constructed using the Declarative extension, 
-and allows us to specify a full SQL expression
-between two entities before those entities have been fully constructed.   When
-all mappings have been defined, an automatic "mapper configuration" step interprets
-these string arguments when first needed.
-
-Within this string SQL expression, we also made usage of the :func:`.and_` conjunction construct to establish
+Within this string SQL expression, we made use of the :func:`.and_` conjunction construct to establish
 two distinct predicates for the join condition - joining both the ``User.id`` and
 ``Address.user_id`` columns to each other, as well as limiting rows in ``Address``
 to just ``city='Boston'``.   When using Declarative, rudimentary SQL functions like
-:func:`.and_` are automatically available in the evaulated namespace of a string
+:func:`.and_` are automatically available in the evaluated namespace of a string
 :func:`.relationship` argument.    
 
 When using classical mappings, we have the advantage of the :class:`.Table` objects
@@ -847,7 +893,9 @@ Self-Referential Many-to-Many Relationship
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Many to many relationships can be customized by one or both of ``primaryjoin``
-and ``secondaryjoin``.    A common situation for custom primary and secondary joins
+and ``secondaryjoin`` - the latter is significant for a relationship that 
+specifies a many-to-many reference using the ``secondary`` argument.    
+A common situation which involves the usage of ``primaryjoin`` and ``secondaryjoin``
 is when establishing a many-to-many relationship from a class to itself, as shown below::
 
     from sqlalchemy import Integer, ForeignKey, String, Column, Table
@@ -958,35 +1006,6 @@ conjunction with :class:`~sqlalchemy.orm.query.Query` as follows:
             return object_session(self).query(Address).with_parent(self).filter(...).all()
         addresses = property(_get_addresses)
 
-Multiple Relationships against the Same Parent/Child
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Theres no restriction on how many times you can relate from parent to child.
-SQLAlchemy can usually figure out what you want, particularly if the join
-conditions are straightforward. Below we add a ``newyork_addresses`` attribute
-to complement the ``boston_addresses`` attribute.   We illustrate
-the quoted-style of configuration for ``newyork_address``, contrasted
-against the immediate Python style for ``boston_addresses``::
-
-    class User(Base):
-        __tablename__ = 'user'
-
-        id = Column(Integer, primary_key=True)
-
-        # primaryjoin rendered as Python
-        boston_addresses = relationship(Address, 
-                        primaryjoin=
-                                and_(id==Address.user_id, 
-                                    Address.city=='Boston')
-                        )
-
-        # primaryjoin rendered as a string which will
-        # be passed to eval()
-        newyork_addresses = relationship("Address", 
-                        primaryjoin=
-                                "and_(User.id==Address.user_id, "
-                                "Address.city=='Boston')"
-                        )
 
 .. _post_update:
 
@@ -998,8 +1017,10 @@ second UPDATE in order to properly populate a row (and vice versa an UPDATE
 and DELETE in order to delete without violating foreign key constraints). The
 two use cases are:
 
- * A table contains a foreign key to itself, and a single row will have a foreign key value pointing to its own primary key.
- * Two tables each contain a foreign key referencing the other table, with a row in each table referencing the other.
+* A table contains a foreign key to itself, and a single row will 
+  have a foreign key value pointing to its own primary key.
+* Two tables each contain a foreign key referencing the other 
+  table, with a row in each table referencing the other.
 
 For example::
 
@@ -1033,27 +1054,122 @@ constraints fulfilled. The exception is if the foreign keys are configured as
 identifiers were populated manually (again essentially bypassing
 :func:`~sqlalchemy.orm.relationship`).
 
-To enable the UPDATE after INSERT / UPDATE before DELETE behavior on
-:func:`~sqlalchemy.orm.relationship`, use the ``post_update`` flag on *one* of
-the relationships, preferably the many-to-one side::
+To enable the usage of a supplementary UPDATE statement, 
+we use the ``post_update`` option
+of :func:`.relationship`.  This specifies that the linkage between the
+two rows should be created using an UPDATE statement after both rows
+have been INSERTED; it also causes the rows to be de-associated with 
+each other via UPDATE before a DELETE is emitted.  The flag should
+be placed on just *one* of the relationships, preferably the 
+many-to-one side.  Below we illustrate
+a complete example, including two :class:`.ForeignKey` constructs, one which
+specifies ``use_alter=True`` to help with emitting CREATE TABLE statements::
+
+    from sqlalchemy import Integer, ForeignKey, Column
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class Entry(Base):
+        __tablename__ = 'entry'
+        entry_id = Column(Integer, primary_key=True)
+        widget_id = Column(Integer, ForeignKey('widget.widget_id'))
+        name = Column(String(50))
 
     class Widget(Base):
-        __table__ = widget_table
+        __tablename__ = 'widget'
+
+        widget_id = Column(Integer, primary_key=True)
+        favorite_entry_id = Column(Integer, 
+                                ForeignKey('entry.entry_id', 
+                                use_alter=True, 
+                                name="fk_favorite_entry"))
+        name = Column(String(50))
 
         entries = relationship(Entry, primaryjoin=
-                                        widget_table.c.widget_id==
-                                        entry_table.c.widget_id)
-        favorite_entry = relationship(Entry, 
+                                        widget_id==Entry.widget_id)
+        favorite_entry = relationship(Entry,
                                     primaryjoin=
-                                        widget_table.c.favorite_entry_id==
-                                        entry_table.c.entry_id, 
+                                        favorite_entry_id==Entry.entry_id,
                                     post_update=True)
 
-When a structure using the above mapping is flushed, the "widget" row will be
+When a structure against the above configuration is flushed, the "widget" row will be
 INSERTed minus the "favorite_entry_id" value, then all the "entry" rows will
 be INSERTed referencing the parent "widget" row, and then an UPDATE statement
 will populate the "favorite_entry_id" column of the "widget" table (it's one
-row at a time for the time being).
+row at a time for the time being):
+
+.. sourcecode:: pycon+sql
+
+    >>> w1 = Widget(name='somewidget')
+    >>> e1 = Entry(name='someentry')
+    >>> w1.favorite_entry = e1
+    >>> w1.entries = [e1]
+    >>> session.add_all([w1, e1])
+    {sql}>>> session.commit()
+    BEGIN (implicit)
+    INSERT INTO widget (favorite_entry_id, name) VALUES (?, ?)
+    (None, 'somewidget')
+    INSERT INTO entry (widget_id, name) VALUES (?, ?)
+    (1, 'someentry')
+    UPDATE widget SET favorite_entry_id=? WHERE widget.widget_id = ?
+    (1, 1)
+    COMMIT
+
+An additional configuration we can specify is to supply a more
+comprehensive foreign key constraint on ``Widget``, such that
+it's guaranteed that ``favorite_entry_id`` refers to an ``Entry``
+that also refers to this ``Widget``.  We can use a composite foreign key,
+as illustrated below::
+
+    from sqlalchemy import Integer, ForeignKey, String, \
+            Column, UniqueConstraint, ForeignKeyConstraint
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class Entry(Base):
+        __tablename__ = 'entry'
+        entry_id = Column(Integer, primary_key=True)
+        widget_id = Column(Integer, ForeignKey('widget.widget_id'))
+        name = Column(String(50))
+        __table_args__ = (
+            UniqueConstraint("entry_id", "widget_id"),
+        )
+
+    class Widget(Base):
+        __tablename__ = 'widget'
+
+        widget_id = Column(Integer, autoincrement='ignore_fk', primary_key=True)
+        favorite_entry_id = Column(Integer)
+
+        name = Column(String(50))
+
+        __table_args__ = (
+            ForeignKeyConstraint(
+                ["widget_id", "favorite_entry_id"], 
+                ["entry.widget_id", "entry.entry_id"],
+                name="fk_favorite_entry", use_alter=True
+            ),
+        )
+
+        entries = relationship(Entry, primaryjoin=
+                                        widget_id==Entry.widget_id,
+                                        foreign_keys=Entry.widget_id)
+        favorite_entry = relationship(Entry,
+                                    primaryjoin=
+                                        favorite_entry_id==Entry.entry_id,
+                                    foreign_keys=favorite_entry_id,
+                                    post_update=True)
+
+The above mapping features a composite :class:`.ForeignKeyConstraint`
+bridging the ``widget_id`` and ``favorite_entry_id`` columns.  To ensure
+that ``Widget.widget_id`` remains an "autoincrementing" column we specify
+``autoincrement='ignore_fk'`` on :class:`.Column` (new in 0.7.4), and additionally on each
+:func:`.relationship` we must limit those columns considered as part of
+the foreign key for the purposes of joining and cross-population.
 
 
 Mutable Primary Keys / Update Cascades
