@@ -118,6 +118,12 @@ CHANGES
     New example in the relationship docs illustrates
     its use.
 
+  - [bug] Fixed bug in get_history() when referring
+    to a composite attribute that has no value;
+    added coverage for get_history() regarding 
+    composites which is otherwise just a userland
+    function.
+
 - sql
    - [bug] related to [ticket:2316], made some 
      adjustments to the change from [ticket:2261]

@@ -253,7 +253,11 @@ class CompositeProperty(DescriptorProperty):
             if hist.has_changes():
                 has_history = True
 
-            added.extend(hist.non_deleted())
+            non_deleted = hist.non_deleted()
+            if non_deleted:
+                added.extend(non_deleted)
+            else:
+                added.append(None)
             if hist.deleted:
                 deleted.extend(hist.deleted)
             else:

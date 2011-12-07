@@ -184,6 +184,23 @@ class PointTest(fixtures.MappedTest):
             []
         )
 
+    def test_get_history(self):
+        Edge = self.classes.Edge
+        Point = self.classes.Point
+        from sqlalchemy.orm.attributes import get_history
+
+        e1 = Edge()
+        e1.start = Point(1,2)
+        eq_(
+            get_history(e1, 'start'),
+            ([Point(x=1, y=2)], (), [Point(x=None, y=None)])
+        )
+
+        eq_(
+            get_history(e1, 'end'),
+            ((), [Point(x=None, y=None)], ())
+        )
+
     def test_query_cols(self):
         Edge = self.classes.Edge
 
