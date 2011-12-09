@@ -186,16 +186,59 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
 
         self._roundtrip()
 
-    def test_polymorphic_on_expr_implicit_map(self):
+    def test_polymorphic_on_expr_implicit_map_no_label_joined(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x).label("foo")
+        ],else_ = t1.c.x)
         mapper(Parent, t1, polymorphic_identity="parent",
             polymorphic_on=expr)
         mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+
+        self._roundtrip()
+
+    def test_polymorphic_on_expr_implicit_map_w_label_joined(self):
+        t2, t1 = self.tables.t2, self.tables.t1
+        Parent, Child = self.classes.Parent, self.classes.Child
+        expr = case([
+            (t1.c.x=="p", "parent"),
+            (t1.c.x=="c", "child"),
+        ],else_ = t1.c.x).label(None)
+        mapper(Parent, t1, polymorphic_identity="parent",
+            polymorphic_on=expr)
+        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+
+        self._roundtrip()
+
+    def test_polymorphic_on_expr_implicit_map_no_label_single(self):
+        """test that single_table_criterion is propagated 
+        with a standalone expr"""
+        t2, t1 = self.tables.t2, self.tables.t1
+        Parent, Child = self.classes.Parent, self.classes.Child
+        expr = case([
+            (t1.c.x=="p", "parent"),
+            (t1.c.x=="c", "child"),
+        ],else_ = t1.c.x)
+        mapper(Parent, t1, polymorphic_identity="parent",
+            polymorphic_on=expr)
+        mapper(Child, inherits=Parent, polymorphic_identity="child")
+
+        self._roundtrip()
+
+    def test_polymorphic_on_expr_implicit_map_w_label_single(self):
+        """test that single_table_criterion is propagated 
+        with a standalone expr"""
+        t2, t1 = self.tables.t2, self.tables.t1
+        Parent, Child = self.classes.Parent, self.classes.Child
+        expr = case([
+            (t1.c.x=="p", "parent"),
+            (t1.c.x=="c", "child"),
+        ],else_ = t1.c.x).label(None)
+        mapper(Parent, t1, polymorphic_identity="parent",
+            polymorphic_on=expr)
+        mapper(Child, inherits=Parent, polymorphic_identity="child")
 
         self._roundtrip()
 
@@ -267,6 +310,11 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         eq_(
             [type(t) for t in s.query(Parent).order_by(Parent.id)],
             [Parent, Child, Parent]
+        )
+
+        eq_(
+            [type(t) for t in s.query(Child).all()],
+            [Child]
         )
 
 

@@ -715,17 +715,21 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_props(Lala, ['p_employee_number', 'p_id', 'p_name', 'p_type'])
         assert_props(Fub, ['id', 'type'])
         assert_props(Frob, ['f_id', 'f_type', 'f_name', ])
-        # excluding the discriminator column is currently not allowed
+
+
+        # putting the discriminator column in exclude_properties, 
+        # very weird.  As of 0.7.4 this re-maps it.
         class Foo(Person):
             pass
         assert_props(Empty, ['empty_id'])
 
-        assert_raises(
-            sa.exc.InvalidRequestError,
-            mapper,
+        mapper(
             Foo, inherits=Person, polymorphic_identity='foo',
             exclude_properties=('type', ),
-            )
+        )
+        assert hasattr(Foo, "type")
+        assert Foo.type.property.columns[0] is t.c.type
+
     @testing.provide_metadata
     def test_prop_filters_defaults(self):
         metadata = self.metadata

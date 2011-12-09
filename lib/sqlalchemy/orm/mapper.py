@@ -861,26 +861,14 @@ class Mapper(object):
         routine will run when an instance is created.
 
         """
-        # do a special check for the "discriminiator" column, as it 
-        # may only be present in the 'with_polymorphic' selectable 
-        # but we need it for the base mapper
         setter = False
-
-        if self.polymorphic_on is None:
-            for mapper in self.iterate_to_root():
-                # try to set up polymorphic on using
-                # correesponding_column(); else leave
-                # as None
-                if mapper.polymorphic_on is not None:
-                    self.polymorphic_on = \
-                            self.mapped_table.corresponding_column(
-                                                mapper.polymorphic_on)
-                    break
 
         if self.polymorphic_on is not None:
             setter = True
 
             if isinstance(self.polymorphic_on, basestring):
+                # polymorphic_on specified as as string - link
+                # it to mapped ColumnProperty
                 try:
                     self.polymorphic_on = self._props[self.polymorphic_on]
                 except KeyError:
@@ -890,10 +878,15 @@ class Mapper(object):
                                 "mapped to this name." % self.polymorphic_on)
 
             if self.polymorphic_on in self._columntoproperty:
+                # polymorphic_on is a column that is already mapped
+                # to a ColumnProperty
                 prop = self._columntoproperty[self.polymorphic_on]
                 polymorphic_key = prop.key
                 self.polymorphic_on = prop.columns[0]
+                polymorphic_key = prop.key
             elif isinstance(self.polymorphic_on, MapperProperty):
+                # polymorphic_on is directly a MapperProperty,
+                # ensure it's a ColumnProperty
                 if not isinstance(self.polymorphic_on, properties.ColumnProperty):
                     raise sa_exc.ArgumentError(
                             "Only direct column-mapped "
@@ -903,14 +896,29 @@ class Mapper(object):
                 self.polymorphic_on = prop.columns[0]
                 polymorphic_key = prop.key
             elif not expression.is_column(self.polymorphic_on):
+                # polymorphic_on is not a Column and not a ColumnProperty;
+                # not supported right now.
                 raise sa_exc.ArgumentError(
                     "Only direct column-mapped "
                     "property or SQL expression "
                     "can be passed for polymorphic_on"
                 )
             else:
+                # polymorphic_on is a Column or SQL expression and doesn't
+                # appear to be mapped.
+                # this means it can be 1. only present in the with_polymorphic 
+                # selectable or 2. a totally standalone SQL expression which we'd
+                # hope is compatible with this mapper's mapped_table
                 col = self.mapped_table.corresponding_column(self.polymorphic_on)
                 if col is None:
+                    # polymorphic_on doesn't derive from any column/expression 
+                    # isn't present in the mapped table.
+                    # we will make a "hidden" ColumnProperty for it. 
+                    # Just check that if it's directly a schema.Column and we 
+                    # have with_polymorphic, it's likely a user error if the
+                    # schema.Column isn't represented somehow in either mapped_table or
+                    # with_polymorphic.   Otherwise as of 0.7.4 we just go with it
+                    # and assume the user wants it that way (i.e. a CASE statement)
                     setter = False
                     instrument = False
                     col = self.polymorphic_on
@@ -924,6 +932,13 @@ class Mapper(object):
                             "loads will not function properly"
                                  % col.description)
                 else:
+                    # column/expression that polymorphic_on derives from 
+                    # is present in our mapped table
+                    # and is probably mapped, but polymorphic_on itself
+                    # is not.  This happens when 
+                    # the polymorphic_on is only directly present in the 
+                    # with_polymorphic selectable, as when use polymorphic_union.
+                    # we'll make a separate ColumnProperty for it.
                     instrument = True
 
                 key = getattr(col, 'key', None)
@@ -933,7 +948,7 @@ class Mapper(object):
                         "Cannot exclude or override the discriminator column %r" %
                         col.key)
                 else:
-                    col = col.label(None)
+                    self.polymorphic_on = col = col.label("_sa_polymorphic_on")
                     key = col.key
 
                 self._configure_property(
@@ -941,12 +956,36 @@ class Mapper(object):
                                 properties.ColumnProperty(col, _instrument=instrument),
                                 init=init, setparent=True)
                 polymorphic_key = key
+        else:
+            # no polymorphic_on was set.
+            # check inheriting mappers for one.
+            for mapper in self.iterate_to_root():
+                # determine if polymorphic_on of the parent
+                # should be propagated here.   If the col
+                # is present in our mapped table, or if our mapped
+                # table is the same as the parent (i.e. single table
+                # inheritance), we can use it
+                if mapper.polymorphic_on is not None:
+                    if self.mapped_table is mapper.mapped_table:
+                        self.polymorphic_on = mapper.polymorphic_on
+                    else:
+                        self.polymorphic_on = \
+                                self.mapped_table.corresponding_column(
+                                                    mapper.polymorphic_on)
+                    # we can use the parent mapper's _set_polymorphic_identity
+                    # directly; it ensures the polymorphic_identity of the
+                    # instance's mapper is used so is portable to subclasses.
+                    if self.polymorphic_on is not None:
+                        self._set_polymorphic_identity = mapper._set_polymorphic_identity
+                    else:
+                        self._set_polymorphic_identity = None
+                    return
 
         if setter:
             def _set_polymorphic_identity(state):
                 dict_ = state.dict
                 state.get_impl(polymorphic_key).set(state, dict_,
-                        self.polymorphic_identity, None)
+                        state.manager.mapper.polymorphic_identity, None)
 
             self._set_polymorphic_identity = _set_polymorphic_identity
         else:

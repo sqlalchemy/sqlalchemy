@@ -122,6 +122,12 @@ CHANGES
     a common constructed used here.
     [ticket:2345] and part of [ticket:2238]
 
+    Standalone expressions in polymorphic_on
+    propagate to single-table inheritance
+    subclasses so that they are used in the
+    WHERE /JOIN clause to limit rows to that
+    subclass as is the usual behavior.
+
   - [feature] IdentitySet supports the - operator
     as the same as difference(), handy when dealing 
     with Session.dirty etc. [ticket:2301]
