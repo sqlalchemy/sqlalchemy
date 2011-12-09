@@ -1162,45 +1162,47 @@ def comparable_property(comparator_factory, descriptor=None):
     .. note:: :func:`.comparable_property` is superseded as of 0.7 by 
        the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example 
        at :ref:`hybrid_custom_comparators`.
-       
-    Allows a regular Python @property (descriptor) to be used in queries and
-    SQL constructs like a managed attribute.  comparable_property wraps a
-    descriptor with a proxy that directs operator overrides such as ==
-    (__eq__) to the supplied comparator but proxies everything else through to
-    the original descriptor.  Used with the ``properties`` dictionary sent to
-    :func:`~sqlalchemy.orm.mapper`::
+    
+    Allows any Python descriptor to behave like a SQL-enabled 
+    attribute when used at the class level in queries, allowing
+    redefinition of expression operator behavior.
+    
+    In the example below we redefine :meth:`.PropComparator.operate`
+    to wrap both sides of an expression in ``func.lower()`` to produce
+    case-insensitive comparison::
 
-      from sqlalchemy.orm import mapper, comparable_property
-      from sqlalchemy.orm.interfaces import PropComparator
-      from sqlalchemy.sql import func
-      from sqlalchemy import Table, MetaData, Integer, String, Column
-      
-      metadata = MetaData()
+        from sqlalchemy.orm import comparable_property
+        from sqlalchemy.orm.interfaces import PropComparator
+        from sqlalchemy.sql import func
+        from sqlalchemy import Integer, String, Column
+        from sqlalchemy.ext.declarative import declarative_base
 
-      word_table = Table('word', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('word', String(200), nullable=False)
-      )
-      
-      class CaseInsensitiveComparator(PropComparator):
-          def __clause_element__(self):
-              return self.prop
-              
-          def __eq__(self, other):
-              return func.lower(self.__clause_element__()) == func.lower(other)
+        class CaseInsensitiveComparator(PropComparator):
+            def __clause_element__(self):
+                return self.prop
+            
+            def operate(self, op, other):
+                return op(
+                    func.lower(self.__clause_element__()),
+                    func.lower(other)
+                )
 
-      class SearchWord(object):
-          pass
+        Base = declarative_base()
 
-      mapper(SearchWord, word_table, properties={
-               'word_insensitive': comparable_property(CaseInsensitiveComparator)
-              })
+        class SearchWord(Base):
+            __tablename__ = 'search_word'
+            id = Column(Integer, primary_key=True)
+            word = Column(String)
+            word_insensitive = comparable_property(lambda prop, mapper:
+                                    CaseInsensitiveComparator(mapper.c.word, mapper)
+                                )
+
     
     A mapping like the above allows the ``word_insensitive`` attribute 
     to render an expression like::
     
         >>> print SearchWord.word_insensitive == "Trucks"
-        lower(:lower_1) = lower(:lower_2)
+        lower(search_word.word) = lower(:lower_1)
         
     :param comparator_factory:
       A PropComparator subclass or factory that defines operator behavior
