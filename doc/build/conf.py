@@ -64,9 +64,9 @@ copyright = u'2007-2011, the SQLAlchemy authors and contributors'
 # The short X.Y version.
 version = "0.7"
 # The full version, including alpha/beta/rc tags.
-release = "0.7.3"
+release = "0.7.4"
 
-release_date = "October 16, 2011"
+release_date = "December 9, 2011"
 
 versions = [('0.7', '07'), ('0.6', '06'), ('0.5', '05')]
 
