@@ -78,11 +78,13 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         t1 = Table('t1', metadata, 
-                Column('id', Integer, primary_key=True), 
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True), 
                 Column('x', String(10)),
                 Column('q', String(10)))
         t2 = Table('t2', metadata, 
-                Column('id', Integer, primary_key=True), 
+                Column('id', Integer, primary_key=True,
+                            test_needs_autoincrement=True), 
                 Column('y', String(10)), 
                 Column('xid', ForeignKey('t1.id')))
 
