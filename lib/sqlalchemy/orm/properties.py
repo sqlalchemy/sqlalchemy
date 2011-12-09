@@ -61,6 +61,7 @@ class ColumnProperty(StrategizedProperty):
         :param extension:
 
         """
+        self._orig_columns = [expression._labeled(c) for c in columns]
         self.columns = [expression._labeled(_orm_deannotate(c)) 
                             for c in columns]
         self.group = kwargs.pop('group', None)

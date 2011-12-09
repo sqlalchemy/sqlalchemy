@@ -120,6 +120,8 @@ with the desired key::
        'name': user_table.c.user_name,
     })
 
+.. _column_prefix:
+
 Naming All Columns with a Prefix
 --------------------------------
 
@@ -187,6 +189,8 @@ columns::
 See examples of this usage at :ref:`mapper_sql_expressions`.
 
 .. autofunction:: column_property
+
+.. _include_exclude_cols:
 
 Mapping a Subset of Table Columns
 ---------------------------------

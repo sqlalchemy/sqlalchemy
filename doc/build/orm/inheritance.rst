@@ -134,6 +134,8 @@ And that's it. Querying against ``Employee`` will return a combination of
 ``employees.type`` column with ``engineer``, ``manager``, or ``employee``, as
 appropriate.
 
+.. _with_polymorphic:
+
 Basic Control of Which Tables are Queried
 ++++++++++++++++++++++++++++++++++++++++++
 

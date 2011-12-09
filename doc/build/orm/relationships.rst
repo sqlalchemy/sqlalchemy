@@ -1171,6 +1171,7 @@ that ``Widget.widget_id`` remains an "autoincrementing" column we specify
 :func:`.relationship` we must limit those columns considered as part of
 the foreign key for the purposes of joining and cross-population.
 
+.. _passive_updates:
 
 Mutable Primary Keys / Update Cascades
 ---------------------------------------

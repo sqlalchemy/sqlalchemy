@@ -128,9 +128,7 @@ class Mapper(object):
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
-        self.polymorphic_on = expression._only_column_elements_or_none(
-                                        polymorphic_on, 
-                                        "polymorphic_on")
+        self.polymorphic_on = polymorphic_on
         self._dependency_processors = []
         self.validators = util.immutabledict()
         self.passive_updates = passive_updates
@@ -882,34 +880,67 @@ class Mapper(object):
         if self.polymorphic_on is not None:
             setter = True
 
-            if self.polymorphic_on not in self._columntoproperty:
+            if isinstance(self.polymorphic_on, basestring):
+                try:
+                    self.polymorphic_on = self._props[self.polymorphic_on]
+                except KeyError:
+                    raise sa_exc.ArgumentError(
+                                "Can't determine polymorphic_on "
+                                "value '%s' - no attribute is "
+                                "mapped to this name." % self.polymorphic_on)
+
+            if self.polymorphic_on in self._columntoproperty:
+                prop = self._columntoproperty[self.polymorphic_on]
+                polymorphic_key = prop.key
+                self.polymorphic_on = prop.columns[0]
+            elif isinstance(self.polymorphic_on, MapperProperty):
+                if not isinstance(self.polymorphic_on, properties.ColumnProperty):
+                    raise sa_exc.ArgumentError(
+                            "Only direct column-mapped "
+                            "property or SQL expression "
+                            "can be passed for polymorphic_on")
+                prop = self.polymorphic_on
+                self.polymorphic_on = prop.columns[0]
+                polymorphic_key = prop.key
+            elif not expression.is_column(self.polymorphic_on):
+                raise sa_exc.ArgumentError(
+                    "Only direct column-mapped "
+                    "property or SQL expression "
+                    "can be passed for polymorphic_on"
+                )
+            else:
                 col = self.mapped_table.corresponding_column(self.polymorphic_on)
                 if col is None:
                     setter = False
                     instrument = False
                     col = self.polymorphic_on
-                    if self.with_polymorphic is None \
-                        or self.with_polymorphic[1].corresponding_column(col) \
-                        is None:
-                        raise sa_exc.InvalidRequestError("Could not map polymorphic_on column "
-                                  "'%s' to the mapped table - polymorphic "
-                                  "loads will not function properly"
-                                  % col.description)
+                    if isinstance(col, schema.Column) and (
+                        self.with_polymorphic is  None or \
+                       self.with_polymorphic[1].corresponding_column(col) is None
+                        ):
+                        raise sa_exc.InvalidRequestError(
+                            "Could not map polymorphic_on column "
+                            "'%s' to the mapped table - polymorphic "
+                            "loads will not function properly"
+                                 % col.description)
                 else:
                     instrument = True
 
-                if self._should_exclude(col.key, col.key, False, col):
-                    raise sa_exc.InvalidRequestError(
+                key = getattr(col, 'key', None)
+                if key:
+                    if self._should_exclude(col.key, col.key, False, col):
+                        raise sa_exc.InvalidRequestError(
                         "Cannot exclude or override the discriminator column %r" %
                         col.key)
+                else:
+                    col = col.label(None)
+                    key = col.key
 
                 self._configure_property(
-                                col.key, 
+                                key, 
                                 properties.ColumnProperty(col, _instrument=instrument),
                                 init=init, setparent=True)
-                polymorphic_key = col.key
-            else:
-                polymorphic_key = self._columntoproperty[self.polymorphic_on].key
+                polymorphic_key = key
 
         if setter:
             def _set_polymorphic_identity(state):
@@ -1045,7 +1076,7 @@ class Mapper(object):
                                     prop.columns[0] is self.polymorphic_on)
 
             self.columns[key] = col
-            for col in prop.columns:
+            for col in prop.columns + prop._orig_columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
 

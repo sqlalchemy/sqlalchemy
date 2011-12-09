@@ -6,95 +6,95 @@ CHANGES
 0.7.4
 =====
 - orm
-   - [bug] Fixed backref behavior when "popping" the 
-     value off of a many-to-one in response to 
-     a removal from a stale one-to-many - the operation
-     is skipped, since the many-to-one has since
-     been updated.  [ticket:2315]
+  - [bug] Fixed backref behavior when "popping" the 
+    value off of a many-to-one in response to 
+    a removal from a stale one-to-many - the operation
+    is skipped, since the many-to-one has since
+    been updated.  [ticket:2315]
 
-   - [bug] After some years of not doing this, added
-     more granularity to the "is X a parent of Y" 
-     functionality, which is used when determining
-     if the FK on "Y" needs to be "nulled out" as well
-     as if "Y" should be deleted with delete-orphan
-     cascade.   The test now takes into account the
-     Python identity of the parent as well its identity 
-     key, to see if the last known parent of Y is
-     definitely X.   If a decision
-     can't be made, a StaleDataError is raised.  The
-     conditions where this error is raised are fairly
-     rare, requiring that the previous parent was
-     garbage collected, and previously
-     could very well inappropriately update/delete
-     a record that's since moved onto a new parent,
-     though there may be some cases where 
-     "silent success" occurred previously that will now 
-     raise in the face of ambiguity.
-     Expiring "Y" resets the "parent" tracker, meaning
-     X.remove(Y) could then end up deleting Y even 
-     if X is stale, but this is the same behavior
-     as before; it's advised to expire X also in that 
-     case.  [ticket:2264]
+  - [bug] After some years of not doing this, added
+    more granularity to the "is X a parent of Y" 
+    functionality, which is used when determining
+    if the FK on "Y" needs to be "nulled out" as well
+    as if "Y" should be deleted with delete-orphan
+    cascade.   The test now takes into account the
+    Python identity of the parent as well its identity 
+    key, to see if the last known parent of Y is
+    definitely X.   If a decision
+    can't be made, a StaleDataError is raised.  The
+    conditions where this error is raised are fairly
+    rare, requiring that the previous parent was
+    garbage collected, and previously
+    could very well inappropriately update/delete
+    a record that's since moved onto a new parent,
+    though there may be some cases where 
+    "silent success" occurred previously that will now 
+    raise in the face of ambiguity.
+    Expiring "Y" resets the "parent" tracker, meaning
+    X.remove(Y) could then end up deleting Y even 
+    if X is stale, but this is the same behavior
+    as before; it's advised to expire X also in that 
+    case.  [ticket:2264]
 
-   - [bug] fixed inappropriate evaluation of user-mapped
-     object in a boolean context within query.get()
-     [ticket:2310].  Also in 0.6.9.
+  - [bug] fixed inappropriate evaluation of user-mapped
+    object in a boolean context within query.get()
+    [ticket:2310].  Also in 0.6.9.
 
-   - [bug] Added missing comma to PASSIVE_RETURN_NEVER_SET
-     symbol [ticket:2304]
+  - [bug] Added missing comma to PASSIVE_RETURN_NEVER_SET
+    symbol [ticket:2304]
 
-   - [bug] Cls.column.collate("some collation") now
-     works.  [ticket:1776]  Also in 0.6.9
+  - [bug] Cls.column.collate("some collation") now
+    works.  [ticket:1776]  Also in 0.6.9
 
-   - [bug] the value of a composite attribute is now
-     expired after an insert or update operation, instead
-     of regenerated in place.  This ensures that a 
-     column value which is expired within a flush
-     will be loaded first, before the composite
-     is regenerated using that value.  [ticket:2309]
+  - [bug] the value of a composite attribute is now
+    expired after an insert or update operation, instead
+    of regenerated in place.  This ensures that a 
+    column value which is expired within a flush
+    will be loaded first, before the composite
+    is regenerated using that value.  [ticket:2309]
 
-   - [bug] The fix in [ticket:2309] also emits the
-     "refresh" event when the composite value is
-     loaded on access, even if all column
-     values were already present, as is appropriate.
-     This fixes the "mutable" extension which relies
-     upon the "load" event to ensure the _parents 
-     dictionary is up to date, fixes [ticket:2308].
-     Thanks to Scott Torborg for the test case here.
+  - [bug] The fix in [ticket:2309] also emits the
+    "refresh" event when the composite value is
+    loaded on access, even if all column
+    values were already present, as is appropriate.
+    This fixes the "mutable" extension which relies
+    upon the "load" event to ensure the _parents 
+    dictionary is up to date, fixes [ticket:2308].
+    Thanks to Scott Torborg for the test case here.
 
-   - [bug] Fixed bug whereby a subclass of a subclass
-     using concrete inheritance in conjunction with
-     the new ConcreteBase or AbstractConcreteBase
-     would fail to apply the subclasses deeper than
-     one level to the "polymorphic loader" of each
-     base  [ticket:2312]
+  - [bug] Fixed bug whereby a subclass of a subclass
+    using concrete inheritance in conjunction with
+    the new ConcreteBase or AbstractConcreteBase
+    would fail to apply the subclasses deeper than
+    one level to the "polymorphic loader" of each
+    base  [ticket:2312]
 
-   - [bug] Fixed bug whereby a subclass of a subclass
-     using the new AbstractConcreteBase would fail
-     to acquire the correct "base_mapper" attribute
-     when the "base" mapper was generated, thereby
-     causing failures later on.  [ticket:2312]
+  - [bug] Fixed bug whereby a subclass of a subclass
+    using the new AbstractConcreteBase would fail
+    to acquire the correct "base_mapper" attribute
+    when the "base" mapper was generated, thereby
+    causing failures later on.  [ticket:2312]
 
-   - [bug] Fixed bug whereby column_property() created
-     against ORM-level column could be treated as
-     a distinct entity when producing certain
-     kinds of joined-inh joins.  [ticket:2316]
+  - [bug] Fixed bug whereby column_property() created
+    against ORM-level column could be treated as
+    a distinct entity when producing certain
+    kinds of joined-inh joins.  [ticket:2316]
 
-   - [bug] Fixed the error formatting raised when 
-     a tuple is inadvertently passed to session.query()
-     [ticket:2297].  Also in 0.6.9.
+  - [bug] Fixed the error formatting raised when 
+    a tuple is inadvertently passed to session.query()
+    [ticket:2297].  Also in 0.6.9.
 
-   - [bug] Calls to query.join() to a single-table
-     inheritance subclass are now tracked, and
-     are used to eliminate the additional WHERE..
-     IN criterion normally tacked on with single
-     table inheritance, since the join should
-     accommodate it.  This allows OUTER JOIN
-     to a single table subclass to produce
-     the correct results, and overall will produce
-     fewer WHERE criterion when dealing with 
-     single table inheritance joins.  
-     [ticket:2328]
+  - [bug] Calls to query.join() to a single-table
+    inheritance subclass are now tracked, and
+    are used to eliminate the additional WHERE..
+    IN criterion normally tacked on with single
+    table inheritance, since the join should
+    accommodate it.  This allows OUTER JOIN
+    to a single table subclass to produce
+    the correct results, and overall will produce
+    fewer WHERE criterion when dealing with 
+    single table inheritance joins.
+    [ticket:2328]
 
   - [bug] __table_args__ can now be passed as 
     an empty tuple as well as an empty dict.
@@ -107,6 +107,20 @@ CHANGES
     upgrading this to an exception.  Ideally
     this might be better as an exception but
     it's not critical either way.  [ticket:2325]
+
+  - [feature] polymorphic_on now accepts many
+    new kinds of values:
+
+      - standalone expressions that aren't
+        otherwise mapped
+      - column_property() objects
+      - string names of any column_property()
+        or attribute name of a mapped Column
+
+    The docs include an example using 
+    the case() construct, which is likely to be
+    a common constructed used here.
+    [ticket:2345] and part of [ticket:2238]
 
   - [feature] IdentitySet supports the - operator
     as the same as difference(), handy when dealing 
@@ -133,7 +147,7 @@ CHANGES
      need for a "warning" if a column is attached
      to a table after it was already used in an 
      expression - the select() construct will now
-     always produce the correct expression.  
+     always produce the correct expression.
      There's probably no real-world
      performance hit here; select() objects are 
      almost always made ad-hoc, and systems that 
@@ -386,7 +400,7 @@ CHANGES
     import [ticket:2253]
 
   - Reinstated "comparator_factory" argument to 
-    composite(), removed when 0.7 was released.  
+    composite(), removed when 0.7 was released.
     [ticket:2248]
 
   - Fixed bug in query.join() which would occur
@@ -415,7 +429,7 @@ CHANGES
     ArgumentError, rather than UnmappedClassError.
     [ticket:2196]
 
-  - New event hook, MapperEvents.after_configured().  
+  - New event hook, MapperEvents.after_configured().
     Called after a configure() step has completed and
     mappers were in fact affected.   Theoretically this
     event is called once per application, unless new mappings
@@ -507,7 +521,7 @@ CHANGES
     long lists of bound parameter sets will be 
     compressed with an informative indicator
     of the compression taking place.  Exception
-    messages use the same improved formatting.  
+    messages use the same improved formatting.
     [ticket:2243]
 
   - Added optional "sa_pool_key" argument to 
@@ -598,7 +612,7 @@ CHANGES
   - The behavior of =/!= when comparing a scalar select
     to a value will no longer produce IN/NOT IN as of 0.8;
     this behavior is a little too heavy handed (use in_() if
-    you want to emit IN) and now emits a deprecation warning.   
+    you want to emit IN) and now emits a deprecation warning.
     To get the 0.8 behavior immediately and remove the warning, 
     a compiler recipe is given at 
     http://www.sqlalchemy.org/docs/07/dialects/mssql.html#scalar-select-comparisons
@@ -759,7 +773,7 @@ CHANGES
 
   - Added the same "columns-only" check to 
     mapper.polymorphic_on as used when
-    receiving user arguments to  
+    receiving user arguments to
     relationship.order_by, foreign_keys,
     remote_side, etc.
 
@@ -832,7 +846,7 @@ CHANGES
     execution.
 
   - StatementException wrapping will display the
-    original exception class in the message.  
+    original exception class in the message.
 
   - Failures on connect which raise dbapi.Error
     will forward the error to dialect.is_disconnect()
@@ -844,7 +858,7 @@ CHANGES
 - sqlite
   - SQLite dialect no longer strips quotes
     off of reflected default value, allowing
-    a round trip CREATE TABLE to work.  
+    a round trip CREATE TABLE to work.
     This is consistent with other dialects
     that also maintain the exact form of
     the default.  [ticket:2189]
