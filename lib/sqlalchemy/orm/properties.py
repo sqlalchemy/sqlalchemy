@@ -428,7 +428,7 @@ class RelationshipProperty(StrategizedProperty):
                         source_selectable=source_selectable)
 
             for k in kwargs:
-                crit = self.property.mapper.class_manager[k] == kwargs[k]
+                crit = getattr(self.property.mapper.class_, k) == kwargs[k]
                 if criterion is None:
                     criterion = crit
                 else:

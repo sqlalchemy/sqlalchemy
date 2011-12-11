@@ -3,6 +3,12 @@
 =======
 CHANGES
 =======
+0.7.5
+=====
+- orm
+  - [bug] Fixed bug whereby hybrid_property didn't 
+    work as a kw arg in any(), has().
+
 0.7.4
 =====
 - orm
