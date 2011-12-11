@@ -1934,6 +1934,8 @@ class EagerToSubclassTest(fixtures.MappedTest):
 
     @classmethod
     def insert_data(cls):
+        global p1, p2
+
         Parent = cls.classes.Parent
         Sub = cls.classes.Sub
         Related = cls.classes.Related
@@ -1950,26 +1952,13 @@ class EagerToSubclassTest(fixtures.MappedTest):
         sess.add(p2)
         sess.commit()
 
-        cls.expected = [
-            Parent(
-                data='p1',
-                children=[
-                    Sub(data='s1'),
-                    Sub(data='s2'),
-                    Sub(data='s3')]),
-            Parent(
-                data='p2',
-                children=[
-                    Sub(data='s4'),
-                    Sub(data='s5')])]
-
     def test_joinedload(self):
         Parent = self.classes.Parent
         sess = Session()
         def go():
             eq_(sess.query(Parent)
                     .options(joinedload(Parent.children)).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager(self):
@@ -1981,7 +1970,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
                     .join(Parent.children)
                     .options(contains_eager(Parent.children))
                     .order_by(Parent.data, Sub.data).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
     def test_subq_through_related(self):
@@ -1992,7 +1981,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
             eq_(sess.query(Parent)
                     .options(subqueryload_all(Parent.children, Sub.related))
                     .order_by(Parent.data).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 3)
 
 class SubClassEagerToSubClassTest(fixtures.MappedTest):
@@ -2078,6 +2067,8 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
     @classmethod
     def insert_data(cls):
+        global p1, p2
+
         Sub, Subparent = cls.classes.Sub, cls.classes.Subparent
         sess = create_session()
         p1 = Subparent(
@@ -2090,19 +2081,6 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         sess.add(p2)
         sess.flush()
 
-        cls.expected = [
-            Subparent(
-                data='p1',
-                children=[
-                    Sub(data='s1'),
-                    Sub(data='s2'),
-                    Sub(data='s3')]),
-            Subparent(
-                data='p2',
-                children=[
-                    Sub(data='s4'),
-                    Sub(data='s5')])]
-
     def test_joinedload(self):
         Subparent = self.classes.Subparent
 
@@ -2110,14 +2088,14 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         def go():
             eq_(sess.query(Subparent)
                     .options(joinedload(Subparent.children)).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
         def go():
             eq_(sess.query(Subparent)
                     .options(joinedload("children")).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
     def test_contains_eager(self):
@@ -2128,7 +2106,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             eq_(sess.query(Subparent)
                     .join(Subparent.children)
                     .options(contains_eager(Subparent.children)).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
@@ -2136,7 +2114,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             eq_(sess.query(Subparent)
                     .join(Subparent.children)
                     .options(contains_eager("children")).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 1)
 
     def test_subqueryload(self):
@@ -2146,13 +2124,13 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         def go():
             eq_(sess.query(Subparent)
                     .options(subqueryload(Subparent.children)).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 2)
 
         sess.expunge_all()
         def go():
             eq_(sess.query(Subparent)
                     .options(subqueryload("children")).all(),
-                self.expected)
+                [p1, p2])
         self.assert_sql_count(testing.db, go, 2)
 
