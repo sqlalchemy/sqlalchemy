@@ -785,10 +785,11 @@ class UnicodeTest(fixtures.TestBase, AssertsExecutionResults):
 
         eq_(uni(unicodedata), unicodedata.encode('utf-8'))
 
-    @testing.fails_if(
-                        lambda: testing.db_spec("postgresql+pg8000")(testing.db) and util.py3k,
-                        "pg8000 appropriately does not accept 'bytes' for a VARCHAR column."
-                        )
+    # Py3K
+    #@testing.fails_if(
+    #                    lambda: testing.db_spec("postgresql+pg8000")(testing.db),
+    #                    "pg8000 appropriately does not accept 'bytes' for a VARCHAR column."
+    #                    )
     def test_ignoring_unicode_error(self):
         """checks String(unicode_error='ignore') is passed to underlying codec."""
 
