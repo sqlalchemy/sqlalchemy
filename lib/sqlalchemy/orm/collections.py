@@ -1166,7 +1166,7 @@ def _dict_decorators():
     l.pop('Unspecified')
     return l
 
-if util.py3k:
+if util.py3k_warning:
     _set_binop_bases = (set, frozenset)
 else:
     import sets

@@ -10,7 +10,7 @@ from cStringIO import StringIO
 
 from test.bootstrap import config
 from test.lib import assertsql, util as testutil
-from sqlalchemy.util import py3k, decorator
+from sqlalchemy.util import decorator
 from engines import drop_all_tables
 
 from sqlalchemy import exc as sa_exc, util, types as sqltypes, schema, \

@@ -9,6 +9,13 @@ CHANGES
   - [bug] Fixed bug whereby hybrid_property didn't 
     work as a kw arg in any(), has().
 
+- Py3K
+  - [bug] Fixed inappropriate usage of util.py3k
+    flag and renamed it to util.py3k_warning, since 
+    this flag is intended to detect the -3 flag
+    series of import restrictions only.
+    [ticket:2348]
+
 0.7.4
 =====
 - orm

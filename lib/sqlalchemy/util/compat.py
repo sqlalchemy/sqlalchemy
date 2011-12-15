@@ -18,12 +18,12 @@ except ImportError:
     import dummy_threading as threading
 
 py32 = sys.version_info >= (3, 2)
-py3k = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
+py3k_warning = getattr(sys, 'py3kwarning', False) or sys.version_info >= (3, 0)
 jython = sys.platform.startswith('java')
 pypy = hasattr(sys, 'pypy_version_info')
 win32 = sys.platform.startswith('win')
 
-if py3k:
+if py3k_warning:
     set_types = set
 elif sys.version_info < (2, 6):
     import sets
@@ -43,7 +43,7 @@ else:
 
     set_types = set, sets.Set
 
-if py3k:
+if py3k_warning:
     import pickle
 else:
     try:
@@ -89,12 +89,13 @@ if sys.version_info < (2, 6):
 else:
     from urlparse import parse_qsl
 
-if py3k:
-    from inspect import getfullargspec as inspect_getfullargspec
-else:
-    from inspect import getargspec as inspect_getfullargspec
+# Py3K
+#from inspect import getfullargspec as inspect_getfullargspec
+# Py2K
+from inspect import getargspec as inspect_getfullargspec
+# end Py2K
 
-if py3k:
+if py3k_warning:
     # they're bringing it back in 3.2.  brilliant !
     def callable(fn):
         return hasattr(fn, '__call__')

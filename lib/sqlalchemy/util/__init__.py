@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from compat import callable, cmp, reduce, defaultdict, py25_dict, \
-    threading, py3k, jython, pypy, win32, set_types, buffer, pickle, \
+    threading, py3k_warning, jython, pypy, win32, set_types, buffer, pickle, \
     update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
     parse_qsl
 
