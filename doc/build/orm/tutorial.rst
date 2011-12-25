@@ -90,7 +90,9 @@ Next, we can issue CREATE TABLE statements derived from our table metadata, by c
     ()
     COMMIT
 
-.. note:: Users familiar with the syntax of CREATE TABLE may notice that the
+.. note:: 
+
+    Users familiar with the syntax of CREATE TABLE may notice that the
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
@@ -888,7 +890,9 @@ from ``Address`` to ``User`` it is **many to one**, and from ``User`` to
 ``Address`` it is **one to many**. SQLAlchemy is automatically aware of
 many-to-one/one-to-many based on foreign keys.
 
-.. note:: The :func:`~sqlalchemy.orm.relationship()` function has historically
+.. note:: 
+
+    The :func:`~sqlalchemy.orm.relationship()` function has historically
     been known as :func:`~sqlalchemy.orm.relation()`, which is the name that's
     available in all versions of SQLAlchemy prior to 0.6beta2, including the 0.5
     and 0.4 series. :func:`~sqlalchemy.orm.relationship()` is only available
@@ -1065,7 +1069,9 @@ See :ref:`loading_toplevel` for information on
 :func:`~sqlalchemy.orm.subqueryload`. We'll also see another way to "eagerly"
 load in the next section.
 
-.. note:: The join created by :func:`.joinedload` is anonymously aliased such that
+.. note:: 
+
+   The join created by :func:`.joinedload` is anonymously aliased such that
    it **does not affect the query results**.   An :meth:`.Query.order_by`
    or :meth:`.Query.filter` call **cannot** reference these aliased
    tables - so-called "user space" joins are constructed using 
@@ -1448,7 +1454,9 @@ relationships to mappings at any point in time, in this case the existing
 relationship needs to be removed, so we need to tear down the mappings
 completely and start again.
 
-.. note:: Tearing down mappers with :func:`~.orm.clear_mappers` is not a typical
+.. note:: 
+
+    Tearing down mappers with :func:`~.orm.clear_mappers` is not a typical
     operation, and normal applications do not need to use this function. It is
     here so that the tutorial code can be executed as a whole.
 

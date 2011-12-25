@@ -1306,7 +1306,9 @@ class declared_attr(property):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 
-    .. note:: @declared_attr is available as 
+    .. note:: 
+    
+      @declared_attr is available as 
       ``sqlalchemy.util.classproperty`` for SQLAlchemy versions
       0.6.2, 0.6.3, 0.6.4.
 

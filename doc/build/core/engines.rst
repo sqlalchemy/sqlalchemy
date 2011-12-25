@@ -316,6 +316,7 @@ string. To set this to a specific name, use the "logging_name" and
 "pool_logging_name" keyword arguments with :func:`sqlalchemy.create_engine`.
 
 .. note::
+
     The SQLAlchemy :class:`.Engine` conserves Python function call overhead
     by only emitting log statements when the current logging level is detected
     as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when 
