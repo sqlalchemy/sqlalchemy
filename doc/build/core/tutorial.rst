@@ -150,7 +150,9 @@ each table first before creating, so it's safe to call multiple times:
     ()
     COMMIT
 
-.. note:: Users familiar with the syntax of CREATE TABLE may notice that the
+.. note:: 
+
+    Users familiar with the syntax of CREATE TABLE may notice that the
     VARCHAR columns were generated without a length; on SQLite and Postgresql,
     this is a valid datatype, but on others, it's not allowed. So if running
     this tutorial on one of those databases, and you wish to use SQLAlchemy to
