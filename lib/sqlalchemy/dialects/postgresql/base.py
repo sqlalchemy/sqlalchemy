@@ -342,7 +342,9 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           performance implications (default changed from ``True`` in 
           0.7.0).
 
-          .. note:: This functionality is now superseded by the
+          .. note:: 
+          
+             This functionality is now superseded by the
              ``sqlalchemy.ext.mutable`` extension described in 
              :ref:`mutable_toplevel`.
 

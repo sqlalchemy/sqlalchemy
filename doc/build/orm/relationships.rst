@@ -248,7 +248,9 @@ extension allows the configuration of attributes which will
 access two "hops" with a single access, one "hop" to the
 associated object, and a second to a target attribute.
 
-.. note:: When using the association object pattern, it is
+.. note::
+
+  When using the association object pattern, it is
   advisable that the association-mapped table not be used
   as the ``secondary`` argument on a :func:`.relationship`
   elsewhere, unless that :func:`.relationship` contains

@@ -6,7 +6,9 @@
 
 """
 
-.. note:: SQLSoup will no longer be included with SQLAlchemy as of 0.8.
+.. note:: 
+
+   SQLSoup will no longer be included with SQLAlchemy as of 0.8.
    Look for a third party project replicating its functionality soon.
 
 
@@ -250,8 +252,10 @@ Advanced Use
 Sessions, Transations and Application Integration
 -------------------------------------------------
 
-**Note:** please read and understand this section thoroughly
-before using SqlSoup in any web application.
+.. note::
+
+   Please read and understand this section thoroughly
+   before using SqlSoup in any web application.
 
 SqlSoup uses a ScopedSession to provide thread-local sessions.
 You can get a reference to the current one like this::

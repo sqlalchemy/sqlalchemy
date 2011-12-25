@@ -92,9 +92,11 @@ class TypeEngine(AbstractType):
         are serialized into strings are examples of "mutable" 
         column structures.
 
-        .. note:: This functionality is now superseded by the
-          ``sqlalchemy.ext.mutable`` extension described in 
-          :ref:`mutable_toplevel`.
+        .. note:: 
+        
+           This functionality is now superseded by the
+           ``sqlalchemy.ext.mutable`` extension described in 
+           :ref:`mutable_toplevel`.
 
         When this method is overridden, :meth:`copy_value` should
         also be supplied.   The :class:`.MutableType` mixin
@@ -712,9 +714,11 @@ class TypeDecorator(TypeEngine):
         are serialized into strings are examples of "mutable" 
         column structures.
 
-        .. note:: This functionality is now superseded by the
-          ``sqlalchemy.ext.mutable`` extension described in 
-          :ref:`mutable_toplevel`.
+        .. note:: 
+        
+           This functionality is now superseded by the
+           ``sqlalchemy.ext.mutable`` extension described in 
+           :ref:`mutable_toplevel`.
 
         """
         return self.impl.is_mutable()
@@ -782,7 +786,9 @@ class MutableType(object):
     a mutable Python object type.   This functionality is used
     only by the ORM.
 
-    .. note:: :class:`.MutableType` is superseded as of SQLAlchemy 0.7
+    .. note:: 
+    
+       :class:`.MutableType` is superseded as of SQLAlchemy 0.7
        by the ``sqlalchemy.ext.mutable`` extension described in
        :ref:`mutable_toplevel`.   This extension provides an event
        driven approach to in-place mutation detection that does not
@@ -810,7 +816,9 @@ class MutableType(object):
     type - implementing subclasses should override these
     appropriately.
 
-    .. warning:: The usage of mutable types has significant performance
+    .. warning:: 
+    
+        The usage of mutable types has significant performance
         implications when using the ORM. In order to detect changes, the
         ORM must create a copy of the value when it is first
         accessed, so that changes to the current value can be compared
@@ -1280,7 +1288,9 @@ class Numeric(_DateAffinity, TypeEngine):
     ``decimal.Decimal`` objects by default, applying
     conversion as needed.
 
-    .. note:: The `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library
+    .. note:: 
+    
+       The `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library
        is a high performing alternative to Python's built-in
        ``decimal.Decimal`` type, which performs very poorly in high volume
        situations. SQLAlchemy 0.7 is tested against ``cdecimal`` and supports
@@ -1936,7 +1946,9 @@ class PickleType(MutableType, TypeDecorator):
           behavior. (default changed from ``True`` in 
           0.7.0).
 
-          .. note:: This functionality is now superseded by the
+          .. note:: 
+          
+             This functionality is now superseded by the
              ``sqlalchemy.ext.mutable`` extension described in 
              :ref:`mutable_toplevel`.
 

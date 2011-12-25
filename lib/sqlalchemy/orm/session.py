@@ -1653,7 +1653,9 @@ class Session(object):
         
             return session.is_modified(someobject, passive=True)
             
-        .. note:: In SQLAlchemy 0.7 and earlier, the ``passive`` 
+        .. note:: 
+          
+           In SQLAlchemy 0.7 and earlier, the ``passive`` 
            flag should **always** be explicitly set to ``True``. 
            The current default value of :data:`.attributes.PASSIVE_OFF`
            for this flag is incorrect, in that it loads unloaded

@@ -236,9 +236,11 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       ``distinct`` is also available via the :meth:`~.Select.distinct`
       generative method.
 
-      .. note:: The ``distinct`` keyword's acceptance of a string
-        argument for usage with MySQL is deprecated.  Use
-        the ``prefixes`` argument or :meth:`~.Select.prefix_with`.
+      .. note:: 
+      
+         The ``distinct`` keyword's acceptance of a string
+         argument for usage with MySQL is deprecated.  Use
+         the ``prefixes`` argument or :meth:`~.Select.prefix_with`.
 
     :param for_update=False:
       when ``True``, applies ``FOR UPDATE`` to the end of the
@@ -4697,7 +4699,9 @@ class Select(_SelectBase):
         """Return a new :func:`.select` construct with its columns 
         clause replaced with the given columns.
         
-        .. note:: Due to a bug fix, this method has a slight 
+        .. note:: 
+        
+           Due to a bug fix, this method has a slight 
            behavioral change as of version 0.7.3.  
            Prior to version 0.7.3, the FROM clause of 
            a :func:`.select` was calculated upfront and as new columns

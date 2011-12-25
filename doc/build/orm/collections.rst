@@ -79,7 +79,9 @@ function in conjunction with ``lazy='dynamic'``::
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
 
-.. note:: The :func:`~.orm.dynamic_loader` function is essentially the same
+.. note:: 
+
+   The :func:`~.orm.dynamic_loader` function is essentially the same
    as :func:`~.orm.relationship` with the ``lazy='dynamic'`` argument specified.
 
 

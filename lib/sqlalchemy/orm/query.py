@@ -1360,7 +1360,9 @@ class Query(object):
         
             q = session.query(User).join(Address, User.id==Address.user_id)
         
-        .. note:: In SQLAlchemy 0.6 and earlier, the two argument form of 
+        .. note:: 
+        
+           In SQLAlchemy 0.6 and earlier, the two argument form of 
            :meth:`~.Query.join` requires the usage of a tuple::
            
                query(User).join((Address, User.id==Address.user_id))

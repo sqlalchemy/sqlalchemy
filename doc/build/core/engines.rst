@@ -228,8 +228,10 @@ connection pool, it follows that you should keep a single
 :class:`.Engine` per database established within an
 application, rather than creating a new one for each connection.
 
-.. note:: :class:`.QueuePool` is not used by default for SQLite engines.  See
- :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
+.. note:: 
+
+   :class:`.QueuePool` is not used by default for SQLite engines.  See
+   :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
 
 .. autoclass:: sqlalchemy.engine.url.URL
     :members:
@@ -323,13 +325,14 @@ string. To set this to a specific name, use the "logging_name" and
 "pool_logging_name" keyword arguments with :func:`sqlalchemy.create_engine`.
 
 .. note::
-    The SQLAlchemy :class:`.Engine` conserves Python function call overhead
-    by only emitting log statements when the current logging level is detected
-    as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when 
-    a new connection is procured from the connection pool.  Therefore when 
-    changing the logging configuration for an already-running application, any
-    :class:`.Connection` that's currently active, or more commonly a
-    :class:`~.orm.session.Session` object that's active in a transaction, won't log any
-    SQL according to the new configuration until a new :class:`.Connection` 
-    is procured (in the case of :class:`~.orm.session.Session`, this is 
-    after the current transaction ends and a new one begins).
+
+   The SQLAlchemy :class:`.Engine` conserves Python function call overhead
+   by only emitting log statements when the current logging level is detected
+   as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when 
+   a new connection is procured from the connection pool.  Therefore when 
+   changing the logging configuration for an already-running application, any
+   :class:`.Connection` that's currently active, or more commonly a
+   :class:`~.orm.session.Session` object that's active in a transaction, won't log any
+   SQL according to the new configuration until a new :class:`.Connection` 
+   is procured (in the case of :class:`~.orm.session.Session`, this is 
+   after the current transaction ends and a new one begins).

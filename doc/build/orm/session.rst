@@ -705,7 +705,9 @@ is that a "transaction" is always present; this behavior can be disabled by
 setting ``autocommit=True``. In autocommit mode, a transaction can be
 initiated by calling the :func:`~sqlalchemy.orm.session.Session.begin` method.
 
-.. note:: The term "transaction" here refers to a transactional
+.. note:: 
+
+   The term "transaction" here refers to a transactional
    construct within the :class:`.Session` itself which may be
    maintaining zero or more actual database (DBAPI) transactions.  An individual
    DBAPI connection begins participation in the "transaction" as it is first

@@ -105,7 +105,9 @@ in :ref:`sqlexpression_toplevel`.
 Using Transactions
 ==================
 
-.. note:: This section describes how to use transactions when working directly 
+.. note:: 
+
+  This section describes how to use transactions when working directly 
   with :class:`.Engine` and :class:`.Connection` objects. When using the
   SQLAlchemy ORM, the public API for transaction control is via the
   :class:`.Session` object, which makes usage of the :class:`.Transaction`

@@ -15,7 +15,9 @@ When mappers are configured in an inheritance relationship, SQLAlchemy has the
 ability to load elements "polymorphically", meaning that a single query can
 return objects of multiple types.
 
-.. note:: This section currently uses classical mappings to illustrate inheritance
+.. note:: 
+
+   This section currently uses classical mappings to illustrate inheritance
    configurations, and will soon be updated to standardize on Declarative.
    Until then, please refer to :ref:`declarative_inheritance` for information on
    how common inheritance mappings are constructed declaratively.

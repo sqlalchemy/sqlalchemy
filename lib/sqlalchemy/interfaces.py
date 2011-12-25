@@ -17,7 +17,9 @@ from sqlalchemy import event, util
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`.Pool`.
 
-    .. note:: :class:`.PoolListener` is deprecated.   Please
+    .. note:: 
+    
+       :class:`.PoolListener` is deprecated.   Please
        refer to :class:`.PoolEvents`.
 
     Usage::
@@ -149,7 +151,9 @@ class PoolListener(object):
 class ConnectionProxy(object):
     """Allows interception of statement execution by Connections.
 
-    .. note:: :class:`.ConnectionProxy` is deprecated.   Please
+    .. note:: 
+    
+       :class:`.ConnectionProxy` is deprecated.   Please
        refer to :class:`.ConnectionEvents`.
 
     Either or both of the ``execute()`` and ``cursor_execute()``
