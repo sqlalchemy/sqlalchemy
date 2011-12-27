@@ -364,6 +364,19 @@ class UserDefinedTest(fixtures.TablesTest, AssertsCompiledSQL):
             "MYTYPE foo TWO"
         )
 
+    def test_user_defined_dialect_specific_args(self):
+        class MyType(types.UserDefinedType):
+            def __init__(self, foo='foo', **kwargs):
+                super(MyType, self).__init__()
+                self.foo = foo
+                self.dialect_specific_args = kwargs
+            def adapt(self, cls):
+                return cls(foo=self.foo, **self.dialect_specific_args)
+        t = MyType(bar='bar')
+        a = t.dialect_impl(testing.db.dialect)
+        eq_(a.foo, 'foo')
+        eq_(a.dialect_specific_args['bar'], 'bar')
+
     @testing.provide_metadata
     def test_type_coerce(self):
         """test ad-hoc usage of custom types with type_coerce()."""
