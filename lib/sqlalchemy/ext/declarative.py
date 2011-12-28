@@ -1500,6 +1500,7 @@ _declarative_constructor.__name__ = '__init__'
 
 def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
                      name='Base', constructor=_declarative_constructor,
+                     class_registry=None,
                      metaclass=DeclarativeMeta):
     """Construct a base class for declarative class definitions.
 
@@ -1543,6 +1544,13 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
       no __init__ will be provided and construction will fall back to
       cls.__init__ by way of the normal Python semantics.
 
+    :param class_registry: optional dictionary that will serve as the 
+      registry of class names-> mapped classes when string names
+      are used to identify classes inside of :func:`.relationship` 
+      and others.  Allows two or more declarative base classes
+      to share the same registry of class names for simplified 
+      inter-base relationships.
+      
     :param metaclass:
       Defaults to :class:`.DeclarativeMeta`.  A metaclass or __metaclass__
       compatible callable to use as the meta type of the generated
@@ -1553,8 +1561,11 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
     if bind:
         lcl_metadata.bind = bind
 
+    if class_registry is None:
+        class_registry = {}
+
     bases = not isinstance(cls, tuple) and (cls,) or cls
-    class_dict = dict(_decl_class_registry=dict(),
+    class_dict = dict(_decl_class_registry=class_registry,
                       metadata=lcl_metadata)
 
     if constructor:

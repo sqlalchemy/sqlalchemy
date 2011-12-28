@@ -368,6 +368,23 @@ class DeclarativeTest(DeclarativeTestBase):
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
 
+    def test_shared_class_registry(self):
+        reg = {}
+        Base1 = decl.declarative_base(testing.db, class_registry=reg)
+        Base2 = decl.declarative_base(testing.db, class_registry=reg)
+
+        class A(Base1):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+
+        class B(Base2):
+            __tablename__ = 'b'
+            id = Column(Integer, primary_key=True)
+            aid = Column(Integer, ForeignKey(A.id))
+            as_ = relationship("A")
+
+        assert B.as_.property.mapper.class_ is A
+
     def test_uncompiled_attributes_in_relationship(self):
 
         class Address(Base, fixtures.ComparableEntity):

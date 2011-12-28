@@ -9,6 +9,10 @@ CHANGES
   - [bug] Fixed bug whereby hybrid_property didn't 
     work as a kw arg in any(), has().
 
+  - [feature] Added "class_registry" argument to
+    declarative_base().  Allows two or more declarative
+    bases to share the same registry of class names.
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 
