@@ -185,6 +185,15 @@ the :class:`.MetaData` object used by the declarative base::
         id = Column(Integer, primary_key=True)
         keywords = relationship("Keyword", secondary=keywords)
 
+Like other :func:`.relationship` arguments, a string is accepted as well, 
+passing the string name of the table as defined in the ``Base.metadata.tables``
+collection::
+
+    class Author(Base):
+        __tablename__ = 'authors'
+        id = Column(Integer, primary_key=True)
+        keywords = relationship("Keyword", secondary="keywords")
+
 As with traditional mapping, its generally not a good idea to use 
 a :class:`.Table` as the "secondary" argument which is also mapped to
 a class, unless the :class:`.relationship` is declared with ``viewonly=True``.

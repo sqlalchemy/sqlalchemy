@@ -174,6 +174,16 @@ is complete::
                         secondary=lambda: association_table, 
                         backref="parents")
 
+With the declarative extension in use, the traditional "string name of the table"
+is accepted as well, matching the name of the table as stored in ``Base.metadata.tables``::
+
+    class Parent(Base):
+        __tablename__ = 'left'
+        id = Column(Integer, primary_key=True)
+        children = relationship("Child", 
+                        secondary="association", 
+                        backref="parents")
+
 .. _association_pattern:
 
 Association Object
