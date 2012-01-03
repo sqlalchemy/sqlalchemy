@@ -229,7 +229,7 @@ assigning an attribute of that name will have no effect beyond that of
 a normal Python attribute assignment.
 
 In some cases, multiple columns may have the same name, such as when
-mapping to a join of two or more tables that share some column name.  
+mapping to a join of two or more tables that share some column name.
 ``include_properties`` and ``exclude_properties`` can also accommodate
 :class:`.Column` objects to more accurately describe which columns
 should be included or excluded::
@@ -341,11 +341,91 @@ Column Deferral API
 SQL Expressions as Mapped Attributes
 =====================================
 
-Any SQL expression that relates to the primary mapped selectable can be mapped
-as a read-only attribute which will be bundled into the SELECT emitted for the
-target mapper when rows are loaded. This effect is achieved using the
-:func:`.orm.column_property` function. Any scalar-returning
-:class:`.ClauseElement` may be used::
+Attributes on a mapped class can be linked to SQL expressions, which can 
+be used in queries. 
+
+Using a Hybrid
+--------------
+
+The easiest and most flexible way to link relatively simple SQL expressions to a class is to use a so-called
+"hybrid attribute",
+described in the section :ref:`hybrids_toplevel`.  The hybrid provides
+for an expression that works at both the Python level as well as at the 
+SQL expression level.  For example, below we map a class ``User``,
+containing attributes ``firstname`` and ``lastname``, and include a hybrid that
+will provide for us the ``fullname``, which is the string concatenation of the two::
+
+    from sqlalchemy.ext.hybrid import hybrid_property
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        firstname = Column(String(50))
+        lastname = Column(String(50))
+
+        @hybrid_property
+        def fullname(self):
+            return self.firstname + " " + self.lastname
+
+Above, the ``fullname`` attribute is interpreted at both the instance and 
+class level, so that it is available from an instance::
+
+    some_user = session.query(User).first()
+    print some_user.fullname
+
+as well as usable wtihin queries::
+
+    some_user = session.query(User).filter(User.fullname == "John Smith").first()
+
+The string concatenation example is a simple one, where the Python expression
+can be dual purposed at the instance and class level.  Often, the SQL expression
+must be distinguished from the Python expression, which can be achieved using
+:meth:`.hybrid_property.expression`.  Below we illustrate the case where a conditional
+needs to be present inside the hybrid, using the ``if`` statement in Python and the
+:func:`.sql.expression.case` construct for SQL expressions::
+
+    from sqlalchemy.ext.hybrid import hybrid_property
+    from sqlalchemy.sql import case
+
+    class User(Base):
+        __tablename__ = 'user'
+        id = Column(Integer, primary_key=True)
+        firstname = Column(String(50))
+        lastname = Column(String(50))
+
+        @hybrid_property
+        def fullname(self):
+            if self.firstname is not None:
+                return self.firstname + " " + self.lastname
+            else:
+                return self.lastname
+
+        @fullname.expression
+        def fullname(cls):
+            return case([
+                (cls.firstname != None, cls.firstname + " " + cls.lastname),
+            ], else_ = cls.lastname)
+
+Using column_property
+---------------------
+
+The :func:`.orm.column_property` function can be used to map a SQL
+expression in a manner similar to a regularly mapped :class:`.Column`.   
+With this technique, the attribute is loaded
+along with all other column-mapped attributes at load time.  This is in some
+cases an advantage over the usage of hybrids, as the value can be loaded
+up front at the same time as the parent row of the object, particularly if
+the expression is one which links to other tables (typically as a correlated
+subquery) to access data that wouldn't normally be 
+available on an already loaded object.
+
+Disadvantages to using :func:`.orm.column_property` for SQL expressions include that 
+the expression must be compatible with the SELECT statement emitted for the class 
+as a whole, and there are also some configurational quirks which can occur 
+when using :func:`.orm.column_property` from declarative mixins.
+
+Our "fullname" example can be expressed using :func:`.orm.column_property` as 
+follows::
 
     from sqlalchemy.orm import column_property
 
@@ -406,29 +486,17 @@ here with a classical mapping::
                                 )))
         })
 
-Alternatives to column_property()
----------------------------------
+Using a plain descriptor
+-------------------------
 
-:func:`.orm.column_property` is used to provide the effect of a SQL expression
-that is actively rendered into the SELECT generated for a particular mapped
-class. For the typical attribute that represents a composed value, it's often
-simpler and more efficient to just define it as a Python property, which is
-evaluated as it is invoked on instances after they've been loaded::
-
-    class User(Base):
-        __tablename__ = 'user'
-        id = Column(Integer, primary_key=True)
-        firstname = Column(String(50))
-        lastname = Column(String(50))
-
-        @property
-        def fullname(self):
-            return self.firstname + " " + self.lastname
-
-To emit SQL queries from within a @property, the
-:class:`.Session` associated with the instance can be acquired using
-:func:`~.session.object_session`, which will provide the appropriate
-transactional context from which to emit a statement::
+In cases where a SQL query more elaborate than what :func:`.orm.column_property`
+or :class:`.hybrid_property` can provide must be emitted, a regular Python 
+function accessed as an attribute can be used, assuming the expression
+only needs to be available on an already-loaded instance.   The function 
+is decorated with Python's own ``@property`` decorator to mark it as a read-only
+attribute.   Within the function, :func:`.object_session`
+is used to locate the :class:`.Session` corresponding to the current object,
+which is then used to emit a query::
 
     from sqlalchemy.orm import object_session
     from sqlalchemy import select, func
@@ -447,8 +515,9 @@ transactional context from which to emit a statement::
                         where(Address.user_id==self.id)
                 )
 
-For more information on using descriptors, including how they can 
-be smoothly integrated into SQL expressions, see :ref:`synonyms`.
+The plain descriptor approach is useful as a last resort, but is less performant
+in the usual case than both the hybrid and column property approaches, in that
+it needs to emit a SQL query upon each access.
 
 Changing Attribute Behavior
 ============================
@@ -502,8 +571,8 @@ described at :class:`~.AttributeEvents`.
 
 .. _synonyms:
 
-Using Descriptors
------------------
+Using Descriptors and Hybrids
+-----------------------------
 
 A more comprehensive way to produce modified behavior for an attribute is to
 use descriptors. These are commonly used in Python using the ``property()``
@@ -651,10 +720,8 @@ This is a relatively rare use case which generally applies only to
 highly customized types.  Usually, custom SQL behaviors can be 
 associated with a mapped class by composing together the classes'
 existing mapped attributes with other expression components, 
-using either mapped SQL expressions as those described in
-:ref:`mapper_sql_expressions`, or so-called "hybrid" attributes
-as described at :ref:`hybrids_toplevel`.  Those approaches should be 
-considered first before resorting to custom comparison objects.
+using the techniques described in :ref:`mapper_sql_expressions`.  
+Those approaches should be considered first before resorting to custom comparison objects.
 
 Each of :func:`.orm.column_property`, :func:`~.composite`, :func:`.relationship`,
 and :func:`.comparable_property` accept an argument called
