@@ -1,5 +1,5 @@
 # drizzle/base.py
-# Copyright (C) 2005-2011 the SQLAlchemy authors and contributors <see AUTHORS file>
+# Copyright (C) 2005-2012 the SQLAlchemy authors and contributors <see AUTHORS file>
 # Copyright (C) 2010-2011 Monty Taylor <mordred@inaugust.com>
 #
 # This module is part of SQLAlchemy and is released under
