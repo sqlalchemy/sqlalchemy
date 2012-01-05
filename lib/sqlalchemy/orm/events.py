@@ -550,13 +550,29 @@ class MapperEvents(event.Events):
         (and more poorly performing) event->persist->event
         steps.
 
-        Handlers should **not** modify any attributes which are
-        mapped by :func:`.relationship`, nor should they attempt
-        to make any modifications to the :class:`.Session` in
-        this hook (including :meth:`.Session.add`, 
-        :meth:`.Session.delete`, etc.) - such changes will not
-        take effect. For overall changes to the "flush plan",
-        use :meth:`.SessionEvents.before_flush`.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
+        
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -590,14 +606,30 @@ class MapperEvents(event.Events):
         into individual (and more poorly performing)
         event->persist->event steps.
 
-        Handlers should **not** alter mapped attributes on the objects
-        just flushed or on other objects of the same class, nor
-        should any other ORM-based operation such as :class:`.Session.add`
-        take place here.   Attribute changes on objects that were
-        already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
-        to change the flush plan on flush.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
         
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
+
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
         :param connection: the :class:`.Connection` being used to 
@@ -649,13 +681,29 @@ class MapperEvents(event.Events):
         (and more poorly performing) event->persist->event
         steps.
 
-        Handlers should **not** modify any attributes which are
-        mapped by :func:`.relationship`, nor should they attempt
-        to make any modifications to the :class:`.Session` in
-        this hook (including :meth:`.Session.add`, 
-        :meth:`.Session.delete`, etc.) - such changes will not
-        take effect. For overall changes to the "flush plan",
-        use :meth:`.SessionEvents.before_flush`.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
+        
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -706,13 +754,29 @@ class MapperEvents(event.Events):
         (and more poorly performing) event->persist->event
         steps.
 
-        Handlers should **not** alter mapped attributes on the objects
-        just flushed or on other objects of the same class, nor
-        should any other ORM-based operation such as :class:`.Session.add`
-        take place here.   Attribute changes on objects that were
-        already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
-        to change the flush plan on flush.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
+        
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -740,13 +804,29 @@ class MapperEvents(event.Events):
         same class before their DELETE statements are emitted at
         once in a later step. 
 
-        Handlers should **not** modify any attributes which are
-        mapped by :func:`.relationship`, nor should they attempt
-        to make any modifications to the :class:`.Session` in
-        this hook (including :meth:`.Session.add`, 
-        :meth:`.Session.delete`, etc.) - such changes will not
-        take effect. For overall changes to the "flush plan",
-        use :meth:`.SessionEvents.before_flush`.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
+        
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
@@ -774,13 +854,29 @@ class MapperEvents(event.Events):
         same class after their DELETE statements have been emitted at
         once in a previous step. 
 
-        Handlers should **not** alter mapped attributes on the objects
-        just flushed or on other objects of the same class, nor
-        should any other ORM-based operation such as :class:`.Session.add`
-        take place here.   Attribute changes on objects that were
-        already flushed will be discarded, and changes to the flush
-        plan will also not take place.  Use :meth:`.SessionEvents.before_flush`
-        to change the flush plan on flush.
+        .. warning::
+            Mapper-level flush events are designed to operate **on attributes
+            local to the immediate object being handled  
+            and via SQL operations with the given** :class:`.Connection` **only.**
+            Handlers here should **not** make alterations to the state of 
+            the :class:`.Session` overall, and in general should not
+            affect any :func:`.relationship` -mapped attributes, as 
+            session cascade rules will not function properly, nor is it
+            always known if the related class has already been handled.  
+            Operations that **are not supported in mapper events** include:
+        
+            * :meth:`.Session.add`
+            * :meth:`.Session.delete`
+            * Mapped collection append, add, remove, delete, discard, etc.
+            * Mapped relationship attribute set/del events, i.e. ``someobject.related = someotherobject``
+        
+            Operations which manipulate the state of the object
+            relative to other objects are better handled:
+        
+            * In the ``__init__()`` method of the mapped object itself, or another method
+              designed to establish some particular state.
+            * In a ``@validates`` handler, see :ref:`simple_validators`
+            * Within the  :meth:`.SessionEvents.before_flush` event.
 
         :param mapper: the :class:`.Mapper` which is the target
          of this event.
