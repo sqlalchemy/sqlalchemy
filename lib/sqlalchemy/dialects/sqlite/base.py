@@ -697,6 +697,8 @@ class SQLiteDialect(default.DefaultDialect):
             if row is None:
                 break
             (constraint_name, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
+            if not constraint_name:
+                constraint_name = None
             # sqlite won't return rcol if the table
             # was created with REFERENCES <tablename>, no col
             if rcol is None:

@@ -728,4 +728,41 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
 
         assert b.c.id.references(a.c.id)
 
+class ReflectFKConstraintTest(fixtures.TestBase):
+    __only_on__ = 'sqlite'
 
+    def setup(self):
+        testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
+        testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY, "
+                            "FOREIGN KEY(id) REFERENCES a(id))")
+        testing.db.execute("CREATE TABLE c (id INTEGER, "
+                            "CONSTRAINT bar PRIMARY KEY(id),"
+                            "CONSTRAINT foo FOREIGN KEY(id) REFERENCES a(id))")
+
+    def teardown(self):
+        testing.db.execute("drop table c")
+        testing.db.execute("drop table b")
+        testing.db.execute("drop table a")
+
+    def test_name_is_none(self):
+        # and not "0"
+        meta = MetaData()
+        b = Table('b', meta, autoload=True, autoload_with=testing.db)
+        eq_(
+            [con.name for con in b.constraints],
+            [None, None]
+        )
+
+    def test_name_not_none(self):
+        # we don't have names for PK constraints,
+        # it appears we get back None in the pragma for 
+        # FKs also (also it doesn't even appear to be documented on sqlite's docs
+        # at http://www.sqlite.org/pragma.html#pragma_foreign_key_list
+        # how did we ever know that's the "name" field ??)
+
+        meta = MetaData()
+        c = Table('c', meta, autoload=True, autoload_with=testing.db)
+        eq_(
+            set([con.name for con in c.constraints]),
+            set([None, None])
+        )

@@ -1469,7 +1469,12 @@ class ComponentReflectionTest(fixtures.TestBase):
         users_fkeys = insp.get_foreign_keys(users.name,
                                             schema=schema)
         fkey1 = users_fkeys[0]
-        self.assert_(fkey1['name'] is not None)
+
+        @testing.fails_on('sqlite', 'no support for constraint names')
+        def go():
+            self.assert_(fkey1['name'] is not None)
+        go()
+
         eq_(fkey1['referred_schema'], expected_schema)
         eq_(fkey1['referred_table'], users.name)
         eq_(fkey1['referred_columns'], ['user_id', ])
@@ -1478,7 +1483,10 @@ class ComponentReflectionTest(fixtures.TestBase):
         addr_fkeys = insp.get_foreign_keys(addresses.name,
                                            schema=schema)
         fkey1 = addr_fkeys[0]
-        self.assert_(fkey1['name'] is not None)
+        @testing.fails_on('sqlite', 'no support for constraint names')
+        def go():
+            self.assert_(fkey1['name'] is not None)
+        go()
         eq_(fkey1['referred_schema'], expected_schema)
         eq_(fkey1['referred_table'], users.name)
         eq_(fkey1['referred_columns'], ['user_id', ])
