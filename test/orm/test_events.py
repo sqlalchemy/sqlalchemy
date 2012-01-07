@@ -100,6 +100,14 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             event.listen(mapper, meth, evt(meth), **kw)
         return canary
 
+    def test_listen_doesnt_force_compile(self):
+        User, users = self.classes.User, self.tables.users
+        m = mapper(User, users, properties={
+            'addresses':relationship(lambda: ImNotAClass)
+        })
+        event.listen(User, "before_insert", lambda *a, **kw:None)
+        assert not m.configured
+
     def test_basic(self):
         User, users = self.classes.User, self.tables.users
 

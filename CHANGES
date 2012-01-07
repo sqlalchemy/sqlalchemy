@@ -6,6 +6,12 @@ CHANGES
 0.7.5
 =====
 - orm
+  - [bug] Fixed bug whereby event.listen(SomeClass)
+    forced an entirely unnecessary compile of the 
+    mapper, making events very hard to set up
+    at module import time (nobody noticed this ??)  
+    [ticket:2367]
+
   - [bug] Fixed bug whereby hybrid_property didn't 
     work as a kw arg in any(), has().
 

@@ -335,7 +335,7 @@ class MapperEvents(event.Events):
             if issubclass(target, orm.Mapper):
                 return target
             else:
-                return orm.class_mapper(target)
+                return orm.class_mapper(target, compile=False)
         else:
             return target
 
