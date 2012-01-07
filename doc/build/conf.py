@@ -104,6 +104,9 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+# have the "gettext" build generate .pot for each individual
+# .rst
+gettext_compact = False
 
 # -- Options for HTML output ---------------------------------------------------
 

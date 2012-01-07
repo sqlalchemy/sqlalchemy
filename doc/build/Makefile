@@ -17,6 +17,7 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
+	@echo "  gettext    generate .pot files"
 	@echo "  dist-html  same as html, but places files in /doc"
 	@echo "  site-mako  to make sqlalchemy.org Mako files"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
@@ -42,6 +43,9 @@ html:
 	$(SPHINXBUILD) -b html -A mako_layout=html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
+
+gettext:
+	$(SPHINXBUILD) -b gettext $(SPHINXOPTS) . $(BUILDDIR)/gettext
 
 dist-html:
 	$(SPHINXBUILD) -b html -A mako_layout=html $(ALLSPHINXOPTS) ..
