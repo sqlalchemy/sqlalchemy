@@ -19,6 +19,10 @@ CHANGES
     declarative_base().  Allows two or more declarative
     bases to share the same registry of class names.
 
+  - [feature] query.filter() accepts multiple 
+    criteria which will join via AND, i.e.
+    query.filter(x==y, z>q, ...)
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 
