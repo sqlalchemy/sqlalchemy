@@ -159,7 +159,7 @@ construction rules apply here as to the select methods::
 You can similarly update multiple rows at once. This will change the
 book_id to 1 in all loans whose book_id is 2::
 
-    >>> db.loans.update(db.loans.book_id==2, book_id=1)
+    >>> db.loans.filter_by(db.loans.book_id==2).update({'book_id':1})
     >>> db.loans.filter_by(book_id=1).all()
     [MappedLoans(book_id=1,user_name=u'Joe Student',
         loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
