@@ -732,17 +732,23 @@ class ReflectFKConstraintTest(fixtures.TestBase):
     __only_on__ = 'sqlite'
 
     def setup(self):
-        testing.db.execute("CREATE TABLE a (id INTEGER PRIMARY KEY)")
+        testing.db.execute("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
+        testing.db.execute("CREATE TABLE a2 (id INTEGER PRIMARY KEY)")
         testing.db.execute("CREATE TABLE b (id INTEGER PRIMARY KEY, "
-                            "FOREIGN KEY(id) REFERENCES a(id))")
+                            "FOREIGN KEY(id) REFERENCES a1(id),"
+                            "FOREIGN KEY(id) REFERENCES a2(id)"
+                            ")")
         testing.db.execute("CREATE TABLE c (id INTEGER, "
                             "CONSTRAINT bar PRIMARY KEY(id),"
-                            "CONSTRAINT foo FOREIGN KEY(id) REFERENCES a(id))")
+                            "CONSTRAINT foo1 FOREIGN KEY(id) REFERENCES a1(id),"
+                            "CONSTRAINT foo2 FOREIGN KEY(id) REFERENCES a2(id)"
+                            ")")
 
     def teardown(self):
         testing.db.execute("drop table c")
         testing.db.execute("drop table b")
-        testing.db.execute("drop table a")
+        testing.db.execute("drop table a1")
+        testing.db.execute("drop table a2")
 
     def test_name_is_none(self):
         # and not "0"
@@ -750,7 +756,7 @@ class ReflectFKConstraintTest(fixtures.TestBase):
         b = Table('b', meta, autoload=True, autoload_with=testing.db)
         eq_(
             [con.name for con in b.constraints],
-            [None, None]
+            [None, None, None]
         )
 
     def test_name_not_none(self):

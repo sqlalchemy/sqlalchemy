@@ -25,9 +25,10 @@ CHANGES
 
 - sqlite
   - [bug] the "name" of an FK constraint in SQLite
-    is reflected as "None", not "0" [ticket:2364].
+    is reflected as "None", not "0" or other 
+    integer value [ticket:2364].
     SQLite does not appear to support constraint
-    naming in any case (the names are ignored).
+    naming in any case.
 
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k

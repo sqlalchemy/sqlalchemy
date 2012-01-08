@@ -696,9 +696,7 @@ class SQLiteDialect(default.DefaultDialect):
             row = c.fetchone()
             if row is None:
                 break
-            (constraint_name, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
-            if not constraint_name:
-                constraint_name = None
+            (numerical_id, rtbl, lcol, rcol) = (row[0], row[2], row[3], row[4])
             # sqlite won't return rcol if the table
             # was created with REFERENCES <tablename>, no col
             if rcol is None:
@@ -707,17 +705,17 @@ class SQLiteDialect(default.DefaultDialect):
             lcol = re.sub(r'^\"|\"$', '', lcol)
             rcol = re.sub(r'^\"|\"$', '', rcol)
             try:
-                fk = fks[constraint_name]
+                fk = fks[numerical_id]
             except KeyError:
                 fk = {
-                    'name' : constraint_name,
+                    'name' : None,
                     'constrained_columns' : [],
                     'referred_schema' : None,
                     'referred_table' : rtbl,
                     'referred_columns' : []
                 }
                 fkeys.append(fk)
-                fks[constraint_name] = fk
+                fks[numerical_id] = fk
 
             # look up the table based on the given table's engine, not 'self',
             # since it could be a ProxyEngine
