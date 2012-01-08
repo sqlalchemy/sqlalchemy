@@ -8,8 +8,15 @@
 
 .. note:: 
 
-   SQLSoup will no longer be included with SQLAlchemy as of 0.8.
-   Look for a third party project replicating its functionality soon.
+   SQLSoup is now its own project.  Documentation
+   and project status are available at:
+   
+   http://pypi.python.org/pypi/sqlsoup
+
+   http://readthedocs.org/docs/sqlsoup
+   
+   SQLSoup will no longer be included with SQLAlchemy as of 
+   version 0.8.
 
 
 Introduction
