@@ -23,6 +23,13 @@ CHANGES
     criteria which will join via AND, i.e.
     query.filter(x==y, z>q, ...)
 
+- engine
+  - [bug] Added __reduce__ to StatementError, 
+    DBAPIError so that exceptions are pickleable,
+    as when using multiprocessing.  However, not 
+    all DBAPIs support this yet, such as 
+    psycopg2. [ticket:2371]
+
 - sqlite
   - [bug] the "name" of an FK constraint in SQLite
     is reflected as "None", not "0" or other 

@@ -164,6 +164,10 @@ class StatementError(SQLAlchemyError):
         self.params = params
         self.orig = orig
 
+    def __reduce__(self):
+        return self.__class__, (self.message, self.statement, 
+                                self.params, self.orig)
+
     def __str__(self):
         from sqlalchemy.sql import util
         params_repr = util._repr_params(self.params, 10)
@@ -218,6 +222,10 @@ class DBAPIError(StatementError):
                 cls = glob[name]
 
         return cls(statement, params, orig, connection_invalidated)
+
+    def __reduce__(self):
+        return self.__class__, (self.statement, self.params, 
+                    self.orig, self.connection_invalidated)
 
     def __init__(self, statement, params, orig, connection_invalidated=False):
         try:
