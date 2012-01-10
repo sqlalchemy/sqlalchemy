@@ -152,13 +152,7 @@ def bind_values(clause):
 
     v = []
     def visit_bindparam(bind):
-        value = bind.value
-
-        # evaluate callables
-        if callable(value):
-            value = value()
-
-        v.append(value)
+        v.append(bind.effective_value)
 
     visitors.traverse(clause, {}, {'bindparam':visit_bindparam})
     return v

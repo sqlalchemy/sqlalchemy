@@ -2606,6 +2606,21 @@ class _BindParamClause(ColumnElement):
         else:
             self.type = type_
 
+    @property
+    def effective_value(self):
+        """Return the value of this bound parameter, 
+        taking into account if the ``callable`` parameter
+        was set.  
+        
+        The ``callable`` value will be evaluated
+        and returned if present, else ``value``.
+        
+        """
+        if self.callable:
+            return self.callable()
+        else:
+            return self.value
+
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:

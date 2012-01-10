@@ -151,6 +151,25 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         # ...unless the flag is on
         assert c3.parent is p1
 
+    def test_collection_load_from_pending_populated(self):
+        Parent.children.property.load_on_pending = True
+        p2 = Parent(id=p1.id)
+        sess.add(p2)
+        # load should emit since PK is populated
+        def go():
+            assert p2.children
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_collection_load_from_pending_no_sql(self):
+        Parent.children.property.load_on_pending = True
+        p2 = Parent(id=None)
+        sess.add(p2)
+        # load should not emit since "None" is the bound
+        # param list
+        def go():
+            assert not p2.children
+        self.assert_sql_count(testing.db, go, 0)
+
     def test_load_on_pending_with_set(self):
         Child.parent.property.load_on_pending = True
 

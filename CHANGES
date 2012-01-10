@@ -23,6 +23,12 @@ CHANGES
     criteria which will join via AND, i.e.
     query.filter(x==y, z>q, ...)
 
+  - Fixed regression from 0.6 whereby if 
+    "load_on_pending" relationship() flag were used
+    where a non-"get()" lazy clause needed to be 
+    emitted on a pending object, it would fail 
+    to load.
+
 - engine
   - [bug] Added __reduce__ to StatementError, 
     DBAPIError so that exceptions are pickleable,

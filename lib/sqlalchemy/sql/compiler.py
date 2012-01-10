@@ -305,18 +305,13 @@ class SQLCompiler(engine.Compiled):
                         raise exc.InvalidRequestError(
                                 "A value is required for bind parameter %r" 
                                 % bindparam.key)
-                elif bindparam.callable:
-                    pd[name] = bindparam.callable()
                 else:
-                    pd[name] = bindparam.value
+                    pd[name] = bindparam.effective_value
             return pd
         else:
             pd = {}
             for bindparam in self.bind_names:
-                if bindparam.callable:
-                    pd[self.bind_names[bindparam]] = bindparam.callable()
-                else:
-                    pd[self.bind_names[bindparam]] = bindparam.value
+                pd[self.bind_names[bindparam]] = bindparam.effective_value
             return pd
 
     params = property(construct_params, doc="""
