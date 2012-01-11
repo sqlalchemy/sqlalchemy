@@ -1219,6 +1219,8 @@ autocommit is disabled, it is still useful in that it forces the :class:`.Sessio
 into a "pending rollback" state, as a failed flush cannot be resumed in mid-operation,
 where the end user still maintains the "scope" of the transaction overall.
 
+.. _session_twophase:
+
 Enabling Two-Phase Commit
 -------------------------
 
@@ -1507,8 +1509,8 @@ Contextual Session API
 Partitioning Strategies
 =======================
 
-Vertical Partitioning
----------------------
+Simple Vertical Partitioning
+----------------------------
 
 Vertical partitioning places different kinds of objects, or different tables,
 across multiple databases::
@@ -1522,6 +1524,61 @@ across multiple databases::
     Session.configure(binds={User:engine1, Account:engine2})
 
     session = Session()
+
+Above, operations against either class will make usage of the :class:`.Engine`
+linked to that class.   Upon a flush operation, similar rules take place
+to ensure each class is written to the right database.   
+
+The transactions among the multiple databases can optionally be coordinated
+via two phase commit, if the underlying backend supports it.  See
+:ref:`session_twophase` for an example.
+
+Custom Vertical Partitioning
+----------------------------
+
+More comprehensive rule-based class-level partitioning can be built by
+overriding the :meth:`.Session.get_bind` method.   Below we illustrate
+a custom :class:`.Session` which delivers the following rules:
+
+1. Flush operations are delivered to the engine named ``master``.
+
+2. Operations on objects that subclass ``MyOtherClass`` all 
+   occur on the ``other`` engine.
+
+3. Read operations for all other classes occur on a random
+   choice of the ``slave1`` or ``slave2`` database.
+
+::
+
+    engines = {
+        'master':create_engine("sqlite:///master.db"),
+        'other':create_engine("sqlite:///other.db"),
+        'slave1':create_engine("sqlite:///slave1.db"),
+        'slave2':create_engine("sqlite:///slave2.db"),
+    }
+
+    from sqlalchemy.orm import Session, sessionmaker
+    import random
+
+    class RoutingSession(Session):
+        def get_bind(self, mapper=None, clause=None):
+            if mapper and issubclass(mapper.class_, MyOtherClass):
+                return engines['other']
+            elif self._flushing:
+                return engines['master']
+            else:
+                return engines[
+                    random.choice(['slave1','slave2'])
+                ]
+
+The above :class:`.Session` class is plugged in using the ``class_``
+argument to :func:`.sessionmaker`::
+
+    Session = sessionmaker(class_=RoutingSession)
+
+This approach can be combined with multiple :class:`.MetaData` objects,
+using an approach such as that of using the declarative ``__abstract__`` 
+keyword, described at :ref:`declarative_abstract`.
 
 Horizontal Partitioning
 -----------------------

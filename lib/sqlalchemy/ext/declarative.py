@@ -906,6 +906,7 @@ has finished::
             ""
             # do something with mappings
 
+.. _declarative_abstract:
 
 ``__abstract__``
 ~~~~~~~~~~~~~~~~~~~
@@ -927,6 +928,26 @@ just from the special class::
 
     class MyMappedClass(SomeAbstractBase):
         ""
+        
+One possible use of ``__abstract__`` is to use a distinct :class:`.MetaData` for different
+bases::
+
+    Base = declarative_base()
+
+    class DefaultBase(Base):
+        __abstract__ = True
+        metadata = MetaData()
+
+    class OtherBase(Base):
+        __abstract__ = True
+        metadata = MetaData()
+
+Above, classes which inherit from ``DefaultBase`` will use one :class:`.MetaData` as the 
+registry of tables, and those which inherit from ``OtherBase`` will use a different one.  
+The tables themselves can then be created perhaps within distinct databases::
+
+    DefaultBase.metadata.create_all(some_engine)
+    OtherBase.metadata_create_all(some_other_engine)
 
 Class Constructor
 =================
