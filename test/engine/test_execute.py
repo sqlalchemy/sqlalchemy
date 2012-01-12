@@ -194,13 +194,16 @@ class ExecuteTest(fixtures.TestBase):
 
     @testing.fails_on("postgresql+psycopg2", 
                 "Packages the cursor in the exception")
+    @testing.fails_on("mysql+oursql", 
+                "Exception doesn't come back exactly the same from pickle")
     def test_stmt_exception_pickleable_plus_dbapi(self):
         raw = testing.db.raw_connection()
         try:
-            cursor = raw.cursor()
-            cursor.execute("SELECTINCORRECT")
-        except testing.db.dialect.dbapi.DatabaseError, orig:
-            pass
+            try:
+                cursor = raw.cursor()
+                cursor.execute("SELECTINCORRECT")
+            except testing.db.dialect.dbapi.DatabaseError, orig:
+                pass
         finally:
             raw.close()
         self._test_stmt_exception_pickleable(orig)
