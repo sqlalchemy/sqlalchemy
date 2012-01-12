@@ -165,7 +165,7 @@ class StatementError(SQLAlchemyError):
         self.orig = orig
 
     def __reduce__(self):
-        return self.__class__, (self.message, self.statement, 
+        return self.__class__, (self.args[0], self.statement, 
                                 self.params, self.orig)
 
     def __str__(self):

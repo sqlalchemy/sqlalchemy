@@ -198,15 +198,17 @@ class ExecuteTest(fixtures.TestBase):
                 "Exception doesn't come back exactly the same from pickle")
     def test_stmt_exception_pickleable_plus_dbapi(self):
         raw = testing.db.raw_connection()
+        the_orig = None
         try:
             try:
                 cursor = raw.cursor()
                 cursor.execute("SELECTINCORRECT")
             except testing.db.dialect.dbapi.DatabaseError, orig:
-                pass
+                # py3k has "orig" in local scope...
+                the_orig = orig
         finally:
             raw.close()
-        self._test_stmt_exception_pickleable(orig)
+        self._test_stmt_exception_pickleable(the_orig)
 
     def _test_stmt_exception_pickleable(self, orig):
         for sa_exc in (
@@ -220,13 +222,13 @@ class ExecuteTest(fixtures.TestBase):
         ):
             for loads, dumps in picklers():
                 repickled = loads(dumps(sa_exc))
-                eq_(repickled.message, sa_exc.message)
+                eq_(repickled.args[0], sa_exc.args[0])
                 eq_(repickled.params, {"foo":"bar"})
                 eq_(repickled.statement, sa_exc.statement)
                 if hasattr(sa_exc, "connection_invalidated"):
                     eq_(repickled.connection_invalidated, 
                         sa_exc.connection_invalidated)
-                eq_(repickled.orig.message, orig.message)
+                eq_(repickled.orig.args[0], orig.args[0])
 
     def test_dont_wrap_mixin(self):
         class MyException(Exception, tsa.exc.DontWrapMixin):
