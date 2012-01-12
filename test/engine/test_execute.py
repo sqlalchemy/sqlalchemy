@@ -219,16 +219,19 @@ class ExecuteTest(fixtures.TestBase):
             tsa.exc.InterfaceError("select * from table", 
                             {"foo":"bar"}, 
                             orig),
+            tsa.exc.NoReferencedTableError("message", "tname"),
+            tsa.exc.NoReferencedColumnError("message", "tname", "cname")
         ):
             for loads, dumps in picklers():
                 repickled = loads(dumps(sa_exc))
                 eq_(repickled.args[0], sa_exc.args[0])
-                eq_(repickled.params, {"foo":"bar"})
-                eq_(repickled.statement, sa_exc.statement)
-                if hasattr(sa_exc, "connection_invalidated"):
-                    eq_(repickled.connection_invalidated, 
-                        sa_exc.connection_invalidated)
-                eq_(repickled.orig.args[0], orig.args[0])
+                if isinstance(sa_exc, tsa.exc.StatementError):
+                    eq_(repickled.params, {"foo":"bar"})
+                    eq_(repickled.statement, sa_exc.statement)
+                    if hasattr(sa_exc, "connection_invalidated"):
+                        eq_(repickled.connection_invalidated, 
+                            sa_exc.connection_invalidated)
+                    eq_(repickled.orig.args[0], orig.args[0])
 
     def test_dont_wrap_mixin(self):
         class MyException(Exception, tsa.exc.DontWrapMixin):

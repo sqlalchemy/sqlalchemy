@@ -102,6 +102,9 @@ class NoReferencedTableError(NoReferenceError):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
 
+    def __reduce__(self):
+        return self.__class__, (self.args[0], self.table_name)
+
 class NoReferencedColumnError(NoReferenceError):
     """Raised by ``ForeignKey`` when the referred ``Column`` cannot be located."""
 
@@ -109,6 +112,10 @@ class NoReferencedColumnError(NoReferenceError):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
         self.column_name = cname
+
+    def __reduce__(self):
+        return self.__class__, (self.args[0], self.table_name, 
+                            self.column_name)
 
 class NoSuchTableError(InvalidRequestError):
     """Table does not exist or is not visible to a connection."""
