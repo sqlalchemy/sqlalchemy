@@ -220,7 +220,8 @@ class ExecuteTest(fixtures.TestBase):
                             {"foo":"bar"}, 
                             orig),
             tsa.exc.NoReferencedTableError("message", "tname"),
-            tsa.exc.NoReferencedColumnError("message", "tname", "cname")
+            tsa.exc.NoReferencedColumnError("message", "tname", "cname"),
+            tsa.exc.CircularDependencyError("some message", [1, 2, 3], [(1, 2), (3, 4)]),
         ):
             for loads, dumps in picklers():
                 repickled = loads(dumps(sa_exc))

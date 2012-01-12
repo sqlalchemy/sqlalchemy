@@ -44,11 +44,18 @@ class CircularDependencyError(SQLAlchemyError):
       see :ref:`use_alter`.
       
     """
-    def __init__(self, message, cycles, edges):
-        message += " Cycles: %r all edges: %r" % (cycles, edges)
+    def __init__(self, message, cycles, edges, msg=None):
+        if msg is None:
+            message += " Cycles: %r all edges: %r" % (cycles, edges)
+        else:
+            message = msg
         SQLAlchemyError.__init__(self, message)
         self.cycles = cycles
         self.edges = edges
+
+    def __reduce__(self):
+        return self.__class__, (None, self.cycles, 
+                            self.edges, self.args[0])
 
 class CompileError(SQLAlchemyError):
     """Raised when an error occurs during SQL compilation"""
