@@ -29,10 +29,14 @@ CHANGES
     emitted on a pending object, it would fail 
     to load.
 
+  - [bug] ensure pickleability of all ORM exceptions
+    for multiprocessing compatibility. [ticket:2371]
+
 - engine
   - [bug] Added __reduce__ to StatementError, 
-    DBAPIError so that exceptions are pickleable,
-    as when using multiprocessing.  However, not 
+    DBAPIError, column errors so that exceptions 
+    are pickleable, as when using multiprocessing.  
+    However, not 
     all DBAPIs support this yet, such as 
     psycopg2. [ticket:2371]
 

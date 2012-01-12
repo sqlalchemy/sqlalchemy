@@ -72,6 +72,8 @@ class UnmappedInstanceError(UnmappedError):
                         'required?' % _safe_cls_name(obj))
         UnmappedError.__init__(self, msg)
 
+    def __reduce__(self):
+        return self.__class__, (None, self.args[0])
 
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
@@ -81,6 +83,8 @@ class UnmappedClassError(UnmappedError):
             msg = _default_unmapped(cls)
         UnmappedError.__init__(self, msg)
 
+    def __reduce__(self):
+        return self.__class__, (None, self.args[0])
 
 class ObjectDeletedError(sa.exc.InvalidRequestError):
     """A refresh operation failed to retrieve the database
@@ -101,12 +105,15 @@ class ObjectDeletedError(sa.exc.InvalidRequestError):
     object.   
     
     """
-    def __init__(self, state):
-        sa.exc.InvalidRequestError.__init__(
-             self,
-             "Instance '%s' has been deleted, or its "
+    def __init__(self, state, msg=None):
+        if not msg:
+            msg = "Instance '%s' has been deleted, or its "\
              "row is otherwise not present." % orm_util.state_str(state)
-        )
+
+        sa.exc.InvalidRequestError.__init__(self, msg)
+
+    def __reduce__(self):
+        return self.__class__, (None, self.args[0])
 
 class UnmappedColumnError(sa.exc.InvalidRequestError):
     """Mapping operation was requested on an unknown column."""

@@ -319,6 +319,21 @@ class PickleTest(fixtures.MappedTest):
         screen2 = Screen(Child2(), screen1)
         pickle.loads(pickle.dumps(screen2))
 
+    def test_exceptions(self):
+        class Foo(object):
+            pass
+        users = self.tables.users
+        mapper(User, users)
+
+        for sa_exc in (
+            orm_exc.UnmappedInstanceError(Foo()),
+            orm_exc.UnmappedClassError(Foo),
+            orm_exc.ObjectDeletedError(attributes.instance_state(User())),
+        ):
+            for loads, dumps in picklers():
+                repickled = loads(dumps(sa_exc))
+                eq_(repickled.args[0], sa_exc.args[0])
+
 class PolymorphicDeferredTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
