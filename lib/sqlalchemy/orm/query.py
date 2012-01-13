@@ -1242,7 +1242,7 @@ class Query(object):
     @_generative(_no_statement_condition, _no_limit_offset)
     def group_by(self, *criterion):
         """apply one or more GROUP BY criterion to the query and return 
-        the newly resulting ``Query``"""
+        the newly resulting :class:`.Query`"""
 
         criterion = list(chain(*[_orm_columns(c) for c in criterion]))
 
@@ -1255,8 +1255,20 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def having(self, criterion):
-        """apply a HAVING criterion to the query and return the 
-        newly resulting ``Query``."""
+        """apply a HAVING criterion to the query and return the
+        newly resulting :class:`.Query`.
+        
+        :meth:`having` is used in conjunction with :meth:`group_by`.
+ 
+        HAVING criterion makes it possible to use filters on aggregate
+        functions like COUNT, SUM, AVG, MAX, and MIN, eg.::
+ 
+            q = session.query(User.id).\\
+                        join(User.addresses).\\
+                        group_by(User.id).\\
+                        having(func.count(Address.id) > 2)
+ 
+        """
 
         if isinstance(criterion, basestring):
             criterion = sql.text(criterion)
