@@ -47,6 +47,11 @@ CHANGES
     SQLite does not appear to support constraint
     naming in any case.
 
+- mysql
+  - [bug] fixed regexp that filters out warnings
+    for non-reflected "PARTITION" directives,
+    thanks to George Reilly [ticket:2376]
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 

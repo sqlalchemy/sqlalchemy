@@ -2559,9 +2559,7 @@ class MySQLTableDefinitionParser(object):
         # PARTITION
         #
         # punt!
-        self._re_partition = _re_compile(
-            r'  '
-            r'(?:SUB)?PARTITION')
+        self._re_partition = _re_compile(r'(?:.*)(?:SUB)?PARTITION(?:.*)')
 
         # Table-level options (COLLATE, ENGINE, etc.)
         # Do the string options first, since they have quoted strings we need to get rid of.
