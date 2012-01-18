@@ -259,6 +259,18 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         finally:
             db.execute("DROP TABLE r_defaults")
 
+    @testing.provide_metadata
+    def test_boolean_default(self):
+        t= Table("t", self.metadata, 
+                Column("x", Boolean, server_default=sql.false()))
+        t.create(testing.db)
+        testing.db.execute(t.insert())
+        testing.db.execute(t.insert().values(x=True))
+        eq_(
+            testing.db.execute(t.select().order_by(t.c.x)).fetchall(),
+            [(False,), (True,)]
+        )
+
 
 class DialectTest(fixtures.TestBase, AssertsExecutionResults):
 
@@ -439,6 +451,15 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(select([extract(field, t.c.col1)]),
                                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                                 "INTEGER) AS anon_1 FROM t" % subst)
+
+    def test_true_false(self):
+        self.assert_compile(
+            sql.false(), "0"
+        )
+        self.assert_compile(
+            sql.true(), 
+            "1"
+        )
 
     def test_constraints_with_schemas(self):
         metadata = MetaData()

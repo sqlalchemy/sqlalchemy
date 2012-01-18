@@ -32,6 +32,11 @@ CHANGES
   - [bug] ensure pickleability of all ORM exceptions
     for multiprocessing compatibility. [ticket:2371]
 
+- sql
+  - [feature] Added "false()" and "true()" expression
+    constructs to sqlalchemy.sql namespace, though
+    not part of __all__ as of yet.
+
 - engine
   - [bug] Added __reduce__ to StatementError, 
     DBAPIError, column errors so that exceptions 
@@ -46,6 +51,9 @@ CHANGES
     integer value [ticket:2364].
     SQLite does not appear to support constraint
     naming in any case.
+
+  - [bug] sql.false() and sql.true() compile to
+    0 and 1, respectively in sqlite [ticket:2368]
 
 - mysql
   - [bug] fixed regexp that filters out warnings
