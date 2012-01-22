@@ -2359,12 +2359,7 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
         )
 
 class TransactionTest(fixtures.MappedTest):
-    __requires__ = ('deferrable_constraints',)
-
-    __whitelist__ = ('sqlite',)
-    # sqlite doesn't have deferrable constraints, but it allows them to
-    # be specified.  it'll raise immediately post-INSERT, instead of at
-    # COMMIT. either way, this test should pass.
+    __requires__ = ('deferrable_or_no_constraints',)
 
     @classmethod
     def define_tables(cls, metadata):

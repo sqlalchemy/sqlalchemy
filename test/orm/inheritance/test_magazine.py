@@ -121,7 +121,7 @@ class MagazineTest(fixtures.MappedTest):
             Column('name', String(45), default=''),
         )
 
-def generate_round_trip_test(use_unions=False, use_joins=False):
+def _generate_round_trip_test(use_unions=False, use_joins=False):
     def test_roundtrip(self):
         publication_mapper = mapper(Publication, publication_table)
 
@@ -216,6 +216,6 @@ def generate_round_trip_test(use_unions=False, use_joins=False):
     setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
 
 for (use_union, use_join) in [(True, False), (False, True), (False, False)]:
-    generate_round_trip_test(use_union, use_join)
+    _generate_round_trip_test(use_union, use_join)
 
 

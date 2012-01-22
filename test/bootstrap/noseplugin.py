@@ -9,7 +9,7 @@ import StringIO
 
 import nose.case
 from nose.plugins import Plugin
-
+from nose import SkipTest
 from test.bootstrap import config
 
 from test.bootstrap.config import (
@@ -125,49 +125,54 @@ class NoseSQLAlchemy(Plugin):
         if not issubclass(cls, fixtures.TestBase):
             return False
         else:
-            if (hasattr(cls, '__whitelist__') and testing.db.name in cls.__whitelist__):
-                return True
+            if hasattr(cls, 'setup_class'):
+                existing_setup = cls.setup_class.im_func
             else:
-                return not self.__should_skip_for(cls)
+                existing_setup = None
+            @classmethod
+            def setup_class(cls):
+                self._do_skips(cls)
+                if existing_setup:
+                    existing_setup(cls)
+            cls.setup_class = setup_class
 
-    def __should_skip_for(self, cls):
+            return True
+
+    def _do_skips(self, cls):
         if hasattr(cls, '__requires__'):
             def test_suite(): return 'ok'
             test_suite.__name__ = cls.__name__
             for requirement in cls.__requires__:
                 check = getattr(requires, requirement)
-                if check(test_suite)() != 'ok':
-                    # The requirement will perform messaging.
-                    return True
+                check(test_suite)()
 
         if cls.__unsupported_on__:
             spec = testing.db_spec(*cls.__unsupported_on__)
             if spec(testing.db):
-                print "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__class__.__name__, testing.db.name)
-                return True
+                raise SkipTest(
+                    "'%s' unsupported on DB implementation '%s'" % (
+                     cls.__name__, testing.db.name)
+                    )
 
         if getattr(cls, '__only_on__', None):
             spec = testing.db_spec(*util.to_list(cls.__only_on__))
             if not spec(testing.db):
-                print "'%s' unsupported on DB implementation '%s'" % (
-                     cls.__class__.__name__, testing.db.name)
-                return True
+                raise SkipTest(
+                    "'%s' unsupported on DB implementation '%s'" % (
+                     cls.__name__, testing.db.name)
+                    )
 
         if getattr(cls, '__skip_if__', False):
             for c in getattr(cls, '__skip_if__'):
                 if c():
-                    print "'%s' skipped by %s" % (
-                        cls.__class__.__name__, c.__name__)
-                    return True
+                    raise SkipTest("'%s' skipped by %s" % (
+                        cls.__name__, c.__name__)
+                    )
 
-        for rule in getattr(cls, '__excluded_on__', ()):
-            if testing._is_excluded(*rule):
-                print "'%s' unsupported on DB %s version %s" % (
-                    cls.__class__.__name__, testing.db.name,
-                    _server_version())
-                return True
-        return False
+        for db, op, spec in getattr(cls, '__excluded_on__', ()):
+            testing.exclude(db, op, spec, "'%s' unsupported on DB %s version %s" % (
+                    cls.__name__, testing.db.name,
+                    testing._server_version()))
 
     def beforeTest(self, test):
         testing.resetwarnings()
@@ -180,9 +185,3 @@ class NoseSQLAlchemy(Plugin):
         engines.testing_reaper._stop_test_ctx()
         if not config.options.low_connections:
             testing.global_cleanup_assertions()
-
-    #def handleError(self, test, err):
-        #pass
-
-    #def finalize(self, result=None):
-        #pass

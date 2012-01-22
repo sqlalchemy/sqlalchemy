@@ -188,10 +188,7 @@ def _block_unconditionally(db, reason):
         if spec(config.db):
             msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
                 fn.__name__, config.db.name, config.db.driver, reason)
-            print msg
-            if carp:
-                print >> sys.stderr, msg
-            return True
+            raise SkipTest(msg)
         else:
             return fn(*args, **kw)
     return decorate
@@ -206,10 +203,7 @@ def only_on(dbs, reason):
         else:
             msg = "'%s' unsupported on DB implementation '%s+%s': %s" % (
                 fn.__name__, config.db.name, config.db.driver, reason)
-            print msg
-            if carp:
-                print >> sys.stderr, msg
-            return True
+            raise SkipTest(msg)
     return decorate
 
 def exclude(db, op, spec, reason):
@@ -231,10 +225,7 @@ def exclude(db, op, spec, reason):
         if _is_excluded(db, op, spec):
             msg = "'%s' unsupported on DB %s version '%s': %s" % (
                 fn.__name__, config.db.name, _server_version(), reason)
-            print msg
-            if carp:
-                print >> sys.stderr, msg
-            return True
+            raise SkipTest(msg)
         else:
             return fn(*args, **kw)
     return decorate
@@ -300,10 +291,7 @@ def skip_if(predicate, reason=None):
         if predicate():
             msg = "'%s' skipped on DB %s version '%s': %s" % (
                 fn.__name__, config.db.name, _server_version(), reason)
-            print msg
-            if carp:
-                print >> sys.stderr, msg
-            return True
+            raise SkipTest(msg)
         else:
             return fn(*args, **kw)
     return decorate

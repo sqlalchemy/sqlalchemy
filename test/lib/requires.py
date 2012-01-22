@@ -20,7 +20,7 @@ from test.lib import config
 import testing
 import sys
 
-def deferrable_constraints(fn):
+def deferrable_or_no_constraints(fn):
     """Target database must support derferable constraints."""
     return _chain_decorators_on(
         fn,
