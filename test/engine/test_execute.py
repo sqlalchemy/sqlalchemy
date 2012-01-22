@@ -587,7 +587,7 @@ class ResultProxyTest(fixtures.TestBase):
                 return list.__getitem__(self.l, i)
 
         proxy = RowProxy(object(), MyList(['value']), [None], {'key'
-                         : (None, 0), 0: (None, 0)})
+                         : (None, None, 0), 0: (None, None, 0)})
         eq_(list(proxy), ['value'])
         eq_(proxy[0], 'value')
         eq_(proxy['key'], 'value')
@@ -640,7 +640,7 @@ class ResultProxyTest(fixtures.TestBase):
         from sqlalchemy.engine import RowProxy
 
         row = RowProxy(object(), ['value'], [None], {'key'
-                         : (None, 0), 0: (None, 0)})
+                         : (None, None, 0), 0: (None, None, 0)})
         assert isinstance(row, collections.Sequence)
 
     @testing.requires.cextensions

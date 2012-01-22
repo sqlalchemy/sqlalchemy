@@ -50,6 +50,12 @@ CHANGES
     date/time processors used by SQLite, including
     C and Python versions.  [ticket:2382]
 
+  - [bug] Fixed bug whereby a table-bound Column 
+    object named "<a>_<b>" which matched a column 
+    labeled as "<tablename>_<colname>" could match 
+    inappropriately when targeting in a result
+    set row.  [ticket:2377]
+
 - sqlite
   - [bug] the "name" of an FK constraint in SQLite
     is reflected as "None", not "0" or other 

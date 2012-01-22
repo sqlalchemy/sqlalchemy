@@ -2063,3 +2063,35 @@ class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "NULL AS c4, t3.c5, 'c' AS q1 FROM t3"
         )
 
+
+class NameConflictTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        content = Table('content', metadata,
+            Column('id', Integer, primary_key=True, 
+                    test_needs_autoincrement=True),
+            Column('type', String(30))
+        )
+        foo = Table('foo', metadata,
+            Column('id', Integer, ForeignKey('content.id'), 
+                        primary_key=True),
+            Column('content_type', String(30))
+        )
+
+    def test_name_conflict(self):
+        class Content(object):
+            pass
+        class Foo(Content):
+            pass
+        mapper(Content, self.tables.content, 
+                    polymorphic_on=self.tables.content.c.type)
+        mapper(Foo, self.tables.foo, inherits=Content, 
+                    polymorphic_identity='foo')
+        sess = create_session()
+        f = Foo()
+        f.content_type = u'bar'
+        sess.add(f)
+        sess.flush()
+        f_id = f.id
+        sess.expunge_all()
+        assert sess.query(Content).get(f_id).content_type == u'bar'

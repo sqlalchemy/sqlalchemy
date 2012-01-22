@@ -307,6 +307,31 @@ class QueryTest(fixtures.TestBase):
         self.assert_(not (rp != equal))
         self.assert_(not (equal != equal))
 
+    @testing.provide_metadata
+    def test_column_label_overlap_fallback(self):
+        content = Table('content', self.metadata,
+            Column('type', String(30)),
+        )
+        bar = Table('bar', self.metadata, 
+            Column('content_type', String(30))
+        )
+        self.metadata.create_all(testing.db)
+        testing.db.execute(content.insert().values(type="t1"))
+        row = testing.db.execute(content.select(use_labels=True)).first()
+        assert content.c.type in row
+        assert bar.c.content_type not in row
+        assert sql.column('content_type') in row
+
+        row = testing.db.execute(select([content.c.type.label("content_type")])).first()
+        assert content.c.type in row
+        assert bar.c.content_type not in row
+        assert sql.column('content_type') in row
+
+        row = testing.db.execute(select([(content.c.type > 5).label("content_type")])).first()
+        assert content.c.type in row
+        assert bar.c.content_type not in row
+        assert sql.column('content_type') in row
+
     def test_pickled_rows(self):
         users.insert().execute(
             {'user_id':7, 'user_name':'jack'},
@@ -336,7 +361,7 @@ class QueryTest(fixtures.TestBase):
                 eq_(result[0][users.c.user_id], 7)
                 eq_(result[0][users.c.user_name], 'jack')
 
-                if use_labels:
+                if not pickle or use_labels:
                     assert_raises(exc.NoSuchColumnError, lambda: result[0][addresses.c.user_id])
                 else:
                     # test with a different table.  name resolution is 

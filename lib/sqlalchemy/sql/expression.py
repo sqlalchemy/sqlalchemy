@@ -2087,6 +2087,13 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
+    def _compare_name_for_result(self, other):
+        """Return True if the given column element compares to this one
+        when targeting within a result row."""
+
+        return hasattr(other, 'name') and hasattr(self, 'name') and \
+                other.name == self.name
+
     def _make_proxy(self, selectable, name=None):
         """Create a new :class:`.ColumnElement` representing this
         :class:`.ColumnElement` as it appears in the select list of a
@@ -3918,6 +3925,13 @@ class ColumnClause(_Immutable, ColumnElement):
         self.table = selectable
         self.type = sqltypes.to_instance(type_)
         self.is_literal = is_literal
+
+    def _compare_name_for_result(self, other):
+        if self.table is not None and hasattr(other, 'proxy_set'):
+            return other.proxy_set.intersection(self.proxy_set)
+        else:
+            return super(ColumnClause, self).\
+                    _compare_name_for_result(other)
 
     def _get_table(self):
         return self.__dict__['table']

@@ -278,7 +278,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
                 return NULL;
         }
 
-        indexobject = PyTuple_GetItem(record, 1);
+        indexobject = PyTuple_GetItem(record, 2);
         if (indexobject == NULL)
             return NULL;
 

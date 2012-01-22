@@ -158,6 +158,10 @@ class _CompileLabel(visitors.Visitable):
         self.name = name
 
     @property
+    def proxy_set(self):
+        return self.element.proxy_set
+
+    @property
     def type(self):
         return self.element.type
 
