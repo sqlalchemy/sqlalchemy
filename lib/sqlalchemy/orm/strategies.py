@@ -736,8 +736,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
                     interfaces._reduce_path(subq_path):
                     return
 
-        subq_mapper, leftmost_mapper, leftmost_prop, \
-            leftmost_cols, remote_cols, leftmost_attr = \
+        subq_mapper, leftmost_mapper, leftmost_attr = \
                 self._get_leftmost(subq_path)
 
         orig_query = context.attributes.get(
@@ -794,8 +793,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             leftmost_mapper._columntoproperty[c].class_attribute
             for c in leftmost_cols
         ]
-        return subq_mapper, leftmost_mapper, leftmost_prop, \
-                    leftmost_cols, remote_cols, leftmost_attr
+        return subq_mapper, leftmost_mapper, leftmost_attr
 
     def _generate_from_original_query(self,
             orig_query, leftmost_mapper,
