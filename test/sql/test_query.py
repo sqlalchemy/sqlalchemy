@@ -327,7 +327,7 @@ class QueryTest(fixtures.TestBase):
         assert bar.c.content_type not in row
         assert sql.column('content_type') in row
 
-        row = testing.db.execute(select([(content.c.type > 5).label("content_type")])).first()
+        row = testing.db.execute(select([(content.c.type > "abc").label("content_type")])).first()
         assert content.c.type in row
         assert bar.c.content_type not in row
         assert sql.column('content_type') in row
