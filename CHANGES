@@ -45,6 +45,11 @@ CHANGES
     all DBAPIs support this yet, such as 
     psycopg2. [ticket:2371]
 
+  - [bug] Improved error messages when a non-string
+    or invalid string is passed to any of the
+    date/time processors used by SQLite, including
+    C and Python versions.  [ticket:2382]
+
 - sqlite
   - [bug] the "name" of an FK constraint in SQLite
     is reflected as "None", not "0" or other 
