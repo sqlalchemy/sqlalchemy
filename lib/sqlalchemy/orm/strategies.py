@@ -515,8 +515,6 @@ class LazyLoader(AbstractRelationshipLoader):
         else:
             get_attr = instance_mapper._get_state_attr_by_column
 
-        # create a strong reference 
-        # to state.dict
         dict_ = state.dict
 
         if passive is attributes.PASSIVE_NO_FETCH_RELATED:
@@ -527,7 +525,7 @@ class LazyLoader(AbstractRelationshipLoader):
         return [
             get_attr(
                     state,
-                    state.dict,
+                    dict_,
                     self._equated_columns[pk],
                     passive=attr_passive)
             for pk in self.mapper.primary_key
