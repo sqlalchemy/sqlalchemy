@@ -2641,22 +2641,25 @@ class ResultMetaData(object):
             result = map.get(key.lower())
         # fallback for targeting a ColumnElement to a textual expression
         # this is a rare use case which only occurs when matching text()
-        # constructs to ColumnElements, and after a pickle/unpickle roundtrip
+        # or colummn('name') constructs to ColumnElements, or after a 
+        # pickle/unpickle roundtrip
         elif isinstance(key, expression.ColumnElement):
             if key._label and key._label.lower() in map:
                 result = map[key._label.lower()]
             elif hasattr(key, 'name') and key.name.lower() in map:
-                # match is only on name.  search
-                # extra hard to make sure this isn't a column/
-                # label name overlap
+                # match is only on name.  
                 result = map[key.name.lower()]
-
-                if result[1] is not None:
-                    for obj in result[1]:
-                        if key._compare_name_for_result(obj):
-                            break
-                    else:
-                        result = None
+            # search extra hard to make sure this 
+            # isn't a column/label name overlap.
+            # this check isn't currently available if the row
+            # was unpickled.
+            if result is not None and \
+                result[1] is not None:
+                for obj in result[1]:
+                    if key._compare_name_for_result(obj):
+                        break
+                else:
+                    result = None
         if result is None:
             if raiseerr:
                 raise exc.NoSuchColumnError(

@@ -317,6 +317,7 @@ class QueryTest(fixtures.TestBase):
         )
         self.metadata.create_all(testing.db)
         testing.db.execute(content.insert().values(type="t1"))
+
         row = testing.db.execute(content.select(use_labels=True)).first()
         assert content.c.type in row
         assert bar.c.content_type not in row
@@ -327,8 +328,8 @@ class QueryTest(fixtures.TestBase):
         assert bar.c.content_type not in row
         assert sql.column('content_type') in row
 
-        row = testing.db.execute(select([(content.c.type > "abc").label("content_type")])).first()
-        assert content.c.type in row
+        row = testing.db.execute(select([func.now().label("content_type")])).first()
+        assert content.c.type not in row
         assert bar.c.content_type not in row
         assert sql.column('content_type') in row
 
