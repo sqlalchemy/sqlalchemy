@@ -1,8 +1,8 @@
-from sqlalchemy.ext.declarative import DeclarativeMeta
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import mapper, class_mapper, attributes, object_mapper
 from sqlalchemy.orm.exc import UnmappedClassError, UnmappedColumnError
 from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer
-from sqlalchemy.orm.interfaces import SessionExtension
+from sqlalchemy import event
 from sqlalchemy.orm.properties import RelationshipProperty
 
 def col_references_table(col, table):
@@ -80,18 +80,20 @@ def _history_mapper(local_mapper):
     cls.__history_mapper__ = m
 
     if not super_history_mapper:
-        cls.version = Column('version', Integer, default=1, nullable=False)
+        local_mapper.local_table.append_column(
+            Column('version', Integer, default=1, nullable=False)
+        )
+        local_mapper.add_property("version", local_mapper.local_table.c.version)
 
 
-class VersionedMeta(DeclarativeMeta):
-    def __init__(cls, classname, bases, dict_):
-        DeclarativeMeta.__init__(cls, classname, bases, dict_)
-
-        try:
-            mapper = class_mapper(cls)
-            _history_mapper(mapper)
-        except UnmappedClassError:
-            pass
+class Versioned(object):
+    @declared_attr
+    def __mapper_cls__(cls):
+        def map(cls, *arg, **kw):
+            mp = mapper(cls, *arg, **kw)
+            _history_mapper(mp)
+            return mp
+        return map
 
 
 def versioned_objects(iter):
@@ -169,8 +171,9 @@ def create_version(obj, session, deleted = False):
     session.add(hist)
     obj.version += 1
 
-class VersionedListener(SessionExtension):
-    def before_flush(self, session, flush_context, instances):
+def versioned_session(session):
+    @event.listens_for(session, 'before_flush')
+    def before_flush(session, flush_context, instances):
         for obj in versioned_objects(session.dirty):
             create_version(obj, session)
         for obj in versioned_objects(session.deleted):

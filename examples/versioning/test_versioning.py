@@ -1,6 +1,6 @@
 from unittest import TestCase
 from sqlalchemy.ext.declarative import declarative_base
-from history_meta import VersionedMeta, VersionedListener
+from history_meta import Versioned, versioned_session
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import clear_mappers, sessionmaker, deferred, relationship
 from _lib import ComparableEntity, eq_
@@ -13,10 +13,8 @@ class TestVersioning(TestCase):
     def setUp(self):
         global Base, Session, Versioned
         Base = declarative_base(bind=engine)
-        class Versioned(object):
-            __metaclass__ = VersionedMeta
-            _decl_class_registry = Base._decl_class_registry
-        Session = sessionmaker(extension=VersionedListener())
+        Session = sessionmaker()
+        versioned_session(Session)
 
     def tearDown(self):
         clear_mappers()

@@ -78,6 +78,12 @@ CHANGES
     series of import restrictions only.
     [ticket:2348]
 
+- examples
+  - [feature] Simplified the versioning example
+    a bit to use a declarative mixin as well 
+    as an event listener, instead of a metaclass +
+    SessionExtension.  [ticket:2313]
+
 0.7.4
 =====
 - orm

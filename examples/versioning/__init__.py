@@ -13,12 +13,11 @@ be run via nose::
 
 A fragment of example usage, using declarative::
 
-    from history_meta import VersionedMeta, VersionedListener
+    from history_meta import Versioned, versioned_session
 
-    Base = declarative_base(metaclass=VersionedMeta, bind=engine)
-    Session = sessionmaker(extension=VersionedListener())
+    Base = declarative_base()
 
-    class SomeClass(Base):
+    class SomeClass(Versioned, Base):
         __tablename__ = 'sometable'
 
         id = Column(Integer, primary_key=True)
@@ -26,6 +25,9 @@ A fragment of example usage, using declarative::
 
         def __eq__(self, other):
             assert type(other) is SomeClass and other.id == self.id
+
+    Session = sessionmaker(bind=engine)
+    versioned_session(Session)
 
     sess = Session()
     sc = SomeClass(name='sc1')
@@ -44,26 +46,8 @@ A fragment of example usage, using declarative::
                 all() \\
                 == [SomeClassHistory(version=1, name='sc1')]
 
-To apply ``VersionedMeta`` to a subset of classes (probably more typical), the
-metaclass can be applied on a per-class basis::
-
-    from history_meta import VersionedMeta, VersionedListener
-
-    Base = declarative_base(bind=engine)
-
-    class SomeClass(Base):
-        __tablename__ = 'sometable'
-
-        # ...
-
-    class SomeVersionedClass(Base):
-        __metaclass__ = VersionedMeta
-        __tablename__ = 'someothertable'
-
-        # ...
-
-The ``VersionedMeta`` is a declarative metaclass - to use the extension with
-plain mappers, the ``_history_mapper`` function can be applied::
+The ``Versioned`` mixin is designed to work with declarative.  To use the extension with
+classical mappers, the ``_history_mapper`` function can be applied::
 
     from history_meta import _history_mapper
 
