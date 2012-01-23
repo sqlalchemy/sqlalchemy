@@ -296,7 +296,7 @@ class TIME(sqltypes.TIME):
             return value
         return process
 
-    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d+))?")
+    _reg = re.compile(r"(\d+):(\d+):(\d+)(?:\.(\d{0,6}))?")
     def result_processor(self, dialect, coltype):
         def process(value):
             if isinstance(value, datetime.datetime):

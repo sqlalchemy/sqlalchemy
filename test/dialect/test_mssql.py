@@ -10,6 +10,7 @@ from sqlalchemy.orm import *
 from sqlalchemy.sql import table, column
 from sqlalchemy.databases import mssql
 from sqlalchemy.dialects.mssql import pyodbc, mxodbc, pymssql
+from sqlalchemy.dialects.mssql.base import TIME
 from sqlalchemy.engine import url
 from test.lib import *
 from test.lib.testing import eq_, emits_warning_on, \
@@ -1107,6 +1108,22 @@ class ParseConnectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(exc.SAWarning,
                               'Unrecognized server version info',
                               engine.connect)
+
+class TimeTypeTest(fixtures.TestBase):
+
+    def test_result_processor_no_microseconds(self):
+        expected = datetime.time(12, 34, 56)
+        self._assert_result_processor(expected, '12:34:56')
+
+    def test_result_processor_too_many_microseconds(self):
+        # microsecond must be in 0..999999, should truncate (6 vs 7 digits)
+        expected = datetime.time(12, 34, 56, 123456)
+        self._assert_result_processor(expected, '12:34:56.1234567')
+
+    def _assert_result_processor(self, expected, value):
+        mssql_time_type = TIME()
+        result_processor = mssql_time_type.result_processor(None, None)
+        eq_(expected, result_processor(value))
 
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, ComparesTables):
     __only_on__ = 'mssql'

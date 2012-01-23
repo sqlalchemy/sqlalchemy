@@ -71,6 +71,16 @@ CHANGES
     for non-reflected "PARTITION" directives,
     thanks to George Reilly [ticket:2376]
 
+- mssql
+  - [bug] Adjusted the regexp used in the
+    mssql.TIME type to ensure only six digits
+    are received for the "microseconds" portion
+    of the value, which is expected by 
+    Python's datetime.time().  Note that
+    support for sending microseconds doesn't
+    seem to be possible yet with pyodbc
+    at least.  [ticket:2340]
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 
