@@ -76,7 +76,7 @@ ${parent.footer()}
     line-height: 17px;
     text-decoration: none;
     color: #fff;
-    background: #8ca1af url(../images/gradient-light.png) bottom left repeat-x;
+    background: #8ca1af url(http://media.readthedocs.org/images/gradient-light.png) bottom left repeat-x;
     border-radius: 3px;
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
