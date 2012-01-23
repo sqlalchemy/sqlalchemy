@@ -196,6 +196,9 @@ class ExecuteTest(fixtures.TestBase):
                 "Packages the cursor in the exception")
     @testing.fails_on("mysql+oursql", 
                 "Exception doesn't come back exactly the same from pickle")
+    @testing.fails_on("oracle+cx_oracle", 
+                        "cx_oracle exception seems to be having "
+                        "some issue with pickling")
     def test_stmt_exception_pickleable_plus_dbapi(self):
         raw = testing.db.raw_connection()
         the_orig = None
