@@ -11,29 +11,72 @@ from pygments.formatters import HtmlFormatter, LatexFormatter
 import re
 from mako.lookup import TemplateLookup
 from mako.template import Template
+from mako import __version__
+import os
+
+rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 class MakoBridge(TemplateBridge):
     def init(self, builder, *args, **kw):
         self.jinja2_fallback = BuiltinTemplateLoader()
         self.jinja2_fallback.init(builder, *args, **kw)
 
-        self.layout = builder.config.html_context.get('mako_layout', 'html')
         builder.config.html_context['release_date'] = builder.config['release_date']
-        builder.config.html_context['versions'] = builder.config['versions']
- 
+        builder.config.html_context['site_base'] = builder.config['site_base']
+
         self.lookup = TemplateLookup(directories=builder.config.templates_path,
-            format_exceptions=True, 
+            #format_exceptions=True, 
             imports=[
                 "from builder import util"
             ]
         )
 
+        if rtd:
+            import urllib2
+            template_url = builder.config['site_base'] + "/docs_base.mako"
+            template = urllib2.urlopen(template_url).read()
+            self.lookup.put_string("/rtd_base.mako", template)
+
     def render(self, template, context):
         template = template.replace(".html", ".mako")
         context['prevtopic'] = context.pop('prev', None)
         context['nexttopic'] = context.pop('next', None)
-        context['mako_layout'] = self.layout == 'html' and 'static_base.mako' or 'site_base.mako'
-        # sphinx 1.0b2 doesn't seem to be providing _ for some reason...
+        version = context['version']
+        pathto = context['pathto']
+
+        # RTD layout
+        if rtd:
+            # add variables if not present, such 
+            # as if local test of READTHEDOCS variable
+            if 'MEDIA_URL' not in context:
+                context['MEDIA_URL'] = "http://media.readthedocs.org/"
+            if 'slug' not in context:
+                context['slug'] = context['project'].lower()
+            if 'url' not in context:
+                context['url'] = "/some/test/url"
+            if 'current_version' not in context:
+                context['current_version'] = "latest"
+
+            if 'name' not in context:
+                context['name'] = context['project'].lower()
+
+            context['rtd'] = True
+            context['toolbar'] = True
+            context['layout'] = "rtd_layout.mako"
+            context['base'] = "rtd_base.mako"
+            context['pdf_url'] = "%spdf/%s/%s/%s.pdf" % (
+                    context['MEDIA_URL'],
+                    context['slug'],
+                    context['current_version'],
+                    context['slug']
+            )
+        # local docs layout
+        else:
+            context['rtd'] = False
+            context['toolbar'] = False
+            context['layout'] = "layout.mako"
+            context['base'] = "static_base.mako"
+
         context.setdefault('_', lambda x:x)
         return self.lookup.get_template(template).render_unicode(**context)
 
@@ -140,7 +183,7 @@ class PopupLatexFormatter(LatexFormatter):
         for ttype, value in apply_filters(tokensource, [StripDocTestFilter()]):
             if ttype in Token.Sql:
                 if ttype is not Token.Sql.Link and ttype is not Token.Sql.Open:
-                    yield Token.Literal, re.sub(r'(?:[{stop}|\n]*)$', '', value)
+                    yield Token.Literal, re.sub(r'{stop}', '', value)
                 else:
                     continue
             else:
@@ -150,7 +193,7 @@ class PopupLatexFormatter(LatexFormatter):
         LatexFormatter.format(self, self._filter_tokens(tokensource), outfile)
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
-    if what == 'class' and skip and name == '__init__':
+    if what == 'class' and skip and name in ('__init__', '__eq__', '__ne__', '__lt__', '__le__') and obj.__doc__:
         return False
     else:
         return skip
@@ -158,9 +201,10 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
 def setup(app):
     app.add_lexer('pycon+sql', PyConWithSQLLexer())
     app.add_lexer('python+sql', PythonWithSQLLexer())
-    app.connect('autodoc-skip-member', autodoc_skip_member)
     app.add_config_value('release_date', "", True)
-    app.add_config_value('versions', "", True)
+    app.add_config_value('site_base', "", True)
+    app.add_config_value('build_number', "", 1)
+    app.connect('autodoc-skip-member', autodoc_skip_member)
     PygmentsBridge.html_formatter = PopupSQLFormatter
     PygmentsBridge.latex_formatter = PopupLatexFormatter
 

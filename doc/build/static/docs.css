@@ -433,3 +433,14 @@ div#dialect-documentation {
   border-top:1px solid;
   /*clear:left;*/
 }
+
+div .versionwarning,
+div .version-warning {
+  font-size:12px;
+  font-color:red;
+  border:1px solid;
+  padding:4px 4px;
+  margin:8px 0px 2px 0px;
+  background:#FFBBBB;
+}
+
