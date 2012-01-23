@@ -94,6 +94,9 @@ CHANGES
     as an event listener, instead of a metaclass +
     SessionExtension.  [ticket:2313]
 
+  - [bug] Fixed large_collection.py to close the
+    session before dropping tables. [ticket:2346]
+
 0.7.4
 =====
 - orm

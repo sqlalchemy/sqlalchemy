@@ -47,7 +47,7 @@ mapper(Organization, org_table, properties = {
 mapper(Member, member_table)
 
 if __name__ == '__main__':
-    engine = create_engine("mysql://scott:tiger@localhost/test", echo=True)
+    engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
     meta.create_all(engine)
 
     # expire_on_commit=False means the session contents
@@ -89,6 +89,7 @@ if __name__ == '__main__':
 
     print "-------------------------\nno Member rows should remain:\n"
     print sess.query(Member).count()
+    sess.close()
 
     print "------------------------\ndone.  dropping tables."
     meta.drop_all(engine)
