@@ -21,7 +21,6 @@ help:
 	@echo "  html       to make standalone HTML files"
 	@echo "  gettext    to make PO message catalogs"
 	@echo "  dist-html  same as html, but places files in /doc"
-	@echo "  site-mako  to make sqlalchemy.org Mako files"
 	@echo "  dirhtml    to make HTML files named index.html in directories"
 	@echo "  singlehtml to make a single large HTML file"
 	@echo "  pickle     to make pickle files"
@@ -55,13 +54,6 @@ dist-html:
 	$(SPHINXBUILD) -b html -A mako_layout=html $(ALLSPHINXOPTS) ..
 	@echo
 	@echo "Build finished.  The HTML pages are in ../."
-
-site-mako:
-	$(SPHINXBUILD) -b html -A mako_layout=site $(ALLSPHINXOPTS) $(BUILDDIR)/site
-	$(MAKE) latexpdf
-	cp $(BUILDDIR)/latex/*.pdf $(BUILDDIR)/site/
-	@echo
-	@echo "Build finished. The Mako pages are in $(BUILDDIR)/site."
 
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml

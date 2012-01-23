@@ -1,5 +1,9 @@
 ## coding: utf-8
 
+<%!
+    local_script_files = []
+%>
+
 <%doc>
     Structural elements are all prefixed with "docs-"
     to prevent conflicts when the structure is integrated into the 
@@ -19,11 +23,18 @@
             docs-copyright
 </%doc>
 
-<%inherit file="${context['mako_layout']}"/>
+<%inherit file="${context['base']}"/>
 
 <%
 withsidebar = bool(toc) and current_page_name != 'index'
 %>
+
+<%block name="head_title">
+    % if current_page_name != 'index':
+    ${capture(self.show_title) | util.striptags} &mdash; 
+    % endif
+    ${docstitle|h}
+</%block>
 
 <div id="docs-container">
 
@@ -78,15 +89,10 @@ withsidebar = bool(toc) and current_page_name != 'index'
     <div id="docs-version-header">
         Release: <span class="version-num">${release}</span> | Release Date: ${release_date}
 
-        % if self.attr.site_layout:
-            | <a href="${pathto('sqlalchemy_' + release.replace('.', '_') + '.pdf', 1)}">Download PDF</a>
+        % if pdf_url:
+        | <a href="${pdf_url}">Download PDF</a>
         % endif
 
-        % if self.attr.site_layout and not version.startswith(versions[0][0]):
-        <div class="version-warning">
-            The current version of SQLAlchemy is ${versions[0][0]}.   <a href="/docs/">View current SQLAlchemy Documentation</a>
-        </div>
-        % endif
     </div>
 
 </div>
@@ -128,9 +134,7 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
         <h2>
             <%block name="show_title">
-            % if title:
                 ${title}
-            % endif
             </%block>
         </h2>
     </div>
@@ -157,6 +161,12 @@ withsidebar = bool(toc) and current_page_name != 'index'
     </p>
     % endif
 
+    % if rtd:
+    <h4>Project Versions</h4>
+    <ul class="version-listing">
+    </ul>
+    % endif
+
     <h4>Quick Search</h4>
     <p>
     <form class="search" action="${pathto('search')}" method="get">
@@ -175,28 +185,26 @@ withsidebar = bool(toc) and current_page_name != 'index'
 
 </div>
 
-<%block name="footer">
-    <div id="docs-bottom-navigation" class="docs-navigation-links">
-        % if prevtopic:
-            Previous:
-            <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
-        % endif
-        % if nexttopic:
-            Next:
-            <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
-        % endif
+<div id="docs-bottom-navigation" class="docs-navigation-links">
+    % if prevtopic:
+        Previous:
+        <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
+    % endif
+    % if nexttopic:
+        Next:
+        <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
+    % endif
 
-        <div id="docs-copyright">
-        % if hasdoc('copyright'):
-            &copy; <a href="${pathto('copyright')}">Copyright</a> ${copyright|h}.
-        % else:
-            &copy; Copyright ${copyright|h}.
-        % endif
-        % if show_sphinx:
-            Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> ${sphinx_version|h}.
-        % endif
-        </div>
+    <div id="docs-copyright">
+    % if hasdoc('copyright'):
+        &copy; <a href="${pathto('copyright')}">Copyright</a> ${copyright|h}.
+    % else:
+        &copy; Copyright ${copyright|h}.
+    % endif
+    % if show_sphinx:
+        Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> ${sphinx_version|h}.
+    % endif
     </div>
-</%block>
+</div>
 
 </div>
