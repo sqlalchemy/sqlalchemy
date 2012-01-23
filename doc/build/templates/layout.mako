@@ -1,7 +1,44 @@
 ## coding: utf-8
-<%inherit file="${context['mako_layout']}"/>
 
-<%def name="headers()">
+<%!
+    local_script_files = []
+%>
+
+<%doc>
+    Structural elements are all prefixed with "docs-"
+    to prevent conflicts when the structure is integrated into the 
+    main site.
+    
+    docs-container ->
+        docs-header ->
+            docs-search
+            docs-version-header
+        docs-top-navigation
+            docs-top-page-control
+            docs-navigation-banner
+        docs-body-container ->
+            docs-sidebar
+            docs-body
+        docs-bottom-navigation
+            docs-copyright
+</%doc>
+
+<%inherit file="${context['base']}"/>
+
+<%
+withsidebar = bool(toc) and current_page_name != 'index'
+%>
+
+<%block name="head_title">
+    % if current_page_name != 'index':
+    ${capture(self.show_title) | util.striptags} &mdash; 
+    % endif
+    ${docstitle|h}
+</%block>
+
+<div id="docs-container">
+
+<%block name="headers">
     <link rel="stylesheet" href="${pathto('_static/pygments.css', 1)}" type="text/css" />
     <link rel="stylesheet" href="${pathto('_static/docs.css', 1)}" type="text/css" />
 
@@ -35,89 +72,120 @@
     % if prevtopic:
         <link rel="prev" title="${prevtopic['title']|util.striptags}" href="${prevtopic['link']|h}" />
     % endif
-    ${self.extrahead()}
-</%def>
-<%def name="extrahead()"></%def>
+</%block>
 
-        <h1>${docstitle|h}</h1>
+<div id="docs-header">
+    <h1>${docstitle|h}</h1>
 
-        <div id="search">
-        Search:
-        <form class="search" action="${pathto('search')}" method="get">
-          <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
-          <input type="hidden" name="check_keywords" value="yes" />
-          <input type="hidden" name="area" value="default" />
-        </form>
-        </div>
+    <div id="docs-search">
+    Search:
+    <form class="search" action="${pathto('search')}" method="get">
+      <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
 
-        <div class="versionheader">
-            Release: <span class="versionnum">${release}</span> | Release Date: ${release_date}
-            % if not version.startswith(versions[0][0]):
-            <div class="versionwarning">
-                The current version of SQLAlchemy is ${versions[0][0]}.   <a href="/docs/">View current SQLAlchemy Documentation</a>
-            </div>
+    <div id="docs-version-header">
+        Release: <span class="version-num">${release}</span> | Release Date: ${release_date}
+
+        % if pdf_url:
+        | <a href="${pdf_url}">Download PDF</a>
+        % endif
+
+    </div>
+
+</div>
+
+<div id="docs-top-navigation">
+    <div id="docs-top-page-control" class="docs-navigation-links">
+        <ul>
+        % if prevtopic:
+            <li>Prev:
+            <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
+            </li>
+        % endif
+        % if nexttopic:
+            <li>Next:
+            <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
+            </li>
+        % endif
+
+        <li>
+            <a href="${pathto('index')}">Table of Contents</a> |
+            <a href="${pathto('genindex')}">Index</a>
+            % if sourcename:
+            | <a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')}
             % endif
-        </div>
-        <div class="clearboth"></div>
+        </li>
+        </ul>
+    </div>
 
-        <div class="topnav">
-            <div id="pagecontrol">
-                <a href="${pathto('reference/index')}">API Reference</a>
-                |
-                <a href="${pathto('genindex')}">Index</a>
+    <div id="docs-navigation-banner">
+        <a href="${pathto('index')}">${docstitle|h}</a>
+        % if parents:
+            % for parent in parents:
+                » <a href="${parent['link']|h}" title="${parent['title']}">${parent['title']}</a>
+            % endfor
+        % endif
+        % if current_page_name != 'index':
+        » ${self.show_title()} 
+        % endif
 
-                % if sourcename:
-                <div class="sourcelink">(<a href="${pathto('_sources/' + sourcename, True)|h}">${_('view source')})</div>
-                % endif
-            </div>
+        <h2>
+            <%block name="show_title">
+                ${title}
+            </%block>
+        </h2>
+    </div>
 
-            <div class="navbanner">
-                <a class="totoc" href="${pathto(master_doc)}">Table of Contents</a>
-                % if parents:
-                    % for parent in parents:
-                        » <a href="${parent['link']|h}" title="${parent['title']}">${parent['title']}</a>
-                    % endfor
-                % endif
-                % if current_page_name != master_doc:
-                » ${self.show_title()} 
-                % endif
+</div>
 
-                ${prevnext()}
-                <h2>
-                    ${self.show_title()} 
-                </h2>
-            </div>
-            % if display_toc and not current_page_name.startswith('index'):
-                ${toc}
-            % endif
-            <div class="clearboth"></div>
-        </div>
+<div id="docs-body-container">
 
-        <div class="document">
-            <div class="body">
-                ${next.body()}
-            </div>
-        </div>
+% if withsidebar:
+    <div id="docs-sidebar">
+    <h3><a href="${pathto('index')}">Table of Contents</a></h3>
+    ${toc}
 
-        <%def name="footer()">
-            <div class="bottomnav">
-                ${prevnext()}
-                <div class="doc_copyright">
-                % if hasdoc('copyright'):
-                    &copy; <a href="${pathto('copyright')}">Copyright</a> ${copyright|h}.
-                % else:
-                    &copy; Copyright ${copyright|h}.
-                % endif
-                % if show_sphinx:
-                    Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> ${sphinx_version|h}.
-                % endif
-                </div>
-            </div>
-        </%def>
-        ${self.footer()}
+    % if prevtopic:
+    <h4>Previous Topic</h4>
+    <p>
+    <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
+    </p>
+    % endif
+    % if nexttopic:
+    <h4>Next Topic</h4>
+    <p>
+    <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
+    </p>
+    % endif
 
-<%def name="prevnext()">
-<div class="prevnext">
+    % if rtd:
+    <h4>Project Versions</h4>
+    <ul class="version-listing">
+    </ul>
+    % endif
+
+    <h4>Quick Search</h4>
+    <p>
+    <form class="search" action="${pathto('search')}" method="get">
+      <input type="text" name="q" size="18" /> <input type="submit" value="${_('Search')}" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </p>
+
+    </div>
+% endif
+
+    <div id="docs-body" class="${'withsidebar' if withsidebar else ''}" >
+        ${next.body()}
+    </div>
+
+</div>
+
+<div id="docs-bottom-navigation" class="docs-navigation-links">
     % if prevtopic:
         Previous:
         <a href="${prevtopic['link']|h}" title="${_('previous chapter')}">${prevtopic['title']}</a>
@@ -126,12 +194,17 @@
         Next:
         <a href="${nexttopic['link']|h}" title="${_('next chapter')}">${nexttopic['title']}</a>
     % endif
+
+    <div id="docs-copyright">
+    % if hasdoc('copyright'):
+        &copy; <a href="${pathto('copyright')}">Copyright</a> ${copyright|h}.
+    % else:
+        &copy; Copyright ${copyright|h}.
+    % endif
+    % if show_sphinx:
+        Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> ${sphinx_version|h}.
+    % endif
+    </div>
 </div>
-</%def>
 
-<%def name="show_title()">
-% if title:
-    ${title}
-% endif
-</%def>
-
+</div>
