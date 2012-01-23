@@ -1319,6 +1319,13 @@ class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True, chained=False,
                     propagate_to_loaders=True
                     ):
+        if isinstance(key[0], basestring) and key[0] == '*':
+            if len(key) != 1:
+                raise sa_exc.ArgumentError(
+                        "Wildcard identifier '*' must "
+                        "be specified alone.")
+            key = ("relationship:*",)
+            propagate_to_loaders = False
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
         self.chained = self.lazy in (False, 'joined', 'subquery') and chained

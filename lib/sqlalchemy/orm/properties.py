@@ -185,6 +185,8 @@ class RelationshipProperty(StrategizedProperty):
     
     """
 
+    strategy_wildcard_key = 'relationship:*'
+
     def __init__(self, argument,
         secondary=None, primaryjoin=None,
         secondaryjoin=None, 

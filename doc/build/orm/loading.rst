@@ -156,6 +156,44 @@ or more succinctly just use :func:`~sqlalchemy.orm.joinedload_all` or
 There are two other loader strategies available, **dynamic loading** and **no
 loading**; these are described in :ref:`largecollections`.
 
+Default Loading Strategies
+--------------------------
+
+.. note::
+
+   Default loader strategies are a new feature as of version 0.7.5.
+
+Each of :func:`.joinedload`, :func:`.subqueryload`, :func:`.lazyload`, 
+and :func:`.noload` can be used to set the default style of
+:func:`.relationship` loading 
+for a particular query, affecting all :func:`.relationship` -mapped
+attributes not otherwise
+specified in the :class:`.Query`.   This feature is available by passing
+the string ``'*'`` as the argument to any of these options::
+
+    session.query(MyClass).options(lazyload('*'))
+
+Above, the ``lazyload('*')`` option will supercede the ``lazy`` setting
+of all :func:`.relationship` constructs in use for that query,
+except for those which use the ``'dynamic'`` style of loading.   
+If some relationships specify
+``lazy='joined'`` or ``lazy='subquery'``, for example,
+using ``default_strategy(lazy='select')`` will unilaterally
+cause all those relationships to use ``'select'`` loading.
+
+The option does not supercede loader options stated in the
+query, such as :func:`.eagerload`, 
+:func:`.subqueryload`, etc.  The query below will still use joined loading
+for the ``widget`` relationship::
+
+    session.query(MyClass).options(
+                                lazyload('*'), 
+                                joinedload(MyClass.widget)
+                            )
+
+If multiple ``'*'`` options are passed, the last one overrides
+those previously passed.
+
 .. _zen_of_eager_loading:
 
 The Zen of Eager Loading
@@ -457,6 +495,8 @@ Relation Loader API
 .. autofunction:: joinedload_all
 
 .. autofunction:: lazyload
+
+.. autofunction:: noload
 
 .. autofunction:: subqueryload
 

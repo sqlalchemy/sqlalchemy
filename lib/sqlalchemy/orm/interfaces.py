@@ -306,16 +306,24 @@ class StrategizedProperty(MapperProperty):
 
     """
 
+    strategy_wildcard_key = None
+
     def _get_context_strategy(self, context, reduced_path):
         key = ('loaderstrategy', reduced_path)
+        cls = None
         if key in context.attributes:
             cls = context.attributes[key]
+        elif self.strategy_wildcard_key:
+            key = ('loaderstrategy', (self.strategy_wildcard_key,))
+            if key in context.attributes:
+                cls = context.attributes[key]
+
+        if cls:
             try:
                 return self._strategies[cls]
             except KeyError:
                 return self.__init_strategy(cls)
-        else:
-            return self.strategy
+        return self.strategy
 
     def _get_strategy(self, cls):
         try:
@@ -494,6 +502,9 @@ class PropertyOption(MapperOption):
         while tokens:
             token = tokens.popleft()
             if isinstance(token, basestring):
+                # wildcard token
+                if token.endswith(':*'):
+                    return [(token,)], []
                 sub_tokens = token.split(".", 1)
                 token = sub_tokens[0]
                 tokens.extendleft(sub_tokens[1:])

@@ -6,6 +6,24 @@ CHANGES
 0.7.5
 =====
 - orm
+  - [feature] Added "class_registry" argument to
+    declarative_base().  Allows two or more declarative
+    bases to share the same registry of class names.
+
+  - [feature] query.filter() accepts multiple 
+    criteria which will join via AND, i.e.
+    query.filter(x==y, z>q, ...)
+
+  - [feature] Added new capability to relationship
+    loader options to allow "default" loader strategies.
+    Pass '*' to any of joinedload(), lazyload(),
+    subqueryload(), or noload() and that becomes the
+    loader strategy used for all relationships,
+    except for those explicitly stated in the
+    Query.  Thanks to up-and-coming contributor
+    Kent Bower for an exhaustive and well 
+    written test suite !  [ticket:2351]
+
   - [bug] Fixed bug whereby event.listen(SomeClass)
     forced an entirely unnecessary compile of the 
     mapper, making events very hard to set up
@@ -14,14 +32,6 @@ CHANGES
 
   - [bug] Fixed bug whereby hybrid_property didn't 
     work as a kw arg in any(), has().
-
-  - [feature] Added "class_registry" argument to
-    declarative_base().  Allows two or more declarative
-    bases to share the same registry of class names.
-
-  - [feature] query.filter() accepts multiple 
-    criteria which will join via AND, i.e.
-    query.filter(x==y, z>q, ...)
 
   - Fixed regression from 0.6 whereby if 
     "load_on_pending" relationship() flag were used

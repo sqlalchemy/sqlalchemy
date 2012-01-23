@@ -1289,6 +1289,9 @@ def joinedload(*keys, **kw):
         # to joined-load across both, use joinedload_all()
         query(Order).options(joinedload_all(Order.items, Item.keywords))
 
+        # set the default strategy to be 'joined'
+        query(Order).options(joinedload('*'))
+
     :func:`joinedload` also accepts a keyword argument `innerjoin=True` which
     indicates using an inner join instead of an outer::
 
@@ -1360,6 +1363,7 @@ def joinedload_all(*keys, **kw):
     else:
         return strategies.EagerLazyOption(keys, lazy='joined', chained=True)
 
+
 def eagerload(*args, **kwargs):
     """A synonym for :func:`joinedload()`."""
     return joinedload(*args, **kwargs)
@@ -1387,6 +1391,9 @@ def subqueryload(*keys):
 
         # to subquery-load across both, use subqueryload_all()
         query(Order).options(subqueryload_all(Order.items, Item.keywords))
+
+        # set the default strategy to be 'subquery'
+        query(Order).options(subqueryload('*'))
 
     See also:  :func:`joinedload`, :func:`lazyload`
 
