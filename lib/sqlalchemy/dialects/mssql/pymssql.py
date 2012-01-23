@@ -51,7 +51,6 @@ class _MSNumeric_pymssql(sqltypes.Numeric):
 
 class MSDialect_pymssql(MSDialect):
     supports_sane_rowcount = False
-    max_identifier_length = 30
     driver = 'pymssql'
 
     colspecs = util.update_copy(
