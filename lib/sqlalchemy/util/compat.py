@@ -193,6 +193,16 @@ else:
     time_func = time.time 
 
 if sys.version_info >= (2, 5):
+    any = __builtin__.any
+else:
+    def any(iterator):
+        for item in iterator:
+            if bool(item):
+                return True
+        else:
+            return False
+
+if sys.version_info >= (2, 5):
     def decode_slice(slc):
         """decode a slice object as sent to __getitem__.
 
