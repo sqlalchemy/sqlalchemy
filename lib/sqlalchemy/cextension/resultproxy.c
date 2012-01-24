@@ -298,7 +298,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
                 return NULL;
 
             PyErr_Format(exception,
-                    "Ambiguous column name '%s' in result set! "
+                    "Ambiguous column name '%.200s' in result set! "
                     "try 'use_labels' option on select statement.", cstr_key);
             return NULL;
         }
