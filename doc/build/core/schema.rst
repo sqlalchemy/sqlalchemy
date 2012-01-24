@@ -250,6 +250,30 @@ To enable the "check first for the table existing" logic, add the
     employees.create(engine, checkfirst=True)
     employees.drop(engine, checkfirst=False)
 
+Altering Schemas through Migrations
+-----------------------------------
+
+While SQLAlchemy directly supports emitting CREATE and DROP statements for schema
+constructs, the ability to alter those constructs, usually via the ALTER statement
+as well as other database-specific constructs, is outside of the scope of SQLAlchemy
+itself.  While it's easy enough to emit ALTER statements and similar by hand,
+such as by passing a string to :meth:`.Connection.execute` or by using the 
+:class:`.DDL` construct, it's a common practice to automate the maintenance of 
+database schemas in relation to application code using schema migration tools.
+
+There are two major migration tools available for SQLAlchemy:
+
+* `Alembic <http://alembic.readthedocs.org>`_ - Written by the author of SQLAlchemy,
+  Alembic features a highly customizable environment and a minimalistic usage pattern,
+  supporting such features as transactional DDL, automatic generation of "candidate"
+  migrations, an "offline" mode which generates SQL scripts, and support for branch 
+  resolution.
+* `SQLAlchemy-Migrate <http://code.google.com/p/sqlalchemy-migrate/>`_ - The original
+  migration tool for SQLAlchemy, SQLAlchemy-Migrate is widely used and continues
+  under active development.   SQLAlchemy-Migrate includes features such as 
+  SQL script generation, ORM class generation, ORM model comparison, and extensive 
+  support for SQLite migrations.
+
 .. _metadata_binding:
 
 Binding MetaData to an Engine or Connection
