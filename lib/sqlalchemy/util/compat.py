@@ -8,9 +8,6 @@
 
 import sys
 
-# Py2K
-import __builtin__
-# end Py2K
 
 try:
     import threading
@@ -56,7 +53,7 @@ def buffer(x):
     return x 
 
 # Py2K
-buffer = getattr(__builtin__, 'buffer', buffer)
+buffer = buffer
 # end Py2K
 
 try:
@@ -104,9 +101,9 @@ if py3k_warning:
 
     from functools import reduce
 else:
-    callable = __builtin__.callable
-    cmp = __builtin__.cmp
-    reduce = __builtin__.reduce
+    callable = callable
+    cmp = cmp
+    reduce = reduce
 
 try:
     from collections import defaultdict
@@ -193,7 +190,7 @@ else:
     time_func = time.time 
 
 if sys.version_info >= (2, 5):
-    any = __builtin__.any
+    any = any
 else:
     def any(iterator):
         for item in iterator:
