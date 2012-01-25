@@ -695,8 +695,10 @@ class OracleDialect_cx_oracle(OracleDialect):
             # ORA-00028: your session has been killed
             # ORA-03114: not connected to ORACLE
             # ORA-03113: end-of-file on communication channel
+            # ORA-03135: connection lost contact
             # ORA-01033: ORACLE initialization or shutdown in progress
-            return error.code in (28, 3114, 3113, 1033)
+            # TODO: Others ?
+            return error.code in (28, 3114, 3113, 3135, 1033)
         else:
             return False
 

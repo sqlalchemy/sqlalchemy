@@ -99,6 +99,11 @@ CHANGES
     is on this driver and how SQLAlchemy's
     implementation should adapt.  [ticket:2347]
 
+- oracle
+  - [bug] Added ORA-03135 to the never ending
+    list of oracle "connection lost" errors
+    [ticket:2388]
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 
