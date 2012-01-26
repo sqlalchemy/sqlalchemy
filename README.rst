@@ -84,7 +84,9 @@ SQLAlchemy's philosophy:
   retain full control over the structure of 
   queries, including how joins are organized,
   how subqueries and correlation is used, what 
-  columns are requested.
+  columns are requested.  Everything SQLAlchemy
+  does is ultimately the result of a developer-
+  initiated decision.
 * Don't use an ORM if the problem doesn't need one.
   SQLAlchemy consists of a Core and separate ORM
   component.   The Core offers a full SQL expression
