@@ -103,7 +103,7 @@ SQLAlchemy's philosophy:
 * Never render a literal value in a SQL statement.
   Bound parameters are used to the greatest degree
   possible, allowing query optimizers to cache 
-  query plans effectively, to make SQL injection
+  query plans effectively and making SQL injection
   attacks a non-issue.
 
 Documentation
