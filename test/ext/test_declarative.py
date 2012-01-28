@@ -1,6 +1,6 @@
 
 from test.lib.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, is_
 from sqlalchemy.ext import declarative as decl
 from sqlalchemy import exc
 import sqlalchemy as sa
@@ -1854,6 +1854,23 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             == 'cobol')).first(), c2)
         eq_(sess.query(Engineer).filter_by(primary_language='cobol'
             ).one(), Engineer(name='vlad', primary_language='cobol'))
+
+    def test_polymorphic_on_converted_from_inst(self):
+        class A(Base):
+            __tablename__ = 'A'
+            id = Column(Integer, primary_key=True)
+            discriminator = Column(String)
+
+            @declared_attr
+            def __mapper_args__(cls):
+                return {
+                    'polymorphic_identity': cls.__name__,
+                    'polymorphic_on': cls.discriminator
+                }
+
+        class B(A):
+            pass
+        is_(B.__mapper__.polymorphic_on, A.__table__.c.discriminator)
 
     def test_add_deferred(self):
 

@@ -16,6 +16,11 @@ CHANGES
     restore_snapshot() is called a second time,
     discarding those changes. [ticket:2389]
 
+  - [bug] Fixed regression from 0.7.4 whereby
+    using an already instrumented column from a
+    superclass as "polymorphic_on" failed to resolve
+    the underlying Column.  [ticket:2345]
+
   - [feature] Added "class_registry" argument to
     declarative_base().  Allows two or more declarative
     bases to share the same registry of class names.
