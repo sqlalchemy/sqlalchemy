@@ -358,14 +358,18 @@ def emits_warning_on(db, *warnings):
 def assert_warnings(fn, warnings):
     """Assert that each of the given warnings are emitted by fn."""
 
+    canary = []
     orig_warn = util.warn
     def capture_warnings(*args, **kw):
         orig_warn(*args, **kw)
         popwarn = warnings.pop(0)
+        canary.append(popwarn)
         eq_(args[0], popwarn)
     util.warn = util.langhelpers.warn = capture_warnings
 
-    return emits_warning()(fn)()
+    result = emits_warning()(fn)()
+    assert canary, "No warning was emitted"
+    return result
 
 def uses_deprecated(*messages):
     """Mark a test as immune from fatal deprecation warnings.

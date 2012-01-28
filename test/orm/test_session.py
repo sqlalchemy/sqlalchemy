@@ -1,5 +1,5 @@
 from test.lib.testing import eq_, assert_raises, \
-    assert_raises_message
+    assert_raises_message, assert_warnings
 from test.lib.util import gc_collect
 from test.lib import pickleable
 from sqlalchemy.util import pickle
@@ -712,7 +712,7 @@ class SessionTest(_fixtures.FixtureTest):
 
         eq_(len(sess.query(User).all()), 1)
 
-    def test_error_on_using_inactive_session(self):
+    def test_error_on_using_inactive_session_commands(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
@@ -730,17 +730,67 @@ class SessionTest(_fixtures.FixtureTest):
                               sess.begin, subtransactions=True)
         sess.close()
 
-    def test_preserve_flush_error(self):
+    def _inactive_flushed_session_fixture(self):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
         sess = Session()
+        u1 = User(id=1, name='u1')
+        sess.add(u1)
+        sess.commit()
 
-        sess.add(User(id=5))
+        sess.add(User(id=1, name='u2'))
         assert_raises(
-            sa.exc.DBAPIError,
-            sess.commit
+            orm_exc.FlushError, sess.flush
         )
+        return sess, u1
+
+    def test_warning_on_using_inactive_session_new(self):
+        User = self.classes.User
+
+        sess, u1 = self._inactive_flushed_session_fixture()
+        u2 = User(name='u2')
+        sess.add(u2)
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u2 not in sess
+        assert u1 in sess
+
+    def test_warning_on_using_inactive_session_dirty(self):
+        sess, u1 = self._inactive_flushed_session_fixture()
+        u1.name = 'newname'
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u1 in sess
+        assert u1 not in sess.dirty
+
+    def test_warning_on_using_inactive_session_delete(self):
+        sess, u1 = self._inactive_flushed_session_fixture()
+        sess.delete(u1)
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u1 in sess
+        assert u1 not in sess.deleted
+
+    def test_preserve_flush_error(self):
+        User = self.classes.User
+
+        sess, u1 = self._inactive_flushed_session_fixture()
 
         for i in range(5):
             assert_raises_message(sa.exc.InvalidRequestError,
@@ -754,7 +804,6 @@ class SessionTest(_fixtures.FixtureTest):
         sess.rollback()
         sess.add(User(id=5, name='some name'))
         sess.commit()
-
 
     def test_no_autocommit_with_explicit_commit(self):
         User, users = self.classes.User, self.tables.users

@@ -6,6 +6,16 @@ CHANGES
 0.7.5
 =====
 - orm
+  - [bug] Fixed issue where modified session state
+    established after a failed flush would be committed
+    as part of the subsequent transaction that 
+    begins automatically after manual call 
+    to rollback().   The state of the session is
+    checked within rollback(), and if new state
+    is present, a warning is emitted and 
+    restore_snapshot() is called a second time,
+    discarding those changes. [ticket:2389]
+
   - [feature] Added "class_registry" argument to
     declarative_base().  Allows two or more declarative
     bases to share the same registry of class names.
