@@ -123,6 +123,13 @@ CHANGES
   - [bug] sql.false() and sql.true() compile to
     0 and 1, respectively in sqlite [ticket:2368]
 
+  - [bug] removed an erroneous "raise" in the 
+    SQLite dialect when getting table names
+    and view names, where logic is in place
+    to fall back to an older version of 
+    SQLite that doesn't have the 
+    "sqlite_temp_master" table.
+
 - mysql
   - [bug] fixed regexp that filters out warnings
     for non-reflected "PARTITION" directives,

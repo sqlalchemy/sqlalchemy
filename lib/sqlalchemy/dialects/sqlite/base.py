@@ -556,7 +556,6 @@ class SQLiteDialect(default.DefaultDialect):
                      "WHERE type='table' ORDER BY name")
                 rs = connection.execute(s)
             except exc.DBAPIError:
-                raise
                 s = ("SELECT name FROM sqlite_master "
                      "WHERE type='table' ORDER BY name")
                 rs = connection.execute(s)
@@ -596,7 +595,6 @@ class SQLiteDialect(default.DefaultDialect):
                      "WHERE type='view' ORDER BY name")
                 rs = connection.execute(s)
             except exc.DBAPIError:
-                raise
                 s = ("SELECT name FROM sqlite_master "
                      "WHERE type='view' ORDER BY name")
                 rs = connection.execute(s)
@@ -621,7 +619,6 @@ class SQLiteDialect(default.DefaultDialect):
                      "AND type='view'") % view_name
                 rs = connection.execute(s)
             except exc.DBAPIError:
-                raise
                 s = ("SELECT sql FROM sqlite_master WHERE name = '%s' "
                      "AND type='view'") % view_name
                 rs = connection.execute(s)
