@@ -73,6 +73,12 @@ CHANGES
     needed ORM attribute access within 
     __eq__() or similar. [ticket:2362]
 
+  - [bug] Fixed bug where "merge" cascade could
+    mis-interpret an unloaded attribute, if the
+    load_on_pending flag were used with 
+    relationship().  Thanks to Kent Bower
+    for tests.  [ticket:2374]
+
 - sql
   - [feature] Added "false()" and "true()" expression
     constructs to sqlalchemy.sql namespace, though

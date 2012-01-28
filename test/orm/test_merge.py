@@ -1254,8 +1254,6 @@ class MutableMergeTest(fixtures.MappedTest):
         d3 = sess.merge(d2)
         eq_(d3.data, ["this", "is", "another", "list"])
 
-
-
 class CompositeNullPksTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -1293,4 +1291,54 @@ class CompositeNullPksTest(fixtures.MappedTest):
             return sess.merge(d1)
         self.assert_sql_count(testing.db, go, 0)
 
+class LoadOnPendingTest(fixtures.MappedTest):
+    """Test interaction of merge() with load_on_pending relationships"""
+    @classmethod
+    def define_tables(cls, metadata):
+        rocks_table = Table("rocks", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("description", String(10)),
+        )
+        bugs_table = Table("bugs", metadata,
+            Column("id", Integer, primary_key=True),
+            Column("rockid", Integer, ForeignKey('rocks.id')),
+        )
 
+    @classmethod
+    def setup_classes(cls):
+        class Rock(cls.Basic, fixtures.ComparableEntity):
+            pass
+        class Bug(cls.Basic, fixtures.ComparableEntity):
+            pass
+
+    def _setup_delete_orphan_o2o(self):
+        mapper(self.classes.Rock, self.tables.rocks,
+            properties={'bug': relationship(self.classes.Bug,
+                            cascade='all,delete-orphan',
+                            load_on_pending=True,
+                            uselist=False)
+                        })
+        mapper(self.classes.Bug, self.tables.bugs)
+        self.sess = sessionmaker()()
+
+    def _merge_delete_orphan_o2o_with(self, bug):
+        # create a transient rock with passed bug
+        r = self.classes.Rock(id=0, description='moldy')
+        r.bug = bug
+        m = self.sess.merge(r)
+        # we've already passed ticket #2374 problem since merge() returned, 
+        # but for good measure:
+        assert m is not r
+        eq_(m,r)
+
+    def test_merge_delete_orphan_o2o_none(self):
+        """one to one delete_orphan relationships marked load_on_pending should
+        be able to merge() with attribute None"""
+        self._setup_delete_orphan_o2o()
+        self._merge_delete_orphan_o2o_with(None)
+
+    def test_merge_delete_orphan_o2o(self):
+        """one to one delete_orphan relationships marked load_on_pending should
+        be able to merge()"""
+        self._setup_delete_orphan_o2o()
+        self._merge_delete_orphan_o2o_with(self.classes.Bug(id=1))
