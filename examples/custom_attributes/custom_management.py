@@ -103,6 +103,9 @@ class MyCollectionAdapter(object):
     def append_with_event(self, item, initiator=None):
         self.collection.add(item, emit=initiator)
 
+    def append_multiple_without_event(self, items):
+        self.collection.members.extend(items)
+
     def append_without_event(self, item):
         self.collection.add(item, emit=False)
 
