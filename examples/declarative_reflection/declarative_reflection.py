@@ -19,27 +19,38 @@ class DeclarativeReflectedBase(object):
     @classmethod
     def prepare(cls, engine):
         """Reflect all the tables and map !"""
-        for args, kw in cls._mapper_args:
+        while cls._mapper_args:
+            args, kw  = cls._mapper_args.pop()
             klass = args[0]
-            klass.__table__ = table = Table(
-                                        klass.__tablename__, 
-                                        cls.metadata, 
-                                        extend_existing=True,
-                                        autoload_replace=False,
-                                        autoload=True, 
-                                        autoload_with=engine,
-                                        )
-            klass.__mapper__ = mapper(klass, table, **kw)
-
+            # autoload Table, which is already
+            # present in the metadata.  This
+            # will fill in db-loaded columns
+            # into the existing Table object.
+            if args[1] is not None:
+                table = args[1]
+                Table(table.name, 
+                    cls.metadata, 
+                    extend_existing=True,
+                    autoload_replace=False,
+                    autoload=True, 
+                    autoload_with=engine,
+                    schema=table.schema)
+            klass.__mapper__ = mapper(*args, **kw)
 
 if __name__ == '__main__':
-    Base= declarative_base(cls=DeclarativeReflectedBase)
+    Base = declarative_base()
 
-    class Foo(Base):
+    # create a separate base so that we can
+    # define a subset of classes as "Reflected",
+    # instead of everything.
+    class Reflected(DeclarativeReflectedBase, Base):
+        __abstract__ = True
+
+    class Foo(Reflected):
         __tablename__ = 'foo'
         bars = relationship("Bar")
 
-    class Bar(Base):
+    class Bar(Reflected):
         __tablename__ = 'bar'
 
         # illustrate overriding of "bar.foo_id" to have 
@@ -63,7 +74,7 @@ if __name__ == '__main__':
     )
     """)
 
-    Base.prepare(e)
+    Reflected.prepare(e)
 
     s = Session(e)
 

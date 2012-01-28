@@ -3,6 +3,16 @@
 =======
 CHANGES
 =======
+0.7.6
+=====
+- orm
+  - [bug] Improved the "declarative reflection" 
+    example to support single-table inheritance,
+    multiple calls to prepare(), tables that
+    are present in alternate schemas,
+    establishing only a subset of classes
+    as reflected.
+
 0.7.5 (January 28, 2012)
 =====
 - orm
