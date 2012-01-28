@@ -23,6 +23,7 @@ To generate user-defined SQL strings, see
 """
 
 import re
+import sys
 from sqlalchemy import schema, engine, util, exc
 from sqlalchemy.sql import operators, functions, util as sql_util, \
     visitors
@@ -1379,19 +1380,35 @@ class DDLCompiler(engine.Compiled):
         # if only one primary key, specify it along with the column
         first_pk = False
         for column in table.columns:
-            text += separator
-            separator = ", \n"
-            text += "\t" + self.get_column_specification(
-                                            column, 
-                                            first_pk=column.primary_key and \
-                                            not first_pk
-                                        )
-            if column.primary_key:
-                first_pk = True
-            const = " ".join(self.process(constraint) \
-                            for constraint in column.constraints)
-            if const:
-                text += " " + const
+            try:
+                text += separator
+                separator = ", \n"
+                text += "\t" + self.get_column_specification(
+                                                column, 
+                                                first_pk=column.primary_key and \
+                                                not first_pk
+                                            )
+                if column.primary_key:
+                    first_pk = True
+                const = " ".join(self.process(constraint) \
+                                for constraint in column.constraints)
+                if const:
+                    text += " " + const
+            except exc.CompileError, ce:
+                # Py3K
+                #raise exc.CompileError("(in table '%s', column '%s'): %s" 
+                #                             % (
+                #                                table.description, 
+                #                                column.name, 
+                #                                ce.args[0]
+                #                            )) from ce
+                # Py2K
+                raise exc.CompileError("(in table '%s', column '%s'): %s" 
+                                            % (
+                                                table.description, 
+                                                column.name,
+                                                ce.args[0]
+                                            )), None, sys.exc_info()[2]
 
         const = self.create_table_constraints(table)
         if const:

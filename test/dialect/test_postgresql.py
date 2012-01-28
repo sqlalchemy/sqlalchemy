@@ -401,8 +401,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_name_required(self):
         metadata = MetaData(testing.db)
         etype = Enum('four', 'five', 'six', metadata=metadata)
-        assert_raises(exc.ArgumentError, etype.create)
-        assert_raises(exc.ArgumentError, etype.compile,
+        assert_raises(exc.CompileError, etype.create)
+        assert_raises(exc.CompileError, etype.compile,
                       dialect=postgresql.dialect())
 
     @testing.fails_on('postgresql+zxjdbc',
