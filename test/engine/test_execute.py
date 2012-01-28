@@ -576,7 +576,7 @@ class MockStrategyTest(fixtures.TestBase):
     def _engine_fixture(self):
         buf = StringIO.StringIO()
         def dump(sql, *multiparams, **params):
-            buf.write(sql.compile(dialect=engine.dialect))
+            buf.write(unicode(sql.compile(dialect=engine.dialect)))
         engine = create_engine('postgresql://', strategy='mock', executor=dump)
         return engine, buf
 

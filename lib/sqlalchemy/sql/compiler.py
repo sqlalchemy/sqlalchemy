@@ -1409,6 +1409,7 @@ class DDLCompiler(engine.Compiled):
                                                 column.name,
                                                 ce.args[0]
                                             )), None, sys.exc_info()[2]
+                # end Py2K
 
         const = self.create_table_constraints(table)
         if const:
