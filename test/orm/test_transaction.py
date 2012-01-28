@@ -1,5 +1,6 @@
 
-from test.lib.testing import eq_, assert_raises, assert_raises_message
+from test.lib.testing import eq_, assert_raises, \
+    assert_raises_message, assert_warnings
 from sqlalchemy import *
 from sqlalchemy.orm import attributes
 from sqlalchemy import exc as sa_exc, event
@@ -8,9 +9,400 @@ from sqlalchemy.orm import *
 from test.lib.util import gc_collect
 from test.lib import testing
 from test.lib import fixtures
+from test.lib import engines
 from test.orm._fixtures import FixtureTest
 
-class TransactionTest(FixtureTest):
+
+class SessionTransactionTest(FixtureTest):
+    run_inserts = None
+
+    def test_no_close_transaction_on_flush(self):
+        User, users = self.classes.User, self.tables.users
+
+        c = testing.db.connect()
+        try:
+            mapper(User, users)
+            s = create_session(bind=c)
+            s.begin()
+            tran = s.transaction
+            s.add(User(name='first'))
+            s.flush()
+            c.execute("select * from users")
+            u = User(name='two')
+            s.add(u)
+            s.flush()
+            u = User(name='third')
+            s.add(u)
+            s.flush()
+            assert s.transaction is tran
+            tran.close()
+        finally:
+            c.close()
+
+    @engines.close_open_connections
+    def test_subtransaction_on_external(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        conn = testing.db.connect()
+        trans = conn.begin()
+        sess = create_session(bind=conn, autocommit=False, autoflush=True)
+        sess.begin(subtransactions=True)
+        u = User(name='ed')
+        sess.add(u)
+        sess.flush()
+        sess.commit() # commit does nothing
+        trans.rollback() # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    @testing.requires.savepoints
+    @engines.close_open_connections
+    def test_external_nested_transaction(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        try:
+            conn = testing.db.connect()
+            trans = conn.begin()
+            sess = create_session(bind=conn, autocommit=False, 
+                                autoflush=True)
+            u1 = User(name='u1')
+            sess.add(u1)
+            sess.flush()
+
+            sess.begin_nested()
+            u2 = User(name='u2')
+            sess.add(u2)
+            sess.flush()
+            sess.rollback()
+
+            trans.commit()
+            assert len(sess.query(User).all()) == 1
+        except:
+            conn.close()
+            raise
+
+    @testing.requires.savepoints
+    def test_heavy_nesting(self):
+        users = self.tables.users
+
+        session = create_session(bind=testing.db)
+        session.begin()
+        session.connection().execute(users.insert().values(name='user1'
+                ))
+        session.begin(subtransactions=True)
+        session.begin_nested()
+        session.connection().execute(users.insert().values(name='user2'
+                ))
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 2
+        session.rollback()
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 1
+        session.connection().execute(users.insert().values(name='user3'
+                ))
+        session.commit()
+        assert session.connection().execute('select count(1) from users'
+                ).scalar() == 2
+
+    @testing.requires.independent_connections
+    def test_transactions_isolated(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        users.delete().execute()
+
+        s1 = create_session(bind=testing.db, autocommit=False)
+        s2 = create_session(bind=testing.db, autocommit=False)
+        u1 = User(name='u1')
+        s1.add(u1)
+        s1.flush()
+
+        assert s2.query(User).all() == []
+
+    @testing.requires.two_phase_transactions
+    def test_twophase(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
+        # TODO: mock up a failure condition here
+        # to ensure a rollback succeeds
+        mapper(User, users)
+        mapper(Address, addresses)
+
+        engine2 = engines.testing_engine()
+        sess = create_session(autocommit=True, autoflush=False, 
+                            twophase=True)
+        sess.bind_mapper(User, testing.db)
+        sess.bind_mapper(Address, engine2)
+        sess.begin()
+        u1 = User(name='u1')
+        a1 = Address(email_address='u1@e')
+        sess.add_all((u1, a1))
+        sess.commit()
+        sess.close()
+        engine2.dispose()
+        assert users.count().scalar() == 1
+        assert addresses.count().scalar() == 1
+
+    def test_subtransaction_on_noautocommit(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session(autocommit=False, autoflush=True)
+        sess.begin(subtransactions=True)
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+        sess.commit() # commit does nothing
+        sess.rollback() # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_nested_transaction(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session()
+        sess.begin()
+
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+
+        sess.begin_nested()  # nested transaction
+
+        u2 = User(name='u2')
+        sess.add(u2)
+        sess.flush()
+
+        sess.rollback()
+
+        sess.commit()
+        assert len(sess.query(User).all()) == 1
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_nested_autotrans(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session(autocommit=False)
+        u = User(name='u1')
+        sess.add(u)
+        sess.flush()
+
+        sess.begin_nested()  # nested transaction
+
+        u2 = User(name='u2')
+        sess.add(u2)
+        sess.flush()
+
+        sess.rollback()
+
+        sess.commit()
+        assert len(sess.query(User).all()) == 1
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_nested_transaction_connection_add(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = create_session(autocommit=True)
+
+        sess.begin()
+        sess.begin_nested()
+
+        u1 = User(name='u1')
+        sess.add(u1)
+        sess.flush()
+
+        sess.rollback()
+
+        u2 = User(name='u2')
+        sess.add(u2)
+
+        sess.commit()
+
+        eq_(set(sess.query(User).all()), set([u2]))
+
+        sess.begin()
+        sess.begin_nested()
+
+        u3 = User(name='u3')
+        sess.add(u3)
+        sess.commit() # commit the nested transaction
+        sess.rollback()
+
+        eq_(set(sess.query(User).all()), set([u2]))
+
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_mixed_transaction_control(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = create_session(autocommit=True)
+
+        sess.begin()
+        sess.begin_nested()
+        transaction = sess.begin(subtransactions=True)
+
+        sess.add(User(name='u1'))
+
+        transaction.commit()
+        sess.commit()
+        sess.commit()
+
+        sess.close()
+
+        eq_(len(sess.query(User).all()), 1)
+
+        t1 = sess.begin()
+        t2 = sess.begin_nested()
+
+        sess.add(User(name='u2'))
+
+        t2.commit()
+        assert sess.transaction is t1
+
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_mixed_transaction_close(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = create_session(autocommit=False)
+
+        sess.begin_nested()
+
+        sess.add(User(name='u1'))
+        sess.flush()
+
+        sess.close()
+
+        sess.add(User(name='u2'))
+        sess.commit()
+
+        sess.close()
+
+        eq_(len(sess.query(User).all()), 1)
+
+    def test_error_on_using_inactive_session_commands(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = create_session(autocommit=True)
+        sess.begin()
+        sess.begin(subtransactions=True)
+        sess.add(User(name='u1'))
+        sess.flush()
+        sess.rollback()
+        assert_raises_message(sa_exc.InvalidRequestError,
+                              "This Session's transaction has been "
+                              r"rolled back by a nested rollback\(\) "
+                              "call.  To begin a new transaction, "
+                              r"issue Session.rollback\(\) first.",
+                              sess.begin, subtransactions=True)
+        sess.close()
+
+    def _inactive_flushed_session_fixture(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session()
+        u1 = User(id=1, name='u1')
+        sess.add(u1)
+        sess.commit()
+
+        sess.add(User(id=1, name='u2'))
+        assert_raises(
+            orm_exc.FlushError, sess.flush
+        )
+        return sess, u1
+
+    def test_warning_on_using_inactive_session_new(self):
+        User = self.classes.User
+
+        sess, u1 = self._inactive_flushed_session_fixture()
+        u2 = User(name='u2')
+        sess.add(u2)
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u2 not in sess
+        assert u1 in sess
+
+    def test_warning_on_using_inactive_session_dirty(self):
+        sess, u1 = self._inactive_flushed_session_fixture()
+        u1.name = 'newname'
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u1 in sess
+        assert u1 not in sess.dirty
+
+    def test_warning_on_using_inactive_session_delete(self):
+        sess, u1 = self._inactive_flushed_session_fixture()
+        sess.delete(u1)
+        def go():
+            sess.rollback()
+        assert_warnings(go, 
+            ["Session's state has been changed on a "
+            "non-active transaction - this state "
+            "will be discarded."],
+        )
+        assert u1 in sess
+        assert u1 not in sess.deleted
+
+    def test_preserve_flush_error(self):
+        User = self.classes.User
+
+        sess, u1 = self._inactive_flushed_session_fixture()
+
+        for i in range(5):
+            assert_raises_message(sa_exc.InvalidRequestError,
+                              "^This Session's transaction has been "
+                              r"rolled back due to a previous exception "
+                              "during flush. To "
+                              "begin a new transaction with this "
+                              "Session, first issue "
+                              r"Session.rollback\(\). Original exception "
+                              "was:",
+                              sess.commit)
+        sess.rollback()
+        sess.add(User(id=5, name='some name'))
+        sess.commit()
+
+    def test_no_autocommit_with_explicit_commit(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        session = create_session(autocommit=False)
+        session.add(User(name='ed'))
+        session.transaction.commit()
+        assert session.transaction is not None, \
+            'autocommit=False should start a new transaction'
+
+class _LocalFixture(FixtureTest):
     run_setup_mappers = 'once'
     run_inserts = None
     session = sessionmaker()
@@ -21,12 +413,13 @@ class TransactionTest(FixtureTest):
         users, addresses = cls.tables.users, cls.tables.addresses
         mapper(User, users, properties={
             'addresses':relationship(Address, backref='user',
-                                 cascade="all, delete-orphan", order_by=addresses.c.id),
+                                 cascade="all, delete-orphan", 
+                                    order_by=addresses.c.id),
             })
         mapper(Address, addresses)
 
 
-class FixtureDataTest(TransactionTest):
+class FixtureDataTest(_LocalFixture):
     run_inserts = 'each'
 
     def test_attrs_on_rollback(self):
@@ -61,7 +454,7 @@ class FixtureDataTest(TransactionTest):
 
         assert u1.name == 'will'
 
-class AutoExpireTest(TransactionTest):
+class AutoExpireTest(_LocalFixture):
 
     def test_expunge_pending_on_rollback(self):
         User = self.classes.User
@@ -172,7 +565,8 @@ class AutoExpireTest(TransactionTest):
         u1.addresses.remove(a1)
 
         s.flush()
-        eq_(s.query(Address).filter(Address.email_address=='foo').all(), [])
+        eq_(s.query(Address).filter(Address.email_address=='foo').all(), 
+                [])
         s.rollback()
         assert a1 not in s.deleted
         assert u1.addresses == [a1]
@@ -201,7 +595,7 @@ class AutoExpireTest(TransactionTest):
 
         assert u1.name == 'will'
 
-class TwoPhaseTest(TransactionTest):
+class TwoPhaseTest(_LocalFixture):
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_prepare(self):
@@ -215,7 +609,7 @@ class TwoPhaseTest(TransactionTest):
 
         assert u not in s
 
-class RollbackRecoverTest(TransactionTest):
+class RollbackRecoverTest(_LocalFixture):
 
     def test_pk_violation(self):
         User, Address = self.classes.User, self.classes.Address
@@ -245,7 +639,8 @@ class RollbackRecoverTest(TransactionTest):
         s.commit()
         eq_(
             s.query(User).all(),
-            [User(id=1, name='edward', addresses=[Address(email_address='foober')])]
+            [User(id=1, name='edward', 
+                addresses=[Address(email_address='foober')])]
         )
 
     @testing.requires.savepoints
@@ -273,10 +668,14 @@ class RollbackRecoverTest(TransactionTest):
         assert a1 in s
 
         s.commit()
-        assert s.query(User).all() == [User(id=1, name='edward', addresses=[Address(email_address='foober')])]
+        eq_(
+            s.query(User).all(),
+            [User(id=1, name='edward', 
+                addresses=[Address(email_address='foober')])]
+        )
 
 
-class SavepointTest(TransactionTest):
+class SavepointTest(_LocalFixture):
 
     @testing.requires.savepoints
     def test_savepoint_rollback(self):
@@ -292,15 +691,18 @@ class SavepointTest(TransactionTest):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(), [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(s.query(User.name).order_by(User.id).all(), 
+                    [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.rollback()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(), [('ed',), ('jack',)])
+        eq_(s.query(User.name).order_by(User.id).all(), 
+                    [('ed',), ('jack',)])
         s.commit()
         assert u1.name == 'ed'
         assert u2.name == 'jack'
-        eq_(s.query(User.name).order_by(User.id).all(), [('ed',), ('jack',)])
+        eq_(s.query(User.name).order_by(User.id).all(), 
+                    [('ed',), ('jack',)])
 
     @testing.requires.savepoints
     def test_savepoint_delete(self):
@@ -330,16 +732,19 @@ class SavepointTest(TransactionTest):
         u1.name = 'edward'
         u2.name = 'jackward'
         s.add_all([u3, u4])
-        eq_(s.query(User.name).order_by(User.id).all(), [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(s.query(User.name).order_by(User.id).all(), 
+                [('edward',), ('jackward',), ('wendy',), ('foo',)])
         s.commit()
         def go():
             assert u1.name == 'edward'
             assert u2.name == 'jackward'
-            eq_(s.query(User.name).order_by(User.id).all(), [('edward',), ('jackward',), ('wendy',), ('foo',)])
+            eq_(s.query(User.name).order_by(User.id).all(), 
+                    [('edward',), ('jackward',), ('wendy',), ('foo',)])
         self.assert_sql_count(testing.db, go, 1)
 
         s.commit()
-        eq_(s.query(User.name).order_by(User.id).all(), [('edward',), ('jackward',), ('wendy',), ('foo',)])
+        eq_(s.query(User.name).order_by(User.id).all(), 
+                [('edward',), ('jackward',), ('wendy',), ('foo',)])
 
     @testing.requires.savepoints
     def test_savepoint_rollback_collections(self):
@@ -356,20 +761,23 @@ class SavepointTest(TransactionTest):
         s.add(u2)
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(name='edward', addresses=[Address(email_address='foo'), 
+                                        Address(email_address='bar')]),
                 User(name='jack', addresses=[Address(email_address='bat')])
             ]
         )
         s.rollback()
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(name='edward', addresses=[Address(email_address='foo'), 
+                                        Address(email_address='bar')]),
             ]
         )
         s.commit()
         eq_(s.query(User).order_by(User.id).all(),
             [
-                User(name='edward', addresses=[Address(email_address='foo'), Address(email_address='bar')]),
+                User(name='edward', addresses=[Address(email_address='foo'), 
+                                        Address(email_address='bar')]),
             ]
         )
 
@@ -435,7 +843,7 @@ class SavepointTest(TransactionTest):
         assert u1 not in s.deleted
 
 
-class AccountingFlagsTest(TransactionTest):
+class AccountingFlagsTest(_LocalFixture):
     def test_no_expire_on_commit(self):
         User, users = self.classes.User, self.tables.users
 
@@ -509,7 +917,7 @@ class AccountingFlagsTest(TransactionTest):
         assert testing.db.execute(select([users.c.name])).fetchall() == [('ed',)]
 
 
-class AutoCommitTest(TransactionTest):
+class AutoCommitTest(_LocalFixture):
     def test_begin_nested_requires_trans(self):
         sess = create_session(autocommit=True)
         assert_raises(sa_exc.InvalidRequestError, sess.begin_nested)
