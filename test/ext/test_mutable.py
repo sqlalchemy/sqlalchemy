@@ -17,6 +17,13 @@ class Foo(fixtures.BasicEntity):
 class SubFoo(Foo):
     pass
 
+class FooWithEq(object):
+    def __init__(self, **kw):
+        for k in kw:
+            setattr(self, k, kw[k])
+    def __eq__(self, other):
+        return self.id == other.id
+
 class _MutableDictTestBase(object):
     run_define_tables = 'each'
 
@@ -317,18 +324,33 @@ class _CompositeTestBase(object):
                 return self.x, self.y
 
             def __getstate__(self):
-                d = dict(self.__dict__)
-                d.pop('_parents', None)
-                return d
+                return self.x, self.y
 
-            #def __setstate__(self, state):
-            #    self.x, self.y = state
+            def __setstate__(self, state):
+                self.x, self.y = state
 
             def __eq__(self, other):
                 return isinstance(other, Point) and \
                     other.x == self.x and \
                     other.y == self.y
         return Point
+
+class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
+
+    @classmethod
+    def setup_mappers(cls):
+        foo = cls.tables.foo
+
+        cls.Point = cls._type_fixture()
+
+        mapper(FooWithEq, foo, properties={
+            'data':composite(cls.Point, foo.c.x, foo.c.y)
+        })
+
+    def test_unpickle_modified_eq(self):
+        u1 = FooWithEq(data=self.Point(3, 5))
+        for loads, dumps in picklers():
+            loads(dumps(u1))
 
 class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 

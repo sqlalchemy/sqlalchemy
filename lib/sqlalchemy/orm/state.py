@@ -187,6 +187,10 @@ class InstanceState(object):
         if 'load_path' in state:
             self.load_path = interfaces.deserialize_path(state['load_path'])
 
+        # setup _sa_instance_state ahead of time so that 
+        # unpickle events can access the object normally.
+        # see [ticket:2362]
+        manager.setup_instance(inst, self)
         manager.dispatch.unpickle(self, state)
 
     def initialize(self, key):

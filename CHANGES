@@ -66,6 +66,13 @@ CHANGES
     setattr/delattr used on a hybrid that doesn't 
     define fset or fdel. [ticket:2353]
 
+  - [bug] Fixed bug where unpickled object didn't 
+    have enough of its state set up to work
+    correctly within the unpickle() event established
+    by the mutable object extension, if the object
+    needed ORM attribute access within 
+    __eq__() or similar. [ticket:2362]
+
 - sql
   - [feature] Added "false()" and "true()" expression
     constructs to sqlalchemy.sql namespace, though
