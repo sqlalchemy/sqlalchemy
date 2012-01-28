@@ -202,6 +202,17 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(c2.deferrable, True)
         assert c2._create_rule is r
 
+    def test_col_replace_w_constraint(self):
+        m = MetaData()
+        a = Table('a', m, Column('id', Integer, primary_key=True))
+
+        aid = Column('a_id', ForeignKey('a.id'))
+        b = Table('b', m, aid)
+        b.append_column(aid)
+
+        assert b.c.a_id.references(a.c.id)
+        eq_(len(b.constraints), 2)
+
     def test_fk_construct(self):
         c1 = Column('foo', Integer)
         c2 = Column('bar', Integer)

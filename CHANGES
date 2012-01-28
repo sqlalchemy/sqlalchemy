@@ -80,6 +80,20 @@ CHANGES
     for tests.  [ticket:2374]
 
 - sql
+  - [feature] New reflection feature "autoload_replace";
+    when set to False on Table, the Table can be autoloaded
+    without existing columns being replaced.  Allows
+    more flexible chains of Table construction/reflection
+    to be constructed, including that it helps with 
+    combining Declarative with table reflection.
+    See the new example on the wiki.  [ticket:2356]
+
+  - [bug] Improved the API for add_column() such that
+    if the same column is added to its own table, 
+    an error is not raised and the constraints
+    don't get doubled up.  Also helps with some
+    reflection/declarative patterns. [ticket:2356]
+
   - [feature] Added "false()" and "true()" expression
     constructs to sqlalchemy.sql namespace, though
     not part of __all__ as of yet.

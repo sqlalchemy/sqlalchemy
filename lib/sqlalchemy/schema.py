@@ -92,16 +92,16 @@ class Table(SchemaItem, expression.TableClause):
                    )
 
     The :class:`.Table` object constructs a unique instance of itself based on its
-    name and optional schema name within the given :class:`.MetaData` object.   
+    name and optional schema name within the given :class:`.MetaData` object.
     Calling the :class:`.Table`
     constructor with the same name and same :class:`.MetaData` argument 
     a second time will return the *same* :class:`.Table` object - in this way
     the :class:`.Table` constructor acts as a registry function.
-    
+
     See also:
-    
+
     :ref:`metadata_describing` - Introduction to database metadata
-    
+
     Constructor arguments are as follows:
 
     :param name: The name of this table as represented in the database. 
@@ -134,18 +134,28 @@ class Table(SchemaItem, expression.TableClause):
         be reflected from the database. Usually there will be no Column
         objects in the constructor if this property is set.
 
+    :param autoload_replace: If ``True``, when using ``autoload=True`` 
+        and ``extend_existing=True``,
+        replace ``Column`` objects already present in the ``Table`` that's
+        in the ``MetaData`` registry with 
+        what's reflected.  Otherwise, all existing columns will be
+        excluded from the reflection process.    Note that this does
+        not impact ``Column`` objects specified in the same call to ``Table``
+        which includes ``autoload``, those always take precedence.
+        Defaults to ``True``.  New in 0.7.5.
+
     :param autoload_with: If autoload==True, this is an optional Engine 
         or Connection instance to be used for the table reflection. If
         ``None``, the underlying MetaData's bound connectable will be used.
 
     :param extend_existing: When ``True``, indicates that if this :class:`.Table` is already
         present in the given :class:`.MetaData`, apply further arguments within
-        the constructor to the existing :class:`.Table`.  
-        
+        the constructor to the existing :class:`.Table`.
+
         If ``extend_existing`` or ``keep_existing`` are not set, an error is
         raised if additional table modifiers are specified when 
         the given :class:`.Table` is already present in the :class:`.MetaData`.
-        
+
         As of version 0.7.4, ``extend_existing`` will work in conjunction
         with ``autoload=True`` to run a new reflection operation against
         the database; new :class:`.Column` objects will be produced
@@ -155,17 +165,18 @@ class Table(SchemaItem, expression.TableClause):
         As is always the case with ``autoload=True``, :class:`.Column`
         objects can be specified in the same :class:`.Table` constructor,
         which will take precedence.  I.e.::
-        
+
             Table("mytable", metadata,
                         Column('y', Integer),
                         extend_existing=True,
                         autoload=True,
                         autoload_with=engine
                     )
-        
-        The above will overwrite all columns within ``mytable`` which are present
-        in the database, except for ``y`` which will be used as is
-        from the above definition.
+
+        The above will overwrite all columns within ``mytable`` which 
+        are present in the database, except for ``y`` which will be used as is
+        from the above definition.   If the ``autoload_replace`` flag
+        is set to False, no existing columns will be replaced.
 
     :param implicit_returning: True by default - indicates that 
         RETURNING can be used by default to fetch newly inserted primary key 
@@ -190,22 +201,22 @@ class Table(SchemaItem, expression.TableClause):
         subsequent calls will return the same :class:`.Table`,
         without any of the declarations (particularly constraints)
         being applied a second time. Also see extend_existing.
-        
+
         If extend_existing or keep_existing are not set, an error is
         raised if additional table modifiers are specified when 
         the given :class:`.Table` is already present in the :class:`.MetaData`.
-        
+
     :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
         which will be passed to :func:`.event.listen` upon construction. 
         This alternate hook to :func:`.event.listen` allows the establishment
         of a listener function specific to this :class:`.Table` before 
         the "autoload" process begins.  Particularly useful for
         the :meth:`.events.column_reflect` event::
-        
+
             def listen_for_reflect(table, column_info):
                 "handle the column reflection event"
                 # ...
-                
+
             t = Table(
                 'sometable', 
                 autoload=True,
@@ -234,7 +245,7 @@ class Table(SchemaItem, expression.TableClause):
     :param schema: The *schema name* for this table, which is required if 
         the table resides in a schema other than the default selected schema
         for the engine's database connection. Defaults to ``None``.
-    
+
     :param useexisting: Deprecated.  Use extend_existing.
 
     """
@@ -298,11 +309,11 @@ class Table(SchemaItem, expression.TableClause):
 
     def __init__(self, *args, **kw):
         """Constructor for :class:`~.schema.Table`.
-        
+
         This method is a no-op.   See the top-level
         documentation for :class:`~.schema.Table`
         for constructor arguments.
-        
+
         """
         # __init__ is overridden to prevent __new__ from 
         # calling the superclass constructor.
@@ -331,6 +342,8 @@ class Table(SchemaItem, expression.TableClause):
 
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
+        # this argument is only used with _init_existing()
+        kwargs.pop('autoload_replace', True)
         include_columns = kwargs.pop('include_columns', None)
 
         self.implicit_returning = kwargs.pop('implicit_returning', True)
@@ -356,14 +369,14 @@ class Table(SchemaItem, expression.TableClause):
         # allow user-overrides
         self._init_items(*args)
 
-    def _autoload(self, metadata, autoload_with, include_columns):
+    def _autoload(self, metadata, autoload_with, include_columns, exclude_columns=None):
         if self.primary_key.columns:
             PrimaryKeyConstraint()._set_parent_with_dispatch(self)
 
         if autoload_with:
             autoload_with.run_callable(
                 autoload_with.dialect.reflecttable,
-                self, include_columns
+                self, include_columns, exclude_columns
             )
         else:
             bind = _bind_or_error(metadata, 
@@ -374,7 +387,7 @@ class Table(SchemaItem, expression.TableClause):
                     "metadata.bind=<someengine>")
             bind.run_callable(
                     bind.dialect.reflecttable,
-                    self, include_columns
+                    self, include_columns, exclude_columns
                 )
 
     @property
@@ -386,6 +399,7 @@ class Table(SchemaItem, expression.TableClause):
     def _init_existing(self, *args, **kwargs):
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', None)
+        autoload_replace = kwargs.pop('autoload_replace', True)
         schema = kwargs.pop('schema', None)
         if schema and schema != self.schema:
             raise exc.ArgumentError(
@@ -393,10 +407,11 @@ class Table(SchemaItem, expression.TableClause):
                 (self.schema, schema))
 
         include_columns = kwargs.pop('include_columns', None)
-        if include_columns:
+
+        if include_columns is not None:
             for c in self.c:
                 if c.name not in include_columns:
-                    self._columns.remove(c)
+                   self._columns.remove(c)
 
         for key in ('quote', 'quote_schema'):
             if key in kwargs:
@@ -406,7 +421,11 @@ class Table(SchemaItem, expression.TableClause):
             self.info = kwargs.pop('info')
 
         if autoload:
-            self._autoload(self.metadata, autoload_with, include_columns)
+            if not autoload_replace:
+                exclude_columns = [c.name for c in self.c]
+            else:
+                exclude_columns = None
+            self._autoload(self.metadata, autoload_with, include_columns, exclude_columns)
 
         self._extra_kwargs(**kwargs)
         self._init_items(*args)
@@ -473,14 +492,14 @@ class Table(SchemaItem, expression.TableClause):
 
     def append_column(self, column):
         """Append a :class:`~.schema.Column` to this :class:`~.schema.Table`.
-        
+
         The "key" of the newly added :class:`~.schema.Column`, i.e. the
         value of its ``.key`` attribute, will then be available
         in the ``.c`` collection of this :class:`~.schema.Table`, and the
         column definition will be included in any CREATE TABLE, SELECT,
         UPDATE, etc. statements generated from this :class:`~.schema.Table`
         construct.
-        
+
         Note that this does **not** change the definition of the table 
         as it exists within any underlying database, assuming that
         table has already been created in the database.   Relational 
@@ -488,26 +507,26 @@ class Table(SchemaItem, expression.TableClause):
         using the SQL ALTER command, which would need to be 
         emitted for an already-existing table that doesn't contain
         the newly added column.
-        
+
         """
 
         column._set_parent_with_dispatch(self)
 
     def append_constraint(self, constraint):
         """Append a :class:`~.schema.Constraint` to this :class:`~.schema.Table`.
-        
+
         This has the effect of the constraint being included in any
         future CREATE TABLE statement, assuming specific DDL creation 
         events have not been associated with the given :class:`~.schema.Constraint` 
         object.
-        
+
         Note that this does **not** produce the constraint within the 
         relational database automatically, for a table that already exists
         in the database.   To add a constraint to an
         existing relational database table, the SQL ALTER command must
         be used.  SQLAlchemy also provides the :class:`.AddConstraint` construct
         which can produce this SQL when invoked as an executable clause.
-        
+
         """
 
         constraint._set_parent_with_dispatch(self)
@@ -725,7 +744,7 @@ class Column(SchemaItem, expression.ColumnClause):
             any effect in this regard for databases that use sequences 
             to generate primary key identifiers (i.e. Firebird, Postgresql, 
             Oracle).
-            
+
           As of 0.7.4, ``autoincrement`` accepts a special value ``'ignore_fk'``
           to indicate that autoincrementing status regardless of foreign key
           references.  This applies to certain composite foreign key
@@ -975,21 +994,22 @@ class Column(SchemaItem, expression.ColumnClause):
         if self.key is None:
             self.key = self.name
 
-        if getattr(self, 'table', None) is not None:
+        existing = getattr(self, 'table', None)
+        if existing is not None and existing is not table:
             raise exc.ArgumentError(
                     "Column object already assigned to Table '%s'" % 
-                    self.table.description)
+                    existing.description)
 
         if self.key in table._columns:
             col = table._columns.get(self.key)
-            for fk in list(col.foreign_keys):
-                col.foreign_keys.remove(fk)
-                table.foreign_keys.remove(fk)
-                if fk.constraint in table.constraints:
-                    # this might have been removed
-                    # already, if it's a composite constraint
-                    # and more than one col being replaced
-                    table.constraints.remove(fk.constraint)
+            if col is not self:
+                for fk in list(col.foreign_keys):
+                    table.foreign_keys.remove(fk)
+                    if fk.constraint in table.constraints:
+                        # this might have been removed
+                        # already, if it's a composite constraint
+                        # and more than one col being replaced
+                        table.constraints.remove(fk.constraint)
 
         table._columns.replace(self)
 
@@ -1653,7 +1673,7 @@ class Sequence(DefaultGenerator):
         """Return a :class:`.next_value` function element
         which will render the appropriate increment function
         for this :class:`.Sequence` within any SQL expression.
-        
+
         """
         return expression.func.next_value(self, bind=self.bind)
 
@@ -2140,9 +2160,9 @@ class Index(ColumnCollectionMixin, SchemaItem):
     Defines a composite (one or more column) INDEX. For a no-frills, single
     column index, adding ``index=True`` to the ``Column`` definition is
     a shorthand equivalent for an unnamed, single column :class:`.Index`.
-    
+
     See also:
-    
+
     :ref:`schema_indexes` - General information on :class:`.Index`.
 
     :ref:`postgresql_indexes` - PostgreSQL-specific options available for the :class:`.Index` construct.
@@ -2261,11 +2281,11 @@ class MetaData(SchemaItem):
 
     MetaData is a thread-safe object after tables have been explicitly defined
     or loaded via reflection.
-    
+
     See also:
-    
+
     :ref:`metadata_describing` - Introduction to database metadata
-    
+
     :ref:`metadata_binding` - Information on binding connectables to :class:`.MetaData`
 
     .. index::
@@ -3016,9 +3036,9 @@ class _CreateDropBase(DDLElement):
 
 class CreateSchema(_CreateDropBase):
     """Represent a CREATE SCHEMA statement.
-    
+
     New in 0.7.4.
-    
+
     The argument here is the string name of the schema.
 
     """
@@ -3035,7 +3055,7 @@ class DropSchema(_CreateDropBase):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
-    
+
     New in 0.7.4.
     """
 
