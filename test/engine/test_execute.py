@@ -3,7 +3,7 @@ import re
 from test.lib.util import picklers
 from sqlalchemy.interfaces import ConnectionProxy
 from sqlalchemy import MetaData, Integer, String, INT, VARCHAR, func, \
-    bindparam, select, event, TypeDecorator
+    bindparam, select, event, TypeDecorator, create_engine, Sequence
 from sqlalchemy.sql import column, literal
 from test.lib.schema import Table, Column
 import sqlalchemy as tsa
@@ -14,6 +14,7 @@ from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
 from sqlalchemy.engine import base, default
 from sqlalchemy.engine.base import Connection, Engine
 from test.lib import fixtures
+import StringIO
 
 users, metadata = None, None
 class ExecuteTest(fixtures.TestBase):
@@ -570,6 +571,34 @@ class EchoTest(fixtures.TestBase):
         assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
         assert self.buf.buffer[2].getMessage().startswith("SELECT 6")
         assert len(self.buf.buffer) == 4
+
+class MockStrategyTest(fixtures.TestBase):
+    def _engine_fixture(self):
+        buf = StringIO.StringIO()
+        def dump(sql, *multiparams, **params):
+            buf.write(sql.compile(dialect=engine.dialect))
+        engine = create_engine('postgresql://', strategy='mock', executor=dump)
+        return engine, buf
+
+    def test_sequence_not_duped(self):
+        engine, buf = self._engine_fixture()
+        metadata = MetaData()
+        t = Table('testtable', metadata,
+           Column('pk', Integer, Sequence('testtable_pk_seq'), primary_key=True)
+        )
+
+        t.create(engine)
+        t.drop(engine)
+
+        eq_(
+            re.findall(r'CREATE (\w+)', buf.getvalue()),
+            ["SEQUENCE", "TABLE"]
+        )
+
+        eq_(
+            re.findall(r'DROP (\w+)', buf.getvalue()),
+            ["SEQUENCE", "TABLE"]
+        )
 
 class ResultProxyTest(fixtures.TestBase):
 

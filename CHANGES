@@ -102,6 +102,11 @@ CHANGES
     inappropriately when targeting in a result
     set row.  [ticket:2377]
 
+  - [bug] Fixed bug in "mock" strategy whereby
+    correct DDL visit method wasn't called, resulting
+    in "CREATE/DROP SEQUENCE" statements being 
+    duplicated [ticket:2384]
+
 - sqlite
   - [bug] the "name" of an FK constraint in SQLite
     is reflected as "None", not "0" or other 

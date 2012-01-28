@@ -234,19 +234,19 @@ class MockEngineStrategy(EngineStrategy):
             kwargs['checkfirst'] = False
             from sqlalchemy.engine import ddl
 
-            ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse(entity)
+            ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse_single(entity)
 
         def drop(self, entity, **kwargs):
             kwargs['checkfirst'] = False
             from sqlalchemy.engine import ddl
-            ddl.SchemaDropper(self.dialect, self, **kwargs).traverse(entity)
+            ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
 
         def _run_visitor(self, visitorcallable, element, 
                                         connection=None, 
                                         **kwargs):
             kwargs['checkfirst'] = False
             visitorcallable(self.dialect, self,
-                                **kwargs).traverse(element)
+                                **kwargs).traverse_single(element)
 
         def execute(self, object, *multiparams, **params):
             raise NotImplementedError()
