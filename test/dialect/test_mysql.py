@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 
 # Py2K
 import sets
@@ -1185,7 +1185,22 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             Unicode(),
         ):
             type_ = sqltypes.to_instance(type_)
-            assert_raises(exc.InvalidRequestError, type_.compile, dialect=mysql.dialect())
+            assert_raises_message(
+                exc.CompileError, 
+                "VARCHAR requires a length on dialect mysql",
+                type_.compile, 
+            dialect=mysql.dialect())
+
+            t1 = Table('sometable', MetaData(),
+                Column('somecolumn', type_)
+            )
+            assert_raises_message(
+                exc.CompileError,
+                r"\(in table 'sometable', column 'somecolumn'\)\: "
+                r"(?:N)?VARCHAR requires a length on dialect mysql",
+                schema.CreateTable(t1).compile,
+                dialect=mysql.dialect()
+            )
 
     def test_update_limit(self):
         t = sql.table('t', sql.column('col1'), sql.column('col2'))

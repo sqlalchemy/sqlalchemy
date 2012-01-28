@@ -804,7 +804,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.process(select._order_by_clause)
             if not orderby:
-                raise exc.InvalidRequestError('MSSQL requires an order_by when '
+                raise exc.CompileError('MSSQL requires an order_by when '
                                               'using an offset.')
 
             _offset = select._offset
@@ -1029,7 +1029,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 colspec += " NULL"
 
         if column.table is None:
-            raise exc.InvalidRequestError(
+            raise exc.CompileError(
                             "mssql requires Table-bound columns " 
                             "in order to generate DDL")
 

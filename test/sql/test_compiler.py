@@ -1,12 +1,15 @@
+#! coding:utf-8
+
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 import datetime, re, operator, decimal
 from sqlalchemy import *
-from sqlalchemy import exc, sql, util
+from sqlalchemy import exc, sql, util, types, schema
 from sqlalchemy.sql import table, column, label, compiler
 from sqlalchemy.sql.expression import ClauseList, _literal_as_text
 from sqlalchemy.engine import default
 from sqlalchemy.databases import *
 from test.lib import *
+from sqlalchemy.ext.compiler import compiles
 
 table1 = table('mytable',
     column('myid', Integer),
@@ -2811,6 +2814,40 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update().where(t.c.id==bindparam(key=t.c.id._label)),
             "UPDATE foo SET id=:id, foo_id=:foo_id WHERE foo.id = :foo_id_1"
         )
+
+class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def _illegal_type_fixture(self):
+        class MyType(types.TypeEngine):
+            pass
+        @compiles(MyType)
+        def compile(element, compiler, **kw):
+            raise exc.CompileError("Couldn't compile type")
+        return MyType
+
+    def test_reraise_of_column_spec_issue(self):
+        MyType = self._illegal_type_fixture()
+        t1 = Table('t', MetaData(),
+            Column('x', MyType())
+        )
+        assert_raises_message(
+            exc.CompileError,
+            r"\(in table 't', column 'x'\): Couldn't compile type",
+            schema.CreateTable(t1).compile
+        )
+
+    def test_reraise_of_column_spec_issue_unicode(self):
+        MyType = self._illegal_type_fixture()
+        t1 = Table('t', MetaData(),
+            Column(u'méil', MyType())
+        )
+        assert_raises_message(
+            exc.CompileError,
+            ur"\(in table 't', column 'méil'\): Couldn't compile type",
+            schema.CreateTable(t1).compile
+        )
+
 
 class InlineDefaultTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'

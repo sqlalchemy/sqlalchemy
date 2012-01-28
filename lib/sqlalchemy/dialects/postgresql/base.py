@@ -874,7 +874,7 @@ class PGIdentifierPreparer(compiler.IdentifierPreparer):
 
     def format_type(self, type_, use_schema=True):
         if not type_.name:
-            raise exc.ArgumentError("Postgresql ENUM type requires a name.")
+            raise exc.CompileError("Postgresql ENUM type requires a name.")
 
         name = self.quote(type_.name, type_.quote)
         if not self.omit_schema and use_schema and type_.schema is not None:

@@ -1651,7 +1651,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
-            raise exc.InvalidRequestError(
+            raise exc.CompileError(
                     "VARCHAR requires a length on dialect %s" % 
                     self.dialect.name)
 
@@ -1667,7 +1667,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         if type_.length:
             return self._extend_string(type_, {'national':True}, "VARCHAR(%(length)s)" % {'length': type_.length})
         else:
-            raise exc.InvalidRequestError(
+            raise exc.CompileError(
                     "NVARCHAR requires a length on dialect %s" % 
                     self.dialect.name)
 

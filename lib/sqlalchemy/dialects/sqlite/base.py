@@ -322,7 +322,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             return "CAST(STRFTIME('%s', %s) AS INTEGER)" % (
                 self.extract_map[extract.field], self.process(extract.expr, **kw))
         except KeyError:
-            raise exc.ArgumentError(
+            raise exc.CompileError(
                 "%s is not a valid extract argument." % extract.field)
 
     def limit_clause(self, select):

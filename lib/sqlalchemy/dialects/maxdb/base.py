@@ -635,7 +635,7 @@ class MaxDBCompiler(compiler.SQLCompiler):
                 # LIMIT.  Right?  Other dialects seem to get away with
                 # dropping order.
                 if select._limit:
-                    raise exc.InvalidRequestError(
+                    raise exc.CompileError(
                         "MaxDB does not support ORDER BY in subqueries")
                 else:
                     return ""

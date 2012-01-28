@@ -84,6 +84,13 @@ CHANGES
     constructs to sqlalchemy.sql namespace, though
     not part of __all__ as of yet.
 
+  - [feature] Dialect-specific compilers now raise
+    CompileException for all type/statement compilation 
+    issues, instead of InvalidRequestError or ArgumentError. 
+    The DDL for CREATE TABLE will re-raise 
+    CompileExceptions to include table/column information
+    for the problematic column.  [ticket:2361]
+
   - [bug] Fixed issue where the "required" exception
     would not be raised for bindparam() with required=True,
     if the statement were given no parameters at all.
