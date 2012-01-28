@@ -79,6 +79,11 @@ CHANGES
     relationship().  Thanks to Kent Bower
     for tests.  [ticket:2374]
 
+  - [feature] New declarative reflection example
+    added, illustrates how best to mix table reflection
+    with declarative as well as uses some new features
+    from [ticket:2356].
+
 - sql
   - [feature] New reflection feature "autoload_replace";
     when set to False on Table, the Table can be autoloaded
