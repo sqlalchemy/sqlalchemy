@@ -1918,6 +1918,48 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             {'x':12}
         )
 
+    def test_bind_params_missing(self):
+        assert_raises_message(exc.InvalidRequestError, 
+            r"A value is required for bind parameter 'x'",
+            select([table1]).where(
+                    and_(
+                        table1.c.myid==bindparam("x", required=True), 
+                        table1.c.name==bindparam("y", required=True)
+                    )
+                ).compile().construct_params,
+            params=dict(y=5)
+        )
+
+        assert_raises_message(exc.InvalidRequestError, 
+            r"A value is required for bind parameter 'x'",
+            select([table1]).where(
+                    table1.c.myid==bindparam("x", required=True)
+                ).compile().construct_params
+        )
+
+        assert_raises_message(exc.InvalidRequestError, 
+            r"A value is required for bind parameter 'x', "
+                "in parameter group 2",
+            select([table1]).where(
+                    and_(
+                        table1.c.myid==bindparam("x", required=True), 
+                        table1.c.name==bindparam("y", required=True)
+                    )
+                ).compile().construct_params,
+            params=dict(y=5),
+            _group_number=2
+        )
+
+        assert_raises_message(exc.InvalidRequestError, 
+            r"A value is required for bind parameter 'x', "
+                "in parameter group 2",
+            select([table1]).where(
+                    table1.c.myid==bindparam("x", required=True)
+                ).compile().construct_params,
+            _group_number=2
+        )
+
+
 
     @testing.emits_warning('.*empty sequence.*')
     def test_in(self):

@@ -289,7 +289,7 @@ class SQLCompiler(engine.Compiled):
     def sql_compiler(self):
         return self
 
-    def construct_params(self, params=None, _group_number=None):
+    def construct_params(self, params=None, _group_number=None, _check=True):
         """return a dictionary of bind parameter keys and values"""
 
         if params:
@@ -299,29 +299,40 @@ class SQLCompiler(engine.Compiled):
                     pd[name] = params[bindparam.key]
                 elif name in params:
                     pd[name] = params[name]
-                elif bindparam.required:
+                elif _check and bindparam.required:
                     if _group_number:
                         raise exc.InvalidRequestError(
-                                "A value is required for bind parameter %r, "
-                                "in parameter group %d" % 
-                                (bindparam.key, _group_number))
+                            "A value is required for bind parameter %r, "
+                            "in parameter group %d" % 
+                            (bindparam.key, _group_number))
                     else:
                         raise exc.InvalidRequestError(
-                                "A value is required for bind parameter %r" 
-                                % bindparam.key)
+                            "A value is required for bind parameter %r" 
+                            % bindparam.key)
                 else:
                     pd[name] = bindparam.effective_value
             return pd
         else:
             pd = {}
             for bindparam in self.bind_names:
+                if _check and bindparam.required:
+                    if _group_number:
+                        raise exc.InvalidRequestError(
+                            "A value is required for bind parameter %r, "
+                            "in parameter group %d" % 
+                            (bindparam.key, _group_number))
+                    else:
+                        raise exc.InvalidRequestError(
+                            "A value is required for bind parameter %r" 
+                            % bindparam.key)
                 pd[self.bind_names[bindparam]] = bindparam.effective_value
             return pd
 
-    params = property(construct_params, doc="""
-        Return the bind params for this compiled object.
-
-    """)
+    @property
+    def params(self):
+        """Return the bind param dictionary embedded into this 
+        compiled object, for those values that are present."""
+        return self.construct_params(_check=False)
 
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is

@@ -78,6 +78,11 @@ CHANGES
     constructs to sqlalchemy.sql namespace, though
     not part of __all__ as of yet.
 
+  - [bug] Fixed issue where the "required" exception
+    would not be raised for bindparam() with required=True,
+    if the statement were given no parameters at all.
+    [ticket:2381]
+
 - engine
   - [bug] Added __reduce__ to StatementError, 
     DBAPIError, column errors so that exceptions 
