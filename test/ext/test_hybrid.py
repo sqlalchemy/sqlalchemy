@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship, Session, aliased
 from test.lib.schema import Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext import hybrid
-from test.lib.testing import eq_, AssertsCompiledSQL
+from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message
 from test.lib import fixtures
 
 class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -191,7 +191,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
-    def _fixture(self):
+    def _fixture(self, assignable):
         Base = declarative_base()
 
         class A(Base):
@@ -203,14 +203,34 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
             def value(self):
                 return self._value - 5
 
-            @value.setter
-            def value(self, v):
-                self._value = v + 5
+            if assignable:
+                @value.setter
+                def value(self, v):
+                    self._value = v + 5
 
         return A
 
+    def test_nonassignable(self):
+        A = self._fixture(False)
+        a1 = A(_value=5)
+        assert_raises_message(
+            AttributeError, 
+            "can't set attribute",
+            setattr, a1, 'value', 10
+        )
+
+    def test_nondeletable(self):
+        A = self._fixture(False)
+        a1 = A(_value=5)
+        assert_raises_message(
+            AttributeError, 
+            "can't delete attribute",
+            delattr, a1, 'value'
+        )
+
+
     def test_set_get(self):
-        A = self._fixture()
+        A = self._fixture(True)
         a1 = A(value=5)
         eq_(a1.value, 5)
         eq_(a1._value, 10)

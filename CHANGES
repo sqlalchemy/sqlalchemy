@@ -52,6 +52,11 @@ CHANGES
   - [bug] ensure pickleability of all ORM exceptions
     for multiprocessing compatibility. [ticket:2371]
 
+  - [bug] implemented standard "can't set attribute" / 
+    "can't delete attribute" AttributeError when 
+    setattr/delattr used on a hybrid that doesn't 
+    define fset or fdel. [ticket:2353]
+
 - sql
   - [feature] Added "false()" and "true()" expression
     constructs to sqlalchemy.sql namespace, though

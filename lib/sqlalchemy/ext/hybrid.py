@@ -613,9 +613,13 @@ class hybrid_property(object):
             return self.fget(instance)
 
     def __set__(self, instance, value):
+        if self.fset is None:
+            raise AttributeError("can't set attribute")
         self.fset(instance, value)
 
     def __delete__(self, instance):
+        if self.fdel is None:
+            raise AttributeError("can't delete attribute")
         self.fdel(instance)
 
     def setter(self, fset):
