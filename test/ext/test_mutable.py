@@ -21,6 +21,10 @@ class FooWithEq(object):
     def __init__(self, **kw):
         for k in kw:
             setattr(self, k, kw[k])
+
+    def __hash__(self):
+        return hash(self.id)
+
     def __eq__(self, other):
         return self.id == other.id
 
