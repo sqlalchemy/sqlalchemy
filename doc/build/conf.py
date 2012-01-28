@@ -64,9 +64,9 @@ copyright = u'2007-2012, the SQLAlchemy authors and contributors'
 # The short X.Y version.
 version = "0.7"
 # The full version, including alpha/beta/rc tags.
-release = "0.7.4"
+release = "0.7.5"
 
-release_date = "December 9, 2011"
+release_date = "January 28, 2012"
 
 site_base = "http://www.sqlalchemy.org"
 
