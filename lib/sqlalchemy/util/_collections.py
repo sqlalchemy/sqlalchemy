@@ -769,10 +769,15 @@ class LRUCache(dict):
     def __init__(self, capacity=100, threshold=.5):
         self.capacity = capacity
         self.threshold = threshold
+        self._counter = 0
+
+    def _inc_counter(self):
+        self._counter += 1
+        return self._counter
 
     def __getitem__(self, key):
         item = dict.__getitem__(self, key)
-        item[2] = time_func()
+        item[2] = self._inc_counter()
         return item[1]
 
     def values(self):
@@ -788,7 +793,7 @@ class LRUCache(dict):
     def __setitem__(self, key, value):
         item = dict.get(self, key)
         if item is None:
-            item = [key, value, time_func()]
+            item = [key, value, self._inc_counter()]
             dict.__setitem__(self, key, item)
         else:
             item[1] = value
@@ -796,10 +801,10 @@ class LRUCache(dict):
 
     def _manage_size(self):
         while len(self) > self.capacity + self.capacity * self.threshold:
-            bytime = sorted(dict.values(self), 
+            by_counter = sorted(dict.values(self), 
                             key=operator.itemgetter(2),
                             reverse=True)
-            for item in bytime[self.capacity:]:
+            for item in by_counter[self.capacity:]:
                 try:
                     del self[item[0]]
                 except KeyError:

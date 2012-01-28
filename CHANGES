@@ -119,6 +119,15 @@ CHANGES
     list of oracle "connection lost" errors
     [ticket:2388]
 
+- core
+  - [bug] Changed LRUCache, used by the mapper
+    to cache INSERT/UPDATE/DELETE statements,
+    to use an incrementing counter instead
+    of a timestamp to track entries, for greater
+    reliability versus using time.time(), which
+    can cause test failures on some platforms.
+    [ticket:2379]
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 
