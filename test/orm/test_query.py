@@ -2454,7 +2454,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_nonexistent_PropComparator(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword],
             (joinedload(Item.keywords), ),
             r"Can't find property 'keywords' on any entity specified "
@@ -2464,7 +2464,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
     def test_option_against_nonexistent_basestring(self):
         Item = self.classes.Item
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Item],
             (joinedload("foo"), ),
             r"Can't find property named 'foo' on the mapped "
@@ -2473,7 +2473,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
     def test_option_against_nonexistent_twolevel_basestring(self):
         Item = self.classes.Item
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Item],
             (joinedload("keywords.foo"), ),
             r"Can't find property named 'foo' on the mapped entity "
@@ -2482,7 +2482,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
     def test_option_against_nonexistent_twolevel_all(self):
         Item = self.classes.Item
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Item],
             (joinedload_all("keywords.foo"), ),
             r"Can't find property named 'foo' on the mapped entity "
@@ -2494,7 +2494,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_non_relation_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all("keywords"), ),
             r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
@@ -2506,7 +2506,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_multi_non_relation_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all("keywords"), ),
             r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
@@ -2515,7 +2515,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
     def test_option_against_wrong_entity_type_basestring(self):
         Item = self.classes.Item
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Item],
             (joinedload_all("id", "keywords"), ),
             r"Attribute 'id' of entity 'Mapper\|Item\|items' does not "
@@ -2525,7 +2525,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_multi_non_relation_twolevel_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all("id", "keywords"), ),
             r"Attribute 'id' of entity 'Mapper\|Keyword\|keywords' "
@@ -2535,7 +2535,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_multi_nonexistent_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all("description"), ),
             r"Can't find property named 'description' on the mapped "
@@ -2545,7 +2545,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_multi_no_entities_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
             (joinedload_all("keywords"), ),
             r"Query has only expression-based entities - can't find property "
@@ -2555,7 +2555,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_wrong_multi_entity_type_attr_one(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all(Keyword.id, Item.keywords), ),
             r"Attribute 'Keyword.id' of entity 'Mapper\|Keyword\|keywords' "
@@ -2565,7 +2565,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_wrong_multi_entity_type_attr_two(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword, Item],
             (joinedload_all(Keyword.keywords, Item.keywords), ),
             r"Attribute 'Keyword.keywords' of entity 'Mapper\|Keyword\|keywords' "
@@ -2575,7 +2575,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_option_against_wrong_multi_entity_type_attr_three(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
             (joinedload_all(Keyword.keywords, Item.keywords), ),
             r"Query has only expression-based entities - "
@@ -2585,14 +2585,33 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
     def test_wrong_type_in_option(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
-        self._assert_eager_not_found_exception(
+        self._assert_eager_with_entity_exception(
             [Item],
             (joinedload_all(Keyword), ),
             r"mapper option expects string key or list of attributes"
         )
 
+    def test_non_contiguous_all_option(self):
+        User = self.classes.User
+        self._assert_eager_with_entity_exception(
+            [User],
+            (joinedload_all(User.addresses, User.orders), ),
+            r"Attribute 'User.orders' does not link "
+            "from element 'Mapper|Address|addresses'"
+        )
+
     @classmethod
     def setup_mappers(cls):
+        users, User, addresses, Address, orders, Order = (
+                    cls.tables.users, cls.classes.User, 
+                    cls.tables.addresses, cls.classes.Address,
+                    cls.tables.orders, cls.classes.Order)
+        mapper(User, users, properties={
+            'addresses':relationship(Address),
+            'orders':relationship(Order)
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders)
         keywords, items, item_keywords, Keyword, Item = (cls.tables.keywords,
                                 cls.tables.items,
                                 cls.tables.item_keywords,
@@ -2613,7 +2632,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         key = ('loaderstrategy', (class_mapper(Item), 'keywords'))
         assert key in q._attributes
 
-    def _assert_eager_not_found_exception(self, entity_list, options, 
+    def _assert_eager_with_entity_exception(self, entity_list, options, 
                                 message):
         assert_raises_message(sa.exc.ArgumentError, 
                                 message,

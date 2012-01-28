@@ -8,6 +8,9 @@ class User(fixtures.ComparableEntity):
 class Order(fixtures.ComparableEntity):
     pass
 
+class Dingaling(fixtures.ComparableEntity):
+    pass
+
 class EmailUser(User):
     pass
 

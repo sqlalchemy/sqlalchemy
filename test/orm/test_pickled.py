@@ -13,7 +13,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             lazyload, aliased
 from test.lib import fixtures
 from test.orm import _fixtures
-from test.lib.pickleable import User, Address, Order, Child1, Child2, Parent, Screen, EmailUser
+from test.lib.pickleable import User, Address, Dingaling, Order, \
+    Child1, Child2, Parent, Screen, EmailUser
 
 
 class PickleTest(fixtures.MappedTest):
@@ -41,6 +42,13 @@ class PickleTest(fixtures.MappedTest):
                   Column('isopen', Integer),
                   test_needs_acid=True,
                   test_needs_fk=True
+        )
+        Table("dingalings", metadata,
+              Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
+              Column('address_id', None, ForeignKey('addresses.id')),
+              Column('data', String(30)),
+              test_needs_acid=True,
+              test_needs_fk=True
         )
 
 
@@ -261,13 +269,17 @@ class PickleTest(fixtures.MappedTest):
 
 
     def test_options_with_descriptors(self):
-        users, addresses = (self.tables.users,
-                                self.tables.addresses)
+        users, addresses, dingalings = (self.tables.users,
+                                self.tables.addresses,
+                                self.tables.dingalings)
 
         mapper(User, users, properties={
             'addresses':relationship(Address, backref="user")
         })
-        mapper(Address, addresses)
+        mapper(Address, addresses, properties={
+            'dingaling':relationship(Dingaling)
+        })
+        mapper(Dingaling, dingalings)
         sess = create_session()
         u1 = User(name='ed')
         u1.addresses.append(Address(email_address='ed@bar.com'))
@@ -280,13 +292,12 @@ class PickleTest(fixtures.MappedTest):
             sa.orm.joinedload("addresses"),
             sa.orm.defer("name"),
             sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses", User.addresses),
+            sa.orm.joinedload("addresses", Address.dingaling),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
             eq_(opt.key, opt2.key)
 
         u1 = sess.query(User).options(opt).first()
-
         u2 = pickle.loads(pickle.dumps(u1))
 
     def test_collection_setstate(self):

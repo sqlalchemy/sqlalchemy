@@ -568,7 +568,12 @@ class PropertyOption(MapperOption):
                         "mapper option expects "
                         "string key or list of attributes")
             assert prop is not None
+            if raiseerr and not prop.parent.common_parent(mapper):
+                raise sa_exc.ArgumentError("Attribute '%s' does not "
+                            "link from element '%s'" % (token, path_element))
+
             path = build_path(path_element, prop.key, path)
+
             l.append(path)
             if getattr(token, '_of_type', None):
                 path_element = mapper = token._of_type
@@ -580,8 +585,6 @@ class PropertyOption(MapperOption):
                         "refer to a mapped entity" %
                         (token, entity)
                     )
-            if path_element:
-                path_element = path_element
 
         if current_path:
             # ran out of tokens before 

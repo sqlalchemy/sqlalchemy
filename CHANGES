@@ -21,6 +21,10 @@ CHANGES
     superclass as "polymorphic_on" failed to resolve
     the underlying Column.  [ticket:2345]
 
+  - [bug] Raise an exception if xyzload_all() is
+    used inappropriately with two non-connected
+    relationships.  [ticket:2370]
+
   - [feature] Added "class_registry" argument to
     declarative_base().  Allows two or more declarative
     bases to share the same registry of class names.
