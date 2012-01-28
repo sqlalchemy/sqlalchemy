@@ -128,6 +128,14 @@ CHANGES
     can cause test failures on some platforms.
     [ticket:2379]
 
+  - [bug] Added a boolean check for the "finalize"
+    function within the pool connection proxy's
+    weakref callback before calling it, so that a 
+    warning isn't emitted that this function is None 
+    when the application is exiting and gc has
+    removed the function from the module before the 
+    weakref callback was invoked.  [ticket:2383]
+
 - Py3K
   - [bug] Fixed inappropriate usage of util.py3k
     flag and renamed it to util.py3k_warning, since 

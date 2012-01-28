@@ -372,7 +372,7 @@ class _ConnectionFairy(object):
             conn = self.connection = self._connection_record.get_connection()
             rec.fairy = weakref.ref(
                             self, 
-                            lambda ref:_finalize_fairy(conn, rec, pool, ref, _echo)
+                            lambda ref:_finalize_fairy and _finalize_fairy(conn, rec, pool, ref, _echo)
                         )
             _refs.add(rec)
         except:
