@@ -264,7 +264,7 @@ to a table::
 ``__table__`` provides a more focused point of control for establishing
 table metadata, while still getting most of the benefits of using declarative.
 An application that uses reflection might want to load table metadata elsewhere
-and simply pass it to declarative classes::
+and pass it to declarative classes::
 
     from sqlalchemy.ext.declarative import declarative_base
 
@@ -312,6 +312,39 @@ a synonym for ``name``::
         @synonym_for("_name")
         def name(self):
             return "Name: %s" % _name
+
+Using Reflection with Declarative
+=================================
+
+It's easy to set up a :class:`.Table` that uses ``autoload=True``
+in conjunction with a mapped class::
+
+    class MyClass(Base):
+        __table__ = Table('mytable', Base.metadata, 
+                        autoload=True, autoload_with=some_engine)
+
+However, one improvement that can be made here is to not 
+require the :class:`.Engine` to be available when classes are 
+being first declared.   To achieve this, use the example
+described at :ref:`examples_declarative_reflection` to build a 
+declarative base that sets up mappings only after a special 
+``prepare(engine)`` step is called::
+
+    Base = declarative_base(cls=DeclarativeReflectedBase)
+
+    class Foo(Base):
+        __tablename__ = 'foo'
+        bars = relationship("Bar")
+
+    class Bar(Base):
+        __tablename__ = 'bar'
+
+        # illustrate overriding of "bar.foo_id" to have 
+        # a foreign key constraint otherwise not
+        # reflected, such as when using MySQL
+        foo_id = Column(Integer, ForeignKey('foo.id'))
+
+    Base.prepare(e)
 
         
 Mapper Configuration

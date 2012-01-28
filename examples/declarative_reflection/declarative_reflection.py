@@ -41,6 +41,10 @@ if __name__ == '__main__':
 
     class Bar(Base):
         __tablename__ = 'bar'
+
+        # illustrate overriding of "bar.foo_id" to have 
+        # a foreign key constraint otherwise not
+        # reflected, such as when using MySQL
         foo_id = Column(Integer, ForeignKey('foo.id'))
 
     e = create_engine('sqlite://', echo=True)

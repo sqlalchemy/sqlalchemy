@@ -18,7 +18,7 @@ classes to override reflected columns.
 
 Usage example::
 
-    Base= declarative_base(cls=DeclarativeReflectedBase)
+    Base = declarative_base(cls=DeclarativeReflectedBase)
 
     class Foo(Base):
         __tablename__ = 'foo'
@@ -26,6 +26,10 @@ Usage example::
 
     class Bar(Base):
         __tablename__ = 'bar'
+
+        # illustrate overriding of "bar.foo_id" to have 
+        # a foreign key constraint otherwise not
+        # reflected, such as when using MySQL
         foo_id = Column(Integer, ForeignKey('foo.id'))
 
     Base.prepare(e)

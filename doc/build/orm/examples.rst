@@ -44,6 +44,14 @@ Location: /examples/beaker_caching/
 
 .. automodule:: beaker_caching
 
+.. _examples_declarative_reflection:
+
+Declarative Reflection
+----------------------
+
+Location: /examples/declarative_reflection
+
+.. automodule:: declarative_reflection
 
 Directed Graphs
 ---------------
