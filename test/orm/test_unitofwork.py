@@ -2483,3 +2483,13 @@ class PartialNullPKTest(fixtures.MappedTest):
             "check that the database table allows generation ",
             s.commit
         )
+
+    def test_dont_complain_if_no_update(self):
+        T1 = self.classes.T1
+        s = Session()
+        t = T1(col1="1", col2=None)
+        s.add(t)
+        s.commit()
+
+        t.col1 = "1"
+        s.commit()

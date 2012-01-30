@@ -2095,7 +2095,7 @@ class Mapper(object):
                     insert.append((state, state_dict, params, mapper, 
                                     connection, value_params, has_all_pks))
                 else:
-                    hasdata = False
+                    hasdata = hasnull = False
                     for col in mapper._cols_by_table[table]:
                         if col is mapper.version_id_col:
                             params[col._label] = \
@@ -2169,23 +2169,22 @@ class Mapper(object):
                                         del params[col.key]
                                         value = history.added[0]
                                         params[col._label] = value
-                                    if value is None and hasdata:
-                                        raise sa_exc.FlushError(
-                                                "Can't update table "
-                                                "using NULL for primary key "
-                                                "value")
+                                    if value is None:
+                                        hasnull = True
                                 else:
                                     hasdata = True
                             elif col in pks:
                                 value = state.manager[prop.key].\
                                             impl.get(state, state_dict)
                                 if value is None:
-                                    raise sa_exc.FlushError(
-                                                "Can't update table "
-                                                "using NULL for primary "
-                                                "key value")
+                                    hasnull = True
                                 params[col._label] = value
                     if hasdata:
+                        if hasnull:
+                            raise sa_exc.FlushError(
+                                        "Can't update table "
+                                        "using NULL for primary "
+                                        "key value")
                         update.append((state, state_dict, params, mapper, 
                                         connection, value_params))
 

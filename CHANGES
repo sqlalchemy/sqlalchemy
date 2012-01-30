@@ -13,6 +13,12 @@ CHANGES
     establishing only a subset of classes
     as reflected.
 
+  - [bug] Scaled back the test applied within
+    flush() to check for UPDATE against partially 
+    NULL PK within one table to only actually 
+    happen if there's really an UPDATE to occur.
+    [ticket:2390]
+
 0.7.5 (January 28, 2012)
 =====
 - orm
