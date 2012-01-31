@@ -608,9 +608,10 @@ def _emit_post_update_statements(base_mapper, uowtransaction,
     for key, grouper in groupby(
         update, lambda rec: (rec[4], rec[2].keys())
     ):
+        connection = key[0]
         multiparams = [params for state, state_dict, 
                                 params, mapper, conn in grouper]
-        cached_connections[conn].\
+        cached_connections[connection].\
                             execute(statement, multiparams)
 
 
