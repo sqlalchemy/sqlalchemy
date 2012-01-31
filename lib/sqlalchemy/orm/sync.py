@@ -6,6 +6,7 @@
 
 """private module containing functions used for copying data 
 between instances based on join conditions.
+
 """
 
 from sqlalchemy.orm import exc, util as mapperutil, attributes

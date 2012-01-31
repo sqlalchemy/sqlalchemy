@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     validates, aliased, defer, deferred, synonym, attributes, \
     column_property, composite, dynamic_loader, \
     comparable_property, Session
-from sqlalchemy.orm.mapper import _sort_states
+from sqlalchemy.orm.persistence import _sort_states
 from test.lib.testing import eq_, AssertsCompiledSQL
 from test.lib import fixtures
 from test.orm import _fixtures

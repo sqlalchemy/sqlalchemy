@@ -14,7 +14,7 @@ organizes them in order of dependency, and executes.
 
 from sqlalchemy import util, event
 from sqlalchemy.util import topological
-from sqlalchemy.orm import attributes, interfaces
+from sqlalchemy.orm import attributes, interfaces, persistence
 from sqlalchemy.orm import util as mapperutil
 session = util.importlater("sqlalchemy.orm", "session")
 
@@ -462,7 +462,7 @@ class IssuePostUpdate(PostSortRec):
         states, cols = uow.post_update_states[self.mapper]
         states = [s for s in states if uow.states[s][0] == self.isdelete]
 
-        self.mapper._post_update(states, uow, cols)
+        persistence.post_update(self.mapper, states, uow, cols)
 
 class SaveUpdateAll(PostSortRec):
     def __init__(self, uow, mapper):
@@ -470,7 +470,7 @@ class SaveUpdateAll(PostSortRec):
         assert mapper is mapper.base_mapper
 
     def execute(self, uow):
-        self.mapper._save_obj(
+        persistence.save_obj(self.mapper, 
             uow.states_for_mapper_hierarchy(self.mapper, False, False),
             uow
         )
@@ -493,7 +493,7 @@ class DeleteAll(PostSortRec):
         assert mapper is mapper.base_mapper
 
     def execute(self, uow):
-        self.mapper._delete_obj(
+        persistence.delete_obj(self.mapper,
             uow.states_for_mapper_hierarchy(self.mapper, True, False),
             uow
         )
@@ -551,7 +551,7 @@ class SaveUpdateState(PostSortRec):
                         if r.__class__ is cls_ and 
                         r.mapper is mapper]
         recs.difference_update(our_recs)
-        mapper._save_obj(
+        persistence.save_obj(mapper,
                         [self.state] + 
                         [r.state for r in our_recs], 
                         uow)
@@ -575,7 +575,7 @@ class DeleteState(PostSortRec):
                         r.mapper is mapper]
         recs.difference_update(our_recs)
         states = [self.state] + [r.state for r in our_recs]
-        mapper._delete_obj(
+        persistence.delete_obj(mapper,
                         [s for s in states if uow.states[s][0]], 
                         uow)
 
