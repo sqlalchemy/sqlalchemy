@@ -134,14 +134,15 @@ class Pool(log.Identified):
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
-        if reset_on_return in ('rollback', True):
+        if reset_on_return in ('rollback', True, reset_rollback):
             self._reset_on_return = reset_rollback
-        elif reset_on_return in (None, False):
+        elif reset_on_return in (None, False, reset_none):
             self._reset_on_return = reset_none
-        elif reset_on_return == 'commit':
+        elif reset_on_return in ('commit', reset_commit):
             self._reset_on_return = reset_commit
         else:
-            raise exc.ArgumentError("Invalid value for 'reset_on_return': %r" 
+            raise exc.ArgumentError(
+                        "Invalid value for 'reset_on_return': %r" 
                                     % reset_on_return)
 
         self.echo = echo
