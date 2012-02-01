@@ -57,6 +57,10 @@ def clear_managers():
         manager.close()
     proxies.clear()
 
+reset_rollback = util.symbol('reset_rollback')
+reset_commit = util.symbol('reset_commit')
+reset_none = util.symbol('reset_none')
+
 
 class Pool(log.Identified):
     """Abstract base class for connection pools."""
@@ -130,7 +134,16 @@ class Pool(log.Identified):
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
-        self._reset_on_return = reset_on_return
+        if reset_on_return in ('rollback', True):
+            self._reset_on_return = reset_rollback
+        elif reset_on_return in (None, False):
+            self._reset_on_return = reset_none
+        elif reset_on_return == 'commit':
+            self._reset_on_return = reset_commit
+        else:
+            raise exc.ArgumentError("Invalid value for 'reset_on_return': %r" 
+                                    % reset_on_return)
+
         self.echo = echo
         if _dispatch:
             self.dispatch._update(_dispatch, only_propagate=False)
@@ -330,8 +343,10 @@ def _finalize_fairy(connection, connection_record, pool, ref, echo):
 
     if connection is not None:
         try:
-            if pool._reset_on_return:
+            if pool._reset_on_return is reset_rollback:
                 connection.rollback()
+            elif pool._reset_on_return is reset_commit:
+                connection.commit()
             # Immediately close detached instances
             if connection_record is None:
                 connection.close()
@@ -624,11 +639,37 @@ class QueuePool(Pool):
           :meth:`unique_connection` method is provided to bypass the
           threadlocal behavior installed into :meth:`connect`.
 
-        :param reset_on_return: If true, reset the database state of
-          connections returned to the pool.  This is typically a
-          ROLLBACK to release locks and transaction resources.
-          Disable at your own peril.  Defaults to True.
-
+        :param reset_on_return: Determine steps to take on 
+          connections as they are returned to the pool.   
+          As of SQLAlchemy 0.7.6, reset_on_return can have any 
+          of these values:
+          
+          * 'rollback' - call rollback() on the connection,
+            to release locks and transaction resources.
+            This is the default value.  The vast majority
+            of use cases should leave this value set.
+          * True - same as 'rollback', this is here for 
+            backwards compatibility.
+          * 'commit' - call commit() on the connection,
+            to release locks and transaction resources. 
+            A commit here may be desirable for databases that
+            cache query plans if a commit is emitted,
+            such as Microsoft SQL Server.  However, this
+            value is more dangerous than 'rollback' because
+            any data changes present on the transaction
+            are committed unconditionally.
+           * None - don't do anything on the connection.
+             This setting should only be made on a database
+             that has no transaction support at all,
+             namely MySQL MyISAM.   By not doing anything,
+             performance can be improved.   This
+             setting should **never be selected** for a 
+             database that supports transactions,
+             as it will lead to deadlocks and stale
+             state.
+            * False - same as None, this is here for
+              backwards compatibility.
+          
         :param listeners: A list of
           :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API

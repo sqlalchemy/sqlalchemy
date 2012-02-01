@@ -108,7 +108,8 @@ class DefaultEngineStrategy(EngineStrategy):
                          'timeout': 'pool_timeout',
                          'recycle': 'pool_recycle',
                          'events':'pool_events',
-                         'use_threadlocal':'pool_threadlocal'}
+                         'use_threadlocal':'pool_threadlocal',
+                         'reset_on_return':'pool_reset_on_return'}
             for k in util.get_cls_kwargs(poolclass):
                 tk = translate.get(k, k)
                 if tk in kwargs:

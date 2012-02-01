@@ -306,6 +306,12 @@ def create_engine(*args, **kwargs):
         this is configurable with the MySQLDB connection itself and the
         server configuration as well).
 
+    :param pool_reset_on_return='rollback': set the "reset on return"
+        behavior of the pool, which is whether ``rollback()``, 
+        ``commit()``, or nothing is called upon connections
+        being returned to the pool.  See the docstring for
+        ``reset_on_return`` at :class:`.Pool`. (new as of 0.7.6)
+
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`.

@@ -2,7 +2,7 @@ from test.lib.testing import assert_raises, assert_raises_message, eq_
 import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
-from sqlalchemy import create_engine, engine_from_config, exc
+from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine import _coerce_config
 import sqlalchemy as tsa
 from test.lib import fixtures, testing
@@ -175,6 +175,27 @@ pool_timeout=10
                           module=dbapi, _initialize=False)
         assert e.pool._recycle == 472
 
+    def test_reset_on_return(self):
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this': 'dict'},
+                          fooz='somevalue')
+        for (value, expected) in [
+            ('rollback', pool.reset_rollback),
+            ('commit', pool.reset_commit),
+            (None, pool.reset_none),
+            (True, pool.reset_rollback),
+            (False, pool.reset_none),
+        ]:
+            e = create_engine('postgresql://', pool_reset_on_return=value,
+                          module=dbapi, _initialize=False)
+            assert e.pool._reset_on_return is expected
+
+        assert_raises(
+            exc.ArgumentError, 
+            create_engine, "postgresql://",
+            pool_reset_on_return='hi', module=dbapi,
+            _initialize=False
+        )
+
     def test_bad_args(self):
         assert_raises(exc.ArgumentError, create_engine, 'foobar://',
                       module=mock_dbapi)
@@ -223,10 +244,10 @@ pool_timeout=10
     @testing.requires.sqlite
     def test_invalidate_on_connect(self):
         """test that is_disconnect() is called during connect.
-        
+
         interpretation of connection failures are not supported by
         every backend.
-        
+
         """
         # pretend pysqlite throws the 
         # "Cannot operate on a closed database." error
