@@ -832,6 +832,14 @@ def tuple_(*expr):
             [(1, 2), (5, 12), (10, 19)]
         )
 
+    .. warning::
+    
+        The composite IN construct is not supported by all backends, 
+        and is currently known to work on Postgresql and MySQL,
+        but not SQLite.   Unsupported backends will raise
+        a subclass of :class:`~sqlalchemy.exc.DBAPIError` when such 
+        an expression is invoked.
+
     """
     return _Tuple(*expr)
 

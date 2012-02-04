@@ -162,7 +162,7 @@ UnmappedColumnError = None
 class StatementError(SQLAlchemyError):
     """An error occurred during execution of a SQL statement.
     
-    :class:`.StatementError` wraps the exception raised
+    :class:`StatementError` wraps the exception raised
     during execution, and features :attr:`.statement`
     and :attr:`.params` attributes which supply context regarding
     the specifics of the statement which had an issue.
@@ -171,6 +171,15 @@ class StatementError(SQLAlchemyError):
     the :attr:`.orig` attribute.
     
     """
+
+    statement = None
+    """The string SQL statement being invoked when this exception occurred."""
+
+    params = None
+    """The parameter list being used when this exception occurred."""
+
+    orig = None
+    """The DBAPI exception object."""
 
     def __init__(self, message, statement, params, orig):
         SQLAlchemyError.__init__(self, message)
@@ -192,21 +201,21 @@ class StatementError(SQLAlchemyError):
 class DBAPIError(StatementError):
     """Raised when the execution of a database operation fails.
 
-    ``DBAPIError`` wraps exceptions raised by the DB-API underlying the
+    Wraps exceptions raised by the DB-API underlying the
     database operation.  Driver-specific implementations of the standard
     DB-API exception types are wrapped by matching sub-types of SQLAlchemy's
-    ``DBAPIError`` when possible.  DB-API's ``Error`` type maps to
-    ``DBAPIError`` in SQLAlchemy, otherwise the names are identical.  Note
+    :class:`DBAPIError` when possible.  DB-API's ``Error`` type maps to
+    :class:`DBAPIError` in SQLAlchemy, otherwise the names are identical.  Note
     that there is no guarantee that different DB-API implementations will
     raise the same exception type for any given error condition.
 
-    :class:`.DBAPIError` features :attr:`.statement`
-    and :attr:`.params` attributes which supply context regarding
+    :class:`DBAPIError` features :attr:`~.StatementError.statement`
+    and :attr:`~.StatementError.params` attributes which supply context regarding
     the specifics of the statement which had an issue, for the 
     typical case when the error was raised within the context of
     emitting a SQL statement.
 
-    The wrapped exception object is available in the :attr:`.orig` attribute.
+    The wrapped exception object is available in the :attr:`~.StatementError.orig` attribute.
     Its type and properties are DB-API implementation specific.
 
     """
