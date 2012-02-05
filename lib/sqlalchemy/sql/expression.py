@@ -2105,6 +2105,8 @@ class ColumnElement(ClauseElement, _CompareMixin):
     foreign_keys = []
     quote = None
     _label = None
+    _key_label = None
+    _alt_names = ()
 
     @property
     def _select_iterable(self):
@@ -3851,9 +3853,12 @@ class _Label(ColumnElement):
     def __init__(self, name, element, type_=None):
         while isinstance(element, _Label):
             element = element.element
-        self.name = self.key = self._label = name \
-            or _anonymous_label('%%(%d %s)s' % (id(self),
+        if name:
+            self.name = name
+        else:
+            self.name = _anonymous_label('%%(%d %s)s' % (id(self),
                                 getattr(element, 'name', 'anon')))
+        self.key = self._label = self._key_label = self.name
         self._element = element
         self._type = type_
         self.quote = element.quote
@@ -4001,7 +4006,17 @@ class ColumnClause(_Immutable, ColumnElement):
         # end Py2K
 
     @_memoized_property
+    def _key_label(self):
+        if self.key != self.name:
+            return self._gen_label(self.key)
+        else:
+            return self._label
+
+    @_memoized_property
     def _label(self):
+        return self._gen_label(self.name)
+
+    def _gen_label(self, name):
         t = self.table
         if self.is_literal:
             return None
@@ -4009,9 +4024,9 @@ class ColumnClause(_Immutable, ColumnElement):
         elif t is not None and t.named_with_column:
             if getattr(t, 'schema', None):
                 label = t.schema.replace('.', '_') + "_" + \
-                            t.name + "_" + self.name
+                            t.name + "_" + name
             else:
-                label = t.name + "_" + self.name
+                label = t.name + "_" + name
 
             # ensure the label name doesn't conflict with that
             # of an existing column
@@ -4026,7 +4041,7 @@ class ColumnClause(_Immutable, ColumnElement):
             return _as_truncated(label)
 
         else:
-            return self.name
+            return name
 
     def label(self, name):
         # currently, anonymous labels don't occur for 
@@ -5041,7 +5056,9 @@ class Select(_SelectBase):
     def _populate_column_collection(self):
         for c in self.inner_columns:
             if hasattr(c, '_make_proxy'):
-                c._make_proxy(self, name=self.use_labels and c._label or None)
+                c._make_proxy(self, 
+                        name=self.use_labels 
+                            and c._label or None)
 
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement

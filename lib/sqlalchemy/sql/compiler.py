@@ -154,9 +154,10 @@ class _CompileLabel(visitors.Visitable):
     __visit_name__ = 'label'
     __slots__ = 'element', 'name'
 
-    def __init__(self, col, name):
+    def __init__(self, col, name, alt_names=()):
         self.element = col
         self.name = name
+        self._alt_names = alt_names
 
     @property
     def proxy_set(self):
@@ -360,8 +361,10 @@ class SQLCompiler(engine.Compiled):
                 labelname = label.name
 
             if result_map is not None:
-                result_map[labelname.lower()] = \
-                        (label.name, (label, label.element, labelname),\
+                result_map[labelname.lower()] = (
+                        label.name, 
+                        (label, label.element, labelname, ) + 
+                            label._alt_names,
                         label.type)
 
             return label.element._compiler_dispatch(self, 
@@ -386,7 +389,9 @@ class SQLCompiler(engine.Compiled):
             name = self._truncated_identifier("colident", name)
 
         if result_map is not None:
-            result_map[name.lower()] = (orig_name, (column, name), column.type)
+            result_map[name.lower()] = (orig_name, 
+                                        (column, name, column.key), 
+                                        column.type)
 
         if is_literal:
             name = self.escape_literal_column(name)
@@ -775,8 +780,14 @@ class SQLCompiler(engine.Compiled):
         if isinstance(column, sql._Label):
             return column
 
-        elif select is not None and select.use_labels and column._label:
-            return _CompileLabel(column, column._label)
+        elif select is not None and \
+                select.use_labels and \
+                column._label:
+            return _CompileLabel(
+                    column, 
+                    column._label, 
+                    alt_names=(column._key_label, )
+                )
 
         elif \
             asfrom and \
@@ -784,7 +795,8 @@ class SQLCompiler(engine.Compiled):
             not column.is_literal and \
             column.table is not None and \
             not isinstance(column.table, sql.Select):
-            return _CompileLabel(column, sql._as_truncated(column.name))
+            return _CompileLabel(column, sql._as_truncated(column.name), 
+                                        alt_names=(column.key,))
         elif not isinstance(column, 
                     (sql._UnaryExpression, sql._TextClause)) \
                 and (not hasattr(column, 'name') or \

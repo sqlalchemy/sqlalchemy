@@ -20,6 +20,17 @@ CHANGES
     [ticket:2390]
 
 - sql
+  - [bug] Added support for using the .key
+    of a Column as a string identifier in a 
+    result set row.   The .key is currently
+    listed as an "alternate" name for a column,
+    and is superseded by the name of a column 
+    which has that key value as its regular name.
+    For the next major release
+    of SQLAlchemy we may reverse this precedence
+    so that .key takes precedence, but this
+    is not decided on yet.  [ticket:2392]
+
   - [bug] A significant change to how labeling
     is applied to columns in SELECT statements
     allows "truncated" labels, that is label names

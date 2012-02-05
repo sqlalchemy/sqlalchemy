@@ -64,6 +64,12 @@ addresses = table('addresses',
     column('zip')
 )
 
+keyed = Table('keyed', metadata,
+    Column('x', Integer, key='colx'),
+    Column('y', Integer, key='coly'),
+    Column('z', Integer),
+)
+
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
@@ -242,6 +248,20 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT sum(lala(mytable.myid)) AS bar FROM mytable"
         )
 
+        # changes with #2397
+        self.assert_compile(
+            select([keyed]),
+            "SELECT keyed.x, keyed.y"
+            ", keyed.z FROM keyed"
+        )
+
+        # changes with #2397
+        self.assert_compile(
+            select([keyed]).apply_labels(),
+            "SELECT keyed.x AS keyed_x, keyed.y AS "
+            "keyed_y, keyed.z AS keyed_z FROM keyed"
+        )
+
     def test_paramstyles(self):
         stmt = text("select :foo, :bar, :bat from sometable")
 
@@ -272,7 +292,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_dupe_columns(self):
-        """test that deduping is performed against clause element identity, not rendered result."""
+        """test that deduping is performed against clause 
+        element identity, not rendered result."""
 
         self.assert_compile(
             select([column('a'), column('a'), column('a')]),
@@ -291,6 +312,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select([a, b, b, b, a, a]),
             "SELECT a, b"
+            , dialect=default.DefaultDialect()
+        )
+
+        # using alternate keys.  
+        # this will change with #2397
+        a, b, c = Column('a', Integer, key='b'), \
+                    Column('b', Integer), \
+                    Column('c', Integer, key='a')
+        self.assert_compile(
+            select([a, b, c, a, b, c]),
+            "SELECT a, b, c"
             , dialect=default.DefaultDialect()
         )
 
@@ -315,12 +347,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s = s.compile(dialect=default.DefaultDialect(paramstyle='qmark'))
         eq_(s.positiontup, ['a', 'b', 'c'])
 
-    def test_nested_uselabels(self):
-        """test nested anonymous label generation.  this
-        essentially tests the ANONYMOUS_LABEL regex.
+    def test_nested_label_targeting(self):
+        """test nested anonymous label generation.  
 
         """
-
         s1 = table1.select()
         s2 = s1.alias()
         s3 = select([s2], use_labels=True)
@@ -338,6 +368,30 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'mytable.name AS name, mytable.description '
                             'AS description FROM mytable) AS anon_2) '
                             'AS anon_1')
+
+    def test_nested_label_targeting_keyed(self):
+        # this behavior chagnes with #2397
+        s1 = keyed.select()
+        s2 = s1.alias()
+        s3 = select([s2], use_labels=True)
+        self.assert_compile(s3,
+                    "SELECT anon_1.x AS anon_1_x, "
+                    "anon_1.y AS anon_1_y, "
+                    "anon_1.z AS anon_1_z FROM "
+                    "(SELECT keyed.x AS x, keyed.y "
+                    "AS y, keyed.z AS z FROM keyed) AS anon_1")
+
+        s4 = s3.alias()
+        s5 = select([s4], use_labels=True)
+        self.assert_compile(s5,
+                    "SELECT anon_1.anon_2_x AS anon_1_anon_2_x, "
+                    "anon_1.anon_2_y AS anon_1_anon_2_y, "
+                    "anon_1.anon_2_z AS anon_1_anon_2_z "
+                    "FROM (SELECT anon_2.x AS anon_2_x, anon_2.y AS anon_2_y, "
+                    "anon_2.z AS anon_2_z FROM "
+                    "(SELECT keyed.x AS x, keyed.y AS y, keyed.z "
+                    "AS z FROM keyed) AS anon_2) AS anon_1"
+                    )
 
     def test_dont_overcorrelate(self):
         self.assert_compile(select([table1], from_obj=[table1,

@@ -34,7 +34,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         table1.drop()
         table2.drop()
 
-    def testbasic(self):
+    def test_basic(self):
         table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'a123':1})
@@ -59,12 +59,12 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             ')'
         )
 
-    def testreflect(self):
+    def test_reflect(self):
         meta2 = MetaData(testing.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)
         assert 'MixedCase' in t2.c
 
-    def testlabels(self):
+    def test_labels(self):
         table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'a123':1})
@@ -136,7 +136,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.crashes('oracle', 'FIXME: unknown, verify not fails_on')
     @testing.requires.subqueries
-    def testlabels(self):
+    def test_labels(self):
         """test the quoting of labels.
 
         if labels arent quoted, a query in postgresql in particular will fail since it produces:
@@ -151,7 +151,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         x = table1.select(distinct=True).alias("LaLa").select().scalar()
 
-    def testlabels2(self):
+    def test_labels2(self):
         metadata = MetaData()
         table = Table("ImATable", metadata,
             Column("col1", Integer))
@@ -174,14 +174,14 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         table = Table("ImATable", metadata,
             Column("col1", Integer),
-            Column("from", Integer, key="morf"),
+            Column("from", Integer),
             Column("louisville", Integer),
             Column("order", Integer))
-        x = select([table.c.col1, table.c.morf, table.c.louisville, table.c.order])
+        x = select([table.c.col1, table.c['from'], table.c.louisville, table.c.order])
 
         self.assert_compile(x, 
             '''SELECT "ImATable".col1, "ImATable"."from", "ImATable".louisville, "ImATable"."order" FROM "ImATable"''')
-        
+
 
 class PreparerTest(fixtures.TestBase):
     """Test the db-agnostic quoting services of IdentifierPreparer."""
