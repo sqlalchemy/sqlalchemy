@@ -86,8 +86,8 @@ class ExecutionTest(fixtures.TestBase):
 
         @profiling.function_call_count(versions={'2.4':41, '2.5':58, 
                                                     '2.6':58, '3':57,
-                                                    '2.7':56,
-                                                    '2.6+cextension':56}, 
+                                                    '2.7':60,
+                                                    '2.6+cextension':60}, 
                                             variance=.05)
         def go():
             e.execute("select 1")
