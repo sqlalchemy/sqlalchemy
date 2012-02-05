@@ -354,7 +354,7 @@ class SQLCompiler(engine.Compiled):
         # or ORDER BY clause of a select.  dialect-specific compilers
         # can modify this behavior.
         if within_columns_clause and not within_label_clause:
-            if isinstance(label.name, sql._generated_label):
+            if isinstance(label.name, sql._truncated_label):
                 labelname = self._truncated_identifier("colident", label.name)
             else:
                 labelname = label.name
@@ -376,17 +376,17 @@ class SQLCompiler(engine.Compiled):
                                     **kw)
 
     def visit_column(self, column, result_map=None, **kwargs):
-        name = column.name
+        name = orig_name = column.name
         if name is None:
             raise exc.CompileError("Cannot compile Column object until "
                                    "it's 'name' is assigned.")
 
         is_literal = column.is_literal
-        if not is_literal and isinstance(name, sql._generated_label):
+        if not is_literal and isinstance(name, sql._truncated_label):
             name = self._truncated_identifier("colident", name)
 
         if result_map is not None:
-            result_map[name.lower()] = (name, (column, ), column.type)
+            result_map[name.lower()] = (orig_name, (column, name), column.type)
 
         if is_literal:
             name = self.escape_literal_column(name)
@@ -404,7 +404,7 @@ class SQLCompiler(engine.Compiled):
             else:
                 schema_prefix = ''
             tablename = table.name
-            if isinstance(tablename, sql._generated_label):
+            if isinstance(tablename, sql._truncated_label):
                 tablename = self._truncated_identifier("alias", tablename)
 
             return schema_prefix + \
@@ -703,7 +703,7 @@ class SQLCompiler(engine.Compiled):
             return self.bind_names[bindparam]
 
         bind_name = bindparam.key
-        if isinstance(bind_name, sql._generated_label):
+        if isinstance(bind_name, sql._truncated_label):
             bind_name = self._truncated_identifier("bindparam", bind_name)
 
         # add to bind_names for translation
@@ -715,7 +715,7 @@ class SQLCompiler(engine.Compiled):
         if (ident_class, name) in self.truncated_names:
             return self.truncated_names[(ident_class, name)]
 
-        anonname = name % self.anon_map 
+        anonname = name.apply_map(self.anon_map)
 
         if len(anonname) > self.label_length:
             counter = self.truncated_names.get(ident_class, 1)
@@ -747,7 +747,7 @@ class SQLCompiler(engine.Compiled):
     def visit_alias(self, alias, asfrom=False, ashint=False, 
                                 fromhints=None, **kwargs):
         if asfrom or ashint:
-            if isinstance(alias.name, sql._generated_label):
+            if isinstance(alias.name, sql._truncated_label):
                 alias_name = self._truncated_identifier("alias", alias.name)
             else:
                 alias_name = alias.name
@@ -784,7 +784,7 @@ class SQLCompiler(engine.Compiled):
             not column.is_literal and \
             column.table is not None and \
             not isinstance(column.table, sql.Select):
-            return _CompileLabel(column, sql._generated_label(column.name))
+            return _CompileLabel(column, sql._as_truncated(column.name))
         elif not isinstance(column, 
                     (sql._UnaryExpression, sql._TextClause)) \
                 and (not hasattr(column, 'name') or \
@@ -1445,7 +1445,7 @@ class DDLCompiler(engine.Compiled):
         return "\nDROP TABLE " + self.preparer.format_table(drop.element)
 
     def _index_identifier(self, ident):
-        if isinstance(ident, sql._generated_label):
+        if isinstance(ident, sql._truncated_label):
             max = self.dialect.max_index_name_length or \
                         self.dialect.max_identifier_length
             if len(ident) > max:

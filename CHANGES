@@ -19,6 +19,18 @@ CHANGES
     happen if there's really an UPDATE to occur.
     [ticket:2390]
 
+- sql
+  - [bug] A significant change to how labeling
+    is applied to columns in SELECT statements
+    allows "truncated" labels, that is label names
+    that are generated in Python which exceed
+    the maximum identifier length (note this is 
+    configurable via label_length on create_engine()),
+    to be properly referenced when rendered inside
+    of a subquery, as well as to be present
+    in a result set row using their original
+    in-Python names.   [ticket:2396]
+
 - engine
   - [feature] Added pool_reset_on_return argument
     to create_engine, allows control over 

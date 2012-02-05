@@ -1094,11 +1094,15 @@ class PercentSchemaNamesTest(fixtures.TestBase):
 
     @classmethod
     def setup_class(cls):
-        global percent_table, metadata
+        global percent_table, metadata, lightweight_percent_table
         metadata = MetaData(testing.db)
         percent_table = Table('percent%table', metadata,
             Column("percent%", Integer),
             Column("spaces % more spaces", Integer),
+        )
+        lightweight_percent_table = sql.table('percent%table', 
+            sql.column("percent%"),
+            sql.column("spaces % more spaces"),
         )
         metadata.create_all()
 
@@ -1109,7 +1113,8 @@ class PercentSchemaNamesTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.skip_if(lambda: testing.against('postgresql'), "psycopg2 2.4 no longer accepts % in bind placeholders")
+    @testing.skip_if(lambda: testing.against('postgresql'), 
+                    "psycopg2 2.4 no longer accepts % in bind placeholders")
     def test_single_roundtrip(self):
         percent_table.insert().execute(
             {'percent%':5, 'spaces % more spaces':12},
@@ -1125,8 +1130,10 @@ class PercentSchemaNamesTest(fixtures.TestBase):
         )
         self._assert_table()
 
-    @testing.skip_if(lambda: testing.against('postgresql'), "psycopg2 2.4 no longer accepts % in bind placeholders")
-    @testing.crashes('mysql+mysqldb', 'MySQLdb handles executemany() inconsistently vs. execute()')
+    @testing.skip_if(lambda: testing.against('postgresql'), 
+                "psycopg2 2.4 no longer accepts % in bind placeholders")
+    @testing.crashes('mysql+mysqldb', "MySQLdb handles executemany() "
+                        "inconsistently vs. execute()")
     def test_executemany_roundtrip(self):
         percent_table.insert().execute(
             {'percent%':5, 'spaces % more spaces':12},
@@ -1139,9 +1146,17 @@ class PercentSchemaNamesTest(fixtures.TestBase):
         self._assert_table()
 
     def _assert_table(self):
-        for table in (percent_table, percent_table.alias()):
+        for table in (
+                    percent_table, 
+                    percent_table.alias(), 
+                    lightweight_percent_table, 
+                    lightweight_percent_table.alias()):
             eq_(
-                table.select().order_by(table.c['percent%']).execute().fetchall(),
+                list(
+                    testing.db.execute(
+                        table.select().order_by(table.c['percent%'])
+                    )
+                ),
                 [
                     (5, 12),
                     (7, 11),
@@ -1151,28 +1166,39 @@ class PercentSchemaNamesTest(fixtures.TestBase):
             )
 
             eq_(
-                table.select().
-                    where(table.c['spaces % more spaces'].in_([9, 10])).
-                    order_by(table.c['percent%']).execute().fetchall(),
+                list(
+                    testing.db.execute(
+                        table.select().
+                            where(table.c['spaces % more spaces'].in_([9, 10])).
+                            order_by(table.c['percent%']),
+                    )
+                ),
                     [
                         (9, 10),
                         (11, 9)
                     ]
             )
 
-            result = table.select().order_by(table.c['percent%']).execute()
-            row = result.fetchone()
+            row = testing.db.execute(table.select().\
+                        order_by(table.c['percent%'])).first()
+            eq_(row['percent%'], 5)
+            eq_(row['spaces % more spaces'], 12)
+
             eq_(row[table.c['percent%']], 5)
             eq_(row[table.c['spaces % more spaces']], 12)
-            row = result.fetchone()
-            eq_(row['percent%'], 7)
-            eq_(row['spaces % more spaces'], 11)
-            result.close()
 
-        percent_table.update().values({percent_table.c['spaces % more spaces']:15}).execute()
+        percent_table.update().values(
+            {percent_table.c['spaces % more spaces']:15}
+        ).execute()
 
         eq_(
-            percent_table.select().order_by(percent_table.c['percent%']).execute().fetchall(),
+            list(
+                testing.db.execute(
+                    percent_table.\
+                        select().\
+                        order_by(percent_table.c['percent%'])
+                )
+            ),
             [
                 (5, 15),
                 (7, 15),

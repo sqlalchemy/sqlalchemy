@@ -44,6 +44,7 @@ class DefaultDialect(base.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
 
+
     supports_native_enum = False
     supports_native_boolean = False
 
@@ -94,6 +95,10 @@ class DefaultDialect(base.Dialect):
     # if this is True, the methods normalize_name()
     # and denormalize_name() must be provided.
     requires_name_normalize = False
+
+    # a hook for SQLite's translation of 
+    # result column names
+    _translate_colname = None
 
     reflection_options = ()
 

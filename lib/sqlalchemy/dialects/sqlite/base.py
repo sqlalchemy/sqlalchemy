@@ -441,20 +441,6 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
             result = self.quote_schema(index.table.schema, index.table.quote_schema) + "." + result
         return result
 
-class SQLiteExecutionContext(default.DefaultExecutionContext):
-    def get_result_proxy(self):
-        rp = base.ResultProxy(self)
-        if rp._metadata:
-            # adjust for dotted column names.  SQLite
-            # in the case of UNION may store col names as 
-            # "tablename.colname"
-            # in cursor.description
-            for colname in rp._metadata.keys:
-                if "." in colname:
-                    trunc_col = colname.split(".")[1]
-                    rp._metadata._set_keymap_synonym(trunc_col, colname)
-        return rp
-
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
     supports_alter = False
@@ -472,7 +458,6 @@ class SQLiteDialect(default.DefaultDialect):
     ischema_names = ischema_names
     colspecs = colspecs
     isolation_level = None
-    execution_ctx_cls = SQLiteExecutionContext
 
     supports_cast = True
     supports_default_values = True
@@ -539,6 +524,16 @@ class SQLiteDialect(default.DefaultDialect):
             return connect
         else:
             return None
+
+    def _translate_colname(self, colname):
+        # adjust for dotted column names.  SQLite
+        # in the case of UNION may store col names as 
+        # "tablename.colname"
+        # in cursor.description
+        if "." in colname:
+            return colname.split(".")[1], colname
+        else:
+            return colname, None
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):

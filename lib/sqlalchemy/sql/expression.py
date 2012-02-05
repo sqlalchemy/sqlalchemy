@@ -1283,14 +1283,48 @@ func = _FunctionGenerator()
 # TODO: use UnaryExpression for this instead ?
 modifier = _FunctionGenerator(group=False)
 
-class _generated_label(unicode):
-    """A unicode subclass used to identify dynamically generated names."""
+class _truncated_label(unicode):
+    """A unicode subclass used to identify symbolic "
+    "names that may require truncation."""
 
-def _escape_for_generated(x):
-    if isinstance(x, _generated_label):
-        return x
+    def apply_map(self, map_):
+        return self
+
+# for backwards compatibility in case
+# someone is re-implementing the 
+# _truncated_identifier() sequence in a custom
+# compiler
+_generated_label = _truncated_label
+
+class _anonymous_label(_truncated_label):
+    """A unicode subclass used to identify anonymously 
+    generated names."""
+
+    def __add__(self, other):
+        return _anonymous_label(
+                    unicode(self) + 
+                    unicode(other))
+
+    def __radd__(self, other):
+        return _anonymous_label(
+                    unicode(other) + 
+                    unicode(self))
+
+    def apply_map(self, map_):
+        return self % map_
+
+def _as_truncated(value):
+    """coerce the given value to :class:`._truncated_label`.
+    
+    Existing :class:`._truncated_label` and 
+    :class:`._anonymous_label` objects are passed
+    unchanged.
+    """
+
+    if isinstance(value, _truncated_label):
+        return value
     else:
-        return x.replace('%', '%%')
+        return _truncated_label(value)
 
 def _string_or_unprintable(element):
     if isinstance(element, basestring):
@@ -2117,7 +2151,9 @@ class ColumnElement(ClauseElement, _CompareMixin):
         else:
             key = name
 
-        co = ColumnClause(name, selectable, type_=getattr(self,
+        co = ColumnClause(_as_truncated(name), 
+                            selectable, 
+                            type_=getattr(self,
                           'type', None))
         co.proxies = [self]
         selectable._columns[key] = co
@@ -2165,7 +2201,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         expressions and function calls.
 
         """
-        return _generated_label('%%(%d %s)s' % (id(self), getattr(self,
+        return _anonymous_label('%%(%d %s)s' % (id(self), getattr(self,
                                 'name', 'anon')))
 
 class ColumnCollection(util.OrderedProperties):
@@ -2588,10 +2624,10 @@ class _BindParamClause(ColumnElement):
 
         """
         if unique:
-            self.key = _generated_label('%%(%d %s)s' % (id(self), key
+            self.key = _anonymous_label('%%(%d %s)s' % (id(self), key
                     or 'param'))
         else:
-            self.key = key or _generated_label('%%(%d param)s'
+            self.key = key or _anonymous_label('%%(%d param)s'
                     % id(self))
 
         # identifiying key that won't change across
@@ -2639,14 +2675,14 @@ class _BindParamClause(ColumnElement):
     def _clone(self):
         c = ClauseElement._clone(self)
         if self.unique:
-            c.key = _generated_label('%%(%d %s)s' % (id(c), c._orig_key
+            c.key = _anonymous_label('%%(%d %s)s' % (id(c), c._orig_key
                     or 'param'))
         return c
 
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = _generated_label('%%(%d %s)s' % (id(self),
+            self.key = _anonymous_label('%%(%d %s)s' % (id(self),
                     self._orig_key or 'param'))
 
     def compare(self, other, **kw):
@@ -3615,7 +3651,7 @@ class Alias(FromClause):
         if name is None:
             if self.original.named_with_column:
                 name = getattr(self.original, 'name', None)
-            name = _generated_label('%%(%d %s)s' % (id(self), name
+            name = _anonymous_label('%%(%d %s)s' % (id(self), name
                     or 'anon'))
         self.name = name
 
@@ -3816,7 +3852,7 @@ class _Label(ColumnElement):
         while isinstance(element, _Label):
             element = element.element
         self.name = self.key = self._label = name \
-            or _generated_label('%%(%d %s)s' % (id(self),
+            or _anonymous_label('%%(%d %s)s' % (id(self),
                                 getattr(element, 'name', 'anon')))
         self._element = element
         self._type = type_
@@ -3973,11 +4009,9 @@ class ColumnClause(_Immutable, ColumnElement):
         elif t is not None and t.named_with_column:
             if getattr(t, 'schema', None):
                 label = t.schema.replace('.', '_') + "_" + \
-                            _escape_for_generated(t.name) + "_" + \
-                            _escape_for_generated(self.name)
+                            t.name + "_" + self.name
             else:
-                label = _escape_for_generated(t.name) + "_" + \
-                            _escape_for_generated(self.name)
+                label = t.name + "_" + self.name
 
             # ensure the label name doesn't conflict with that
             # of an existing column
@@ -3989,7 +4023,7 @@ class ColumnClause(_Immutable, ColumnElement):
                     counter += 1
                 label = _label
 
-            return _generated_label(label)
+            return _as_truncated(label)
 
         else:
             return self.name
@@ -4018,7 +4052,7 @@ class ColumnClause(_Immutable, ColumnElement):
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
         c = self._constructor(
-                    name or self.name, 
+                    _as_truncated(name or self.name), 
                     selectable=selectable, 
                     type_=self.type, 
                     is_literal=is_literal

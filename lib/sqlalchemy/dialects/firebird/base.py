@@ -215,7 +215,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
             # Override to not use the AS keyword which FB 1.5 does not like
             if asfrom:
                 alias_name = isinstance(alias.name,
-                                expression._generated_label) and \
+                                expression._truncated_label) and \
                                 self._truncated_identifier("alias",
                                 alias.name) or alias.name
 

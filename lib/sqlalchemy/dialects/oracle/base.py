@@ -481,7 +481,7 @@ class OracleCompiler(compiler.SQLCompiler):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
 
         if asfrom or ashint:
-            alias_name = isinstance(alias.name, expression._generated_label) and \
+            alias_name = isinstance(alias.name, expression._truncated_label) and \
                             self._truncated_identifier("alias", alias.name) or alias.name
 
         if ashint:

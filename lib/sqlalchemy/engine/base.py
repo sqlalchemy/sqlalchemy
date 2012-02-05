@@ -2575,6 +2575,10 @@ class ResultMetaData(object):
         context = parent.context
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
+        translate_colname = dialect._translate_colname
+
+        # high precedence key values.
+        primary_keymap = {}
 
         for i, rec in enumerate(metadata):
             colname = rec[0]
@@ -2582,6 +2586,9 @@ class ResultMetaData(object):
 
             if dialect.description_encoding:
                 colname = dialect._description_decoder(colname)
+
+            if translate_colname:
+                colname, untranslated = translate_colname(colname)
 
             if context.result_map:
                 try:
@@ -2600,15 +2607,17 @@ class ResultMetaData(object):
 
             # indexes as keys. This is only needed for the Python version of
             # RowProxy (the C version uses a faster path for integer indexes).
-            keymap[i] = rec
+            primary_keymap[i] = rec
 
-            # Column names as keys 
-            if keymap.setdefault(name.lower(), rec) is not rec: 
-                # We do not raise an exception directly because several
-                # columns colliding by name is not a problem as long as the
-                # user does not try to access them (ie use an index directly,
-                # or the more precise ColumnElement)
-                keymap[name.lower()] = (processor, obj, None)
+            # populate primary keymap, looking for conflicts.
+            if primary_keymap.setdefault(name.lower(), rec) is not rec: 
+                # place a record that doesn't have the "index" - this
+                # is interpreted later as an AmbiguousColumnError,
+                # but only when actually accessed.   Columns 
+                # colliding by name is not a problem if those names
+                # aren't used; integer and ColumnElement access is always
+                # unambiguous.
+                primary_keymap[name.lower()] = (processor, obj, None)
 
             if dialect.requires_name_normalize:
                 colname = dialect.normalize_name(colname)
@@ -2618,10 +2627,20 @@ class ResultMetaData(object):
                 for o in obj:
                     keymap[o] = rec
 
+            if translate_colname and \
+                untranslated:
+                keymap[untranslated] = rec
+
+        # overwrite keymap values with those of the
+        # high precedence keymap.
+        keymap.update(primary_keymap)
+
         if parent._echo:
             context.engine.logger.debug(
                 "Col %r", tuple(x[0] for x in metadata))
 
+    @util.pending_deprecation("0.8", "sqlite dialect uses "
+                    "_translate_colname() now")
     def _set_keymap_synonym(self, name, origname):
         """Set a synonym for the given name.
 
