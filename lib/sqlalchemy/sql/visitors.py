@@ -240,16 +240,16 @@ def replacement_traverse(obj, opts, replace):
     replacement by a given replacement function."""
 
     cloned = util.column_dict()
-    stop_on = util.column_set(opts.get('stop_on', []))
+    stop_on = util.column_set([id(x) for x in opts.get('stop_on', [])])
 
     def clone(elem, **kw):
-        if elem in stop_on or \
+        if id(elem) in stop_on or \
             'no_replacement_traverse' in elem._annotations:
             return elem
         else:
             newelem = replace(elem)
             if newelem is not None:
-                stop_on.add(newelem)
+                stop_on.add(id(newelem))
                 return newelem
             else:
                 if elem not in cloned:

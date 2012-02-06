@@ -1023,6 +1023,25 @@ class AnnotationsTest(fixtures.TestBase):
             annot = obj._annotate({})
             eq_(set([obj]), set([annot]))
 
+    def test_compare(self):
+        t = table('t', column('x'), column('y'))
+        x_a = t.c.x._annotate({})
+        assert t.c.x.compare(x_a)
+        assert x_a.compare(t.c.x)
+        assert not x_a.compare(t.c.y)
+        assert not t.c.y.compare(x_a)
+        assert (t.c.x == 5).compare(x_a == 5)
+        assert not (t.c.y == 5).compare(x_a == 5)
+
+        s = select([t])
+        x_p = s.c.x
+        assert not x_a.compare(x_p)
+        assert not t.c.x.compare(x_p)
+        x_p_a = x_p._annotate({})
+        assert x_p_a.compare(x_p)
+        assert x_p.compare(x_p_a)
+        assert not x_p_a.compare(x_a)
+
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):

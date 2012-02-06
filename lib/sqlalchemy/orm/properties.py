@@ -14,7 +14,7 @@ mapped attributes.
 from sqlalchemy import sql, util, log, exc as sa_exc
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
     join_condition, _shallow_annotate
-from sqlalchemy.sql import operators, expression
+from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm import attributes, dependency, mapper, \
     object_mapper, strategies, configure_mappers
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
@@ -444,6 +444,7 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 j = _orm_annotate(pj, exclude=self.property.remote_side)
 
+            # MARKMARK
             if criterion is not None and target_adapter:
                 # limit this adapter to annotated only?
                 criterion = target_adapter.traverse(criterion)
@@ -1376,6 +1377,34 @@ class RelationshipProperty(StrategizedProperty):
                             "argument to indicate which column lazy join "
                             "condition should bind." % (col, self.mapper))
 
+        count = [0]
+        def clone(elem):
+            if set(['local', 'remote']).intersection(elem._annotations):
+                return None
+            elif elem in self.local_side and elem in self.remote_side:
+                # TODO: OK this still sucks.  this is basically,
+                # refuse, refuse, refuse the temptation to guess!
+                # but crap we really have to guess don't we.  we 
+                # might want to traverse here with cloned_traverse
+                # so we can see the binary exprs and do it at that 
+                # level....
+                if count[0] % 2 == 0:
+                    elem = elem._annotate({'local':True})
+                else:
+                    elem = elem._annotate({'remote':True})
+                count[0] += 1
+            elif elem in self.local_side:
+                elem = elem._annotate({'local':True})
+            elif elem in self.remote_side:
+                elem = elem._annotate({'remote':True})
+            else:
+                elem = None
+            return elem
+
+        self.primaryjoin = visitors.replacement_traverse(
+                                self.primaryjoin, {}, clone
+                            )
+
     def _generate_backref(self):
         if not self.is_primary():
             return
@@ -1539,17 +1568,20 @@ class RelationshipProperty(StrategizedProperty):
                     secondary_aliasizer.traverse(secondaryjoin)
             else:
                 primary_aliasizer = ClauseAdapter(dest_selectable,
-                        exclude=self.local_side,
+                        #exclude=self.local_side,
+                        exclude_fn=lambda c: "local" in c._annotations,
                         equivalents=self.mapper._equivalent_columns)
                 if source_selectable is not None:
                     primary_aliasizer.chain(
                         ClauseAdapter(source_selectable,
-                            exclude=self.remote_side,
+                            #exclude=self.remote_side,
+                            exclude_fn=lambda c: "remote" in c._annotations,
                             equivalents=self.parent._equivalent_columns))
                 secondary_aliasizer = None
+
             primaryjoin = primary_aliasizer.traverse(primaryjoin)
             target_adapter = secondary_aliasizer or primary_aliasizer
-            target_adapter.include = target_adapter.exclude = None
+            target_adapter.include = target_adapter.exclude = target_adapter.exclude_fn = None
         else:
             target_adapter = None
         if source_selectable is None:

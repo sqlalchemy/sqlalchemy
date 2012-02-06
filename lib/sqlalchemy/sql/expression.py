@@ -2184,7 +2184,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         for oth in to_compare:
             if use_proxies and self.shares_lineage(oth):
                 return True
-            elif oth is self:
+            elif hash(oth) == hash(self):
                 return True
         else:
             return False

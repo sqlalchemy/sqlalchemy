@@ -225,7 +225,8 @@ def adapt_criterion_to_null(crit, nulls):
 
     return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
 
-def join_condition(a, b, ignore_nonexistent_tables=False, a_subset=None):
+def join_condition(a, b, ignore_nonexistent_tables=False, 
+                            a_subset=None):
     """create a join condition between two tables or selectables.
 
     e.g.::
@@ -535,6 +536,10 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
                                 "'consider_as_foreign_keys' or "
                                 "'consider_as_referenced_keys'")
 
+    def col_is(a, b):
+        #return a is b
+        return a.compare(b)
+
     def visit_binary(binary):
         if not any_operator and binary.operator is not operators.eq:
             return
@@ -544,20 +549,20 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
 
         if consider_as_foreign_keys:
             if binary.left in consider_as_foreign_keys and \
-                        (binary.right is binary.left or 
+                        (col_is(binary.right, binary.left) or 
                         binary.right not in consider_as_foreign_keys):
                 pairs.append((binary.right, binary.left))
             elif binary.right in consider_as_foreign_keys and \
-                        (binary.left is binary.right or 
+                        (col_is(binary.left, binary.right) or 
                         binary.left not in consider_as_foreign_keys):
                 pairs.append((binary.left, binary.right))
         elif consider_as_referenced_keys:
             if binary.left in consider_as_referenced_keys and \
-                        (binary.right is binary.left or 
+                        (col_is(binary.right, binary.left) or 
                         binary.right not in consider_as_referenced_keys):
                 pairs.append((binary.left, binary.right))
             elif binary.right in consider_as_referenced_keys and \
-                        (binary.left is binary.right or 
+                        (col_is(binary.left, binary.right) or 
                         binary.left not in consider_as_referenced_keys):
                 pairs.append((binary.right, binary.left))
         else:
@@ -669,11 +674,22 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
       s.c.col1 == table2.c.col1
 
     """
-    def __init__(self, selectable, equivalents=None, include=None, exclude=None, adapt_on_names=False):
+    def __init__(self, selectable, equivalents=None, 
+                        include=None, exclude=None, 
+                        include_fn=None, exclude_fn=None, 
+                        adapt_on_names=False):
         self.__traverse_options__ = {'stop_on':[selectable]}
         self.selectable = selectable
-        self.include = include
-        self.exclude = exclude
+        if include:
+            assert not include_fn
+            self.include_fn = lambda e: e in include
+        else:
+            self.include_fn = include_fn
+        if exclude:
+            assert not exclude_fn
+            self.exclude_fn = lambda e: e in exclude
+        else:
+            self.exclude_fn = exclude_fn
         self.equivalents = util.column_dict(equivalents or {})
         self.adapt_on_names = adapt_on_names
 
@@ -693,19 +709,17 @@ class ClauseAdapter(visitors.ReplacingCloningVisitor):
         return newcol
 
     def replace(self, col):
-        if isinstance(col, expression.FromClause):
-            if self.selectable.is_derived_from(col):
+        if isinstance(col, expression.FromClause) and \
+            self.selectable.is_derived_from(col):
                 return self.selectable
-
-        if not isinstance(col, expression.ColumnElement):
+        elif not isinstance(col, expression.ColumnElement):
             return None
-
-        if self.include and col not in self.include:
+        elif self.include_fn and not self.include_fn(col):
             return None
-        elif self.exclude and col in self.exclude:
+        elif self.exclude_fn and self.exclude_fn(col):
             return None
-
-        return self._corresponding_column(col, True)
+        else:
+            return self._corresponding_column(col, True)
 
 class ColumnAdapter(ClauseAdapter):
     """Extends ClauseAdapter with extra utility functions.

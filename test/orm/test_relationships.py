@@ -249,6 +249,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
 
     def _test(self):
         Employee, Company = self.classes.Employee, self.classes.Company
+#        employee_t = self.tables.employee_t
+#        assert Employee.reports_to.property.local_remote_pairs == [(employee_t.c.reports_to_id, employee_t.c.emp_id), (employee_t.c.company_id, employee_t.c.company_id)]
 
         sess = create_session()
         c1 = Company()
