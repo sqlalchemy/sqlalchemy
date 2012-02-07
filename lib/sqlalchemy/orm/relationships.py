@@ -33,29 +33,30 @@ class JoinCondition(object):
                     consider_as_foreign_keys=None,
                     local_remote_pairs=None,
                     remote_side=None,
-                    extra_child_criterion=None,
                     self_referential=False,
                     prop=None,
-                    support_sync=True
+                    support_sync=True,
+                    can_be_synced_fn=lambda c: True
                     ):
         self.parent_selectable = parent_selectable
         self.parent_local_selectable = parent_local_selectable
         self.child_selectable = child_selectable
-        self.child_local_selecatble = child_local_selectable
+        self.child_local_selectable = child_local_selectable
         self.parent_equivalents = parent_equivalents
         self.child_equivalents = child_equivalents
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
         self.secondary = secondary
-        self.extra_child_criterion = extra_child_criterion
         self.consider_as_foreign_keys = consider_as_foreign_keys
-        self.local_remote_pairs = local_remote_pairs
-        self.remote_side = remote_side
+        self._local_remote_pairs = local_remote_pairs
+        self._remote_side = remote_side
         self.prop = prop
         self.self_referential = self_referential
         self.support_sync = support_sync
+        self.can_be_synced_fn = can_be_synced_fn
         self._determine_joins()
         self._parse_joins()
+        self._determine_direction()
 
     def _determine_joins(self):
         """Determine the 'primaryjoin' and 'secondaryjoin' attributes,
@@ -89,7 +90,7 @@ class JoinCondition(object):
                         join_condition(
                                 self.parent_selectable, 
                                 self.secondary, 
-                                a_subset=parent_local_selectable)
+                                a_subset=self.parent_local_selectable)
             else:
                 if self.primaryjoin is None:
                     self.primaryjoin = \
@@ -108,13 +109,31 @@ class JoinCondition(object):
     def _parse_joins(self):
         """Apply 'remote', 'local' and 'foreign' annotations
         to the primary and secondary join conditions.
-        
+
         """
         parentcols = util.column_set(self.parent_selectable.c)
         targetcols = util.column_set(self.child_selectable.c)
+        if self.secondary is not None:
+            secondarycols = util.column_set(self.secondary.c)
+        else:
+            secondarycols = set()
 
         def col_is(a, b):
             return a.compare(b)
+
+        def refers_to_parent_table(binary):
+            pt = self.parent_selectable
+            mt = self.child_selectable
+            c, f = binary.left, binary.right
+            if (
+                pt.is_derived_from(c.table) and \
+                pt.is_derived_from(f.table) and \
+                mt.is_derived_from(c.table) and \
+                mt.is_derived_from(f.table)
+            ):
+                return True
+            else:
+                return False
 
         def is_foreign(a, b):
             if self.consider_as_foreign_keys:
@@ -134,12 +153,49 @@ class JoinCondition(object):
                     return a
                 elif b.references(a):
                     return b
+            elif secondarycols:
+                if a in secondarycols and b not in secondarycols:
+                    return a
+                elif b in secondarycols and a not in secondarycols:
+                    return b
 
-        any_operator = not self.support_sync
+        def _annotate_fk(binary, switch):
+            if switch:
+                right, left = binary.left, binary.right
+            else:
+                left, right = binary.left, binary.right
+            can_be_synced = self.can_be_synced_fn(left)
+            left = left._annotate({
+                "equated":binary.operator is operators.eq,
+                "can_be_synced":can_be_synced and \
+                    binary.operator is operators.eq
+            })
+            right = right._annotate({
+                "equated":binary.operator is operators.eq,
+                "referent":True
+            })
+            if switch:
+                binary.right, binary.left = left, right
+            else:
+                binary.left, binary.right = left, right
+
+        def _annotate_remote(binary, switch):
+            if switch:
+                right, left = binary.left, binary.right
+            else:
+                left, right = binary.left, binary.right
+            left = left._annotate(
+                                {"remote":True})
+            if right in parentcols or \
+                secondarycols and right in targetcols:
+                right = right._annotate(
+                                {"local":True})
+            if switch:
+                binary.right, binary.left = left, right
+            else:
+                binary.left, binary.right = left, right
 
         def visit_binary(binary):
-            #if not any_operator and binary.operator is not operators.eq:
-            #    return
             if not isinstance(binary.left, sql.ColumnElement) or \
                         not isinstance(binary.right, sql.ColumnElement):
                 return
@@ -156,49 +212,247 @@ class JoinCondition(object):
                                             {"foreign":True})
                     # TODO: when the two cols are the same.
 
+            has_foreign = False
+            if "foreign" in binary.left._annotations:
+                _annotate_fk(binary, False)
+                has_foreign = True
+            if "foreign" in binary.right._annotations:
+                _annotate_fk(binary, True)
+                has_foreign = True
+
             if "remote" not in binary.left._annotations and \
                 "remote" not in binary.right._annotations:
-                if self.local_remote_pairs:
+                if self._local_remote_pairs:
                     raise NotImplementedError()
-                elif self.remote_side:
-                    raise NotImplementedError()
-                elif self.self_referential:
-                    # assume one to many - FKs are "Remote"
+                elif self._remote_side:
+                    if binary.left in self._remote_side:
+                        _annotate_remote(binary, False)
+                    elif binary.right in self._remote_side:
+                        _annotate_remote(binary, True)
+                elif refers_to_parent_table(binary):
+                    # assume one to many - FKs are "remote"
                     if "foreign" in binary.left._annotations:
-                        binary.left = binary.left._annotate(
-                                            {"remote":True})
-                        if binary.right in parentcols:
-                            binary.right = binary.right._annotate(
-                                            {"local":True})
+                        _annotate_remote(binary, False)
                     elif "foreign" in binary.right._annotations:
-                        binary.right = binary.right._annotate(
-                                            {"remote":True})
-                        if binary.left in parentcols:
-                            binary.left = binary.left._annotate(
-                                            {"local":True})
+                        _annotate_remote(binary, True)
+                elif secondarycols:
+                    if binary.left in secondarycols:
+                        _annotate_remote(binary, False)
+                    elif binary.right in secondarycols:
+                        _annotate_remote(binary, True)
                 else:
-                    if binary.left in targetcols:
-                        binary.left = binary.left._annotate(
-                                            {"remote":True})
-                        if binary.right in parentcols:
-                            binary.right = binary.right._annotate(
-                                            {"local":True})
-                    elif binary.right in targetcols:
-                        binary.right = binary.right._annotate(
-                                            {"remote":True})
-                        if binary.left in parentcols:
-                            binary.left = binary.left._annotate(
-                                            {"local":True})
+                    if binary.left in targetcols and has_foreign:
+                        _annotate_remote(binary, False)
+                    elif binary.right in targetcols and has_foreign:
+                        _annotate_remote(binary, True)
 
         self.primaryjoin = visitors.cloned_traverse(
             self.primaryjoin,
             {},
             {"binary":visit_binary}
         )
+        if self.secondaryjoin is not None:
+            self.secondaryjoin = visitors.cloned_traverse(
+                self.secondaryjoin,
+                {},
+                {"binary":visit_binary}
+            )
+        self._check_foreign_cols(
+                        self.primaryjoin, True)
+        if self.secondaryjoin is not None:
+            self._check_foreign_cols(
+                        self.secondaryjoin, False)
+
+
+    def _check_foreign_cols(self, join_condition, primary):
+        """Check the foreign key columns collected and emit error messages."""
+        # TODO: don't worry, we can simplify this once we
+        # encourage configuration via direct annotation
+
+        can_sync = False
+
+        foreign_cols = self._gather_columns_with_annotation(
+                                join_condition, "foreign")
+
+        has_foreign = bool(foreign_cols)
+
+        if self.support_sync:
+            for col in foreign_cols:
+                if col._annotations.get("can_be_synced"):
+                    can_sync = True
+                    break
+
+        if self.support_sync and can_sync or \
+            (not self.support_sync and has_foreign):
+            return
+
+        # from here below is just determining the best error message
+        # to report.  Check for a join condition using any operator 
+        # (not just ==), perhaps they need to turn on "viewonly=True".
+        if self.support_sync and has_foreign and not can_sync:
+
+            err = "Could not locate any "\
+                    "foreign-key-equated, locally mapped column "\
+                    "pairs for %s "\
+                    "condition '%s' on relationship %s." % (
+                        primary and 'primaryjoin' or 'secondaryjoin', 
+                        join_condition, 
+                        self.prop
+                    )
+
+            # TODO: this needs to be changed to detect that
+            # annotations were present and whatnot.   the future
+            # foreignkey(col) annotation will cover establishing
+            # the col as foreign to it's mate
+            if not self.consider_as_foreign_keys:
+                err += "  Ensure that the "\
+                        "referencing Column objects have a "\
+                        "ForeignKey present, or are otherwise part "\
+                        "of a ForeignKeyConstraint on their parent "\
+                        "Table, or specify the foreign_keys parameter "\
+                        "to this relationship."
+
+            err += "  For more "\
+                    "relaxed rules on join conditions, the "\
+                    "relationship may be marked as viewonly=True."
+
+            raise sa_exc.ArgumentError(err)
+        else:
+            if self.consider_as_foreign_keys:
+                raise sa_exc.ArgumentError("Could not determine "
+                        "relationship direction for %s condition "
+                        "'%s', on relationship %s, using manual "
+                        "'foreign_keys' setting.  Do the columns "
+                        "in 'foreign_keys' represent all, and "
+                        "only, the 'foreign' columns in this join "
+                        "condition?  Does the %s Table already "
+                        "have adequate ForeignKey and/or "
+                        "ForeignKeyConstraint objects established "
+                        "(in which case 'foreign_keys' is usually "
+                        "unnecessary)?" 
+                        % (
+                            primary and 'primaryjoin' or 'secondaryjoin',
+                            join_condition, 
+                            self.prop,
+                            primary and 'mapped' or 'secondary'
+                        ))
+            else:
+                raise sa_exc.ArgumentError("Could not determine "
+                        "relationship direction for %s condition "
+                        "'%s', on relationship %s. Ensure that the "
+                        "referencing Column objects have a "
+                        "ForeignKey present, or are otherwise part "
+                        "of a ForeignKeyConstraint on their parent "
+                        "Table, or specify the foreign_keys parameter " 
+                        "to this relationship."
+                        % (
+                            primary and 'primaryjoin' or 'secondaryjoin', 
+                            join_condition, 
+                            self.prop
+                        ))
+
+    def _determine_direction(self):
+        """Determine if this relationship is one to many, many to one, 
+        many to many.
+
+        """
+        if self.secondaryjoin is not None:
+            self.direction = MANYTOMANY
+        else:
+            parentcols = util.column_set(self.parent_selectable.c)
+            targetcols = util.column_set(self.child_selectable.c)
+
+            # fk collection which suggests ONETOMANY.
+            onetomany_fk = targetcols.intersection(
+                            self.foreign_key_columns)
+
+            # fk collection which suggests MANYTOONE.
+
+            manytoone_fk = parentcols.intersection(
+                            self.foreign_key_columns)
+
+            if onetomany_fk and manytoone_fk:
+                # fks on both sides.  test for overlap of local/remote
+                # with foreign key
+                onetomany_local = self.remote_side.intersection(self.foreign_key_columns)
+                manytoone_local = self.local_columns.intersection(self.foreign_key_columns)
+                if onetomany_local and not manytoone_local:
+                    self.direction = ONETOMANY
+                elif manytoone_local and not onetomany_local:
+                    self.direction = MANYTOONE
+                else:
+                    raise sa_exc.ArgumentError(
+                            "Can't determine relationship"
+                            " direction for relationship '%s' - foreign "
+                            "key columns are present in both the parent "
+                            "and the child's mapped tables.  Specify "
+                            "'foreign_keys' argument." % self.prop)
+            elif onetomany_fk:
+                self.direction = ONETOMANY
+            elif manytoone_fk:
+                self.direction = MANYTOONE
+            else:
+                raise sa_exc.ArgumentError("Can't determine relationship "
+                        "direction for relationship '%s' - foreign "
+                        "key columns are present in neither the parent "
+                        "nor the child's mapped tables" % self.prop)
+
+    @util.memoized_property
+    def remote_columns(self):
+        return self._gather_join_annotations("remote")
+
+    remote_side = remote_columns
+
+    @util.memoized_property
+    def local_columns(self):
+        return self._gather_join_annotations("local")
+
+    @util.memoized_property
+    def foreign_key_columns(self):
+        return self._gather_join_annotations("foreign")
+
+    @util.memoized_property
+    def referent_columns(self):
+        return self._gather_join_annotations("referent")
+
+    def _gather_join_annotations(self, annotation):
+        s = set(
+            self._gather_columns_with_annotation(self.primaryjoin, 
+                                                    annotation)
+        )
+        if self.secondaryjoin is not None:
+            s.update(
+                self._gather_columns_with_annotation(self.secondaryjoin, 
+                                                    annotation)
+            )
+        return s
+
+    def _gather_columns_with_annotation(self, clause, *annotation):
+        annotation = set(annotation)
+        return set([
+            col for col in visitors.iterate(clause, {})
+            if annotation.issubset(col._annotations)
+        ])
+
+    @util.memoized_property
+    def local_remote_pairs(self):
+        lrp = []
+        def visit_binary(binary):
+            if "remote" in binary.right._annotations and \
+                "local" in binary.left._annotations:
+                lrp.append((binary.left, binary.right))
+            elif "remote" in binary.left._annotations and \
+                "local" in binary.right._annotations:
+                lrp.append((binary.right, binary.left))
+        visitors.traverse(self.primaryjoin, {}, {"binary":visit_binary})
+        if self.secondaryjoin is not None:
+            visitors.traverse(self.secondaryjoin, {}, {"binary":visit_binary})
+        return lrp
 
     def join_targets(self, source_selectable, 
                             dest_selectable,
-                            aliased):
+                            aliased,
+                            single_crit=None):
         """Given a source and destination selectable, create a
         join between them.
 
@@ -225,7 +479,6 @@ class JoinCondition(object):
         # this is analogous to the "_adjust_for_single_table_inheritance()"
         # method in Query.
 
-        single_crit = self.extra_child_criterion
         if single_crit is not None:
             if secondaryjoin is not None:
                 secondaryjoin = secondaryjoin & single_crit
