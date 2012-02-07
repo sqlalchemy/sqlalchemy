@@ -1,7 +1,7 @@
 from test.lib.testing import assert_raises, assert_raises_message, eq_, AssertsCompiledSQL, is_
 from test.lib import fixtures
 from sqlalchemy.orm import relationships
-from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, select
+from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, select, ForeignKeyConstraint
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -20,6 +20,15 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         cls.selfref = Table('selfref', m,
             Column('id', Integer, primary_key=True),
             Column('sid', Integer, ForeignKey('selfref.id'))
+        )
+        cls.composite_selfref = Table('composite_selfref', m,
+            Column('id', Integer, primary_key=True),
+            Column('group_id', Integer, primary_key=True),
+            Column('parent_id', Integer),
+            ForeignKeyConstraint(
+                ['parent_id', 'group_id'],
+                ['composite_selfref.id', 'composite_selfref.group_id']
+            )
         )
 
     def _join_fixture_o2m(self, **kw):
@@ -56,6 +65,26 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
             self.selfref,
             self.selfref,
             remote_side=set([self.selfref.c.id]),
+            **kw
+        )
+
+    def _join_fixture_o2m_composite_selfref(self, **kw):
+        return relationships.JoinCondition(
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            **kw
+        )
+
+    def _join_fixture_m2o_composite_selfref(self, **kw):
+        return relationships.JoinCondition(
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            self.composite_selfref,
+            remote_side=set([self.composite_selfref.c.id, 
+                            self.composite_selfref.c.group_id]),
             **kw
         )
 
@@ -111,6 +140,46 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             joincond.remote_side,
             set([self.selfref.c.id])
+        )
+
+    def test_determine_join_o2m_composite_selfref(self):
+        joincond = self._join_fixture_o2m_composite_selfref()
+        self.assert_compile(
+                joincond.primaryjoin,
+                "composite_selfref.group_id = composite_selfref.group_id "
+                "AND composite_selfref.id = composite_selfref.parent_id"
+        )
+
+    def test_determine_direction_o2m_composite_selfref(self):
+        joincond = self._join_fixture_o2m_composite_selfref()
+        is_(joincond.direction, ONETOMANY)
+
+    def test_determine_remote_side_o2m_composite_selfref(self):
+        joincond = self._join_fixture_o2m_composite_selfref()
+        eq_(
+            joincond.remote_side,
+            set([self.composite_selfref.c.parent_id, 
+                self.composite_selfref.c.group_id])
+        )
+
+    def test_determine_join_m2o_composite_selfref(self):
+        joincond = self._join_fixture_m2o_composite_selfref()
+        self.assert_compile(
+                joincond.primaryjoin,
+                "composite_selfref.group_id = composite_selfref.group_id "
+                "AND composite_selfref.id = composite_selfref.parent_id"
+        )
+
+    def test_determine_direction_m2o_composite_selfref(self):
+        joincond = self._join_fixture_m2o_composite_selfref()
+        is_(joincond.direction, MANYTOONE)
+
+    def test_determine_remote_side_m2o_composite_selfref(self):
+        joincond = self._join_fixture_m2o_composite_selfref()
+        eq_(
+            joincond.remote_side,
+            set([self.composite_selfref.c.id, 
+                self.composite_selfref.c.group_id])
         )
 
     def test_determine_join_m2o(self):

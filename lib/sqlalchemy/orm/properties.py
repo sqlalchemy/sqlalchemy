@@ -943,7 +943,6 @@ class RelationshipProperty(StrategizedProperty):
                     prop=self,
                     support_sync=not self.viewonly,
                     can_be_synced_fn=self._columns_are_mapped
-
         )
 
     def _test_new_thing(self):
