@@ -914,19 +914,15 @@ class RelationshipProperty(StrategizedProperty):
     def do_init(self):
         self._check_conflicts()
         self._process_dependent_arguments()
-        self._create_new_thing()
-        self._determine_joins()
-        self._determine_synchronize_pairs()
-        self._determine_direction()
-        self._determine_local_remote_pairs()
-        self._test_new_thing()
+        self._setup_join_conditions()
+        self._extra_determine_direction()
         self._post_init()
         self._generate_backref()
         super(RelationshipProperty, self).do_init()
 
-    def _create_new_thing(self):
+    def _setup_join_conditions(self):
         import relationships
-        self.jc = relationships.JoinCondition(
+        self._join_condition = jc = relationships.JoinCondition(
                     parent_selectable=self.parent.mapped_table,
                     child_selectable=self.mapper.mapped_table,
                     parent_local_selectable=self.parent.local_table,
@@ -944,12 +940,14 @@ class RelationshipProperty(StrategizedProperty):
                     support_sync=not self.viewonly,
                     can_be_synced_fn=self._columns_are_mapped
         )
-
-    def _test_new_thing(self):
-        assert self.jc.direction is self.direction
-        assert self.jc.remote_side.issuperset(self.remote_side)
-#        assert self.jc.local_remote_pairs.issuperset(self.local_remote_pairs)
-        pass
+        self.primaryjoin = jc.primaryjoin
+        self.secondaryjoin = jc.secondaryjoin
+        self.direction = jc.direction
+        self.local_remote_pairs = jc.local_remote_pairs
+        self.remote_side = jc.remote_columns
+        self.synchronize_pairs = jc.synchronize_pairs
+        self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
+        self._calculated_foreign_keys = jc.foreign_key_columns
 
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about 
@@ -1037,50 +1035,20 @@ class RelationshipProperty(StrategizedProperty):
                             (self.key, self.parent.class_)
                         )
 
-    def _determine_joins(self):
-        """Determine the 'primaryjoin' and 'secondaryjoin' attributes,
-        if not passed to the constructor already.
-
-        This is based on analysis of the foreign key relationships
-        between the parent and target mapped selectables.
-
-        """
-        if self.secondaryjoin is not None and self.secondary is None:
-            raise sa_exc.ArgumentError("Property '" + self.key
-                    + "' specified with secondary join condition but "
-                    "no secondary argument")
-
-        # if join conditions were not specified, figure them out based
-        # on foreign keys
-
-        def _search_for_join(mapper, table):
-            # find a join between the given mapper's mapped table and
-            # the given table. will try the mapper's local table first
-            # for more specificity, then if not found will try the more
-            # general mapped table, which in the case of inheritance is
-            # a join.
-            return join_condition(mapper.mapped_table, table, 
-                                        a_subset=mapper.local_table)
-
-        try:
-            if self.secondary is not None:
-                if self.secondaryjoin is None:
-                    self.secondaryjoin = _search_for_join(self.mapper,
-                            self.secondary)
-                if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent,
-                            self.secondary)
-            else:
-                if self.primaryjoin is None:
-                    self.primaryjoin = _search_for_join(self.parent,
-                            self.target)
-        except sa_exc.ArgumentError, e:
-            raise sa_exc.ArgumentError("Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s.  Specify a 'primaryjoin' "
-                    "expression.  If 'secondary' is present, "
-                    "'secondaryjoin' is needed as well."
-                    % self)
+    def _extra_determine_direction(self):
+        if self.cascade.delete_orphan and not self.single_parent \
+            and (self.direction is MANYTOMANY or self.direction
+                 is MANYTOONE):
+            util.warn('On %s, delete-orphan cascade is not supported '
+                      'on a many-to-many or many-to-one relationship '
+                      'when single_parent is not set.   Set '
+                      'single_parent=True on the relationship().'
+                      % self)
+        if self.direction is MANYTOONE and self.passive_deletes:
+            util.warn("On %s, 'passive_deletes' is normally configured "
+                      "on one-to-many, one-to-one, many-to-many "
+                      "relationships only."
+                       % self)
 
     def _columns_are_mapped(self, *cols):
         """Return True if all columns in the given collection are 
@@ -1096,343 +1064,6 @@ class RelationshipProperty(StrategizedProperty):
                 return False
         return True
 
-    def _sync_pairs_from_join(self, join_condition, primary):
-        """Determine a list of "source"/"destination" column pairs
-        based on the given join condition, as well as the
-        foreign keys argument.
-
-        "source" would be a column referenced by a foreign key,
-        and "destination" would be the column who has a foreign key
-        reference to "source".
-
-        """
-
-        fks = self._user_defined_foreign_keys
-        # locate pairs
-        eq_pairs = criterion_as_pairs(join_condition,
-                consider_as_foreign_keys=fks,
-                any_operator=self.viewonly)
-
-        # couldn't find any fks, but we have 
-        # "secondary" - assume the "secondary" columns
-        # are the fks
-        if not eq_pairs and \
-                self.secondary is not None and \
-                not fks:
-            fks = set(self.secondary.c)
-            eq_pairs = criterion_as_pairs(join_condition,
-                    consider_as_foreign_keys=fks,
-                    any_operator=self.viewonly)
-
-            if eq_pairs:
-                util.warn("No ForeignKey objects were present "
-                            "in secondary table '%s'.  Assumed referenced "
-                            "foreign key columns %s for join condition '%s' "
-                            "on relationship %s" % (
-                            self.secondary.description,
-                            ", ".join(sorted(["'%s'" % col for col in fks])),
-                            join_condition,
-                            self
-                        ))
-
-        # Filter out just to columns that are mapped.
-        # If viewonly, allow pairs where the FK col
-        # was part of "foreign keys" - the column it references
-        # may be in an un-mapped table - see 
-        # test.orm.test_relationships.ViewOnlyComplexJoin.test_basic
-        # for an example of this.
-        eq_pairs = [(l, r) for (l, r) in eq_pairs
-                    if self._columns_are_mapped(l, r)
-                    or self.viewonly and 
-                    r in fks]
-
-        if eq_pairs:
-            return eq_pairs
-
-        # from here below is just determining the best error message
-        # to report.  Check for a join condition using any operator 
-        # (not just ==), perhaps they need to turn on "viewonly=True".
-        if not self.viewonly and criterion_as_pairs(join_condition,
-                consider_as_foreign_keys=self._user_defined_foreign_keys,
-                any_operator=True):
-
-            err = "Could not locate any "\
-                    "foreign-key-equated, locally mapped column "\
-                    "pairs for %s "\
-                    "condition '%s' on relationship %s." % (
-                        primary and 'primaryjoin' or 'secondaryjoin', 
-                        join_condition, 
-                        self
-                    )
-
-            if not self._user_defined_foreign_keys:
-                err += "  Ensure that the "\
-                        "referencing Column objects have a "\
-                        "ForeignKey present, or are otherwise part "\
-                        "of a ForeignKeyConstraint on their parent "\
-                        "Table, or specify the foreign_keys parameter "\
-                        "to this relationship."
-
-            err += "  For more "\
-                    "relaxed rules on join conditions, the "\
-                    "relationship may be marked as viewonly=True."
-
-            raise sa_exc.ArgumentError(err)
-        else:
-            if self._user_defined_foreign_keys:
-                raise sa_exc.ArgumentError("Could not determine "
-                        "relationship direction for %s condition "
-                        "'%s', on relationship %s, using manual "
-                        "'foreign_keys' setting.  Do the columns "
-                        "in 'foreign_keys' represent all, and "
-                        "only, the 'foreign' columns in this join "
-                        "condition?  Does the %s Table already "
-                        "have adequate ForeignKey and/or "
-                        "ForeignKeyConstraint objects established "
-                        "(in which case 'foreign_keys' is usually "
-                        "unnecessary)?" 
-                        % (
-                            primary and 'primaryjoin' or 'secondaryjoin',
-                            join_condition, 
-                            self,
-                            primary and 'mapped' or 'secondary'
-                        ))
-            else:
-                raise sa_exc.ArgumentError("Could not determine "
-                        "relationship direction for %s condition "
-                        "'%s', on relationship %s. Ensure that the "
-                        "referencing Column objects have a "
-                        "ForeignKey present, or are otherwise part "
-                        "of a ForeignKeyConstraint on their parent "
-                        "Table, or specify the foreign_keys parameter " 
-                        "to this relationship."
-                        % (
-                            primary and 'primaryjoin' or 'secondaryjoin', 
-                            join_condition, 
-                            self
-                        ))
-
-    def _determine_synchronize_pairs(self):
-        """Resolve 'primary'/foreign' column pairs from the primaryjoin
-        and secondaryjoin arguments.
-
-        """
-        if self.local_remote_pairs:
-            if not self._user_defined_foreign_keys:
-                raise sa_exc.ArgumentError(
-                        "foreign_keys argument is "
-                        "required with _local_remote_pairs argument")
-            self.synchronize_pairs = []
-            for l, r in self.local_remote_pairs:
-                if r in self._user_defined_foreign_keys:
-                    self.synchronize_pairs.append((l, r))
-                elif l in self._user_defined_foreign_keys:
-                    self.synchronize_pairs.append((r, l))
-        else:
-            self.synchronize_pairs = self._sync_pairs_from_join(
-                                                self.primaryjoin, 
-                                                True)
-
-        self._calculated_foreign_keys = util.column_set(
-                                r for (l, r) in
-                                self.synchronize_pairs)
-
-        if self.secondaryjoin is not None:
-            self.secondary_synchronize_pairs = self._sync_pairs_from_join(
-                                                        self.secondaryjoin, 
-                                                        False)
-            self._calculated_foreign_keys.update(
-                                r for (l, r) in
-                                self.secondary_synchronize_pairs)
-        else:
-            self.secondary_synchronize_pairs = None
-
-    def _determine_direction(self):
-        """Determine if this relationship is one to many, many to one, 
-        many to many.
-
-        This is derived from the primaryjoin, presence of "secondary",
-        and in the case of self-referential the "remote side".
-
-        """
-        if self.secondaryjoin is not None:
-            self.direction = MANYTOMANY
-        elif self._refers_to_parent_table():
-
-            # self referential defaults to ONETOMANY unless the "remote"
-            # side is present and does not reference any foreign key
-            # columns
-
-            if self.local_remote_pairs:
-                remote = [r for (l, r) in self.local_remote_pairs]
-            elif self.remote_side:
-                remote = self.remote_side
-            else:
-                remote = None
-            if not remote or self._calculated_foreign_keys.difference(l for (l,
-                    r) in self.synchronize_pairs).intersection(remote):
-                self.direction = ONETOMANY
-            else:
-                self.direction = MANYTOONE
-        else:
-            parentcols = util.column_set(self.parent.mapped_table.c)
-            targetcols = util.column_set(self.mapper.mapped_table.c)
-
-            # fk collection which suggests ONETOMANY.
-            onetomany_fk = targetcols.intersection(
-                            self._calculated_foreign_keys)
-
-            # fk collection which suggests MANYTOONE.
-
-            manytoone_fk = parentcols.intersection(
-                            self._calculated_foreign_keys)
-
-            if onetomany_fk and manytoone_fk:
-                # fks on both sides.  do the same test only based on the
-                # local side.
-                referents = [c for (c, f) in self.synchronize_pairs]
-                onetomany_local = parentcols.intersection(referents)
-                manytoone_local = targetcols.intersection(referents)
-
-                if onetomany_local and not manytoone_local:
-                    self.direction = ONETOMANY
-                elif manytoone_local and not onetomany_local:
-                    self.direction = MANYTOONE
-                else:
-                    raise sa_exc.ArgumentError(
-                            "Can't determine relationship"
-                            " direction for relationship '%s' - foreign "
-                            "key columns are present in both the parent "
-                            "and the child's mapped tables.  Specify "
-                            "'foreign_keys' argument." % self)
-            elif onetomany_fk:
-                self.direction = ONETOMANY
-            elif manytoone_fk:
-                self.direction = MANYTOONE
-            else:
-                raise sa_exc.ArgumentError("Can't determine relationship "
-                        "direction for relationship '%s' - foreign "
-                        "key columns are present in neither the parent "
-                        "nor the child's mapped tables" % self)
-
-        if self.cascade.delete_orphan and not self.single_parent \
-            and (self.direction is MANYTOMANY or self.direction
-                 is MANYTOONE):
-            util.warn('On %s, delete-orphan cascade is not supported '
-                      'on a many-to-many or many-to-one relationship '
-                      'when single_parent is not set.   Set '
-                      'single_parent=True on the relationship().'
-                      % self)
-        if self.direction is MANYTOONE and self.passive_deletes:
-            util.warn("On %s, 'passive_deletes' is normally configured "
-                      "on one-to-many, one-to-one, many-to-many "
-                      "relationships only."
-                       % self)
-
-    def _determine_local_remote_pairs(self):
-        """Determine pairs of columns representing "local" to 
-        "remote", where "local" columns are on the parent mapper,
-        "remote" are on the target mapper.
-
-        These pairs are used on the load side only to generate
-        lazy loading clauses.
-
-        """
-        if not self.local_remote_pairs and not self.remote_side:
-            # the most common, trivial case.   Derive 
-            # local/remote pairs from the synchronize pairs.
-            eq_pairs = util.unique_list(
-                            self.synchronize_pairs + 
-                            (self.secondary_synchronize_pairs or []))
-            if self.direction is MANYTOONE:
-                self.local_remote_pairs = [(r, l) for l, r in eq_pairs]
-            else:
-                self.local_remote_pairs = eq_pairs
-
-        # "remote_side" specified, derive from the primaryjoin
-        # plus remote_side, similarly to how synchronize_pairs
-        # were determined.
-        elif self.remote_side:
-            if self.local_remote_pairs:
-                raise sa_exc.ArgumentError('remote_side argument is '
-                    'redundant against more detailed '
-                    '_local_remote_side argument.')
-            if self.direction is MANYTOONE:
-                self.local_remote_pairs = [(r, l) for (l, r) in
-                        criterion_as_pairs(self.primaryjoin,
-                        consider_as_referenced_keys=self.remote_side,
-                        any_operator=True)]
-
-            else:
-                self.local_remote_pairs = \
-                    criterion_as_pairs(self.primaryjoin,
-                        consider_as_foreign_keys=self.remote_side,
-                        any_operator=True)
-            if not self.local_remote_pairs:
-                raise sa_exc.ArgumentError('Relationship %s could '
-                        'not determine any local/remote column '
-                        'pairs from remote side argument %r'
-                        % (self, self.remote_side))
-        # else local_remote_pairs were sent explcitly via
-        # ._local_remote_pairs.
-
-        # create local_side/remote_side accessors
-        self.local_side = util.ordered_column_set(
-                            l for l, r in self.local_remote_pairs)
-        self.remote_side = util.ordered_column_set(
-                            r for l, r in self.local_remote_pairs)
-
-        # check that the non-foreign key column in the local/remote
-        # collection is mapped.  The foreign key
-        # which the individual mapped column references directly may
-        # itself be in a non-mapped table; see
-        # test.orm.test_relationships.ViewOnlyComplexJoin.test_basic
-        # for an example of this.
-        if self.direction is ONETOMANY:
-            for col in self.local_side:
-                if not self._columns_are_mapped(col):
-                    raise sa_exc.ArgumentError(
-                            "Local column '%s' is not "
-                            "part of mapping %s.  Specify remote_side "
-                            "argument to indicate which column lazy join "
-                            "condition should compare against." % (col,
-                            self.parent))
-        elif self.direction is MANYTOONE:
-            for col in self.remote_side:
-                if not self._columns_are_mapped(col):
-                    raise sa_exc.ArgumentError(
-                            "Remote column '%s' is not "
-                            "part of mapping %s. Specify remote_side "
-                            "argument to indicate which column lazy join "
-                            "condition should bind." % (col, self.mapper))
-
-        count = [0]
-        def clone(elem):
-            if set(['local', 'remote']).intersection(elem._annotations):
-                return None
-            elif elem in self.local_side and elem in self.remote_side:
-                # TODO: OK this still sucks.  this is basically,
-                # refuse, refuse, refuse the temptation to guess!
-                # but crap we really have to guess don't we.  we 
-                # might want to traverse here with cloned_traverse
-                # so we can see the binary exprs and do it at that 
-                # level....
-                if count[0] % 2 == 0:
-                    elem = elem._annotate({'local':True})
-                else:
-                    elem = elem._annotate({'remote':True})
-                count[0] += 1
-            elif elem in self.local_side:
-                elem = elem._annotate({'local':True})
-            elif elem in self.remote_side:
-                elem = elem._annotate({'remote':True})
-            else:
-                elem = None
-            return elem
-
-        self.primaryjoin = visitors.replacement_traverse(
-                                self.primaryjoin, {}, clone
-                            )
 
     def _generate_backref(self):
         if not self.is_primary():

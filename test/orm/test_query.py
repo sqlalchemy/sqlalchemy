@@ -622,7 +622,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(Address.user == None, "addresses.user_id IS NULL")
 
         self._test(Address.user != None, "addresses.user_id IS NOT NULL")
-    
+
     def test_foo(self):
         Node = self.classes.Node
         nalias = aliased(Node)

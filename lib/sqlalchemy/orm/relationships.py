@@ -241,36 +241,69 @@ class JoinCondition(object):
         return result[0]
 
     def _annotate_remote(self):
+        parentcols = util.column_set(self.parent_selectable.c)
+
         for col in visitors.iterate(self.primaryjoin, {}):
             if "remote" in col._annotations:
-                return
-
-        if self._local_remote_pairs:
-            raise NotImplementedError()
-        elif self._remote_side:
-            def repl(element):
-                if element in self._remote_side:
-                    return element._annotate({"remote":True})
-        elif self.secondary is not None:
-            def repl(element):
-                if self.secondary.c.contains_column(element):
-                    return element._annotate({"remote":True})
-        elif self._refers_to_parent_table():
-            def repl(element):
-                # assume one to many - FKs are "remote"
-                if "foreign" in element._annotations:
-                    return element._annotate({"remote":True})
+                has_remote_annotations = True
+                break
         else:
-            def repl(element):
-                if self.child_selectable.c.contains_column(element):
-                    return element._annotate({"remote":True})
+            has_remote_annotations = False
 
+        def _annotate_selfref(fn):
+            def visit_binary(binary):
+                equated = binary.left is binary.right
+                if isinstance(binary.left, sql.ColumnElement) and \
+                    isinstance(binary.right, sql.ColumnElement):
+                    # assume one to many - FKs are "remote"
+                    if fn(binary.left):
+                        binary.left = binary.left._annotate({"remote":True})
+                    if fn(binary.right) and \
+                        not equated:
+                        binary.right = binary.right._annotate(
+                                            {"remote":True})
+
+            self.primaryjoin = visitors.cloned_traverse(
+                                    self.primaryjoin, {}, 
+                                    {"binary":visit_binary})
+
+        if not has_remote_annotations:
+            if self._local_remote_pairs:
+                raise NotImplementedError()
+            elif self._remote_side:
+                if self._refers_to_parent_table():
+                    _annotate_selfref(lambda col:col in self._remote_side)
+                else:
+                    def repl(element):
+                        if element in self._remote_side:
+                            return element._annotate({"remote":True})
+                    self.primaryjoin = visitors.replacement_traverse(
+                                                self.primaryjoin, {},  repl)
+            elif self.secondary is not None:
+                def repl(element):
+                    if self.secondary.c.contains_column(element):
+                        return element._annotate({"remote":True})
+                self.primaryjoin = visitors.replacement_traverse(
+                                            self.primaryjoin, {},  repl)
+                self.secondaryjoin = visitors.replacement_traverse(
+                                            self.secondaryjoin, {}, repl)
+            elif self._refers_to_parent_table():
+                _annotate_selfref(lambda col:"foreign" in col._annotations)
+            else:
+                def repl(element):
+                    if self.child_selectable.c.contains_column(element):
+                        return element._annotate({"remote":True})
+
+                self.primaryjoin = visitors.replacement_traverse(
+                                            self.primaryjoin, {},  repl)
+
+        def locals_(elem):
+            if "remote" not in elem._annotations and \
+                elem in parentcols:
+                return elem._annotate({"local":True})
         self.primaryjoin = visitors.replacement_traverse(
-                                        self.primaryjoin, {},  repl)
-        if self.secondaryjoin is not None:
-            self.secondaryjoin = visitors.replacement_traverse(
-                                        self.secondaryjoin, {}, repl)
-
+                self.primaryjoin, {}, locals_
+            )
 
     def _check_foreign_cols(self, join_condition, primary):
         """Check the foreign key columns collected and emit error messages."""
@@ -375,29 +408,48 @@ class JoinCondition(object):
                         "nor the child's mapped tables" % self.prop)
 
     @util.memoized_property
-    def liberal_remote_columns(self):
-        # this is temporary until we figure out 
-        # which version of "remote" to use
+    def remote_columns(self):
         return self._gather_join_annotations("remote")
 
     @util.memoized_property
-    def remote_columns(self):
-        return set([r for l, r in self.local_remote_pairs])
-        #return self._gather_join_annotations("remote")
-
-    remote_side = remote_columns
+    def local_columns(self):
+        return self._gather_join_annotations("local")
 
     @util.memoized_property
-    def local_columns(self):
-        return set([l for l, r in self.local_remote_pairs])
+    def synchronize_pairs(self):
+        parentcols = util.column_set(self.parent_selectable.c)
+        targetcols = util.column_set(self.child_selectable.c)
+        result = []
+        for l, r in self.local_remote_pairs:
+            if self.secondary is not None:
+                if "foreign" in r._annotations and \
+                    l in parentcols:
+                    result.append((l, r))
+            elif "foreign" in r._annotations and \
+                "can_be_synced" in r._annotations:
+                result.append((l, r))
+            elif "foreign" in l._annotations and \
+                "can_be_synced" in l._annotations:
+                result.append((r, l))
+        return result
+
+    @util.memoized_property
+    def secondary_synchronize_pairs(self):
+        parentcols = util.column_set(self.parent_selectable.c)
+        targetcols = util.column_set(self.child_selectable.c)
+        result = []
+        if self.secondary is None:
+            return result
+
+        for l, r in self.local_remote_pairs:
+            if "foreign" in l._annotations and \
+                r in targetcols:
+                result.append((l, r))
+        return result
 
     @util.memoized_property
     def foreign_key_columns(self):
         return self._gather_join_annotations("foreign")
-
-    @util.memoized_property
-    def referent_columns(self):
-        return self._gather_join_annotations("referent")
 
     def _gather_join_annotations(self, annotation):
         s = set(

@@ -120,11 +120,11 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
             **kw
         )
 
-    def test_determine_remote_side_compound_1(self):
+    def test_determine_remote_columns_compound_1(self):
         joincond = self._join_fixture_compound_expression_1(
                                 support_sync=False)
         eq_(
-            joincond.liberal_remote_columns,
+            joincond.remote_columns,
             set([self.right.c.x, self.right.c.y])
         )
 
@@ -152,12 +152,12 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
             self._join_fixture_compound_expression_1
         )
 
-    def test_determine_remote_side_compound_2(self):
+    def test_determine_remote_columns_compound_2(self):
         joincond = self._join_fixture_compound_expression_2(
                                 support_sync=False)
         eq_(
-            joincond.remote_side,
-            set([])
+            joincond.remote_columns,
+            set([self.right.c.x, self.right.c.y])
         )
 
     def test_determine_local_remote_compound_2(self):
@@ -187,10 +187,10 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_o2m()
         is_(joincond.direction, ONETOMANY)
 
-    def test_determine_remote_side_o2m(self):
+    def test_determine_remote_columns_o2m(self):
         joincond = self._join_fixture_o2m()
         eq_(
-            joincond.remote_side,
+            joincond.remote_columns,
             set([self.right.c.lid])
         )
 
@@ -205,11 +205,31 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_o2m_selfref()
         is_(joincond.direction, ONETOMANY)
 
-    def test_determine_remote_side_o2m_selfref(self):
+    def test_determine_remote_columns_o2m_selfref(self):
         joincond = self._join_fixture_o2m_selfref()
         eq_(
-            joincond.remote_side,
+            joincond.remote_columns,
             set([self.selfref.c.sid])
+        )
+
+    def test_join_targets_o2m_selfref(self):
+        joincond = self._join_fixture_o2m_selfref()
+        left = select([joincond.parent_selectable]).alias('pj')
+        pj, sj, sec, adapter = joincond.join_targets(
+                                    left, 
+                                    joincond.child_selectable, 
+                                    True)
+        self.assert_compile(
+            pj, "pj.id = selfref.sid"
+        )
+
+        right = select([joincond.child_selectable]).alias('pj')
+        pj, sj, sec, adapter = joincond.join_targets(
+                                    joincond.parent_selectable, 
+                                    right, 
+                                    True)
+        self.assert_compile(
+            pj, "selfref.id = pj.sid"
         )
 
     def test_determine_join_m2o_selfref(self):
@@ -223,10 +243,10 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_m2o_selfref()
         is_(joincond.direction, MANYTOONE)
 
-    def test_determine_remote_side_m2o_selfref(self):
+    def test_determine_remote_columns_m2o_selfref(self):
         joincond = self._join_fixture_m2o_selfref()
         eq_(
-            joincond.remote_side,
+            joincond.remote_columns,
             set([self.selfref.c.id])
         )
 
@@ -242,10 +262,10 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_o2m_composite_selfref()
         is_(joincond.direction, ONETOMANY)
 
-    def test_determine_remote_side_o2m_composite_selfref(self):
+    def test_determine_remote_columns_o2m_composite_selfref(self):
         joincond = self._join_fixture_o2m_composite_selfref()
         eq_(
-            joincond.remote_side,
+            joincond.remote_columns,
             set([self.composite_selfref.c.parent_id, 
                 self.composite_selfref.c.group_id])
         )
@@ -262,10 +282,10 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_m2o_composite_selfref()
         is_(joincond.direction, MANYTOONE)
 
-    def test_determine_remote_side_m2o_composite_selfref(self):
+    def test_determine_remote_columns_m2o_composite_selfref(self):
         joincond = self._join_fixture_m2o_composite_selfref()
         eq_(
-            joincond.liberal_remote_columns,
+            joincond.remote_columns,
             set([self.composite_selfref.c.id, 
                 self.composite_selfref.c.group_id])
         )
@@ -281,10 +301,10 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         joincond = self._join_fixture_m2o()
         is_(joincond.direction, MANYTOONE)
 
-    def test_determine_remote_side_m2o(self):
+    def test_determine_remote_columns_m2o(self):
         joincond = self._join_fixture_m2o()
         eq_(
-            joincond.remote_side,
+            joincond.remote_columns,
             set([self.left.c.id])
         )
 
