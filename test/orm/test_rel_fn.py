@@ -1,7 +1,9 @@
-from test.lib.testing import assert_raises, assert_raises_message, eq_, AssertsCompiledSQL, is_
+from test.lib.testing import assert_raises, assert_raises_message, eq_, \
+    AssertsCompiledSQL, is_
 from test.lib import fixtures
 from sqlalchemy.orm import relationships
-from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, select, ForeignKeyConstraint
+from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
+    select, ForeignKeyConstraint, exc
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -12,10 +14,14 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         cls.left = Table('lft', m,
             Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('y', Integer),
         )
         cls.right = Table('rgt', m,
             Column('id', Integer, primary_key=True),
-            Column('lid', Integer, ForeignKey('lft.id'))
+            Column('lid', Integer, ForeignKey('lft.id')),
+            Column('x', Integer),
+            Column('y', Integer),
         )
         cls.selfref = Table('selfref', m,
             Column('id', Integer, primary_key=True),
@@ -86,6 +92,88 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
             remote_side=set([self.composite_selfref.c.id, 
                             self.composite_selfref.c.group_id]),
             **kw
+        )
+
+    def _join_fixture_compound_expression_1(self, **kw):
+        return relationships.JoinCondition(
+            self.left,
+            self.right,
+            self.left,
+            self.right,
+            primaryjoin=(self.left.c.x + self.left.c.y) == \
+                            relationships.remote_foreign(
+                                self.right.c.x * self.right.c.y
+                            ),
+            **kw
+        )
+
+    def _join_fixture_compound_expression_2(self, **kw):
+        return relationships.JoinCondition(
+            self.left,
+            self.right,
+            self.left,
+            self.right,
+            primaryjoin=(self.left.c.x + self.left.c.y) == \
+                            relationships.foreign(
+                                self.right.c.x * self.right.c.y
+                            ),
+            **kw
+        )
+
+    def test_determine_remote_side_compound_1(self):
+        joincond = self._join_fixture_compound_expression_1(
+                                support_sync=False)
+        eq_(
+            joincond.liberal_remote_columns,
+            set([self.right.c.x, self.right.c.y])
+        )
+
+    def test_determine_local_remote_compound_1(self):
+        joincond = self._join_fixture_compound_expression_1(
+                                support_sync=False)
+        eq_(
+            joincond.local_remote_pairs,
+            []
+        )
+
+    def test_err_local_remote_compound_1(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Could not locate any simple equality "
+            "expressions involving foreign key "
+            "columns for primaryjoin join "
+            r"condition 'lft.x \+ lft.y = rgt.x \* rgt.y' "
+            "on relationship None.  Ensure that referencing "
+            "columns are associated with a ForeignKey or "
+            "ForeignKeyConstraint, or are annotated in the "
+            r"join condition with the foreign\(\) annotation. "
+            "To allow comparison operators other "
+            "than '==', the relationship can be marked as viewonly=True.",
+            self._join_fixture_compound_expression_1
+        )
+
+    def test_determine_remote_side_compound_2(self):
+        joincond = self._join_fixture_compound_expression_2(
+                                support_sync=False)
+        eq_(
+            joincond.remote_side,
+            set([])
+        )
+
+    def test_determine_local_remote_compound_2(self):
+        joincond = self._join_fixture_compound_expression_2(
+                                support_sync=False)
+        eq_(
+            joincond.local_remote_pairs,
+            []
+        )
+
+    def test_determine_direction_compound_2(self):
+        joincond = self._join_fixture_compound_expression_2(
+                                support_sync=False)
+        is_(
+            joincond.direction,
+            ONETOMANY
         )
 
     def test_determine_join_o2m(self):
@@ -177,7 +265,7 @@ class JoinCondTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_determine_remote_side_m2o_composite_selfref(self):
         joincond = self._join_fixture_m2o_composite_selfref()
         eq_(
-            joincond.remote_side,
+            joincond.liberal_remote_columns,
             set([self.composite_selfref.c.id, 
                 self.composite_selfref.c.group_id])
         )

@@ -949,6 +949,7 @@ class RelationshipProperty(StrategizedProperty):
         assert self.jc.direction is self.direction
         assert self.jc.remote_side == self.remote_side
         assert self.jc.local_remote_pairs == self.local_remote_pairs
+        pass
 
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about 
@@ -1510,6 +1511,7 @@ class RelationshipProperty(StrategizedProperty):
         return strategy.use_get
 
     def _refers_to_parent_table(self):
+        alt = self._alt_refers_to_parent_table()
         pt = self.parent.mapped_table
         mt = self.mapper.mapped_table
         for c, f in self.synchronize_pairs:
@@ -1519,9 +1521,34 @@ class RelationshipProperty(StrategizedProperty):
                 mt.is_derived_from(c.table) and \
                 mt.is_derived_from(f.table)
             ):
+                assert alt
                 return True
         else:
+            assert not alt
             return False
+
+    def _alt_refers_to_parent_table(self):
+        pt = self.parent.mapped_table
+        mt = self.mapper.mapped_table
+        result = [False]
+        def visit_binary(binary):
+            c, f = binary.left, binary.right
+            if (
+                isinstance(c, expression.ColumnClause) and \
+                isinstance(f, expression.ColumnClause) and \
+                pt.is_derived_from(c.table) and \
+                pt.is_derived_from(f.table) and \
+                mt.is_derived_from(c.table) and \
+                mt.is_derived_from(f.table)
+            ):
+                result[0] = True
+
+        visitors.traverse(
+                    self.primaryjoin,
+                    {},
+                    {"binary":visit_binary}
+                )
+        return result[0]
 
     @util.memoized_property
     def _is_self_referential(self):

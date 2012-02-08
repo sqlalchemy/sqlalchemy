@@ -365,6 +365,9 @@ class ComplexPostUpdateTest(fixtures.MappedTest):
                  backref=backref('pages',
                                  cascade="all, delete-orphan",
                                  order_by=pages.c.pagename)),
+            # TODO: the remote side + lazyclause isn't 
+            # even coming out correctly here.   currentversion/version
+            # aren't being considered at all.
             'currentversion': relationship(
                  PageVersion,
                  uselist=False,

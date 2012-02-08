@@ -3385,6 +3385,10 @@ class _BinaryExpression(ColumnElement):
             raise TypeError("Boolean value of this clause is not defined")
 
     @property
+    def is_comparison(self):
+        return operators.is_comparison(self.operator)
+
+    @property
     def _from_objects(self):
         return self.left._from_objects + self.right._from_objects
 
