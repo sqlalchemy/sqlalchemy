@@ -947,8 +947,8 @@ class RelationshipProperty(StrategizedProperty):
 
     def _test_new_thing(self):
         assert self.jc.direction is self.direction
-        assert self.jc.remote_side == self.remote_side
-        assert self.jc.local_remote_pairs == self.local_remote_pairs
+        assert self.jc.remote_side.issuperset(self.remote_side)
+#        assert self.jc.local_remote_pairs.issuperset(self.local_remote_pairs)
         pass
 
     def _check_conflicts(self):

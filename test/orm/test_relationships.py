@@ -8,7 +8,7 @@ from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
                     Session, composite, column_property
-from test.lib.testing import eq_, startswith_
+from test.lib.testing import eq_, startswith_, AssertsCompiledSQL
 from test.lib import fixtures
 from test.orm import _fixtures
 
@@ -249,8 +249,6 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
 
     def _test(self):
         Employee, Company = self.classes.Employee, self.classes.Company
-#        employee_t = self.tables.employee_t
-#        assert Employee.reports_to.property.local_remote_pairs == [(employee_t.c.reports_to_id, employee_t.c.emp_id), (employee_t.c.company_id, employee_t.c.company_id)]
 
         sess = create_session()
         c1 = Company()
@@ -278,6 +276,53 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
                 get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).\
                 get([c2.company_id, 3]).reports_to.name == 'emp5'
+
+
+class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("parent", metadata,
+            Column('x', Integer, primary_key=True),
+            Column('y', Integer, primary_key=True),
+            Column('z', Integer),
+        )
+        Table("child", metadata,
+            Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+            Column('x', Integer),
+            Column('y', Integer),
+            Column('z', Integer),
+            # note 'z' is not here
+            sa.ForeignKeyConstraint(
+                ["x", "y"],
+                ["parent.x", "parent.y"]
+            )
+        )
+    @classmethod
+    def setup_mappers(cls):
+        parent, child = cls.tables.parent, cls.tables.child
+        class Parent(cls.Comparable):
+            pass
+
+        class Child(cls.Comparable):
+            pass
+        mapper(Parent, parent, properties={
+            'children':relationship(Child, primaryjoin=and_(
+                parent.c.x==child.c.x,
+                parent.c.y==child.c.y,
+                parent.c.z==child.c.z,
+            ))
+        })
+        mapper(Child, child)
+
+    def test_joins_fully(self):
+        Parent, Child = self.classes.Parent, self.classes.Child
+        s = Session()
+        self.assert_compile(
+            Parent.children.property.strategy._lazywhere,
+            ":param_1 = child.x AND :param_2 = child.y AND :param_3 = child.z"
+        )
 
 
 class FKsAsPksTest(fixtures.MappedTest):
