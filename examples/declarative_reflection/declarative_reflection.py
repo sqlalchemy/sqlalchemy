@@ -1,5 +1,6 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm.util import _is_mapped_class
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
 class DeclarativeReflectedBase(object):
@@ -35,6 +36,16 @@ class DeclarativeReflectedBase(object):
                     autoload=True, 
                     autoload_with=engine,
                     schema=table.schema)
+
+            # see if we need 'inherits' in the
+            # mapper args.  Declarative will have 
+            # skipped this since mappings weren't
+            # available yet.
+            for c in klass.__bases__:
+                if _is_mapped_class(c):
+                    kw['inherits'] = c
+                    break
+
             klass.__mapper__ = mapper(*args, **kw)
 
 if __name__ == '__main__':
