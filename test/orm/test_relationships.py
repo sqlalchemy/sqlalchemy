@@ -141,12 +141,12 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         Table('company_t', metadata,
               Column('company_id', Integer, primary_key=True, 
                                 test_needs_autoincrement=True),
-              Column('name', sa.Unicode(30)))
+              Column('name', String(30)))
 
         Table('employee_t', metadata,
               Column('company_id', Integer, primary_key=True),
               Column('emp_id', Integer, primary_key=True),
-              Column('name', sa.Unicode(30)),
+              Column('name', String(30)),
               Column('reports_to_id', Integer),
               sa.ForeignKeyConstraint(
                   ['company_id'],
@@ -277,6 +277,17 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         assert sess.query(Employee).\
                 get([c2.company_id, 3]).reports_to.name == 'emp5'
 
+        @testing.fails_if(lambda: True, "This will be fixed by #1401")
+        def go():
+            eq_(
+                [n for n, in sess.query(Employee.name).\
+                        join(Employee.reports_to, aliased=True).\
+                        filter_by(name='emp5').\
+                        reset_joinpoint().\
+                        order_by(Employee.name)],
+                ['emp6', 'emp7']
+            )
+        go()
 
 class FKsAsPksTest(fixtures.MappedTest):
     """Syncrules on foreign keys that are also primary"""
