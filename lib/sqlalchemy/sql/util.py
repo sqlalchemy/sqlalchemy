@@ -100,7 +100,12 @@ def visit_binary_product(fn, expr):
     """
     stack = []
     def visit(element):
-        if element.__visit_name__ == 'binary' and \
+        if isinstance(element, (expression.FromClause, 
+                                expression._ScalarSelect)):
+            # we dont want to dig into correlated subqueries,
+            # those are just column elements by themselves
+            yield element
+        elif element.__visit_name__ == 'binary' and \
             operators.is_comparison(element.operator):
             stack.insert(0, element)
             for l in visit(element.left):

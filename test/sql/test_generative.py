@@ -250,6 +250,18 @@ class BinaryEndpointTraversalTest(fixtures.TestBase):
             ]
         )
 
+    def test_subquery(self):
+        a, b, c = column("a"), column("b"), column("c")
+        subq = select([c]).where(c == a).as_scalar()
+        expr = and_(a == b, b == subq)
+        self._assert_traversal(
+            expr,
+            [
+                (operators.eq, a, b),
+                (operators.eq, b, subq),
+            ]
+        )
+
 class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     """test copy-in-place behavior of various ClauseElements."""
 
