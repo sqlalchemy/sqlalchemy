@@ -53,8 +53,6 @@ class _JoinFixtures(object):
                     self.m2mleft, 
                     self.m2mright,
                     secondary=self.m2msecondary,
-                    primaryjoin=self.m2mleft.c.id==self.m2msecondary.c.lid,
-                    secondaryjoin=self.m2mright.c.id==self.m2msecondary.c.rid,
                     **kw
                 )
 
@@ -275,11 +273,34 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             [(self.m2mright.c.id, self.m2msecondary.c.rid)]
         )
 
+    def test_determine_local_remote_pairs_o2m_backref(self):
+        joincond = self._join_fixture_o2m()
+        joincond2 = self._join_fixture_m2m(
+            primaryjoin=joincond.primaryjoin_reverse_remote,
+        )
+        eq_(
+            joincond2.local_remote_pairs,
+            [(self.right.c.lid, self.left.c.id)]
+        )
+
     def test_determine_local_remote_pairs_m2m(self):
         joincond = self._join_fixture_m2m()
         eq_(
             joincond.local_remote_pairs,
-            [(self.m2mleft.c.id, self.m2msecondary.c.lid), (self.m2mright.c.id, self.m2msecondary.c.rid)]
+            [(self.m2mleft.c.id, self.m2msecondary.c.lid), 
+            (self.m2mright.c.id, self.m2msecondary.c.rid)]
+        )
+
+    def test_determine_local_remote_pairs_m2m_backref(self):
+        joincond = self._join_fixture_m2m()
+        joincond2 = self._join_fixture_m2m(
+            primaryjoin=joincond.secondaryjoin,
+            secondaryjoin=joincond.primaryjoin
+        )
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.m2mleft.c.id, self.m2msecondary.c.lid), 
+            (self.m2mright.c.id, self.m2msecondary.c.rid)]
         )
 
     def test_determine_remote_columns_m2o_selfref(self):
