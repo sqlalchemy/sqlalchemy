@@ -1576,18 +1576,30 @@ class ClauseElement(Visitable):
             return id(self)
 
     def _annotate(self, values):
-        """return a copy of this ClauseElement with the given annotations
-        dictionary.
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
 
         """
         return sqlutil.Annotated(self, values)
 
-    def _deannotate(self):
-        """return a copy of this ClauseElement with an empty annotations
-        dictionary.
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
 
         """
-        return self._clone()
+        return sqlutil.Annotated(self, values)
+
+    def _deannotate(self, values=None):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+        
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        # since we have no annotations we return
+        # self
+        return self
 
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with :func:`bindparam()` elments replaced.

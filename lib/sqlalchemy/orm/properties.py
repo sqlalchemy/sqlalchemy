@@ -16,7 +16,7 @@ from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
     join_condition, _shallow_annotate
 from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm import attributes, dependency, mapper, \
-    object_mapper, strategies, configure_mappers
+    object_mapper, strategies, configure_mappers, relationships
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
     _orm_annotate, _orm_deannotate
 
@@ -915,13 +915,12 @@ class RelationshipProperty(StrategizedProperty):
         self._check_conflicts()
         self._process_dependent_arguments()
         self._setup_join_conditions()
-        self._extra_determine_direction()
+        self._check_cascade_settings()
         self._post_init()
         self._generate_backref()
         super(RelationshipProperty, self).do_init()
 
     def _setup_join_conditions(self):
-        import relationships
         self._join_condition = jc = relationships.JoinCondition(
                     parent_selectable=self.parent.mapped_table,
                     child_selectable=self.mapper.mapped_table,
@@ -946,8 +945,8 @@ class RelationshipProperty(StrategizedProperty):
         self.local_remote_pairs = jc.local_remote_pairs
         self.remote_side = jc.remote_columns
         self.synchronize_pairs = jc.synchronize_pairs
-        self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
         self._calculated_foreign_keys = jc.foreign_key_columns
+        self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
 
     def _check_conflicts(self):
         """Test that this relationship is legal, warn about 
@@ -1035,7 +1034,7 @@ class RelationshipProperty(StrategizedProperty):
                             (self.key, self.parent.class_)
                         )
 
-    def _extra_determine_direction(self):
+    def _check_cascade_settings(self):
         if self.cascade.delete_orphan and not self.single_parent \
             and (self.direction is MANYTOMANY or self.direction
                  is MANYTOONE):
@@ -1064,7 +1063,6 @@ class RelationshipProperty(StrategizedProperty):
                 return False
         return True
 
-
     def _generate_backref(self):
         if not self.is_primary():
             return
@@ -1083,13 +1081,15 @@ class RelationshipProperty(StrategizedProperty):
                 pj = kwargs.pop('primaryjoin', self.secondaryjoin)
                 sj = kwargs.pop('secondaryjoin', self.primaryjoin)
             else:
-                pj = kwargs.pop('primaryjoin', self.primaryjoin)
+                pj = kwargs.pop('primaryjoin', 
+                        self._join_condition.primaryjoin_reverse_remote)
                 sj = kwargs.pop('secondaryjoin', None)
                 if sj:
                     raise sa_exc.InvalidRequestError(
                         "Can't assign 'secondaryjoin' on a backref against "
                         "a non-secondary relationship."
                             )
+
             foreign_keys = kwargs.pop('foreign_keys',
                     self._user_defined_foreign_keys)
             parent = self.parent.primary_mapper()
@@ -1112,21 +1112,6 @@ class RelationshipProperty(StrategizedProperty):
             self._add_reverse_property(self.back_populates)
 
     def _post_init(self):
-        self.logger.info('%s setup primary join %s', self,
-                         self.primaryjoin)
-        self.logger.info('%s setup secondary join %s', self,
-                         self.secondaryjoin)
-        self.logger.info('%s synchronize pairs [%s]', self,
-                         ','.join('(%s => %s)' % (l, r) for (l, r) in
-                         self.synchronize_pairs))
-        self.logger.info('%s secondary synchronize pairs [%s]', self,
-                         ','.join('(%s => %s)' % (l, r) for (l, r) in
-                         self.secondary_synchronize_pairs or []))
-        self.logger.info('%s local/remote pairs [%s]', self,
-                         ','.join('(%s / %s)' % (l, r) for (l, r) in
-                         self.local_remote_pairs))
-        self.logger.info('%s relationship direction %s', self,
-                         self.direction)
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
@@ -1140,46 +1125,6 @@ class RelationshipProperty(StrategizedProperty):
 
         strategy = self._get_strategy(strategies.LazyLoader)
         return strategy.use_get
-
-    def _refers_to_parent_table(self):
-        alt = self._alt_refers_to_parent_table()
-        pt = self.parent.mapped_table
-        mt = self.mapper.mapped_table
-        for c, f in self.synchronize_pairs:
-            if (
-                pt.is_derived_from(c.table) and \
-                pt.is_derived_from(f.table) and \
-                mt.is_derived_from(c.table) and \
-                mt.is_derived_from(f.table)
-            ):
-                assert alt
-                return True
-        else:
-            assert not alt
-            return False
-
-    def _alt_refers_to_parent_table(self):
-        pt = self.parent.mapped_table
-        mt = self.mapper.mapped_table
-        result = [False]
-        def visit_binary(binary):
-            c, f = binary.left, binary.right
-            if (
-                isinstance(c, expression.ColumnClause) and \
-                isinstance(f, expression.ColumnClause) and \
-                pt.is_derived_from(c.table) and \
-                pt.is_derived_from(f.table) and \
-                mt.is_derived_from(c.table) and \
-                mt.is_derived_from(f.table)
-            ):
-                result[0] = True
-
-        visitors.traverse(
-                    self.primaryjoin,
-                    {},
-                    {"binary":visit_binary}
-                )
-        return result[0]
 
     @util.memoized_property
     def _is_self_referential(self):

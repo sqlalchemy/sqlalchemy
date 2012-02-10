@@ -44,6 +44,11 @@ from sqlalchemy.orm.properties import (
      PropertyLoader,
      SynonymProperty,
      )
+from sqlalchemy.orm.relationships import (
+    foreign,
+    remote,
+    remote_foreign
+)
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.mapper import reconstructor, validates
 from sqlalchemy.orm import strategies
@@ -81,6 +86,7 @@ __all__ = (
     'dynamic_loader',
     'eagerload',
     'eagerload_all',
+    'foreign',
     'immediateload',
     'join',
     'joinedload',
@@ -96,6 +102,8 @@ __all__ = (
     'reconstructor',
     'relationship',
     'relation',
+    'remote',
+    'remote_foreign',
     'scoped_session',
     'sessionmaker',
     'subqueryload',

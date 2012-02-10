@@ -785,6 +785,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             leftmost_mapper, leftmost_prop = \
                                     subq_mapper, \
                                     subq_mapper._props[subq_path[1]]
+        # TODO: local cols might not be unique here
         leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
 
         leftmost_attr = [
@@ -846,6 +847,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             # self.parent is more specific than subq_path[-2]
             parent_alias = mapperutil.AliasedClass(self.parent)
 
+        # TODO: local cols might not be unique here
         local_cols, remote_cols = \
                         self._local_remote_columns(self.parent_property)
 
@@ -885,6 +887,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if prop.secondary is None:
             return zip(*prop.local_remote_pairs)
         else:
+            # TODO: this isn't going to work for readonly....
             return \
                 [p[0] for p in prop.synchronize_pairs],\
                 [
@@ -930,6 +933,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if ('subquery', reduced_path) not in context.attributes:
             return None, None, None
 
+        # TODO: local_cols might not be unique here
         local_cols, remote_cols = self._local_remote_columns(self.parent_property)
 
         q = context.attributes[('subquery', reduced_path)]

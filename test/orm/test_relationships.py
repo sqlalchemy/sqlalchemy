@@ -7,8 +7,9 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
-                    Session, composite, column_property
-from test.lib.testing import eq_, startswith_, AssertsCompiledSQL
+                    Session, composite, column_property, foreign
+from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
+from test.lib.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from test.lib import fixtures
 from test.orm import _fixtures
 
@@ -141,12 +142,12 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         Table('company_t', metadata,
               Column('company_id', Integer, primary_key=True, 
                                 test_needs_autoincrement=True),
-              Column('name', sa.Unicode(30)))
+              Column('name', String(30)))
 
         Table('employee_t', metadata,
               Column('company_id', Integer, primary_key=True),
               Column('emp_id', Integer, primary_key=True),
-              Column('name', sa.Unicode(30)),
+              Column('name', String(30)),
               Column('reports_to_id', Integer),
               sa.ForeignKeyConstraint(
                   ['company_id'],
@@ -158,7 +159,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
     @classmethod
     def setup_classes(cls):
         class Company(cls.Basic):
-            pass
+            def __init__(self, name):
+                self.name = name
 
         class Employee(cls.Basic):
             def __init__(self, name, company, emp_id, reports_to=None):
@@ -248,11 +250,16 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         self._test()
 
     def _test(self):
+        sess = Session()
+        self._setup_data(sess)
+        self._test_lazy_relations(sess)
+        self._test_join_aliasing(sess)
+
+    def _setup_data(self, sess):
         Employee, Company = self.classes.Employee, self.classes.Company
 
-        sess = create_session()
-        c1 = Company()
-        c2 = Company()
+        c1 = Company('c1')
+        c2 = Company('c2')
 
         e1 = Employee(u'emp1', c1, 1)
         e2 = Employee(u'emp2', c1, 2, e1)
@@ -263,10 +270,17 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         e7 = Employee(u'emp7', c2, 3, e5)
 
         sess.add_all((c1, c2))
-        sess.flush()
-        sess.expunge_all()
+        sess.commit()
+        sess.close()
 
-        test_c1 = sess.query(Company).get(c1.company_id)
+    def _test_lazy_relations(self, sess):
+        Employee, Company = self.classes.Employee, self.classes.Company
+
+        c1 = sess.query(Company).filter_by(name='c1').one()
+        c2 = sess.query(Company).filter_by(name='c2').one()
+        e1 = sess.query(Employee).filter_by(name='emp1').one()
+        e5 = sess.query(Employee).filter_by(name='emp5').one()
+
         test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
         assert test_e1.name == 'emp1', test_e1.name
         test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
@@ -277,6 +291,16 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
         assert sess.query(Employee).\
                 get([c2.company_id, 3]).reports_to.name == 'emp5'
 
+    def _test_join_aliasing(self, sess):
+        Employee, Company = self.classes.Employee, self.classes.Company
+        eq_(
+            [n for n, in sess.query(Employee.name).\
+                    join(Employee.reports_to, aliased=True).\
+                    filter_by(name='emp5').\
+                    reset_joinpoint().\
+                    order_by(Employee.name)],
+            ['emp6', 'emp7']
+        )
 
 class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
     __dialect__ = 'default'
@@ -839,7 +863,6 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
     def test_mapping(self):
         Subscriber, Address = self.classes.Subscriber, self.classes.Address
 
-        from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE
         sess = create_session()
         assert Subscriber.addresses.property.direction is ONETOMANY
         assert Address.customer.property.direction is MANYTOONE
@@ -1733,21 +1756,45 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
         class T2(cls.Comparable):
             pass
 
-    def test_onetomany_funcfk(self):
+    def test_onetomany_funcfk_oldstyle(self):
         T2, T1, t2, t1 = (self.classes.T2,
                                 self.classes.T1,
                                 self.tables.t2,
                                 self.tables.t1)
 
-        # use a function within join condition.  but specifying
-        # local_remote_pairs overrides all parsing of the join condition.
+        # old _local_remote_pairs
         mapper(T1, t1, properties={
             't2s':relationship(T2,
                            primaryjoin=t1.c.id==sa.func.lower(t2.c.t1id),
                            _local_remote_pairs=[(t1.c.id, t2.c.t1id)],
-                           foreign_keys=[t2.c.t1id])})
+                           foreign_keys=[t2.c.t1id]
+                           )
+                          })
         mapper(T2, t2)
+        self._test_onetomany()
 
+    def test_onetomany_funcfk_annotated(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+
+        # use annotation
+        mapper(T1, t1, properties={
+            't2s':relationship(T2,
+                           primaryjoin=t1.c.id==
+                            foreign(sa.func.lower(t2.c.t1id)),
+                           )})
+        mapper(T2, t2)
+        self._test_onetomany()
+
+    def _test_onetomany(self):
+        T2, T1, t2, t1 = (self.classes.T2,
+                                self.classes.T1,
+                                self.tables.t2,
+                                self.tables.t1)
+        is_(T1.t2s.property.direction, ONETOMANY)
+        eq_(T1.t2s.property.local_remote_pairs, [(t1.c.id, t2.c.t1id)])
         sess = create_session()
         a1 = T1(id='number1', data='a1')
         a2 = T1(id='number2', data='a2')

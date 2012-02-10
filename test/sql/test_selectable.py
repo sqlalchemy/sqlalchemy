@@ -1151,5 +1151,7 @@ class AnnotationsTest(fixtures.TestBase):
         assert b2.left is not bin.left 
         assert b3.left is not b2.left is not bin.left
         assert b4.left is bin.left  # since column is immutable
-        assert b4.right is not bin.right is not b2.right is not b3.right
+        assert b4.right is bin.right
+        assert b2.right is not bin.right
+        assert b3.right is b4.right is bin.right
 
