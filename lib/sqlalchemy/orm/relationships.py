@@ -599,7 +599,8 @@ class JoinCondition(object):
             target_adapter.exclude_fn = None
         else:
             target_adapter = None
-        return primaryjoin, secondaryjoin, secondary, target_adapter
+        return primaryjoin, secondaryjoin, secondary, target_adapter, dest_selectable
+
 
 ################# everything below is TODO ################################
 

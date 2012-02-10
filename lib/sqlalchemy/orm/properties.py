@@ -920,61 +920,6 @@ class RelationshipProperty(StrategizedProperty):
         self._generate_backref()
         super(RelationshipProperty, self).do_init()
 
-    def _setup_join_conditions(self):
-        self._join_condition = jc = relationships.JoinCondition(
-                    parent_selectable=self.parent.mapped_table,
-                    child_selectable=self.mapper.mapped_table,
-                    parent_local_selectable=self.parent.local_table,
-                    child_local_selectable=self.mapper.local_table,
-                    primaryjoin=self.primaryjoin,
-                    secondary=self.secondary,
-                    secondaryjoin=self.secondaryjoin,
-                    parent_equivalents=self.parent._equivalent_columns,
-                    child_equivalents=self.mapper._equivalent_columns,
-                    consider_as_foreign_keys=self._user_defined_foreign_keys,
-                    local_remote_pairs=self.local_remote_pairs,
-                    remote_side=self.remote_side,
-                    self_referential=self._is_self_referential,
-                    prop=self,
-                    support_sync=not self.viewonly,
-                    can_be_synced_fn=self._columns_are_mapped
-        )
-        self.primaryjoin = jc.primaryjoin
-        self.secondaryjoin = jc.secondaryjoin
-        self.direction = jc.direction
-        self.local_remote_pairs = jc.local_remote_pairs
-        self.remote_side = jc.remote_columns
-        self.synchronize_pairs = jc.synchronize_pairs
-        self._calculated_foreign_keys = jc.foreign_key_columns
-        self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
-
-    def _check_conflicts(self):
-        """Test that this relationship is legal, warn about 
-        inheritance conflicts."""
-
-        if not self.is_primary() \
-            and not mapper.class_mapper(
-                                self.parent.class_,
-                                compile=False).has_property(self.key):
-            raise sa_exc.ArgumentError("Attempting to assign a new "
-                    "relationship '%s' to a non-primary mapper on "
-                    "class '%s'.  New relationships can only be added "
-                    "to the primary mapper, i.e. the very first mapper "
-                    "created for class '%s' " % (self.key,
-                    self.parent.class_.__name__,
-                    self.parent.class_.__name__))
-
-        # check for conflicting relationship() on superclass
-        if not self.parent.concrete:
-            for inheriting in self.parent.iterate_to_root():
-                if inheriting is not self.parent \
-                    and inheriting.has_property(self.key):
-                    util.warn("Warning: relationship '%s' on mapper "
-                              "'%s' supersedes the same relationship "
-                              "on inherited mapper '%s'; this can "
-                              "cause dependency issues during flush"
-                              % (self.key, self.parent, inheriting))
-
     def _process_dependent_arguments(self):
         """Convert incoming configuration arguments to their 
         proper form.
@@ -986,12 +931,8 @@ class RelationshipProperty(StrategizedProperty):
         # deferred initialization.  This technique is used
         # by declarative "string configs" and some recipes.
         for attr in (
-            'order_by',
-            'primaryjoin',
-            'secondaryjoin',
-            'secondary',
-            '_user_defined_foreign_keys',
-            'remote_side',
+            'order_by', 'primaryjoin', 'secondaryjoin',
+            'secondary', '_user_defined_foreign_keys', 'remote_side',
             ):
             attr_value = getattr(self, attr)
             if util.callable(attr_value):
@@ -1033,6 +974,63 @@ class RelationshipProperty(StrategizedProperty):
             self.mapper.primary_mapper().delete_orphans.append(
                             (self.key, self.parent.class_)
                         )
+
+    def _setup_join_conditions(self):
+        self._join_condition = jc = relationships.JoinCondition(
+                    parent_selectable=self.parent.mapped_table,
+                    child_selectable=self.mapper.mapped_table,
+                    parent_local_selectable=self.parent.local_table,
+                    child_local_selectable=self.mapper.local_table,
+                    primaryjoin=self.primaryjoin,
+                    secondary=self.secondary,
+                    secondaryjoin=self.secondaryjoin,
+                    parent_equivalents=self.parent._equivalent_columns,
+                    child_equivalents=self.mapper._equivalent_columns,
+                    consider_as_foreign_keys=self._user_defined_foreign_keys,
+                    local_remote_pairs=self.local_remote_pairs,
+                    remote_side=self.remote_side,
+                    self_referential=self._is_self_referential,
+                    prop=self,
+                    support_sync=not self.viewonly,
+                    can_be_synced_fn=self._columns_are_mapped
+        )
+        self.primaryjoin = jc.primaryjoin
+        self.secondaryjoin = jc.secondaryjoin
+        self.direction = jc.direction
+        self.local_remote_pairs = jc.local_remote_pairs
+        self.remote_side = jc.remote_columns
+        self.local_columns = jc.local_columns
+        self.synchronize_pairs = jc.synchronize_pairs
+        self._calculated_foreign_keys = jc.foreign_key_columns
+        self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
+
+    def _check_conflicts(self):
+        """Test that this relationship is legal, warn about 
+        inheritance conflicts."""
+
+        if not self.is_primary() \
+            and not mapper.class_mapper(
+                                self.parent.class_,
+                                compile=False).has_property(self.key):
+            raise sa_exc.ArgumentError("Attempting to assign a new "
+                    "relationship '%s' to a non-primary mapper on "
+                    "class '%s'.  New relationships can only be added "
+                    "to the primary mapper, i.e. the very first mapper "
+                    "created for class '%s' " % (self.key,
+                    self.parent.class_.__name__,
+                    self.parent.class_.__name__))
+
+        # check for conflicting relationship() on superclass
+        if not self.parent.concrete:
+            for inheriting in self.parent.iterate_to_root():
+                if inheriting is not self.parent \
+                    and inheriting.has_property(self.key):
+                    util.warn("Warning: relationship '%s' on mapper "
+                              "'%s' supersedes the same relationship "
+                              "on inherited mapper '%s'; this can "
+                              "cause dependency issues during flush"
+                              % (self.key, self.parent, inheriting))
+
 
     def _check_cascade_settings(self):
         if self.cascade.delete_orphan and not self.single_parent \
@@ -1098,14 +1096,11 @@ class RelationshipProperty(StrategizedProperty):
             kwargs.setdefault('passive_updates', self.passive_updates)
             self.back_populates = backref_key
             relationship = RelationshipProperty(
-                parent,
-                self.secondary,
-                pj,
-                sj,
+                parent, self.secondary,
+                pj, sj,
                 foreign_keys=foreign_keys,
                 back_populates=self.key,
-                **kwargs
-                )
+                **kwargs)
             mapper._configure_property(backref_key, relationship)
 
         if self.back_populates:
@@ -1155,78 +1150,22 @@ class RelationshipProperty(StrategizedProperty):
         else:
             aliased = True
 
-        # place a barrier on the destination such that
-        # replacement traversals won't ever dig into it.
-        # its internal structure remains fixed 
-        # regardless of context.
-        dest_selectable = _shallow_annotate(
-                                dest_selectable, 
-                                {'no_replacement_traverse':True})
-
-        aliased = aliased or (source_selectable is not None)
-
-        primaryjoin, secondaryjoin, secondary = self.primaryjoin, \
-            self.secondaryjoin, self.secondary
-
-        # adjust the join condition for single table inheritance,
-        # in the case that the join is to a subclass
-        # this is analogous to the "_adjust_for_single_table_inheritance()"
-        # method in Query.
-
         dest_mapper = of_type or self.mapper
 
         single_crit = dest_mapper._single_table_criterion
-        if single_crit is not None:
-            if secondaryjoin is not None:
-                secondaryjoin = secondaryjoin & single_crit
-            else:
-                primaryjoin = primaryjoin & single_crit
+        aliased = aliased or (source_selectable is not None)
 
-        if aliased:
-            if secondary is not None:
-                secondary = secondary.alias()
-                primary_aliasizer = ClauseAdapter(secondary)
-                secondary_aliasizer = \
-                    ClauseAdapter(dest_selectable,
-                        equivalents=self.mapper._equivalent_columns).\
-                        chain(primary_aliasizer)
-                if source_selectable is not None:
-                    primary_aliasizer = \
-                        ClauseAdapter(secondary).\
-                            chain(ClauseAdapter(source_selectable,
-                            equivalents=self.parent._equivalent_columns))
-                secondaryjoin = \
-                    secondary_aliasizer.traverse(secondaryjoin)
-            else:
-                primary_aliasizer = ClauseAdapter(dest_selectable,
-                        #exclude=self.local_side,
-                        exclude_fn=lambda c: "local" in c._annotations,
-                        equivalents=self.mapper._equivalent_columns)
-                if source_selectable is not None:
-                    primary_aliasizer.chain(
-                        ClauseAdapter(source_selectable,
-                            #exclude=self.remote_side,
-                            exclude_fn=lambda c: "remote" in c._annotations,
-                            equivalents=self.parent._equivalent_columns))
-                secondary_aliasizer = None
-
-            primaryjoin = primary_aliasizer.traverse(primaryjoin)
-            target_adapter = secondary_aliasizer or primary_aliasizer
-            target_adapter.include = target_adapter.exclude = target_adapter.exclude_fn = None
-        else:
-            target_adapter = None
+        primaryjoin, secondaryjoin, secondary, target_adapter, dest_selectable = \
+            self._join_condition.join_targets(
+                source_selectable, dest_selectable, aliased, single_crit
+            )
         if source_selectable is None:
             source_selectable = self.parent.local_table
         if dest_selectable is None:
             dest_selectable = self.mapper.local_table
-        return (
-            primaryjoin,
-            secondaryjoin,
-            source_selectable,
-            dest_selectable,
-            secondary,
-            target_adapter,
-            )
+        return (primaryjoin, secondaryjoin, source_selectable,
+            dest_selectable, secondary, target_adapter)
+
 
 PropertyLoader = RelationProperty = RelationshipProperty
 log.class_logger(RelationshipProperty)

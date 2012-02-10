@@ -400,7 +400,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_join_targets_o2m_selfref(self):
         joincond = self._join_fixture_o2m_selfref()
         left = select([joincond.parent_selectable]).alias('pj')
-        pj, sj, sec, adapter = joincond.join_targets(
+        pj, sj, sec, adapter, ds = joincond.join_targets(
                                     left, 
                                     joincond.child_selectable, 
                                     True)
@@ -409,7 +409,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
         right = select([joincond.child_selectable]).alias('pj')
-        pj, sj, sec, adapter = joincond.join_targets(
+        pj, sj, sec, adapter, ds = joincond.join_targets(
                                     joincond.parent_selectable, 
                                     right, 
                                     True)
@@ -420,7 +420,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_o2m_plain(self):
         joincond = self._join_fixture_o2m()
-        pj, sj, sec, adapter = joincond.join_targets(
+        pj, sj, sec, adapter, ds = joincond.join_targets(
                                     joincond.parent_selectable, 
                                     joincond.child_selectable, 
                                     False)
@@ -431,7 +431,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_join_targets_o2m_left_aliased(self):
         joincond = self._join_fixture_o2m()
         left = select([joincond.parent_selectable]).alias('pj')
-        pj, sj, sec, adapter = joincond.join_targets(
+        pj, sj, sec, adapter, ds = joincond.join_targets(
                                     left, 
                                     joincond.child_selectable, 
                                     True)
@@ -442,7 +442,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_join_targets_o2m_right_aliased(self):
         joincond = self._join_fixture_o2m()
         right = select([joincond.child_selectable]).alias('pj')
-        pj, sj, sec, adapter = joincond.join_targets(
+        pj, sj, sec, adapter, ds = joincond.join_targets(
                                     joincond.parent_selectable, 
                                     right, 
                                     True)

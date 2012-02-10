@@ -785,8 +785,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
             leftmost_mapper, leftmost_prop = \
                                     subq_mapper, \
                                     subq_mapper._props[subq_path[1]]
-        # TODO: local cols might not be unique here
-        leftmost_cols, remote_cols = self._local_remote_columns(leftmost_prop)
+
+        leftmost_cols = leftmost_prop.local_columns
 
         leftmost_attr = [
             leftmost_mapper._columntoproperty[c].class_attribute
@@ -847,9 +847,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             # self.parent is more specific than subq_path[-2]
             parent_alias = mapperutil.AliasedClass(self.parent)
 
-        # TODO: local cols might not be unique here
-        local_cols, remote_cols = \
-                        self._local_remote_columns(self.parent_property)
+        local_cols = self.parent_property.local_columns
 
         local_attr = [
             getattr(parent_alias, self.parent._columntoproperty[c].key)
@@ -882,18 +880,6 @@ class SubqueryLoader(AbstractRelationshipLoader):
             else:
                 q = q.join(attr, aliased=middle, from_joinpoint=True)
         return q
-
-    def _local_remote_columns(self, prop):
-        if prop.secondary is None:
-            return zip(*prop.local_remote_pairs)
-        else:
-            # TODO: this isn't going to work for readonly....
-            return \
-                [p[0] for p in prop.synchronize_pairs],\
-                [
-                    p[0] for p in prop.
-                                        secondary_synchronize_pairs
-                ]
 
     def _setup_options(self, q, subq_path, orig_query):
         # propagate loader options etc. to the new query.
@@ -933,8 +919,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         if ('subquery', reduced_path) not in context.attributes:
             return None, None, None
 
-        # TODO: local_cols might not be unique here
-        local_cols, remote_cols = self._local_remote_columns(self.parent_property)
+        local_cols = self.parent_property.local_columns
 
         q = context.attributes[('subquery', reduced_path)]
 
