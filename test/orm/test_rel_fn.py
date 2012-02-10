@@ -46,7 +46,7 @@ class _JoinFixtures(object):
             Column('rid', Integer, ForeignKey('m2mrgt.id'), primary_key=True),
         )
 
-    def _join_fixture_m2m_selfref(self, **kw):
+    def _join_fixture_m2m(self, **kw):
         return relationships.JoinCondition(
                     self.m2mleft, 
                     self.m2mright, 
@@ -141,6 +141,19 @@ class _JoinFixtures(object):
             **kw
         )
 
+    def _join_fixture_compound_expression_1_non_annotated(self, **kw):
+        return relationships.JoinCondition(
+            self.left,
+            self.right,
+            self.left,
+            self.right,
+            primaryjoin=(self.left.c.x + self.left.c.y) == \
+                            (
+                                self.right.c.x * self.right.c.y
+                            ),
+            **kw
+        )
+
 class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_determine_remote_columns_compound_1(self):
         joincond = self._join_fixture_compound_expression_1(
@@ -176,20 +189,26 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             ]
         )
 
+    def test_determine_local_remote_compound_1(self):
+        joincond = self._join_fixture_compound_expression_1()
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.left.c.x, self.right.c.x),
+                (self.left.c.x, self.right.c.y),
+                (self.left.c.y, self.right.c.x),
+                (self.left.c.y, self.right.c.y),
+            ]
+        )
+
     def test_err_local_remote_compound_1(self):
         assert_raises_message(
             exc.ArgumentError,
-            r"Could not locate any simple equality "
-            "expressions involving foreign key "
-            "columns for primaryjoin join "
-            r"condition 'lft.x \+ lft.y = rgt.x \* rgt.y' "
-            "on relationship None.  Ensure that referencing "
-            "columns are associated with a ForeignKey or "
-            "ForeignKeyConstraint, or are annotated in the "
-            r"join condition with the foreign\(\) annotation. "
-            "To allow comparison operators other "
-            "than '==', the relationship can be marked as viewonly=True.",
-            self._join_fixture_compound_expression_1
+            "Can't determine relationship direction for "
+            "relationship 'None' - foreign key "
+            "columns are present in neither the "
+            "parent nor the child's mapped tables",
+            self._join_fixture_compound_expression_1_non_annotated
         )
 
     def test_determine_remote_columns_compound_2(self):
@@ -245,8 +264,8 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             [(self.left.c.id, self.right.c.lid)]
         )
 
-    def test_determine_synchronize_pairs_m2m_selfref(self):
-        joincond = self._join_fixture_m2m_selfref()
+    def test_determine_synchronize_pairs_m2m(self):
+        joincond = self._join_fixture_m2m()
         eq_(
             joincond.synchronize_pairs,
             [(self.m2mleft.c.id, self.m2msecondary.c.lid)]
@@ -254,6 +273,13 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
         eq_(
             joincond.secondary_synchronize_pairs,
             [(self.m2mright.c.id, self.m2msecondary.c.rid)]
+        )
+
+    def test_determine_local_remote_pairs_m2m(self):
+        joincond = self._join_fixture_m2m()
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.m2mleft.c.id, self.m2msecondary.c.lid), (self.m2mright.c.id, self.m2msecondary.c.rid)]
         )
 
     def test_determine_remote_columns_m2o_selfref(self):

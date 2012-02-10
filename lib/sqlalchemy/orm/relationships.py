@@ -207,7 +207,6 @@ class JoinCondition(object):
             secondarycols = util.column_set(self.secondary.c)
         else:
             secondarycols = set()
-
         def is_foreign(a, b):
             if isinstance(a, schema.Column) and \
                         isinstance(b, schema.Column):
