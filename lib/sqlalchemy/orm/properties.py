@@ -18,7 +18,7 @@ from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm import attributes, dependency, mapper, \
     object_mapper, strategies, configure_mappers, relationships
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
-    _orm_annotate, _orm_deannotate
+    _orm_annotate, _orm_deannotate, _orm_full_deannotate
 
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
     MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
@@ -62,7 +62,7 @@ class ColumnProperty(StrategizedProperty):
 
         """
         self._orig_columns = [expression._labeled(c) for c in columns]
-        self.columns = [expression._labeled(_orm_deannotate(c)) 
+        self.columns = [expression._labeled(_orm_full_deannotate(c)) 
                             for c in columns]
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)

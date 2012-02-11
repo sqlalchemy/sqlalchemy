@@ -379,6 +379,9 @@ def _orm_deannotate(element):
                 values=("_orm_adapt", "parententity")
             )
 
+def _orm_full_deannotate(element):
+    return sql_util._deep_deannotate(element)
+
 class _ORMJoin(expression.Join):
     """Extend Join to support ORM constructs as input."""
 

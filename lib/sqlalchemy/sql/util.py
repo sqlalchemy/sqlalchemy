@@ -100,8 +100,7 @@ def visit_binary_product(fn, expr):
     """
     stack = []
     def visit(element):
-        if isinstance(element, (expression.FromClause, 
-                                expression._ScalarSelect)):
+        if isinstance(element, (expression._ScalarSelect)):
             # we dont want to dig into correlated subqueries,
             # those are just column elements by themselves
             yield element

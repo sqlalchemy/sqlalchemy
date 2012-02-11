@@ -1,9 +1,9 @@
 from test.lib.testing import assert_raises, assert_raises_message, eq_, \
     AssertsCompiledSQL, is_
 from test.lib import fixtures
-from sqlalchemy.orm import relationships
+from sqlalchemy.orm import relationships, foreign, remote, remote_foreign
 from sqlalchemy import MetaData, Table, Column, ForeignKey, Integer, \
-    select, ForeignKeyConstraint, exc
+    select, ForeignKeyConstraint, exc, func
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 
@@ -44,6 +44,30 @@ class _JoinFixtures(object):
         cls.m2msecondary = Table('m2msecondary', m,
             Column('lid', Integer, ForeignKey('m2mlft.id'), primary_key=True),
             Column('rid', Integer, ForeignKey('m2mrgt.id'), primary_key=True),
+        )
+        cls.base_w_sub_rel = Table('base_w_sub_rel', m,
+            Column('id', Integer, primary_key=True),
+            Column('sub_id', Integer, ForeignKey('rel_sub.id'))
+        )
+        cls.rel_sub = Table('rel_sub', m,
+            Column('id', Integer, ForeignKey('base_w_sub_rel.id'), 
+                                primary_key=True)
+        )
+        cls.base = Table('base', m,
+            Column('id', Integer, primary_key=True),
+        )
+        cls.sub = Table('sub', m,
+            Column('id', Integer, ForeignKey('base.id'), 
+                                primary_key=True),
+        )
+        cls.sub_w_base_rel = Table('sub_w_base_rel', m,
+            Column('id', Integer, ForeignKey('base.id'), 
+                                primary_key=True),
+            Column('base_id', Integer, ForeignKey('base.id'))
+        )
+        cls.right_w_base_rel = Table('right_w_base_rel', m,
+            Column('id', Integer, primary_key=True),
+            Column('base_id', Integer, ForeignKey('base.id'))
         )
 
     def _join_fixture_m2m(self, **kw):
@@ -152,7 +176,139 @@ class _JoinFixtures(object):
             **kw
         )
 
+    def _join_fixture_base_to_joined_sub(self, **kw):
+        # see test/orm/inheritance/test_abc_inheritance:TestaTobM2O
+        # and others there
+        right = self.base_w_sub_rel.join(self.rel_sub,
+            self.base_w_sub_rel.c.id==self.rel_sub.c.id
+        )
+        return relationships.JoinCondition(
+            self.base_w_sub_rel,
+            right,
+            self.base_w_sub_rel,
+            self.rel_sub,
+            primaryjoin=self.base_w_sub_rel.c.sub_id==\
+                        self.rel_sub.c.id,
+            **kw
+        )
+
+    def _join_fixture_o2m_joined_sub_to_base(self, **kw):
+        left = self.base.join(self.sub_w_base_rel, 
+                        self.base.c.id==self.sub_w_base_rel.c.id)
+        return relationships.JoinCondition(
+            left,
+            self.base,
+            self.sub_w_base_rel,
+            self.base,
+            primaryjoin=self.sub_w_base_rel.c.base_id==self.base.c.id
+        )
+
+    def _join_fixture_m2o_sub_to_joined_sub(self, **kw):
+        # see test.orm.test_mapper:MapperTest.test_add_column_prop_deannotate,
+        right = self.base.join(self.right_w_base_rel, 
+                        self.base.c.id==self.right_w_base_rel.c.id)
+        return relationships.JoinCondition(
+            self.right_w_base_rel,
+            right,
+            self.right_w_base_rel,
+            self.right_w_base_rel,
+        )
+
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        class SubUser(User):
+            pass
+        m = mapper(User, users)
+        m2 = mapper(SubUser, addresses, inherits=User)
+        m3 = mapper(Address, addresses, properties={
+            'foo':relationship(m2)
+        })
+
+    def _join_fixture_o2o_joined_sub_to_base(self, **kw):
+        left = self.base.join(self.sub, 
+                        self.base.c.id==self.sub.c.id)
+
+        # see test_relationships->AmbiguousJoinInterpretedAsSelfRef
+        return relationships.JoinCondition(
+            left,
+            self.sub,
+            left, 
+            self.sub,
+        )
+
+    def _join_fixture_o2m_to_annotated_func(self, **kw):
+        return relationships.JoinCondition(
+                    self.left, 
+                    self.right, 
+                    self.left, 
+                    self.right,
+                    primaryjoin=self.left.c.id==
+                        foreign(func.foo(self.right.c.lid)),
+                    **kw
+                )
+
+    def _join_fixture_o2m_to_oldstyle_func(self, **kw):
+        return relationships.JoinCondition(
+                    self.left, 
+                    self.right, 
+                    self.left, 
+                    self.right,
+                    primaryjoin=self.left.c.id==
+                        func.foo(self.right.c.lid),
+                    consider_as_foreign_keys=[self.right.c.lid],
+                    **kw
+                )
+
+
 class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
+    def test_determine_local_remote_pairs_o2o_joined_sub_to_base(self):
+        joincond = self._join_fixture_o2o_joined_sub_to_base()
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.base.c.id, self.sub.c.id)]
+        )
+
+    def test_determine_synchronize_pairs_o2m_to_annotated_func(self):
+        joincond = self._join_fixture_o2m_to_annotated_func()
+        eq_(
+            joincond.synchronize_pairs,
+            [(self.left.c.id, self.right.c.lid)]
+        )
+
+    def test_determine_synchronize_pairs_o2m_to_oldstyle_func(self):
+        joincond = self._join_fixture_o2m_to_oldstyle_func()
+        eq_(
+            joincond.synchronize_pairs,
+            [(self.left.c.id, self.right.c.lid)]
+        )
+
+    def test_determine_local_remote_base_to_joined_sub(self):
+        joincond = self._join_fixture_base_to_joined_sub()
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.base_w_sub_rel.c.sub_id, self.rel_sub.c.id)
+            ]
+        )
+
+    def test_determine_local_remote_o2m_joined_sub_to_base(self):
+        joincond = self._join_fixture_o2m_joined_sub_to_base()
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.sub_w_base_rel.c.base_id, self.base.c.id)
+            ]
+        )
+
+    def test_determine_local_remote_m2o_sub_to_joined_sub(self):
+        joincond = self._join_fixture_m2o_sub_to_joined_sub()
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.right_w_base_rel.c.base_id, self.base.c.id)
+            ]
+        )
+
     def test_determine_remote_columns_compound_1(self):
         joincond = self._join_fixture_compound_expression_1(
                                 support_sync=False)

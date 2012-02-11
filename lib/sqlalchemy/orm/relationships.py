@@ -328,7 +328,11 @@ class JoinCondition(object):
             _annotate_selfref(lambda col:"foreign" in col._annotations)
         else:
             def repl(element):
-                if self.child_selectable.c.contains_column(element):
+                if self.child_selectable.c.contains_column(element) and \
+                    (
+                        not self.parent_local_selectable.c.contains_column(element)
+                        or self.child_local_selectable.c.contains_column(element)
+                    ):
                     return element._annotate({"remote":True})
 
             self.primaryjoin = visitors.replacement_traverse(
