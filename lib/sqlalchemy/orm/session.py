@@ -1772,6 +1772,19 @@ class Session(object):
 
         return self.transaction and self.transaction.is_active
 
+    identity_map = None
+    """A mapping of object identities to objects themselves.
+    
+    Iterating through ``Session.identity_map.values()`` provides
+    access to the full set of persistent objects (i.e., those 
+    that have row identity) currently in the session.
+    
+    See also:
+    
+    :func:`.identity_key` - operations involving identity keys.
+    
+    """
+
     @property
     def _dirty_states(self):
         """The set of all persistent states considered dirty.

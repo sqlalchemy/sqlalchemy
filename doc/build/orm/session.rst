@@ -890,6 +890,13 @@ all objects which have had changes since they were last loaded or saved (i.e.
     # persistent objects that have been marked as deleted via session.delete(obj)
     session.deleted
 
+    # dictionary of all persistent objects, keyed on their
+    # identity key
+    session.identity_map
+
+(Documentation: :attr:`.Session.new`, :attr:`.Session.dirty`, 
+:attr:`.Session.deleted`, :attr:`.Session.identity_map`).
+
 Note that objects within the session are by default *weakly referenced*. This
 means that when they are dereferenced in the outside application, they fall
 out of scope from within the :class:`~sqlalchemy.orm.session.Session` as well
