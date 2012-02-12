@@ -1589,7 +1589,7 @@ class ClauseElement(Visitable):
         """
         return sqlutil.Annotated(self, values)
 
-    def _deannotate(self, values=None):
+    def _deannotate(self, values=None, clone=False):
         """return a copy of this :class:`.ClauseElement` with annotations
         removed.
         
@@ -1597,9 +1597,14 @@ class ClauseElement(Visitable):
          to remove.
 
         """
-        # since we have no annotations we return
-        # self
-        return self
+        if clone:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            return self._clone()
+        else:
+            # if no clone, since we have no annotations we return
+            # self
+            return self
 
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with :func:`bindparam()` elments replaced.

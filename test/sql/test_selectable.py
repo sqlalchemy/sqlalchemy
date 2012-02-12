@@ -1151,7 +1151,37 @@ class AnnotationsTest(fixtures.TestBase):
         assert b2.left is not bin.left 
         assert b3.left is not b2.left is not bin.left
         assert b4.left is bin.left  # since column is immutable
-        assert b4.right is bin.right
-        assert b2.right is not bin.right
-        assert b3.right is b4.right is bin.right
+        # deannotate copies the element
+        assert bin.right is not b2.right is not b3.right is not b4.right
 
+    def test_deannotate_2(self):
+        table1 = table('table1', column("col1"), column("col2"))
+        j = table1.c.col1._annotate({"remote":True}) == \
+                table1.c.col2._annotate({"local":True})
+        j2 = sql_util._deep_deannotate(j)
+        eq_(
+            j.left._annotations, {"remote":True}
+        )
+        eq_(
+            j2.left._annotations, {}
+        )
+
+    def test_deannotate_3(self):
+        table1 = table('table1', column("col1"), column("col2"), 
+                            column("col3"), column("col4"))
+        j = and_(
+                table1.c.col1._annotate({"remote":True})==
+                table1.c.col2._annotate({"local":True}), 
+                table1.c.col3._annotate({"remote":True})==
+                table1.c.col4._annotate({"local":True})
+        )
+        j2 = sql_util._deep_deannotate(j)
+        eq_(
+            j.clauses[0].left._annotations, {"remote":True}
+        )
+        eq_(
+            j2.clauses[0].left._annotations, {}
+        )
+
+        
+        

@@ -424,7 +424,7 @@ class Annotated(object):
         clone._annotations = values
         return clone
 
-    def _deannotate(self, values=None):
+    def _deannotate(self, values=None, clone=True):
         if values is None:
             return self.__element
         else:
@@ -498,7 +498,7 @@ def _deep_deannotate(element, values=None):
     """Deep copy the given element, removing annotations."""
 
     def clone(elem):
-        elem = elem._deannotate(values=values)
+        elem = elem._deannotate(values=values, clone=True)
         elem._copy_internals(clone=clone)
         return elem
 

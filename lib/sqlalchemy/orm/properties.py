@@ -1062,6 +1062,9 @@ class RelationshipProperty(StrategizedProperty):
         return True
 
     def _generate_backref(self):
+        """Interpret the 'backref' instruction to create a 
+        :func:`.relationship` complementary to this one."""
+
         if not self.is_primary():
             return
         if self.backref is not None and not self.back_populates:
@@ -1075,7 +1078,14 @@ class RelationshipProperty(StrategizedProperty):
                         "'%s' on relationship '%s': property of that "
                         "name exists on mapper '%s'" % (backref_key,
                         self, mapper))
+
+            # determine primaryjoin/secondaryjoin for the
+            # backref.  Use the one we had, so that
+            # a custom join doesn't have to be specified in
+            # both directions.
             if self.secondary is not None:
+                # for many to many, just switch primaryjoin/
+                # secondaryjoin. 
                 pj = kwargs.pop('primaryjoin', self.secondaryjoin)
                 sj = kwargs.pop('secondaryjoin', self.primaryjoin)
             else:
@@ -1084,9 +1094,9 @@ class RelationshipProperty(StrategizedProperty):
                 sj = kwargs.pop('secondaryjoin', None)
                 if sj:
                     raise sa_exc.InvalidRequestError(
-                        "Can't assign 'secondaryjoin' on a backref against "
-                        "a non-secondary relationship."
-                            )
+                        "Can't assign 'secondaryjoin' on a backref "
+                        "against a non-secondary relationship."
+                    )
 
             foreign_keys = kwargs.pop('foreign_keys',
                     self._user_defined_foreign_keys)

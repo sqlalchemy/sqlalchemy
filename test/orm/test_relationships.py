@@ -7,7 +7,8 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, relation, \
                     backref, create_session, configure_mappers, \
                     clear_mappers, sessionmaker, attributes,\
-                    Session, composite, column_property, foreign
+                    Session, composite, column_property, foreign,\
+                    remote
 from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 from test.lib.testing import eq_, startswith_, AssertsCompiledSQL, is_
 from test.lib import fixtures
@@ -187,8 +188,10 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
                     employee_t.c.company_id==employee_t.c.company_id
                 ),
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
-                foreign_keys=[employee_t.c.reports_to_id],
-                backref=backref('employees', foreign_keys=None))
+                foreign_keys=[employee_t.c.reports_to_id, employee_t.c.company_id],
+                backref=backref('employees', 
+                    foreign_keys=[employee_t.c.reports_to_id, 
+                                employee_t.c.company_id]))
         })
 
         self._test()
@@ -204,8 +207,10 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             'company':relationship(Company, backref='employees'),
             'reports_to':relationship(Employee,
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
-                foreign_keys=[employee_t.c.reports_to_id],
-                backref=backref('employees', foreign_keys=None)
+                foreign_keys=[employee_t.c.reports_to_id, 
+                                    employee_t.c.company_id],
+                backref=backref('employees', foreign_keys=
+                    [employee_t.c.reports_to_id, employee_t.c.company_id])
                 )
         })
 
@@ -242,18 +247,64 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
                         (employee_t.c.reports_to_id, employee_t.c.emp_id),
                         (employee_t.c.company_id, employee_t.c.company_id)
                 ],
-                foreign_keys=[employee_t.c.reports_to_id],
-                backref=backref('employees', foreign_keys=None)
+                foreign_keys=[employee_t.c.reports_to_id, 
+                                    employee_t.c.company_id],
+                backref=backref('employees', foreign_keys=
+                    [employee_t.c.reports_to_id, employee_t.c.company_id])
+                )
+        })
+
+        self._test()
+
+    def test_annotated(self):
+        Employee, Company, employee_t, company_t = (self.classes.Employee,
+                                self.classes.Company,
+                                self.tables.employee_t,
+                                self.tables.company_t)
+
+        mapper(Company, company_t)
+        mapper(Employee, employee_t, properties= {
+            'company':relationship(Company, backref='employees'),
+            'reports_to':relationship(Employee,
+                primaryjoin=sa.and_(
+                    remote(employee_t.c.emp_id)==employee_t.c.reports_to_id,
+                    remote(employee_t.c.company_id)==employee_t.c.company_id
+                ),
+                backref=backref('employees')
                 )
         })
 
         self._test()
 
     def _test(self):
+        self._test_relationships()
         sess = Session()
         self._setup_data(sess)
         self._test_lazy_relations(sess)
         self._test_join_aliasing(sess)
+
+    def _test_relationships(self):
+        configure_mappers()
+        Employee = self.classes.Employee
+        employee_t = self.tables.employee_t
+        eq_(
+            set(Employee.employees.property.local_remote_pairs),
+            set([
+                (employee_t.c.company_id, employee_t.c.company_id),
+                (employee_t.c.emp_id, employee_t.c.reports_to_id),
+            ])
+        )
+        eq_(
+            Employee.employees.property.remote_side,
+            set([employee_t.c.company_id, employee_t.c.reports_to_id])
+        )
+        eq_(
+            set(Employee.reports_to.property.local_remote_pairs),
+            set([
+                (employee_t.c.company_id, employee_t.c.company_id),
+                (employee_t.c.reports_to_id, employee_t.c.emp_id),
+            ])
+        )
 
     def _setup_data(self, sess):
         Employee, Company = self.classes.Employee, self.classes.Company
@@ -2424,56 +2475,7 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
             "on relationship",
             sa.orm.configure_mappers)
 
-    def test_no_fks_warning_1(self):
-        foobars_with_many_columns, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_many_columns,
-                                self.tables.bars,
-                                self.classes.Bar,
-                                self.tables.foobars,
-                                self.classes.Foo,
-                                self.tables.foos)
-
-        mapper(Foo, foos, properties={
-            'bars': relationship(Bar, secondary=foobars, 
-                                primaryjoin=foos.c.id==foobars.c.fid,
-                                secondaryjoin=foobars.c.bid==bars.c.id)})
-        mapper(Bar, bars)
-
-        assert_raises_message(sa.exc.SAWarning,
-                              "No ForeignKey objects were present in "
-                              "secondary table 'foobars'.  Assumed "
-                              "referenced foreign key columns "
-                              "'foobars.bid', 'foobars.fid' for join "
-                              "condition 'foos.id = foobars.fid' on "
-                              "relationship Foo.bars",
-                              sa.orm.configure_mappers)
-
-        sa.orm.clear_mappers()
-        mapper(Foo, foos, properties={
-                        'bars': relationship(Bar, 
-                            secondary=foobars_with_many_columns, 
-                          primaryjoin=foos.c.id==
-                                            foobars_with_many_columns.c.fid,
-                          secondaryjoin=foobars_with_many_columns.c.bid==
-                                                    bars.c.id)})
-        mapper(Bar, bars)
-
-        assert_raises_message(sa.exc.SAWarning,
-                              "No ForeignKey objects were present in "
-                              "secondary table 'foobars_with_many_colum"
-                              "ns'.  Assumed referenced foreign key "
-                              "columns 'foobars_with_many_columns.bid',"
-                              " 'foobars_with_many_columns.bid1', "
-                              "'foobars_with_many_columns.bid2', "
-                              "'foobars_with_many_columns.fid', "
-                              "'foobars_with_many_columns.fid1', "
-                              "'foobars_with_many_columns.fid2' for "
-                              "join condition 'foos.id = "
-                              "foobars_with_many_columns.fid' on "
-                              "relationship Foo.bars",
-                              sa.orm.configure_mappers)
-
-    @testing.emits_warning(r'No ForeignKey objects.*')
-    def test_no_fks_warning_2(self):
+    def test_no_fks(self):
         foobars_with_many_columns, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_many_columns,
                                 self.tables.bars,
                                 self.classes.Bar,

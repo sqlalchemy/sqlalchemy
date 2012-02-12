@@ -222,13 +222,13 @@ def cloned_traverse(obj, opts, visitors):
         if elem in stop_on:
             return elem
         else:
-            if elem not in cloned:
-                cloned[elem] = newelem = elem._clone()
+            if id(elem) not in cloned:
+                cloned[id(elem)] = newelem = elem._clone()
                 newelem._copy_internals(clone=clone)
                 meth = visitors.get(newelem.__visit_name__, None)
                 if meth:
                     meth(newelem)
-            return cloned[elem]
+            return cloned[id(elem)]
 
     if obj is not None:
         obj = clone(obj)

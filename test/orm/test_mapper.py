@@ -514,8 +514,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         assert User.x.property.columns[0] is not expr
         assert User.x.property.columns[0].element.left is users.c.name
-        # a full deannotate goes back to the original element
-        assert User.x.property.columns[0].element.right is expr.right
+        # a deannotate needs to clone the base, in case 
+        # the original one referenced annotated elements.
+        assert User.x.property.columns[0].element.right is not expr.right
 
         assert User.y.property.columns[0] is not expr2
         assert User.y.property.columns[0].element.\
