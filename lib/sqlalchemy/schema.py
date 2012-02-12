@@ -2195,6 +2195,8 @@ class Index(ColumnCollectionMixin, SchemaItem):
         self.table = None
         # will call _set_parent() if table-bound column
         # objects are present
+        if not columns:
+            util.warn("No column names or expressions given for Index.")
         ColumnCollectionMixin.__init__(self, *columns)
         self.name = name
         self.unique = kw.pop('unique', False)
@@ -3007,9 +3009,11 @@ def _to_schema_column(element):
    return element
 
 def _to_schema_column_or_string(element):
-  if hasattr(element, '__clause_element__'):
-      element = element.__clause_element__()
-  return element
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    if not isinstance(element, (basestring, expression.ColumnElement)):
+        raise exc.ArgumentError("Element %r is not a string name or column element" % element)
+    return element
 
 class _CreateDropBase(DDLElement):
     """Base class for DDL constucts that represent CREATE and DROP or

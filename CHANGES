@@ -53,6 +53,11 @@ CHANGES
     key constraint of the reflected table.
     [ticket:2402]
 
+  - [bug] Index will raise when arguments passed
+    cannot be interpreted as columns or expressions.
+    Will warn when Index is created
+    with no columns at all.  [ticket:2380]
+
 - engine
   - [feature] Added pool_reset_on_return argument
     to create_engine, allows control over 

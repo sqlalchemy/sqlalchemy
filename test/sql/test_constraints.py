@@ -256,6 +256,39 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
                 Index('bar', t1.c.x)
         )
 
+    def test_raise_index_nonexistent_name(self):
+        m = MetaData()
+        # the KeyError isn't ideal here, a nicer message
+        # perhaps
+        assert_raises(
+            KeyError,
+            Table, 't', m, Column('x', Integer), Index("foo", "q")
+        )
+
+    def test_raise_not_a_column(self):
+        assert_raises(
+            exc.ArgumentError,
+            Index, "foo", 5
+        )
+
+    def test_warn_no_columns(self):
+        assert_raises_message(
+            exc.SAWarning,
+            "No column names or expressions given for Index.",
+            Index, "foo"
+        )
+
+    def test_raise_clauseelement_not_a_column(self):
+        m = MetaData()
+        t2 = Table('t2', m, Column('x', Integer))
+        class SomeClass(object):
+            def __clause_element__(self):
+                return t2
+        assert_raises(
+            exc.ArgumentError,
+            Index, "foo", SomeClass()
+        )
+
 class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 

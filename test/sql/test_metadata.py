@@ -655,7 +655,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 "Column('x', String(), table=<bar>), schema=None)"),
             (schema.DefaultGenerator(for_update=True), 
                 "DefaultGenerator(for_update=True)"),
-            (schema.Index("bar"), "Index('bar')"),
+            (schema.Index("bar", "c"), "Index('bar')"),
             (i1, "Index('bar', Column('x', Integer(), table=<foo>))"),
             (schema.FetchedValue(), "FetchedValue()"),
             (ck, 
