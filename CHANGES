@@ -65,6 +65,11 @@ CHANGES
     commit or rollback transaction with errors
     on engine.begin().
 
+- oracle
+
+  - Added missing compilation support for 
+    LONG [ticket:2401]
+
 0.7.5 (January 28, 2012)
 =====
 - orm

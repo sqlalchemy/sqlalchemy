@@ -309,6 +309,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
                 "",
         )
 
+    def visit_LONG(self, type_):
+        return "LONG"
+
     def visit_TIMESTAMP(self, type_):
         if type_.timezone:
             return "TIMESTAMP WITH TIME ZONE"
