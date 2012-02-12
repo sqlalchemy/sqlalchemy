@@ -6,6 +6,11 @@ CHANGES
 0.7.6
 =====
 - orm
+  - [feature] Added the ability to query for
+    Table-bound column names when using 
+    query(sometable).filter_by(colname=value).  
+    [ticket:2400]
+
   - [bug] Improved the "declarative reflection" 
     example to support single-table inheritance,
     multiple calls to prepare(), tables that

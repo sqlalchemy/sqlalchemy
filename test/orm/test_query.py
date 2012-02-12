@@ -1155,6 +1155,32 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = None).all()
         assert [User(name='chuck')] == sess.query(User).filter_by(addresses = null()).all()
 
+    def test_filter_by_tables(self):
+        users = self.tables.users
+        addresses = self.tables.addresses
+        sess = create_session()
+        self.assert_compile(
+            sess.query(users).\
+                    filter_by(name='ed').\
+                    join(addresses, users.c.id==addresses.c.user_id).\
+                    filter_by(email_address='ed@ed.com'),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "WHERE users.name = :name_1 AND "
+            "addresses.email_address = :email_address_1",
+            checkparams={u'email_address_1': 'ed@ed.com', u'name_1': 'ed'}
+        )
+
+    def test_filter_by_no_property(self):
+        addresses = self.tables.addresses
+        sess = create_session()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Entity 'addresses' has no property 'name'",
+            sess.query(addresses).\
+                    filter_by, name='ed'
+        )
+
     def test_none_comparison(self):
         Order, User, Address = (self.classes.Order,
                                 self.classes.User,

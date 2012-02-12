@@ -276,6 +276,7 @@ class Query(object):
         return self._select_from_entity or \
             self._entity_zero().entity_zero
 
+
     @property
     def _mapper_entities(self):
         # TODO: this is wrong, its hardcoded to "primary entity" when
@@ -3086,8 +3087,9 @@ class _MapperEntity(_QueryEntity):
 class _ColumnEntity(_QueryEntity):
     """Column/expression based entity."""
 
-    def __init__(self, query, column):
+    def __init__(self, query, column, namespace=None):
         self.expr = column
+        self.namespace = namespace
 
         if isinstance(column, basestring):
             column = sql.literal_column(column)
@@ -3106,7 +3108,7 @@ class _ColumnEntity(_QueryEntity):
             for c in column._select_iterable:
                 if c is column:
                     break
-                _ColumnEntity(query, c)
+                _ColumnEntity(query, c, namespace=column)
 
             if c is not column:
                 return
@@ -3147,12 +3149,14 @@ class _ColumnEntity(_QueryEntity):
 
         if self.entities:
             self.entity_zero = list(self.entities)[0]
+        elif self.namespace is not None:
+            self.entity_zero = self.namespace
         else:
             self.entity_zero = None
 
     @property
     def entity_zero_or_selectable(self):
-        if self.entity_zero:
+        if self.entity_zero is not None:
             return self.entity_zero
         elif self.actual_froms:
             return list(self.actual_froms)[0]

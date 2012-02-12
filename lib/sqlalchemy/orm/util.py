@@ -557,15 +557,20 @@ def _entity_descriptor(entity, key):
     attribute.
 
     """
-    if not isinstance(entity, (AliasedClass, type)):
-        entity = entity.class_
+    if isinstance(entity, expression.FromClause):
+        description = entity
+        entity = entity.c
+    elif not isinstance(entity, (AliasedClass, type)):
+        description = entity = entity.class_
+    else:
+        description = entity
 
     try:
         return getattr(entity, key)
     except AttributeError:
         raise sa_exc.InvalidRequestError(
                     "Entity '%s' has no property '%s'" % 
-                    (entity, key)
+                    (description, key)
                 )
 
 def _orm_columns(entity):
