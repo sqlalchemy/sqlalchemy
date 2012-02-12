@@ -477,6 +477,26 @@ def _chain_decorators_on(fn, *decorators):
         fn = decorator(fn)
     return fn
 
+def run_as_contextmanager(ctx, fn, *arg, **kw):
+    """Run the given function under the given contextmanager,
+    simulating the behavior of 'with' to support older 
+    Python versions.
+    
+    """
+
+    obj = ctx.__enter__()
+    try:
+        result = fn(obj, *arg, **kw)
+        ctx.__exit__(None, None, None)
+        return result
+    except:
+        exc_info = sys.exc_info()
+        raise_ = ctx.__exit__(*exc_info)
+        if raise_ is None:
+            raise
+        else:
+            return raise_
+
 def rowset(results):
     """Converts the results of sql execution into a plain set of column tuples.
 

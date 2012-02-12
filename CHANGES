@@ -50,6 +50,21 @@ CHANGES
     to pool.reset_on_return to allow more control
     over connection return activity. [ticket:2378]
 
+  - [feature] Added some decent context managers
+    to Engine, Connection:
+
+        with engine.begin() as conn:
+            <work with conn in a transaction>
+
+    and:
+
+        with engine.connect() as conn:
+            <work with conn>
+
+    Both close out the connection when done,
+    commit or rollback transaction with errors
+    on engine.begin().
+
 0.7.5 (January 28, 2012)
 =====
 - orm

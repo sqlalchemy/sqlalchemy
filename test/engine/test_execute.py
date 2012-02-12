@@ -305,6 +305,140 @@ class ExecuteTest(fixtures.TestBase):
         assert eng.dialect.returns_unicode_strings in (True, False)
         eng.dispose()
 
+class ConvenienceExecuteTest(fixtures.TablesTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        cls.table = Table('exec_test', metadata,
+            Column('a', Integer),
+            Column('b', Integer),
+            test_needs_acid=True
+        )
+
+    def _trans_fn(self, is_transaction=False):
+        def go(conn, x, value=None):
+            if is_transaction:
+                conn = conn.connection
+            conn.execute(self.table.insert().values(a=x, b=value))
+        return go
+
+    def _trans_rollback_fn(self, is_transaction=False):
+        def go(conn, x, value=None):
+            if is_transaction:
+                conn = conn.connection
+            conn.execute(self.table.insert().values(a=x, b=value))
+            raise Exception("breakage")
+        return go
+
+    def _assert_no_data(self):
+        eq_(
+            testing.db.scalar(self.table.count()), 0
+        )
+
+    def _assert_fn(self, x, value=None):
+        eq_(
+            testing.db.execute(self.table.select()).fetchall(),
+            [(x, value)]
+        )
+
+    def test_transaction_engine_ctx_commit(self):
+        fn = self._trans_fn()
+        ctx = testing.db.begin()
+        testing.run_as_contextmanager(ctx, fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_engine_ctx_rollback(self):
+        fn = self._trans_rollback_fn()
+        ctx = testing.db.begin()
+        assert_raises_message(
+            Exception, 
+            "breakage",
+            testing.run_as_contextmanager, ctx, fn, 5, value=8
+        )
+        self._assert_no_data()
+
+    def test_transaction_tlocal_engine_ctx_commit(self):
+        fn = self._trans_fn()
+        engine = engines.testing_engine(options=dict(
+                                strategy='threadlocal', 
+                                pool=testing.db.pool))
+        ctx = engine.begin()
+        testing.run_as_contextmanager(ctx, fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_tlocal_engine_ctx_rollback(self):
+        fn = self._trans_rollback_fn()
+        engine = engines.testing_engine(options=dict(
+                                strategy='threadlocal', 
+                                pool=testing.db.pool))
+        ctx = engine.begin()
+        assert_raises_message(
+            Exception, 
+            "breakage",
+            testing.run_as_contextmanager, ctx, fn, 5, value=8
+        )
+        self._assert_no_data()
+
+    def test_transaction_connection_ctx_commit(self):
+        fn = self._trans_fn(True)
+        conn = testing.db.connect()
+        ctx = conn.begin()
+        testing.run_as_contextmanager(ctx, fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_connection_ctx_rollback(self):
+        fn = self._trans_rollback_fn(True)
+        conn = testing.db.connect()
+        ctx = conn.begin()
+        assert_raises_message(
+            Exception, 
+            "breakage",
+            testing.run_as_contextmanager, ctx, fn, 5, value=8
+        )
+        self._assert_no_data()
+
+    def test_connection_as_ctx(self):
+        fn = self._trans_fn()
+        ctx = testing.db.connect()
+        testing.run_as_contextmanager(ctx, fn, 5, value=8)
+        # autocommit is on
+        self._assert_fn(5, value=8)
+
+    def test_connect_as_ctx_noautocommit(self):
+        fn = self._trans_fn()
+        ctx = testing.db.connect().execution_options(autocommit=False)
+        testing.run_as_contextmanager(ctx, fn, 5, value=8)
+        # autocommit is off
+        self._assert_no_data()
+
+    def test_transaction_engine_fn_commit(self):
+        fn = self._trans_fn()
+        testing.db.transaction(fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_engine_fn_rollback(self):
+        fn = self._trans_rollback_fn()
+        assert_raises_message(
+            Exception, 
+            "breakage",
+            testing.db.transaction, fn, 5, value=8
+        )
+        self._assert_no_data()
+
+    def test_transaction_connection_fn_commit(self):
+        fn = self._trans_fn()
+        conn = testing.db.connect()
+        conn.transaction(fn, 5, value=8)
+        self._assert_fn(5, value=8)
+
+    def test_transaction_connection_fn_rollback(self):
+        fn = self._trans_rollback_fn()
+        conn = testing.db.connect()
+        assert_raises(
+            Exception, 
+            conn.transaction, fn, 5, value=8
+        )
+        self._assert_no_data()
+
 class CompiledCacheTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
