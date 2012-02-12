@@ -42,6 +42,11 @@ CHANGES
     in a result set row using their original
     in-Python names.   [ticket:2396]
 
+  - [bug] Fixed bug in new "autoload_replace" flag
+    which would fail to preserve the primary
+    key constraint of the reflected table.
+    [ticket:2402]
+
 - engine
   - [feature] Added pool_reset_on_return argument
     to create_engine, allows control over 

@@ -369,9 +369,12 @@ class Table(SchemaItem, expression.TableClause):
         # allow user-overrides
         self._init_items(*args)
 
-    def _autoload(self, metadata, autoload_with, include_columns, exclude_columns=None):
+    def _autoload(self, metadata, autoload_with, include_columns, exclude_columns=()):
         if self.primary_key.columns:
-            PrimaryKeyConstraint()._set_parent_with_dispatch(self)
+            PrimaryKeyConstraint(*[
+                c for c in self.primary_key.columns 
+                if c.key in exclude_columns
+            ])._set_parent_with_dispatch(self)
 
         if autoload_with:
             autoload_with.run_callable(
@@ -424,7 +427,7 @@ class Table(SchemaItem, expression.TableClause):
             if not autoload_replace:
                 exclude_columns = [c.name for c in self.c]
             else:
-                exclude_columns = None
+                exclude_columns = ()
             self._autoload(self.metadata, autoload_with, include_columns, exclude_columns)
 
         self._extra_kwargs(**kwargs)

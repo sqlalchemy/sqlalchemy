@@ -203,7 +203,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert len(t2.indexes) == 2
 
     @testing.provide_metadata
-    def test_autoload_replace(self):
+    def test_autoload_replace_foreign_key(self):
         a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
         b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
                                     Column('a_id', Integer))
@@ -219,6 +219,18 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert b2.c.id is not None
         assert b2.c.a_id.references(a2.c.id)
         eq_(len(b2.constraints), 2)
+
+    @testing.provide_metadata
+    def test_autoload_replace_primary_key(self):
+        a = Table('a', self.metadata, Column('id', Integer))
+        self.metadata.create_all()
+
+        m2 = MetaData()
+        a2 = Table('a', m2, Column('id', Integer, primary_key=True))
+
+        Table('a', m2, autoload=True, autoload_with=testing.db,
+                        autoload_replace=False, extend_existing=True)
+        eq_(list(a2.primary_key), [a2.c.id])
 
     def test_autoload_replace_arg(self):
         Table('t', MetaData(), autoload_replace=False)

@@ -317,7 +317,7 @@ class Inspector(object):
                                             info_cache=self.info_cache, **kw)
         return indexes
 
-    def reflecttable(self, table, include_columns, exclude_columns=None):
+    def reflecttable(self, table, include_columns, exclude_columns=()):
         """Given a Table object, load its internal constructs based on introspection.
 
         This is the underlying method used by most dialects to produce 
@@ -414,9 +414,12 @@ class Inspector(object):
         # Primary keys
         pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
         if pk_cons:
+            pk_cols = [table.c[pk] 
+                        for pk in pk_cons['constrained_columns'] 
+                        if pk in table.c and pk not in exclude_columns
+                    ] + [pk for pk in table.primary_key if pk.key in exclude_columns]
             primary_key_constraint = sa_schema.PrimaryKeyConstraint(name=pk_cons.get('name'), 
-                *[table.c[pk] for pk in pk_cons['constrained_columns']
-                if pk in table.c]
+                *pk_cols
             )
 
             table.append_constraint(primary_key_constraint)
