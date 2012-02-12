@@ -19,6 +19,12 @@ CHANGES
     happen if there's really an UPDATE to occur.
     [ticket:2390]
 
+  - [bug] Fixed bug whereby if a method name
+    conflicted with a column name, a
+    TypeError would be raised when the mapper
+    tried to inspect the __get__() method
+    on the method object.  [ticket:2352]
+
 - sql
   - [bug] Added support for using the .key
     of a Column as a string identifier in a 

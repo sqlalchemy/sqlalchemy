@@ -327,6 +327,14 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         mapper(Foo, addresses, inherits=User)
         assert getattr(Foo().__class__, 'name').impl is not None
 
+    def test_check_descriptor_as_method(self):
+        User, users = self.classes.User, self.tables.users
+
+        m = mapper(User, users)
+        class MyClass(User):
+            def foo(self):
+                pass
+        m._is_userland_descriptor(MyClass.foo)
 
     def test_configure_on_get_props_1(self):
         User, users = self.classes.User, self.tables.users

@@ -1452,12 +1452,19 @@ class Mapper(object):
         return result
 
     def _is_userland_descriptor(self, obj):
-        return not isinstance(obj, 
-                    (MapperProperty, attributes.QueryableAttribute)) and \
-                    hasattr(obj, '__get__') and not \
-                     isinstance(obj.__get__(None, obj),
-                                    attributes.QueryableAttribute)
-
+        if isinstance(obj, (MapperProperty, 
+                            attributes.QueryableAttribute)):
+            return False
+        elif not hasattr(obj, '__get__'):
+            return False
+        else:
+            obj = util.unbound_method_to_callable(obj)
+            if isinstance(
+                        obj.__get__(None, obj),
+                        attributes.QueryableAttribute
+                    ):
+                return False
+        return True
 
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
