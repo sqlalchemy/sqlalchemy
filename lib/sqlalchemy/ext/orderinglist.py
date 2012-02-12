@@ -184,12 +184,11 @@ class OrderingList(list):
         This implementation relies on the list starting in the proper order,
         so be **sure** to put an ``order_by`` on your relationship.
 
-        ordering_attr
+        :param ordering_attr: 
           Name of the attribute that stores the object's order in the
           relationship.
 
-        ordering_func
-          Optional.  A function that maps the position in the Python list to a
+        :param ordering_func: Optional.  A function that maps the position in the Python list to a
           value to store in the ``ordering_attr``.  Values returned are
           usually (but need not be!) integers.
 
@@ -202,7 +201,7 @@ class OrderingList(list):
           like stepped numbering, alphabetical and Fibonacci numbering, see
           the unit tests.
 
-        reorder_on_append
+        :param reorder_on_append: 
           Default False.  When appending an object with an existing (non-None)
           ordering value, that value will be left untouched unless
           ``reorder_on_append`` is true.  This is an optimization to avoid a
