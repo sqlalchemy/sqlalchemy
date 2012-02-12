@@ -107,7 +107,7 @@ def updateable_autoincrement_pks(fn):
 def isolation_level(fn):
     return _chain_decorators_on(
         fn,
-        only_on(('postgresql', 'sqlite'), "DBAPI has no isolation level support"),
+        only_on(('postgresql', 'sqlite', 'mysql'), "DBAPI has no isolation level support"),
         fails_on('postgresql+pypostgresql',
                       'pypostgresql bombs on multiple isolation level calls')
     )

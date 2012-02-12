@@ -84,6 +84,23 @@ all lower case both within SQLAlchemy as well as on the MySQL
 database itself, especially if database reflection features are
 to be used.
 
+Transaction Isolation Level
+---------------------------
+
+:func:`.create_engine` accepts an ``isolation_level`` 
+parameter which results in the command ``SET SESSION 
+TRANSACTION ISOLATION LEVEL <level>`` being invoked for 
+every new connection. Valid values for this parameter are
+``READ COMMITTED``, ``READ UNCOMMITTED``, 
+``REPEATABLE READ``, and ``SERIALIZABLE``::
+
+    engine = create_engine(
+                    "mysql://scott:tiger@localhost/test", 
+                    isolation_level="READ UNCOMMITTED"
+                )
+
+(new in 0.7.6)
+
 Keys
 ----
 
@@ -1768,8 +1785,40 @@ class MySQLDialect(default.DefaultDialect):
     _backslash_escapes = True
     _server_ansiquotes = False
 
-    def __init__(self, use_ansiquotes=None, **kwargs):
+    def __init__(self, use_ansiquotes=None, isolation_level=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
+        self.isolation_level = isolation_level
+
+    def on_connect(self):
+        if self.isolation_level is not None:
+            def connect(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+            return connect
+        else:
+            return None
+
+    _isolation_lookup = set(['SERIALIZABLE', 
+                'READ UNCOMMITTED', 'READ COMMITTED', 'REPEATABLE READ'])
+
+    def set_isolation_level(self, connection, level):
+        level = level.replace('_', ' ')
+        if level not in self._isolation_lookup:
+            raise exc.ArgumentError(
+                "Invalid value '%s' for isolation_level. "
+                "Valid isolation levels for %s are %s" % 
+                (level, self.name, ", ".join(self._isolation_lookup))
+                )
+        cursor = connection.cursor()
+        cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL %s" % level)
+        cursor.execute("COMMIT")
+        cursor.close()
+
+    def get_isolation_level(self, connection):
+        cursor = connection.cursor()
+        cursor.execute('SELECT @@tx_isolation')
+        val = cursor.fetchone()[0]
+        cursor.close()
+        return val.upper().replace("-", " ")
 
     def do_commit(self, connection):
         """Execute a COMMIT."""

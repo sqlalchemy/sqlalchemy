@@ -97,6 +97,8 @@ Transactions
 
 The psycopg2 dialect fully supports SAVEPOINT and two-phase commit operations.
 
+.. _psycopg2_isolation:
+
 Transaction Isolation Level
 ---------------------------
 

@@ -81,9 +81,14 @@ CHANGES
     commit or rollback transaction with errors
     on engine.begin().
 
+- mysql
+  - [feature] Added support for the "isolation_level"
+    parameter to all MySQL dialects.  Thanks
+    to mu_mind for the patch here. [ticket:2394]
+
 - oracle
 
-  - Added missing compilation support for 
+  - [bug] Added missing compilation support for 
     LONG [ticket:2401]
 
 0.7.5 (January 28, 2012)
