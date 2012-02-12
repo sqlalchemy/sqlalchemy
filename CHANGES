@@ -92,6 +92,11 @@ CHANGES
     to mu_mind for the patch here. [ticket:2394]
 
 - oracle
+  - [feature] Added a new create_engine() flag
+    coerce_to_decimal=False, disables the precision
+    numeric handling which can add lots of overhead
+    by converting all numeric values to 
+    Decimal.  [ticket:2399]
 
   - [bug] Added missing compilation support for 
     LONG [ticket:2401]

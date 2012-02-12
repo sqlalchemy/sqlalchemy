@@ -880,6 +880,15 @@ class TypesTest(fixtures.TestBase):
         finally:
             t1.drop()
 
+
+    def test_numeric_no_decimal_mode(self):
+        engine = testing_engine(options=dict(coerce_to_decimal=False))
+        value = engine.scalar("SELECT 5.66 FROM DUAL")
+        assert isinstance(value, float)
+
+        value = testing.db.scalar("SELECT 5.66 FROM DUAL")
+        assert isinstance(value, decimal.Decimal)
+
     @testing.provide_metadata
     def test_numerics_broken_inspection(self):
         """Numeric scenarios where Oracle type info is 'broken',
