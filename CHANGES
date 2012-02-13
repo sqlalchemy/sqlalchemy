@@ -6,6 +6,13 @@ CHANGES
 0.7.6
 =====
 - orm
+  - [bug] Fixed bug whereby MappedCollection
+    would not get the appropriate collection
+    instrumentation if it were only used
+    in a custom subclass that used
+    @collection.internally_instrumented.  
+    [ticket:2406]
+
   - [feature] Added the ability to query for
     Table-bound column names when using 
     query(sometable).filter_by(colname=value).  

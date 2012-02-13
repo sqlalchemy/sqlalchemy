@@ -814,6 +814,7 @@ def _instrument_class(cls):
             methods[name] = None, None, after
 
     # apply ABC auto-decoration to methods that need it
+
     for method, decorator in decorators.items():
         fn = getattr(cls, method, None)
         if (fn and method not in methods and
@@ -1465,3 +1466,13 @@ class MappedCollection(dict):
                     incoming_key, value, new_key))
             yield value
     _convert = collection.converter(_convert)
+
+# ensure instrumentation is associated with
+# these built-in classes; if a user-defined class
+# subclasses these and uses @internally_instrumented,
+# the superclass is otherwise not instrumented.
+# see [ticket:2406].
+_instrument_class(MappedCollection)
+_instrument_class(InstrumentedList)
+_instrument_class(InstrumentedSet)
+

@@ -301,7 +301,7 @@ for examples.
 Custom Collection Implementations
 ==================================
 
-You can use your own types for collections as well.  In simple cases,  
+You can use your own types for collections as well.  In simple cases,
 inherting from ``list`` or ``set``, adding custom behavior, is all that's needed.
 In other cases, special decorators are needed to tell SQLAlchemy more detail
 about how the collection operates.
@@ -507,6 +507,20 @@ must decorate appender and remover methods, however- there are no compatible
 methods in the basic dictionary interface for SQLAlchemy to use by default.
 Iteration will go through ``itervalues()`` unless otherwise decorated.
 
+.. note::
+
+   Due to a bug in MappedCollection prior to version 0.7.6, this 
+   workaround usually needs to be called before a custom subclass
+   of :class:`.MappedCollection` which uses :meth:`.collection.internally_instrumented`
+   can be used::
+
+    from sqlalchemy.orm.collections import _instrument_class, MappedCollection
+    _instrument_class(MappedCollection)
+
+   This will ensure that the :class:`.MappedCollection` has been properly
+   initialized with custom ``__setitem__()`` and ``__delitem__()``
+   methods before used in a custom subclass.
+
 .. autoclass:: sqlalchemy.orm.collections.MappedCollection
    :members:
 
@@ -539,6 +553,8 @@ Collection Internals
 Various internal methods.
 
 .. autofunction:: bulk_replace
+
+.. autoclass:: collection
 
 .. autofunction:: collection_adapter
 
