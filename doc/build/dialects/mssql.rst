@@ -1,3 +1,5 @@
+.. _mssql_toplevel:
+
 Microsoft SQL Server
 ====================
 

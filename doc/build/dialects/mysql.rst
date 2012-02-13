@@ -1,3 +1,5 @@
+.. _mysql_toplevel:
+
 MySQL
 =====
 

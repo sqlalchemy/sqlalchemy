@@ -1,3 +1,5 @@
+.. _oracle_toplevel:
+
 Oracle
 ======
 

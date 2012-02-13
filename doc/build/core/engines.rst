@@ -169,38 +169,63 @@ known driver available for that backend (i.e. cx_oracle, pysqlite/sqlite3,
 psycopg2, mysqldb). For Jython connections, specify the `zxjdbc` driver, which
 is the JDBC-DBAPI bridge included with Jython.
 
-.. sourcecode:: python+sql
+Postgresql
+----------
 
-    # postgresql - psycopg2 is the default driver.
-    pg_db = create_engine('postgresql://scott:tiger@localhost/mydatabase')
-    pg_db = create_engine('postgresql+psycopg2://scott:tiger@localhost/mydatabase')
-    pg_db = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
-    pg_db = create_engine('postgresql+pypostgresql://scott:tiger@localhost/mydatabase')
+The Postgresql dialect uses psycopg2 as the default DBAPI::
 
-    # postgresql on Jython
-    pg_db = create_engine('postgresql+zxjdbc://scott:tiger@localhost/mydatabase')
+    # default
+    engine = create_engine('postgresql://scott:tiger@localhost/mydatabase')
 
-    # mysql - MySQLdb (mysql-python) is the default driver
-    mysql_db = create_engine('mysql://scott:tiger@localhost/foo')
-    mysql_db = create_engine('mysql+mysqldb://scott:tiger@localhost/foo')
+    # psycopg2
+    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/mydatabase')
 
-    # mysql on Jython
-    mysql_db = create_engine('mysql+zxjdbc://localhost/foo')
+    # pg8000
+    engine = create_engine('postgresql+pg8000://scott:tiger@localhost/mydatabase')
 
-    # mysql with pyodbc (buggy)
-    mysql_db = create_engine('mysql+pyodbc://scott:tiger@some_dsn')
+    # Jython
+    engine = create_engine('postgresql+zxjdbc://scott:tiger@localhost/mydatabase')
 
-    # oracle - cx_oracle is the default driver
-    oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
+More notes on connecting to Postgresql at :ref:`postgresql_toplevel`.
 
-    # oracle via TNS name
-    oracle_db = create_engine('oracle+cx_oracle://scott:tiger@tnsname')
+MySQL
+-----
 
-    # mssql using ODBC datasource names.  PyODBC is the default driver.
-    mssql_db = create_engine('mssql://mydsn')
-    mssql_db = create_engine('mssql+pyodbc://mydsn')
-    mssql_db = create_engine('mssql+adodbapi://mydsn')
-    mssql_db = create_engine('mssql+pyodbc://username:password@mydsn')
+The MySQL dialect uses mysql-python as the default DBAPI::
+
+    # default
+    engine = create_engine('mysql://scott:tiger@localhost/foo')
+
+    # mysql-python
+    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/foo')
+
+    # OurSQL
+    engine = create_engine('mysql+oursql://scott:tiger@localhost/foo')
+
+More notes on connecting to MySQL at :ref:`mysql_toplevel`.
+
+Oracle
+------
+
+cx_oracle is usualjy used here::
+
+    engine = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
+
+    engine = create_engine('oracle+cx_oracle://scott:tiger@tnsname')
+
+More notes on connecting to Oracle at :ref:`oracle_toplevel`.
+
+Microsoft SQL Server
+--------------------
+
+There are a few drivers for SQL Server, currently PyODBC is the most solid::
+
+    engine = create_engine('mssql+pyodbc://mydsn')
+
+More notes on connecting to SQL Server at :ref:`mssql_toplevel`.
+
+SQLite
+------
 
 SQLite connects to file based databases. The same URL format is used, omitting
 the hostname, and using the "file" portion as the filename of the database.
@@ -208,14 +233,31 @@ This has the effect of four slashes being present for an absolute file path::
 
     # sqlite://<nohostname>/<path>
     # where <path> is relative:
-    sqlite_db = create_engine('sqlite:///foo.db')
+    engine = create_engine('sqlite:///foo.db')
 
     # or absolute, starting with a slash:
-    sqlite_db = create_engine('sqlite:////absolute/path/to/foo.db')
+    engine = create_engine('sqlite:////absolute/path/to/foo.db')
 
 To use a SQLite ``:memory:`` database, specify an empty URL::
 
-    sqlite_memory_db = create_engine('sqlite://')
+    engine = create_engine('sqlite://')
+
+More notes on connecting to SQLite at :ref:`sqlite_toplevel`.
+
+Others
+------
+
+See :ref:`dialect_toplevel`, the top-level page for all dialect
+documentation.
+
+URL API
+--------
+
+.. autoclass:: sqlalchemy.engine.url.URL
+    :members:
+
+Pooling
+=======
 
 The :class:`.Engine` will ask the connection pool for a
 connection when the ``connect()`` or ``execute()`` methods are called. The
@@ -233,8 +275,9 @@ application, rather than creating a new one for each connection.
    :class:`.QueuePool` is not used by default for SQLite engines.  See
    :ref:`sqlite_toplevel` for details on SQLite connection pool usage.
 
-.. autoclass:: sqlalchemy.engine.url.URL
-    :members:
+For more information on connection pooling, see :ref:`pooling_toplevel`.
+
+
 
 .. _custom_dbapi_args:
 

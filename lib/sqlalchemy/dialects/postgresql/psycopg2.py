@@ -38,6 +38,26 @@ psycopg2-specific keyword arguments which are accepted by
 * *use_native_unicode* - Enable the usage of Psycopg2 "native unicode" mode
   per connection. True by default.
 
+Unix Domain Connections
+------------------------
+
+psycopg2 supports connecting via Unix domain connections.   When the ``host``
+portion of the URL is omitted, SQLAlchemy passes ``None`` to psycopg2,
+which specifies Unix-domain communication rather than TCP/IP communication::
+
+    create_engine("postgresql+psycopg2://user:password@/dbname")
+
+By default, the socket file used is to connect to a Unix-domain socket
+in ``/tmp``, or whatever socket directory was specified when PostgreSQL 
+was built.  This value can be overridden by passing a pathname to psycopg2,
+using ``host`` as an additional keyword argument::
+
+    create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+
+See also:
+
+`PQconnectdbParams <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+
 Per-Statement/Connection Execution Options
 -------------------------------------------
 
