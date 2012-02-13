@@ -403,8 +403,10 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
         # autocommit is on
         self._assert_fn(5, value=8)
 
+    @testing.fails_on('mysql+oursql', "oursql bug ?  getting wrong rowcount")
     def test_connect_as_ctx_noautocommit(self):
         fn = self._trans_fn()
+        self._assert_no_data()
         ctx = testing.db.connect().execution_options(autocommit=False)
         testing.run_as_contextmanager(ctx, fn, 5, value=8)
         # autocommit is off

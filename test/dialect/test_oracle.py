@@ -725,6 +725,19 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(typ, exp, dialect=dialect)
 
+    def test_interval(self):
+        for type_, expected in [(oracle.INTERVAL(),
+                                'INTERVAL DAY TO SECOND'),
+                                (oracle.INTERVAL(day_precision=3),
+                                'INTERVAL DAY(3) TO SECOND'),
+                                (oracle.INTERVAL(second_precision=5),
+                                'INTERVAL DAY TO SECOND(5)'),
+                                (oracle.INTERVAL(day_precision=2,
+                                second_precision=5),
+                                'INTERVAL DAY(2) TO SECOND(5)')]:
+            self.assert_compile(type_, expected)
+
+
 class TypesTest(fixtures.TestBase):
     __only_on__ = 'oracle'
     __dialect__ = oracle.OracleDialect()
@@ -802,33 +815,21 @@ class TypesTest(fixtures.TestBase):
     @testing.fails_on('+zxjdbc',
                       'Not yet known how to pass values of the '
                       'INTERVAL type')
+    @testing.provide_metadata
     def test_interval(self):
-        for type_, expected in [(oracle.INTERVAL(),
-                                'INTERVAL DAY TO SECOND'),
-                                (oracle.INTERVAL(day_precision=3),
-                                'INTERVAL DAY(3) TO SECOND'),
-                                (oracle.INTERVAL(second_precision=5),
-                                'INTERVAL DAY TO SECOND(5)'),
-                                (oracle.INTERVAL(day_precision=2,
-                                second_precision=5),
-                                'INTERVAL DAY(2) TO SECOND(5)')]:
-            self.assert_compile(type_, expected)
-        metadata = MetaData(testing.db)
+        metadata = self.metadata
         interval_table = Table('intervaltable', metadata, Column('id',
                                Integer, primary_key=True,
                                test_needs_autoincrement=True),
                                Column('day_interval',
                                oracle.INTERVAL(day_precision=3)))
         metadata.create_all()
-        try:
-            interval_table.insert().\
-                execute(day_interval=datetime.timedelta(days=35,
-                    seconds=5743))
-            row = interval_table.select().execute().first()
-            eq_(row['day_interval'], datetime.timedelta(days=35,
+        interval_table.insert().\
+            execute(day_interval=datetime.timedelta(days=35,
                 seconds=5743))
-        finally:
-            metadata.drop_all()
+        row = interval_table.select().execute().first()
+        eq_(row['day_interval'], datetime.timedelta(days=35,
+            seconds=5743))
 
     def test_numerics(self):
         m = MetaData(testing.db)
@@ -1266,6 +1267,7 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
     def teardown(self):
         metadata.drop_all()
 
+    @testing.emits_warning("No column names")
     def test_reflect_functional_index(self):
         testing.db.execute('CREATE INDEX DATA_IDX ON '
                            'TEST_INDEX_REFLECT (UPPER(DATA))')

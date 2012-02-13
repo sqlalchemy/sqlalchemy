@@ -5,6 +5,7 @@ from sqlalchemy import *
 from sqlalchemy import exc as exceptions
 from sqlalchemy.engine import default
 from sqlalchemy.sql import table, column
+from test.lib.schema import Table, Column
 
 IDENT_LENGTH = 29
 
@@ -26,13 +27,15 @@ class LongLabelsTest(fixtures.TablesTest, AssertsCompiledSQL):
     def define_tables(cls, metadata):
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer,
-                            primary_key=True),
+                            primary_key=True, 
+                            test_needs_autoincrement=True),
             Column("this_is_the_data_column", String(30))
             )
 
         table2 = Table("table_with_exactly_29_characs", metadata,
             Column("this_is_the_primarykey_column", Integer,
-                            primary_key=True),
+                            primary_key=True, 
+                            test_needs_autoincrement=True),
             Column("this_is_the_data_column", String(30))
             )
         cls.tables.table1 = table1
