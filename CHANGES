@@ -93,6 +93,10 @@ CHANGES
     commit or rollback transaction with errors
     on engine.begin().
 
+- postgresql
+  - [bug] Fixed the "render literal bind" function,
+    used by Alembic, to escape % signs with %%.
+
 - mysql
   - [feature] Added support for the "isolation_level"
     parameter to all MySQL dialects.  Thanks
