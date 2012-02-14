@@ -178,7 +178,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x)
+        ])
         mapper(Parent, t1, properties={
             "discriminator":column_property(expr)
         }, polymorphic_identity="parent",
@@ -186,7 +186,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         mapper(Child, t2, inherits=Parent, 
                 polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_no_label_joined(self):
         t2, t1 = self.tables.t2, self.tables.t1
@@ -194,12 +194,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x)
+        ])
         mapper(Parent, t1, polymorphic_identity="parent",
             polymorphic_on=expr)
         mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_w_label_joined(self):
         t2, t1 = self.tables.t2, self.tables.t1
@@ -207,12 +207,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x).label(None)
+        ]).label(None)
         mapper(Parent, t1, polymorphic_identity="parent",
             polymorphic_on=expr)
         mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_no_label_single(self):
         """test that single_table_criterion is propagated 
@@ -222,12 +222,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x)
+        ])
         mapper(Parent, t1, polymorphic_identity="parent",
             polymorphic_on=expr)
         mapper(Child, inherits=Parent, polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_expr_implicit_map_w_label_single(self):
         """test that single_table_criterion is propagated 
@@ -237,12 +237,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x).label(None)
+        ]).label(None)
         mapper(Parent, t1, polymorphic_identity="parent",
             polymorphic_on=expr)
         mapper(Child, inherits=Parent, polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_column_prop(self):
         t2, t1 = self.tables.t2, self.tables.t1
@@ -250,7 +250,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x)
+        ])
         cprop = column_property(expr)
         mapper(Parent, t1, properties={
             "discriminator":cprop
@@ -259,7 +259,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         mapper(Child, t2, inherits=Parent, 
                 polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_column_str_prop(self):
         t2, t1 = self.tables.t2, self.tables.t1
@@ -267,7 +267,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case([
             (t1.c.x=="p", "parent"),
             (t1.c.x=="c", "child"),
-        ],else_ = t1.c.x)
+        ])
         cprop = column_property(expr)
         mapper(Parent, t1, properties={
             "discriminator":cprop
@@ -276,7 +276,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         mapper(Child, t2, inherits=Parent, 
                 polymorphic_identity="child")
 
-        self._roundtrip()
+        self._roundtrip(parent_ident='p', child_ident='c')
 
     def test_polymorphic_on_synonym(self):
         t2, t1 = self.tables.t2, self.tables.t1
@@ -292,13 +292,19 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         }, polymorphic_identity="parent",
             polymorphic_on="discrim_syn")
 
-    def _roundtrip(self, set_event=True):
+    def _roundtrip(self, set_event=True, parent_ident='parent', child_ident='child'):
         Parent, Child = self.classes.Parent, self.classes.Child
 
         if set_event:
             @event.listens_for(Parent, "init", propagate=True)
             def set_identity(instance, *arg, **kw):
-                instance.x = object_mapper(instance).polymorphic_identity
+                ident = object_mapper(instance).polymorphic_identity
+                if ident == 'parent':
+                    instance.x = parent_ident
+                elif ident == 'child':
+                    instance.x = child_ident
+                else:
+                    assert False, "Got unexpected identity %r" % ident
 
         s = Session(testing.db)
         s.add_all([
