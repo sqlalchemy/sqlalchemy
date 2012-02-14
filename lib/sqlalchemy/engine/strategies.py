@@ -227,6 +227,9 @@ class MockEngineStrategy(EngineStrategy):
         def contextual_connect(self, **kwargs):
             return self
 
+        def execution_options(self, **kw):
+            return self
+
         def compiler(self, statement, parameters, **kwargs):
             return self._dialect.compiler(
                 statement, parameters, engine=self, **kwargs)

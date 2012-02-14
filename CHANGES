@@ -86,6 +86,11 @@ CHANGES
     time if parameters will be present in 
     some cases).  [ticket:2407]
 
+  - [bug] Added execution_options() call to
+    MockConnection (i.e., that used with 
+    strategy="mock") which acts as a pass through
+    for arguments.
+
   - [feature] Added pool_reset_on_return argument
     to create_engine, allows control over 
     "connection return" behavior.  Also added
