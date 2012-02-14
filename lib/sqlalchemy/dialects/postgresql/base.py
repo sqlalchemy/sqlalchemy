@@ -644,7 +644,6 @@ class PGCompiler(compiler.SQLCompiler):
         # TODO: need to inspect "standard_conforming_strings"
         if self.dialect._backslash_escapes:
             value = value.replace('\\', '\\\\')
-        value = value.replace("%", "%%")
         return value
 
     def visit_sequence(self, seq):

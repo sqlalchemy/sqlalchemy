@@ -74,18 +74,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'RETURNING length(mytable.name) AS length_1'
                             , dialect=dialect)
 
-    def test_render_literal(self):
-        dialect = postgresql.dialect()
-        compiler = dialect.statement_compiler(dialect, None)
-        for value, exp in [
-            ('hi', "'hi'"),
-            ("with 'quotes'", "'with ''quotes'''"),
-            ('%.%', "'%%.%%'")
-        ]:
-            eq_(
-                compiler.render_literal_value(value, None),
-                exp
-            )
 
     def test_insert_returning(self):
         dialect = postgresql.dialect()
