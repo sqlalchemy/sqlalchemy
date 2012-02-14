@@ -128,6 +128,13 @@ CHANGES
   - [bug] Added missing compilation support for 
     LONG [ticket:2401]
 
+- examples
+  - [bug] Altered _params_from_query() function
+    in Beaker example to pull bindparams from the
+    fully compiled statement, as a quick means
+    to get everything including subqueries in the
+    columns clause, etc.
+
 0.7.5 (January 28, 2012)
 =====
 - orm

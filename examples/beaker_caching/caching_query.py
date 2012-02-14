@@ -268,8 +268,12 @@ def _params_from_query(query):
             value = bind.value
 
         v.append(value)
-    if query._criterion is not None:
-        visitors.traverse(query._criterion, {}, {'bindparam':visit_bindparam})
-    for f in query._from_obj:
-        visitors.traverse(f, {}, {'bindparam':visit_bindparam})
+
+    # TODO: this pulls the binds from the final compiled statement.
+    # ideally, this would be a little more performant if it pulled
+    # from query._criterion and others directly, however this would
+    # need to be implemented not to miss anything, including
+    # subqueries in the columns clause.  See
+    # http://stackoverflow.com/questions/9265900/sqlalchemy-how-to-traverse-bindparam-values-in-a-subquery/
+    visitors.traverse(query.statement, {}, {'bindparam':visit_bindparam})
     return v
