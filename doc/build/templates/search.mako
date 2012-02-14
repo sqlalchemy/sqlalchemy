@@ -7,6 +7,13 @@
     ${_('Search')}
 </%block>
 
+<%block name="headers">
+    ${parent.headers()}
+    <script type="text/javascript">
+        jQuery(function() { Search.loadIndex("searchindex.js"); });
+    </script>
+</%block>
+
 <div id="searchform">
 <h3>Enter Search Terms:</h3>
 <form class="search" action="${pathto('search')}" method="get">
@@ -20,5 +27,4 @@
 
 <%block name="footer">
     ${parent.footer()}
-    <script type="text/javascript" src="searchindex.js"></script>
 </%block>
