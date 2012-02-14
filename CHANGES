@@ -71,6 +71,21 @@ CHANGES
     with no columns at all.  [ticket:2380]
 
 - engine
+  - [feature] Added "no_parameters=True" execution
+    option for connections.   If no parameters
+    are present, will pass the statement
+    as cursor.execute(statement), thereby invoking
+    the DBAPIs behavior when no parameter collection
+    is present; for psycopg2 and mysql-python, this
+    means not interpreting % signs in the string.
+    This only occurs with this option, and not
+    just if the param list is blank, as otherwise
+    this would produce inconsistent behavior
+    of SQL expressions that normally escape percent
+    signs (and while compiling, can't know ahead of 
+    time if parameters will be present in 
+    some cases).  [ticket:2407]
+
   - [feature] Added pool_reset_on_return argument
     to create_engine, allows control over 
     "connection return" behavior.  Also added

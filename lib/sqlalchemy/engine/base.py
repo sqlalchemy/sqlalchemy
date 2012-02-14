@@ -491,14 +491,23 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_executemany(self, cursor, statement, parameters, context=None):
-        """Provide an implementation of *cursor.executemany(statement,
-        parameters)*."""
+        """Provide an implementation of ``cursor.executemany(statement,
+        parameters)``."""
 
         raise NotImplementedError()
 
     def do_execute(self, cursor, statement, parameters, context=None):
-        """Provide an implementation of *cursor.execute(statement,
-        parameters)*."""
+        """Provide an implementation of ``cursor.execute(statement,
+        parameters)``."""
+
+        raise NotImplementedError()
+
+    def do_execute_no_params(self, cursor, statement, parameters, context=None):
+        """Provide an implementation of ``cursor.execute(statement)``.
+
+        The parameter collection should not be sent.
+
+        """
 
         raise NotImplementedError()
 
@@ -976,6 +985,18 @@ class Connection(Connectable):
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
 
+        :param no_parameters: When ``True``, if the final parameter 
+          list or dictionary is totally empty, will invoke the 
+          statement on the cursor as ``cursor.execute(statement)``,
+          not passing the parameter collection at all.
+          Some DBAPIs such as psycopg2 and mysql-python consider
+          percent signs as significant only when parameters are 
+          present; this option allows code to generate SQL
+          containing percent signs (and possibly other characters)
+          that is neutral regarding whether it's executed by the DBAPI
+          or piped into a script that's later invoked by 
+          command line tools.  New in 0.7.6.
+          
         :param stream_results: Available on: Connection, statement.
           Indicate to the dialect that results should be 
           "streamed" and not pre-buffered, if possible.  This is a limitation
@@ -1647,13 +1668,19 @@ class Connection(Connectable):
 
         if self._echo:
             self.engine.logger.info(statement)
-            self.engine.logger.info("%r", sql_util._repr_params(parameters, batches=10))
+            self.engine.logger.info("%r", 
+                    sql_util._repr_params(parameters, batches=10))
         try:
             if context.executemany:
                 self.dialect.do_executemany(
                                     cursor, 
                                     statement, 
                                     parameters, 
+                                    context)
+            elif not parameters and context.no_parameters:
+                self.dialect.do_execute_no_params(
+                                    cursor, 
+                                    statement, 
                                     context)
             else:
                 self.dialect.do_execute(

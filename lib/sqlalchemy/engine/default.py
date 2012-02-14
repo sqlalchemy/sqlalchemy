@@ -334,6 +334,9 @@ class DefaultDialect(base.Dialect):
     def do_execute(self, cursor, statement, parameters, context=None):
         cursor.execute(statement, parameters)
 
+    def do_execute_no_params(self, cursor, statement, context=None):
+        cursor.execute(statement)
+
     def is_disconnect(self, e, connection, cursor):
         return False
 
@@ -536,6 +539,10 @@ class DefaultExecutionContext(base.ExecutionContext):
         self.execution_options = connection._execution_options
         self.cursor = self.create_cursor()
         return self
+
+    @util.memoized_property
+    def no_parameters(self):
+        return self.execution_options.get("no_parameters", False)
 
     @util.memoized_property
     def is_crud(self):

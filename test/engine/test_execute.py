@@ -41,6 +41,16 @@ class ExecuteTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    def test_no_params_option(self):
+        stmt = "SELECT '%'"
+        if testing.against('oracle'):
+            stmt += " FROM DUAL"
+        conn = testing.db.connect()
+        result = conn.\
+                execution_options(no_parameters=True).\
+                scalar(stmt)
+        eq_(result, '%')
+
     @testing.fails_on_everything_except('firebird', 'maxdb',
                                         'sqlite', '+pyodbc',
                                         '+mxodbc', '+zxjdbc', 'mysql+oursql',
