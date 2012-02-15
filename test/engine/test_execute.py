@@ -41,6 +41,8 @@ class ExecuteTest(fixtures.TestBase):
     def teardown_class(cls):
         metadata.drop_all()
 
+    @testing.fails_on("postgresql+pg8000", 
+            "pg8000 still doesn't allow single % without params")
     def test_no_params_option(self):
         stmt = "SELECT '%'"
         if testing.against('oracle'):

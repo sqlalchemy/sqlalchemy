@@ -37,8 +37,8 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
                                     '2.4': 13214,
                                     '2.6':14416,
                                     '2.7':14416,
-                                   '2.6+cextension': 345,
-                                   '2.7+cextension':345})
+                                   '2.6+cextension': 365,
+                                   '2.7+cextension':365})
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
@@ -47,8 +47,8 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     @profiling.function_call_count(versions={
                                     '2.7':14396,
                                     '2.6':14396,
-                                   '2.6+cextension': 345, 
-                                   '2.7+cextension':345})
+                                   '2.6+cextension': 365, 
+                                   '2.7+cextension':365})
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
