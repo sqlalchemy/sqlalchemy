@@ -83,7 +83,7 @@ pyodbc_                    ``mssql+pyodbc``\*           yes          development
 pymssql_                   ``mssql+pymssql``            yes          development   no           yes                yes
 **MySQL**
 `MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
-`MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          yes           no           yes                yes
+`MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          development   no           yes                yes
 mysql-python_              ``mysql+mysqldb``\*          yes          development   no           yes                yes
 OurSQL_                    ``mysql+oursql``             yes          yes           no           yes                yes
 **Oracle**
