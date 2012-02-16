@@ -133,7 +133,7 @@ class Query(object):
                         with_polymorphic = mapper._with_polymorphic_mappers
                         if mapper.mapped_table not in \
                                             self._polymorphic_adapters:
-                            self.__mapper_loads_polymorphically_with(mapper, 
+                            self._mapper_loads_polymorphically_with(mapper, 
                                 sql_util.ColumnAdapter(
                                             selectable, 
                                             mapper._equivalent_columns))
@@ -150,7 +150,7 @@ class Query(object):
                                         is_aliased_class, with_polymorphic)
                 ent.setup_entity(entity, *d[entity])
 
-    def __mapper_loads_polymorphically_with(self, mapper, adapter):
+    def _mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers:
             self._polymorphic_adapters[m2] = adapter
             for m in m2.iterate_to_root():
@@ -174,10 +174,6 @@ class Query(object):
             self._from_obj_alias = sql_util.ColumnAdapter(
                                                 self._from_obj[0], equivs)
 
-    def _get_polymorphic_adapter(self, entity, selectable):
-        self.__mapper_loads_polymorphically_with(entity.mapper, 
-                    sql_util.ColumnAdapter(selectable, 
-                            entity.mapper._equivalent_columns))
 
     def _reset_polymorphic_adapter(self, mapper):
         for m2 in mapper._with_polymorphic_mappers:
@@ -325,13 +321,6 @@ class Query(object):
                 )
         return self._entity_zero()
 
-    def _generate_mapper_zero(self):
-        if not getattr(self._entities[0], 'primary_entity', False):
-            raise sa_exc.InvalidRequestError(
-                            "No primary mapper set up for this Query.")
-        entity = self._entities[0]._clone()
-        self._entities = [entity] + self._entities[1:]
-        return entity
 
     def __all_equivs(self):
         equivs = {}
@@ -602,7 +591,12 @@ class Query(object):
             such as concrete table mappers.
 
         """
-        entity = self._generate_mapper_zero()
+
+        if not getattr(self._entities[0], 'primary_entity', False):
+            raise sa_exc.InvalidRequestError(
+                            "No primary mapper set up for this Query.")
+        entity = self._entities[0]._clone()
+        self._entities = [entity] + self._entities[1:]
         entity.set_with_polymorphic(self, 
                                         cls_or_mappers, 
                                         selectable=selectable,
@@ -1584,7 +1578,6 @@ class Query(object):
         consistent format with which to form the actual JOIN constructs.
 
         """
-        self._polymorphic_adapters = self._polymorphic_adapters.copy()
 
         if not from_joinpoint:
             self._reset_joinpoint()
@@ -1684,6 +1677,8 @@ class Query(object):
                             onclause, outerjoin, create_aliases, prop):
         """append a JOIN to the query's from clause."""
 
+        self._polymorphic_adapters = self._polymorphic_adapters.copy()
+
         if left is None:
             if self._from_obj:
                 left = self._from_obj[0]
@@ -1759,7 +1754,8 @@ class Query(object):
         # until reset_joinpoint() is called.
         if need_adapter:
             self._filter_aliases = ORMAdapter(right,
-                        equivalents=right_mapper and right_mapper._equivalent_columns or {},
+                        equivalents=right_mapper and 
+                                    right_mapper._equivalent_columns or {},
                         chain_to=self._filter_aliases)
 
         # if the onclause is a ClauseElement, adapt it with any 
@@ -1772,7 +1768,7 @@ class Query(object):
         # ensure that columns retrieved from this target in the result
         # set are also adapted.
         if aliased_entity and not create_aliases:
-            self.__mapper_loads_polymorphically_with(
+            self._mapper_loads_polymorphically_with(
                         right_mapper,
                         ORMAdapter(
                             right, 
@@ -2960,7 +2956,9 @@ class _MapperEntity(_QueryEntity):
         # with_polymorphic() can be applied to aliases
         if not self.is_aliased_class:
             self.selectable = from_obj
-            self.adapter = query._get_polymorphic_adapter(self, from_obj)
+            query._mapper_loads_polymorphically_with(self.mapper, 
+                    sql_util.ColumnAdapter(from_obj, 
+                            self.mapper._equivalent_columns))
 
     filter_fn = id
 

@@ -27,30 +27,36 @@ class PolymorphTest(fixtures.MappedTest):
         global companies, people, engineers, managers, boss
 
         companies = Table('companies', metadata,
-           Column('company_id', Integer, primary_key=True, test_needs_autoincrement=True),
+           Column('company_id', Integer, primary_key=True, 
+                                        test_needs_autoincrement=True),
            Column('name', String(50)))
 
         people = Table('people', metadata,
-           Column('person_id', Integer, primary_key=True, test_needs_autoincrement=True),
-           Column('company_id', Integer, ForeignKey('companies.company_id'), nullable=False),
+           Column('person_id', Integer, primary_key=True, 
+                                        test_needs_autoincrement=True),
+           Column('company_id', Integer, ForeignKey('companies.company_id'), 
+                                        nullable=False),
            Column('name', String(50)),
            Column('type', String(30)))
 
         engineers = Table('engineers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('person_id', Integer, ForeignKey('people.person_id'), 
+                                        primary_key=True),
            Column('status', String(30)),
            Column('engineer_name', String(50)),
            Column('primary_language', String(50)),
           )
 
         managers = Table('managers', metadata,
-           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('person_id', Integer, ForeignKey('people.person_id'), 
+                                        primary_key=True),
            Column('status', String(30)),
            Column('manager_name', String(50))
            )
 
         boss = Table('boss', metadata,
-            Column('boss_id', Integer, ForeignKey('managers.person_id'), primary_key=True),
+            Column('boss_id', Integer, ForeignKey('managers.person_id'), 
+                                        primary_key=True),
             Column('golf_swing', String(30)),
             )
 
@@ -73,8 +79,10 @@ class InsertOrderTest(PolymorphTest):
                                 polymorphic_on=person_join.c.type, 
                                 polymorphic_identity='person')
 
-        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+        mapper(Engineer, engineers, inherits=person_mapper, 
+                                polymorphic_identity='engineer')
+        mapper(Manager, managers, inherits=person_mapper, 
+                                polymorphic_identity='manager')
         mapper(Company, companies, properties={
             'employees': relationship(Person,
                                   backref='company',
@@ -102,12 +110,19 @@ class InsertOrderTest(PolymorphTest):
 class RoundTripTest(PolymorphTest):
     pass
 
-def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop, with_polymorphic):
+def _generate_round_trip_test(include_base, lazy_relationship,
+                                    redefine_colprop, with_polymorphic):
     """generates a round trip test.
-
-    include_base - whether or not to include the base 'person' type in the union.
-    lazy_relationship - whether or not the Company relationship to People is lazy or eager.
-    redefine_colprop - if we redefine the 'name' column to be 'people_name' on the base Person class
+    
+    include_base - whether or not to include the base 'person' type in
+    the union.
+    
+    lazy_relationship - whether or not the Company relationship to
+    People is lazy or eager.
+    
+    redefine_colprop - if we redefine the 'name' column to be
+    'people_name' on the base Person class
+    
     use_literal_join - primary join condition is explicitly specified
     """
     def test_roundtrip(self):
@@ -130,7 +145,8 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             person_with_polymorphic = ['*', person_join]
             manager_with_polymorphic = ['*', manager_join]
         elif with_polymorphic == 'joins':
-            person_join = people.outerjoin(engineers).outerjoin(managers).outerjoin(boss)
+            person_join = people.outerjoin(engineers).outerjoin(managers).\
+                                        outerjoin(boss)
             manager_join = people.join(managers).outerjoin(boss)
             person_with_polymorphic = ['*', person_join]
             manager_with_polymorphic = ['*', manager_join]
@@ -143,18 +159,21 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
 
         if redefine_colprop:
             person_mapper = mapper(Person, people, 
-                                    with_polymorphic=person_with_polymorphic, 
-                                    polymorphic_on=people.c.type, 
-                                    polymorphic_identity='person', 
-                                    properties= {'person_name':people.c.name})
+                                with_polymorphic=person_with_polymorphic, 
+                                polymorphic_on=people.c.type, 
+                                polymorphic_identity='person', 
+                                properties= {'person_name':people.c.name})
         else:
             person_mapper = mapper(Person, people, 
-                                    with_polymorphic=person_with_polymorphic, 
-                                    polymorphic_on=people.c.type, 
-                                    polymorphic_identity='person')
+                                with_polymorphic=person_with_polymorphic, 
+                                polymorphic_on=people.c.type, 
+                                polymorphic_identity='person')
 
-        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-        mapper(Manager, managers, inherits=person_mapper, with_polymorphic=manager_with_polymorphic, polymorphic_identity='manager')
+        mapper(Engineer, engineers, inherits=person_mapper, 
+                                polymorphic_identity='engineer')
+        mapper(Manager, managers, inherits=person_mapper, 
+                                with_polymorphic=manager_with_polymorphic, 
+                                polymorphic_identity='manager')
 
         mapper(Boss, boss, inherits=Manager, polymorphic_identity='boss')
 
@@ -171,14 +190,20 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             person_attribute_name = 'name'
 
         employees = [
-                Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}),
-                Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}),
+                Manager(status='AAB', manager_name='manager1', 
+                            **{person_attribute_name:'pointy haired boss'}),
+                Engineer(status='BBA', engineer_name='engineer1', 
+                            primary_language='java', 
+                            **{person_attribute_name:'dilbert'}),
             ]
         if include_base:
             employees.append(Person(**{person_attribute_name:'joesmith'}))
         employees += [
-            Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}),
-            Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'})
+            Engineer(status='CGG', engineer_name='engineer2', 
+                            primary_language='python', 
+                            **{person_attribute_name:'wally'}),
+            Manager(status='ABA', manager_name='manager2', 
+                            **{person_attribute_name:'jsmith'})
         ]
 
         pointy = employees[0]
@@ -196,7 +221,9 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
         eq_(session.query(Person).get(dilbert.person_id), dilbert)
         session.expunge_all()
 
-        eq_(session.query(Person).filter(Person.person_id==dilbert.person_id).one(), dilbert)
+        eq_(session.query(Person).filter(
+                            Person.person_id==dilbert.person_id).one(), 
+                            dilbert)
         session.expunge_all()
 
         def go():
@@ -215,56 +242,81 @@ def _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop,
             else:
                 self.assert_sql_count(testing.db, go, 6)
 
-        # test selecting from the query, using the base mapped table (people) as the selection criterion.
-        # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
+        # test selecting from the query, using the base 
+        # mapped table (people) as the selection criterion.
+        # in the case of the polymorphic Person query, 
+        # the "people" selectable should be adapted to be "person_join"
         eq_(
-            session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
+            session.query(Person).filter(
+                            getattr(Person, person_attribute_name)=='dilbert'
+                            ).first(),
             dilbert
         )
 
-        assert session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first().person_id
+        assert session.query(Person).filter(
+                            getattr(Person, person_attribute_name)=='dilbert'
+                            ).first().person_id
 
         eq_(
-            session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first(),
+            session.query(Engineer).filter(
+                            getattr(Person, person_attribute_name)=='dilbert'
+                            ).first(),
             dilbert
         )
 
-        # test selecting from the query, joining against an alias of the base "people" table.  test that
-        # the "palias" alias does *not* get sucked up into the "person_join" conversion.
+        # test selecting from the query, joining against 
+        # an alias of the base "people" table.  test that
+        # the "palias" alias does *not* get sucked up 
+        # into the "person_join" conversion.
         palias = people.alias("palias")
         dilbert = session.query(Person).get(dilbert.person_id)
-        assert dilbert is session.query(Person).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
-        assert dilbert is session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
-        assert dilbert is session.query(Person).filter((Engineer.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id)).first()
-        assert dilbert is session.query(Engineer).filter(Engineer.engineer_name=="engineer1")[0]
-
-        dilbert.engineer_name = 'hes dibert!'
+        assert dilbert is session.query(Person).filter(
+                            (palias.c.name=='dilbert') & \
+                            (palias.c.person_id==Person.person_id)).first()
+        assert dilbert is session.query(Engineer).filter(
+                            (palias.c.name=='dilbert') & \
+                            (palias.c.person_id==Person.person_id)).first()
+        assert dilbert is session.query(Person).filter(
+                            (Engineer.engineer_name=="engineer1") & \
+                            (engineers.c.person_id==people.c.person_id)
+                        ).first()
+        assert dilbert is session.query(Engineer).\
+                        filter(Engineer.engineer_name=="engineer1")[0]
 
         session.flush()
         session.expunge_all()
 
         def go():
-            session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+            session.query(Person).filter(getattr(Person, 
+                            person_attribute_name)=='dilbert').first()
         self.assert_sql_count(testing.db, go, 1)
         session.expunge_all()
-        dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+        dilbert = session.query(Person).filter(getattr(Person, 
+                            person_attribute_name)=='dilbert').first()
         def go():
-            # assert that only primary table is queried for already-present-in-session
-            d = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+            # assert that only primary table is queried for 
+            # already-present-in-session
+            d = session.query(Person).filter(getattr(Person, 
+                            person_attribute_name)=='dilbert').first()
         self.assert_sql_count(testing.db, go, 1)
 
         # test standalone orphans
-        daboss = Boss(status='BBB', manager_name='boss', golf_swing='fore', **{person_attribute_name:'daboss'})
+        daboss = Boss(status='BBB', 
+                        manager_name='boss', 
+                        golf_swing='fore', 
+                        **{person_attribute_name:'daboss'})
         session.add(daboss)
         assert_raises(sa_exc.DBAPIError, session.flush)
 
         c = session.query(Company).first()
         daboss.company = c
-        manager_list = [e for e in c.employees if isinstance(e, Manager)]
+        manager_list = [e for e in c.employees 
+                            if isinstance(e, Manager)]
         session.flush()
         session.expunge_all()
 
-        eq_(session.query(Manager).order_by(Manager.person_id).all(), manager_list)
+        eq_(session.query(Manager).order_by(Manager.person_id).all(), 
+                                manager_list)
         c = session.query(Company).first()
 
         session.delete(c)
@@ -285,7 +337,11 @@ for lazy_relationship in [True, False]:
         for with_polymorphic in ['unions', 'joins', 'auto', 'none']:
             if with_polymorphic == 'unions':
                 for include_base in [True, False]:
-                    _generate_round_trip_test(include_base, lazy_relationship, redefine_colprop, with_polymorphic)
+                    _generate_round_trip_test(include_base, 
+                                    lazy_relationship, 
+                                    redefine_colprop, with_polymorphic)
             else:
-                _generate_round_trip_test(False, lazy_relationship, redefine_colprop, with_polymorphic)
+                _generate_round_trip_test(False, 
+                                    lazy_relationship, 
+                                    redefine_colprop, with_polymorphic)
 
