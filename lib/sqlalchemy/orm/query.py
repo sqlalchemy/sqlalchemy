@@ -1692,7 +1692,29 @@ class Query(object):
                         "are the same entity" % 
                         (left, right))
 
-        left_mapper, left_selectable, left_is_aliased = _entity_info(left)
+        right, right_is_aliased, onclause = self._prepare_right_side(
+                                            right, onclause,
+                                            outerjoin, create_aliases, 
+                                            prop)
+
+        # if joining on a MapperProperty path,
+        # track the path to prevent redundant joins
+        if not create_aliases and prop:
+            self._update_joinpoint({
+                '_joinpoint_entity':right,
+                'prev':((left, right, prop.key), self._joinpoint)
+            })
+        else:
+            self._joinpoint = {
+                '_joinpoint_entity':right
+            }
+
+        self._join_to_left(left, right, 
+                                right_is_aliased, 
+                                onclause, outerjoin)
+
+    def _prepare_right_side(self, right, onclause, outerjoin, 
+                                create_aliases, prop):
         right_mapper, right_selectable, right_is_aliased = _entity_info(right)
 
         if right_mapper:
@@ -1737,18 +1759,6 @@ class Query(object):
             right = aliased(right)
             need_adapter = True
 
-        # if joining on a MapperProperty path,
-        # track the path to prevent redundant joins
-        if not create_aliases and prop:
-            self._update_joinpoint({
-                '_joinpoint_entity':right,
-                'prev':((left, right, prop.key), self._joinpoint)
-            })
-        else:
-            self._joinpoint = {
-                '_joinpoint_entity':right
-            }
-
         # if an alias() of the right side was generated here,
         # apply an adapter to all subsequent filter() calls
         # until reset_joinpoint() is called.
@@ -1775,6 +1785,11 @@ class Query(object):
                             equivalents=right_mapper._equivalent_columns
                         )
                     )
+
+        return right, right_is_aliased, onclause
+
+    def _join_to_left(self, left, right, right_is_aliased, onclause, outerjoin):
+        left_mapper, left_selectable, left_is_aliased = _entity_info(left)
 
         # this is an overly broad assumption here, but there's a 
         # very wide variety of situations where we rely upon orm.join's
