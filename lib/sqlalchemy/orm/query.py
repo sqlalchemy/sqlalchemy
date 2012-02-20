@@ -1036,7 +1036,22 @@ class Query(object):
 
     @_generative()
     def with_lockmode(self, mode):
-        """Return a new Query object with the specified locking mode."""
+        """Return a new Query object with the specified locking mode.
+
+        :param mode: a string representing the desired locking mode. A
+            corresponding value is passed to the ``for_update`` parameter of
+            :meth:`~sqlalchemy.sql.expression.select` when the query is
+            executed. Valid values are:
+
+            ``'update'`` - passes ``for_update=True``, which translates to
+            ``FOR UPDATE`` (standard SQL, supported by most dialects)
+
+            ``'update_nowait'`` - passes ``for_update='nowait'``, which
+            translates to ``FOR UPDATE NOWAIT`` (supported by Oracle)
+
+            ``'read'`` - passes ``for_update='read'``, which translates to
+            ``LOCK IN SHARE MODE`` (supported by MySQL).
+        """
 
         self._lockmode = mode
 
