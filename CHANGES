@@ -49,6 +49,12 @@ CHANGES
     so that .key takes precedence, but this
     is not decided on yet.  [ticket:2392]
 
+  - [bug] A warning is emitted when a not-present
+    column is stated in the values() clause
+    of an insert() or update() construct.
+    Will move to an exception in 0.8.
+    [ticket:2413]
+
   - [bug] A significant change to how labeling
     is applied to columns in SELECT statements
     allows "truncated" labels, that is label names

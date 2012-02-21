@@ -1145,7 +1145,6 @@ class SQLCompiler(engine.Compiled):
             for k, v in stmt.parameters.iteritems():
                 parameters.setdefault(sql._column_as_key(k), v)
 
-
         # create a list of column assignment clauses as tuples
         values = []
 
@@ -1204,7 +1203,7 @@ class SQLCompiler(engine.Compiled):
         # "defaults", "primary key cols", etc.
         for c in stmt.table.columns:
             if c.key in parameters and c.key not in check_columns:
-                value = parameters[c.key]
+                value = parameters.pop(c.key)
                 if sql._is_literal(value):
                     value = self._create_crud_bind_param(
                                     c, value, required=value is required)
@@ -1300,6 +1299,17 @@ class SQLCompiler(engine.Compiled):
                         self.prefetch.append(c)
                 elif c.server_onupdate is not None:
                     self.postfetch.append(c)
+
+        if parameters and stmt.parameters:
+            check = set(parameters).intersection(
+                sql._column_as_key(k) for k in stmt.parameters
+            )
+            if check:
+                util.warn(
+                    "Unconsumed column names: %s" % 
+                    (", ".join(check))
+                )
+
         return values
 
     def visit_delete(self, delete_stmt):
