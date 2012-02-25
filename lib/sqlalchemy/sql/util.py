@@ -284,8 +284,10 @@ def adapt_criterion_to_null(crit, nulls):
 
     return visitors.cloned_traverse(crit, {}, {'binary':visit_binary})
 
+
 def join_condition(a, b, ignore_nonexistent_tables=False, 
-                            a_subset=None):
+                            a_subset=None,
+                            consider_as_foreign_keys=None):
     """create a join condition between two tables or selectables.
 
     e.g.::
@@ -321,6 +323,9 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
         for fk in sorted(
                     b.foreign_keys, 
                     key=lambda fk:fk.parent._creation_order):
+            if consider_as_foreign_keys is not None and \
+                fk.parent not in consider_as_foreign_keys:
+                continue
             try:
                 col = fk.get_referent(left)
             except exc.NoReferenceError, nrte:
@@ -336,6 +341,9 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
             for fk in sorted(
                         left.foreign_keys, 
                         key=lambda fk:fk.parent._creation_order):
+                if consider_as_foreign_keys is not None and \
+                    fk.parent not in consider_as_foreign_keys:
+                    continue
                 try:
                     col = fk.get_referent(b)
                 except exc.NoReferenceError, nrte:
@@ -358,11 +366,11 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
                                 "subquery using alias()?"
         else:
             hint = ""
-        raise exc.ArgumentError(
+        raise exc.NoForeignKeysError(
             "Can't find any foreign key relationships "
             "between '%s' and '%s'.%s" % (a.description, b.description, hint))
     elif len(constraints) > 1:
-        raise exc.ArgumentError(
+        raise exc.AmbiguousForeignKeysError(
             "Can't determine join between '%s' and '%s'; "
             "tables have more than one foreign key "
             "constraint relationship between them. "

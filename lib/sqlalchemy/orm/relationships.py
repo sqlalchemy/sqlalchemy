@@ -80,11 +80,11 @@ class JoinCondition(object):
         self._annotate_fks()
         self._annotate_remote()
         self._annotate_local()
-        self._determine_direction()
         self._setup_pairs()
         self._check_foreign_cols(self.primaryjoin, True)
         if self.secondaryjoin is not None:
             self._check_foreign_cols(self.secondaryjoin, False)
+        self._determine_direction()
         self._check_remote_side()
         self._log_joins()
 
@@ -134,27 +134,68 @@ class JoinCondition(object):
                         join_condition(
                                 self.child_selectable, 
                                 self.secondary,
-                                a_subset=self.child_local_selectable)
+                                a_subset=self.child_local_selectable,
+                                consider_as_foreign_keys=\
+                                    self.consider_as_foreign_keys or None
+                                )
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
                                 self.parent_selectable, 
                                 self.secondary, 
-                                a_subset=self.parent_local_selectable)
+                                a_subset=self.parent_local_selectable,
+                                consider_as_foreign_keys=\
+                                    self.consider_as_foreign_keys or None
+                                )
             else:
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
                                 self.parent_selectable, 
                                 self.child_selectable, 
-                                a_subset=self.parent_local_selectable)
-        except sa_exc.ArgumentError, e:
-            raise sa_exc.ArgumentError("Could not determine join "
-                    "condition between parent/child tables on "
-                    "relationship %s.  Specify a 'primaryjoin' "
-                    "expression.  If 'secondary' is present, "
-                    "'secondaryjoin' is needed as well."
-                    % self.prop)
+                                a_subset=self.parent_local_selectable,
+                                consider_as_foreign_keys=\
+                                    self.consider_as_foreign_keys or None
+                                )
+        except sa_exc.NoForeignKeysError, nfke:
+            if self.secondary is not None:
+                raise sa_exc.NoForeignKeysError("Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables via secondary table '%s'.  "
+                        "Ensure that referencing columns are associated with a "\
+                        "ForeignKey or ForeignKeyConstraint, or specify 'primaryjoin' "\
+                        "and 'secondaryjoin' expressions."
+                        % (self.prop, self.secondary))
+            else:
+                raise sa_exc.NoForeignKeysError("Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are no foreign keys "
+                        "linking these tables.  "
+                        "Ensure that referencing columns are associated with a "
+                        "ForeignKey or ForeignKeyConstraint, or specify a 'primaryjoin' "
+                        "expression."
+                        % self.prop)
+        except sa_exc.AmbiguousForeignKeysError, afke:
+            if self.secondary is not None:
+                raise sa_exc.AmbiguousForeignKeysError("Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables via secondary table '%s'.  "
+                        "Specify the 'foreign_keys' "
+                        "argument, providing a list of those columns which "
+                        "should be counted as containing a foreign key reference "
+                        "from the secondary table to each of the parent and child tables."
+                        % (self.prop, self.secondary))
+            else:
+                raise sa_exc.AmbiguousForeignKeysError("Could not determine join "
+                        "condition between parent/child tables on "
+                        "relationship %s - there are multiple foreign key "
+                        "paths linking the tables.  Specify the 'foreign_keys' "
+                        "argument, providing a list of those columns which "
+                        "should be counted as containing a foreign key reference "
+                        "to the parent table."
+                        % self.prop)
 
     @util.memoized_property
     def primaryjoin_reverse_remote(self):
@@ -515,7 +556,7 @@ class JoinCondition(object):
             err = "Could not locate any simple equality expressions "\
                     "involving foreign key columns for %s join condition "\
                     "'%s' on relationship %s." % (
-                        primary and 'primaryjoin' or 'secondaryjoin', 
+                        primary and 'primary' or 'secondary', 
                         join_condition, 
                         self.prop
                     )
@@ -529,12 +570,12 @@ class JoinCondition(object):
         else:
             err = "Could not locate any relevant foreign key columns "\
                     "for %s join condition '%s' on relationship %s." % (
-                        primary and 'primaryjoin' or 'secondaryjoin', 
+                        primary and 'primary' or 'secondary', 
                         join_condition, 
                         self.prop
                     )
-            err += "Ensure that referencing columns are associated with a "\
-                    "a ForeignKey or ForeignKeyConstraint, or are annotated "\
+            err += "  Ensure that referencing columns are associated with a "\
+                    "ForeignKey or ForeignKeyConstraint, or are annotated "\
                     "in the join condition with the foreign() annotation."
             raise sa_exc.ArgumentError(err)
 

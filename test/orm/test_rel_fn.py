@@ -22,6 +22,12 @@ class _JoinFixtures(object):
             Column('x', Integer),
             Column('y', Integer),
         )
+        cls.right_multi_fk = Table('rgt_multi_fk', m,
+            Column('id', Integer, primary_key=True),
+            Column('lid1', Integer, ForeignKey('lft.id')),
+            Column('lid2', Integer, ForeignKey('lft.id')),
+        )
+
         cls.selfref = Table('selfref', m,
             Column('id', Integer, primary_key=True),
             Column('sid', Integer, ForeignKey('selfref.id'))
@@ -44,6 +50,16 @@ class _JoinFixtures(object):
         cls.m2msecondary = Table('m2msecondary', m,
             Column('lid', Integer, ForeignKey('m2mlft.id'), primary_key=True),
             Column('rid', Integer, ForeignKey('m2mrgt.id'), primary_key=True),
+        )
+        cls.m2msecondary_no_fks = Table('m2msecondary_no_fks', m,
+            Column('lid', Integer, primary_key=True),
+            Column('rid', Integer, primary_key=True),
+        )
+        cls.m2msecondary_ambig_fks = Table('m2msecondary_ambig_fks', m,
+            Column('lid1', Integer, ForeignKey('m2mlft.id'), primary_key=True),
+            Column('rid1', Integer, ForeignKey('m2mrgt.id'), primary_key=True),
+            Column('lid2', Integer, ForeignKey('m2mlft.id'), primary_key=True),
+            Column('rid2', Integer, ForeignKey('m2mrgt.id'), primary_key=True),
         )
         cls.base_w_sub_rel = Table('base_w_sub_rel', m,
             Column('id', Integer, primary_key=True),
@@ -302,6 +318,89 @@ class _JoinFixtures(object):
             fn
         )
 
+    def _assert_raises_no_relevant_fks(self, fn, expr, relname, 
+        primary, *arg, **kw):
+        assert_raises_message(
+            exc.ArgumentError, 
+            r"Could not locate any relevant foreign key columns "
+            r"for %s join condition '%s' on relationship %s.  "
+            r"Ensure that referencing columns are associated with "
+            r"a ForeignKey or ForeignKeyConstraint, or are annotated "
+            r"in the join condition with the foreign\(\) annotation."
+            % (
+                primary, expr, relname
+            ),
+            fn, *arg, **kw
+        )
+
+    def _assert_raises_no_equality(self, fn, expr, relname, 
+        primary, *arg, **kw):
+        assert_raises_message(
+            sa.exc.ArgumentError, 
+            "Could not locate any simple equality expressions "
+            "involving foreign key columns for %s join "
+            "condition '%s' on relationship %s.  "
+            "Ensure that referencing columns are associated with a "
+            "ForeignKey or ForeignKeyConstraint, or are annotated in "
+            r"the join condition with the foreign\(\) annotation. "
+            "To allow comparison operators other than '==', "
+            "the relationship can be marked as viewonly=True." % (
+                primary, expr, relname
+            ),
+            fn, *arg, **kw
+        )
+
+    def _assert_raises_ambig_join(self, fn, relname, secondary_arg,
+        *arg, **kw):
+        if secondary_arg is not None:
+            assert_raises_message(
+                exc.AmbiguousForeignKeysError,
+                "Could not determine join condition between "
+                "parent/child tables on relationship %s - "
+                "there are multiple foreign key paths linking the "
+                "tables via secondary table '%s'.  "
+                "Specify the 'foreign_keys' argument, providing a list "
+                "of those columns which should be counted as "
+                "containing a foreign key reference from the "
+                "secondary table to each of the parent and child tables."
+                % (relname, secondary_arg),
+                fn, *arg, **kw)
+        else:
+            assert_raises_message(
+                exc.AmbiguousForeignKeysError,
+                "Could not determine join condition between "
+                "parent/child tables on relationship %s - "
+                "there are no foreign keys linking these tables.  " 
+                % (relname,),
+                fn, *arg, **kw)
+
+    def _assert_raises_no_join(self, fn, relname, secondary_arg,
+        *arg, **kw):
+        if secondary_arg is not None:
+            assert_raises_message(
+                exc.NoForeignKeysError,
+                "Could not determine join condition between "
+                "parent/child tables on relationship %s - "
+                "there are no foreign keys linking these tables "
+                "via secondary table '%s'.  "
+                "Ensure that referencing columns are associated with a ForeignKey "
+                "or ForeignKeyConstraint, or specify 'primaryjoin' and "
+                "'secondaryjoin' expressions"
+                % (relname, secondary_arg),
+                fn, *arg, **kw)
+        else:
+            assert_raises_message(
+                exc.NoForeignKeysError,
+                "Could not determine join condition between "
+                "parent/child tables on relationship %s - "
+                "there are no foreign keys linking these tables.  "
+                "Ensure that referencing columns are associated with a ForeignKey "
+                "or ForeignKeyConstraint, or specify a 'primaryjoin' "
+                "expression."
+                % (relname,),
+                fn, *arg, **kw)
+
+
 class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_determine_local_remote_pairs_o2o_joined_sub_to_base(self):
         joincond = self._join_fixture_o2o_joined_sub_to_base()
@@ -398,13 +497,10 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
         )
 
     def test_err_local_remote_compound_1(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            "Can't determine relationship direction for "
-            "relationship 'None' - foreign key "
-            "columns are present in neither the "
-            "parent nor the child's mapped tables",
-            self._join_fixture_compound_expression_1_non_annotated
+        self._assert_raises_no_relevant_fks(
+            self._join_fixture_compound_expression_1_non_annotated,
+            r'lft.x \+ lft.y = rgt.x \* rgt.y',
+            "None", "primary"
         )
 
     def test_determine_remote_columns_compound_2(self):
@@ -610,6 +706,80 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
                 joincond.primaryjoin,
                 "lft.id = rgt.lid"
+        )
+
+    def test_determine_join_ambiguous_fks_o2m(self):
+        assert_raises_message(
+            exc.AmbiguousForeignKeysError,
+            "Could not determine join condition between "
+            "parent/child tables on relationship None - "
+            "there are multiple foreign key paths linking "
+            "the tables.  Specify the 'foreign_keys' argument, "
+            "providing a list of those columns which "
+            "should be counted as containing a foreign "
+            "key reference to the parent table.",
+            relationships.JoinCondition,
+                    self.left, 
+                    self.right_multi_fk, 
+                    self.left, 
+                    self.right_multi_fk, 
+        )
+
+    def test_determine_join_no_fks_o2m(self):
+        self._assert_raises_no_join(
+            relationships.JoinCondition,
+            "None", None,
+                    self.left, 
+                    self.selfref, 
+                    self.left, 
+                    self.selfref, 
+        )
+
+
+    def test_determine_join_ambiguous_fks_m2m(self):
+
+        self._assert_raises_ambig_join(
+            relationships.JoinCondition,
+            "None", self.m2msecondary_ambig_fks,
+            self.m2mleft, 
+            self.m2mright, 
+            self.m2mleft, 
+            self.m2mright, 
+            secondary=self.m2msecondary_ambig_fks
+        )
+
+    def test_determine_join_no_fks_m2m(self):
+        self._assert_raises_no_join(
+            relationships.JoinCondition,
+            "None", self.m2msecondary_no_fks,
+                    self.m2mleft, 
+                    self.m2mright, 
+                    self.m2mleft, 
+                    self.m2mright, 
+                    secondary=self.m2msecondary_no_fks
+        )
+
+    def _join_fixture_fks_ambig_m2m(self):
+        return relationships.JoinCondition(
+                    self.m2mleft, 
+                    self.m2mright, 
+                    self.m2mleft, 
+                    self.m2mright, 
+                    secondary=self.m2msecondary_ambig_fks,
+                    consider_as_foreign_keys=[
+                        self.m2msecondary_ambig_fks.c.lid1, 
+                        self.m2msecondary_ambig_fks.c.rid1]
+        )
+
+    def test_determine_join_w_fks_ambig_m2m(self):
+        joincond = self._join_fixture_fks_ambig_m2m()
+        self.assert_compile(
+                joincond.primaryjoin,
+                "m2mlft.id = m2msecondary_ambig_fks.lid1"
+        )
+        self.assert_compile(
+                joincond.secondaryjoin,
+                "m2mrgt.id = m2msecondary_ambig_fks.rid1"
         )
 
 class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
