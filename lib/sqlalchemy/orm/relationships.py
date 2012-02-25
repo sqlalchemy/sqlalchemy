@@ -58,7 +58,7 @@ class JoinCondition(object):
                     self_referential=False,
                     prop=None,
                     support_sync=True,
-                    can_be_synced_fn=lambda c: True
+                    can_be_synced_fn=lambda *c: True
                     ):
         self.parent_selectable = parent_selectable
         self.parent_local_selectable = parent_local_selectable
@@ -531,7 +531,8 @@ class JoinCondition(object):
                     % (self.prop, ))
 
     def _check_foreign_cols(self, join_condition, primary):
-        """Check the foreign key columns collected and emit error messages."""
+        """Check the foreign key columns collected and emit error 
+        messages."""
 
         can_sync = False
 
@@ -554,17 +555,19 @@ class JoinCondition(object):
         # (not just ==), perhaps they need to turn on "viewonly=True".
         if self.support_sync and has_foreign and not can_sync:
             err = "Could not locate any simple equality expressions "\
-                    "involving foreign key columns for %s join condition "\
+                    "involving locally mapped foreign key columns for "\
+                    "%s join condition "\
                     "'%s' on relationship %s." % (
                         primary and 'primary' or 'secondary', 
                         join_condition, 
                         self.prop
                     )
-            err += "  Ensure that referencing columns are associated with a "\
-                    "ForeignKey or ForeignKeyConstraint, or are annotated "\
-                    "in the join condition with the foreign() annotation. "\
-                    "To allow comparison operators other than '==', "\
-                    "the relationship can be marked as viewonly=True."
+            err += \
+                "  Ensure that referencing columns are associated "\
+                "with a ForeignKey or ForeignKeyConstraint, or are "\
+                "annotated in the join condition with the foreign() "\
+                "annotation. To allow comparison operators other than "\
+                "'==', the relationship can be marked as viewonly=True."
 
             raise sa_exc.ArgumentError(err)
         else:
@@ -574,9 +577,11 @@ class JoinCondition(object):
                         join_condition, 
                         self.prop
                     )
-            err += "  Ensure that referencing columns are associated with a "\
-                    "ForeignKey or ForeignKeyConstraint, or are annotated "\
-                    "in the join condition with the foreign() annotation."
+            err += \
+                '  Ensure that referencing columns are associated '\
+                'with a ForeignKey or ForeignKeyConstraint, or are '\
+                'annotated in the join condition with the foreign() '\
+                'annotation.'
             raise sa_exc.ArgumentError(err)
 
     def _determine_direction(self):
@@ -617,11 +622,15 @@ class JoinCondition(object):
                     self.direction = MANYTOONE
                 else:
                     raise sa_exc.ArgumentError(
-                            "Can't determine relationship"
-                            " direction for relationship '%s' - foreign "
-                            "key columns are present in both the parent "
-                            "and the child's mapped tables.  Specify "
-                            "'foreign_keys' argument." % self.prop)
+                        "Can't determine relationship"
+                        " direction for relationship '%s' - foreign "
+                        "key columns within the join condition are present "
+                        "in both the parent and the child's mapped tables.  "
+                        "Ensure that only those columns referring "
+                        "to a parent column are marked as foreign, "
+                        "either via the foreign() annotation or "
+                        "via the foreign_keys argument."
+                         % self.prop)
             elif onetomany_fk:
                 self.direction = ONETOMANY
             elif manytoone_fk:
@@ -647,7 +656,8 @@ class JoinCondition(object):
                     "remote" not in right._annotations and \
                     self.can_be_synced_fn(right):
                     lrp.add((right, left))
-                if binary.operator is operators.eq:
+                if binary.operator is operators.eq and \
+                    self.can_be_synced_fn(left, right):
                     if "foreign" in right._annotations:
                         collection.append((left, right))
                     elif "foreign" in left._annotations:

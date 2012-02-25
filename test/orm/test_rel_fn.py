@@ -86,6 +86,40 @@ class _JoinFixtures(object):
             Column('base_id', Integer, ForeignKey('base.id'))
         )
 
+        cls.three_tab_a = Table('three_tab_a', m, 
+            Column('id', Integer, primary_key=True),
+        )
+        cls.three_tab_b = Table('three_tab_b', m, 
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('three_tab_a.id'))
+        )
+        cls.three_tab_c = Table('three_tab_c', m, 
+            Column('id', Integer, primary_key=True),
+            Column('aid', Integer, ForeignKey('three_tab_a.id')),
+            Column('bid', Integer, ForeignKey('three_tab_b.id'))
+        )
+
+    def _join_fixture_overlapping_three_tables(self, **kw):
+        def _can_sync(*cols):
+            for c in cols:
+                if self.three_tab_c.c.contains_column(c):
+                    return False
+            else:
+                return True
+        return relationships.JoinCondition(
+            self.three_tab_a, 
+            self.three_tab_b,
+            self.three_tab_a, 
+            self.three_tab_b,
+            support_sync=False,
+            can_be_synced_fn=_can_sync,
+            primaryjoin=and_(
+                self.three_tab_a.c.id==self.three_tab_b.c.aid,
+                self.three_tab_c.c.bid==self.three_tab_b.c.id,
+                self.three_tab_c.c.aid==self.three_tab_a.c.id
+            )
+        )
+
     def _join_fixture_m2m(self, **kw):
         return relationships.JoinCondition(
                     self.m2mleft, 
@@ -338,7 +372,7 @@ class _JoinFixtures(object):
         assert_raises_message(
             sa.exc.ArgumentError, 
             "Could not locate any simple equality expressions "
-            "involving foreign key columns for %s join "
+            "involving locally mapped foreign key columns for %s join "
             "condition '%s' on relationship %s.  "
             "Ensure that referencing columns are associated with a "
             "ForeignKey or ForeignKeyConstraint, or are annotated in "
@@ -626,6 +660,16 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             set([self.selfref.c.id])
         )
 
+    def test_determine_local_remote_cols_three_tab_viewonly(self):
+        joincond = self._join_fixture_overlapping_three_tables()
+        eq_(
+            joincond.local_remote_pairs,
+            [(self.three_tab_a.c.id, self.three_tab_b.c.aid)]
+        )
+        eq_(
+            joincond.remote_columns,
+            set([self.three_tab_b.c.id, self.three_tab_b.c.aid])
+        )
 
 class DirectionTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
     def test_determine_direction_compound_2(self):
