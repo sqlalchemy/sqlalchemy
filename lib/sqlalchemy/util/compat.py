@@ -57,6 +57,12 @@ buffer = buffer
 # end Py2K
 
 try:
+    from contextlib import contextmanager
+except ImportError:
+    def contextmanager(fn):
+        return fn
+
+try:
     from functools import update_wrapper
 except ImportError:
     def update_wrapper(wrapper, wrapped,

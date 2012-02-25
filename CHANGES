@@ -6,6 +6,10 @@ CHANGES
 0.7.6
 =====
 - orm
+  - [feature] Added "no_autoflush" context
+    manager to Session, used with with:
+    will temporarily disable autoflush.
+
   - [bug] Fixed bug whereby MappedCollection
     would not get the appropriate collection
     instrumentation if it were only used

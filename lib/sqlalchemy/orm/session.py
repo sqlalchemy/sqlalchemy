@@ -978,6 +978,34 @@ class Session(object):
 
         return self._query_cls(entities, self, **kwargs)
 
+    @property
+    @util.contextmanager
+    def no_autoflush(self):
+        """Return a context manager that disables autoflush.
+        
+        e.g.::
+        
+            with session.no_autoflush:
+                
+                some_object = SomeClass()
+                session.add(some_object)
+                # won't autoflush
+                some_object.related_thing = session.query(SomeRelated).first()
+        
+        Operations that proceed within the ``with:`` block
+        will not be subject to flushes occurring upon query
+        access.  This is useful when initializing a series
+        of objects which involve existing database queries,
+        where the uncompleted object should not yet be flushed.
+        
+        New in 0.7.6.
+
+        """
+        autoflush = self.autoflush
+        self.autoflush = False
+        yield self
+        self.autoflush = autoflush
+
     def _autoflush(self):
         if self.autoflush and not self._flushing:
             self.flush()

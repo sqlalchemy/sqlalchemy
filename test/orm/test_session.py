@@ -222,6 +222,23 @@ class SessionTest(_fixtures.FixtureTest):
         eq_(bind.connect().execute("select count(1) from users").scalar(), 1)
         sess.close()
 
+    @testing.requires.python26
+    def test_with_no_autoflush(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = Session()
+
+        u = User()
+        u.name = 'ed'
+        sess.add(u)
+        def go(obj):
+            assert u not in sess.query(User).all()
+        testing.run_as_contextmanager(sess.no_autoflush, go)
+        assert u in sess.new
+        assert u in sess.query(User).all()
+        assert u not in sess.new
+
     def test_make_transient(self):
         users, User = self.tables.users, self.classes.User
 
