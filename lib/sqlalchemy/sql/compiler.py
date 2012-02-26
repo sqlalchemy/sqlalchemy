@@ -1303,7 +1303,7 @@ class SQLCompiler(engine.Compiled):
         if parameters and stmt.parameters:
             check = set(parameters).intersection(
                 sql._column_as_key(k) for k in stmt.parameters
-            )
+            ).difference(check_columns)
             if check:
                 util.warn(
                     "Unconsumed column names: %s" % 
