@@ -1405,6 +1405,18 @@ class HistoryTest(fixtures.TestBase):
         f = Foo()
         eq_(self._someattr_history(f), ((), (), ()))
 
+    def test_object_init(self):
+        Foo = self._fixture(uselist=False, useobject=True, 
+                                active_history=False)
+        f = Foo()
+        eq_(self._someattr_history(f), ((), (), ()))
+
+    def test_object_init_active_history(self):
+        Foo = self._fixture(uselist=False, useobject=True, 
+                                active_history=True)
+        f = Foo()
+        eq_(self._someattr_history(f), ((), (), ()))
+
     def test_scalar_no_init_side_effect(self):
         Foo = self._fixture(uselist=False, useobject=False, 
                                 active_history=False)
