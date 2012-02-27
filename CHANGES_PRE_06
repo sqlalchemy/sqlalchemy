@@ -2117,6 +2117,127 @@ full changes between 0.4/0.5.
     - Added support for returning values from inserts (2.0+ only),
       updates and deletes (2.1+ only).
 
+0.4.9 (unreleased)
+==================
+
+- general:
+    - global "propigate"->"propagate" change.
+
+- orm
+    - polymorphic_union() function respects the "key" of each 
+      Column if they differ from the column's name.
+
+    - Fixed 0.4-only bug preventing composite columns
+      from working properly with inheriting mappers
+      [ticket:1199]
+
+    - Fixed RLock-related bug in mapper which could deadlock upon
+      reentrant mapper compile() calls, something that occurs when
+      using declarative constructs inside of ForeignKey objects.
+      Ported from 0.5.
+
+    - Fixed bug in composite types which prevented a primary-key
+      composite type from being mutated [ticket:1213].
+
+    - Added ScopedSession.is_active accessor. [ticket:976]
+
+    - Class-bound accessor can be used as the argument to 
+      relation() order_by.  [ticket:939]
+
+    - Fixed shard_id argument on ShardedSession.execute().
+      [ticket:1072]
+
+- sql
+    - Connection.invalidate() checks for closed status 
+      to avoid attribute errors. [ticket:1246]
+
+    - NullPool supports reconnect on failure behavior.
+      [ticket:1094]
+
+    - The per-dialect cache used by TypeEngine to cache
+      dialect-specific types is now a WeakKeyDictionary.
+      This to prevent dialect objects from 
+      being referenced forever for an application that 
+      creates an arbitrarily large number of engines
+      or dialects.   There is a small performance penalty
+      which will be resolved in 0.6.  [ticket:1299]
+
+-sqlite
+    - Fixed SQLite reflection methods so that non-present
+      cursor.description, which triggers an auto-cursor
+      close, will be detected so that no results doesn't
+      fail on recent versions of pysqlite which raise 
+      an error when fetchone() called with no rows present.
+
+- postgres
+    - Added Index reflection support to Postgres, using a
+      great patch we long neglected, submitted by 
+      Ken Kuhlman. [ticket:714]
+
+- mysql
+    - Fixed bug in exception raise when FK columns not present
+      during reflection. [ticket:1241]
+
+- oracle
+    - Fixed bug which was preventing out params of certain types
+      from being received; thanks a ton to huddlej at wwu.edu !
+      [ticket:1265]
+
+0.4.8
+=====
+- orm
+    - Fixed bug regarding inherit_condition passed
+      with "A=B" versus "B=A" leading to errors
+      [ticket:1039]
+
+    - Changes made to new, dirty and deleted 
+      collections in
+      SessionExtension.before_flush() will take
+      effect for that flush.
+
+    - Added label() method to InstrumentedAttribute 
+      to establish forwards compatibility with 0.5.
+
+- sql
+    - column.in_(someselect) can now be used as 
+      a columns-clause expression without the subquery
+      bleeding into the FROM clause [ticket:1074]
+
+- mysql
+    - Added MSMediumInteger type [ticket:1146].
+
+- sqlite
+    - Supplied a custom strftime() function which
+      handles dates before 1900.  [ticket:968]
+
+    - String's (and Unicode's, UnicodeText's, etc.) 
+      convert_unicode logic disabled in the sqlite dialect, 
+      to adjust for pysqlite 2.5.0's new requirement that 
+      only Python unicode objects are accepted;
+      http://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
+
+- oracle
+    - has_sequence() now takes schema name into account
+      [ticket:1155]
+    - added BFILE to the list of reflected types
+      [ticket:1121]
+
+0.4.7p1
+=====
+- orm 
+    - Added "add()" and "add_all()" to scoped_session
+      methods.  Workaround for 0.4.7:
+
+        from sqlalchemy.orm.scoping import ScopedSession,\
+        instrument
+        setattr(
+            ScopedSession, "add", instrument("add"))
+        setattr(
+            ScopedSession, "add_all", instrument("add_all"))
+
+    - Fixed non-2.3 compatible usage of set() and generator
+      expression within relation().
+
 0.4.7
 =====
 - orm
