@@ -124,6 +124,8 @@ class NoseSQLAlchemy(Plugin):
 
         if not issubclass(cls, fixtures.TestBase):
             return False
+        elif cls.__name__.startswith('_'):
+            return False
         else:
             if hasattr(cls, 'setup_class'):
                 existing_setup = cls.setup_class.im_func
