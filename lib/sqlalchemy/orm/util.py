@@ -11,6 +11,7 @@ from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
                                 PropComparator, MapperProperty
 from sqlalchemy.orm import attributes, exc
 import operator
+import re
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
@@ -20,38 +21,52 @@ all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
 
 _INSTRUMENTOR = ('mapper', 'instrumentor')
 
-class CascadeOptions(dict):
+class CascadeOptions(frozenset):
     """Keeps track of the options sent to relationship().cascade"""
 
-    def __init__(self, arg=""):
-        if not arg:
-            values = set()
-        else:
-            values = set(c.strip() for c in arg.split(','))
+    _add_w_all_cascades = all_cascades.difference([
+                            'all', 'none', 'delete-orphan'])
+    _allowed_cascades = all_cascades
 
-        for name in ['save-update', 'delete', 'refresh-expire', 
-                            'merge', 'expunge']:
-            boolean = name in values or 'all' in values
-            setattr(self, name.replace('-', '_'), boolean)
-            if boolean:
-                self[name] = True
+    def __new__(cls, arg):
+        values = set([
+                    c for c 
+                    in re.split('\s*,\s*', arg or "")
+                    if c
+                ])
+
+        if values.difference(cls._allowed_cascades):
+            raise sa_exc.ArgumentError(
+                    "Invalid cascade option(s): %s" % 
+                    ", ".join([repr(x) for x in 
+                        sorted(
+                            values.difference(cls._allowed_cascades)
+                    )])
+            )
+
+        if "all" in values:
+            values.update(cls._add_w_all_cascades)
+        if "none" in values:
+            values.clear()
+        values.discard('all')
+
+        self = frozenset.__new__(CascadeOptions, values)
+        self.save_update = 'save-update' in values
+        self.delete = 'delete' in values
+        self.refresh_expire = 'refresh-expire' in values
+        self.merge = 'merge' in values
+        self.expunge = 'expunge' in values
         self.delete_orphan = "delete-orphan" in values
-        if self.delete_orphan:
-            self['delete-orphan'] = True
 
         if self.delete_orphan and not self.delete:
-            util.warn("The 'delete-orphan' cascade option requires "
-                        "'delete'.")
-
-        for x in values:
-            if x not in all_cascades:
-                raise sa_exc.ArgumentError("Invalid cascade option '%s'" % x)
+            util.warn("The 'delete-orphan' cascade "
+                        "option requires 'delete'.")
+        return self
 
     def __repr__(self):
-        return "CascadeOptions(%s)" % repr(",".join(
-            [x for x in ['delete', 'save_update', 'merge', 'expunge',
-                         'delete_orphan', 'refresh-expire']
-             if getattr(self, x, False) is True]))
+        return "CascadeOptions(%r)" % (
+            ",".join([x for x in sorted(self)])
+        )
 
 def _validator_events(desc, key, validator):
     """Runs a validation method on an attribute value to be set or appended."""

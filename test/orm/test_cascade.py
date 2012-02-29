@@ -4,7 +4,7 @@ from sqlalchemy import Integer, String, ForeignKey, Sequence, \
     exc as sa_exc
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    sessionmaker, class_mapper, backref, Session
+    sessionmaker, class_mapper, backref, Session, util as orm_util
 from sqlalchemy.orm import attributes, exc as orm_exc
 from test.lib import testing
 from test.lib.testing import eq_
@@ -51,10 +51,21 @@ class CascadeArgTest(fixtures.MappedTest):
         mapper(Address, addresses)
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Invalid cascade option 'fake'",
-            relationship, Address, cascade="fake, all, delete-orphan"
+            r"Invalid cascade option\(s\): 'fake', 'fake2'",
+            relationship, Address, cascade="fake, all, delete-orphan, fake2"
         )
 
+    def test_cascade_repr(self):
+        eq_(
+            repr(orm_util.CascadeOptions("all, delete-orphan")),
+            "CascadeOptions('delete,delete-orphan,expunge,"
+                    "merge,refresh-expire,save-update')"
+        )
+
+    def test_cascade_immutable(self):
+        assert isinstance(
+            orm_util.CascadeOptions("all, delete-orphan"), 
+            frozenset)
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     run_inserts = None

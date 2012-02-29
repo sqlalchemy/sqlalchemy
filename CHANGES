@@ -23,6 +23,11 @@ CHANGES
     derived function in the columns clause.  
     [ticket:2419]
 
+  - [bug] Fixed the repr() for CascadeOptions to
+    include refresh-expire.  Also reworked
+    CascadeOptions to be a <frozenset>.
+    [ticket:2417]
+
   - [feature] Added the ability to query for
     Table-bound column names when using 
     query(sometable).filter_by(colname=value).  
