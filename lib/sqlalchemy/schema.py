@@ -1122,6 +1122,8 @@ class Column(SchemaItem, expression.ColumnClause):
 
         c.table = selectable
         selectable._columns.add(c)
+        if selectable._is_clone_of is not None:
+            c._is_clone_of = selectable._is_clone_of.columns[c.name]
         if self.primary_key:
             selectable.primary_key.add(c)
         c.dispatch.after_parent_attach(c, selectable)

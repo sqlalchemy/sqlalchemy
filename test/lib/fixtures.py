@@ -4,6 +4,7 @@ from test.lib.engines import drop_all_tables
 import sys
 import sqlalchemy as sa
 from test.lib.entities import BasicEntity, ComparableEntity
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 
 class TestBase(object):
     # A sequence of database names to always run, regardless of the
@@ -228,8 +229,7 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
 
     @classmethod
     def teardown_class(cls):
-        cls.classes.clear()
-        _ORMTest.teardown_class()
+        cls._teardown_once_class()
         cls._teardown_once_metadata_bind()
 
     def setup(self):
@@ -241,6 +241,12 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         sa.orm.session.Session.close_all()
         self._teardown_each_mappers()
         self._teardown_each_tables()
+
+    @classmethod
+    def _teardown_once_class(cls):
+        cls.classes.clear()
+        _ORMTest.teardown_class()
+
 
     @classmethod
     def _setup_once_classes(cls):
@@ -269,6 +275,7 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
                 cls_registry[classname] = cls
                 return type.__init__(cls, classname, bases, dict_)
 
+
         class _Base(object):
             __metaclass__ = FindFixture
         class Basic(BasicEntity, _Base):
@@ -294,3 +301,35 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
     def setup_mappers(cls):
         pass
 
+class DeclarativeMappedTest(MappedTest):
+    declarative_meta = None
+
+    @classmethod
+    def setup_class(cls):
+        if cls.declarative_meta is None:
+            cls.declarative_meta = sa.MetaData()
+
+        super(DeclarativeMappedTest, cls).setup_class()
+
+    @classmethod
+    def _teardown_once_class(cls):
+        if cls.declarative_meta.tables:
+            cls.declarative_meta.drop_all(testing.db)
+        super(DeclarativeMappedTest, cls)._teardown_once_class()
+
+    @classmethod
+    def _with_register_classes(cls, fn):
+        cls_registry = cls.classes
+        class FindFixtureDeclarative(DeclarativeMeta):
+            def __init__(cls, classname, bases, dict_):
+                cls_registry[classname] = cls
+                return DeclarativeMeta.__init__(
+                        cls, classname, bases, dict_)
+        _DeclBase = declarative_base(metadata=cls.declarative_meta, 
+                            metaclass=FindFixtureDeclarative)
+        class DeclarativeBasic(BasicEntity):
+            pass
+        cls.DeclarativeBasic = _DeclBase
+        fn()
+        if cls.declarative_meta.tables:
+            cls.declarative_meta.create_all(testing.db)

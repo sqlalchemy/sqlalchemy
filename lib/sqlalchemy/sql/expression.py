@@ -1508,6 +1508,7 @@ class ClauseElement(Visitable):
     supports_execution = False
     _from_objects = []
     bind = None
+    _is_clone_of = None
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -1556,7 +1557,7 @@ class ClauseElement(Visitable):
         f = self
         while f is not None:
             s.add(f)
-            f = getattr(f, '_is_clone_of', None)
+            f = f._is_clone_of
         return s
 
     def __getstate__(self):
@@ -2158,6 +2159,9 @@ class ColumnElement(ClauseElement, _CompareMixin):
                             type_=getattr(self,
                           'type', None))
         co.proxies = [self]
+        if selectable._is_clone_of is not None:
+            co._is_clone_of = \
+                selectable._is_clone_of.columns[key]
         selectable._columns[key] = co
         return co
 
@@ -2466,6 +2470,13 @@ class FromClause(Selectable):
 
         """
 
+        def embedded(expanded_proxy_set, target_set):
+            for t in target_set.difference(expanded_proxy_set):
+                if not set(_expand_cloned([t])
+                            ).intersection(expanded_proxy_set):
+                    return False
+            return True
+
         # dont dig around if the column is locally present
         if self.c.contains_column(column):
             return column
@@ -2473,10 +2484,10 @@ class FromClause(Selectable):
         target_set = column.proxy_set
         cols = self.c
         for c in cols:
-            i = target_set.intersection(itertools.chain(*[p._cloned_set
-                    for p in c.proxy_set]))
+            expanded_proxy_set = set(_expand_cloned(c.proxy_set))
+            i = target_set.intersection(expanded_proxy_set)
             if i and (not require_embedded
-                      or c.proxy_set.issuperset(target_set)):
+                      or embedded(expanded_proxy_set, target_set)):
                 if col is None:
 
                     # no corresponding column yet, pick this one.
@@ -4073,6 +4084,9 @@ class ColumnClause(_Immutable, ColumnElement):
                     is_literal=is_literal
                 )
         c.proxies = [self]
+        if selectable._is_clone_of is not None:
+            c._is_clone_of = \
+                selectable._is_clone_of.columns[c.name]
 
         if attach:
             selectable._columns[c.name] = c

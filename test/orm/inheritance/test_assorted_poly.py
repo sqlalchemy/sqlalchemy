@@ -1,5 +1,5 @@
-"""Very old inheritance-related tests.
-
+"""Miscellaneous inheritance-related tests, many very old.
+These are generally tests derived from specific user issues.
 
 """
 
@@ -1452,3 +1452,64 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
         )
         assert Dude.supervisor.property.direction is MANYTOONE
         self._dude_roundtrip()
+
+
+class Ticket2419Test(fixtures.DeclarativeMappedTest):
+    """Test [ticket:2419]'s test case."""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+
+        class B(Base):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+            ds = relationship("D")
+            es = relationship("E")
+
+        class C(A):
+            __tablename__ = "c"
+
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'))
+            b = relationship("B", primaryjoin=b_id==B.id)
+
+        class D(Base):
+            __tablename__ = "d"
+
+            id = Column(Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'))
+
+        class E(Base):
+            __tablename__ = 'e'
+            id = Column(Integer, primary_key=True)
+            b_id = Column(Integer, ForeignKey('b.id'))
+
+    def test_join_w_eager_w_any(self):
+        A, B, C, D, E = self.classes.A, self.classes.B, \
+                        self.classes.C, self.classes.D, \
+                        self.classes.E
+        s = Session(testing.db)
+
+        b = B(ds=[D()])
+        s.add_all([
+            C(
+                b=b
+            )
+
+        ])
+
+        s.commit()
+
+        q = s.query(B, B.ds.any(D.id==1)).options(joinedload_all("es"))
+        q = q.join(C, C.b_id==B.id)
+        q = q.limit(5)
+        eq_(
+            q.all(),
+            [(b, True)]
+        )

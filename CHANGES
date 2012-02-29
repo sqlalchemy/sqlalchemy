@@ -17,6 +17,12 @@ CHANGES
     @collection.internally_instrumented.  
     [ticket:2406]
 
+  - [bug] Fixed bug whereby SQL adaption mechanics
+    would fail in a very nested scenario involving
+    joined-inheritance, joinedload(), limit(), and a
+    derived function in the columns clause.  
+    [ticket:2419]
+
   - [feature] Added the ability to query for
     Table-bound column names when using 
     query(sometable).filter_by(colname=value).  
