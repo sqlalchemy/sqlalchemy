@@ -31,12 +31,6 @@ if sys.version_info < (2, 4):
     raise Exception("SQLAlchemy requires Python 2.4 or higher.")
 elif sys.version_info >= (3, 0):
     py3k = True
-    # monkeypatch our preprocessor
-    # onto the 2to3 tool.
-    from sa2to3 import refactor_string
-    from lib2to3.refactor import RefactoringTool
-    RefactoringTool.refactor_string = refactor_string
-
     if has_setuptools:
         extra.update(
             use_2to3=True,
@@ -153,8 +147,28 @@ def run_setup(with_cext):
             **kwargs
           )
 
+def monkeypatch2to3():
+    from sa2to3 import refactor_string
+    from lib2to3.refactor import RefactoringTool
+    RefactoringTool.old_refactor_string = RefactoringTool.refactor_string
+    RefactoringTool.refactor_string = refactor_string
+
+def unmonkeypatch2to3():
+    from lib2to3.refactor import RefactoringTool
+    if hasattr(RefactoringTool, 'old_refactor_string'):
+        RefactoringTool.refactor_string = RefactoringTool.old_refactor_string
+
 if pypy or jython or py3k:
-    run_setup(False)
+    if py3k:
+        # monkeypatch our preprocessor onto the 2to3 tool.
+        monkeypatch2to3()
+    try:
+        run_setup(False)
+    finally:
+        if py3k:
+            # unmonkeypatch to not stomp other setup.py's that are compiled
+            # and exec'd and which also require 2to3 fixing
+            unmonkeypatch2to3()
     status_msgs(
         "WARNING: C extensions are not supported on " +
             "this Python platform, speedups are not enabled.",
