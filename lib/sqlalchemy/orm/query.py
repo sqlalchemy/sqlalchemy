@@ -450,6 +450,62 @@ class Query(object):
         """
         return self.enable_eagerloads(False).statement.alias(name=name)
 
+    def cte(self, name=None, recursive=False):
+        """Return the full SELECT statement represented by this :class:`.Query`
+        represented as a common table expression (CTE).
+
+        The :meth:`.Query.cte` method is new in 0.7.6.
+        
+        Parameters and usage are the same as those of the 
+        :meth:`._SelectBase.cte` method; see that method for 
+        further details.
+        
+        Here is the `Postgresql WITH 
+        RECURSIVE example <http://www.postgresql.org/docs/8.4/static/queries-with.html>`_.
+        Note that, in this example, the ``included_parts`` cte and the ``incl_alias`` alias
+        of it are Core selectables, which
+        means the columns are accessed via the ``.c.`` attribute.  The ``parts_alias``
+        object is an :func:`.orm.aliased` instance of the ``Part`` entity, so column-mapped
+        attributes are available directly::
+
+            from sqlalchemy.orm import aliased
+
+            class Part(Base):
+                __tablename__ = 'part'
+                part = Column(String)
+                sub_part = Column(String)
+                quantity = Column(Integer)
+
+            included_parts = session.query(
+                                Part.sub_part, 
+                                Part.part, 
+                                Part.quantity).\\
+                                    filter(Part.part=="our part").\\
+                                    cte(name="included_parts", recursive=True)
+
+            incl_alias = aliased(included_parts, name="pr")
+            parts_alias = aliased(Part, name="p")
+            included_parts = included_parts.union(
+                session.query(
+                    parts_alias.part, 
+                    parts_alias.sub_part, 
+                    parts_alias.quantity).\\
+                        filter(parts_alias.part==incl_alias.c.sub_part)
+                )
+
+            q = session.query(
+                    included_parts.c.sub_part,
+                    func.sum(included_parts.c.quantity).label('total_quantity')
+                ).\
+                group_by(included_parts.c.sub_part)
+
+        See also:
+        
+        :meth:`._SelectBase.cte`
+
+        """
+        return self.enable_eagerloads(False).statement.cte(name=name, recursive=recursive)
+
     def label(self, name):
         """Return the full SELECT statement represented by this :class:`.Query`, converted 
         to a scalar subquery with a label of the given name.

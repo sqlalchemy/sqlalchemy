@@ -10,6 +10,10 @@ CHANGES
     manager to Session, used with with:
     will temporarily disable autoflush.
 
+  - [feature] Added cte() method to Query,
+    invokes common table expression support
+    from the Core (see below). [ticket:1859]
+
   - [bug] Fixed bug whereby MappedCollection
     would not get the appropriate collection
     instrumentation if it were only used
@@ -53,6 +57,13 @@ CHANGES
     on the method object.  [ticket:2352]
 
 - sql
+  - [feature] Added support for SQL standard
+    common table expressions (CTE), allowing
+    SELECT objects as the CTE source (DML
+    not yet supported).  This is invoked via
+    the cte() method on any select() construct.
+    [ticket:1859]
+
   - [bug] Added support for using the .key
     of a Column as a string identifier in a 
     result set row.   The .key is currently

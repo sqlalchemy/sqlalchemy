@@ -3719,6 +3719,47 @@ class Alias(FromClause):
     def bind(self):
         return self.element.bind
 
+class CTE(Alias):
+    """Represent a Common Table Expression.
+    
+    The :class:`.CTE` object is obtained using the
+    :meth:`._SelectBase.cte` method from any selectable.
+    See that method for complete examples.
+    
+    New in 0.7.6.
+
+    """
+    __visit_name__ = 'cte'
+    def __init__(self, selectable, 
+                        name=None, 
+                        recursive=False, 
+                        cte_alias=False):
+        self.recursive = recursive
+        self.cte_alias = cte_alias
+        super(CTE, self).__init__(selectable, name=name)
+
+    def alias(self, name=None):
+        return CTE(
+            self.original,
+            name=name,
+            recursive=self.recursive,
+            cte_alias = self.name
+        )
+
+    def union(self, other):
+        return CTE(
+            self.original.union(other),
+            name=self.name,
+            recursive=self.recursive
+        )
+
+    def union_all(self, other):
+        return CTE(
+            self.original.union_all(other),
+            name=self.name,
+            recursive=self.recursive
+        )
+
 
 class _Grouping(ColumnElement):
     """Represent a grouping within a column expression"""
@@ -4288,6 +4329,125 @@ class _SelectBase(Executable, FromClause):
 
         """
         return self.as_scalar().label(name)
+
+    def cte(self, name=None, recursive=False):
+        """Return a new :class:`.CTE`, or Common Table Expression instance.
+        
+        Common table expressions are a SQL standard whereby SELECT
+        statements can draw upon secondary statements specified along
+        with the primary statement, using a clause called "WITH".
+        Special semantics regarding UNION can also be employed to 
+        allow "recursive" queries, where a SELECT statement can draw 
+        upon the set of rows that have previously been selected.
+        
+        SQLAlchemy detects :class:`.CTE` objects, which are treated
+        similarly to :class:`.Alias` objects, as special elements
+        to be delivered to the FROM clause of the statement as well
+        as to a WITH clause at the top of the statement.
+
+        The :meth:`._SelectBase.cte` method is new in 0.7.6.
+        
+        :param name: name given to the common table expression.  Like
+         :meth:`._FromClause.alias`, the name can be left as ``None``
+         in which case an anonymous symbol will be used at query
+         compile time.
+        :param recursive: if ``True``, will render ``WITH RECURSIVE``.
+         A recursive common table expression is intended to be used in 
+         conjunction with UNION or UNION ALL in order to derive rows
+         from those already selected.
+
+        The following examples illustrate two examples from 
+        Postgresql's documentation at
+        http://www.postgresql.org/docs/8.4/static/queries-with.html.
+        
+        Example 1, non recursive::
+        
+            from sqlalchemy import Table, Column, String, Integer, MetaData, \\
+                select, func
+
+            metadata = MetaData()
+
+            orders = Table('orders', metadata,
+                Column('region', String),
+                Column('amount', Integer),
+                Column('product', String),
+                Column('quantity', Integer)
+            )
+
+            regional_sales = select([
+                                orders.c.region, 
+                                func.sum(orders.c.amount).label('total_sales')
+                            ]).group_by(orders.c.region).cte("regional_sales")
+
+
+            top_regions = select([regional_sales.c.region]).\\
+                    where(
+                        regional_sales.c.total_sales > 
+                        select([
+                            func.sum(regional_sales.c.total_sales)/10
+                        ])
+                    ).cte("top_regions")
+
+            statement = select([
+                        orders.c.region, 
+                        orders.c.product, 
+                        func.sum(orders.c.quantity).label("product_units"), 
+                        func.sum(orders.c.amount).label("product_sales")
+                ]).where(orders.c.region.in_(
+                    select([top_regions.c.region])
+                )).group_by(orders.c.region, orders.c.product)
+        
+            result = conn.execute(statement).fetchall()
+            
+        Example 2, WITH RECURSIVE::
+
+            from sqlalchemy import Table, Column, String, Integer, MetaData, \\
+                select, func
+
+            metadata = MetaData()
+
+            parts = Table('parts', metadata,
+                Column('part', String),
+                Column('sub_part', String),
+                Column('quantity', Integer),
+            )
+
+            included_parts = select([
+                                parts.c.sub_part, 
+                                parts.c.part, 
+                                parts.c.quantity]).\\
+                                where(parts.c.part=='our part').\\
+                                cte(recursive=True)
+
+
+            incl_alias = included_parts.alias()
+            parts_alias = parts.alias()
+            included_parts = included_parts.union(
+                select([
+                    parts_alias.c.part, 
+                    parts_alias.c.sub_part, 
+                    parts_alias.c.quantity
+                ]).
+                    where(parts_alias.c.part==incl_alias.c.sub_part)
+            )
+
+            statement = select([
+                        included_parts.c.sub_part, 
+                        func.sum(included_parts.c.quantity).label('total_quantity')
+                    ]).\
+                    select_from(included_parts.join(parts,
+                                included_parts.c.part==parts.c.part)).\\
+                    group_by(included_parts.c.sub_part)
+
+            result = conn.execute(statement).fetchall()
+
+        
+        See also:
+        
+        :meth:`.orm.query.Query.cte` - ORM version of :meth:`._SelectBase.cte`.
+
+        """
+        return CTE(self, name=name, recursive=recursive)
 
     @_generative
     @util.deprecated('0.6',

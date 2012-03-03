@@ -163,6 +163,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: CTE
+   :members:
+   :show-inheritance:
+
 .. autoclass:: Delete
    :members: where
    :show-inheritance:

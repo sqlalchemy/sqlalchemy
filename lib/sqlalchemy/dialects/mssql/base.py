@@ -949,6 +949,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         ]
         return 'OUTPUT ' + ', '.join(columns)
 
+    def get_cte_preamble(self, recursive):
+        # SQL Server finds it too inconvenient to accept
+        # an entirely optional, SQL standard specified,
+        # "RECURSIVE" word with their "WITH",
+        # so here we go
+        return "WITH"
+
     def label_select_column(self, select, column, asfrom):
         if isinstance(column, expression.Function):
             return column.label(None)
