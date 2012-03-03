@@ -4353,7 +4353,7 @@ class _SelectBase(Executable, FromClause):
          compile time.
         :param recursive: if ``True``, will render ``WITH RECURSIVE``.
          A recursive common table expression is intended to be used in 
-         conjunction with UNION or UNION ALL in order to derive rows
+         conjunction with UNION ALL in order to derive rows
          from those already selected.
 
         The following examples illustrate two examples from 
@@ -4422,7 +4422,7 @@ class _SelectBase(Executable, FromClause):
 
             incl_alias = included_parts.alias()
             parts_alias = parts.alias()
-            included_parts = included_parts.union(
+            included_parts = included_parts.union_all(
                 select([
                     parts_alias.c.part, 
                     parts_alias.c.sub_part, 

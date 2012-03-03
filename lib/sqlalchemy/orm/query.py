@@ -472,8 +472,8 @@ class Query(object):
 
             class Part(Base):
                 __tablename__ = 'part'
-                part = Column(String)
-                sub_part = Column(String)
+                part = Column(String, primary_key=True)
+                sub_part = Column(String, primary_key=True)
                 quantity = Column(Integer)
 
             included_parts = session.query(
@@ -485,7 +485,7 @@ class Query(object):
 
             incl_alias = aliased(included_parts, name="pr")
             parts_alias = aliased(Part, name="p")
-            included_parts = included_parts.union(
+            included_parts = included_parts.union_all(
                 session.query(
                     parts_alias.part, 
                     parts_alias.sub_part, 
@@ -496,7 +496,7 @@ class Query(object):
             q = session.query(
                     included_parts.c.sub_part,
                     func.sum(included_parts.c.quantity).label('total_quantity')
-                ).\
+                ).\\
                 group_by(included_parts.c.sub_part)
 
         See also:
