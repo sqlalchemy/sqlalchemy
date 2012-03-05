@@ -11,6 +11,8 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
                             clear_mappers, exc as orm_exc,\
                             configure_mappers, Session, lazyload_all,\
                             lazyload, aliased
+from sqlalchemy.orm.collections import attribute_mapped_collection, \
+    column_mapped_collection
 from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.pickleable import User, Address, Dingaling, Order, \
@@ -344,6 +346,72 @@ class PickleTest(fixtures.MappedTest):
             for loads, dumps in picklers():
                 repickled = loads(dumps(sa_exc))
                 eq_(repickled.args[0], sa_exc.args[0])
+
+    def test_attribute_mapped_collection(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            Address, 
+                            collection_class=
+                            attribute_mapped_collection('email_address')
+                        )
+        })
+        mapper(Address, addresses)
+        u1 = User()
+        u1.addresses = {"email1":Address(email_address="email1")}
+        for loads, dumps in picklers():
+            repickled = loads(dumps(u1))
+            eq_(u1.addresses, repickled.addresses)
+            eq_(repickled.addresses['email1'], 
+                    Address(email_address="email1"))
+
+    def test_column_mapped_collection(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            Address, 
+                            collection_class=
+                            column_mapped_collection(
+                                addresses.c.email_address)
+                        )
+        })
+        mapper(Address, addresses)
+        u1 = User()
+        u1.addresses = {
+            "email1":Address(email_address="email1"),
+            "email2":Address(email_address="email2")
+        }
+        for loads, dumps in picklers():
+            repickled = loads(dumps(u1))
+            eq_(u1.addresses, repickled.addresses)
+            eq_(repickled.addresses['email1'], 
+                    Address(email_address="email1"))
+
+    def test_composite_column_mapped_collection(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        mapper(User, users, properties={
+            'addresses':relationship(
+                            Address, 
+                            collection_class=
+                            column_mapped_collection([
+                                addresses.c.id,
+                                addresses.c.email_address])
+                        )
+        })
+        mapper(Address, addresses)
+        u1 = User()
+        u1.addresses = {
+            (1, "email1"):Address(id=1, email_address="email1"),
+            (2, "email2"):Address(id=2, email_address="email2")
+        }
+        for loads, dumps in picklers():
+            repickled = loads(dumps(u1))
+            eq_(u1.addresses, repickled.addresses)
+            eq_(repickled.addresses[(1, 'email1')], 
+                    Address(id=1, email_address="email1"))
 
 class PolymorphicDeferredTest(fixtures.MappedTest):
     @classmethod

@@ -14,6 +14,11 @@ CHANGES
     invokes common table expression support
     from the Core (see below). [ticket:1859]
 
+  - [bug] Fixed bug whereby objects using
+    attribute_mapped_collection or 
+    column_mapped_collection could not be
+    pickled.  [ticket:2409]
+
   - [bug] Fixed bug whereby MappedCollection
     would not get the appropriate collection
     instrumentation if it were only used
