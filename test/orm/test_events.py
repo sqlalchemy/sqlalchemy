@@ -129,11 +129,12 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         eq_(canary,
             ['init', 'before_insert',
-             'after_insert', 'expire', 'translate_row', 'populate_instance',
-             'refresh',
+             'after_insert', 'expire', 'translate_row', 
+             'populate_instance', 'refresh',
              'append_result', 'translate_row', 'create_instance',
              'populate_instance', 'load', 'append_result',
-             'before_update', 'after_update', 'before_delete', 'after_delete'])
+             'before_update', 'after_update', 'before_delete', 
+             'after_delete'])
 
     def test_merge(self):
         users, User = self.tables.users, self.classes.User
@@ -203,7 +204,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         """
 
-        keywords, items, item_keywords, Keyword, Item = (self.tables.keywords,
+        keywords, items, item_keywords, Keyword, Item = (
+                                self.tables.keywords,
                                 self.tables.items,
                                 self.tables.item_keywords,
                                 self.classes.Keyword,
@@ -466,7 +468,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert my_listener in s.dispatch.before_flush
 
     def test_sessionmaker_listen(self):
-        """test that listen can be applied to individual scoped_session() classes."""
+        """test that listen can be applied to individual 
+        scoped_session() classes."""
 
         def my_listener_one(*arg, **kw):
             pass
@@ -564,7 +567,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess, canary = self._listener_fixture(autoflush=False, autocommit=True, expire_on_commit=False)
+        sess, canary = self._listener_fixture(autoflush=False, 
+                            autocommit=True, expire_on_commit=False)
 
         u = User(name='u1')
         sess.add(u)

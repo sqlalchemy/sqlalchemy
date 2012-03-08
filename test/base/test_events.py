@@ -117,6 +117,110 @@ class TestEvents(fixtures.TestBase):
             [listen_two]
         )
 
+class TestClsLevelListen(fixtures.TestBase):
+    def setUp(self):
+        class TargetEventsOne(event.Events):
+            def event_one(self, x, y):
+                pass
+        class TargetOne(object):
+            dispatch = event.dispatcher(TargetEventsOne)
+        self.TargetOne = TargetOne
+
+    def tearDown(self):
+        event._remove_dispatcher(
+            self.TargetOne.__dict__['dispatch'].events)
+
+    def test_lis_subcalss_lis(self):
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler1(x, y):
+            print 'handler1'
+
+        class SubTarget(self.TargetOne):
+            pass
+
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler2(x, y):
+            pass
+
+        eq_(
+            len(SubTarget().dispatch.event_one),
+            2
+        )
+
+    def test_lis_multisub_lis(self):
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler1(x, y):
+            print 'handler1'
+
+        class SubTarget(self.TargetOne):
+            pass
+
+        class SubSubTarget(SubTarget):
+            pass
+
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler2(x, y):
+            pass
+
+        eq_(
+            len(SubTarget().dispatch.event_one),
+            2
+        )
+        eq_(
+            len(SubSubTarget().dispatch.event_one),
+            2
+        )
+
+    def test_two_sub_lis(self):
+        class SubTarget1(self.TargetOne):
+            pass
+        class SubTarget2(self.TargetOne):
+            pass
+
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler1(x, y):
+            pass
+        @event.listens_for(SubTarget1, "event_one")
+        def handler2(x, y):
+            pass
+
+        s1 = SubTarget1()
+        assert handler1 in s1.dispatch.event_one
+        assert handler2 in s1.dispatch.event_one
+
+        s2 = SubTarget2()
+        assert handler1 in s2.dispatch.event_one
+        assert handler2 not in s2.dispatch.event_one
+
+
+class TestClsLevelListen(fixtures.TestBase):
+    def setUp(self):
+        class TargetEventsOne(event.Events):
+            def event_one(self, x, y):
+                pass
+        class TargetOne(object):
+            dispatch = event.dispatcher(TargetEventsOne)
+        self.TargetOne = TargetOne
+
+    def tearDown(self):
+        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+
+    def test_lis_subcalss_lis(self):
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler1(x, y):
+            print 'handler1'
+
+        class SubTarget(self.TargetOne):
+            pass
+
+        @event.listens_for(self.TargetOne, "event_one")
+        def handler2(x, y):
+            pass
+
+        eq_(
+            len(SubTarget().dispatch.event_one),
+            2
+        )
 class TestAcceptTargets(fixtures.TestBase):
     """Test default target acceptance."""
 

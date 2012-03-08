@@ -6,6 +6,13 @@ CHANGES
 0.7.6
 =====
 - orm
+  - [bug] Fixed event registration bug
+    which would primarily show up as
+    events not being registered with 
+    sessionmaker() instances created
+    after the event was associated
+    with the Session class.  [ticket:2424]
+
   - [feature] Added "no_autoflush" context
     manager to Session, used with with:
     will temporarily disable autoflush.

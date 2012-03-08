@@ -99,7 +99,7 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
             kwargs.update(new_kwargs)
 
 
-    return type("Session", (Sess, class_), {})
+    return type("SessionMaker", (Sess, class_), {})
 
 
 class SessionTransaction(object):
