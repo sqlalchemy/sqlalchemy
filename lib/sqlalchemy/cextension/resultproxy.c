@@ -246,6 +246,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
     PyObject *exc_module, *exception;
     char *cstr_key;
     long index;
+    int key_fallback = 0;
 
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
@@ -276,11 +277,16 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
                                          "O", key);
             if (record == NULL)
                 return NULL;
+            key_fallback = 1;
         }
 
         indexobject = PyTuple_GetItem(record, 2);
         if (indexobject == NULL)
             return NULL;
+
+        if (key_fallback) {
+            Py_DECREF(record);
+        }
 
         if (indexobject == Py_None) {
             exc_module = PyImport_ImportModule("sqlalchemy.exc");

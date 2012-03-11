@@ -69,6 +69,12 @@ CHANGES
     on the method object.  [ticket:2352]
 
 - sql
+  - [bug] Fixed memory leak in core which would
+    occur when C extensions were used with
+    particular types of result fetches,
+    in particular when orm query.count()
+    were called.  [ticket:2427]
+
   - [feature] Added support for SQL standard
     common table expressions (CTE), allowing
     SELECT objects as the CTE source (DML

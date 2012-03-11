@@ -496,6 +496,22 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
         assert_no_mappers()
 
+    @testing.fails_if(lambda : testing.db.dialect.name == 'sqlite' \
+                      and testing.db.dialect.dbapi.version > '2.5')
+    @testing.provide_metadata
+    def test_key_fallback_result(self):
+        e = testing.db
+        m = self.metadata
+        t = Table('t', m, Column('x', Integer), Column('y', Integer))
+        m.create_all(e)
+        e.execute(t.insert(), {"x":1, "y":1})
+        @profile_memory
+        def go():
+            r = e.execute(t.alias().select())
+            for row in r:
+                row[t.c.x]
+        go()
+
     # fails on newer versions of pysqlite due to unusual memory behvior
     # in pysqlite itself. background at:
     # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
