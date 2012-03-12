@@ -21,6 +21,16 @@ CHANGES
     invokes common table expression support
     from the Core (see below). [ticket:1859]
 
+  - [bug] Removed the check for number of
+    rows affected when doing a multi-delete
+    against mapped objects.   If an ON DELETE
+    CASCADE exists between two rows, we can't
+    get an accurate rowcount from the DBAPI;
+    this particular count is not supported
+    on most DBAPIs in any case, MySQLdb
+    is the notable case where it is.
+    [ticket:2403]
+
   - [bug] Fixed bug whereby objects using
     attribute_mapped_collection or 
     column_mapped_collection could not be

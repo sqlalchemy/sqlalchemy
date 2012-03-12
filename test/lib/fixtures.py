@@ -1,4 +1,5 @@
 from test.lib import testing
+from test.lib import schema
 from test.lib.testing import adict
 from test.lib.engines import drop_all_tables
 import sys
@@ -325,10 +326,11 @@ class DeclarativeMappedTest(MappedTest):
                 cls_registry[classname] = cls
                 return DeclarativeMeta.__init__(
                         cls, classname, bases, dict_)
+        class DeclarativeBasic(object):
+            __table_cls__ = schema.Table
         _DeclBase = declarative_base(metadata=cls.declarative_meta, 
-                            metaclass=FindFixtureDeclarative)
-        class DeclarativeBasic(BasicEntity):
-            pass
+                            metaclass=FindFixtureDeclarative,
+                            cls=DeclarativeBasic)
         cls.DeclarativeBasic = _DeclBase
         fn()
         if cls.declarative_meta.tables:

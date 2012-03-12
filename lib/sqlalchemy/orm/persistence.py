@@ -642,12 +642,10 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
 
     for connection, del_objects in delete.iteritems():
         statement = base_mapper._memo(('delete', table), delete_stmt)
-        rows = -1
 
         connection = cached_connections[connection]
 
-        if need_version_id and \
-                not connection.dialect.supports_sane_multi_rowcount:
+        if need_version_id:
             # TODO: need test coverage for this [ticket:1761]
             if connection.dialect.supports_sane_rowcount:
                 rows = 0
@@ -656,6 +654,12 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
                 for params in del_objects:
                     c = connection.execute(statement, params)
                     rows += c.rowcount
+                if rows != len(del_objects):
+                    raise orm_exc.StaleDataError(
+                        "DELETE statement on table '%s' expected to "
+                        "delete %d row(s); %d were matched." % 
+                        (table.description, len(del_objects), c.rowcount)
+                    )
             else:
                 util.warn(
                     "Dialect %s does not support deleted rowcount "
@@ -664,16 +668,8 @@ def _emit_delete_statements(base_mapper, uowtransaction, cached_connections,
                     stacklevel=12)
                 connection.execute(statement, del_objects)
         else:
-            c = connection.execute(statement, del_objects)
-            if connection.dialect.supports_sane_multi_rowcount:
-                rows = c.rowcount
+            connection.execute(statement, del_objects)
 
-        if rows != -1 and rows != len(del_objects):
-            raise orm_exc.StaleDataError(
-                "DELETE statement on table '%s' expected to "
-                "delete %d row(s); %d were matched." % 
-                (table.description, len(del_objects), c.rowcount)
-            )
 
 def _finalize_insert_update_commands(base_mapper, uowtransaction, 
                             states_to_insert, states_to_update):

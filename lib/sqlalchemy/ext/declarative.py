@@ -1213,6 +1213,12 @@ def _as_declarative(cls, classname, dict_):
                 del our_stuff[key]
     cols = sorted(cols, key=lambda c:c._creation_order)
     table = None
+
+    if hasattr(cls, '__table_cls__'):
+        table_cls = util.unbound_method_to_callable(cls.__table_cls__)
+    else:
+        table_cls = Table
+
     if '__table__' not in dict_:
         if tablename is not None:
 
@@ -1230,7 +1236,7 @@ def _as_declarative(cls, classname, dict_):
             if autoload:
                 table_kw['autoload'] = True
 
-            cls.__table__ = table = Table(tablename, cls.metadata,
+            cls.__table__ = table = table_cls(tablename, cls.metadata,
                                           *(tuple(cols) + tuple(args)),
                                            **table_kw)
     else:
