@@ -1134,3 +1134,13 @@ class AnnotationsTest(fixtures.TestBase):
         assert b4.left is bin.left  # since column is immutable
         assert b4.right is not bin.right is not b2.right is not b3.right
 
+    def test_bind_unique_test(self):
+        t1 = table('t', column('a'), column('b'))
+
+        b = bindparam("bind", value="x", unique=True)
+
+        # the annotation of "b" should render the
+        # same.  The "unique" test in compiler should
+        # also pass, [ticket:2425]
+        eq_(str(or_(b, b._annotate({"foo":"bar"}))),
+            ":bind_1 OR :bind_1")

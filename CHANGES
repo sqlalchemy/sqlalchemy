@@ -13,6 +13,14 @@ CHANGES
     after the event was associated
     with the Session class.  [ticket:2424]
 
+  - [bug] Fixed bug whereby a primaryjoin
+    condition with a "literal" in it would
+    raise an error on compile with certain
+    kinds of deeply nested expressions
+    which also needed to render the same
+    bound parameter name more than once.
+    [ticket:2425]
+
   - [feature] Added "no_autoflush" context
     manager to Session, used with with:
     will temporarily disable autoflush.
