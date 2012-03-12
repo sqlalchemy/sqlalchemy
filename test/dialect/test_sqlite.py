@@ -63,15 +63,6 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ).scalar()
             )
 
-    def test_time_microseconds(self):
-        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125, )
-        eq_(str(dt), '2008-06-27 12:00:00.000125')
-        sldt = sqlite.DATETIME()
-        bp = sldt.bind_processor(None)
-        eq_(bp(dt), '2008-06-27 12:00:00.000125')
-        rp = sldt.result_processor(None, None)
-        eq_(rp(bp(dt)), dt)
-
     def test_native_datetime(self):
         dbapi = testing.db.dialect.dbapi
         connect_args = {'detect_types': dbapi.PARSE_DECLTYPES \
@@ -181,6 +172,18 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         t2 = Table('t', MetaData(), autoload=True, autoload_with=testing.db)
         assert isinstance(t2.c.x.type, sqltypes.NullType)
         assert isinstance(t2.c.y.type, sqltypes.NullType)
+
+
+class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
+
+    def test_time_microseconds(self):
+        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125, )
+        eq_(str(dt), '2008-06-27 12:00:00.000125')
+        sldt = sqlite.DATETIME()
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '2008-06-27 12:00:00.000125')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
 
 
 class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
