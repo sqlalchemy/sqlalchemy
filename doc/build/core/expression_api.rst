@@ -220,11 +220,11 @@ Classes
    :show-inheritance:
 
 .. autoclass:: Update
-  :members: where, values
+  :members:
   :show-inheritance:
 
 .. autoclass:: UpdateBase
-  :members: params, bind, returning
+  :members:
   :show-inheritance:
 
 .. autoclass:: ValuesBase

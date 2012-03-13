@@ -1348,7 +1348,8 @@ class MySQLCompiler(compiler.SQLCompiler):
         return ', '.join(t._compiler_dispatch(self, asfrom=True, **kw) 
                     for t in [from_table] + list(extra_froms))
 
-    def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
+    def update_from_clause(self, update_stmt, from_table, 
+                                extra_froms, from_hints, **kw):
         return None
 
 

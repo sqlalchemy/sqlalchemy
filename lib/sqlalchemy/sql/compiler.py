@@ -855,6 +855,9 @@ class SQLCompiler(engine.Compiled):
     def get_from_hint_text(self, table, text):
         return None
 
+    def get_crud_hint_text(self, table, text):
+        return None
+
     def visit_select(self, select, asfrom=False, parens=True, 
                             iswrapper=False, fromhints=None, 
                             compound_index=1, **kwargs):
@@ -1048,11 +1051,25 @@ class SQLCompiler(engine.Compiled):
 
         text = "INSERT"
 
+
         prefixes = [self.process(x) for x in insert_stmt._prefixes]
         if prefixes:
             text += " " + " ".join(prefixes)
 
         text += " INTO " + preparer.format_table(insert_stmt.table)
+
+        if insert_stmt._hints:
+            dialect_hints = dict([
+                (table, hint_text)
+                for (table, dialect), hint_text in 
+                insert_stmt._hints.items()
+                if dialect in ('*', self.dialect.name)
+            ])
+            if insert_stmt.table in dialect_hints:
+                text += " " + self.get_crud_hint_text(
+                                    insert_stmt.table, 
+                                    dialect_hints[insert_stmt.table]
+                                )
 
         if colparams or not supports_default_values:
             text += " (%s)" % ', '.join([preparer.format_column(c[0])
@@ -1085,21 +1102,25 @@ class SQLCompiler(engine.Compiled):
                                             extra_froms, **kw):
         """Provide a hook to override the initial table clause
         in an UPDATE statement.
-        
+
         MySQL overrides this.
 
         """
         return self.preparer.format_table(from_table)
 
-    def update_from_clause(self, update_stmt, from_table, extra_froms, **kw):
+    def update_from_clause(self, update_stmt, 
+                                from_table, extra_froms, 
+                                from_hints,
+                                **kw):
         """Provide a hook to override the generation of an 
         UPDATE..FROM clause.
-        
+
         MySQL overrides this.
 
         """
         return "FROM " + ', '.join(
-                    t._compiler_dispatch(self, asfrom=True, **kw) 
+                    t._compiler_dispatch(self, asfrom=True, 
+                                    fromhints=from_hints, **kw) 
                     for t in extra_froms)
 
     def visit_update(self, update_stmt, **kw):
@@ -1115,6 +1136,21 @@ class SQLCompiler(engine.Compiled):
                                         update_stmt, 
                                         update_stmt.table, 
                                         extra_froms, **kw)
+
+        if update_stmt._hints:
+            dialect_hints = dict([
+                (table, hint_text)
+                for (table, dialect), hint_text in 
+                update_stmt._hints.items()
+                if dialect in ('*', self.dialect.name)
+            ])
+            if update_stmt.table in dialect_hints:
+                text += " " + self.get_crud_hint_text(
+                                    update_stmt.table, 
+                                    dialect_hints[update_stmt.table]
+                                )
+        else:
+            dialect_hints = None
 
         text += ' SET '
         if extra_froms and self.render_table_with_column_in_update_from:
@@ -1138,7 +1174,8 @@ class SQLCompiler(engine.Compiled):
             extra_from_text = self.update_from_clause(
                                         update_stmt, 
                                         update_stmt.table, 
-                                        extra_froms, **kw)
+                                        extra_froms, 
+                                        dialect_hints, **kw)
             if extra_from_text:
                 text += " " + extra_from_text
 
@@ -1376,6 +1413,21 @@ class SQLCompiler(engine.Compiled):
         self.isdelete = True
 
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
+
+        if delete_stmt._hints:
+            dialect_hints = dict([
+                (table, hint_text)
+                for (table, dialect), hint_text in 
+                delete_stmt._hints.items()
+                if dialect in ('*', self.dialect.name)
+            ])
+            if delete_stmt.table in dialect_hints:
+                text += " " + self.get_crud_hint_text(
+                                    delete_stmt.table, 
+                                    dialect_hints[delete_stmt.table]
+                                )
+        else:
+            dialect_hints = None
 
         if delete_stmt._returning:
             self.returning = delete_stmt._returning

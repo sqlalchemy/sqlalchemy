@@ -181,6 +181,12 @@ CHANGES
     commit or rollback transaction with errors
     on engine.begin().
 
+- mssql
+  - [feature] Added support for MSSQL INSERT, 
+    UPDATE, and DELETE table hints, using
+    new with_hint() method on UpdateBase.
+    [ticket:2430]
+
 - mysql
   - [feature] Added support for the "isolation_level"
     parameter to all MySQL dialects.  Thanks

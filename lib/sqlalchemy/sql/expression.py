@@ -4833,7 +4833,7 @@ class Select(_SelectBase):
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
         to the given :class:`.Table` or :class:`.Alias` passed as the
-        *selectable* argument. The dialect implementation
+        ``selectable`` argument. The dialect implementation
         typically uses Python string substitution syntax
         with the token ``%(name)s`` to render the name of
         the table or alias. E.g. when using Oracle, the
@@ -5319,6 +5319,7 @@ class UpdateBase(Executable, ClauseElement):
     _execution_options = \
         Executable._execution_options.union({'autocommit': True})
     kwargs = util.immutabledict()
+    _hints = util.immutabledict()
 
     def _process_colparams(self, parameters):
         if isinstance(parameters, (list, tuple)):
@@ -5398,6 +5399,45 @@ class UpdateBase(Executable, ClauseElement):
 
         """
         self._returning = cols
+
+    @_generative
+    def with_hint(self, text, selectable=None, dialect_name="*"):
+        """Add a table hint for a single table to this 
+        INSERT/UPDATE/DELETE statement.
+
+        .. note::
+
+         :meth:`.UpdateBase.with_hint` currently applies only to 
+         Microsoft SQL Server.  For MySQL INSERT hints, use
+         :meth:`.Insert.prefix_with`.   UPDATE/DELETE hints for 
+         MySQL will be added in a future release.
+         
+        The text of the hint is rendered in the appropriate
+        location for the database backend in use, relative
+        to the :class:`.Table` that is the subject of this
+        statement, or optionally to that of the given 
+        :class:`.Table` passed as the ``selectable`` argument.
+
+        The ``dialect_name`` option will limit the rendering of a particular
+        hint to a particular backend. Such as, to add a hint
+        that only takes effect for SQL Server::
+
+            mytable.insert().with_hint("WITH (PAGLOCK)", dialect_name="mssql")
+
+        New in 0.7.6.
+
+        :param text: Text of the hint.
+        :param selectable: optional :class:`.Table` that specifies
+         an element of the FROM clause within an UPDATE or DELETE
+         to be the subject of the hint - applies only to certain backends.
+        :param dialect_name: defaults to ``*``, if specified as the name
+         of a particular dialect, will apply these hints only when
+         that dialect is in use.
+         """
+        if selectable is None:
+            selectable = self.table
+
+        self._hints = self._hints.union({(selectable, dialect_name):text})
 
 class ValuesBase(UpdateBase):
     """Supplies support for :meth:`.ValuesBase.values` to INSERT and UPDATE constructs."""

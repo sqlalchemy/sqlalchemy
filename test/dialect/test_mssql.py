@@ -63,6 +63,96 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                             'n WHERE sometable.somecolumn = '
                             ':somecolumn_1', dict(somecolumn=10))
 
+    def test_insert_hint(self):
+        t = table('sometable', column('somecolumn'))
+        for targ in (None, t):
+            for darg in ("*", "mssql"):
+                self.assert_compile(
+                    t.insert().
+                        values(somecolumn="x").
+                        with_hint("WITH (PAGLOCK)",
+                            selectable=targ,
+                            dialect_name=darg),
+                    "INSERT INTO sometable WITH (PAGLOCK) "
+                    "(somecolumn) VALUES (:somecolumn)"
+                )
+
+    def test_update_hint(self):
+        t = table('sometable', column('somecolumn'))
+        for targ in (None, t):
+            for darg in ("*", "mssql"):
+                self.assert_compile(
+                    t.update().where(t.c.somecolumn=="q").
+                            values(somecolumn="x").
+                            with_hint("WITH (PAGLOCK)", 
+                                    selectable=targ, 
+                                    dialect_name=darg),
+                    "UPDATE sometable WITH (PAGLOCK) "
+                    "SET somecolumn=:somecolumn "
+                    "WHERE sometable.somecolumn = :somecolumn_1"
+                )
+
+    def test_update_exclude_hint(self):
+        t = table('sometable', column('somecolumn'))
+        self.assert_compile(
+            t.update().where(t.c.somecolumn=="q").
+                values(somecolumn="x").
+                with_hint("XYZ", "mysql"),
+            "UPDATE sometable SET somecolumn=:somecolumn "
+            "WHERE sometable.somecolumn = :somecolumn_1"
+        )
+
+    def test_delete_hint(self):
+        t = table('sometable', column('somecolumn'))
+        for targ in (None, t):
+            for darg in ("*", "mssql"):
+                self.assert_compile(
+                    t.delete().where(t.c.somecolumn=="q").
+                            with_hint("WITH (PAGLOCK)", 
+                                    selectable=targ, 
+                                    dialect_name=darg),
+                    "DELETE FROM sometable WITH (PAGLOCK) "
+                    "WHERE sometable.somecolumn = :somecolumn_1"
+                )
+
+    def test_delete_exclude_hint(self):
+        t = table('sometable', column('somecolumn'))
+        self.assert_compile(
+            t.delete().\
+                where(t.c.somecolumn=="q").\
+                with_hint("XYZ", dialect_name="mysql"),
+            "DELETE FROM sometable WHERE "
+            "sometable.somecolumn = :somecolumn_1"
+        )
+
+    def test_update_from_hint(self):
+        t = table('sometable', column('somecolumn'))
+        t2 = table('othertable', column('somecolumn'))
+        for darg in ("*", "mssql"):
+            self.assert_compile(
+                t.update().where(t.c.somecolumn==t2.c.somecolumn).
+                        values(somecolumn="x").
+                        with_hint("WITH (PAGLOCK)", 
+                                selectable=t2, 
+                                dialect_name=darg),
+                "UPDATE sometable SET somecolumn=:somecolumn "
+                "FROM othertable WITH (PAGLOCK) "
+                "WHERE sometable.somecolumn = othertable.somecolumn"
+            )
+
+    # TODO: not supported yet.
+    #def test_delete_from_hint(self):
+    #    t = table('sometable', column('somecolumn'))
+    #    t2 = table('othertable', column('somecolumn'))
+    #    for darg in ("*", "mssql"):
+    #        self.assert_compile(
+    #            t.delete().where(t.c.somecolumn==t2.c.somecolumn).
+    #                    with_hint("WITH (PAGLOCK)", 
+    #                            selectable=t2, 
+    #                            dialect_name=darg),
+    #            ""
+    #        )
+
     # TODO: should this be for *all* MS-SQL dialects ?
     def test_mxodbc_binds(self):
         """mxodbc uses MS-SQL native binds, which aren't allowed in
