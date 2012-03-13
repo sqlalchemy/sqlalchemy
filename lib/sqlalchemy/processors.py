@@ -20,6 +20,7 @@ def str_to_datetime_processor_factory(regexp, type_):
     rmatch = regexp.match
     # Even on python2.6 datetime.strptime is both slower than this code
     # and it does not support microseconds.
+    has_named_groups = bool(regexp.groupindex)
     def process(value):
         if value is None:
             return None
@@ -32,7 +33,12 @@ def str_to_datetime_processor_factory(regexp, type_):
             if m is None:
                 raise ValueError("Couldn't parse %s string: "
                                 "'%s'" % (type_.__name__ , value))
-            return type_(*map(int, m.groups(0)))
+            if has_named_groups:
+                groups = m.groupdict(0)
+                return type_(**dict(zip(groups.iterkeys(),
+                                        map(int, groups.itervalues()))))
+            else:
+                return type_(*map(int, m.groups(0)))
     return process
 
 def boolean_to_int(value):

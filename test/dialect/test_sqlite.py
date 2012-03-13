@@ -185,6 +185,88 @@ class DateTimeTest(fixtures.TestBase, AssertsCompiledSQL):
         rp = sldt.result_processor(None, None)
         eq_(rp(bp(dt)), dt)
 
+    def test_truncate_microseconds(self):
+        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)
+        dt_out = datetime.datetime(2008, 6, 27, 12, 0, 0)
+        eq_(str(dt), '2008-06-27 12:00:00.000125')
+        sldt = sqlite.DATETIME(truncate_microseconds=True)
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '2008-06-27 12:00:00')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt_out)
+
+    def test_custom_format_compact(self):
+        dt = datetime.datetime(2008, 6, 27, 12, 0, 0, 125)
+        eq_(str(dt), '2008-06-27 12:00:00.000125')
+        sldt = sqlite.DATETIME(
+            storage_format=(
+                "%(year)04d%(month)02d%(day)02d"
+                "%(hour)02d%(minute)02d%(second)02d%(microsecond)06d"
+            ),
+            regexp="(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{6})",
+        )
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '20080627120000000125')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
+
+
+class DateTest(fixtures.TestBase, AssertsCompiledSQL):
+
+    def test_default(self):
+        dt = datetime.date(2008, 6, 27)
+        eq_(str(dt), '2008-06-27')
+        sldt = sqlite.DATE()
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '2008-06-27')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
+
+    def test_custom_format(self):
+        dt = datetime.date(2008, 6, 27)
+        eq_(str(dt), '2008-06-27')
+        sldt = sqlite.DATE(
+            storage_format="%(month)02d/%(day)02d/%(year)04d",
+            regexp="(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)",
+        )
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '06/27/2008')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
+
+class TimeTest(fixtures.TestBase, AssertsCompiledSQL):
+
+    def test_default(self):
+        dt = datetime.date(2008, 6, 27)
+        eq_(str(dt), '2008-06-27')
+        sldt = sqlite.DATE()
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '2008-06-27')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
+
+    def test_truncate_microseconds(self):
+        dt = datetime.time(12, 0, 0, 125)
+        dt_out = datetime.time(12, 0, 0)
+        eq_(str(dt), '12:00:00.000125')
+        sldt = sqlite.TIME(truncate_microseconds=True)
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '12:00:00')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt_out)
+
+    def test_custom_format(self):
+        dt = datetime.date(2008, 6, 27)
+        eq_(str(dt), '2008-06-27')
+        sldt = sqlite.DATE(
+            storage_format="%(year)04d%(month)02d%(day)02d",
+            regexp="(\d{4})(\d{2})(\d{2})",
+        )
+        bp = sldt.bind_processor(None)
+        eq_(bp(dt), '20080627')
+        rp = sldt.result_processor(None, None)
+        eq_(rp(bp(dt)), dt)
+
 
 class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
