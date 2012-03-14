@@ -1681,6 +1681,8 @@ class NumericTest(fixtures.TestBase):
             numbers
         )
 
+    @testing.fails_on('postgresql+pg8000', 
+        "pg-8000 does native decimal but truncates the decimals.")
     def test_numeric_no_decimal(self):
         numbers = set([
             decimal.Decimal("1.000")
