@@ -52,7 +52,7 @@ class VisitableType(type):
             super(VisitableType, cls).__init__(clsname, bases, clsdict)
             return
 
-        cls._compiler_dispatch = _generate_dispatch(cls)
+        _generate_dispatch(cls)
 
         super(VisitableType, cls).__init__(clsname, bases, clsdict)
 
@@ -81,7 +81,7 @@ def _generate_dispatch(cls):
           """Look for an attribute named "visit_" + self.__visit_name__
             on the visitor, and call it with the same kw params.
             """
-        return _compiler_dispatch
+        cls._compiler_dispatch = _compiler_dispatch
 
 class Visitable(object):
     """Base class for visitable objects, applies the
