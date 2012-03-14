@@ -706,7 +706,6 @@ class QueryTest(fixtures.TestBase):
                               use_labels=labels),
                  [(3, 'a'), (2, 'b'), (1, None)])
 
-    @testing.fails_on("+pyodbc", "pyodbc row doesn't seem to accept slices")
     def test_column_slices(self):
         users.insert().execute(user_id=1, user_name='john')
         users.insert().execute(user_id=2, user_name='jack')
