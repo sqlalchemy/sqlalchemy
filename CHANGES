@@ -93,6 +93,13 @@ CHANGES
     in particular when orm query.count()
     were called.  [ticket:2427]
 
+  - [bug] Fixed issue whereby attribute-based
+    column access on a row would raise 
+    AttributeError with non-C version,
+    NoSuchColumnError with C version.  Now
+    raises AttributeError in both cases.
+    [ticket:2398]
+
   - [feature] Added support for SQL standard
     common table expressions (CTE), allowing
     SELECT objects as the CTE source (DML

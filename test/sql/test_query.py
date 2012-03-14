@@ -749,6 +749,19 @@ class QueryTest(fixtures.TestBase):
         eq_(r[users.c.user_name], 'jack')
         eq_(r.user_name, 'jack')
 
+    def test_column_accessor_err(self):
+        r = testing.db.execute(select([1])).first()
+        assert_raises_message(
+            AttributeError,
+            "Could not locate column in row for column 'foo'",
+            getattr, r, "foo"
+        )
+        assert_raises_message(
+            KeyError,
+            "Could not locate column in row for column 'foo'",
+            lambda: r['foo']
+        )
+
     @testing.requires.dbapi_lastrowid
     def test_native_lastrowid(self):
         r = testing.db.execute(

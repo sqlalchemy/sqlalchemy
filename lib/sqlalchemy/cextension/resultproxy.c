@@ -353,7 +353,16 @@ BaseRowProxy_getattro(BaseRowProxy *self, PyObject *name)
     else
         return tmp;
 
-    return BaseRowProxy_subscript(self, name);
+    tmp = BaseRowProxy_subscript(self, name);
+    if (tmp == NULL && PyErr_ExceptionMatches(PyExc_KeyError)) {
+        PyErr_Format(
+                PyExc_AttributeError, 
+                "Could not locate column in row for column '%.200s'",
+                PyString_AsString(name)
+            );
+        return NULL;
+    }
+    return tmp;
 }
 
 /***********************

@@ -2623,7 +2623,6 @@ except ImportError:
 
         def __getattr__(self, name):
             try:
-                # TODO: no test coverage here
                 return self[name]
             except KeyError, e:
                 raise AttributeError(e.args[0])
