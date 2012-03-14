@@ -1681,6 +1681,10 @@ class NumericTest(fixtures.TestBase):
             numbers
         )
 
+    @testing.fails_on('oracle+cx_oracle',
+        "this may be a bug due to the difficulty in handling "
+        "oracle precision numerics"
+    )
     @testing.fails_on('postgresql+pg8000', 
         "pg-8000 does native decimal but truncates the decimals.")
     def test_numeric_no_decimal(self):
