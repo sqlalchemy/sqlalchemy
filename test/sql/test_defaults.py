@@ -849,7 +849,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert s3.metadata is metadata
 
 
-        t.create(testing.db)
+        t.create(testing.db, checkfirst=True)
         s3.drop(testing.db)
 
         # 't' is created, and 's3' won't be
