@@ -29,20 +29,59 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(x, 
             '''SELECT mysql_table.col1, mysql_table.`master_ssl_verify_server_cert` FROM mysql_table''')
 
+    def test_create_index_simple(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)))
+        idx = Index('test_idx1', tbl.c.data)
+
+        self.assert_compile(schema.CreateIndex(idx),
+            'CREATE INDEX test_idx1 ON testtbl (data)',
+            dialect=mysql.dialect())
+
     def test_create_index_with_length(self):
         m = MetaData()
         tbl = Table('testtbl', m, Column('data', String(255)))
-        idx = Index('test_idx1', tbl.c.data,
-                    mysql_length=10)
-        idx2 = Index('test_idx2', tbl.c.data,
-                    mysql_length=5)
+        idx1 = Index('test_idx1', tbl.c.data, mysql_length=10)
+        idx2 = Index('test_idx2', tbl.c.data, mysql_length=5)
 
-        self.assert_compile(schema.CreateIndex(idx),
-                            'CREATE INDEX test_idx1 ON testtbl (data(10))',
-                            dialect=mysql.dialect())
+        self.assert_compile(schema.CreateIndex(idx1),
+            'CREATE INDEX test_idx1 ON testtbl (data(10))',
+            dialect=mysql.dialect())
         self.assert_compile(schema.CreateIndex(idx2),
-                            "CREATE INDEX test_idx2 ON testtbl (data(5))",
-                            dialect=mysql.dialect())
+            'CREATE INDEX test_idx2 ON testtbl (data(5))',
+            dialect=mysql.dialect())
+
+    def test_create_index_with_using(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)))
+        idx1 = Index('test_idx1', tbl.c.data, mysql_using='btree')
+        idx2 = Index('test_idx2', tbl.c.data, mysql_using='hash')
+
+        self.assert_compile(schema.CreateIndex(idx1),
+            'CREATE INDEX test_idx1 ON testtbl (data) USING btree',
+            dialect=mysql.dialect())
+        self.assert_compile(schema.CreateIndex(idx2),
+            'CREATE INDEX test_idx2 ON testtbl (data) USING hash',
+            dialect=mysql.dialect())
+
+    def test_create_pk_plain(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)), 
+            PrimaryKeyConstraint('data'))
+
+        self.assert_compile(schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data VARCHAR(255), PRIMARY KEY (data))",
+            dialect=mysql.dialect())
+
+    def test_create_pk_with_using(self):
+        m = MetaData()
+        tbl = Table('testtbl', m, Column('data', String(255)), 
+            PrimaryKeyConstraint('data', mysql_using='btree'))
+
+        self.assert_compile(schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data VARCHAR(255), "
+            "PRIMARY KEY (data) USING btree)",
+            dialect=mysql.dialect())
 
 class DialectTest(fixtures.TestBase):
     __only_on__ = 'mysql'

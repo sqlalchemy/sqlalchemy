@@ -80,6 +80,17 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
+def _validate_dialect_kwargs(kwargs, name):
+    # validate remaining kwargs that they all specify DB prefixes
+    if len([k for k in kwargs
+            if not re.match(
+                        r'^(?:%s)_' % 
+                        '|'.join(dialects.__all__), k
+                    )
+            ]):
+        raise TypeError(
+            "Invalid argument(s) for %s: %r" % (name, kwargs.keys()))
+
 
 class Table(SchemaItem, expression.TableClause):
     """Represent a table in a database.
@@ -435,14 +446,7 @@ class Table(SchemaItem, expression.TableClause):
 
     def _extra_kwargs(self, **kwargs):
         # validate remaining kwargs that they all specify DB prefixes
-        if len([k for k in kwargs
-                if not re.match(
-                            r'^(?:%s)_' % 
-                            '|'.join(dialects.__all__), k
-                        )
-                ]):
-            raise TypeError(
-                "Invalid argument(s) for Table: %r" % kwargs.keys())
+        _validate_dialect_kwargs(kwargs, "Table")
         self.kwargs.update(kwargs)
 
     def _init_collections(self):
@@ -1814,7 +1818,8 @@ class Constraint(SchemaItem):
     __visit_name__ = 'constraint'
 
     def __init__(self, name=None, deferrable=None, initially=None, 
-                            _create_rule=None):
+                            _create_rule=None, 
+                            **kw):
         """Create a SQL constraint.
 
         :param name:
@@ -1844,6 +1849,10 @@ class Constraint(SchemaItem):
 
           _create_rule is used by some types to create constraints.
           Currently, its call signature is subject to change at any time.
+        
+        :param \**kwargs: 
+          Dialect-specific keyword parameters, see the documentation
+          for various dialects and constraints regarding options here.
 
         """
 
@@ -1852,6 +1861,8 @@ class Constraint(SchemaItem):
         self.initially = initially
         self._create_rule = _create_rule
         util.set_creation_order(self)
+        _validate_dialect_kwargs(kw, self.__class__.__name__)
+        self.kwargs = kw
 
     @property
     def table(self):

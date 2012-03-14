@@ -196,6 +196,12 @@ CHANGES
     [ticket:2430]
 
 - mysql
+  - [feature] Added support for MySQL index and
+    primary key constraint types
+    (i.e. USING) via new mysql_using parameter
+    to Index and PrimaryKeyConstraint, 
+    courtesy Diana Clarke.  [ticket:2386]
+
   - [feature] Added support for the "isolation_level"
     parameter to all MySQL dialects.  Thanks
     to mu_mind for the patch here. [ticket:2394]

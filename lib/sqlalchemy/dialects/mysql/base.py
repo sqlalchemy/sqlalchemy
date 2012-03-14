@@ -238,8 +238,29 @@ simply passed through to the underlying CREATE INDEX command, so it *must* be
 an integer. MySQL only allows a length for an index if it is for a CHAR,
 VARCHAR, TEXT, BINARY, VARBINARY and BLOB.
 
+Index Types
+~~~~~~~~~~~~~
+
+Some MySQL storage engines permit you to specify an index type when creating
+an index or primary key constraint. SQLAlchemy provides this feature via the 
+``mysql_using`` parameter on :class:`.Index`::
+
+    Index('my_index', my_table.c.data, mysql_using='hash')
+
+As well as the ``mysql_using`` parameter on :class:`.PrimaryKeyConstraint`::
+
+    PrimaryKeyConstraint("data", mysql_using='hash')
+
+The value passed to the keyword argument will be simply passed through to the
+underlying CREATE INDEX or PRIMARY KEY clause, so it *must* be a valid index 
+type for your MySQL storage engine.
+
 More information can be found at:
+
 http://dev.mysql.com/doc/refman/5.0/en/create-index.html
+
+http://dev.mysql.com/doc/refman/5.0/en/create-table.html
+
 """
 
 import datetime, inspect, re, sys
@@ -1439,35 +1460,50 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             table_opts.append(joiner.join((opt, arg)))
         return ' '.join(table_opts)
 
+
     def visit_create_index(self, create):
         index = create.element
         preparer = self.preparer
+        table = preparer.format_table(index.table)
+        columns = [preparer.quote(c.name, c.quote) for c in index.columns]
+        name = preparer.quote(
+                    self._index_identifier(index.name), 
+                    index.quote)
+
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
-        text += "INDEX %s ON %s " \
-                    % (preparer.quote(self._index_identifier(index.name), 
-                        index.quote),preparer.format_table(index.table))
+        text += "INDEX %s ON %s " % (name, table)
+
+        columns = ', '.join(columns)
         if 'mysql_length' in index.kwargs:
             length = index.kwargs['mysql_length']
+            text += "(%s(%d))" % (columns, length)
         else:
-            length = None
-        if length is not None:
-            text+= "(%s(%d))" \
-                    % (', '.join(preparer.quote(c.name, c.quote)
-                                 for c in index.columns), length)
-        else:
-            text+= "(%s)" \
-                    % (', '.join(preparer.quote(c.name, c.quote)
-                                 for c in index.columns))
+            text += "(%s)" % (columns)
+
+        if 'mysql_using' in index.kwargs:
+            using = index.kwargs['mysql_using']
+            text += " USING %s" % (preparer.quote(using, index.quote))
+
         return text
 
+    def visit_primary_key_constraint(self, constraint):
+        text = super(MySQLDDLCompiler, self).\
+            visit_primary_key_constraint(constraint)
+        if "mysql_using" in constraint.kwargs:
+            using = constraint.kwargs['mysql_using']
+            text += " USING %s" % (
+                self.preparer.quote(using, constraint.quote))
+        return text
 
     def visit_drop_index(self, drop):
         index = drop.element
 
         return "\nDROP INDEX %s ON %s" % \
-                    (self.preparer.quote(self._index_identifier(index.name), index.quote),
+                    (self.preparer.quote(
+                        self._index_identifier(index.name), index.quote
+                    ),
                      self.preparer.format_table(index.table))
 
     def visit_drop_constraint(self, drop):
