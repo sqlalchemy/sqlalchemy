@@ -342,23 +342,18 @@ DecimalResultProcessor_process(DecimalResultProcessor *self, PyObject *value)
     if (value == Py_None)
         Py_RETURN_NONE;
 
-    if (PyFloat_CheckExact(value)) {
-        /* Decimal does not accept float values directly */
-        args = PyTuple_Pack(1, value);
-        if (args == NULL)
-            return NULL;
+    args = PyTuple_Pack(1, value);
+    if (args == NULL)
+        return NULL;
 
-        str = PyString_Format(self->format, args);
-        Py_DECREF(args);
-        if (str == NULL)
-            return NULL;
+    str = PyString_Format(self->format, args);
+    Py_DECREF(args);
+    if (str == NULL)
+        return NULL;
 
-        result = PyObject_CallFunctionObjArgs(self->type, str, NULL);
-        Py_DECREF(str);
-        return result;
-    } else {
-        return PyObject_CallFunctionObjArgs(self->type, value, NULL);
-    }
+    result = PyObject_CallFunctionObjArgs(self->type, str, NULL);
+    Py_DECREF(str);
+    return result;
 }
 
 static void

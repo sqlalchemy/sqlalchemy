@@ -1547,7 +1547,7 @@ class NumericTest(fixtures.TestBase):
         metadata.drop_all()
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
-    def _do_test(self, type_, input_, output, filter_ = None):
+    def _do_test(self, type_, input_, output, filter_=None, check_scale=False):
         t = Table('t', metadata, Column('x', type_))
         t.create()
         t.insert().execute([{'x':x} for x in input_])
@@ -1560,6 +1560,11 @@ class NumericTest(fixtures.TestBase):
         #print result
         #print output
         eq_(result, output)
+        if check_scale:
+            eq_(
+                [str(x) for x in result],
+                [str(x) for x in output],
+            )
 
     def test_numeric_as_decimal(self):
         self._do_test(
@@ -1674,6 +1679,17 @@ class NumericTest(fixtures.TestBase):
             Numeric(precision=38, scale=12),
             numbers,
             numbers
+        )
+
+    def test_numeric_no_decimal(self):
+        numbers = set([
+            decimal.Decimal("1.000")
+        ])
+        self._do_test(
+            Numeric(precision=5, scale=3),
+            numbers,
+            numbers,
+            check_scale=True
         )
 
 class NumericRawSQLTest(fixtures.TestBase):

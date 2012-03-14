@@ -181,6 +181,14 @@ CHANGES
     commit or rollback transaction with errors
     on engine.begin().
 
+- sqlite
+  - [bug] Fixed bug in C extensions whereby
+    string format would not be applied to a
+    Numeric value returned as integer; this
+    affected primarily SQLite which does
+    not maintain numeric scale settings.
+    [ticket:2432]
+
 - mssql
   - [feature] Added support for MSSQL INSERT, 
     UPDATE, and DELETE table hints, using
