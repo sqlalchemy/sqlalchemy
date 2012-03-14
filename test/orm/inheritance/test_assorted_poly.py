@@ -1463,12 +1463,14 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
         class A(Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, 
+                        test_needs_autoincrement=True)
 
         class B(Base):
             __tablename__ = "b"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True, 
+                        test_needs_autoincrement=True)
             ds = relationship("D")
             es = relationship("E")
 
@@ -1482,12 +1484,14 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
         class D(Base):
             __tablename__ = "d"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                            test_needs_autoincrement=True)
             b_id = Column(Integer, ForeignKey('b.id'))
 
         class E(Base):
             __tablename__ = 'e'
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                            test_needs_autoincrement=True)
             b_id = Column(Integer, ForeignKey('b.id'))
 
     def test_join_w_eager_w_any(self):
