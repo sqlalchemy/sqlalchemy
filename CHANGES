@@ -210,6 +210,9 @@ CHANGES
   - [bug] Added missing compilation support for 
     LONG [ticket:2401]
 
+  - [bug] Added 'LEVEL' to the list of reserved
+    words for Oracle.  [ticket:2435]
+
 - examples
   - [bug] Altered _params_from_query() function
     in Beaker example to pull bindparams from the
