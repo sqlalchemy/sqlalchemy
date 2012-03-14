@@ -34,34 +34,54 @@ __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor',
     'cloned_traverse', 'replacement_traverse']
 
 class VisitableType(type):
-    """Metaclass which checks for a `__visit_name__` attribute and
-    applies `_compiler_dispatch` method to classes.
+    """Metaclass which assigns a `_compiler_dispatch` method to classes
+    having a `__visit_name__` attribute.
+    
+    The _compiler_dispatch attribute becomes an instance method which
+    looks approximately like the following::
+    
+        def _compiler_dispatch (self, visitor, **kw):
+            '''Look for an attribute named "visit_" + self.__visit_name__
+            on the visitor, and call it with the same kw params.'''
+            return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
 
+    Classes having no __visit_name__ attribute will remain unaffected.
     """
-
     def __init__(cls, clsname, bases, clsdict):
         if cls.__name__ == 'Visitable' or not hasattr(cls, '__visit_name__'):
             super(VisitableType, cls).__init__(clsname, bases, clsdict)
             return
 
-        _generate_dispatch(cls)
+        cls._compiler_dispatch = _generate_dispatch(cls)
 
         super(VisitableType, cls).__init__(clsname, bases, clsdict)
 
+
 def _generate_dispatch(cls):
-    # set up an optimized visit dispatch function
-    # for use by the compiler
+    """Return an optimized visit dispatch function for the cls
+    for use by the compiler.
+    """
     if '__visit_name__' in cls.__dict__:
         visit_name = cls.__visit_name__
         if isinstance(visit_name, str):
+            # There is an optimization opportunity here because the
+            # the string name of the class's __visit_name__ is known at
+            # this early stage (import time) so it can be pre-constructed.
             getter = operator.attrgetter("visit_%s" % visit_name)
             def _compiler_dispatch(self, visitor, **kw):
                 return getter(visitor)(self, **kw)
         else:
+            # The optimization opportunity is lost for this case because the
+            # __visit_name__ is not yet a string. As a result, the visit
+            # string has to be recalculated with each compilation.
             def _compiler_dispatch(self, visitor, **kw):
                 return getattr(visitor, 'visit_%s' % self.__visit_name__)(self, **kw)
 
-        cls._compiler_dispatch = _compiler_dispatch
+        _compiler_dispatch.__doc__  = \
+          """Look for an attribute named "visit_" + self.__visit_name__
+            on the visitor, and call it with the same kw params.
+            """
+        return _compiler_dispatch
 
 class Visitable(object):
     """Base class for visitable objects, applies the

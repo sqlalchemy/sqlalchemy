@@ -397,7 +397,7 @@ class TypeDecorator(TypeEngine):
           def copy(self):
               return MyType(self.impl.length)
 
-    The class-level "impl" variable is required, and can reference any
+    The class-level "impl" attribute is required, and can reference any
     TypeEngine class.  Alternatively, the load_dialect_impl() method
     can be used to provide different type classes based on the dialect
     given; in this case, the "impl" variable can reference
@@ -457,15 +457,19 @@ class TypeDecorator(TypeEngine):
 
         Arguments sent here are passed to the constructor 
         of the class assigned to the ``impl`` class level attribute,
-        where the ``self.impl`` attribute is assigned an instance
-        of the implementation type.  If ``impl`` at the class level
-        is already an instance, then it's assigned to ``self.impl``
-        as is.
+        assuming the ``impl`` is a callable, and the resulting
+        object is assigned to the ``self.impl`` instance attribute
+        (thus overriding the class attribute of the same name).
+        
+        If the class level ``impl`` is not a callable (the unusual case),
+        it will be assigned to the same instance attribute 'as-is', 
+        ignoring those arguments passed to the constructor.
 
         Subclasses can override this to customize the generation
-        of ``self.impl``.
+        of ``self.impl`` entirely.
 
         """
+
         if not hasattr(self.__class__, 'impl'):
             raise AssertionError("TypeDecorator implementations "
                                  "require a class-level variable "
@@ -475,6 +479,9 @@ class TypeDecorator(TypeEngine):
 
 
     def _gen_dialect_impl(self, dialect):
+        """
+        #todo
+        """
         adapted = dialect.type_descriptor(self)
         if adapted is not self:
             return adapted
@@ -494,6 +501,9 @@ class TypeDecorator(TypeEngine):
 
     @property
     def _type_affinity(self):
+        """
+        #todo
+        """
         return self.impl._type_affinity
 
     def type_engine(self, dialect):
@@ -531,7 +541,6 @@ class TypeDecorator(TypeEngine):
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying
         implementation."""
-
         return getattr(self.impl, key)
 
     def process_bind_param(self, value, dialect):
@@ -542,14 +551,27 @@ class TypeDecorator(TypeEngine):
         :class:`.TypeEngine` object, and from there to the 
         DBAPI ``execute()`` method.
 
-        :param value: the value.  Can be None.
+        The operation could be anything desired to perform custom
+        behavior, such as transforming or serializing data. 
+        This could also be used as a hook for validating logic.
+
+        This operation should be designed with the reverse operation
+        in mind, which would be the process_result_value method of
+        this class.
+
+        :param value: Data to operate upon, of any type expected by
+         this method in the subclass.  Can be ``None``.
         :param dialect: the :class:`.Dialect` in use.
 
         """
+
         raise NotImplementedError()
 
     def process_result_value(self, value, dialect):
         """Receive a result-row column value to be converted.
+
+        Subclasses should implement this method to operate on data
+        fetched from the database.
 
         Subclasses override this method to return the
         value that should be passed back to the application,
@@ -557,14 +579,24 @@ class TypeDecorator(TypeEngine):
         the underlying :class:`.TypeEngine` object, originally
         from the DBAPI cursor method ``fetchone()`` or similar.
 
-        :param value: the value.  Can be None.
+        The operation could be anything desired to perform custom
+        behavior, such as transforming or serializing data. 
+        This could also be used as a hook for validating logic.
+
+        :param value: Data to operate upon, of any type expected by
+         this method in the subclass.  Can be ``None``.
         :param dialect: the :class:`.Dialect` in use.
 
+        This operation should be designed to be reversible by
+        the "process_bind_param" method of this class.
+
         """
+
         raise NotImplementedError()
 
     def bind_processor(self, dialect):
-        """Provide a bound value processing function for the given :class:`.Dialect`.
+        """Provide a bound value processing function for the 
+        given :class:`.Dialect`.
 
         This is the method that fulfills the :class:`.TypeEngine` 
         contract for bound value conversion.   :class:`.TypeDecorator`
@@ -574,6 +606,11 @@ class TypeDecorator(TypeEngine):
         User-defined code can override this method directly,
         though its likely best to use :meth:`process_bind_param` so that
         the processing provided by ``self.impl`` is maintained.
+
+        :param dialect: Dialect instance in use.
+
+        This method is the reverse counterpart to the
+        :meth:`result_processor` method of this class.
 
         """
         if self.__class__.process_bind_param.func_code \
@@ -603,6 +640,12 @@ class TypeDecorator(TypeEngine):
         User-defined code can override this method directly,
         though its likely best to use :meth:`process_result_value` so that
         the processing provided by ``self.impl`` is maintained.
+
+        :param dialect: Dialect instance in use.
+        :param coltype: An SQLAlchemy data type
+
+        This method is the reverse counterpart to the
+        :meth:`bind_processor` method of this class.
 
         """
         if self.__class__.process_result_value.func_code \
@@ -654,6 +697,7 @@ class TypeDecorator(TypeEngine):
         has local state that should be deep-copied.
 
         """
+
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
         return instance
@@ -724,6 +768,9 @@ class TypeDecorator(TypeEngine):
         return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
+        """
+        #todo
+        """
         op, typ =self.impl._adapt_expression(op, othertype)
         if typ is self.impl:
             return op, self

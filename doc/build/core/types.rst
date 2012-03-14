@@ -441,7 +441,9 @@ Creating New Types
 ~~~~~~~~~~~~~~~~~~
 
 The :class:`.UserDefinedType` class is provided as a simple base class
-for defining entirely new database types:
+for defining entirely new database types.   Use this to represent native 
+database types not known by SQLAlchemy.   If only Python translation behavior
+is needed, use :class:`.TypeDecorator` instead.
 
 .. autoclass:: UserDefinedType
    :members:
