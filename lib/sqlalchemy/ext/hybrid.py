@@ -11,30 +11,30 @@ class level and at the instance level.
 
 The :mod:`~sqlalchemy.ext.hybrid` extension provides a special form of method
 decorator, is around 50 lines of code and has almost no dependencies on the rest 
-of SQLAlchemy.  It can in theory work with any class-level expression generator.
+of SQLAlchemy.  It can, in theory, work with any descriptor-based expression 
+system.
 
-Consider a table ``interval`` as below::
+Consider a mapping ``Interval``, representing integer ``start`` and ``end``
+values. We can define higher level functions on mapped classes that produce
+SQL expressions at the class level, and Python expression evaluation at the
+instance level.  Below, each function decorated with :class:`.hybrid_method` or
+:class:`.hybrid_property` may receive ``self`` as an instance of the class, or
+as the class itself::
 
-    from sqlalchemy import MetaData, Table, Column, Integer
-
-    metadata = MetaData()
-
-    interval_table = Table('interval', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('start', Integer, nullable=False),
-        Column('end', Integer, nullable=False)
-    )
-
-We can define higher level functions on mapped classes that produce SQL
-expressions at the class level, and Python expression evaluation at the
-instance level.  Below, each function decorated with :func:`.hybrid_method`
-or :func:`.hybrid_property` may receive ``self`` as an instance of the class,
-or as the class itself::
-
+    from sqlalchemy import Column, Integer
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import Session, aliased
     from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-    from sqlalchemy.orm import mapper, Session, aliased
+    
+    Base = declarative_base()
+    
+    class Interval(Base):
+        __tablename__ = 'interval'
 
-    class Interval(object):
+        id = Column(Integer, primary_key=True)
+        start = Column(Integer, nullable=False)
+        end = Column(Integer, nullable=False)
+
         def __init__(self, start, end):
             self.start = start
             self.end = end
@@ -51,8 +51,6 @@ or as the class itself::
         def intersects(self, other):
             return self.contains(other.start) | self.contains(other.end)
     
-    mapper(Interval, interval_table)
-
 Above, the ``length`` property returns the difference between the ``end`` and
 ``start`` attributes.  With an instance of ``Interval``, this subtraction occurs
 in Python, using normal Python descriptor mechanics::
@@ -60,10 +58,11 @@ in Python, using normal Python descriptor mechanics::
     >>> i1 = Interval(5, 10)
     >>> i1.length
     5
-    
-At the class level, the usual descriptor behavior of returning the descriptor
-itself is modified by :class:`.hybrid_property`, to instead evaluate the function 
-body given the ``Interval`` class as the argument::
+
+When dealing with the ``Interval`` class itself, the :class:`.hybrid_property`
+descriptor evaluates the function body given the ``Interval`` class as 
+the argument, which when evaluated with SQLAlchemy expression mechanics
+returns a new SQL expression::
     
     >>> print Interval.length
     interval."end" - interval.start
@@ -83,9 +82,10 @@ locate attributes, so can also be used with hybrid attributes::
     FROM interval 
     WHERE interval."end" - interval.start = :param_1
 
-The ``contains()`` and ``intersects()`` methods are decorated with :class:`.hybrid_method`.
-This decorator applies the same idea to methods which accept
-zero or more arguments.   The above methods return boolean values, and take advantage 
+The ``Interval`` class example also illustrates two methods, ``contains()`` and ``intersects()``,
+decorated with :class:`.hybrid_method`.
+This decorator applies the same idea to methods that :class:`.hybrid_property` applies
+to attributes.   The methods return boolean values, and take advantage 
 of the Python ``|`` and ``&`` bitwise operators to produce equivalent instance-level and 
 SQL expression-level boolean behavior::
 
@@ -368,7 +368,12 @@ SQL expression versus SQL expression::
 
     >>> sw1 = aliased(SearchWord)
     >>> sw2 = aliased(SearchWord)
-    >>> print Session().query(sw1.word_insensitive, sw2.word_insensitive).filter(sw1.word_insensitive > sw2.word_insensitive)
+    >>> print Session().query(
+    ...                    sw1.word_insensitive, 
+    ...                    sw2.word_insensitive).\\
+    ...                        filter(
+    ...                            sw1.word_insensitive > sw2.word_insensitive
+    ...                        )
     SELECT lower(searchword_1.word) AS lower_1, lower(searchword_2.word) AS lower_2 
     FROM searchword AS searchword_1, searchword AS searchword_2 
     WHERE lower(searchword_1.word) > lower(searchword_2.word)
