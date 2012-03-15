@@ -402,6 +402,7 @@ class ZooMarkTest(fixtures.TestBase):
     @profiling.function_call_count(2252, {'2.4': 1673, 
                                             '2.6':2412,
                                             '2.7':2412,
+                                            '3.2':2396,
                                             '2.7+cextension':2110, 
                                             '2.6+cextension': 2252})
     def test_profile_7_multiview(self):
