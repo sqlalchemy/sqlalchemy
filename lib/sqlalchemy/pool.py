@@ -784,7 +784,7 @@ class NullPool(Pool):
     invalidation are not supported by this Pool implementation, since
     no connections are held persistently.
 
-    :class:`.NullPool` is used by the SQlite dilalect automatically
+    :class:`.NullPool` is used by the SQlite dialect automatically
     when a file-based database is used (as of SQLAlchemy 0.7).
     See :ref:`sqlite_toplevel`.
 
