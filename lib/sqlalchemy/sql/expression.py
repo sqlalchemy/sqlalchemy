@@ -1545,7 +1545,7 @@ class ClauseElement(Visitable):
 
     @util.memoized_property
     def _cloned_set(self):
-        """Return the set consisting all cloned anscestors of this
+        """Return the set consisting all cloned ancestors of this
         ClauseElement.
 
         Includes this ClauseElement.  This accessor tends to be used for
@@ -1591,7 +1591,7 @@ class ClauseElement(Visitable):
         return self._clone()
 
     def unique_params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elments replaced.
+        """Return a copy with :func:`bindparam()` elements replaced.
 
         Same functionality as ``params()``, except adds `unique=True`
         to affected bind parameters so that multiple statements can be
@@ -1601,7 +1601,7 @@ class ClauseElement(Visitable):
         return self._params(True, optionaldict, kwargs)
 
     def params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elments replaced.
+        """Return a copy with :func:`bindparam()` elements replaced.
 
         Returns a copy of this ClauseElement with :func:`bindparam()`
         elements replaced with values taken from the given dictionary::
@@ -1741,7 +1741,7 @@ class ClauseElement(Visitable):
             compiled statement. If ``None``, all columns from the target table
             object are rendered.
 
-        :param dialect: A ``Dialect`` instance frmo which a ``Compiled``
+        :param dialect: A ``Dialect`` instance from which a ``Compiled``
             will be acquired. This argument takes precedence over the `bind`
             argument as well as this :class:`.ClauseElement`'s bound engine, if
             any.
@@ -1789,7 +1789,7 @@ class ClauseElement(Visitable):
         return self._negate()
 
     def __nonzero__(self):
-       raise TypeError("Boolean value of this clause is not defined")
+        raise TypeError("Boolean value of this clause is not defined")
 
     def _negate(self):
         if hasattr(self, 'negation_clause'):
@@ -2175,7 +2175,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
 
         :param equivalents: a dictionary of columns as keys mapped to sets
           of columns. If the given "other" column is present in this
-          dictionary, if any of the columns in the correponding set() pass the
+          dictionary, if any of the columns in the corresponding set() pass the
           comparison test, the result is True. This is used to expand the
           comparison to other columns that may be known to be equivalent to
           this one via foreign key or other criterion.
@@ -2456,7 +2456,7 @@ class FromClause(Selectable):
         """Given a :class:`.ColumnElement`, return the exported
         :class:`.ColumnElement` object from this :class:`.Selectable`
         which corresponds to that original
-        :class:`~sqlalchemy.schema.Column` via a common anscestor
+        :class:`~sqlalchemy.schema.Column` via a common ancestor
         column.
 
         :param column: the target :class:`.ColumnElement` to be matched
@@ -2465,7 +2465,7 @@ class FromClause(Selectable):
         the given :class:`.ColumnElement`, if the given
         :class:`.ColumnElement` is actually present within a sub-element
         of this :class:`.FromClause`.  Normally the column will match if
-        it merely shares a common anscestor with one of the exported
+        it merely shares a common ancestor with one of the exported
         columns of this :class:`.FromClause`.
 
         """
@@ -2477,7 +2477,7 @@ class FromClause(Selectable):
                     return False
             return True
 
-        # dont dig around if the column is locally present
+        # don't dig around if the column is locally present
         if self.c.contains_column(column):
             return column
         col, intersect = None, None
@@ -2615,7 +2615,7 @@ class _BindParamClause(ColumnElement):
           will be called at statement execution time to determine the
           ultimate value.   Used for scenarios where the actual bind
           value cannot be determined at the point at which the clause
-          construct is created, but embeded bind values are still desirable.
+          construct is created, but embedded bind values are still desirable.
 
         :param type\_:
           A ``TypeEngine`` object that will be used to pre-process the
@@ -2643,7 +2643,7 @@ class _BindParamClause(ColumnElement):
             self.key = key or _anonymous_label('%%(%d param)s'
                     % id(self))
 
-        # identifiying key that won't change across
+        # identifying key that won't change across
         # clones, used to identify the bind's logical
         # identity
         self._identifying_key = self.key
@@ -3150,7 +3150,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     @property
     def columns(self):
-        """Fulfill the 'columns' contrct of :class:`.ColumnElement`.
+        """Fulfill the 'columns' contract of :class:`.ColumnElement`.
 
         Returns a single-element list consisting of this object.
 

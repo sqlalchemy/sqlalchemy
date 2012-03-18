@@ -688,7 +688,7 @@ class SQLCompiler(engine.Compiled):
     def render_literal_value(self, value, type_):
         """Render the value of a bind parameter as a quoted literal.
 
-        This is used for statement sections that do not accept bind paramters
+        This is used for statement sections that do not accept bind parameters
         on the target driver/database.
 
         This should be implemented by subclasses using the quoting services
@@ -2025,8 +2025,8 @@ class IdentifierPreparer(object):
             else:
                 return self.quote(name, column.quote)
         else:
-            # literal textual elements get stuck into ColumnClause alot,
-            # which shouldnt get quoted
+            # literal textual elements get stuck into ColumnClause a lot,
+            # which shouldn't get quoted
 
             if use_table:
                 return self.format_table(column.table,
