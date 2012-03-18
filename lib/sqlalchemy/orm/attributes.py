@@ -413,7 +413,7 @@ class AttributeImpl(object):
         Only applies to object-based attributes.
 
         This is an inlining of existing functionality
-        which roughly correponds to:
+        which roughly corresponds to:
 
             get_state_history(
                         state, 
@@ -686,7 +686,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
              old is not PASSIVE_NO_RESULT and \
              check_old is not old:
             if pop:
-                 return
+                return
             else:
                 raise ValueError(
                     "Object %s not associated with %s on attribute '%s'" % (
@@ -1126,7 +1126,7 @@ class History(tuple):
                 return cls((), (), ())
             else:
                 return cls((), [current], ())
-        # dont let ClauseElement expressions here trip things up
+        # don't let ClauseElement expressions here trip things up
         elif attribute.is_equal(current, original) is True:
             return cls((), [current], ())
         else:

@@ -441,7 +441,7 @@ def relationship(argument, secondary=None, **kwargs):
 
       * True - a synonym for 'select'
 
-      * False - a synonyn for 'joined'
+      * False - a synonym for 'joined'
 
       * None - a synonym for 'noload'
 
@@ -719,7 +719,7 @@ def column_property(*cols, **kw):
 def composite(class_, *cols, **kwargs):
     """Return a composite column-based property for use with a Mapper.
 
-    See the mapping documention section :ref:`mapper_composite` for a full
+    See the mapping documentation section :ref:`mapper_composite` for a full
     usage example.
 
     :param class\_:
@@ -1218,7 +1218,7 @@ def comparable_property(comparator_factory, descriptor=None):
       Optional when used in a ``properties={}`` declaration.  The Python
       descriptor or property to layer comparison behavior on top of.
 
-      The like-named descriptor will be automatically retreived from the
+      The like-named descriptor will be automatically retrieved from the
       mapped class if left blank in a ``properties`` declaration.
 
     """
@@ -1278,7 +1278,7 @@ def joinedload(*keys, **kw):
 
     examples::
 
-        # joined-load the "orders" colleciton on "User"
+        # joined-load the "orders" collection on "User"
         query(User).options(joinedload(User.orders))
 
         # joined-load the "keywords" collection on each "Item",
@@ -1381,7 +1381,7 @@ def subqueryload(*keys):
 
     examples::
 
-        # subquery-load the "orders" colleciton on "User"
+        # subquery-load the "orders" collection on "User"
         query(User).options(subqueryload(User.orders))
 
         # subquery-load the "keywords" collection on each "Item",
