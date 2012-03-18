@@ -198,7 +198,7 @@ class FBTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class FBCompiler(sql.compiler.SQLCompiler):
-    """Firebird specific idiosincrasies"""
+    """Firebird specific idiosyncrasies"""
 
     def visit_mod(self, binary, **kw):
         # Firebird lacks a builtin modulo operator, but there is
@@ -293,7 +293,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
 
 class FBDDLCompiler(sql.compiler.DDLCompiler):
-    """Firebird syntactic idiosincrasies"""
+    """Firebird syntactic idiosyncrasies"""
 
     def visit_create_sequence(self, create):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""

@@ -47,7 +47,7 @@ This behavior can be controlled via
 :meth:`~sqlalchemy.sql.expression.Executable.execution_options` using the
 ``native_odbc_execute`` flag with a value of ``True`` or ``False``, where a
 value of ``True`` will unconditionally use native bind parameters and a value
-of ``False`` will uncondtionally use string-escaped parameters.
+of ``False`` will unconditionally use string-escaped parameters.
 
 """
 

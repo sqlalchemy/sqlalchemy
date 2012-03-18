@@ -103,13 +103,13 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
                 regexp=re.compile("(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)(?:-(\d+))?")
             )
     
-    :param storage_format: format string which will be appled to the 
+    :param storage_format: format string which will be applied to the 
      tuple ``(value.year, value.month, value.day, value.hour,
      value.minute, value.second, value.microsecond)``, given a
      Python datetime.datetime() object.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is appled to
+     incoming result rows. The resulting match object is applied to
      the Python datetime() constructor via ``*map(int,
      match_obj.groups(0))``.
     """
@@ -164,12 +164,12 @@ class DATE(_DateTimeMixin, sqltypes.Date):
                 regexp=re.compile("(\d+)/(\d+)/(\d+)")
             )
     
-    :param storage_format: format string which will be appled to the 
+    :param storage_format: format string which will be applied to the 
      tuple ``(value.year, value.month, value.day)``,
      given a Python datetime.date() object.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is appled to
+     incoming result rows. The resulting match object is applied to
      the Python date() constructor via ``*map(int,
      match_obj.groups(0))``.
      
@@ -221,12 +221,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
                 regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
             )
     
-    :param storage_format: format string which will be appled 
+    :param storage_format: format string which will be applied 
      to the tuple ``(value.hour, value.minute, value.second,
      value.microsecond)``, given a Python datetime.time() object.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is appled to
+     incoming result rows. The resulting match object is applied to
      the Python time() constructor via ``*map(int,
      match_obj.groups(0))``.
 

@@ -82,10 +82,10 @@ class SybaseDialect_pysybase(SybaseDialect):
             cursor.execute(statement, param)
 
     def _get_server_version_info(self, connection):
-       vers = connection.scalar("select @@version_number")
-       # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), 
-       # (12, 5, 0, 0)
-       return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
+        vers = connection.scalar("select @@version_number")
+        # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), 
+        # (12, 5, 0, 0)
+        return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, (self.dbapi.OperationalError,

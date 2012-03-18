@@ -40,7 +40,7 @@ class PGDialect_pypostgresql(PGDialect):
     default_paramstyle = 'pyformat'
 
     # requires trunk version to support sane rowcounts
-    # TODO: use dbapi version information to set this flag appropariately
+    # TODO: use dbapi version information to set this flag appropriately
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
 
