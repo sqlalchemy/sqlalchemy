@@ -256,7 +256,7 @@ accepts in normal mapper definition:
 Advanced Use
 ============
 
-Sessions, Transations and Application Integration
+Sessions, Transactions and Application Integration
 -------------------------------------------------
 
 .. note::
@@ -599,7 +599,7 @@ class SqlSoup(object):
         self.session.flush()
 
     def rollback(self):
-        """Rollback the current transction.
+        """Rollback the current transaction.
 
         See :meth:`.Session.rollback`.
 

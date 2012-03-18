@@ -180,7 +180,7 @@ not picklable, due to the fact that they contain weakrefs and function
 callbacks. In our case, this is a good thing, since if this dictionary were
 picklable, it could lead to an excessively large pickle size for our value
 objects that are pickled by themselves outside of the context of the parent.
-The developer responsiblity here is only to provide a ``__getstate__`` method
+The developer responsibility here is only to provide a ``__getstate__`` method
 that excludes the :meth:`~.MutableBase._parents` collection from the pickle
 stream::
 

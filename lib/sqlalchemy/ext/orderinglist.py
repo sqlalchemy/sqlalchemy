@@ -148,7 +148,7 @@ def count_from_n_factory(start):
     return f
 
 def _unsugar_count_from(**kw):
-    """Builds counting functions from keywrod arguments.
+    """Builds counting functions from keyword arguments.
 
     Keyword argument filter, prepares a simple ``ordering_func`` from a
     ``count_from`` argument, otherwise passes ``ordering_func`` on unchanged.
