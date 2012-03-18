@@ -264,7 +264,7 @@ class DefaultDialect(base.Dialect):
         return insp.reflecttable(table, include_columns, exclude_columns)
 
     def get_pk_constraint(self, conn, table_name, schema=None, **kw):
-        """Compatiblity method, adapts the result of get_primary_keys()
+        """Compatibility method, adapts the result of get_primary_keys()
         for those dialects which don't implement get_pk_constraint().
 
         """
@@ -341,7 +341,7 @@ class DefaultDialect(base.Dialect):
         return False
 
     def reset_isolation_level(self, dbapi_conn):
-        # default_isolation_level is read from the first conenction 
+        # default_isolation_level is read from the first connection 
         # after the initial set of 'isolation_level', if any, so is 
         # the configured default of this dialect.
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)

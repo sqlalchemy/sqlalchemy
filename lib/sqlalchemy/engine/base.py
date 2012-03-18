@@ -734,7 +734,7 @@ class Compiled(object):
     def construct_params(self, params=None):
         """Return the bind params for this compiled object.
 
-        :param params: a dict of string/object pairs whos values will
+        :param params: a dict of string/object pairs whose values will
                        override bind values compiled in to the
                        statement.
         """
@@ -978,10 +978,10 @@ class Connection(Connectable):
           :ref:`postgresql_toplevel` - see those dialect's documentation
           for further info.
 
-          Note that this option necessarily affects the underying 
+          Note that this option necessarily affects the underlying 
           DBAPI connection for the lifespan of the originating 
           :class:`.Connection`, and is not per-execution. This 
-          setting is not removed until the underying DBAPI connection 
+          setting is not removed until the underlying DBAPI connection 
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
 
@@ -1074,7 +1074,7 @@ class Connection(Connectable):
         """Returns self.
 
         This ``Connectable`` interface method returns self, allowing
-        Connections to be used interchangably with Engines in most
+        Connections to be used interchangeably with Engines in most
         situations that require a bind.
         """
 
@@ -1084,7 +1084,7 @@ class Connection(Connectable):
         """Returns self.
 
         This ``Connectable`` interface method returns self, allowing
-        Connections to be used interchangably with Engines in most
+        Connections to be used interchangeably with Engines in most
         situations that require a bind.
         """
 
@@ -1123,7 +1123,7 @@ class Connection(Connectable):
     def detach(self):
         """Detach the underlying DB-API connection from its connection pool.
 
-        This Connection instance will remain useable.  When closed,
+        This Connection instance will remain usable.  When closed,
         the DB-API connection will be literally closed and not
         returned to its pool.  The pool will typically lazily create a
         new connection to replace the detached connection.
@@ -2130,7 +2130,7 @@ class Engine(Connectable, log.Identified):
     :class:`~sqlalchemy.engine.base.Dialect` together to provide a source 
     of database connectivity and behavior.
 
-    An :class:`.Engine` object is instantiated publically using the 
+    An :class:`.Engine` object is instantiated publicly using the 
     :func:`~sqlalchemy.create_engine` function.
 
     See also:
@@ -2178,7 +2178,7 @@ class Engine(Connectable, log.Identified):
         The given keys/values in \**opt are added to the
         default execution options that will be used for 
         all connections.  The initial contents of this dictionary
-        can be sent via the ``execution_options`` paramter
+        can be sent via the ``execution_options`` parameter
         to :func:`.create_engine`.
 
         See :meth:`.Connection.execution_options` for more
