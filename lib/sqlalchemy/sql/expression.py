@@ -1356,7 +1356,7 @@ def _cloned_intersection(a, b):
     """return the intersection of sets a and b, counting
     any overlap between 'cloned' predecessors.
 
-    The returned set is in terms of the enties present within 'a'.
+    The returned set is in terms of the entities present within 'a'.
 
     """
     all_overlap = set(_expand_cloned(a)).intersection(_expand_cloned(b))
