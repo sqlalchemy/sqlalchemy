@@ -3,6 +3,15 @@
 =======
 CHANGES
 =======
+0.7.7
+=====
+- orm
+  - [feature] Added prefix_with() method
+    to Query, calls upon select().prefix_with()
+    to allow placement of MySQL SELECT
+    directives in statements.  Courtesy
+    Diana Clarke [ticket:2443]
+
 0.7.6
 =====
 - orm

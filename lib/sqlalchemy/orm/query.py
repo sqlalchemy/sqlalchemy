@@ -77,6 +77,7 @@ class Query(object):
     _group_by = False
     _having = None
     _distinct = False
+    _prefixes = None
     _offset = None
     _limit = None
     _statement = None
@@ -917,7 +918,8 @@ class Query(object):
                 '_order_by', '_group_by',
                 '_limit', '_offset', 
                 '_joinpath', '_joinpoint', 
-                '_distinct', '_having'
+                '_distinct', '_having', 
+                '_prefixes',
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from(fromclause)
@@ -2057,6 +2059,33 @@ class Query(object):
             else: 
                 self._distinct = criterion 
 
+    @_generative()
+    def prefix_with(self, *prefixes):
+        """Apply the prefixes to the query and return the newly resulting
+        ``Query``.
+
+        :param \*prefixes: optional prefixes, typically strings, 
+        not using any commas.   In particular is useful for MySQL keywords.
+
+        e.g.::
+
+            query = sess.query(User.name).\\
+                prefix_with('HIGH_PRIORITY').\\
+                prefix_with('SQL_SMALL_RESULT', 'ALL')
+
+        Would render::
+
+            SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL users.name AS users_name 
+            FROM users
+        
+        New in 0.7.7.
+
+        """
+        if self._prefixes:
+            self._prefixes += prefixes
+        else:
+            self._prefixes = prefixes
+
     def all(self):
         """Return the results represented by this ``Query`` as a list.
 
@@ -2468,6 +2497,7 @@ class Query(object):
             'limit':self._limit,
             'offset':self._offset,
             'distinct':self._distinct,
+            'prefixes':self._prefixes,
             'group_by':self._group_by or None,
             'having':self._having
         }
