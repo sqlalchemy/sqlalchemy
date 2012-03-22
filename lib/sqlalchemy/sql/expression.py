@@ -244,11 +244,18 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
 
     :param for_update=False:
       when ``True``, applies ``FOR UPDATE`` to the end of the
-      resulting statement.  Certain database dialects also support
-      alternate values for this parameter, for example mysql
-      supports "read" which translates to ``LOCK IN SHARE MODE``,
-      and oracle supports "nowait" which translates to ``FOR UPDATE
-      NOWAIT``.
+      resulting statement.  
+      
+      Certain database dialects also support
+      alternate values for this parameter:
+      
+      * With the MySQL dialect, the value ``"read"`` translates to 
+        ``LOCK IN SHARE MODE``.
+      * With the Oracle and Postgresql dialects, the value ``"nowait"``
+        translates to ``FOR UPDATE NOWAIT``.
+      * With the Postgresql dialect, the values "read" and ``"read_nowait"``
+        translate to ``FOR SHARE`` and ``FOR SHARE NOWAIT``, respectively
+        (new in 0.7.7).
 
     :param group_by:
       a list of :class:`.ClauseElement` objects which will comprise the

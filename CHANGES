@@ -12,6 +12,16 @@ CHANGES
     directives in statements.  Courtesy
     Diana Clarke [ticket:2443]
 
+- postgresql
+  - [feature] Added new for_update/with_lockmode()
+    options for Postgresql: for_update="read"/
+    with_lockmode("read"),
+    for_update="read_nowait"/
+    with_lockmode("read_nowait").
+    These emit "FOR SHARE" and "FOR SHARE NOWAIT",
+    respectively.  Courtesy Diana Clarke 
+    [ticket:2445]
+
 0.7.6
 =====
 - orm

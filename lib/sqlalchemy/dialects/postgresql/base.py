@@ -675,6 +675,10 @@ class PGCompiler(compiler.SQLCompiler):
     def for_update_clause(self, select):
         if select.for_update == 'nowait':
             return " FOR UPDATE NOWAIT"
+        elif select.for_update == 'read':
+            return " FOR SHARE"
+        elif select.for_update == 'read_nowait':
+            return " FOR SHARE NOWAIT"
         else:
             return super(PGCompiler, self).for_update_clause(select)
 

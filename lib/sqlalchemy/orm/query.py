@@ -1105,10 +1105,17 @@ class Query(object):
             ``FOR UPDATE`` (standard SQL, supported by most dialects)
 
             ``'update_nowait'`` - passes ``for_update='nowait'``, which
-            translates to ``FOR UPDATE NOWAIT`` (supported by Oracle)
+            translates to ``FOR UPDATE NOWAIT`` (supported by Oracle, 
+            PostgreSQL)
 
             ``'read'`` - passes ``for_update='read'``, which translates to
-            ``LOCK IN SHARE MODE`` (supported by MySQL).
+            ``LOCK IN SHARE MODE`` (for MySQL), and ``FOR SHARE`` (for 
+            PostgreSQL)
+
+            ``'read_nowait'`` - passes ``for_update='read_nowait'``, which 
+            translates to ``FOR SHARE NOWAIT`` (supported by PostgreSQL).
+            
+            New in 0.7.7: ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL)
         """
 
         self._lockmode = mode
@@ -2837,6 +2844,7 @@ class Query(object):
         if self._lockmode:
             try:
                 for_update = {'read': 'read',
+                              'read_nowait': 'read_nowait',
                               'update': True,
                               'update_nowait': 'nowait',
                               None: False}[self._lockmode]
