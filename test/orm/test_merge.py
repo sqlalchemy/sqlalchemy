@@ -12,7 +12,7 @@ from sqlalchemy.orm.interfaces import MapperOption
 from test.lib.testing import eq_, ne_
 from test.lib import fixtures
 from test.orm import _fixtures
-from sqlalchemy import event, and_
+from sqlalchemy import event, and_, case
 from test.lib.schema import Table, Column
 
 class MergeTest(_fixtures.FixtureTest):
@@ -1102,7 +1102,7 @@ class M2ONoUseGetLoadingTest(fixtures.MappedTest):
     """Merge a one-to-many.  The many-to-one on the other side is set up 
     so that use_get is False.   See if skipping the "m2o" merge
     vs. doing it saves on SQL calls.
-    
+
     """
 
     @classmethod
@@ -1342,3 +1342,62 @@ class LoadOnPendingTest(fixtures.MappedTest):
         be able to merge()"""
         self._setup_delete_orphan_o2o()
         self._merge_delete_orphan_o2o_with(self.classes.Bug(id=1))
+
+class PolymorphicOnTest(fixtures.MappedTest):
+    """Test merge() of polymorphic object when polymorphic_on 
+    isn't a Column"""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('employees', metadata,
+            Column('employee_id', Integer, primary_key=True, 
+                            test_needs_autoincrement=True),
+            Column('type', String(1), nullable=False),
+            Column('data', String(50)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Employee(cls.Basic, fixtures.ComparableEntity):
+            pass
+        class Manager(Employee):
+            pass
+        class Engineer(Employee):
+            pass
+
+    def _setup_polymorphic_on_mappers(self):
+        employee_mapper = mapper(self.classes.Employee, 
+            self.tables.employees,
+            polymorphic_on=case(value=self.tables.employees.c.type, 
+                whens={
+                    'E': 'employee',
+                    'M': 'manager',
+                    'G': 'engineer',
+                    'R': 'engineer',
+                    }),
+            polymorphic_identity='employee')
+        mapper(self.classes.Manager, inherits=employee_mapper,
+            polymorphic_identity='manager')
+        mapper(self.classes.Engineer, inherits=employee_mapper,
+            polymorphic_identity='engineer')
+        self.sess = sessionmaker()()
+
+    def test_merge_polymorphic_on(self):
+        """merge() should succeed with a polymorphic object even when
+        polymorphic_on is not a Column
+        """
+        self._setup_polymorphic_on_mappers()
+
+        m = self.classes.Manager(employee_id=55, type='M', 
+                                data='original data')
+        self.sess.add(m)
+        self.sess.commit()
+        self.sess.expunge_all()
+
+        m = self.classes.Manager(employee_id=55, data='updated data')
+        merged = self.sess.merge(m)
+
+        # we've already passed ticket #2449 problem since 
+        # merge() returned, but for good measure:
+        assert m is not merged
+        eq_(m,merged)

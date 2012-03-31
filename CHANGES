@@ -12,6 +12,12 @@ CHANGES
     directives in statements.  Courtesy
     Diana Clarke [ticket:2443]
 
+  - [bug] Fixed bug whereby polymorphic_on
+    column that's not otherwise mapped on the 
+    class would be incorrectly included
+    in a merge() operation, raising an error.
+    [ticket:2449]
+
 - postgresql
   - [feature] Added new for_update/with_lockmode()
     options for Postgresql: for_update="read"/

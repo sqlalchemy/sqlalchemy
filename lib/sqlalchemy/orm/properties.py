@@ -136,7 +136,9 @@ class ColumnProperty(StrategizedProperty):
 
     def merge(self, session, source_state, source_dict, dest_state, 
                                 dest_dict, load, _recursive):
-        if self.key in source_dict:
+        if not self.instrument:
+            return
+        elif self.key in source_dict:
             value = source_dict[self.key]
 
             if not load:
@@ -144,9 +146,8 @@ class ColumnProperty(StrategizedProperty):
             else:
                 impl = dest_state.get_impl(self.key)
                 impl.set(dest_state, dest_dict, value, None)
-        else:
-            if dest_state.has_identity and self.key not in dest_dict:
-                dest_state.expire_attributes(dest_dict, [self.key])
+        elif dest_state.has_identity and self.key not in dest_dict:
+            dest_state.expire_attributes(dest_dict, [self.key])
 
     class Comparator(PropComparator):
         @util.memoized_instancemethod
