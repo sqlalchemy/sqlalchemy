@@ -18,6 +18,12 @@ CHANGES
     in a merge() operation, raising an error.
     [ticket:2449]
 
+  - [bug] Fixed bug in expression annotation
+    mechanics which could lead to incorrect
+    rendering of SELECT statements with aliases
+    and joins, particularly when using 
+    column_property().  [ticket:2453]
+
 - postgresql
   - [feature] Added new for_update/with_lockmode()
     options for Postgresql: for_update="read"/

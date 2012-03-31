@@ -404,22 +404,30 @@ for cls in expression.__dict__.values() + [schema.Column, schema.Table]:
         exec "annotated_classes[cls] = Annotated%s" % (cls.__name__)
 
 def _deep_annotate(element, annotations, exclude=None):
-    """Deep copy the given ClauseElement, annotating each element with the given annotations dictionary.
+    """Deep copy the given ClauseElement, annotating each element 
+    with the given annotations dictionary.
 
     Elements within the exclude collection will be cloned but not annotated.
 
     """
+    cloned = util.column_dict()
+
     def clone(elem):
         # check if element is present in the exclude list.
         # take into account proxying relationships.
-        if exclude and \
+        if elem in cloned:
+            return cloned[elem]
+        elif exclude and \
                     hasattr(elem, 'proxy_set') and \
                     elem.proxy_set.intersection(exclude):
-            elem = elem._clone()
+            newelem = elem._clone()
         elif annotations != elem._annotations:
-            elem = elem._annotate(annotations.copy())
-        elem._copy_internals(clone=clone)
-        return elem
+            newelem = elem._annotate(annotations)
+        else:
+            newelem = elem
+        newelem._copy_internals(clone=clone)
+        cloned[elem] = newelem
+        return newelem
 
     if element is not None:
         element = clone(element)
@@ -428,10 +436,14 @@ def _deep_annotate(element, annotations, exclude=None):
 def _deep_deannotate(element):
     """Deep copy the given element, removing all annotations."""
 
+    cloned = util.column_dict()
+
     def clone(elem):
-        elem = elem._deannotate()
-        elem._copy_internals(clone=clone)
-        return elem
+        if elem not in cloned:
+            newelem = elem._deannotate()
+            newelem._copy_internals(clone=clone)
+            cloned[elem] = newelem
+        return cloned[elem]
 
     if element is not None:
         element = clone(element)
