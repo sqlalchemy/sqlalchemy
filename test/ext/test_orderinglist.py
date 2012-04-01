@@ -1,8 +1,10 @@
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from sqlalchemy.ext.orderinglist import *
+from sqlalchemy import Integer, ForeignKey, String, MetaData
+from sqlalchemy.orm import relationship, mapper, create_session
+from sqlalchemy.ext.orderinglist import ordering_list
 from test.lib.testing import eq_
-from test.lib import *
+from test.lib import fixtures, testing
+from test.lib.schema import Table, Column
+from test.lib.util import picklers
 
 
 metadata = None
@@ -407,3 +409,25 @@ class OrderingListTest(fixtures.TestBase):
             self.assert_(alpha[li].position == pos)
 
 
+    def test_picklability(self):
+        from sqlalchemy.ext.orderinglist import OrderingList
+
+        olist = OrderingList('order', reorder_on_append=True)
+        olist.append(DummyItem())
+
+        for loads, dumps in picklers():
+            pck = dumps(olist)
+            copy = loads(pck)
+
+            self.assert_(copy == olist)
+            self.assert_(copy.__dict__ == olist.__dict__)
+
+class DummyItem(object):
+    def __init__(self, order=None):
+        self.order = order
+
+    def __eq__(self, other):
+        return self.order == other.order
+
+    def __ne__(self, other):
+        return not (self == other)

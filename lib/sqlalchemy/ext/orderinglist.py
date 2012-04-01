@@ -314,9 +314,23 @@ class OrderingList(list):
         self._reorder()
     # end Py2K
 
+    def __reduce__(self):
+        return _reconstitute, (self.__class__, self.__dict__, list(self))
+
     for func_name, func in locals().items():
         if (util.callable(func) and func.func_name == func_name and
             not func.__doc__ and hasattr(list, func_name)):
             func.__doc__ = getattr(list, func_name).__doc__
     del func_name, func
 
+def _reconstitute(cls, dict_, items):
+    """ Reconstitute an ``OrderingList``.
+
+    This is the adjoint to ``OrderingList.__reduce__()``.  It is used for
+    unpickling ``OrderingList``\\s
+
+    """
+    obj = cls.__new__(cls)
+    obj.__dict__.update(dict_)
+    list.extend(obj, items)
+    return obj

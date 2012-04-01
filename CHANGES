@@ -24,6 +24,10 @@ CHANGES
     and joins, particularly when using 
     column_property().  [ticket:2453]
 
+  - [bug] Fixed bug which would prevent
+    OrderingList from being pickleable
+    [ticket:2454].  Courtesy Jeff Dairiki
+
 - postgresql
   - [feature] Added new for_update/with_lockmode()
     options for Postgresql: for_update="read"/
