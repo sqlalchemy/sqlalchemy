@@ -1392,6 +1392,10 @@ class _GetTable(object):
 def _deferred_relationship(cls, prop):
     def resolve_arg(arg):
         import sqlalchemy
+        from sqlalchemy.orm import foreign, remote
+
+        fallback = sqlalchemy.__dict__.copy()
+        fallback.update({'foreign':foreign, 'remote':remote})
 
         def access_cls(key):
             if key in cls._decl_class_registry:
@@ -1401,7 +1405,7 @@ def _deferred_relationship(cls, prop):
             elif key in cls.metadata._schemas:
                 return _GetTable(key, cls.metadata)
             else:
-                return sqlalchemy.__dict__[key]
+                return fallback[key]
 
         d = util.PopulateDict(access_cls)
         def return_cls():

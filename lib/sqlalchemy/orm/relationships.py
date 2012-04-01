@@ -163,38 +163,42 @@ class JoinCondition(object):
                         "condition between parent/child tables on "
                         "relationship %s - there are no foreign keys "
                         "linking these tables via secondary table '%s'.  "
-                        "Ensure that referencing columns are associated with a "\
-                        "ForeignKey or ForeignKeyConstraint, or specify 'primaryjoin' "\
-                        "and 'secondaryjoin' expressions."
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify 'primaryjoin' and 'secondaryjoin' "
+                        "expressions."
                         % (self.prop, self.secondary))
             else:
                 raise sa_exc.NoForeignKeysError("Could not determine join "
                         "condition between parent/child tables on "
                         "relationship %s - there are no foreign keys "
                         "linking these tables.  "
-                        "Ensure that referencing columns are associated with a "
-                        "ForeignKey or ForeignKeyConstraint, or specify a 'primaryjoin' "
-                        "expression."
+                        "Ensure that referencing columns are associated "
+                        "with a ForeignKey or ForeignKeyConstraint, or "
+                        "specify a 'primaryjoin' expression."
                         % self.prop)
         except sa_exc.AmbiguousForeignKeysError, afke:
             if self.secondary is not None:
-                raise sa_exc.AmbiguousForeignKeysError("Could not determine join "
+                raise sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
                         "condition between parent/child tables on "
                         "relationship %s - there are multiple foreign key "
                         "paths linking the tables via secondary table '%s'.  "
                         "Specify the 'foreign_keys' "
                         "argument, providing a list of those columns which "
-                        "should be counted as containing a foreign key reference "
-                        "from the secondary table to each of the parent and child tables."
+                        "should be counted as containing a foreign key "
+                        "reference from the secondary table to each of the "
+                        "parent and child tables."
                         % (self.prop, self.secondary))
             else:
-                raise sa_exc.AmbiguousForeignKeysError("Could not determine join "
+                raise sa_exc.AmbiguousForeignKeysError(
+                        "Could not determine join "
                         "condition between parent/child tables on "
                         "relationship %s - there are multiple foreign key "
-                        "paths linking the tables.  Specify the 'foreign_keys' "
-                        "argument, providing a list of those columns which "
-                        "should be counted as containing a foreign key reference "
-                        "to the parent table."
+                        "paths linking the tables.  Specify the "
+                        "'foreign_keys' argument, providing a list of those "
+                        "columns which should be counted as containing a "
+                        "foreign key reference to the parent table."
                         % self.prop)
 
     @util.memoized_property
@@ -690,13 +694,13 @@ class JoinCondition(object):
 
     def _gather_join_annotations(self, annotation):
         s = set(
-            self._gather_columns_with_annotation(self.primaryjoin, 
-                                                    annotation)
+            self._gather_columns_with_annotation(
+                        self.primaryjoin, annotation)
         )
         if self.secondaryjoin is not None:
             s.update(
-                self._gather_columns_with_annotation(self.secondaryjoin, 
-                                                    annotation)
+                self._gather_columns_with_annotation(
+                        self.secondaryjoin, annotation)
             )
         return s
 
@@ -735,8 +739,8 @@ class JoinCondition(object):
 
         # adjust the join condition for single table inheritance,
         # in the case that the join is to a subclass
-        # this is analogous to the "_adjust_for_single_table_inheritance()"
-        # method in Query.
+        # this is analogous to the 
+        # "_adjust_for_single_table_inheritance()" method in Query.
 
         if single_crit is not None:
             if secondaryjoin is not None:
@@ -778,51 +782,49 @@ class JoinCondition(object):
         return primaryjoin, secondaryjoin, secondary, \
                         target_adapter, dest_selectable
 
+    def create_lazy_clause(self, reverse_direction=False):
+        binds = util.column_dict()
+        lookup = util.column_dict()
+        equated_columns = util.column_dict()
 
-################# everything below is TODO ################################
+        if reverse_direction and self.secondaryjoin is None:
+            for l, r in self.local_remote_pairs:
+                _list = lookup.setdefault(r, [])
+                _list.append((r, l))
+                equated_columns[l] = r
+        else:
+            for l, r in self.local_remote_pairs:
+                _list = lookup.setdefault(l, [])
+                _list.append((l, r))
+                equated_columns[r] = l
 
-def _create_lazy_clause(cls, prop, reverse_direction=False):
-    binds = util.column_dict()
-    lookup = util.column_dict()
-    equated_columns = util.column_dict()
+        def col_to_bind(col):
+            if col in lookup:
+                for tobind, equated in lookup[col]:
+                    if equated in binds:
+                        return None
+                if col not in binds:
+                    binds[col] = sql.bindparam(
+                        None, None, type_=col.type, unique=True)
+                return binds[col]
+            return None
 
-    if reverse_direction and prop.secondaryjoin is None:
-        for l, r in prop.local_remote_pairs:
-            _list = lookup.setdefault(r, [])
-            _list.append((r, l))
-            equated_columns[l] = r
-    else:
-        for l, r in prop.local_remote_pairs:
-            _list = lookup.setdefault(l, [])
-            _list.append((l, r))
-            equated_columns[r] = l
+        lazywhere = self.primaryjoin
 
-    def col_to_bind(col):
-        if col in lookup:
-            for tobind, equated in lookup[col]:
-                if equated in binds:
-                    return None
-            if col not in binds:
-                binds[col] = sql.bindparam(None, None, type_=col.type, unique=True)
-            return binds[col]
-        return None
+        if self.secondaryjoin is None or not reverse_direction:
+            lazywhere = visitors.replacement_traverse(
+                                            lazywhere, {}, col_to_bind) 
 
-    lazywhere = prop.primaryjoin
+        if self.secondaryjoin is not None:
+            secondaryjoin = self.secondaryjoin
+            if reverse_direction:
+                secondaryjoin = visitors.replacement_traverse(
+                                            secondaryjoin, {}, col_to_bind)
+            lazywhere = sql.and_(lazywhere, secondaryjoin)
 
-    if prop.secondaryjoin is None or not reverse_direction:
-        lazywhere = visitors.replacement_traverse(
-                                        lazywhere, {}, col_to_bind) 
+        bind_to_col = dict((binds[col].key, col) for col in binds)
 
-    if prop.secondaryjoin is not None:
-        secondaryjoin = prop.secondaryjoin
-        if reverse_direction:
-            secondaryjoin = visitors.replacement_traverse(
-                                        secondaryjoin, {}, col_to_bind)
-        lazywhere = sql.and_(lazywhere, secondaryjoin)
-
-    bind_to_col = dict((binds[col].key, col) for col in binds)
-
-    return lazywhere, bind_to_col, equated_columns
+        return lazywhere, bind_to_col, equated_columns
 
 
 

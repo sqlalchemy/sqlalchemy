@@ -324,14 +324,14 @@ class LazyLoader(AbstractRelationshipLoader):
 
     def init(self):
         super(LazyLoader, self).init()
+        join_condition = self.parent_property._join_condition
         self._lazywhere, \
         self._bind_to_col, \
-        self._equated_columns = self._create_lazy_clause(self.parent_property)
+        self._equated_columns = join_condition.create_lazy_clause()
 
         self._rev_lazywhere, \
         self._rev_bind_to_col, \
-        self._rev_equated_columns = self._create_lazy_clause(
-                                                self.parent_property, 
+        self._rev_equated_columns = join_condition.create_lazy_clause(
                                                 reverse_direction=True)
 
         self.logger.info("%s lazy loading clause %s", self, self._lazywhere)
@@ -617,49 +617,6 @@ class LazyLoader(AbstractRelationshipLoader):
 
             return reset_for_lazy_callable, None, None
 
-    @classmethod
-    def _create_lazy_clause(cls, prop, reverse_direction=False):
-        binds = util.column_dict()
-        lookup = util.column_dict()
-        equated_columns = util.column_dict()
-
-        if reverse_direction and prop.secondaryjoin is None:
-            for l, r in prop.local_remote_pairs:
-                _list = lookup.setdefault(r, [])
-                _list.append((r, l))
-                equated_columns[l] = r
-        else:
-            for l, r in prop.local_remote_pairs:
-                _list = lookup.setdefault(l, [])
-                _list.append((l, r))
-                equated_columns[r] = l
-
-        def col_to_bind(col):
-            if col in lookup:
-                for tobind, equated in lookup[col]:
-                    if equated in binds:
-                        return None
-                if col not in binds:
-                    binds[col] = sql.bindparam(None, None, type_=col.type, unique=True)
-                return binds[col]
-            return None
-
-        lazywhere = prop.primaryjoin
-
-        if prop.secondaryjoin is None or not reverse_direction:
-            lazywhere = visitors.replacement_traverse(
-                                            lazywhere, {}, col_to_bind) 
-
-        if prop.secondaryjoin is not None:
-            secondaryjoin = prop.secondaryjoin
-            if reverse_direction:
-                secondaryjoin = visitors.replacement_traverse(
-                                            secondaryjoin, {}, col_to_bind)
-            lazywhere = sql.and_(lazywhere, secondaryjoin)
-
-        bind_to_col = dict((binds[col].key, col) for col in binds)
-
-        return lazywhere, bind_to_col, equated_columns
 
 log.class_logger(LazyLoader)
 
