@@ -28,6 +28,20 @@ CHANGES
     OrderingList from being pickleable
     [ticket:2454].  Courtesy Jeff Dairiki
 
+- sql
+  - [bug] Removed warning when Index is created
+    with no columns; while this might not be what 
+    the user intended, it is a valid use case 
+    as an Index could be a placeholder for just an 
+    index of a certain name.
+
+- mssql
+  - [feature] Added interim create_engine flag
+    supports_unicode_binds to PyODBC dialect,
+    to force whether or not the dialect
+    passes Python unicode literals to PyODBC 
+    or not.
+
 - postgresql
   - [feature] Added new for_update/with_lockmode()
     options for Postgresql: for_update="read"/

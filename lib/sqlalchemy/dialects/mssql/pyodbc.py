@@ -80,6 +80,31 @@ the python shell. For example::
     >>> urllib.quote_plus('dsn=mydsn;Database=db')
     'dsn%3Dmydsn%3BDatabase%3Ddb'
 
+Unicode Binds
+^^^^^^^^^^^^^
+
+The current state of PyODBC on a unix backend with FreeTDS and/or 
+EasySoft is poor regarding unicode; different OS platforms and versions of UnixODBC
+versus IODBC versus FreeTDS/EasySoft versus PyODBC itself dramatically 
+alter how strings are received.  The PyODBC dialect attempts to use all the information
+it knows to determine whether or not a Python unicode literal can be
+passed directly to the PyODBC driver or not; while SQLAlchemy can encode
+these to bytestrings first, some users have reported that PyODBC mis-handles
+bytestrings for certain encodings and requires a Python unicode object,
+while the author has observed widespread cases where a Python unicode
+is completely misinterpreted by PyODBC, particularly when dealing with
+the information schema tables used in table reflection, and the value 
+must first be encoded to a bytestring.
+
+It is for this reason that whether or not unicode literals for bound
+parameters be sent to PyODBC can be controlled using the 
+``supports_unicode_binds`` parameter to ``create_engine()``.  When 
+left at its default of ``None``, the PyODBC dialect will use its 
+best guess as to whether or not the driver deals with unicode literals
+well.  When ``False``, unicode literals will be encoded first, and when
+``True`` unicode literals will be passed straight through.  This is an interim
+flag that hopefully should not be needed when the unicode situation stabilizes
+for unix + PyODBC.  New in 0.7.7.
 
 """
 

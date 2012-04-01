@@ -271,12 +271,8 @@ class ConstraintTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
             Index, "foo", 5
         )
 
-    def test_warn_no_columns(self):
-        assert_raises_message(
-            exc.SAWarning,
-            "No column names or expressions given for Index.",
-            Index, "foo"
-        )
+    def test_no_warning_w_no_columns(self):
+        Index(name="foo")
 
     def test_raise_clauseelement_not_a_column(self):
         m = MetaData()

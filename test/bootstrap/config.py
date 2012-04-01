@@ -53,6 +53,7 @@ def _list_dbs(*args):
 def _server_side_cursors(options, opt_str, value, parser):
     db_opts['server_side_cursors'] = True
 
+
 def _zero_timeout(options, opt_str, value, parser):
     warnings.warn("--zero-timeout testing option is now on in all cases")
 

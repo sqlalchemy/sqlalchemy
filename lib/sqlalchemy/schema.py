@@ -2208,8 +2208,6 @@ class Index(ColumnCollectionMixin, SchemaItem):
         self.table = None
         # will call _set_parent() if table-bound column
         # objects are present
-        if not columns:
-            util.warn("No column names or expressions given for Index.")
         ColumnCollectionMixin.__init__(self, *columns)
         self.name = name
         self.unique = kw.pop('unique', False)
