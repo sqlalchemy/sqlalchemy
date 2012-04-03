@@ -4802,6 +4802,15 @@ class Select(_SelectBase):
 
         toremove = set(itertools.chain(*[f._hide_froms for f in froms]))
         if toremove:
+            # if we're maintaining clones of froms,
+            # add the copies out to the toremove list
+            if self._from_cloned:
+                toremove.update(
+                    self._from_cloned[f] for f in 
+                    toremove.intersection(self._from_cloned)
+                )
+            # filter out to FROM clauses not in the list,
+            # using a list to maintain ordering
             froms = [f for f in froms if f not in toremove]
 
         if len(froms) > 1 or self._correlate:

@@ -1136,9 +1136,12 @@ class AnnotationsTest(fixtures.TestBase):
 
     def test_annotate_unique_traversal(self):
         """test that items are copied only once during
-        annotate, deannotate traversal"""
+        annotate, deannotate traversal
+
+        #2453
+        """
         table1 = table('table1', column('x'))
-        table2 = table('table1', column('y'))
+        table2 = table('table2', column('y'))
         a1 = table1.alias()
         s = select([a1.c.x]).select_from(
                 a1.join(table2, a1.c.x==table2.c.y)
@@ -1157,6 +1160,33 @@ class AnnotationsTest(fixtures.TestBase):
             # Alias in the Join object in position 1
             assert sel._froms[0] is sel._froms[1].left
             eq_(str(s), str(sel))
+
+    def test_annotate_fromlist_preservation(self):
+        """test the FROM list in select still works
+        even when multiple annotate runs have created
+        copies of the same selectable
+
+        #2453, continued
+
+        """
+        table1 = table('table1', column('x'))
+        table2 = table('table2', column('y'))
+        a1 = table1.alias()
+        s = select([a1.c.x]).select_from(
+                a1.join(table2, a1.c.x==table2.c.y)
+            )
+
+        assert_s = select([select([s])])
+        for fn in (
+            sql_util._deep_deannotate,
+            lambda s: sql_util._deep_annotate(s, {'foo':'bar'}),
+            lambda s:visitors.cloned_traverse(s, {}, {}),
+            lambda s:visitors.replacement_traverse(s, {}, lambda x:None)
+        ):
+
+            sel = fn(select([fn(select([fn(s)]))]))
+            eq_(str(assert_s), str(sel))
+
 
     def test_bind_unique_test(self):
         t1 = table('t', column('a'), column('b'))
