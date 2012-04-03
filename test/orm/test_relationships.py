@@ -120,7 +120,12 @@ class _RelationshipErrors(object):
         assert_raises_message(
             sa.exc.ArgumentError,
             "Relationship %s could not determine "
-            "any local/remote column pairs." % relname,
+            "any unambiguous local/remote column "
+            "pairs based on join condition and remote_side arguments.  "
+            r"Consider using the remote\(\) annotation to "
+            "accurately mark those elements of the join "
+            "condition that are on the remote side of the relationship." % relname,
+
             fn, *arg, **kw
         )
 

@@ -530,8 +530,13 @@ class JoinCondition(object):
     def _check_remote_side(self):
         if not self.local_remote_pairs:
             raise sa_exc.ArgumentError('Relationship %s could '
-                    'not determine any local/remote column '
-                    'pairs.'
+                    'not determine any unambiguous local/remote column '
+                    'pairs based on join condition and remote_side '
+                    'arguments.  '
+                    'Consider using the remote() annotation to '
+                    'accurately mark those elements of the join '
+                    'condition that are on the remote side of '
+                    'the relationship.'
                     % (self.prop, ))
 
     def _check_foreign_cols(self, join_condition, primary):
