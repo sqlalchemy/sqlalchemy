@@ -319,7 +319,7 @@ Configuring Logging
 ====================
 
 Python's standard `logging
-<http://www.python.org/doc/lib/module-logging.html>`_ module is used to
+<http://docs.python.org/library/logging.html>`_ module is used to
 implement informational and debug log output with SQLAlchemy. This allows
 SQLAlchemy's logging to integrate in a standard way with other applications
 and libraries. The ``echo`` and ``echo_pool`` flags that are present on
