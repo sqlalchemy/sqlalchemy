@@ -66,6 +66,85 @@ class QueryTest(_fixtures.FixtureTest):
         configure_mappers()
 
 
+class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
+
+    query_correlated = "SELECT users.name AS users_name, " \
+        "(SELECT count(addresses.id) AS count_1 FROM addresses " \
+        "WHERE addresses.user_id = users.id) AS anon_1 FROM users"
+
+    query_not_correlated = "SELECT users.name AS users_name, " \
+        "(SELECT count(addresses.id) AS count_1 FROM addresses, users " \
+        "WHERE addresses.user_id = users.id) AS anon_1 FROM users"
+
+    def test_as_scalar_select_auto_correlate(self):
+        addresses, users = self.tables.addresses, self.tables.users
+        query = select(
+            [func.count(addresses.c.id)], 
+            addresses.c.user_id==users.c.id
+        ).as_scalar()
+        query = select([users.c.name.label('users_name'), query])
+        self.assert_compile(query, self.query_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+    def test_as_scalar_select_explicit_correlate(self):
+        addresses, users = self.tables.addresses, self.tables.users
+        query = select(
+            [func.count(addresses.c.id)], 
+            addresses.c.user_id==users.c.id
+        ).correlate(users).as_scalar()
+        query = select([users.c.name.label('users_name'), query])
+        self.assert_compile(query, self.query_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+    def test_as_scalar_select_correlate_off(self):
+        addresses, users = self.tables.addresses, self.tables.users
+        query = select(
+            [func.count(addresses.c.id)], 
+            addresses.c.user_id==users.c.id
+        ).correlate(None).as_scalar()
+        query = select([ users.c.name.label('users_name'), query])
+        self.assert_compile(query, self.query_not_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+    def test_as_scalar_query_auto_correlate(self):
+        sess = create_session()
+        Address, User = self.classes.Address, self.classes.User
+        query = sess.query(func.count(Address.id))\
+            .filter(Address.user_id==User.id)\
+            .as_scalar()
+        query = sess.query(User.name, query)
+        self.assert_compile(query, self.query_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+    def test_as_scalar_query_explicit_correlate(self):
+        sess = create_session()
+        Address, User = self.classes.Address, self.classes.User
+        query = sess.query(func.count(Address.id))\
+            .filter(Address.user_id==User.id)\
+            .correlate(self.tables.users)\
+            .as_scalar()
+        query = sess.query(User.name, query)
+        self.assert_compile(query, self.query_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+    def test_as_scalar_query_correlate_off(self):
+        sess = create_session()
+        Address, User = self.classes.Address, self.classes.User
+        query = sess.query(func.count(Address.id))\
+            .filter(Address.user_id==User.id)\
+            .correlate(None)\
+            .as_scalar()
+        query = sess.query(User.name, query)
+        self.assert_compile(query, self.query_not_correlated,
+            dialect=default.DefaultDialect()
+        )
+
+
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     """compare a bunch of select() tests with the equivalent Query using straight table/columns.
 
@@ -90,10 +169,9 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             )
 
         # a little tedious here, adding labels to work around Query's auto-labelling.
-        # also correlate needed explicitly.  hmmm.....
         # TODO: can we detect only one table in the "froms" and then turn off use_labels ?
         s = sess.query(addresses.c.id.label('id'), addresses.c.email_address.label('email')).\
-            filter(addresses.c.user_id==users.c.id).correlate(users).statement.alias()
+            filter(addresses.c.user_id==users.c.id).statement.alias()
 
         self.assert_compile(sess.query(users, s.c.email).select_from(users.join(s, s.c.id==users.c.id)).with_labels().statement, 
                 "SELECT users.id AS users_id, users.name AS users_name, anon_1.email AS anon_1_email "
