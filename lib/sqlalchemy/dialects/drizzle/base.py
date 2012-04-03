@@ -5,140 +5,39 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+
 """Support for the Drizzle database.
 
-Supported Versions and Features
--------------------------------
+Drizzle is a variant of MySQL. Unlike MySQL, Drizzle's default storage engine
+is InnoDB (transactions, foreign-keys) rather than MyISAM. For more
+`Notable Differences <http://docs.drizzle.org/mysql_differences.html>`_, visit
+the `Drizzle Documentation <http://docs.drizzle.org/index.html>`_.
 
-SQLAlchemy supports the Drizzle database starting with 2010.08.
-with capabilities increasing with more modern servers.
-
-Most available DBAPI drivers are supported; see below.
-
-=====================================  ===============
-Feature                                Minimum Version
-=====================================  ===============
-sqlalchemy.orm                         2010.08
-Table Reflection                       2010.08
-DDL Generation                         2010.08
-utf8/Full Unicode Connections          2010.08
-Transactions                           2010.08
-Two-Phase Transactions                 2010.08
-Nested Transactions                    2010.08
-=====================================  ===============
-
-See the official Drizzle documentation for detailed information about features
-supported in any given server release.
+The SQLAlchemy Drizzle dialect leans heavily on the MySQL dialect, so much of
+the :doc:`SQLAlchemy MySQL <mysql>` documentation is also relevant.
 
 Connecting
 ----------
 
-See the API documentation on individual drivers for details on connecting.
-
-Connection Timeouts
--------------------
-
-Drizzle features an automatic connection close behavior, for connections that
-have been idle for eight hours or more.   To circumvent having this issue, use
-the ``pool_recycle`` option which controls the maximum age of any connection::
-
-    engine = create_engine('drizzle+mysqldb://...', pool_recycle=3600)
-
-Storage Engines
----------------
-
-Drizzle defaults to the ``InnoDB`` storage engine, which is transactional.
-
-Storage engines can be elected when creating tables in SQLAlchemy by supplying
-a ``drizzle_engine='whatever'`` to the ``Table`` constructor.  Any Drizzle table
-creation option can be specified in this syntax::
-
-  Table('mytable', metadata,
-        Column('data', String(32)),
-        drizzle_engine='InnoDB',
-       )
-
-Keys
-----
-
-Not all Drizzle storage engines support foreign keys.  For ``BlitzDB`` and
-similar engines, the information loaded by table reflection will not include
-foreign keys.  For these tables, you may supply a
-:class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
-
-  Table('mytable', metadata,
-        ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
-        autoload=True
-       )
-
-When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT`` on
-an integer primary key column::
-
-  >>> t = Table('mytable', metadata,
-  ...   Column('mytable_id', Integer, primary_key=True)
-  ... )
-  >>> t.create()
-  CREATE TABLE mytable (
-          id INTEGER NOT NULL AUTO_INCREMENT,
-          PRIMARY KEY (id)
-  )
-
-You can disable this behavior by supplying ``autoincrement=False`` to the
-:class:`~sqlalchemy.Column`.  This flag can also be used to enable
-auto-increment on a secondary column in a multi-column key for some storage
-engines::
-
-  Table('mytable', metadata,
-        Column('gid', Integer, primary_key=True, autoincrement=False),
-        Column('id', Integer, primary_key=True)
-       )
-
-Drizzle SQL Extensions
-----------------------
-
-Many of the Drizzle SQL extensions are handled through SQLAlchemy's generic
-function and operator support::
-
-  table.select(table.c.password==func.md5('plaintext'))
-  table.select(table.c.username.op('regexp')('^[a-d]'))
-
-And of course any valid Drizzle statement can be executed as a string as well.
-
-Some limited direct support for Drizzle extensions to SQL is currently
-available.
-
-* SELECT pragma::
-
-    select(..., prefixes=['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
-
-* UPDATE with LIMIT::
-
-    update(..., drizzle_limit=10)
+See the individual driver sections below for details on connecting.
 
 """
 
-import datetime, inspect, re, sys
-
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import exc, log, sql, util
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy.sql import functions as sql_functions
-from sqlalchemy.sql import compiler
-from array import array as _array
-
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine import base as engine_base, default
+from sqlalchemy import exc
+from sqlalchemy import log
 from sqlalchemy import types as sqltypes
+from sqlalchemy.engine import reflection
 from sqlalchemy.dialects.mysql import base as mysql_dialect
-
 from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME, \
-                                BLOB, BINARY, VARBINARY
+                             BLOB, BINARY, VARBINARY
+
 
 class _NumericType(object):
     """Base for Drizzle numeric types."""
 
     def __init__(self, **kw):
         super(_NumericType, self).__init__(**kw)
+
 
 class _FloatType(_NumericType, sqltypes.Float):
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
@@ -147,23 +46,22 @@ class _FloatType(_NumericType, sqltypes.Float):
                 (precision is None and scale is not None) or
                 (precision is not None and scale is None)
             ):
-           raise exc.ArgumentError(
-               "You must specify both precision and scale or omit "
-               "both altogether.")
+            raise exc.ArgumentError(
+                "You must specify both precision and scale or omit "
+                "both altogether.")
 
-        super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
+        super(_FloatType, self).__init__(precision=precision,
+                                         asdecimal=asdecimal, **kw)
         self.scale = scale
+
 
 class _StringType(mysql_dialect._StringType):
     """Base for Drizzle string types."""
 
-    def __init__(self, collation=None,
-                 binary=False,
-                 **kw):
+    def __init__(self, collation=None, binary=False, **kw):
         kw['national'] = False
-        super(_StringType, self).__init__(collation=collation, 
-                                        binary=binary, 
-                                        **kw)
+        super(_StringType, self).__init__(collation=collation, binary=binary,
+                                          **kw)
 
 
 class NUMERIC(_NumericType, sqltypes.NUMERIC):
@@ -180,7 +78,9 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
         :param scale: The number of digits after the decimal point.
 
         """
-        super(NUMERIC, self).__init__(precision=precision, scale=scale, asdecimal=asdecimal, **kw)
+
+        super(NUMERIC, self).__init__(precision=precision, scale=scale,
+                                      asdecimal=asdecimal, **kw)
 
 
 class DECIMAL(_NumericType, sqltypes.DECIMAL):
@@ -215,8 +115,10 @@ class DOUBLE(_FloatType):
         :param scale: The number of digits after the decimal point.
 
         """
+
         super(DOUBLE, self).__init__(precision=precision, scale=scale,
                                      asdecimal=asdecimal, **kw)
+
 
 class REAL(_FloatType, sqltypes.REAL):
     """Drizzle REAL type."""
@@ -232,8 +134,10 @@ class REAL(_FloatType, sqltypes.REAL):
         :param scale: The number of digits after the decimal point.
 
         """
+
         super(REAL, self).__init__(precision=precision, scale=scale,
                                    asdecimal=asdecimal, **kw)
+
 
 class FLOAT(_FloatType, sqltypes.FLOAT):
     """Drizzle FLOAT type."""
@@ -249,11 +153,13 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
         :param scale: The number of digits after the decimal point.
 
         """
+
         super(FLOAT, self).__init__(precision=precision, scale=scale,
                                     asdecimal=asdecimal, **kw)
 
     def bind_processor(self, dialect):
         return None
+
 
 class INTEGER(sqltypes.INTEGER):
     """Drizzle INTEGER type."""
@@ -261,10 +167,10 @@ class INTEGER(sqltypes.INTEGER):
     __visit_name__ = 'INTEGER'
 
     def __init__(self, **kw):
-        """Construct an INTEGER.
+        """Construct an INTEGER."""
 
-        """
         super(INTEGER, self).__init__(**kw)
+
 
 class BIGINT(sqltypes.BIGINT):
     """Drizzle BIGINTEGER type."""
@@ -272,18 +178,20 @@ class BIGINT(sqltypes.BIGINT):
     __visit_name__ = 'BIGINT'
 
     def __init__(self, **kw):
-        """Construct a BIGINTEGER.
+        """Construct a BIGINTEGER."""
 
-        """
         super(BIGINT, self).__init__(**kw)
 
 
 class _DrizzleTime(mysql_dialect._MSTime):
     """Drizzle TIME type."""
 
+
 class TIMESTAMP(sqltypes.TIMESTAMP):
     """Drizzle TIMESTAMP type."""
+
     __visit_name__ = 'TIMESTAMP'
+
 
 class TEXT(_StringType, sqltypes.TEXT):
     """Drizzle TEXT type, for text up to 2^16 characters."""
@@ -306,7 +214,9 @@ class TEXT(_StringType, sqltypes.TEXT):
           only the collation of character data.
 
         """
+
         super(TEXT, self).__init__(length=length, **kw)
+
 
 class VARCHAR(_StringType, sqltypes.VARCHAR):
     """Drizzle VARCHAR type, for variable-length character data."""
@@ -325,7 +235,9 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           only the collation of character data.
 
         """
+
         super(VARCHAR, self).__init__(length=length, **kwargs)
+
 
 class CHAR(_StringType, sqltypes.CHAR):
     """Drizzle CHAR type, for fixed-length character data."""
@@ -345,7 +257,9 @@ class CHAR(_StringType, sqltypes.CHAR):
           compatible with the national character set.
 
         """
+
         super(CHAR, self).__init__(length=length, **kwargs)
+
 
 class ENUM(mysql_dialect.ENUM):
     """Drizzle ENUM type."""
@@ -363,8 +277,9 @@ class ENUM(mysql_dialect.ENUM):
 
         :param strict: Defaults to False: ensure that a given value is in this
           ENUM's range of permissible values when inserting or updating rows.
-          Note that Drizzle will not raise a fatal error if you attempt to store
-          an out of range value- an alternate value will be stored instead.
+          Note that Drizzle will not raise a fatal error if you attempt to
+          store an out of range value- an alternate value will be stored
+          instead.
           (See Drizzle ENUM documentation.)
 
         :param collation: Optional, a column-level collation for this string
@@ -390,11 +305,14 @@ class ENUM(mysql_dialect.ENUM):
           literals for you.  This is a transitional option.
 
         """
+
         super(ENUM, self).__init__(*enums, **kw)
+
 
 class _DrizzleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMERIC
+
 
 colspecs = {
     sqltypes.Numeric: NUMERIC,
@@ -403,6 +321,7 @@ colspecs = {
     sqltypes.Enum: ENUM,
     sqltypes.Boolean: _DrizzleBoolean,
 }
+
 
 # All the types we have in Drizzle
 ischema_names = {
@@ -427,6 +346,7 @@ ischema_names = {
     'VARCHAR': VARCHAR,
 }
 
+
 class DrizzleCompiler(mysql_dialect.MySQLCompiler):
 
     def visit_typeclause(self, typeclause):
@@ -439,7 +359,7 @@ class DrizzleCompiler(mysql_dialect.MySQLCompiler):
     def visit_cast(self, cast, **kwargs):
         type_ = self.process(cast.typeclause)
         if type_ is None:
-             return self.process(cast.clause)
+            return self.process(cast.clause)
 
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 
@@ -447,12 +367,13 @@ class DrizzleCompiler(mysql_dialect.MySQLCompiler):
 class DrizzleDDLCompiler(mysql_dialect.MySQLDDLCompiler):
     pass
 
+
 class DrizzleTypeCompiler(mysql_dialect.MySQLTypeCompiler):
     def _extend_numeric(self, type_, spec):
         return spec
 
     def _extend_string(self, type_, defaults, spec):
-        """Extend a string-type declaration with standard SQL 
+        """Extend a string-type declaration with standard SQL
         COLLATE annotations and Drizzle specific extensions.
 
         """
@@ -492,11 +413,16 @@ class DrizzleTypeCompiler(mysql_dialect.MySQLTypeCompiler):
 class DrizzleExecutionContext(mysql_dialect.MySQLExecutionContext):
     pass
 
+
 class DrizzleIdentifierPreparer(mysql_dialect.MySQLIdentifierPreparer):
     pass
 
+
 class DrizzleDialect(mysql_dialect.MySQLDialect):
-    """Details of the Drizzle dialect.  Not used directly in application code."""
+    """Details of the Drizzle dialect.
+
+    Not used directly in application code.
+    """
 
     name = 'drizzle'
 
@@ -504,7 +430,6 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
     supports_sequences = False
     supports_native_boolean = True
     supports_views = False
-
 
     default_paramstyle = 'format'
     colspecs = colspecs
@@ -516,8 +441,8 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
     preparer = DrizzleIdentifierPreparer
 
     def on_connect(self):
-        """Force autocommit - Drizzle Bug#707842 doesn't set this
-        properly"""
+        """Force autocommit - Drizzle Bug#707842 doesn't set this properly"""
+
         def connect(conn):
             conn.autocommit(False)
         return connect
@@ -535,6 +460,7 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):
         """Return a Unicode SHOW TABLES from a given schema."""
+
         if schema is not None:
             current_schema = schema
         else:
@@ -554,8 +480,8 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
 
         Cached per-connection. This value can not change without a server
         restart.
-
         """
+
         return 0
 
     def _detect_collations(self, connection):
@@ -566,7 +492,9 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
 
         collations = {}
         charset = self._connection_charset
-        rs = connection.execute('SELECT CHARACTER_SET_NAME, COLLATION_NAME from data_dictionary.COLLATIONS')
+        rs = connection.execute(
+            'SELECT CHARACTER_SET_NAME, COLLATION_NAME FROM'
+            ' data_dictionary.COLLATIONS')
         for row in self._compat_fetchall(rs, charset):
             collations[row[0]] = row[1]
         return collations
@@ -575,8 +503,7 @@ class DrizzleDialect(mysql_dialect.MySQLDialect):
         """Detect and adjust for the ANSI_QUOTES sql mode."""
 
         self._server_ansiquotes = False
-
         self._backslash_escapes = False
 
-log.class_logger(DrizzleDialect)
 
+log.class_logger(DrizzleDialect)

@@ -201,7 +201,7 @@ def subqueries(fn):
         )
 
 def intersect(fn):
-    """Target database must support INTERSECT or equivlaent."""
+    """Target database must support INTERSECT or equivalent."""
     return _chain_decorators_on(
         fn,
         fails_on('firebird', 'no support for INTERSECT'),
@@ -211,7 +211,7 @@ def intersect(fn):
     )
 
 def except_(fn):
-    """Target database must support EXCEPT or equivlaent (i.e. MINUS)."""
+    """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
     return _chain_decorators_on(
         fn,
         fails_on('firebird', 'no support for EXCEPT'),
