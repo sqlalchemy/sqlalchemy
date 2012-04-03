@@ -1,16 +1,13 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
 import StringIO, unicodedata
 from sqlalchemy import types as sql_types
-from sqlalchemy import schema, events, event
-from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy import schema, events, event, inspect
 from sqlalchemy import MetaData, Integer, String
 from test.lib.schema import Table, Column
 import sqlalchemy as sa
 from test.lib import ComparesTables, \
                             testing, engines, AssertsCompiledSQL
 from test.lib import fixtures
-
-create_inspector = Inspector.from_engine
 
 metadata, users = None, None
 
@@ -773,7 +770,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_inspector_conn_closing(self):
         m1 = MetaData()
         c = testing.db.connect()
-        i = Inspector.from_engine(testing.db)
+        i = inspect(testing.db)
         assert not c.closed
 
     @testing.provide_metadata
@@ -1050,7 +1047,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
 
     @testing.requires.unicode_connections
     def test_get_names(self):
-        inspector = Inspector.from_engine(self.bind)
+        inspector = inspect(self.bind)
         names = dict(
             (tname, (cname, ixname)) for tname, cname, ixname in self.names
         )
@@ -1362,18 +1359,18 @@ class ComponentReflectionTest(fixtures.TestBase):
 
     @testing.requires.schemas
     def test_get_schema_names(self):
-        insp = Inspector(testing.db)
+        insp = inspect(testing.db)
 
         self.assert_('test_schema' in insp.get_schema_names())
 
     def test_dialect_initialize(self):
         engine = engines.testing_engine()
         assert not hasattr(engine.dialect, 'default_schema_name')
-        insp = Inspector(engine)
+        insp = inspect(engine)
         assert hasattr(engine.dialect, 'default_schema_name')
 
     def test_get_default_schema_name(self):
-        insp = Inspector(testing.db)
+        insp = inspect(testing.db)
         eq_(insp.default_schema_name, testing.db.dialect.default_schema_name)
 
     @testing.provide_metadata
@@ -1384,7 +1381,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         meta.create_all()
         _create_views(meta.bind, schema)
         try:
-            insp = Inspector(meta.bind)
+            insp = inspect(meta.bind)
             if table_type == 'view':
                 table_names = insp.get_view_names(schema)
                 table_names.sort()
@@ -1428,7 +1425,7 @@ class ComponentReflectionTest(fixtures.TestBase):
             _create_views(meta.bind, schema)
             table_names = ['users_v', 'email_addresses_v']
         try:
-            insp = Inspector(meta.bind)
+            insp = inspect(meta.bind)
             for table_name, table in zip(table_names, (users,
                     addresses)):
                 schema_name = schema
@@ -1490,7 +1487,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         meta = self.metadata
         users, addresses, dingalings = createTables(meta, schema)
         meta.create_all()
-        insp = Inspector(meta.bind)
+        insp = inspect(meta.bind)
         users_pkeys = insp.get_primary_keys(users.name,
                                             schema=schema)
         eq_(users_pkeys,  ['user_id'])
@@ -1517,7 +1514,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         meta = self.metadata
         users, addresses, dingalings = createTables(meta, schema)
         meta.create_all()
-        insp = Inspector(meta.bind)
+        insp = inspect(meta.bind)
         expected_schema = schema
         # users
         users_fkeys = insp.get_foreign_keys(users.name,
@@ -1561,7 +1558,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         createIndexes(meta.bind, schema)
         # The database may decide to create indexes for foreign keys, etc.
         # so there may be more indexes than expected.
-        insp = Inspector(meta.bind)
+        insp = inspect(meta.bind)
         indexes = insp.get_indexes('users', schema=schema)
         expected_indexes = [
             {'unique': False,
@@ -1590,7 +1587,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         view_name1 = 'users_v'
         view_name2 = 'email_addresses_v'
         try:
-            insp = Inspector(meta.bind)
+            insp = inspect(meta.bind)
             v1 = insp.get_view_definition(view_name1, schema=schema)
             self.assert_(v1)
             v2 = insp.get_view_definition(view_name2, schema=schema)
@@ -1613,7 +1610,7 @@ class ComponentReflectionTest(fixtures.TestBase):
         meta = self.metadata
         users, addresses, dingalings = createTables(meta, schema)
         meta.create_all()
-        insp = create_inspector(meta.bind)
+        insp = inspect(meta.bind)
         oid = insp.get_table_oid(table_name, schema)
         self.assert_(isinstance(oid, (int, long)))
 

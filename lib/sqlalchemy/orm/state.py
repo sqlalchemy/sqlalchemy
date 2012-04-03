@@ -54,6 +54,10 @@ class InstanceState(object):
     def pending(self):
         return {}
 
+    @util.memoized_property
+    def mapper(self):
+        return self.manager.mapper
+
     @property
     def has_identity(self):
         return bool(self.key)

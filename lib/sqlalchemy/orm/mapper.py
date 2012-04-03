@@ -33,6 +33,7 @@ from sqlalchemy.orm.util import _INSTRUMENTOR, _class_to_mapper, \
 import sys
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 properties = util.importlater("sqlalchemy.orm", "properties")
+descriptor_props = util.importlater("sqlalchemy.orm", "descriptor_props")
 
 __all__ = (
     'Mapper',
@@ -1392,12 +1393,35 @@ class Mapper(object):
                         continue
                 yield c
 
-    @property
+    @util.memoized_property
     def properties(self):
-        raise NotImplementedError(
-                    "Public collection of MapperProperty objects is "
-                    "provided by the get_property() and iterate_properties "
-                    "accessors.")
+        if _new_mappers:
+            configure_mappers()
+        return util.ImmutableProperties(self._props)
+
+    @_memoized_configured_property
+    def synonyms(self):
+        return self._filter_properties(descriptor_props.SynonymProperty)
+
+    @_memoized_configured_property
+    def column_attrs(self):
+        return self._filter_properties(properties.ColumnProperty)
+
+    @_memoized_configured_property
+    def relationships(self):
+        return self._filter_properties(properties.RelationshipProperty)
+
+    @_memoized_configured_property
+    def composites(self):
+        return self._filter_properties(descriptor_props.CompositeProperty)
+
+    def _filter_properties(self, type_):
+        if _new_mappers:
+            configure_mappers()
+        return dict(
+            (k, v) for k, v in self._props.iteritems()
+            if isinstance(v, type_)
+        )
 
     @_memoized_configured_property
     def _get_clause(self):

@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import inspect
+import inspect as _inspect
 import sys
 
 import sqlalchemy.exc as exceptions
@@ -111,15 +111,17 @@ from sqlalchemy.schema import (
     UniqueConstraint,
     )
 
+from sqlalchemy.inspection import inspect
+
 from sqlalchemy.engine import create_engine, engine_from_config
 
 
 __all__ = sorted(name for name, obj in locals().items()
-                 if not (name.startswith('_') or inspect.ismodule(obj)))
+                 if not (name.startswith('_') or _inspect.ismodule(obj)))
 
 __version__ = '0.7.7'
 
-del inspect, sys
+del _inspect, sys
 
 from sqlalchemy import util as _sa_util
 _sa_util.importlater.resolve_all()

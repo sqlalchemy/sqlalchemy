@@ -23,7 +23,7 @@ An example of full customization is in /examples/custom_attributes.
 
 from sqlalchemy.orm import exc, collections, events
 from operator import attrgetter, itemgetter
-from sqlalchemy import event, util
+from sqlalchemy import event, util, inspection
 import weakref
 from sqlalchemy.orm import state, attributes
 

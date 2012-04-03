@@ -30,7 +30,8 @@ from sqlalchemy import util
 from sqlalchemy.util import topological
 from sqlalchemy.types import TypeEngine
 from sqlalchemy import schema as sa_schema
-
+from sqlalchemy import inspection
+from sqlalchemy.engine.base import Connectable
 
 @util.decorator
 def cache(fn, self, con, *args, **kw):
@@ -117,6 +118,10 @@ class Inspector(object):
         if hasattr(bind.dialect, 'inspector'):
             return bind.dialect.inspector(bind)
         return Inspector(bind)
+
+    @inspection._inspects(Connectable)
+    def _insp(bind):
+        return Inspector.from_engine(bind)
 
     @property
     def default_schema_name(self):
