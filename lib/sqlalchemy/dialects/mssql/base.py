@@ -1414,7 +1414,7 @@ class MSDialect(default.DefaultDialect):
         return cols
 
     @reflection.cache
-    def get_primary_keys(self, connection, tablename, schema=None, **kw):
+    def get_pk_constraint(self, connection, tablename, schema=None, **kw):
         current_schema = schema or self.default_schema_name
         pkeys = []
         # information_schema.referential_constraints
@@ -1438,7 +1438,7 @@ class MSDialect(default.DefaultDialect):
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
                 pkeys.append(row[0])
-        return pkeys
+        return {'constrained_columns':pkeys, 'name':None}
 
     @reflection.cache
     def get_foreign_keys(self, connection, tablename, schema=None, **kw):

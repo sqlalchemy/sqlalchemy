@@ -259,22 +259,13 @@ class Dialect(object):
 
         raise NotImplementedError()
 
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
-        """Return information about primary keys in `table_name`.
-
-        Given a :class:`.Connection`, a string
-        `table_name`, and an optional string `schema`, return primary
-        key information as a list of column names.
-
-        """
-        raise NotImplementedError()
-
-    def get_pk_constraint(self, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         """Return information about the primary key constraint on
         table_name`.
 
-        Given a string `table_name`, and an optional string `schema`, return
-        primary key information as a dictionary with these keys:
+        Given a :class:`.Connection`, a string
+        `table_name`, and an optional string `schema`, return primary 
+        key information as a dictionary with these keys:
 
         constrained_columns
           a list of column names that make up the primary key

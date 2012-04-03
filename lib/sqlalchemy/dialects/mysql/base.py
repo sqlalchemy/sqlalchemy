@@ -2042,14 +2042,14 @@ class MySQLDialect(default.DefaultDialect):
         return parsed_state.columns
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         parsed_state = self._parsed_state_or_create(connection, table_name, schema, **kw)
         for key in parsed_state.keys:
             if key['type'] == 'PRIMARY':
                 # There can be only one.
-                ##raise Exception, str(key)
-                return [s[0] for s in key['columns']]
-        return []
+                cols = [s[0] for s in key['columns']]
+                return {'constrained_columns':cols, 'name':None}
+        return {'constrained_columns':[], 'name':None}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):

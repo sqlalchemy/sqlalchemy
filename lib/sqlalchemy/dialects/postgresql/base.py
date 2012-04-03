@@ -1439,7 +1439,7 @@ class PGDialect(default.DefaultDialect):
         return columns
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         table_oid = self.get_table_oid(connection, table_name, schema,
                                        info_cache=kw.get('info_cache'))
 
@@ -1458,16 +1458,7 @@ class PGDialect(default.DefaultDialect):
         """
         t = sql.text(PK_SQL, typemap={'attname':sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
-        primary_keys = [r[0] for r in c.fetchall()]
-        return primary_keys
-
-    @reflection.cache
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        cols = self.get_primary_keys(connection, table_name, 
-                                            schema=schema, **kw)
-
-        table_oid = self.get_table_oid(connection, table_name, schema,
-                                       info_cache=kw.get('info_cache'))
+        cols = [r[0] for r in c.fetchall()]
 
         PK_CONS_SQL = """
         SELECT conname
@@ -1478,10 +1469,8 @@ class PGDialect(default.DefaultDialect):
         t = sql.text(PK_CONS_SQL, typemap={'conname':sqltypes.Unicode})
         c = connection.execute(t, table_oid=table_oid)
         name = c.scalar()
-        return {
-            'constrained_columns':cols,
-            'name':name
-        }
+
+        return {'constrained_columns':cols, 'name':name}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):

@@ -26,10 +26,11 @@ methods such as get_table_names, get_columns, etc.
 
 import sqlalchemy
 from sqlalchemy import exc, sql
-from sqlalchemy import util
-from sqlalchemy.util import topological
-from sqlalchemy.types import TypeEngine
 from sqlalchemy import schema as sa_schema
+from sqlalchemy import util
+from sqlalchemy.types import TypeEngine
+from sqlalchemy.util import deprecated
+from sqlalchemy.util import topological
 
 
 @util.decorator
@@ -228,6 +229,8 @@ class Inspector(object):
                 col_def['type'] = coltype()
         return col_defs
 
+    @deprecated('0.7', 'Call to deprecated method get_primary_keys.'
+                '  Use get_pk_constraint instead.')
     def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
@@ -235,10 +238,9 @@ class Inspector(object):
         primary key information as a list of column names.
         """
 
-        pkeys = self.dialect.get_primary_keys(self.bind, table_name, schema,
-                                              info_cache=self.info_cache,
-                                              **kw)
-
+        pkeys = self.dialect.get_pk_constraint(self.bind, table_name, schema,
+                                               info_cache=self.info_cache,
+                                               **kw)['constrained_columns']
         return pkeys
 
     def get_pk_constraint(self, table_name, schema=None, **kw):

@@ -1,14 +1,14 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
-import StringIO, unicodedata
+import unicodedata
+import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import types as sql_types
 from sqlalchemy import schema, events, event
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import MetaData, Integer, String
-from test.lib.schema import Table, Column
-import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 from test.lib import ComparesTables, \
-                            testing, engines, AssertsCompiledSQL
-from test.lib import fixtures
+                            testing, engines, AssertsCompiledSQL, fixtures
+from test.lib.schema import Table, Column
+from test.lib.testing import eq_, assert_raises, assert_raises_message
 
 create_inspector = Inspector.from_engine
 
@@ -1486,17 +1486,17 @@ class ComponentReflectionTest(fixtures.TestBase):
         self._test_get_columns(schema='test_schema', table_type='view')
 
     @testing.provide_metadata
-    def _test_get_primary_keys(self, schema=None):
+    def _test_get_pk_constraint(self, schema=None):
         meta = self.metadata
-        users, addresses, dingalings = createTables(meta, schema)
+        users, addresses, _ = createTables(meta, schema)
         meta.create_all()
         insp = Inspector(meta.bind)
-        users_pkeys = insp.get_primary_keys(users.name,
-                                            schema=schema)
-        eq_(users_pkeys,  ['user_id'])
-        addr_cons = insp.get_pk_constraint(addresses.name,
-                                            schema=schema)
 
+        users_cons = insp.get_pk_constraint(users.name, schema=schema)
+        users_pkeys = users_cons['constrained_columns']
+        eq_(users_pkeys,  ['user_id'])
+
+        addr_cons = insp.get_pk_constraint(addresses.name, schema=schema)
         addr_pkeys = addr_cons['constrained_columns']
         eq_(addr_pkeys,  ['address_id'])
 
@@ -1505,12 +1505,25 @@ class ComponentReflectionTest(fixtures.TestBase):
             eq_(addr_cons['name'], 'email_ad_pk')
         go()
 
-    def test_get_primary_keys(self):
-        self._test_get_primary_keys()
+    def test_get_pk_constraint(self):
+        self._test_get_pk_constraint()
 
     @testing.fails_on('sqlite', 'no schemas')
-    def test_get_primary_keys_with_schema(self):
-        self._test_get_primary_keys(schema='test_schema')
+    def test_get_pk_constraint_with_schema(self):
+        self._test_get_pk_constraint(schema='test_schema')
+
+    @testing.provide_metadata
+    def test_deprecated_get_primary_keys(self):
+        meta = self.metadata
+        users, _, _ = createTables(meta, schema=None)
+        meta.create_all()
+        insp = Inspector(meta.bind)
+        assert_raises_message(
+            sa_exc.SADeprecationWarning,
+            "Call to deprecated method get_primary_keys."
+            "  Use get_pk_constraint instead.",
+            insp.get_primary_keys, users.name
+        )
 
     @testing.provide_metadata
     def _test_get_foreign_keys(self, schema=None):

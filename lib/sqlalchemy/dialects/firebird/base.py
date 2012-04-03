@@ -474,7 +474,7 @@ class FBDialect(default.DefaultDialect):
             return None
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         # Query to extract the PK/FK constrained fields of the given table
         keyqry = """
         SELECT se.rdb$field_name AS fname
@@ -486,7 +486,7 @@ class FBDialect(default.DefaultDialect):
         # get primary key fields
         c = connection.execute(keyqry, ["PRIMARY KEY", tablename])
         pkfields = [self.normalize_name(r['fname']) for r in c.fetchall()]
-        return pkfields
+        return {'constrained_columns':pkfields, 'name':None}
 
     @reflection.cache
     def get_column_sequence(self, connection, 
@@ -541,7 +541,8 @@ class FBDialect(default.DefaultDialect):
         ORDER BY r.rdb$field_position
         """
         # get the PK, used to determine the eventual associated sequence
-        pkey_cols = self.get_primary_keys(connection, table_name)
+        pk_constraint = self.get_pk_constraint(connection, table_name)
+        pkey_cols = pk_constraint['constrained_columns']
 
         tablename = self.denormalize_name(table_name)
         # get all of the fields for this table
