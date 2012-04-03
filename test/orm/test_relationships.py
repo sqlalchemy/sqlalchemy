@@ -66,9 +66,13 @@ class _RelationshipErrors(object):
         else:
             assert_raises_message(
                 exc.ArgumentError,
-                "Could not determine join condition between "
-                "parent/child tables on relationship %s - "
-                "there are no foreign keys linking these tables.  " 
+                "Could not determine join "
+                "condition between parent/child tables on "
+                "relationship %s - there are multiple foreign key "
+                "paths linking the tables.  Specify the "
+                "'foreign_keys' argument, providing a list of those "
+                "columns which should be counted as containing a "
+                "foreign key reference to the parent table."
                 % (relname,),
                 fn, *arg, **kw)
 
@@ -91,7 +95,7 @@ class _RelationshipErrors(object):
                 exc.NoForeignKeysError,
                 "Could not determine join condition between "
                 "parent/child tables on relationship %s - "
-                "there are no foreign keys linking these tables. "
+                "there are no foreign keys linking these tables.  "
                 "Ensure that referencing columns are associated with a ForeignKey "
                 "or ForeignKeyConstraint, or specify a 'primaryjoin' "
                 "expression."
@@ -109,6 +113,14 @@ class _RelationshipErrors(object):
             r"are marked as foreign, either via the foreign\(\) annotation or "
             "via the foreign_keys argument."
             % relname,
+            fn, *arg, **kw
+        )
+
+    def _assert_raises_no_local_remote(self, fn, relname, *arg, **kw):
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Relationship %s could not determine "
+            "any local/remote column pairs." % relname,
             fn, *arg, **kw
         )
 
@@ -1793,7 +1805,7 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
         eq_(sess.query(Foo).filter_by(id=f2.id).one(),
             Foo(bars=[Bar(data='b3'), Bar(data='b4')]))
 
-class ViewOnlyComplexJoin(fixtures.MappedTest):
+class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
     """'viewonly' mappings with a complex join condition."""
 
     @classmethod
@@ -1877,9 +1889,7 @@ class ViewOnlyComplexJoin(fixtures.MappedTest):
             't1':relationship(T1),
             't3s':relationship(T3, secondary=t2tot3)})
         mapper(T3, t3)
-        assert_raises_message(sa.exc.ArgumentError,
-                                 "Specify remote_side argument",
-                                 sa.orm.configure_mappers)
+        self._assert_raises_no_local_remote(configure_mappers, "T1.t3s")
 
 
 class ExplicitLocalRemoteTest(fixtures.MappedTest):
@@ -2176,16 +2186,10 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
             'bs':relationship(B)
         })
         mapper(B, b)
-        assert_raises_message(
-            sa.exc.AmbiguousForeignKeysError,
-            "Could not determine join condition between "
-            "parent/child tables on relationship A.bs - "
-            "there are multiple foreign key paths linking "
-            "the tables.  Specify the 'foreign_keys' argument, "
-            "providing a list of those columns which "
-            "should be counted as containing a foreign "
-            "key reference to the parent table.",
-            sa.orm.configure_mappers
+        self._assert_raises_ambig_join(
+            configure_mappers,
+            "A.bs",
+            None
         )
 
     def test_with_fks_o2m(self):
@@ -2255,18 +2259,13 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
             'bs':relationship(B, secondary=a_to_b)
         })
         mapper(B, b)
-        assert_raises_message(
-            sa.exc.AmbiguousForeignKeysError,
-            "Could not determine join condition between "
-            "parent/child tables on relationship A.bs - "
-            "there are multiple foreign key paths linking "
-            "the tables via secondary table 'atob_ambiguous'.  "
-            "Specify the 'foreign_keys' argument, providing a "
-            "list of those columns which should be counted "
-            "as containing a foreign key reference from the "
-            "secondary table to each of the parent and child tables.",
-            sa.orm.configure_mappers
+
+        self._assert_raises_ambig_join(
+            configure_mappers,
+            "A.bs",
+            "atob_ambiguous"
         )
+
 
     def test_with_fks_m2m(self):
         A, B = self.classes.A, self.classes.B
@@ -2315,7 +2314,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
             'bars':relationship(Bar)})
         mapper(Bar, bars)
 
-        self._assert_raises_ambig_join(sa.orm.configure_mappers,
+        self._assert_raises_no_join(sa.orm.configure_mappers,
             "Foo.bars", None
         )
 
@@ -2329,10 +2328,11 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
             'foos':relationship(Foo)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine join condition between parent/child "
-            "tables on relationship", sa.orm.configure_mappers)
+        self._assert_raises_no_join(
+            configure_mappers,
+            "Foo.foos",
+            None
+        )
 
     def test_no_equated(self):
         bars, Foo, Bar, foos = (self.tables.bars,
@@ -2427,10 +2427,11 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
                             )})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError, 
-                "could not determine any local/remote column pairs",
-                sa.orm.configure_mappers)
+        self._assert_raises_no_local_remote(
+            configure_mappers,
+            "Foo.bars",
+        )
+
 
     def test_ambiguous_remoteside_m2o(self):
         bars, Foo, Bar, foos = (self.tables.bars,
@@ -2447,10 +2448,10 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
                             )})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError, 
-                "could not determine any local/remote column pairs",
-                sa.orm.configure_mappers)
+        self._assert_raises_no_local_remote(
+            configure_mappers,
+            "Foo.bars",
+        )
 
 
     def test_no_equated_self_ref_no_fks(self):
@@ -2605,7 +2606,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
         )
 
 
-class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
+class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2648,10 +2649,11 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
             'bars': relationship(Bar, secondary=foobars)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine join condition between parent/child tables "
-            "on relationship", sa.orm.configure_mappers)
+        self._assert_raises_no_join(
+            configure_mappers,
+            "Foo.bars", 
+            "foobars"
+        )
 
     def test_no_secondaryjoin(self):
         foobars, bars, Foo, Bar, foos = (self.tables.foobars,
@@ -2666,11 +2668,11 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
                             primaryjoin=foos.c.id > foobars.c.fid)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine join condition between parent/child tables "
-            "on relationship",
-            sa.orm.configure_mappers)
+        self._assert_raises_no_join(
+            configure_mappers,
+            "Foo.bars", 
+            "foobars"
+        )
 
     def test_no_fks(self):
         foobars_with_many_columns, bars, Bar, foobars, Foo, foos = (self.tables.foobars_with_many_columns,
@@ -2730,11 +2732,11 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
                              secondaryjoin=foobars.c.bid<=bars.c.id)})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not determine relationship direction for "
-            "primaryjoin condition",
-            configure_mappers)
+        self._assert_raises_no_equality(
+                configure_mappers, 
+                'foos.id > foobars.fid',
+                "Foo.bars",
+                "primary")
 
         sa.orm.clear_mappers()
         mapper(Foo, foos, properties={
@@ -2743,18 +2745,11 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
                              primaryjoin=foos.c.id > foobars_with_fks.c.fid,
                              secondaryjoin=foobars_with_fks.c.bid<=bars.c.id)})
         mapper(Bar, bars)
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            r"Could not locate any foreign-key-equated, locally mapped "
-             "column pairs for primaryjoin condition 'foos.id > "
-             "foobars_with_fks.fid' on relationship Foo.bars.  Ensure "
-             "that the referencing Column objects have a ForeignKey "
-             "present, or are otherwise part of a ForeignKeyConstraint "
-             "on their parent Table, or specify the foreign_keys "
-             "parameter to this relationship.  For more relaxed "
-             "rules on join conditions, the relationship may be marked "
-             "as viewonly=True.", 
-            configure_mappers)
+        self._assert_raises_no_equality(
+                configure_mappers, 
+                'foos.id > foobars_with_fks.fid',
+                "Foo.bars",
+                "primary")
 
         sa.orm.clear_mappers()
         mapper(Foo, foos, properties={
@@ -2780,21 +2775,12 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
                             secondaryjoin=foobars.c.bid <= bars.c.id,
                             foreign_keys=[foobars.c.fid])})
         mapper(Bar, bars)
-
-        assert_raises_message(sa.exc.ArgumentError,
-                              "Could not determine relationship "
-                              "direction for secondaryjoin condition "
-                              r"'foobars.bid \<\= bars.id', on "
-                              "relationship Foo.bars, using manual "
-                              "'foreign_keys' setting.  Do the columns "
-                              "in 'foreign_keys' represent all, and only, the "
-                              "'foreign' columns in this join "
-                              r"condition\?  Does the "
-                              "secondary Table already have adequate "
-                              "ForeignKey and/or ForeignKeyConstraint "
-                              r"objects established \(in which case "
-                              r"'foreign_keys' is usually unnecessary\)?"
-                              , sa.orm.configure_mappers)
+        self._assert_raises_no_relevant_fks(
+            configure_mappers,
+            "foobars.bid <= bars.id",
+            "Foo.bars",
+            "secondary"
+        )
 
     def test_no_equated_secondaryjoin(self):
         foobars, bars, Foo, Bar, foos = (self.tables.foobars,
@@ -2811,10 +2797,12 @@ class InvalidRelationshipEscalationTestM2M(fixtures.MappedTest):
                             foreign_keys=[foobars.c.fid, foobars.c.bid])})
         mapper(Bar, bars)
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            "Could not locate any foreign-key-equated, locally mapped column pairs for "
-            "secondaryjoin condition", sa.orm.configure_mappers)
+        self._assert_raises_no_equality(
+            configure_mappers,
+            "foobars.bid <= bars.id",
+            "Foo.bars",
+            "secondary"
+        )
 
 class ActiveHistoryFlagTest(_fixtures.FixtureTest):
     run_inserts = None
