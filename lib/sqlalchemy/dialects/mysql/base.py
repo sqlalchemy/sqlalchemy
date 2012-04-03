@@ -344,9 +344,9 @@ class _FloatType(_NumericType, sqltypes.Float):
                 (precision is None and scale is not None) or
                 (precision is not None and scale is None)
             ):
-           raise exc.ArgumentError(
-               "You must specify both precision and scale or omit "
-               "both altogether.")
+            raise exc.ArgumentError(
+                "You must specify both precision and scale or omit "
+                "both altogether.")
 
         super(_FloatType, self).__init__(precision=precision, asdecimal=asdecimal, **kw)
         self.scale = scale
