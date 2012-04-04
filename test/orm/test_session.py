@@ -1158,7 +1158,7 @@ class DisposedStates(fixtures.MappedTest):
         for obj in objs:
             state = attributes.instance_state(obj)
             sess.identity_map.discard(state)
-            state.dispose()
+            state._dispose()
 
     def _test_session(self, **kwargs):
         global sess

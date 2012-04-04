@@ -97,7 +97,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
 
-        state.modified_event(dict_, 
+        state._modified_event(dict_, 
                                 self,
                                 attributes.NEVER_SET)
 

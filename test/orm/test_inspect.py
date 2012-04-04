@@ -1,11 +1,12 @@
 """test the inspection registry system."""
 
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises, is_
 from sqlalchemy import exc, util
 from sqlalchemy import inspect
 from test.orm import _fixtures
-from sqlalchemy.orm import class_mapper, synonym
-from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.orm import class_mapper, synonym, Session
+from sqlalchemy.orm.attributes import instance_state, NO_VALUE
+from test.lib import testing
 
 class TestORMInspection(_fixtures.FixtureTest):
     @classmethod
@@ -26,169 +27,264 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         assert inspect(u1) is instance_state(u1)
 
-    def test_synonyms(self):
+    def test_column_collection_iterate(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        eq_(
+            list(insp.columns),
+            [user_table.c.id, user_table.c.name]
+        )
+        is_(
+            insp.columns.id, user_table.c.id
+        )
+
+    def test_primary_key(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        eq_(insp.primary_key, 
+            (user_table.c.id,)
+        )
+
+    def test_local_table(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        is_(insp.local_table, user_table)
+
+    def test_property(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        is_(insp.attr.id, class_mapper(User).get_property('id'))
+
+    def test_col_property(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        id_prop = insp.attr.id
+
+        eq_(id_prop.columns, [user_table.c.id])
+        is_(id_prop.expression, user_table.c.id)
+
+        assert not hasattr(id_prop, 'mapper')
+
+    def test_attr_keys(self):
+        User = self.classes.User
+        insp = inspect(User)
+        eq_(
+            set(insp.attr.keys()), 
+            set(['addresses', 'orders', 'id', 'name', 'name_syn'])
+        )
+
+    def test_col_filter(self):
+        User = self.classes.User
+        insp = inspect(User)
+        eq_(
+            list(insp.column_attrs),
+            [insp.get_property('id'), insp.get_property('name')]
+        )
+        eq_(
+            insp.column_attrs.keys(),
+            ['id', 'name']
+        )
+        is_(
+            insp.column_attrs.id,
+            User.id.property
+        )
+
+    def test_synonym_filter(self):
         User = self.classes.User
         syn = inspect(User).synonyms
 
-        # TODO: some of the synonym debacle in 0.7
-        # has led User.name_syn.property to be the 
-        # ColumnProperty.  not sure if we want that
-        # implicit jump in there though, perhaps get Query/etc. to 
-        # call upon "effective_property" or something like that
-
-        eq_(inspect(User).synonyms, {
-            "name_syn":class_mapper(User).get_property("name_syn")
+        eq_(
+            list(syn.keys()), ['name_syn']
+        )
+        is_(syn.name_syn, User.name_syn.original_property)
+        eq_(dict(syn), {
+            "name_syn":User.name_syn.original_property
         })
 
-    # TODO: test all these accessors...
+    def test_relationship_filter(self):
+        User = self.classes.User
+        rel = inspect(User).relationships
 
-"""
-# column collection
->>> b.columns
-[<id column>, <name column>]
+        eq_(
+            rel.addresses,
+            User.addresses.property
+        )
+        eq_(
+            set(rel.keys()), 
+            set(['orders', 'addresses'])
+        )
 
-# its a ColumnCollection
->>> b.columns.id
-<id column>
+    def test_insp_prop(self):
+        User = self.classes.User
+        prop = inspect(User.addresses)
+        is_(prop, User.addresses.property)
 
-# i.e. from mapper
->>> b.primary_key
-(<id column>, )
+    def test_rel_accessors(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        prop = inspect(User.addresses)
+        is_(prop.parent, class_mapper(User))
+        is_(prop.mapper, class_mapper(Address))
 
-# i.e. from mapper
->>> b.local_table
-<user table>
+        assert not hasattr(prop, 'columns')
+        assert not hasattr(prop, 'expression')
 
-# ColumnProperty
->>> b.attr.id.columns
-[<id column>]
+    def test_instance_state(self):
+        User = self.classes.User
+        u1 = User()
+        insp = inspect(u1)
+        is_(insp, instance_state(u1))
 
-# but perhaps we use a collection with some helpers
->>> b.attr.id.columns.first
-<id column>
+    def test_instance_state_attr(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
 
-# and a mapper?  its None since this is a column
->>> b.attr.id.mapper
-None
+        eq_(
+            set(insp.attr.keys()),
+            set(['id', 'name', 'name_syn', 'addresses', 'orders'])
+        )
+        eq_(
+            insp.attr.name.value,
+            'ed'
+        )
+        eq_(
+            insp.attr.name.loaded_value,
+            'ed'
+        )
 
-# attr is basically the _props
->>> b.attr.keys()
-['id', 'name', 'name_syn', 'addresses']
+    def test_instance_state_attr_passive_value_scalar(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        # value was not set, NO_VALUE
+        eq_(
+            insp.attr.id.loaded_value,
+            NO_VALUE
+        )
+        # regular accessor sets it
+        eq_(
+            insp.attr.id.value,
+            None
+        )
+        # now the None is there
+        eq_(
+            insp.attr.id.loaded_value,
+            None
+        )
 
-# b itself is likely just the mapper
->>> b
-<User mapper>
+    def test_instance_state_attr_passive_value_collection(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        # value was not set, NO_VALUE
+        eq_(
+            insp.attr.addresses.loaded_value,
+            NO_VALUE
+        )
+        # regular accessor sets it
+        eq_(
+            insp.attr.addresses.value,
+            []
+        )
+        # now the None is there
+        eq_(
+            insp.attr.addresses.loaded_value,
+            []
+        )
 
-# get only column attributes
->>> b.column_attrs
-[<id prop>, <name prop>]
+    def test_instance_state_attr_hist(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        hist = insp.attr.addresses.history
+        eq_(
+            hist.unchanged, None
+        )
+        u1.addresses
+        hist = insp.attr.addresses.history
+        eq_(
+            hist.unchanged, []
+        )
 
-# its a namespace
->>> b.column_attrs.id
-<id prop>
+    def test_instance_state_ident_transient(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        is_(insp.identity, None)
 
-# get only synonyms
->>> b.synonyms
-[<name syn prop>]
+    def test_instance_state_ident_persistent(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        s = Session(testing.db)
+        s.add(u1)
+        s.flush()
+        insp = inspect(u1)
+        eq_(insp.identity, (u1.id,))
+        is_(s.query(User).get(insp.identity), u1)
 
-# get only relationships
->>> b.relationships
-[<addresses prop>]
+    def test_identity_key(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        s = Session(testing.db)
+        s.add(u1)
+        s.flush()
+        insp = inspect(u1)
+        eq_(
+            insp.identity_key,
+            (User, (11, ))
+        )
 
-# its a namespace
->>> b.relationships.addresses
-<addresses prop>
+    def test_persistence_states(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
 
-# point inspect() at a class level attribute,
-# basically returns ".property"
->>> b = inspect(User.addresses)
->>> b
-<addresses prop>
+        eq_(
+            (insp.transient, insp.pending,
+            insp.persistent, insp.detached),
+            (True, False, False, False)
+        )
+        s = Session(testing.db)
+        s.add(u1)
 
-# mapper
->>> b.mapper
-<Address mapper>
+        eq_(
+            (insp.transient, insp.pending,
+            insp.persistent, insp.detached),
+            (False, True, False, False)
+        )
 
-# None columns collection, just like columnprop has empty mapper
->>> b.columns
-None
+        s.flush()
+        eq_(
+            (insp.transient, insp.pending,
+            insp.persistent, insp.detached),
+            (False, False, True, False)
+        )
+        s.expunge(u1)
+        eq_(
+            (insp.transient, insp.pending,
+            insp.persistent, insp.detached),
+            (False, False, False, True)
+        )
 
-# the parent
->>> b.parent
-<User mapper>
+    def test_session_accessor(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
 
-# __clause_element__()
->>> b.expression
-User.id==Address.user_id
+        is_(insp.session, None)
+        s = Session()
+        s.add(u1)
+        is_(insp.session, s)
 
->>> inspect(User.id).expression
-<id column with ORM annotations>
+    def test_object_accessor(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        is_(insp.object, u1)
 
-
-# inspect works on instances !  
->>> u1 = User(id=3, name='x')
->>> b = inspect(u1)
-
-# what's b here ?  probably InstanceState
->>> b
-<InstanceState>
-
->>> b.attr.keys()
-['id', 'name', 'name_syn', 'addresses']
-
-# this is class level stuff - should this require b.mapper.columns ?
->>> b.columns
-[<id column>, <name column>]
-
-# does this return '3'?  or an object?
->>> b.attr.id
-<magic attribute inspect thing>
-
-# or does this ?
->>> b.attr.id.value 
-3
-
->>> b.attr.id.history
-<history object>
-
->>> b.attr.id.history.unchanged
-3
-
->>> b.attr.id.history.deleted
-None
-
-# lets assume the object is persistent
->>> s = Session()
->>> s.add(u1)
->>> s.commit()
-
-# big one - the primary key identity !  always
-# works in query.get()
->>> b.identity
-[3]
-
-# the mapper level key
->>> b.identity_key
-(User, [3])
-
->>> b.persistent
-True
-
->>> b.transient
-False
-
->>> b.deleted
-False
-
->>> b.detached
-False
-
->>> b.session
-<session>
-
-# the object.  this navigates obj()
-# of course, would be nice if it was b.obj...
->>> b.object_
-<User instance u1>
-
-"""

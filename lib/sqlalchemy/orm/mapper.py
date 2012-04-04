@@ -1394,7 +1394,7 @@ class Mapper(object):
                 yield c
 
     @util.memoized_property
-    def properties(self):
+    def attr(self):
         if _new_mappers:
             configure_mappers()
         return util.ImmutableProperties(self._props)
@@ -1418,10 +1418,10 @@ class Mapper(object):
     def _filter_properties(self, type_):
         if _new_mappers:
             configure_mappers()
-        return dict(
+        return util.ImmutableProperties(dict(
             (k, v) for k, v in self._props.iteritems()
             if isinstance(v, type_)
-        )
+        ))
 
     @_memoized_configured_property
     def _get_clause(self):
