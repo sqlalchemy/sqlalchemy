@@ -750,7 +750,8 @@ class QueryUnicodeTest(fixtures.TestBase):
         finally:
             meta.drop_all()
 
-class QueryTest(fixtures.TestBase):
+from test.lib.assertsql import ExactSQL
+class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = 'mssql'
 
     def test_fetchid_trigger(self):
@@ -817,6 +818,27 @@ class QueryTest(fixtures.TestBase):
             tr.commit()
             con.execute("""drop trigger paj""")
             meta.drop_all()
+
+    @testing.provide_metadata
+    def test_disable_scope_identity(self):
+        engine = engines.testing_engine(options={"use_scope_identity":False})
+        metadata = self.metadata
+        metadata.bind = engine
+        t1 = Table('t1', metadata,
+                Column('id', Integer, primary_key=True),
+                implicit_returning=False
+        )
+        metadata.create_all()
+
+        self.assert_sql_execution(
+                testing.db,
+                lambda: engine.execute(t1.insert()),
+                ExactSQL("INSERT INTO t1 DEFAULT VALUES"),
+                # we dont have an event for 
+                # "SELECT @@IDENTITY" part here.
+                # this will be in 0.8 with #2459
+        )
+        assert not engine.dialect.use_scope_identity
 
     def test_insertid_schema(self):
         meta = MetaData(testing.db)

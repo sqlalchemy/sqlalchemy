@@ -242,7 +242,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def __init__(self, description_encoding='latin-1', **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.description_encoding = description_encoding
-        self.use_scope_identity = self.dbapi and \
+        self.use_scope_identity = self.use_scope_identity and \
+                        self.dbapi and \
                         hasattr(self.dbapi.Cursor, 'nextset')
         self._need_decimal_fix = self.dbapi and \
                             self._dbapi_version() < (2, 1, 8)

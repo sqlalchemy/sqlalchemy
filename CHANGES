@@ -42,6 +42,15 @@ CHANGES
     passes Python unicode literals to PyODBC 
     or not.
 
+  - [bug] Repaired the use_scope_identity
+    create_engine() flag when using the pyodbc
+    dialect.  Previously this flag would be
+    ignored if set to False.  When set to False,
+    you'll get "SELECT @@identity" after each 
+    INSERT to get at the last inserted ID,
+    for those tables which have "implicit_returning"
+    set to False.
+
 - postgresql
   - [feature] Added new for_update/with_lockmode()
     options for Postgresql: for_update="read"/

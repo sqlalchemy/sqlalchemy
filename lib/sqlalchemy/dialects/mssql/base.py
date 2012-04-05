@@ -146,7 +146,7 @@ Enabling Snapshot Isolation
 
 Not necessarily specific to SQLAlchemy, SQL Server has a default transaction 
 isolation mode that locks entire tables, and causes even mildly concurrent
-applications to have long held locks and frequent deadlocks.   
+applications to have long held locks and frequent deadlocks.
 Enabling snapshot isolation for the database as a whole is recommended 
 for modern levels of concurrency support.  This is accomplished via the 
 following ALTER DATABASE commands executed at the SQL prompt::
@@ -168,7 +168,7 @@ deprecated and will be removed in 0.8 - the ``s.in_()``/``~s.in_()`` operators
 should be used when IN/NOT IN are desired.
 
 For the time being, the existing behavior prevents a comparison
-between scalar select and another value that actually wants to use ``=``.  
+between scalar select and another value that actually wants to use ``=``.
 To remove this behavior in a forwards-compatible way, apply this
 compilation rule by placing the following code at the module import
 level::
@@ -176,7 +176,7 @@ level::
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.sql.expression import _BinaryExpression
     from sqlalchemy.sql.compiler import SQLCompiler
-    
+
     @compiles(_BinaryExpression, 'mssql')
     def override_legacy_binary(element, compiler, **kw):
         return SQLCompiler.visit_binary(compiler, element, **kw)
@@ -689,18 +689,22 @@ class MSExecutionContext(default.DefaultExecutionContext):
                                         not self.executemany
 
             if self._enable_identity_insert:
-                self.cursor.execute("SET IDENTITY_INSERT %s ON" % 
-                    self.dialect.identifier_preparer.format_table(tbl))
+                self.root_connection._cursor_execute(self.cursor, 
+                    "SET IDENTITY_INSERT %s ON" % 
+                    self.dialect.identifier_preparer.format_table(tbl),
+                    ())
 
     def post_exec(self):
         """Disable IDENTITY_INSERT if enabled."""
 
+        conn = self.root_connection
         if self._select_lastrowid:
             if self.dialect.use_scope_identity:
-                self.cursor.execute(
-                "SELECT scope_identity() AS lastrowid", ())
+                conn._cursor_execute(self.cursor, 
+                    "SELECT scope_identity() AS lastrowid", ())
             else:
-                self.cursor.execute("SELECT @@identity AS lastrowid", ())
+                conn._cursor_execute(self.cursor, 
+                    "SELECT @@identity AS lastrowid", ())
             # fetchall() ensures the cursor is consumed without closing it
             row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
@@ -710,10 +714,11 @@ class MSExecutionContext(default.DefaultExecutionContext):
             self._result_proxy = base.FullyBufferedResultProxy(self)
 
         if self._enable_identity_insert:
-            self.cursor.execute(
+            conn._cursor_execute(self.cursor, 
                         "SET IDENTITY_INSERT %s OFF" %
                             self.dialect.identifier_preparer.
-                                format_table(self.compiled.statement.table)
+                                format_table(self.compiled.statement.table),
+                        ()
                         )
 
     def get_lastrowid(self):
