@@ -1395,7 +1395,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 auto_inc_column is not list(table.primary_key)[0]:
             if constraint_string:
                 constraint_string += ", \n\t"
-            constraint_string += "KEY `idx_autoinc_%s`(`%s`)" % (auto_inc_column.name, \
+            constraint_string += "KEY `idx_autoinc_%s`(%s)" % (auto_inc_column.name, \
                             self.preparer.format_column(auto_inc_column))
 
         return constraint_string

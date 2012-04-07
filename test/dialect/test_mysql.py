@@ -1411,7 +1411,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL, id INTEGER NOT NULL '
                             'AUTO_INCREMENT, PRIMARY KEY (assigned_id, '
-                            'id), KEY `idx_autoinc_id`(`id`))ENGINE=Inn'
+                            'id), KEY `idx_autoinc_id`(id))ENGINE=Inn'
                             'oDB')
 
         t1 = Table('sometable', MetaData(), Column('assigned_id',
@@ -1423,6 +1423,22 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                             'INTEGER NOT NULL AUTO_INCREMENT, id '
                             'INTEGER NOT NULL, PRIMARY KEY '
                             '(assigned_id, id))ENGINE=InnoDB')
+
+    def test_innodb_autoincrement_reserved_word_column_name(self):
+        t1 = Table(
+            'sometable', MetaData(),
+            Column('id', Integer(), primary_key=True, autoincrement=False),
+            Column('order', Integer(), primary_key=True, autoincrement=True),
+            mysql_engine='InnoDB')
+        self.assert_compile(
+            schema.CreateTable(t1),
+            'CREATE TABLE sometable ('
+            'id INTEGER NOT NULL, '
+            '`order` INTEGER NOT NULL AUTO_INCREMENT, '
+            'PRIMARY KEY (id, `order`), '
+            'KEY `idx_autoinc_order`(`order`)'
+            ')ENGINE=InnoDB')
+
 
 class SQLModeDetectionTest(fixtures.TestBase):
     __only_on__ = 'mysql'
