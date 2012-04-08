@@ -61,6 +61,13 @@ CHANGES
     respectively.  Courtesy Diana Clarke 
     [ticket:2445]
 
+- mysql
+  - [bug] Fixed bug whereby column name inside 
+    of "KEY" clause for autoincrement composite
+    column with InnoDB would double quote a 
+    name that's a reserved word.  Courtesy Jeff
+    Dairiki. [ticket:2460]
+
 0.7.6
 =====
 - orm

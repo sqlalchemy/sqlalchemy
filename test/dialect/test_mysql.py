@@ -1411,7 +1411,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                             'CREATE TABLE sometable (assigned_id '
                             'INTEGER NOT NULL, id INTEGER NOT NULL '
                             'AUTO_INCREMENT, PRIMARY KEY (assigned_id, '
-                            'id), KEY `idx_autoinc_id`(id))ENGINE=Inn'
+                            'id), KEY idx_autoinc_id (id))ENGINE=Inn'
                             'oDB')
 
         t1 = Table('sometable', MetaData(), Column('assigned_id',
@@ -1436,7 +1436,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             'id INTEGER NOT NULL, '
             '`order` INTEGER NOT NULL AUTO_INCREMENT, '
             'PRIMARY KEY (id, `order`), '
-            'KEY `idx_autoinc_order`(`order`)'
+            'KEY idx_autoinc_order (`order`)'
             ')ENGINE=InnoDB')
 
 
