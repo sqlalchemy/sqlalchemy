@@ -35,6 +35,12 @@ CHANGES
     as an Index could be a placeholder for just an 
     index of a certain name.
 
+  - [feature] Added new connection event
+    dbapi_error(). Is called for all DBAPI-level
+    errors passing the original DBAPI exception
+    before SQLAlchemy modifies the state 
+    of the cursor.
+
 - mssql
   - [feature] Added interim create_engine flag
     supports_unicode_binds to PyODBC dialect,

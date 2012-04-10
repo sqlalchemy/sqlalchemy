@@ -401,6 +401,36 @@ class ConnectionEvents(event.Events):
                         parameters, context, executemany):
         """Intercept low-level cursor execute() events."""
 
+    def dbapi_error(self, conn, cursor, statement, parameters, 
+                        context, exception):
+        """Intercept a raw DBAPI error.
+        
+        This event is called with the DBAPI exception instance 
+        received from the DBAPI itself, *before* SQLAlchemy wraps the 
+        exception with it's own exception wrappers, and before any
+        other operations are performed on the DBAPI cursor; the
+        existing transaction remains in effect as well as any state
+        on the cursor.
+        
+        The use case here is to inject low-level exception handling
+        into an :class:`.Engine`, typically for logging and
+        debugging purposes.   In general, user code should **not** modify
+        any state or throw any exceptions here as this will
+        interfere with SQLAlchemy's cleanup and error handling
+        routines.
+        
+        Subsequent to this hook, SQLAlchemy may attempt any
+        number of operations on the connection/cursor, including
+        closing the cursor, rolling back of the transaction in the 
+        case of connectionless execution, and disposing of the entire
+        connection pool if a "disconnect" was detected.   The
+        exception is then wrapped in a SQLAlchemy DBAPI exception
+        wrapper and re-thrown.
+        
+        New in 0.7.7.
+
+        """
+
     def begin(self, conn):
         """Intercept begin() events."""
 

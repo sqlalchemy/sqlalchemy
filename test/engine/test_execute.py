@@ -984,6 +984,23 @@ class EngineEventsTest(fixtures.TestBase):
         e1.execute(select([1]).compile(dialect=e1.dialect))
         e1._execute_compiled(select([1]).compile(dialect=e1.dialect), [], {})
 
+    def test_exception_event(self):
+        engine = engines.testing_engine()
+        canary = []
+
+        @event.listens_for(engine, 'dbapi_error')
+        def err(conn, cursor, stmt, parameters, context, exception):
+            canary.append((stmt, parameters, exception))
+
+        conn = engine.connect()
+        try:
+            conn.execute("SELECT FOO FROM I_DONT_EXIST")
+            assert False
+        except tsa.exc.DBAPIError, e:
+            assert canary[0][2] is e.orig
+            assert canary[0][0] == "SELECT FOO FROM I_DONT_EXIST"
+
+
     @testing.fails_on('firebird', 'Data type unknown')
     def test_execute_events(self):
 

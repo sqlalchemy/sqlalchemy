@@ -1806,10 +1806,19 @@ class Connection(Connectable):
                 (statement is not None and context is None)
 
             if should_wrap and context:
+                if self._has_events:
+                    self.engine.dispatch.dbapi_error(self, 
+                                                    cursor, 
+                                                    statement, 
+                                                    parameters, 
+                                                    context, 
+                                                    e)
                 context.handle_dbapi_exception(e)
 
             is_disconnect = isinstance(e, self.dialect.dbapi.Error) and \
                                 self.dialect.is_disconnect(e, self.__connection, cursor)
+
+
             if is_disconnect:
                 self.invalidate(e)
                 self.engine.dispose()
