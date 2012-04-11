@@ -678,9 +678,10 @@ class Mapper(object):
                     self._reconstructor = method
                     event.listen(manager, 'load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
+                    include_removes = getattr(method, "__sa_include_removes__", False)
                     for name in method.__sa_validators__:
                         self.validators = self.validators.union(
-                            {name : method}
+                            {name : (method, include_removes)}
                         )
 
         manager.info[_INSTRUMENTOR] = self
@@ -2291,7 +2292,7 @@ def reconstructor(fn):
     fn.__sa_reconstructor__ = True
     return fn
 
-def validates(*names):
+def validates(*names, **kw):
     """Decorate a method as a 'validator' for one or more named properties.
 
     Designates a method as a validator, a method which receives the
@@ -2307,9 +2308,16 @@ def validates(*names):
     an assertion to avoid recursion overflows.  This is a reentrant
     condition which is not supported.
 
+    :param \*names: list of attribute names to be validated.
+    :param include_removes: if True, "remove" events will be 
+     sent as well - the validation function must accept an additional
+     argument "is_remove" which will be a boolean.  New in 0.7.7.
+
     """
+    include_removes = kw.pop('include_removes', False)
     def wrap(fn):
         fn.__sa_validators__ = names
+        fn.__sa_include_removes__ = include_removes
         return fn
     return wrap
 

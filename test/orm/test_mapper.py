@@ -1950,10 +1950,11 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 class ValidatorTest(_fixtures.FixtureTest):
     def test_scalar(self):
         users = self.tables.users
-
+        canary = []
         class User(fixtures.ComparableEntity):
             @validates('name')
             def validate_name(self, key, name):
+                canary.append((key, name))
                 assert name != 'fred'
                 return name + ' modified'
 
@@ -1963,6 +1964,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         eq_(u1.name, 'ed modified')
         assert_raises(AssertionError, setattr, u1, "name", "fred")
         eq_(u1.name, 'ed modified')
+        eq_(canary, [('name', 'ed'), ('name', 'fred')])
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1973,9 +1975,11 @@ class ValidatorTest(_fixtures.FixtureTest):
                                 self.tables.addresses,
                                 self.classes.Address)
 
+        canary = []
         class User(fixtures.ComparableEntity):
             @validates('addresses')
             def validate_address(self, key, ad):
+                canary.append((key, ad))
                 assert '@' in ad.email_address
                 return ad
 
@@ -1983,8 +1987,11 @@ class ValidatorTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         sess = create_session()
         u1 = User(name='edward')
-        assert_raises(AssertionError, u1.addresses.append, Address(email_address='noemail'))
-        u1.addresses.append(Address(id=15, email_address='foo@bar.com'))
+        a0 = Address(email_address='noemail')
+        assert_raises(AssertionError, u1.addresses.append, a0)
+        a1 = Address(id=15, email_address='foo@bar.com')
+        u1.addresses.append(a1)
+        eq_(canary, [('addresses', a0), ('addresses', a1)])
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -2019,9 +2026,58 @@ class ValidatorTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
 
         eq_(
-            dict((k, v.__name__) for k, v in u_m.validators.items()),
+            dict((k, v[0].__name__) for k, v in u_m.validators.items()),
             {'name':'validate_name', 
             'addresses':'validate_address'}
+        )
+
+    def test_validator_w_removes(self):
+        users, addresses, Address = (self.tables.users,
+                                     self.tables.addresses,
+                                     self.classes.Address)
+        canary = []
+        class User(fixtures.ComparableEntity):
+
+            @validates('name', include_removes=True)
+            def validate_name(self, key, item, remove):
+                canary.append((key, item, remove))
+                return item
+
+            @validates('addresses', include_removes=True)
+            def validate_address(self, key, item, remove):
+                canary.append((key, item, remove))
+                return item
+
+        mapper(User,
+                      users,
+                      properties={'addresses':relationship(Address)})
+        mapper(Address, addresses)
+
+        u1 = User()
+        u1.name = "ed"
+        u1.name = "mary"
+        del u1.name
+        a1, a2, a3 = Address(), Address(), Address()
+        u1.addresses.append(a1)
+        u1.addresses.remove(a1)
+        u1.addresses = [a1, a2]
+        u1.addresses = [a2, a3]
+
+        eq_(canary, [
+                ('name', 'ed', False), 
+                ('name', 'mary', False), 
+                ('name', 'mary', True), 
+                # append a1
+                ('addresses', a1, False), 
+                # remove a1
+                ('addresses', a1, True), 
+                # set to [a1, a2] - this is two appends
+                ('addresses', a1, False), ('addresses', a2, False),
+                # set to [a2, a3] - this is a remove of a1,
+                # append of a3.  the appends are first.
+                ('addresses', a3, False),
+                ('addresses', a1, True), 
+            ] 
         )
 
 class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):

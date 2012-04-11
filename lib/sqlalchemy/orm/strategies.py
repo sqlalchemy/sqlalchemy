@@ -45,11 +45,11 @@ def _register_attribute(strategy, mapper, useobject,
         listen_hooks.append(single_parent_validator)
 
     if prop.key in prop.parent.validators:
+        fn, include_removes = prop.parent.validators[prop.key]
         listen_hooks.append(
             lambda desc, prop: mapperutil._validator_events(desc, 
-                                prop.key, 
-                                prop.parent.validators[prop.key])
-        )
+                                prop.key, fn, include_removes)
+            )
 
     if useobject:
         listen_hooks.append(unitofwork.track_cascade_events)

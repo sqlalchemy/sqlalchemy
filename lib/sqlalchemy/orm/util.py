@@ -68,24 +68,36 @@ class CascadeOptions(frozenset):
             ",".join([x for x in sorted(self)])
         )
 
-def _validator_events(desc, key, validator):
+def _validator_events(desc, key, validator, include_removes):
     """Runs a validation method on an attribute value to be set or appended."""
 
-    def append(state, value, initiator):
-        return validator(state.obj(), key, value)
+    if include_removes:
+        def append(state, value, initiator):
+            return validator(state.obj(), key, value, False)
 
-    def set_(state, value, oldvalue, initiator):
-        return validator(state.obj(), key, value)
+        def set_(state, value, oldvalue, initiator):
+            return validator(state.obj(), key, value, False)
+
+        def remove(state, value, initiator):
+            validator(state.obj(), key, value, True)
+    else:
+        def append(state, value, initiator):
+            return validator(state.obj(), key, value)
+
+        def set_(state, value, oldvalue, initiator):
+            return validator(state.obj(), key, value)
 
     event.listen(desc, 'append', append, raw=True, retval=True)
     event.listen(desc, 'set', set_, raw=True, retval=True)
+    if include_removes:
+        event.listen(desc, "remove", remove, raw=True, retval=True)
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=True):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 
     See  :ref:`concrete_inheritance` for an example of how
     this is used.
-    
+
     :param table_map: mapping of polymorphic identities to 
      :class:`.Table` objects.
     :param typecolname: string name of a "discriminator" column, which will be 
@@ -236,7 +248,7 @@ class AliasedClass(object):
         session.query(User, user_alias).\\
                         join((user_alias, User.id > user_alias.id)).\\
                         filter(User.name==user_alias.name)
-    
+
     The resulting object is an instance of :class:`.AliasedClass`, however
     it implements a ``__getattribute__()`` scheme which will proxy attribute
     access to that of the ORM class being aliased.  All classmethods
@@ -244,7 +256,7 @@ class AliasedClass(object):
     hybrids created with the :ref:`hybrids_toplevel` extension,
     which will receive the :class:`.AliasedClass` as the "class" argument
     when classmethods are called.
-    
+
     :param cls: ORM mapped entity which will be "wrapped" around an alias.
     :param alias: a selectable, such as an :func:`.alias` or :func:`.select`
      construct, which will be rendered in place of the mapped table of the
@@ -259,28 +271,28 @@ class AliasedClass(object):
      otherwise have a column that corresponds to one on the entity.  The 
      use case for this is when associating an entity with some derived
      selectable such as one that uses aggregate functions::
-     
+
         class UnitPrice(Base):
             __tablename__ = 'unit_price'
             ...
             unit_id = Column(Integer)
             price = Column(Numeric)
-        
+
         aggregated_unit_price = Session.query(
                                     func.sum(UnitPrice.price).label('price')
                                 ).group_by(UnitPrice.unit_id).subquery()
-                                
+
         aggregated_unit_price = aliased(UnitPrice, alias=aggregated_unit_price, adapt_on_names=True)
-    
+
      Above, functions on ``aggregated_unit_price`` which
      refer to ``.price`` will return the
      ``fund.sum(UnitPrice.price).label('price')`` column,
      as it is matched on the name "price".  Ordinarily, the "price" function wouldn't
      have any "column correspondence" to the actual ``UnitPrice.price`` column
      as it is not a proxy of the original.
-     
+
      ``adapt_on_names`` is new in 0.7.3.
-        
+
     """
     def __init__(self, cls, alias=None, name=None, adapt_on_names=False):
         self.__mapper = _class_to_mapper(cls)
@@ -447,7 +459,7 @@ class _ORMJoin(expression.Join):
 
 def join(left, right, onclause=None, isouter=False, join_to_left=True):
     """Produce an inner join between left and right clauses.
-    
+
     :func:`.orm.join` is an extension to the core join interface
     provided by :func:`.sql.expression.join()`, where the
     left and right selectables may be not only core selectable
@@ -460,7 +472,7 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     in whatever form it is passed, to the selectable
     passed as the left side.  If False, the onclause
     is used as is.
-    
+
     :func:`.orm.join` is not commonly needed in modern usage,
     as its functionality is encapsulated within that of the
     :meth:`.Query.join` method, which features a
@@ -468,22 +480,22 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     by itself.  Explicit usage of :func:`.orm.join` 
     with :class:`.Query` involves usage of the 
     :meth:`.Query.select_from` method, as in::
-    
+
         from sqlalchemy.orm import join
         session.query(User).\\
             select_from(join(User, Address, User.addresses)).\\
             filter(Address.email_address=='foo@bar.com')
-    
+
     In modern SQLAlchemy the above join can be written more 
     succinctly as::
-    
+
         session.query(User).\\
                 join(User.addresses).\\
                 filter(Address.email_address=='foo@bar.com')
 
     See :meth:`.Query.join` for information on modern usage
     of ORM level joins.
-    
+
     """
     return _ORMJoin(left, right, onclause, isouter, join_to_left)
 

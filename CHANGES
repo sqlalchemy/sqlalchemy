@@ -12,6 +12,13 @@ CHANGES
     directives in statements.  Courtesy
     Diana Clarke [ticket:2443]
 
+  - [feature] Added new flag to @validates
+    include_removes.  When True, collection
+    remove and attribute del events
+    will also be sent to the validation function,
+    which accepts an additional argument
+    "is_remove" when this flag is used.
+
   - [bug] Fixed bug whereby polymorphic_on
     column that's not otherwise mapped on the 
     class would be incorrectly included
