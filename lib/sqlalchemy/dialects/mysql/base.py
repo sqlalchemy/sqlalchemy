@@ -2031,7 +2031,7 @@ class MySQLDialect(default.DefaultDialect):
         rp = connection.execute("SHOW FULL TABLES FROM %s" %
                 self.identifier_preparer.quote_identifier(schema))
         return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
-                                                    if 'VIEW' in row[1]]
+                                                    if row[1] in ('VIEW', 'SYSTEM VIEW')]
 
     @reflection.cache
     def get_table_options(self, connection, table_name, schema=None, **kw):

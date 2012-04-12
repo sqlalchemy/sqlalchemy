@@ -81,6 +81,11 @@ CHANGES
     name that's a reserved word.  Courtesy Jeff
     Dairiki. [ticket:2460]
 
+  - [bug] Fixed bug whereby get_view_names() for
+    "information_schema" schema would fail
+    to retrieve views marked as "SYSTEM VIEW".
+    courtesy Matthew Turland.
+
 0.7.6
 =====
 - orm
