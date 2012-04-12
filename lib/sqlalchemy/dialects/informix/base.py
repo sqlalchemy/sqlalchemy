@@ -23,7 +23,7 @@ from sqlalchemy import types as sqltypes
 RESERVED_WORDS = set(
     ["abs", "absolute", "access", "access_method", "acos", "active", "add",
     "address", "add_months", "admin", "after", "aggregate", "alignment",
-    "all", "allocate", "all_rows", "altere", "and", "ansi", "any", "append",
+    "all", "allocate", "all_rows", "alter", "and", "ansi", "any", "append",
     "array", "as", "asc", "ascii", "asin", "at", "atan", "atan2", "attach",
     "attributes", "audit", "authentication", "authid", "authorization",
     "authorized", "auto", "autofree", "auto_reprepare", "auto_stat_mode",
