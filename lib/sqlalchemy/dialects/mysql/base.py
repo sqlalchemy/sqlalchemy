@@ -2021,7 +2021,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        charset = self._connection_charset
         if self.server_version_info < (5, 0, 2):
             raise NotImplementedError
         if schema is None:
@@ -2032,7 +2031,7 @@ class MySQLDialect(default.DefaultDialect):
         rp = connection.execute("SHOW FULL TABLES FROM %s" %
                 self.identifier_preparer.quote_identifier(schema))
         return [row[0] for row in self._compat_fetchall(rp, charset=charset)\
-                                                    if row[1] == 'VIEW']
+                                                    if 'VIEW' in row[1]]
 
     @reflection.cache
     def get_table_options(self, connection, table_name, schema=None, **kw):
