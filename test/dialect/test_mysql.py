@@ -108,6 +108,14 @@ class DialectTest(fixtures.TestBase):
             }
         )
 
+    @testing.only_on(['mysql'], 'requires information_schema')
+    @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')
+    def test_system_views(self):
+        dialect = testing.db.dialect
+        connection = testing.db.connect()
+        view_names = dialect.get_view_names(connection, "information_schema")
+        self.assert_('TABLES' in view_names)
+
 class TypesTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     "Test MySQL column types"
 
