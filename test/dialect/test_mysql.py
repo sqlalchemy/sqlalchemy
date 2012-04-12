@@ -108,8 +108,8 @@ class DialectTest(fixtures.TestBase):
             }
         )
 
-    @testing.only_on(['mysql'],
-                    'requires information_schema')
+    @testing.only_on(['mysql'], 'requires information_schema')
+    @testing.exclude('mysql', '<', (5, 0, 0), 'no information_schema support')
     def test_system_views(self):
         dialect = testing.db.dialect
         connection = testing.db.connect()
