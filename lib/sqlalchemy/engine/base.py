@@ -2355,7 +2355,11 @@ class Engine(Connectable, log.Identified):
 
         """
         conn = self.contextual_connect(close_with_result=close_with_result)
-        trans = conn.begin()
+        try:
+            trans = conn.begin()
+        except:
+            conn.close()
+            raise
         return Engine._trans_ctx(conn, trans, close_with_result)
 
     def transaction(self, callable_, *args, **kwargs):

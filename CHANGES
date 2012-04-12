@@ -48,6 +48,11 @@ CHANGES
     before SQLAlchemy modifies the state 
     of the cursor.
 
+  - [bug] If conn.begin() fails when calling
+    "with engine.begin()", the newly acquired
+    Connection is closed explicitly before 
+    propagating the exception onward normally.
+
 - mssql
   - [feature] Added interim create_engine flag
     supports_unicode_binds to PyODBC dialect,

@@ -358,6 +358,23 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
         testing.run_as_contextmanager(ctx, fn, 5, value=8)
         self._assert_fn(5, value=8)
 
+    def test_transaction_engine_ctx_begin_fails(self):
+        engine = engines.testing_engine()
+        class MockConnection(Connection):
+            closed = False
+            def begin(self):
+                raise Exception("boom")
+
+            def close(self):
+                MockConnection.closed = True
+        engine._connection_cls = MockConnection
+        fn = self._trans_fn()
+        assert_raises(
+            Exception, 
+            engine.begin
+        )
+        assert MockConnection.closed
+
     def test_transaction_engine_ctx_rollback(self):
         fn = self._trans_rollback_fn()
         ctx = testing.db.begin()
