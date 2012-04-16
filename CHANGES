@@ -91,6 +91,14 @@ CHANGES
     to retrieve views marked as "SYSTEM VIEW".
     courtesy Matthew Turland.
 
+  - [bug] Fixed bug whereby if cast() is used
+    on a SQL expression whose type is not supported
+    by cast() and therefore CAST isn't rendered by
+    the dialect, the order of evaluation could change
+    if the casted expression required that it be
+    grouped; grouping is now applied to those
+    expressions.  [ticket:2467]
+
 0.7.6
 =====
 - orm

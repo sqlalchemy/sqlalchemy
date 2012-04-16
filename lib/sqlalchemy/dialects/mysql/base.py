@@ -1273,11 +1273,11 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_cast(self, cast, **kwargs):
         # No cast until 4, no decimals until 5.
         if not self.dialect._supports_cast:
-            return self.process(cast.clause)
+            return self.process(cast.clause.self_group())
 
         type_ = self.process(cast.typeclause)
         if type_ is None:
-            return self.process(cast.clause)
+            return self.process(cast.clause.self_group())
 
         return 'CAST(%s AS %s)' % (self.process(cast.clause), type_)
 

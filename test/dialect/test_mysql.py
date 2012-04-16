@@ -1379,6 +1379,21 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                     dialect=dialect
             )
 
+    def test_cast_grouped_expression_non_castable(self):
+        self.assert_compile(
+            cast(sql.column('x') + sql.column('y'), Float),
+            "(x + y)"
+        )
+
+    def test_cast_grouped_expression_pre_4(self):
+        dialect = mysql.dialect()
+        dialect.server_version_info = (3, 2, 3)
+        self.assert_compile(
+            cast(sql.column('x') + sql.column('y'), Integer),
+            "(x + y)",
+            dialect=dialect
+        )
+
     def test_extract(self):
         t = sql.table('t', sql.column('col1'))
 
