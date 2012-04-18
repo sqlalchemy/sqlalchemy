@@ -985,6 +985,22 @@ class MSSQLCompiler(compiler.SQLCompiler):
         else:
             return ""
 
+    def update_from_clause(self, update_stmt,
+                                from_table, extra_froms,
+                                from_hints,
+                                **kw):
+        """Render the UPDATE..FROM clause specific to MSSQL.
+        
+        In MSSQL, if the UPDATE statement involves an alias of the table to
+        be updated, then the table itself must be added to the FROM list as
+        well. Otherwise, it is optional. Here, we add it regardless.
+        
+        """
+        return "FROM " + ', '.join(
+                    t._compiler_dispatch(self, asfrom=True,
+                                    fromhints=from_hints, **kw)
+                    for t in [from_table] + extra_froms)
+
 class MSSQLStrictCompiler(MSSQLCompiler):
     """A subclass of MSSQLCompiler which disables the usage of bind
     parameters where not allowed natively by MS-SQL.

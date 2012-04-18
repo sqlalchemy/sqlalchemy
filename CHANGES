@@ -68,6 +68,15 @@ CHANGES
     INSERT to get at the last inserted ID,
     for those tables which have "implicit_returning"
     set to False.
+ 
+  - [bug] UPDATE..FROM syntax with SQL Server
+    requires that the updated table be present
+    in the FROM clause when an alias of that
+    table is also present in the FROM clause.
+    The updated table is now always present
+    in the FROM, when FROM is present 
+    in the first place.  Courtesy sayap.
+    [ticket:2468]
 
 - postgresql
   - [feature] Added new for_update/with_lockmode()

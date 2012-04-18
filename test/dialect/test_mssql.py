@@ -136,7 +136,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                                 selectable=t2, 
                                 dialect_name=darg),
                 "UPDATE sometable SET somecolumn=:somecolumn "
-                "FROM othertable WITH (PAGLOCK) "
+                "FROM sometable, othertable WITH (PAGLOCK) "
                 "WHERE sometable.somecolumn = othertable.somecolumn"
             )
 

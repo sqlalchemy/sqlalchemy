@@ -157,6 +157,31 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         )
 
     @testing.requires.update_from
+    def test_exec_two_table_plus_alias(self):
+        users, addresses = self.tables.users, self.tables.addresses
+        a1 = addresses.alias()
+
+        testing.db.execute(
+            addresses.update().\
+                values(email_address=users.c.name).\
+                where(users.c.id==a1.c.user_id).\
+                where(users.c.name=='ed').\
+                where(a1.c.id==addresses.c.id)
+        )
+        eq_(
+            testing.db.execute(
+                addresses.select().\
+                    order_by(addresses.c.id)).fetchall(),
+            [
+                (1, 7, 'x', "jack@bean.com"),
+                (2, 8, 'x', "ed"),
+                (3, 8, 'x', "ed"),
+                (4, 8, 'x', "ed"),
+                (5, 9, 'x', "fred@fred.com")
+            ]
+        )
+
+    @testing.requires.update_from
     def test_exec_three_table(self):
         users, addresses, dingalings = \
                 self.tables.users, \

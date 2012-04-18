@@ -1115,7 +1115,7 @@ class SQLCompiler(engine.Compiled):
         """Provide a hook to override the generation of an 
         UPDATE..FROM clause.
 
-        MySQL overrides this.
+        MySQL and MSSQL override this.
 
         """
         return "FROM " + ', '.join(
