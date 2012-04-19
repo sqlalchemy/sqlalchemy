@@ -12,6 +12,12 @@ CHANGES
     directives in statements.  Courtesy
     Diana Clarke [ticket:2443]
 
+  - [bug] Fixed bug in 0.7.6 introduced by 
+    [ticket:2409] whereby column_mapped_collection
+    used against columns that were mapped as
+    joins or other indirect selectables
+    would fail to function.
+
   - [feature] Added new flag to @validates
     include_removes.  When True, collection
     remove and attribute del events

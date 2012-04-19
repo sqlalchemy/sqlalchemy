@@ -1559,17 +1559,17 @@ class DictHelpersTest(fixtures.MappedTest):
 
         class Foo(BaseObject):
             __tablename__ = "foo"
-            id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
+            id = Column(Integer(), primary_key=True)
             bar_id = Column(Integer, ForeignKey('bar.id'))
 
-        class Bar(BaseObject):
-            __tablename__ = "bar"
-            id = Column(Integer(), primary_key=True, test_needs_autoincrement=True)
-            foos = relationship(Foo, collection_class=collections.column_mapped_collection(Foo.id))
-            foos2 = relationship(Foo, collection_class=collections.column_mapped_collection((Foo.id, Foo.bar_id)))
-
-        eq_(Bar.foos.property.collection_class().keyfunc(Foo(id=3)), 3)
-        eq_(Bar.foos2.property.collection_class().keyfunc(Foo(id=3, bar_id=12)), (3, 12))
+        for spec, obj, expected in (
+            (Foo.id, Foo(id=3), 3),
+            ((Foo.id, Foo.bar_id), Foo(id=3, bar_id=12), (3, 12))
+        ):
+            eq_(
+                collections.column_mapped_collection(spec)().keyfunc(obj), 
+                expected
+            )
 
     def test_column_mapped_assertions(self):
         assert_raises_message(sa_exc.ArgumentError,
@@ -1612,6 +1612,76 @@ class DictHelpersTest(fixtures.MappedTest):
                 util.OrderedDict.__init__(self)
         collection_class = lambda: Ordered2(lambda v: (v.a, v.b))
         self._test_composite_mapped(collection_class)
+
+class ColumnMappedWSerialize(fixtures.MappedTest):
+    """test the column_mapped_collection serializer against
+    multi-table and indirect table edge cases, including
+    serialization."""
+
+    run_create_tables = run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata, 
+            Column('id', Integer(), primary_key=True),
+            Column('b', String(128))
+        )
+        Table('bar', metadata, 
+            Column('id', Integer(), primary_key=True),
+            Column('foo_id', Integer, ForeignKey('foo.id')),
+            Column('bat_id', Integer),
+            schema="x"
+        )
+    @classmethod
+    def setup_classes(cls):
+        class Foo(cls.Basic):
+            pass
+        class Bar(Foo):
+            pass
+
+    def test_indirect_table_column_mapped(self):
+        Foo = self.classes.Foo
+        Bar = self.classes.Bar
+        bar = self.tables["x.bar"]
+        mapper(Foo, self.tables.foo, properties={
+            "foo_id":self.tables.foo.c.id
+        })
+        mapper(Bar, bar, inherits=Foo, properties={
+            "bar_id":bar.c.id,
+        })
+
+        bar_spec = Bar(foo_id=1, bar_id=2, bat_id=3)
+        self._run_test([
+            (Foo.foo_id, bar_spec, 1),
+            ((Bar.bar_id, Bar.bat_id), bar_spec, (2, 3)),
+            (Bar.foo_id, bar_spec, 1),
+            (bar.c.id, bar_spec, 2),
+        ])
+
+    def test_selectable_column_mapped(self):
+        from sqlalchemy import select
+        s = select([self.tables.foo]).alias()
+        Foo = self.classes.Foo
+        mapper(Foo, s)
+        self._run_test([
+            (Foo.b, Foo(b=5), 5),
+            (s.c.b, Foo(b=5), 5)
+        ])
+
+    def _run_test(self, specs):
+        from test.lib.util import picklers
+        for spec, obj, expected in specs:
+            coll = collections.column_mapped_collection(spec)()
+            eq_(
+                coll.keyfunc(obj), 
+                expected
+            )
+            # ensure we do the right thing with __reduce__
+            for loads, dumps in picklers():
+                c2 = loads(dumps(coll))
+                eq_(c2.keyfunc(obj), expected)
+                c3 = loads(dumps(c2))
+                eq_(c3.keyfunc(obj), expected)
 
 class CustomCollectionsTest(fixtures.MappedTest):
     """test the integration of collections with mapped classes."""

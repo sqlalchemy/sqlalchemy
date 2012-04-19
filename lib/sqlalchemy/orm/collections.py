@@ -111,22 +111,57 @@ import weakref
 from sqlalchemy.sql import expression
 from sqlalchemy import schema, util, exc as sa_exc
 
-
-
 __all__ = ['collection', 'collection_adapter',
            'mapped_collection', 'column_mapped_collection',
            'attribute_mapped_collection']
 
 __instrumentation_mutex = util.threading.Lock()
 
+
+class _PlainColumnGetter(object):
+    """Plain column getter, stores collection of Column objects
+    directly.
+
+    Serializes to a :class:`._SerializableColumnGetterV2`
+    which has more expensive __call__() performance
+    and some rare caveats.
+
+    """
+    def __init__(self, cols):
+        self.cols = cols
+        self.composite = len(cols) > 1
+
+    def __reduce__(self):
+        return _SerializableColumnGetterV2._reduce_from_cols(self.cols)
+
+    def _cols(self, mapper):
+        return self.cols
+
+    def __call__(self, value):
+        state = instance_state(value)
+        m = _state_mapper(state)
+
+        key = [
+            m._get_state_attr_by_column(state, state.dict, col)
+            for col in self._cols(m)
+        ]
+
+        if self.composite:
+            return tuple(key)
+        else:
+            return key[0]
+
 class _SerializableColumnGetter(object):
+    """Column-based getter used in version 0.7.6 only.
+
+    Remains here for pickle compatibility with 0.7.6.
+
+    """
     def __init__(self, colkeys):
         self.colkeys = colkeys
         self.composite = len(colkeys) > 1
-
     def __reduce__(self):
         return _SerializableColumnGetter, (self.colkeys,)
-
     def __call__(self, value):
         state = instance_state(value)
         m = _state_mapper(state)
@@ -138,6 +173,48 @@ class _SerializableColumnGetter(object):
             return tuple(key)
         else:
             return key[0]
+
+class _SerializableColumnGetterV2(_PlainColumnGetter):
+    """Updated serializable getter which deals with 
+    multi-table mapped classes.
+
+    Two extremely unusual cases are not supported.
+    Mappings which have tables across multiple metadata
+    objects, or which are mapped to non-Table selectables
+    linked across inheriting mappers may fail to function
+    here.
+
+    """
+
+    def __init__(self, colkeys):
+        self.colkeys = colkeys
+        self.composite = len(colkeys) > 1
+
+    def __reduce__(self):
+        return self.__class__, (self.colkeys,)
+
+    @classmethod
+    def _reduce_from_cols(cls, cols):
+        def _table_key(c):
+            if not isinstance(c.table, expression.TableClause):
+                return None
+            else:
+                return c.table.key
+        colkeys = [(c.key, _table_key(c)) for c in cols]
+        return _SerializableColumnGetterV2, (colkeys,)
+
+    def _cols(self, mapper):
+        cols = []
+        metadata = getattr(mapper.local_table, 'metadata', None)
+        for (ckey, tkey) in self.colkeys:
+            if tkey is None or \
+                metadata is None or \
+                tkey not in metadata:
+                cols.append(mapper.local_table.c[ckey])
+            else:
+                cols.append(metadata.tables[tkey].c[ckey])
+        return cols
+
 
 def column_mapped_collection(mapping_spec):
     """A dictionary-based collection type with column-based keying.
@@ -155,10 +232,10 @@ def column_mapped_collection(mapping_spec):
     from sqlalchemy.orm.util import _state_mapper
     from sqlalchemy.orm.attributes import instance_state
 
-    cols = [c.key for c in [
-                expression._only_column_elements(q, "mapping_spec") 
-                for q in util.to_list(mapping_spec)]]
-    keyfunc = _SerializableColumnGetter(cols)
+    cols = [expression._only_column_elements(q, "mapping_spec")
+                for q in util.to_list(mapping_spec)
+            ]
+    keyfunc = _PlainColumnGetter(cols)
     return lambda: MappedCollection(keyfunc)
 
 class _SerializableAttrGetter(object):
