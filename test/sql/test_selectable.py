@@ -1023,6 +1023,25 @@ class AnnotationsTest(fixtures.TestBase):
             annot = obj._annotate({})
             eq_(set([obj]), set([annot]))
 
+    def test_compare(self):
+        t = table('t', column('x'), column('y'))
+        x_a = t.c.x._annotate({})
+        assert t.c.x.compare(x_a)
+        assert x_a.compare(t.c.x)
+        assert not x_a.compare(t.c.y)
+        assert not t.c.y.compare(x_a)
+        assert (t.c.x == 5).compare(x_a == 5)
+        assert not (t.c.y == 5).compare(x_a == 5)
+
+        s = select([t])
+        x_p = s.c.x
+        assert not x_a.compare(x_p)
+        assert not t.c.x.compare(x_p)
+        x_p_a = x_p._annotate({})
+        assert x_p_a.compare(x_p)
+        assert x_p.compare(x_p_a)
+        assert not x_p_a.compare(x_a)
+
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
         class MyColumn(Column):
@@ -1132,13 +1151,18 @@ class AnnotationsTest(fixtures.TestBase):
         assert b2.left is not bin.left 
         assert b3.left is not b2.left is not bin.left
         assert b4.left is bin.left  # since column is immutable
-        assert b4.right is not bin.right is not b2.right is not b3.right
+        # deannotate copies the element
+        assert bin.right is not b2.right is not b3.right is not b4.right
 
     def test_annotate_unique_traversal(self):
         """test that items are copied only once during
         annotate, deannotate traversal
 
-        #2453
+        #2453 - however note this was modified by
+        #1401, and it's likely that re49563072578
+        is helping us with the str() comparison
+        case now, as deannotate is making 
+        clones again in some cases.
         """
         table1 = table('table1', column('x'))
         table2 = table('table2', column('y'))
@@ -1146,20 +1170,80 @@ class AnnotationsTest(fixtures.TestBase):
         s = select([a1.c.x]).select_from(
                 a1.join(table2, a1.c.x==table2.c.y)
             )
-
         for sel in (
             sql_util._deep_deannotate(s),
-            sql_util._deep_annotate(s, {'foo':'bar'}),
             visitors.cloned_traverse(s, {}, {}),
             visitors.replacement_traverse(s, {}, lambda x:None)
         ):
             # the columns clause isn't changed at all
             assert sel._raw_columns[0].table is a1
-            # the from objects are internally consistent,
-            # i.e. the Alias at position 0 is the same
-            # Alias in the Join object in position 1
             assert sel._froms[0] is sel._froms[1].left
+
             eq_(str(s), str(sel))
+
+        # when we are modifying annotations sets only
+        # partially, each element is copied unconditionally
+        # when encountered.
+        for sel in (
+            sql_util._deep_deannotate(s, {"foo":"bar"}),
+            sql_util._deep_annotate(s, {'foo':'bar'}),
+        ):
+            assert sel._froms[0] is not sel._froms[1].left
+
+            # but things still work out due to
+            # re49563072578
+            eq_(str(s), str(sel))
+
+
+    def test_annotate_varied_annot_same_col(self):
+        """test two instances of the same column with different annotations
+        preserving them when deep_annotate is run on them.
+        
+        """
+        t1 = table('table1', column("col1"), column("col2"))
+        s = select([t1.c.col1._annotate({"foo":"bar"})])
+        s2 = select([t1.c.col1._annotate({"bat":"hoho"})])
+        s3 = s.union(s2)
+        sel = sql_util._deep_annotate(s3, {"new":"thing"})
+
+        eq_(
+            sel.selects[0]._raw_columns[0]._annotations,
+            {"foo":"bar", "new":"thing"}
+        )
+
+        eq_(
+            sel.selects[1]._raw_columns[0]._annotations,
+            {"bat":"hoho", "new":"thing"}
+        )
+
+    def test_deannotate_2(self):
+        table1 = table('table1', column("col1"), column("col2"))
+        j = table1.c.col1._annotate({"remote":True}) == \
+                table1.c.col2._annotate({"local":True})
+        j2 = sql_util._deep_deannotate(j)
+        eq_(
+            j.left._annotations, {"remote":True}
+        )
+        eq_(
+            j2.left._annotations, {}
+        )
+
+    def test_deannotate_3(self):
+        table1 = table('table1', column("col1"), column("col2"), 
+                            column("col3"), column("col4"))
+        j = and_(
+                table1.c.col1._annotate({"remote":True})==
+                table1.c.col2._annotate({"local":True}), 
+                table1.c.col3._annotate({"remote":True})==
+                table1.c.col4._annotate({"local":True})
+        )
+        j2 = sql_util._deep_deannotate(j)
+        eq_(
+            j.clauses[0].left._annotations, {"remote":True}
+        )
+        eq_(
+            j2.clauses[0].left._annotations, {}
+        )
 
     def test_annotate_fromlist_preservation(self):
         """test the FROM list in select still works

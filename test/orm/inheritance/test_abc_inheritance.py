@@ -111,7 +111,11 @@ def produce_test(parent, child, direction):
             parent_class = parent_mapper.class_
             child_class = child_mapper.class_
 
-            parent_mapper.add_property("collection", relationship(child_mapper, primaryjoin=relationshipjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
+            parent_mapper.add_property("collection", 
+                                relationship(child_mapper, 
+                                            primaryjoin=relationshipjoin, 
+                                            foreign_keys=foreign_keys, 
+                                            remote_side=remote_side, uselist=True))
 
             sess = create_session()
 

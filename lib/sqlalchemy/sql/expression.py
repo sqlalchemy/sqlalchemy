@@ -1584,18 +1584,35 @@ class ClauseElement(Visitable):
             return id(self)
 
     def _annotate(self, values):
-        """return a copy of this ClauseElement with the given annotations
-        dictionary.
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
 
         """
         return sqlutil.Annotated(self, values)
 
-    def _deannotate(self):
-        """return a copy of this ClauseElement with an empty annotations
-        dictionary.
+    def _with_annotations(self, values):
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
 
         """
-        return self._clone()
+        return sqlutil.Annotated(self, values)
+
+    def _deannotate(self, values=None, clone=False):
+        """return a copy of this :class:`.ClauseElement` with annotations
+        removed.
+        
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone:
+            # clone is used when we are also copying
+            # the expression for a deep deannotation
+            return self._clone()
+        else:
+            # if no clone, since we have no annotations we return
+            # self
+            return self
 
     def unique_params(self, *optionaldict, **kwargs):
         """Return a copy with :func:`bindparam()` elements replaced.
@@ -2195,7 +2212,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         for oth in to_compare:
             if use_proxies and self.shares_lineage(oth):
                 return True
-            elif oth is self:
+            elif hash(oth) == hash(self):
                 return True
         else:
             return False
@@ -3401,6 +3418,10 @@ class _BinaryExpression(ColumnElement):
             return self.operator(hash(self.left), hash(self.right))
         except:
             raise TypeError("Boolean value of this clause is not defined")
+
+    @property
+    def is_comparison(self):
+        return operators.is_comparison(self.operator)
 
     @property
     def _from_objects(self):

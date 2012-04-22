@@ -25,6 +25,13 @@ class ArgumentError(SQLAlchemyError):
 
     """
 
+class NoForeignKeysError(ArgumentError):
+    """Raised when no foreign keys can be located between two selectables
+    during a join."""
+
+class AmbiguousForeignKeysError(ArgumentError):
+    """Raised when more than one foreign key matching can be located
+    between two selectables during a join."""
 
 class CircularDependencyError(SQLAlchemyError):
     """Raised by topological sorts when a circular dependency is detected.

@@ -623,6 +623,14 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         self._test(Address.user != None, "addresses.user_id IS NOT NULL")
 
+    def test_foo(self):
+        Node = self.classes.Node
+        nalias = aliased(Node)
+        self._test(
+            nalias.parent.has(Node.data=='some data'), 
+           "EXISTS (SELECT 1 FROM nodes WHERE nodes.id = nodes_1.parent_id AND nodes.data = :data_1)"
+        )
+
     def test_selfref_relationship(self):
         Node = self.classes.Node
 

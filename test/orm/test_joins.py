@@ -1700,21 +1700,29 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.close()
 
-    def test_join(self):
+    def test_join_1(self):
         Node = self.classes.Node
-
         sess = create_session()
 
         node = sess.query(Node).join('children', aliased=True).filter_by(data='n122').first()
         assert node.data=='n12'
 
+    def test_join_2(self):
+        Node = self.classes.Node
+        sess = create_session()
         ret = sess.query(Node.data).join(Node.children, aliased=True).filter_by(data='n122').all()
         assert ret == [('n12',)]
 
 
+    def test_join_3(self):
+        Node = self.classes.Node
+        sess = create_session()
         node = sess.query(Node).join('children', 'children', aliased=True).filter_by(data='n122').first()
         assert node.data=='n1'
 
+    def test_join_4(self):
+        Node = self.classes.Node
+        sess = create_session()
         node = sess.query(Node).filter_by(data='n122').join('parent', aliased=True).filter_by(data='n12').\
             join('parent', aliased=True, from_joinpoint=True).filter_by(data='n1').first()
         assert node.data == 'n122'

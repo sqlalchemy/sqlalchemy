@@ -15,6 +15,20 @@ those which apply to an 0.7 release are noted.
 0.8.0b1
 =======
 - orm
+  - [feature] Major rewrite of relationship() 
+    internals now allow join conditions which
+    include columns pointing to themselves
+    within composite foreign keys.   A new
+    API for very specialized primaryjoin conditions
+    is added, allowing conditions based on 
+    SQL functions, CAST, etc. to be handled
+    by placing the annotation functions
+    remote() and foreign() inline within the
+    expression when necessary.  Previous recipes
+    using the semi-private _local_remote_pairs
+    approach can be upgraded to this new 
+    approach. [ticket:1401]
+
   - [feature] Added prefix_with() method
     to Query, calls upon select().prefix_with()
     to allow placement of MySQL SELECT

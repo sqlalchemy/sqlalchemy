@@ -95,6 +95,7 @@ class MergeTest(fixtures.MappedTest):
                                         '3':1050}
                             )
         def go():
+            print "GO"
             p2 = sess2.merge(p1)
         go()
 

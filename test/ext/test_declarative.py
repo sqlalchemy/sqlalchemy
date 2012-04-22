@@ -368,6 +368,28 @@ class DeclarativeTest(DeclarativeTestBase):
         assert class_mapper(User).get_property('props').secondary \
             is user_to_prop
 
+    def test_string_dependency_resolution_annotations(self):
+        Base = decl.declarative_base()
+
+        class Parent(Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            children = relationship("Child",
+                    primaryjoin="Parent.name==remote(foreign(func.lower(Child.name_upper)))"
+                )
+
+        class Child(Base):
+            __tablename__ = 'child'
+            id = Column(Integer, primary_key=True)
+            name_upper = Column(String)
+
+        configure_mappers()
+        eq_(
+            Parent.children.property._calculated_foreign_keys,
+            set([Child.name_upper.property.columns[0]])
+        )
+
     def test_shared_class_registry(self):
         reg = {}
         Base1 = decl.declarative_base(testing.db, class_registry=reg)

@@ -1,5 +1,5 @@
 from sqlalchemy import *
-from sqlalchemy.sql import table, column, ClauseElement
+from sqlalchemy.sql import table, column, ClauseElement, operators
 from sqlalchemy.sql.expression import  _clone, _from_objects
 from test.lib import *
 from sqlalchemy.sql.visitors import *
@@ -165,6 +165,102 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         bin = foo == bar
         s = set(ClauseVisitor().iterate(bin))
         assert set(ClauseVisitor().iterate(bin)) == set([foo, bar, bin])
+
+class BinaryEndpointTraversalTest(fixtures.TestBase):
+    """test the special binary product visit"""
+
+    def _assert_traversal(self, expr, expected):
+        canary = []
+        def visit(binary, l, r):
+            canary.append((binary.operator, l, r))
+            print binary.operator, l, r
+        sql_util.visit_binary_product(visit, expr)
+        eq_(
+            canary, expected
+        )
+
+    def test_basic(self):
+        a, b = column("a"), column("b")
+        self._assert_traversal(
+            a == b,
+            [
+                (operators.eq, a, b)
+            ]
+        )
+
+    def test_with_tuples(self):
+        a, b, c, d, b1, b1a, b1b, e, f = (
+            column("a"),
+            column("b"),
+            column("c"),
+            column("d"),
+            column("b1"),
+            column("b1a"),
+            column("b1b"),
+            column("e"),
+            column("f")
+        )
+        expr = tuple_(
+            a, b, b1==tuple_(b1a, b1b == d), c
+        ) > tuple_(
+                func.go(e + f)
+            )
+        self._assert_traversal(
+            expr,
+            [
+                (operators.gt, a, e),
+                (operators.gt, a, f),
+                (operators.gt, b, e),
+                (operators.gt, b, f),
+                (operators.eq, b1, b1a),
+                (operators.eq, b1b, d),
+                (operators.gt, c, e),
+                (operators.gt, c, f)
+            ]
+        )
+
+    def test_composed(self):
+        a, b, e, f, q, j, r = (
+            column("a"),
+            column("b"),
+            column("e"),
+            column("f"),
+            column("q"),
+            column("j"),
+            column("r"),
+        )
+        expr = and_(
+            (a + b) == q + func.sum(e + f),
+            and_(
+                j == r,
+                f == q
+            )
+        )
+        self._assert_traversal(
+            expr,
+            [
+                (operators.eq, a, q),
+                (operators.eq, a, e),
+                (operators.eq, a, f),
+                (operators.eq, b, q),
+                (operators.eq, b, e),
+                (operators.eq, b, f),
+                (operators.eq, j, r),
+                (operators.eq, f, q),
+            ]
+        )
+
+    def test_subquery(self):
+        a, b, c = column("a"), column("b"), column("c")
+        subq = select([c]).where(c == a).as_scalar()
+        expr = and_(a == b, b == subq)
+        self._assert_traversal(
+            expr,
+            [
+                (operators.eq, a, b),
+                (operators.eq, b, subq),
+            ]
+        )
 
 class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     """test copy-in-place behavior of various ClauseElements."""

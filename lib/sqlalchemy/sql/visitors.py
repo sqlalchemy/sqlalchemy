@@ -242,13 +242,13 @@ def cloned_traverse(obj, opts, visitors):
         if elem in stop_on:
             return elem
         else:
-            if elem not in cloned:
-                cloned[elem] = newelem = elem._clone()
+            if id(elem) not in cloned:
+                cloned[id(elem)] = newelem = elem._clone()
                 newelem._copy_internals(clone=clone)
                 meth = visitors.get(newelem.__visit_name__, None)
                 if meth:
                     meth(newelem)
-            return cloned[elem]
+            return cloned[id(elem)]
 
     if obj is not None:
         obj = clone(obj)
@@ -260,16 +260,16 @@ def replacement_traverse(obj, opts, replace):
     replacement by a given replacement function."""
 
     cloned = util.column_dict()
-    stop_on = util.column_set(opts.get('stop_on', []))
+    stop_on = util.column_set([id(x) for x in opts.get('stop_on', [])])
 
     def clone(elem, **kw):
-        if elem in stop_on or \
+        if id(elem) in stop_on or \
             'no_replacement_traverse' in elem._annotations:
             return elem
         else:
             newelem = replace(elem)
             if newelem is not None:
-                stop_on.add(newelem)
+                stop_on.add(id(newelem))
                 return newelem
             else:
                 if elem not in cloned:

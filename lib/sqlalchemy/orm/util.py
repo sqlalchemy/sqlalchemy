@@ -393,7 +393,21 @@ def _orm_annotate(element, exclude=None):
     """
     return sql_util._deep_annotate(element, {'_orm_adapt':True}, exclude)
 
-_orm_deannotate = sql_util._deep_deannotate
+def _orm_deannotate(element):
+    """Remove annotations that link a column to a particular mapping.
+    
+    Note this doesn't affect "remote" and "foreign" annotations
+    passed by the :func:`.orm.foreign` and :func:`.orm.remote`
+    annotators.
+    
+    """
+
+    return sql_util._deep_deannotate(element, 
+                values=("_orm_adapt", "parententity")
+            )
+
+def _orm_full_deannotate(element):
+    return sql_util._deep_deannotate(element)
 
 class _ORMJoin(expression.Join):
     """Extend Join to support ORM constructs as input."""

@@ -521,6 +521,11 @@ def nullslast_op(a):
 
 _commutative = set([eq, ne, add, mul])
 
+_comparison = set([eq, ne, lt, gt, ge, le])
+
+def is_comparison(op):
+    return op in _comparison
+
 def is_commutative(op):
     return op in _commutative
 
