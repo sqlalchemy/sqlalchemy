@@ -3,20 +3,31 @@
 =======
 CHANGES
 =======
-0.7.7
-=====
+0.7.7 - 0.7.xx
+==============
+
+Changes which apply to 0.7.7 and subsequent versions of 0.7
+are listed in the CHANGES file within the 0.7 branch.  All
+those changes which are also in the 0.8 series (which is typically
+all of them) are listed inline within the 0.8 changes above,
+those which apply to an 0.7 release are noted.
+
+0.8.0b1
+=======
 - orm
   - [feature] Added prefix_with() method
     to Query, calls upon select().prefix_with()
     to allow placement of MySQL SELECT
     directives in statements.  Courtesy
     Diana Clarke [ticket:2443]
+    also in 0.7.7.
 
   - [bug] Fixed bug in 0.7.6 introduced by 
     [ticket:2409] whereby column_mapped_collection
     used against columns that were mapped as
     joins or other indirect selectables
     would fail to function.
+    also in 0.7.7.
 
   - [feature] Added new flag to @validates
     include_removes.  When True, collection
@@ -24,22 +35,26 @@ CHANGES
     will also be sent to the validation function,
     which accepts an additional argument
     "is_remove" when this flag is used.
+    also in 0.7.7.
 
   - [bug] Fixed bug whereby polymorphic_on
     column that's not otherwise mapped on the 
     class would be incorrectly included
     in a merge() operation, raising an error.
     [ticket:2449]
+    also in 0.7.7.
 
   - [bug] Fixed bug in expression annotation
     mechanics which could lead to incorrect
     rendering of SELECT statements with aliases
     and joins, particularly when using 
     column_property().  [ticket:2453]
+    also in 0.7.7.
 
   - [bug] Fixed bug which would prevent
     OrderingList from being pickleable
     [ticket:2454].  Courtesy Jeff Dairiki
+    also in 0.7.7.
 
 - sql
   - [bug] Removed warning when Index is created
@@ -47,17 +62,20 @@ CHANGES
     the user intended, it is a valid use case 
     as an Index could be a placeholder for just an 
     index of a certain name.
+    also in 0.7.7.
 
   - [feature] Added new connection event
     dbapi_error(). Is called for all DBAPI-level
     errors passing the original DBAPI exception
     before SQLAlchemy modifies the state 
     of the cursor.
+    also in 0.7.7.
 
   - [bug] If conn.begin() fails when calling
     "with engine.begin()", the newly acquired
     Connection is closed explicitly before 
     propagating the exception onward normally.
+    also in 0.7.7.
 
 - mssql
   - [feature] Added interim create_engine flag
@@ -65,6 +83,7 @@ CHANGES
     to force whether or not the dialect
     passes Python unicode literals to PyODBC 
     or not.
+    also in 0.7.7.
 
   - [bug] Repaired the use_scope_identity
     create_engine() flag when using the pyodbc
@@ -74,6 +93,7 @@ CHANGES
     INSERT to get at the last inserted ID,
     for those tables which have "implicit_returning"
     set to False.
+    also in 0.7.7.
  
   - [bug] UPDATE..FROM syntax with SQL Server
     requires that the updated table be present
@@ -83,6 +103,7 @@ CHANGES
     in the FROM, when FROM is present 
     in the first place.  Courtesy sayap.
     [ticket:2468]
+    also in 0.7.7.
 
 - postgresql
   - [feature] Added new for_update/with_lockmode()
@@ -93,6 +114,7 @@ CHANGES
     These emit "FOR SHARE" and "FOR SHARE NOWAIT",
     respectively.  Courtesy Diana Clarke 
     [ticket:2445]
+    also in 0.7.7.
 
 - mysql
   - [bug] Fixed bug whereby column name inside 
@@ -100,11 +122,13 @@ CHANGES
     column with InnoDB would double quote a 
     name that's a reserved word.  Courtesy Jeff
     Dairiki. [ticket:2460]
+    also in 0.7.7.
 
   - [bug] Fixed bug whereby get_view_names() for
     "information_schema" schema would fail
     to retrieve views marked as "SYSTEM VIEW".
     courtesy Matthew Turland.
+    also in 0.7.7.
 
   - [bug] Fixed bug whereby if cast() is used
     on a SQL expression whose type is not supported
@@ -113,6 +137,7 @@ CHANGES
     if the casted expression required that it be
     grouped; grouping is now applied to those
     expressions.  [ticket:2467]
+    also in 0.7.7.
 
 0.7.6
 =====
