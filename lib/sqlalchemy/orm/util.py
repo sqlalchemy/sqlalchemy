@@ -663,9 +663,7 @@ def object_state(instance):
     """
     try:
         return attributes.instance_state(instance)
-    except exc.UnmappedClassError:
-        raise exc.UnmappedInstanceError(instance)
-    except exc.NO_STATE:
+    except (exc.UnmappedClassError, exc.NO_STATE):
         raise exc.UnmappedInstanceError(instance)
 
 
