@@ -29,6 +29,15 @@ those which apply to an 0.7 release are noted.
     approach can be upgraded to this new 
     approach. [ticket:1401]
 
+  - [feature] Query now "auto correlates" by 
+    default in the same way as select() does.
+    Previously, a Query used as a subquery
+    in another would require the correlate()
+    method be called explicitly in order to 
+    correlate a table on the inside to the
+    outside.  As always, correlate(None)
+    disables correlation.  [ticket:2179]
+
   - [feature] Added prefix_with() method
     to Query, calls upon select().prefix_with()
     to allow placement of MySQL SELECT

@@ -2907,7 +2907,6 @@ class Query(object):
                         context.whereclause,
                         from_obj=froms,
                         use_labels=labels,
-                        correlate=False,
                         # TODO: this order_by is only needed if 
                         # LIMIT/OFFSET is present in self._select_args,
                         # else the application on the outside is enough
@@ -2973,7 +2972,6 @@ class Query(object):
                             from_obj=froms,
                             use_labels=labels,
                             for_update=for_update,
-                            correlate=False,
                             order_by=context.order_by,
                             **self._select_args
                         )
