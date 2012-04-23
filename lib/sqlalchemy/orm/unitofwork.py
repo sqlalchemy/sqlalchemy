@@ -166,8 +166,9 @@ class UOWTransaction(object):
             history, state_history, cached_passive = self.attributes[hashkey]
             # if the cached lookup was "passive" and now 
             # we want non-passive, do a non-passive lookup and re-cache
-            if cached_passive is not attributes.PASSIVE_OFF \
-                and passive is attributes.PASSIVE_OFF:
+
+            if not cached_passive & attributes.SQL_OK \
+                and passive & attributes.SQL_OK:
                 impl = state.manager[key].impl
                 history = impl.get_history(state, state.dict, 
                                     attributes.PASSIVE_OFF)

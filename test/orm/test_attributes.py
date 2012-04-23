@@ -990,14 +990,6 @@ class GetNoValueTest(fixtures.ORMTest):
         )
         assert 'attr' not in dict_
 
-    def test_passive_no_result_empty(self):
-        attr, state, dict_ = self._fixture(None)
-        eq_(
-            attr.get(state, dict_, passive=attributes.PASSIVE_NO_RESULT),
-            None
-        )
-        assert 'attr' in dict_
-
     def test_off_empty(self):
         attr, state, dict_ = self._fixture(None)
         eq_(

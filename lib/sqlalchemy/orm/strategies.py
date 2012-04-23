@@ -213,7 +213,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if not state.key:
             return attributes.ATTR_EMPTY
 
-        if passive is attributes.PASSIVE_NO_FETCH:
+        if not passive & attributes.SQL_OK:
             return attributes.PASSIVE_NO_RESULT
 
         localparent = state.manager.mapper
@@ -464,13 +464,10 @@ class LazyLoader(AbstractRelationshipLoader):
         ident_key = None
 
         if (
-                (passive is attributes.PASSIVE_NO_FETCH or \
-                    passive is attributes.PASSIVE_NO_FETCH_RELATED) and 
-                not self.use_get
-            ) or (
-                passive is attributes.PASSIVE_ONLY_PERSISTENT and 
-                pending
-            ):
+            (not passive & attributes.SQL_OK and not self.use_get)
+            or
+            (not passive & attributes.NON_PERSISTENT_OK and pending)
+        ):
             return attributes.PASSIVE_NO_RESULT
 
         session = sessionlib._state_session(state)
@@ -501,8 +498,8 @@ class LazyLoader(AbstractRelationshipLoader):
             instance = Query._get_from_identity(session, ident_key, passive)
             if instance is not None:
                 return instance
-            elif passive is attributes.PASSIVE_NO_FETCH or \
-                passive is attributes.PASSIVE_NO_FETCH_RELATED:
+            elif not passive & attributes.SQL_OK or \
+                not passive & attributes.RELATED_OBJECT_OK:
                 return attributes.PASSIVE_NO_RESULT
 
         return self._emit_lazyload(session, state, ident_key)
@@ -517,17 +514,12 @@ class LazyLoader(AbstractRelationshipLoader):
 
         dict_ = state.dict
 
-        if passive is attributes.PASSIVE_NO_FETCH_RELATED:
-            attr_passive = attributes.PASSIVE_OFF
-        else:
-            attr_passive = passive
-
         return [
             get_attr(
                     state,
                     dict_,
                     self._equated_columns[pk],
-                    passive=attr_passive)
+                    passive=passive)
             for pk in self.mapper.primary_key
         ]
 

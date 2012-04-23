@@ -18,7 +18,7 @@ from sqlalchemy import util
 from sqlalchemy.orm import exc as orm_exc, attributes, interfaces,\
         util as orm_util
 from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
-    PASSIVE_NO_FETCH, NEVER_SET, ATTR_WAS_SET, NO_VALUE
+    SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
@@ -276,7 +276,7 @@ class InstanceState(object):
 
         """
 
-        if passive is PASSIVE_NO_FETCH:
+        if not passive & SQL_OK:
             return PASSIVE_NO_RESULT
 
         toload = self.expired_attributes.\

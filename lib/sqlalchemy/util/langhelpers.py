@@ -783,15 +783,21 @@ class classproperty(property):
         return desc.fget(cls)
 
 
-class _symbol(object):
-    def __init__(self, name, doc=None):
+class _symbol(int):
+    def __new__(self, name, doc=None, canonical=None):
         """Construct a new named symbol."""
         assert isinstance(name, str)
-        self.name = name
+        if canonical is None:
+            canonical = hash(name)
+        v = int.__new__(_symbol, canonical)
+        v.name = name
         if doc:
-            self.__doc__ = doc
+            v.__doc__ = doc
+        return v
+
     def __reduce__(self):
-        return symbol, (self.name,)
+        return symbol, (self.name, "x", int(self))
+
     def __repr__(self):
         return "<symbol '%s>" % self.name
 
@@ -822,12 +828,12 @@ class symbol(object):
     symbols = {}
     _lock = threading.Lock()
 
-    def __new__(cls, name, doc=None):
+    def __new__(cls, name, doc=None, canonical=None):
         cls._lock.acquire()
         try:
             sym = cls.symbols.get(name)
             if sym is None:
-                cls.symbols[name] = sym = _symbol(name, doc)
+                cls.symbols[name] = sym = _symbol(name, doc, canonical)
             return sym
         finally:
             symbol._lock.release()

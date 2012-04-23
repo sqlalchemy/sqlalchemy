@@ -57,7 +57,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             self.query_class = mixin_user_query(query_class)
 
     def get(self, state, dict_, passive=attributes.PASSIVE_OFF):
-        if passive is not attributes.PASSIVE_OFF:
+        if not passive & attributes.SQL_OK:
             return self._get_collection_history(state,
                     attributes.PASSIVE_NO_INITIALIZE).added_items
         else:
@@ -65,7 +65,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
 
     def get_collection(self, state, dict_, user_data=None, 
                             passive=attributes.PASSIVE_NO_INITIALIZE):
-        if passive is not attributes.PASSIVE_OFF:
+        if not passive & attributes.SQL_OK:
             return self._get_collection_history(state,
                     passive).added_items
         else:
@@ -142,7 +142,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
                                   c.deleted_items)
 
     def get_all_pending(self, state, dict_):
-        c = self._get_collection_history(state, True)
+        c = self._get_collection_history(state, attributes.PASSIVE_NO_INITIALIZE)
         return [
                 (attributes.instance_state(x), x) 
                 for x in 
@@ -155,7 +155,9 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             c = CollectionHistory(self, state)
 
-        if passive is attributes.PASSIVE_OFF:
+        # TODO: consider using a different flag here, possibly
+        # one local to dynamic
+        if passive & attributes.INIT_OK:
             return CollectionHistory(self, state, apply_to=c)
         else:
             return c

@@ -764,7 +764,7 @@ class Query(object):
                 not mapper.always_refresh and \
                 self._lockmode is None:
 
-            instance = self._get_from_identity(self.session, key, False)
+            instance = self._get_from_identity(self.session, key, attributes.PASSIVE_OFF)
             if instance is not None:
                 # reject calls for id in identity map but class
                 # mismatch.
@@ -2426,10 +2426,10 @@ class Query(object):
 
             # expired - ensure it still exists
             if state.expired:
-                if passive is attributes.PASSIVE_NO_FETCH:
+                if not passive & attributes.SQL_OK:
                     # TODO: no coverage here
                     return attributes.PASSIVE_NO_RESULT
-                elif passive is attributes.PASSIVE_NO_FETCH_RELATED:
+                elif not passive & attributes.RELATED_OBJECT_OK:
                     # this mode is used within a flush and the instance's
                     # expired state will be checked soon enough, if necessary
                     return instance

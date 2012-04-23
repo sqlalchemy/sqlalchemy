@@ -22,60 +22,77 @@ from sqlalchemy.orm import interfaces, collections, events, exc as orm_exc
 
 mapperutil = util.importlater("sqlalchemy.orm", "util")
 
-PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT')
-ATTR_WAS_SET = util.symbol('ATTR_WAS_SET')
-ATTR_EMPTY = util.symbol('ATTR_EMPTY')
-NO_VALUE = util.symbol('NO_VALUE')
-NEVER_SET = util.symbol('NEVER_SET')
+PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT',
+"""Symbol returned by a loader callable or other attribute/history
+retrieval operation when a value could not be determined, based
+on loader callable flags.
+"""
+)
 
-PASSIVE_RETURN_NEVER_SET = util.symbol('PASSIVE_RETURN_NEVER_SET',
-"""Symbol indicating that loader callables can be 
-fired off, but if no callable is applicable and no value is
-present, the attribute should remain non-initialized.
-NEVER_SET is returned in this case.
+ATTR_WAS_SET = util.symbol('ATTR_WAS_SET',
+"""Symbol returned by a loader callable to indicate the
+retrieved value, or values, were assigned to their attributes
+on the target object.
 """)
 
-PASSIVE_NO_INITIALIZE = util.symbol('PASSIVE_NO_INITIALIZE',
-"""Symbol indicating that loader callables should
-   not be fired off, and a non-initialized attribute 
-   should remain that way.
+ATTR_EMPTY = util.symbol('ATTR_EMPTY',
+"""Symbol used internally to indicate an attribute had no callable.
 """)
 
-PASSIVE_NO_FETCH = util.symbol('PASSIVE_NO_FETCH',
-"""Symbol indicating that loader callables should not emit SQL, 
-   but a value can be fetched from the current session.
-   
-   Non-initialized attributes should be initialized to an empty value.
+NO_VALUE = util.symbol('NO_VALUE',
+"""Symbol which may be placed as the 'previous' value of an attribute,
+indicating no value was loaded for an attribute when it was modified,
+and flags indicated we were not to load it.
+"""
+)
 
-""")
+NEVER_SET = util.symbol('NEVER_SET',
+"""Symbol which may be placed as the 'previous' value of an attribute
+indicating that the attribute had not been assigned to previously.
+"""
+)
 
-PASSIVE_NO_FETCH_RELATED = util.symbol('PASSIVE_NO_FETCH_RELATED',
-"""Symbol indicating that loader callables should not emit SQL for
-   loading a related object, but can refresh the attributes of the local
-   instance in order to locate a related object in the current session.
-   
-   Non-initialized attributes should be initialized to an empty value.
-   
-   The unit of work uses this mode to check if history is present
-   on many-to-one attributes with minimal SQL emitted.
+CALLABLES_OK = util.symbol("CALLABLES_OK",
+"""Loader callables can be fired off if a value
+is not present.""", canonical=1
+)
 
-""")
+SQL_OK = util.symbol("SQL_OK",
+"""Loader callables can emit SQL at least on scalar value
+attributes.""", canonical=2)
 
-PASSIVE_ONLY_PERSISTENT = util.symbol('PASSIVE_ONLY_PERSISTENT',
-"""Symbol indicating that loader callables should only fire off for
-   parent objects which are persistent (i.e., have a database
-   identity).
+RELATED_OBJECT_OK = util.symbol("RELATED_OBJECT_OK",
+"""callables can use SQL to load related objects as well
+as scalar value attributes.
+""", canonical=4
+)
 
-   Load operations for the "previous" value of an attribute make
-   use of this flag during change events.
+INIT_OK = util.symbol("INIT_OK",
+"""Attributes should be initialized with a blank
+value (None or an empty collection) upon get, if no other
+value can be obtained.
+""", canonical=8
+)
 
-""")
+NON_PERSISTENT_OK = util.symbol("NON_PERSISTENT_OK",
+"""callables can be emitted if the parent is not persistent.""", 
+canonical=16
+)
 
-PASSIVE_OFF = util.symbol('PASSIVE_OFF',
-"""Symbol indicating that loader callables should be executed
-   normally.
 
-""")
+# pre-packaged sets of flags used as inputs
+PASSIVE_OFF = RELATED_OBJECT_OK | \
+                NON_PERSISTENT_OK | \
+                INIT_OK | \
+                CALLABLES_OK | \
+                SQL_OK
+
+PASSIVE_RETURN_NEVER_SET = PASSIVE_OFF  ^ INIT_OK
+PASSIVE_NO_INITIALIZE = PASSIVE_RETURN_NEVER_SET ^ CALLABLES_OK
+PASSIVE_NO_FETCH = PASSIVE_OFF ^ SQL_OK
+PASSIVE_NO_FETCH_RELATED = PASSIVE_OFF ^ RELATED_OBJECT_OK
+PASSIVE_ONLY_PERSISTENT = PASSIVE_OFF ^ NON_PERSISTENT_OK
+
 
 
 class QueryableAttribute(interfaces.PropComparator):
@@ -443,7 +460,7 @@ class AttributeImpl(object):
             key = self.key
             if key not in state.committed_state or \
                 state.committed_state[key] is NEVER_SET:
-                if passive is PASSIVE_NO_INITIALIZE:
+                if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
                 if key in state.callables:
@@ -468,7 +485,7 @@ class AttributeImpl(object):
                 elif value is not ATTR_EMPTY:
                     return self.set_committed_value(state, dict_, value)
 
-            if passive is PASSIVE_RETURN_NEVER_SET:
+            if not passive & INIT_OK:
                 return NEVER_SET
             else:
                 # Return a new, empty value
@@ -639,8 +656,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         if self.key in dict_:
             return History.from_object_attribute(self, state, dict_[self.key])
         else:
-            if passive is PASSIVE_OFF:
-                passive = PASSIVE_RETURN_NEVER_SET
+            if passive & INIT_OK:
+                passive ^= INIT_OK
             current = self.get(state, dict_, passive=passive)
             if current is PASSIVE_NO_RESULT:
                 return HISTORY_BLANK

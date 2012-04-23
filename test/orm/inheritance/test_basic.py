@@ -68,11 +68,9 @@ class O2MTest(fixtures.MappedTest):
         l = sess.query(Blub).all()
         result = ','.join([repr(l[0]), repr(l[1]),
                           repr(l[0].parent_foo), repr(l[1].parent_foo)])
-        print compare
-        print result
-        self.assert_(compare == result)
-        self.assert_(l[0].parent_foo.data == 'foo #1'
-                     and l[1].parent_foo.data == 'foo #1')
+        eq_(compare, result)
+        eq_(l[0].parent_foo.data, 'foo #1')
+        eq_(l[1].parent_foo.data, 'foo #1')
 
 class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     @classmethod

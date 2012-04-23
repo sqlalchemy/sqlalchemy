@@ -616,6 +616,27 @@ class SymbolTest(fixtures.TestBase):
             assert rt is sym1
             assert rt is sym2
 
+    def test_bitflags(self):
+        sym1 = util.symbol('sym1', canonical=1)
+        sym2 = util.symbol('sym2', canonical=2)
+
+        assert sym1 & sym1
+        assert not sym1 & sym2
+        assert not sym1 & sym1 & sym2
+
+    def test_composites(self):
+        sym1 = util.symbol('sym1', canonical=1)
+        sym2 = util.symbol('sym2', canonical=2)
+        sym3 = util.symbol('sym3', canonical=4)
+        sym4 = util.symbol('sym4', canonical=8)
+
+        assert sym1 & (sym2 | sym1 | sym4)
+        assert not sym1 & (sym2 | sym3)
+
+        assert not (sym1 | sym2) & (sym3 | sym4)
+        assert (sym1 | sym2) & (sym2 | sym4)
+
+
 class WeakIdentityMappingTest(fixtures.TestBase):
     class Data(object):
         pass
