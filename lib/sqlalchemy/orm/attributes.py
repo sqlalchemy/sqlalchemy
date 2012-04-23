@@ -204,13 +204,14 @@ def create_proxied_attribute(descriptor):
 
         """
 
-        def __init__(self, class_, key, descriptor, property_, 
+        def __init__(self, class_, key, descriptor, 
                                 comparator, 
-                                adapter=None, doc=None):
+                                adapter=None, doc=None,
+                                original_property=None):
             self.class_ = class_
             self.key = key
             self.descriptor = descriptor
-            self.original_property = property_
+            self.original_property = original_property
             self._comparator = comparator
             self.adapter = adapter
             self.__doc__ = doc

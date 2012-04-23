@@ -64,9 +64,9 @@ class DescriptorProperty(MapperProperty):
                         self.parent.class_,
                         self.key, 
                         self.descriptor,
-                        self,
                         lambda: self._comparator_factory(mapper),
-                        doc=self.doc
+                        doc=self.doc,
+                        original_property=self
                     )
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
