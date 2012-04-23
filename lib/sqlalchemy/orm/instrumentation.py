@@ -86,7 +86,6 @@ class ClassManager(dict):
         self.factory = None  # where we came from, for inheritance bookkeeping
         self.info = {}
         self.new_init = None
-        self.mutable_attributes = set()
         self.local_attrs = {}
         self.originals = {}
 
@@ -155,10 +154,7 @@ class ClassManager(dict):
     @util.memoized_property
     def _state_constructor(self):
         self.dispatch.first_init(self, self.class_)
-        if self.mutable_attributes:
-            return state.MutableAttrInstanceState
-        else:
-            return state.InstanceState
+        return state.InstanceState
 
     def manage(self):
         """Mark this instance as the manager for its class."""
@@ -209,8 +205,6 @@ class ClassManager(dict):
             del self.local_attrs[key]
             self.uninstall_descriptor(key)
         del self[key]
-        if key in self.mutable_attributes:
-            self.mutable_attributes.remove(key)
         for cls in self.class_.__subclasses__():
             manager = manager_of_class(cls) 
             if manager:

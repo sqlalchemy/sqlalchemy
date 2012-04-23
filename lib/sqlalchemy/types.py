@@ -17,7 +17,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'CLOB', 'BLOB', 'BOOLEAN', 'SMALLINT', 'INTEGER', 'DATE', 'TIME',
             'String', 'Integer', 'SmallInteger', 'BigInteger', 'Numeric',
             'Float', 'DateTime', 'Date', 'Time', 'LargeBinary', 'Binary',
-            'Boolean', 'Unicode', 'MutableType', 'Concatenable',
+            'Boolean', 'Unicode', 'Concatenable',
             'UnicodeText','PickleType', 'Interval', 'Enum' ]
 
 import inspect
@@ -82,28 +82,6 @@ class TypeEngine(AbstractType):
         """Compare two values for equality."""
 
         return x == y
-
-    def is_mutable(self):
-        """Return True if the target Python type is 'mutable'.
-
-        This allows systems like the ORM to know if a column value can
-        be considered 'not changed' by comparing the identity of
-        objects alone.  Values such as dicts, lists which
-        are serialized into strings are examples of "mutable" 
-        column structures.
-
-        .. note:: 
-        
-           This functionality is now superseded by the
-           ``sqlalchemy.ext.mutable`` extension described in 
-           :ref:`mutable_toplevel`.
-
-        When this method is overridden, :meth:`copy_value` should
-        also be supplied.   The :class:`.MutableType` mixin
-        is recommended as a helper.
-
-        """
-        return False
 
     def get_dbapi_type(self, dbapi):
         """Return the corresponding type object from the underlying DB-API, if
@@ -710,30 +688,6 @@ class TypeDecorator(TypeEngine):
         """
         return self.impl.get_dbapi_type(dbapi)
 
-    def copy_value(self, value):
-        """Given a value, produce a copy of it.
-
-        By default this calls upon :meth:`.TypeEngine.copy_value` 
-        of the underlying "impl".
-
-        :meth:`.copy_value` will return the object
-        itself, assuming "mutability" is not enabled.
-        Only the :class:`.MutableType` mixin provides a copy 
-        function that actually produces a new object.
-        The copying function is used by the ORM when
-        "mutable" types are used, to memoize the original
-        version of an object as loaded from the database,
-        which is then compared to the possibly mutated
-        version to check for changes.
-
-        Modern implementations should use the 
-        ``sqlalchemy.ext.mutable`` extension described in
-        :ref:`mutable_toplevel` for intercepting in-place
-        changes to values.
-
-        """
-        return self.impl.copy_value(value)
-
     def compare_values(self, x, y):
         """Given two values, compare them for equality.
 
@@ -748,24 +702,6 @@ class TypeDecorator(TypeEngine):
 
         """
         return self.impl.compare_values(x, y)
-
-    def is_mutable(self):
-        """Return True if the target Python type is 'mutable'.
-
-        This allows systems like the ORM to know if a column value can
-        be considered 'not changed' by comparing the identity of
-        objects alone.  Values such as dicts, lists which
-        are serialized into strings are examples of "mutable" 
-        column structures.
-
-        .. note:: 
-        
-           This functionality is now superseded by the
-           ``sqlalchemy.ext.mutable`` extension described in 
-           :ref:`mutable_toplevel`.
-
-        """
-        return self.impl.is_mutable()
 
     def _adapt_expression(self, op, othertype):
         """
@@ -828,82 +764,6 @@ class Variant(TypeDecorator):
         mapping[dialect_name] = type_
         return Variant(self.impl, mapping)
 
-class MutableType(object):
-    """A mixin that marks a :class:`.TypeEngine` as representing
-    a mutable Python object type.   This functionality is used
-    only by the ORM.
-
-    .. note:: 
-    
-       :class:`.MutableType` is superseded as of SQLAlchemy 0.7
-       by the ``sqlalchemy.ext.mutable`` extension described in
-       :ref:`mutable_toplevel`.   This extension provides an event
-       driven approach to in-place mutation detection that does not
-       incur the severe performance penalty of the :class:`.MutableType`
-       approach.
-
-    "mutable" means that changes can occur in place to a value 
-    of this type.   Examples includes Python lists, dictionaries,
-    and sets, as well as user-defined objects.  The primary
-    need for identification of "mutable" types is by the ORM, 
-    which applies special rules to such values in order to guarantee 
-    that changes are detected.  These rules may have a significant 
-    performance impact, described below.
-
-    A :class:`.MutableType` usually allows a flag called
-    ``mutable=False`` to enable/disable the "mutability" flag,
-    represented on this class by :meth:`is_mutable`.  Examples 
-    include :class:`.PickleType` and 
-    :class:`~sqlalchemy.dialects.postgresql.base.ARRAY`.  Setting
-    this flag to ``True`` enables mutability-specific behavior
-    by the ORM.
-
-    The :meth:`copy_value` and :meth:`compare_values` functions
-    represent a copy and compare function for values of this
-    type - implementing subclasses should override these
-    appropriately.
-
-    .. warning:: 
-    
-        The usage of mutable types has significant performance
-        implications when using the ORM. In order to detect changes, the
-        ORM must create a copy of the value when it is first
-        accessed, so that changes to the current value can be compared
-        against the "clean" database-loaded value. Additionally, when the
-        ORM checks to see if any data requires flushing, it must scan
-        through all instances in the session which are known to have
-        "mutable" attributes and compare the current value of each
-        one to its "clean"
-        value. So for example, if the Session contains 6000 objects (a
-        fairly large amount) and autoflush is enabled, every individual
-        execution of :class:`.Query` will require a full scan of that subset of
-        the 6000 objects that have mutable attributes, possibly resulting
-        in tens of thousands of additional method calls for every query.
-
-        As of SQLAlchemy 0.7, the ``sqlalchemy.ext.mutable`` is provided which
-        allows an event driven approach to in-place mutation detection. This
-        approach should now be favored over the usage of :class:`.MutableType`
-        with ``mutable=True``. ``sqlalchemy.ext.mutable`` is described in
-        :ref:`mutable_toplevel`.
-
-    """
-
-    def is_mutable(self):
-        """Return True if the target Python type is 'mutable'.
-
-        For :class:`.MutableType`, this method is set to 
-        return ``True``.
-
-        """
-        return True
-
-    def copy_value(self, value):
-        """Unimplemented."""
-        raise NotImplementedError()
-
-    def compare_values(self, x, y):
-        """Compare *x* == *y*."""
-        return x == y
 
 def to_instance(typeobj, *arg, **kw):
     if typeobj is None:
@@ -1961,7 +1821,7 @@ class Enum(String, SchemaType):
         else:
             return super(Enum, self).adapt(impltype, **kw)
 
-class PickleType(MutableType, TypeDecorator):
+class PickleType(TypeDecorator):
     """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's
@@ -1969,12 +1829,15 @@ class PickleType(MutableType, TypeDecorator):
     the way out, allowing any pickleable Python object to be stored as
     a serialized binary field.
 
+    To allow ORM change events to propagate for elements associated
+    with :class:`.PickleType`, see :ref:`mutable_toplevel`.
+
     """
 
     impl = LargeBinary
 
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, 
-                    pickler=None, mutable=False, comparator=None):
+                    pickler=None, comparator=None):
         """
         Construct a PickleType.
 
@@ -1984,21 +1847,6 @@ class PickleType(MutableType, TypeDecorator):
           cPickle is not available.  May be any object with
           pickle-compatible ``dumps` and ``loads`` methods.
 
-        :param mutable: defaults to False; implements
-          :meth:`AbstractType.is_mutable`.   When ``True``, incoming
-          objects will be compared against copies of themselves 
-          using the Python "equals" operator, unless the 
-          ``comparator`` argument is present.   See
-          :class:`.MutableType` for details on "mutable" type
-          behavior. (default changed from ``True`` in 
-          0.7.0).
-
-          .. note:: 
-          
-             This functionality is now superseded by the
-             ``sqlalchemy.ext.mutable`` extension described in 
-             :ref:`mutable_toplevel`.
-
         :param comparator: a 2-arg callable predicate used
           to compare values of this type.  If left as ``None``, 
           the Python "equals" operator is used to compare values.
@@ -2006,14 +1854,12 @@ class PickleType(MutableType, TypeDecorator):
         """
         self.protocol = protocol
         self.pickler = pickler or pickle
-        self.mutable = mutable
         self.comparator = comparator
         super(PickleType, self).__init__()
 
     def __reduce__(self):
         return PickleType, (self.protocol, 
                             None, 
-                            self.mutable, 
                             self.comparator)
 
     def bind_processor(self, dialect):
@@ -2048,28 +1894,11 @@ class PickleType(MutableType, TypeDecorator):
                 return loads(value)
         return process
 
-    def copy_value(self, value):
-        if self.mutable:
-            return self.pickler.loads(
-                        self.pickler.dumps(value, self.protocol))
-        else:
-            return value
-
     def compare_values(self, x, y):
         if self.comparator:
             return self.comparator(x, y)
         else:
             return x == y
-
-    def is_mutable(self):
-        """Return True if the target Python type is 'mutable'.
-
-        When this method is overridden, :meth:`copy_value` should
-        also be supplied.   The :class:`.MutableType` mixin
-        is recommended as a helper.
-
-        """
-        return self.mutable
 
 
 class Boolean(TypeEngine, SchemaType):

@@ -15,6 +15,19 @@ those which apply to an 0.7 release are noted.
 0.8.0b1
 =======
 - orm
+  - [removed] The legacy "mutable" system of the
+    ORM, including the MutableType class as well
+    as the mutable=True flag on PickleType
+    and postgresql.ARRAY has been removed.   
+    In-place mutations are detected by the ORM
+    using the sqlalchemy.ext.mutable extension,
+    introduced in 0.7.   The removal of MutableType
+    and associated constructs removes a great 
+    deal of complexity from SQLAlchemy's internals.
+    The approach performed poorly as it would incur 
+    a scan of the full contents of the Session 
+    when in use. [ticket:2442]
+
   - [feature] Major rewrite of relationship() 
     internals now allow join conditions which
     include columns pointing to themselves

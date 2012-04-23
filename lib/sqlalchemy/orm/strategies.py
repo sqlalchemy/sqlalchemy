@@ -25,8 +25,6 @@ import itertools
 def _register_attribute(strategy, mapper, useobject,
         compare_function=None, 
         typecallable=None,
-        copy_function=None, 
-        mutable_scalars=False, 
         uselist=False,
         callable_=None, 
         proxy_property=None, 
@@ -71,9 +69,7 @@ def _register_attribute(strategy, mapper, useobject,
                 m.class_, 
                 prop.key, 
                 parent_token=prop,
-                mutable_scalars=mutable_scalars,
                 uselist=uselist, 
-                copy_function=copy_function, 
                 compare_function=compare_function, 
                 useobject=useobject,
                 extension=attribute_ext, 
@@ -132,8 +128,6 @@ class ColumnLoader(LoaderStrategy):
 
         _register_attribute(self, mapper, useobject=False,
             compare_function=coltype.compare_values,
-            copy_function=coltype.copy_value,
-            mutable_scalars=self.columns[0].type.is_mutable(),
             active_history = active_history
        )
 
@@ -193,8 +187,6 @@ class DeferredColumnLoader(LoaderStrategy):
 
         _register_attribute(self, mapper, useobject=False,
              compare_function=self.columns[0].type.compare_values,
-             copy_function=self.columns[0].type.copy_value,
-             mutable_scalars=self.columns[0].type.is_mutable(),
              callable_=self._load_for_state,
              expire_missing=False
         )

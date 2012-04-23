@@ -585,60 +585,6 @@ class ScalarAttributeImpl(AttributeImpl):
         self.property.columns[0].type
 
 
-class MutableScalarAttributeImpl(ScalarAttributeImpl):
-    """represents a scalar value-holding InstrumentedAttribute, which can
-    detect changes within the value itself.
-
-    """
-
-    uses_objects = False
-    supports_population = True
-
-    def __init__(self, class_, key, callable_, dispatch,
-                    class_manager, copy_function=None,
-                    compare_function=None, **kwargs):
-        super(ScalarAttributeImpl, self).__init__(
-                                            class_, 
-                                            key, 
-                                            callable_, dispatch,
-                                            compare_function=compare_function, 
-                                            **kwargs)
-        class_manager.mutable_attributes.add(key)
-        if copy_function is None:
-            raise sa_exc.ArgumentError(
-                        "MutableScalarAttributeImpl requires a copy function")
-        self.copy = copy_function
-
-    def get_history(self, state, dict_, passive=PASSIVE_OFF):
-        if not dict_:
-            v = state.committed_state.get(self.key, NO_VALUE)
-        else:
-            v = dict_.get(self.key, NO_VALUE)
-
-        return History.from_scalar_attribute(self, state, v)
-
-    def check_mutable_modified(self, state, dict_):
-        a, u, d = self.get_history(state, dict_)
-        return bool(a or d)
-
-    def get(self, state, dict_, passive=PASSIVE_OFF):
-        if self.key not in state.mutable_dict:
-            ret = ScalarAttributeImpl.get(self, state, dict_, passive=passive)
-            if ret is not PASSIVE_NO_RESULT:
-                state.mutable_dict[self.key] = ret
-            return ret
-        else:
-            return state.mutable_dict[self.key]
-
-    def delete(self, state, dict_):
-        ScalarAttributeImpl.delete(self, state, dict_)
-        state.mutable_dict.pop(self.key)
-
-    def set(self, state, dict_, value, initiator, 
-            passive=PASSIVE_OFF, check_old=None, pop=False):
-        ScalarAttributeImpl.set(self, state, dict_, value, 
-                initiator, passive, check_old=check_old, pop=pop)
-        state.mutable_dict[self.key] = value
 
 
 class ScalarObjectAttributeImpl(ScalarAttributeImpl):
@@ -1269,7 +1215,7 @@ def register_attribute(class_, key, **kw):
 
 def register_attribute_impl(class_, key,
         uselist=False, callable_=None, 
-        useobject=False, mutable_scalars=False, 
+        useobject=False,  
         impl_class=None, backref=None, **kw):
 
     manager = manager_of_class(class_)
@@ -1290,9 +1236,6 @@ def register_attribute_impl(class_, key,
     elif useobject:
         impl = ScalarObjectAttributeImpl(class_, key, callable_,
                                         dispatch,**kw)
-    elif mutable_scalars:
-        impl = MutableScalarAttributeImpl(class_, key, callable_, dispatch,
-                                          class_manager=manager, **kw)
     else:
         impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 

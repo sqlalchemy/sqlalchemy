@@ -10,7 +10,6 @@ from sqlalchemy.orm import attributes
 
 class IdentityMap(dict):
     def __init__(self):
-        self._mutable_attrs = set()
         self._modified = set()
         self._wr = weakref.ref(self)
 
@@ -31,28 +30,18 @@ class IdentityMap(dict):
 
         if state.modified:
             self._modified.add(state)
-        if state.manager.mutable_attributes:
-            self._mutable_attrs.add(state)
 
     def _manage_removed_state(self, state):
         del state._instance_dict
-        self._mutable_attrs.discard(state)
         self._modified.discard(state)
 
     def _dirty_states(self):
-        return self._modified.union(s for s in self._mutable_attrs.copy()
-                                    if s.modified)
+        return self._modified
 
     def check_modified(self):
         """return True if any InstanceStates present have been marked as 'modified'."""
 
-        if self._modified:
-            return True
-        else:
-            for state in self._mutable_attrs.copy():
-                if state.modified:
-                    return True
-        return False
+        return bool(self._modified)
 
     def has_key(self, key):
         return key in self

@@ -553,54 +553,6 @@ class MemUsageTest(EnsureZeroed):
             metadata.drop_all()
 
 
-    def test_mutable_identity(self):
-        metadata = MetaData(testing.db)
-
-        table1 = Table("mytable", metadata,
-            Column('col1', Integer, primary_key=True,
-                                test_needs_autoincrement=True),
-            Column('col2', PickleType(comparator=operator.eq, mutable=True))
-            )
-
-        class Foo(object):
-            def __init__(self, col2):
-                self.col2 = col2
-
-        mapper(Foo, table1)
-        metadata.create_all()
-
-        session = sessionmaker()()
-
-        def go():
-            obj = [
-                Foo({'a':1}),
-                Foo({'b':1}),
-                Foo({'c':1}),
-                Foo({'d':1}),
-                Foo({'e':1}),
-                Foo({'f':1}),
-                Foo({'g':1}),
-                Foo({'h':1}),
-                Foo({'i':1}),
-                Foo({'j':1}),
-                Foo({'k':1}),
-                Foo({'l':1}),
-            ]
-
-            session.add_all(obj)
-            session.commit()
-
-            testing.eq_(len(session.identity_map._mutable_attrs), 12)
-            testing.eq_(len(session.identity_map), 12)
-            obj = None
-            gc_collect()
-            testing.eq_(len(session.identity_map._mutable_attrs), 0)
-            testing.eq_(len(session.identity_map), 0)
-
-        try:
-            go()
-        finally:
-            metadata.drop_all()
 
     def test_type_compile(self):
         from sqlalchemy.dialects.sqlite.base import dialect as SQLiteDialect

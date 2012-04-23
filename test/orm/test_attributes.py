@@ -205,9 +205,6 @@ class AttributesTest(fixtures.ORMTest):
                 uselist=False, useobject=False)
         attributes.register_attribute(MyTest, 'email_address',
                 uselist=False, useobject=False)
-        attributes.register_attribute(MyTest, 'some_mutable_data',
-                mutable_scalars=True, copy_function=list,
-                compare_function=cmp, uselist=False, useobject=False)
         attributes.register_attribute(MyTest2, 'a', uselist=False,
                 useobject=False)
         attributes.register_attribute(MyTest2, 'b', uselist=False,
@@ -225,7 +222,6 @@ class AttributesTest(fixtures.ORMTest):
         o = MyTest()
         o.mt2.append(MyTest2())
         o.user_id=7
-        o.some_mutable_data = [1,2,3]
         o.mt2[0].a = 'abcde'
         pk_o = pickle.dumps(o)
 
@@ -268,7 +264,6 @@ class AttributesTest(fixtures.ORMTest):
         self.assert_(o4.user_id == 7)
         self.assert_(o4.user_name is None)
         self.assert_(o4.email_address is None)
-        self.assert_(o4.some_mutable_data == [1,2,3])
         self.assert_(len(o4.mt2) == 1)
         self.assert_(o4.mt2[0].a == 'abcde')
         self.assert_(o4.mt2[0].b is None)
@@ -564,8 +559,7 @@ class AttributesTest(fixtures.ORMTest):
 
     def test_scalar_listener(self):
 
-        # listeners on ScalarAttributeImpl and
-        # MutableScalarAttributeImpl aren't used normally. test that
+        # listeners on ScalarAttributeImpl aren't used normally. test that
         # they work for the benefit of user extensions
 
         class Foo(object):
@@ -586,27 +580,18 @@ class AttributesTest(fixtures.ORMTest):
 
         instrumentation.register_class(Foo)
         attributes.register_attribute(Foo, 'x', uselist=False,
-                mutable_scalars=False, useobject=False,
+                useobject=False,
                 extension=ReceiveEvents())
-        attributes.register_attribute(Foo, 'y', uselist=False,
-                mutable_scalars=True, useobject=False,
-                copy_function=lambda x: x, extension=ReceiveEvents())
 
         f = Foo()
         f.x = 5
         f.x = 17
         del f.x
-        f.y = [1,2,3]
-        f.y = [4,5,6]
-        del f.y
 
         eq_(results, [
             ('set', f, 5, attributes.NEVER_SET),
             ('set', f, 17, 5),
             ('remove', f, 17),
-            ('set', f, [1,2,3], attributes.NEVER_SET),
-            ('set', f, [4,5,6], [1,2,3]),
-            ('remove', f, [4,5,6])
         ])
 
     def test_lazytrackparent(self):
@@ -816,31 +801,6 @@ class AttributesTest(fixtures.ORMTest):
         assert attributes.has_parent(Bar, f4, 'element')
         b3.element = f4
         assert attributes.has_parent(Bar, f4, 'element')
-
-    def test_mutablescalars(self):
-        """test detection of changes on mutable scalar items"""
-
-        class Foo(object):
-            pass
-
-        instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, 'element', uselist=False,
-                copy_function=lambda x: [y for y in x],
-                mutable_scalars=True, useobject=False)
-        x = Foo()
-        x.element = ['one', 'two', 'three']
-        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
-        x.element[1] = 'five'
-        assert attributes.instance_state(x).modified
-        instrumentation.unregister_class(Foo)
-        instrumentation.register_class(Foo)
-        attributes.register_attribute(Foo, 'element', uselist=False,
-                useobject=False)
-        x = Foo()
-        x.element = ['one', 'two', 'three']
-        attributes.instance_state(x).commit_all(attributes.instance_dict(x))
-        x.element[1] = 'five'
-        assert not attributes.instance_state(x).modified
 
     def test_descriptorattributes(self):
         """changeset: 1633 broke ability to use ORM to map classes with
@@ -1620,91 +1580,6 @@ class HistoryTest(fixtures.TestBase):
         eq_(self._someattr_history(f), (['two'], (), ()))
 
 
-    def test_mutable_scalar_init(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        eq_(self._someattr_history(f), ((), (), ()))
-
-    def test_mutable_scalar_no_init_side_effect(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        self._someattr_history(f)
-        assert 'someattr' not in f.__dict__
-        assert 'someattr' not in attributes.instance_state(f).committed_state
-
-    def test_mutable_scalar_set(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.someattr = {'foo': 'hi'}
-        eq_(self._someattr_history(f), ([{'foo': 'hi'}], (), ()))
-
-    def test_mutable_scalar_set_commit(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.someattr = {'foo': 'hi'}
-        self._commit_someattr(f)
-        eq_(self._someattr_history(f), ((), [{'foo': 'hi'}], ()))
-        eq_(attributes.instance_state(f).committed_state['someattr'],
-            {'foo': 'hi'})
-
-    def test_mutable_scalar_set_commit_reset(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.someattr = {'foo': 'hi'}
-        self._commit_someattr(f)
-        f.someattr['foo'] = 'there'
-        eq_(self._someattr_history(f), ([{'foo': 'there'}], (), [{'foo': 'hi'}]))
-        eq_(attributes.get_state_history(attributes.instance_state(f),
-            'someattr'), ([{'foo': 'there'}], (), [{'foo': 'hi'}]))
-
-    def test_mutable_scalar_set_commit_reset_commit(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.someattr = {'foo': 'hi'}
-        self._commit_someattr(f)
-        f.someattr['foo'] = 'there'
-        self._commit_someattr(f)
-        eq_(self._someattr_history(f), ((), [{'foo': 'there'}], ()))
-
-    def test_mutable_scalar_set_dict(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.__dict__['someattr'] = {'foo': 'new'}
-        eq_(self._someattr_history(f), ((), [{'foo': 'new'}], ()))
-
-    def test_mutable_scalar_set_dict_set(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.__dict__['someattr'] = {'foo': 'new'}
-        eq_(self._someattr_history(f), ((), [{'foo': 'new'}], ()))
-        f.someattr = {'foo': 'old'}
-        eq_(self._someattr_history(f), ([{'foo': 'old'}], (), [{'foo': 'new'}]))
-
-    def test_mutable_scalar_set_dict_set_commit(self):
-        Foo = self._fixture(uselist=False, useobject=False, 
-                                active_history=False,
-                                mutable_scalars=True,copy_function=dict)
-        f = Foo()
-        f.__dict__['someattr'] = {'foo': 'new'}
-        f.someattr = {'foo': 'old'}
-        self._commit_someattr(f)
-        eq_(self._someattr_history(f), ((), [{'foo': 'old'}], ()))
 
     def test_scalar_inplace_mutation_set(self):
         Foo = self._fixture(uselist=False, useobject=False, 

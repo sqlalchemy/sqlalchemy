@@ -317,7 +317,7 @@ class UUID(sqltypes.TypeEngine):
 
 PGUuid = UUID
 
-class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
+class ARRAY(sqltypes.Concatenable, sqltypes.TypeEngine):
     """Postgresql ARRAY type.
 
     Represents values as Python lists.
@@ -329,7 +329,7 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
     """
     __visit_name__ = 'ARRAY'
 
-    def __init__(self, item_type, mutable=False, as_tuple=False):
+    def __init__(self, item_type, as_tuple=False):
         """Construct an ARRAY.
 
         E.g.::
@@ -344,25 +344,10 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           ``ARRAY(ARRAY(Integer))`` or such. The type mapping figures out on
           the fly
 
-        :param mutable=False: Specify whether lists passed to this
-          class should be considered mutable - this enables 
-          "mutable types" mode in the ORM.  Be sure to read the 
-          notes for :class:`.MutableType` regarding ORM 
-          performance implications (default changed from ``True`` in 
-          0.7.0).
-
-          .. note:: 
-          
-             This functionality is now superseded by the
-             ``sqlalchemy.ext.mutable`` extension described in 
-             :ref:`mutable_toplevel`.
-
         :param as_tuple=False: Specify whether return results
           should be converted to tuples from lists. DBAPIs such
           as psycopg2 return lists by default. When tuples are
-          returned, the results are hashable. This flag can only
-          be set to ``True`` when ``mutable`` is set to
-          ``False``. (new in 0.6.5)
+          returned, the results are hashable.
 
         """
         if isinstance(item_type, ARRAY):
@@ -371,26 +356,10 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         if isinstance(item_type, type):
             item_type = item_type()
         self.item_type = item_type
-        self.mutable = mutable
-        if mutable and as_tuple:
-            raise exc.ArgumentError(
-                "mutable must be set to False if as_tuple is True."
-            )
         self.as_tuple = as_tuple
-
-    def copy_value(self, value):
-        if value is None:
-            return None
-        elif self.mutable:
-            return list(value)
-        else:
-            return value
 
     def compare_values(self, x, y):
         return x == y
-
-    def is_mutable(self):
-        return self.mutable
 
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(dialect)
