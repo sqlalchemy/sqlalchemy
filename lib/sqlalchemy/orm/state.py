@@ -17,12 +17,12 @@ from sqlalchemy import util
 
 from sqlalchemy.orm import exc as orm_exc, attributes, interfaces,\
         util as orm_util
-from sqlalchemy.orm.attributes import PASSIVE_OFF, PASSIVE_NO_RESULT, \
-    SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE
+from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, \
+    SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
+    PASSIVE_NO_INITIALIZE
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
-
-import sys
+sessionlib = util.importlater("sqlalchemy.orm", "session")
 
 class InstanceState(object):
     """tracks state information at the instance level."""
@@ -47,22 +47,81 @@ class InstanceState(object):
         self.committed_state = {}
 
     @util.memoized_property
+    def attr(self):
+        return util.ImmutableProperties(
+            dict(
+                (key, InspectAttr(self, key))
+                for key in self.manager
+            )
+        )
+
+    @property
+    def transient(self):
+        return self.key is None and \
+            not self._attached
+
+    @property
+    def pending(self):
+        return self.key is None and \
+            self._attached
+
+    @property
+    def persistent(self):
+        return self.key is not None and \
+            self._attached
+
+    @property
+    def detached(self):
+        return self.key is not None and \
+            not self._attached
+
+    @property
+    def _attached(self):
+        return self.session_id is not None and \
+            self.session_id in sessionlib._sessions
+
+    @property
+    def session(self):
+        return sessionlib._state_session(self)
+
+    @property
+    def object(self):
+        return self.obj()
+
+    @property
+    def identity(self):
+        if self.key is None:
+            return None
+        else:
+            return self.key[1]
+
+    @property
+    def identity_key(self):
+        # TODO: just change .key to .identity_key across
+        # the board ?  probably
+        return self.key
+
+    @util.memoized_property
     def parents(self):
         return {}
 
     @util.memoized_property
-    def pending(self):
+    def _pending_mutations(self):
         return {}
+
+    @util.memoized_property
+    def mapper(self):
+        return self.manager.mapper
 
     @property
     def has_identity(self):
         return bool(self.key)
 
-    def detach(self):
+    def _detach(self):
         self.session_id = None
 
-    def dispose(self):
-        self.detach()
+    def _dispose(self):
+        self._detach()
         del self.obj
 
     def _cleanup(self, ref):
@@ -106,35 +165,16 @@ class InstanceState(object):
     def get_impl(self, key):
         return self.manager[key].impl
 
-    def get_pending(self, key):
-        if key not in self.pending:
-            self.pending[key] = PendingCollection()
-        return self.pending[key]
-
-    def value_as_iterable(self, dict_, key, passive=PASSIVE_OFF):
-        """Return a list of tuples (state, obj) for the given
-        key.
-
-        returns an empty list if the value is None/empty/PASSIVE_NO_RESULT
-        """
-
-        impl = self.manager[key].impl
-        x = impl.get(self, dict_, passive=passive)
-        if x is PASSIVE_NO_RESULT or x is None:
-            return []
-        elif hasattr(impl, 'get_collection'):
-            return [
-                (attributes.instance_state(o), o) for o in 
-                impl.get_collection(self, dict_, x, passive=passive)
-            ]
-        else:
-            return [(attributes.instance_state(x), x)]
+    def _get_pending_mutation(self, key):
+        if key not in self._pending_mutations:
+            self._pending_mutations[key] = PendingCollection()
+        return self._pending_mutations[key]
 
     def __getstate__(self):
         d = {'instance':self.obj()}
         d.update(
             (k, self.__dict__[k]) for k in (
-                'committed_state', 'pending', 'modified', 'expired', 
+                'committed_state', '_pending_mutations', 'modified', 'expired', 
                 'callables', 'key', 'parents', 'load_options', 'mutable_dict',
                 'class_',
             ) if k in self.__dict__ 
@@ -169,7 +209,7 @@ class InstanceState(object):
             mapperlib.configure_mappers()
 
         self.committed_state = state.get('committed_state', {})
-        self.pending = state.get('pending', {})
+        self._pending_mutations = state.get('_pending_mutations', {})
         self.parents = state.get('parents', {})
         self.modified = state.get('modified', False)
         self.expired = state.get('expired', False)
@@ -234,7 +274,7 @@ class InstanceState(object):
 
         self.committed_state.clear()
 
-        self.__dict__.pop('pending', None)
+        self.__dict__.pop('_pending_mutations', None)
         self.__dict__.pop('mutable_dict', None)
 
         # clear out 'parents' collection.  not
@@ -252,7 +292,7 @@ class InstanceState(object):
         self.manager.dispatch.expire(self, None)
 
     def expire_attributes(self, dict_, attribute_names):
-        pending = self.__dict__.get('pending', None)
+        pending = self.__dict__.get('_pending_mutations', None)
         mutable_dict = self.mutable_dict
 
         for key in attribute_names:
@@ -336,7 +376,7 @@ class InstanceState(object):
     def _is_really_none(self):
         return self.obj()
 
-    def modified_event(self, dict_, attr, previous, collection=False):
+    def _modified_event(self, dict_, attr, previous, collection=False):
         if attr.key not in self.committed_state:
             if collection:
                 if previous is NEVER_SET:
@@ -415,7 +455,7 @@ class InstanceState(object):
         """
 
         self.committed_state.clear()
-        self.__dict__.pop('pending', None)
+        self.__dict__.pop('_pending_mutations', None)
 
         callables = self.callables
         for key in list(callables):
@@ -431,6 +471,27 @@ class InstanceState(object):
 
         self.modified = self.expired = False
         self._strong_obj = None
+
+class InspectAttr(object):
+    """Provide inspection interface to an object's state."""
+
+    def __init__(self, state, key):
+        self.state = state
+        self.key = key
+
+    @property
+    def loaded_value(self):
+        return self.state.dict.get(self.key, NO_VALUE)
+
+    @property
+    def value(self):
+        return self.state.manager[self.key].__get__(
+                        self.state.obj(), self.state.class_)
+
+    @property
+    def history(self):
+        return self.state.get_history(self.key, 
+                    PASSIVE_NO_INITIALIZE)
 
 class MutableAttrInstanceState(InstanceState):
     """InstanceState implementation for objects that reference 'mutable' 
@@ -524,7 +585,7 @@ class MutableAttrInstanceState(InstanceState):
             instance_dict = self._instance_dict()
             if instance_dict:
                 instance_dict.discard(self)
-            self.dispose()
+            self._dispose()
 
     def __resurrect(self):
         """A substitute for the obj() weakref function which resurrects."""

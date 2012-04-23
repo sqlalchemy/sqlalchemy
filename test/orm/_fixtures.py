@@ -2,7 +2,8 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey
 from sqlalchemy import util
 from test.lib.schema import Table
 from test.lib.schema import Column
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, mapper, relationship, \
+    backref, configure_mappers
 from test.lib import fixtures
 
 __all__ = ()
@@ -47,6 +48,48 @@ class FixtureTest(fixtures.MappedTest):
 
         class CompositePk(Base):
             pass
+
+    @classmethod
+    def _setup_stock_mapping(cls):
+        Node, composite_pk_table, users, Keyword, items, Dingaling, \
+            order_items, item_keywords, Item, User, dingalings, \
+            Address, keywords, CompositePk, nodes, Order, orders, \
+            addresses = cls.classes.Node, \
+            cls.tables.composite_pk_table, cls.tables.users, \
+            cls.classes.Keyword, cls.tables.items, \
+            cls.classes.Dingaling, cls.tables.order_items, \
+            cls.tables.item_keywords, cls.classes.Item, \
+            cls.classes.User, cls.tables.dingalings, \
+            cls.classes.Address, cls.tables.keywords, \
+            cls.classes.CompositePk, cls.tables.nodes, \
+            cls.classes.Order, cls.tables.orders, cls.tables.addresses
+
+        mapper(User, users, properties={
+            'addresses':relationship(Address, backref='user', order_by=addresses.c.id),
+            'orders':relationship(Order, backref='user', order_by=orders.c.id), # o2m, m2o
+        })
+        mapper(Address, addresses, properties={
+            'dingaling':relationship(Dingaling, uselist=False, backref="address")  #o2o
+        })
+        mapper(Dingaling, dingalings)
+        mapper(Order, orders, properties={
+            'items':relationship(Item, secondary=order_items, order_by=items.c.id),  #m2m
+            'address':relationship(Address),  # m2o
+        })
+        mapper(Item, items, properties={
+            'keywords':relationship(Keyword, secondary=item_keywords) #m2m
+        })
+        mapper(Keyword, keywords)
+
+        mapper(Node, nodes, properties={
+            'children':relationship(Node, 
+                backref=backref('parent', remote_side=[nodes.c.id])
+            )
+        })
+
+        mapper(CompositePk, composite_pk_table)
+
+        configure_mappers()
 
     @classmethod
     def define_tables(cls, metadata):

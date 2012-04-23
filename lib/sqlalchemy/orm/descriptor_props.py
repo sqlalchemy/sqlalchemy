@@ -64,6 +64,7 @@ class DescriptorProperty(MapperProperty):
                         self.parent.class_,
                         self.key, 
                         self.descriptor,
+                        self,
                         lambda: self._comparator_factory(mapper),
                         doc=self.doc
                     )

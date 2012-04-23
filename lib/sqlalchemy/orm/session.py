@@ -835,7 +835,7 @@ class Session(object):
 
         """
         for state in self.identity_map.all_states() + list(self._new):
-            state.detach()
+            state._detach()
 
         self.identity_map = self._identity_cls()
         self._new = {}
@@ -1135,7 +1135,7 @@ class Session(object):
             state.expire(state.dict, self.identity_map._modified)
         elif state in self._new:
             self._new.pop(state)
-            state.detach()
+            state._detach()
 
     @util.deprecated("0.7", "The non-weak-referencing identity map "
                         "feature is no longer needed.")
@@ -1177,11 +1177,11 @@ class Session(object):
     def _expunge_state(self, state):
         if state in self._new:
             self._new.pop(state)
-            state.detach()
+            state._detach()
         elif self.identity_map.contains_state(state):
             self.identity_map.discard(state)
             self._deleted.pop(state, None)
-            state.detach()
+            state._detach()
         elif self.transaction:
             self.transaction._deleted.pop(state, None)
 

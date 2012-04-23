@@ -87,14 +87,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
 
 
-    def test_prop_accessor(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-        assert_raises(NotImplementedError,
-                          getattr, sa.orm.class_mapper(User), 'properties')
-
-
     def test_friendly_attribute_str_on_uncompiled_boom(self):
         User, users = self.classes.User, self.tables.users
 

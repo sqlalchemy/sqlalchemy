@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from sqlalchemy import sql, util, event, exc as sa_exc
+from sqlalchemy import sql, util, event, exc as sa_exc, inspection
 from sqlalchemy.sql import expression, util as sql_util, operators
 from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
                                 PropComparator, MapperProperty
@@ -642,15 +642,34 @@ def object_mapper(instance):
 
     Raises UnmappedInstanceError if no mapping is configured.
 
+    This function is available via the inspection system as::
+    
+        inspect(instance).mapper
+
+    """
+    return object_state(instance).mapper
+
+@inspection._inspects(object)
+def object_state(instance):
+    """Given an object, return the primary Mapper associated with the object
+    instance.
+
+    Raises UnmappedInstanceError if no mapping is configured.
+
+    This function is available via the inspection system as::
+    
+        inspect(instance)
+
     """
     try:
-        state = attributes.instance_state(instance)
-        return state.manager.mapper
+        return attributes.instance_state(instance)
     except exc.UnmappedClassError:
         raise exc.UnmappedInstanceError(instance)
     except exc.NO_STATE:
         raise exc.UnmappedInstanceError(instance)
 
+
+@inspection._inspects(type)
 def class_mapper(class_, compile=True):
     """Given a class, return the primary :class:`.Mapper` associated 
     with the key.
@@ -659,6 +678,10 @@ def class_mapper(class_, compile=True):
     on the given class, or :class:`.ArgumentError` if a non-class
     object is passed.
 
+    This function is available via the inspection system as::
+    
+        inspect(some_mapped_class)
+    
     """
 
     try:

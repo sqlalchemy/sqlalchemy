@@ -99,6 +99,13 @@ class ColumnProperty(StrategizedProperty):
         else:
             self.strategy_class = strategies.ColumnLoader
 
+    @property
+    def expression(self):
+        """Return the primary column or expression for this ColumnProperty.
+
+        """
+        return self.columns[0]
+
     def instrument_class(self, mapper):
         if not self.instrument:
             return
@@ -275,7 +282,6 @@ class RelationshipProperty(StrategizedProperty):
             self.backref = None
         else:
             self.backref = backref
-
 
     def instrument_class(self, mapper):
         attributes.register_descriptor(
@@ -805,6 +811,27 @@ class RelationshipProperty(StrategizedProperty):
                 dest_state.get_impl(self.key).set(dest_state,
                         dest_dict, obj, None)
 
+    def _value_as_iterable(self, state, dict_, key, 
+                                    passive=attributes.PASSIVE_OFF):
+        """Return a list of tuples (state, obj) for the given
+        key.
+
+        returns an empty list if the value is None/empty/PASSIVE_NO_RESULT
+        """
+
+        impl = state.manager[key].impl
+        x = impl.get(state, dict_, passive=passive)
+        if x is attributes.PASSIVE_NO_RESULT or x is None:
+            return []
+        elif hasattr(impl, 'get_collection'):
+            return [
+                (attributes.instance_state(o), o) for o in 
+                impl.get_collection(state, dict_, x, passive=passive)
+            ]
+        else:
+            return [(attributes.instance_state(x), x)]
+
+
     def cascade_iterator(self, type_, state, dict_, visited_states, halt_on=None):
         #assert type_ in self.cascade
 
@@ -819,7 +846,7 @@ class RelationshipProperty(StrategizedProperty):
                         get_all_pending(state, dict_)
 
         else:
-            tuples = state.value_as_iterable(dict_, self.key,
+            tuples = self._value_as_iterable(state, dict_, self.key,
                             passive=passive)
 
         skip_pending = type_ == 'refresh-expire' and 'delete-orphan' \

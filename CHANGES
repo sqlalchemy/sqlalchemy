@@ -29,6 +29,17 @@ those which apply to an 0.7 release are noted.
     approach can be upgraded to this new 
     approach. [ticket:1401]
 
+  - [feature] Added new core function "inspect()", 
+    which serves as a generic gateway to
+    introspection into mappers, objects,
+    others.   The Mapper and InstanceState
+    objects have been enhanced with a public
+    API that allows inspection of mapped 
+    attributes, including filters for column-bound
+    or relationship-bound properties, inspection
+    of current object state, history of
+    attributes, etc.  [ticket:2208]
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
@@ -80,6 +91,10 @@ those which apply to an 0.7 release are noted.
     also in 0.7.7.
 
 - sql
+  - [feature] The Inspector object can now be 
+    acquired using the new inspect() service,
+    part of [ticket:2208]
+
   - [bug] Removed warning when Index is created
     with no columns; while this might not be what 
     the user intended, it is a valid use case 

@@ -551,7 +551,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         # list is still here.
         eq_(
             set(attributes.instance_state(i1).
-                pending['keywords'].added_items),
+                _pending_mutations['keywords'].added_items),
             set([k2])
         )
         # because autoflush is off, k2 is still
@@ -564,7 +564,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         # the pending collection was removed
         assert 'keywords' not in attributes.\
                                 instance_state(i1).\
-                                pending
+                                _pending_mutations
 
     def test_duplicate_adds(self):
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
