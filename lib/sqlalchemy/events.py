@@ -166,7 +166,7 @@ class DDLEvents(event.Events):
         
         """
 
-    def column_reflect(self, table, column_info):
+    def column_reflect(self, inspector, table, column_info):
         """Called for each unit of 'column info' retrieved when
         a :class:`.Table` is being reflected.   
         
@@ -188,7 +188,7 @@ class DDLEvents(event.Events):
             from sqlalchemy.schema import Table
             from sqlalchemy import event
 
-            def listen_for_reflect(table, column_info):
+            def listen_for_reflect(inspector, table, column_info):
                 "receive a column_reflect event"
                 # ...
                 
@@ -200,7 +200,7 @@ class DDLEvents(event.Events):
         ...or with a specific :class:`.Table` instance using
         the ``listeners`` argument::
         
-            def listen_for_reflect(table, column_info):
+            def listen_for_reflect(inspector, table, column_info):
                 "receive a column_reflect event"
                 # ...
                 

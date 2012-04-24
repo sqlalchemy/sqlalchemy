@@ -1645,7 +1645,7 @@ class ColumnEventsTest(fixtures.TestBase):
         from sqlalchemy.schema import Table
 
         m = MetaData(testing.db)
-        def column_reflect(table, column_info):
+        def column_reflect(insp, table, column_info):
             if column_info['name'] == col:
                 column_info.update(update)
 

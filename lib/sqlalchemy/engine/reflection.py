@@ -374,7 +374,7 @@ class Inspector(object):
         found_table = False
         for col_d in self.get_columns(table_name, schema, **tblkw):
             found_table = True
-            table.dispatch.column_reflect(table, col_d)
+            table.dispatch.column_reflect(self, table, col_d)
 
             name = col_d['name']
             if include_columns and name not in include_columns:
