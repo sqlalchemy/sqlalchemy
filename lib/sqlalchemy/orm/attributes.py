@@ -52,6 +52,11 @@ indicating that the attribute had not been assigned to previously.
 """
 )
 
+NO_CHANGE = util.symbol("NO_CHANGE", 
+"""No callables or SQL should be emitted on attribute access
+and no state should change""", canonical=0
+)
+
 CALLABLES_OK = util.symbol("CALLABLES_OK",
 """Loader callables can be fired off if a value
 is not present.""", canonical=1

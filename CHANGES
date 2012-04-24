@@ -52,6 +52,13 @@ CHANGES
     of current object state, history of
     attributes, etc.  [ticket:2208]
 
+  - [bug] The "passive" flag on Session.is_modified()
+    no longer has any effect. is_modified() in 
+    all cases looks only at local in-memory
+    modified flags and will not emit any
+    SQL or invoke loader callables/initializers.  
+    [ticket:2320]
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery

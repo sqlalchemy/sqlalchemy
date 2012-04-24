@@ -16,7 +16,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.orm.util import object_mapper as _object_mapper
 from sqlalchemy.orm.util import class_mapper as _class_mapper
 from sqlalchemy.orm.util import (
-    _class_to_mapper, _state_mapper,
+    _class_to_mapper, _state_mapper, object_state
     )
 from sqlalchemy.orm.mapper import Mapper, _none_set
 from sqlalchemy.orm.unitofwork import UOWTransaction
@@ -1678,7 +1678,7 @@ class Session(object):
 
 
     def is_modified(self, instance, include_collections=True, 
-                            passive=attributes.PASSIVE_OFF):
+                            passive=True):
         """Return ``True`` if the given instance has locally 
         modified attributes.
 
@@ -1693,19 +1693,19 @@ class Session(object):
         
         E.g.::
         
-            return session.is_modified(someobject, passive=True)
+            return session.is_modified(someobject)
             
         .. note:: 
           
-           In SQLAlchemy 0.7 and earlier, the ``passive`` 
-           flag should **always** be explicitly set to ``True``. 
-           The current default value of :data:`.attributes.PASSIVE_OFF`
-           for this flag is incorrect, in that it loads unloaded
-           collections and attributes which by definition 
-           have no modified state, and furthermore trips off 
-           autoflush which then causes all subsequent, possibly
-           modified attributes to lose their modified state.   
-           The default value of the flag will be changed in 0.8.
+           When using SQLAlchemy 0.7 and earlier, the ``passive`` 
+           flag should **always** be explicitly set to ``True``,
+           else SQL loads/autoflushes may proceed which can affect 
+           the modified state itself::
+           
+               session.is_modified(someobject, passive=True)
+           
+           In 0.8 and above, the behavior is corrected and 
+           this flag is ignored.
            
         A few caveats to this method apply:
 
@@ -1726,7 +1726,7 @@ class Session(object):
           usually needed, and in those few cases where it isn't, is less
           expensive on average than issuing a defensive SELECT. 
 
-          The "old" value is fetched unconditionally only if the attribute
+          The "old" value is fetched unconditionally upon set only if the attribute
           container has the ``active_history`` flag set to ``True``. This flag
           is set typically for primary key attributes and scalar object references
           that are not a simple many-to-one.  To set this flag for 
@@ -1739,33 +1739,17 @@ class Session(object):
          only local-column based properties (i.e. scalar columns or many-to-one
          foreign keys) that would result in an UPDATE for this instance upon
          flush.
-        :param passive: Indicates if unloaded attributes and 
-         collections should be loaded in the course of performing 
-         this test.  If set to ``False``, or left at its default
-         value of :data:`.PASSIVE_OFF`, unloaded attributes
-         will be loaded.  If set to ``True`` or 
-         :data:`.PASSIVE_NO_INITIALIZE`, unloaded 
-         collections and attributes will remain unloaded.  As 
-         noted previously, the existence of this flag here
-         is a bug, as unloaded attributes by definition have 
-         no changes, and the load operation also triggers an
-         autoflush which then cancels out subsequent changes.
-         This flag should **always be set to 
-         True**.  In 0.8 the flag will be deprecated and the default
-         set to ``True``.
-
+        :param passive: Ignored for backwards compatibility in 
+         0.8 and above.   When using SQLAlchemy 0.7 and earlier, this
+         flag should always be set to ``True``.
 
         """
-        try:
-            state = attributes.instance_state(instance)
-        except exc.NO_STATE:
-            raise exc.UnmappedInstanceError(instance)
-        dict_ = state.dict
+        state = object_state(instance)
 
-        if passive is True:
-            passive = attributes.PASSIVE_NO_INITIALIZE
-        elif passive is False:
-            passive = attributes.PASSIVE_OFF
+        if not state.modified:
+            return False
+
+        dict_ = state.dict
 
         for attr in state.manager.attributes:
             if \
@@ -1776,11 +1760,13 @@ class Session(object):
                 continue
 
             (added, unchanged, deleted) = \
-                    attr.impl.get_history(state, dict_, passive=passive)
+                    attr.impl.get_history(state, dict_, 
+                            passive=attributes.NO_CHANGE)
 
             if added or deleted:
                 return True
-        return False
+        else:
+            return False
 
     @property
     def is_active(self):

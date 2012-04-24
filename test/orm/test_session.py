@@ -1048,6 +1048,9 @@ class IsModifiedTest(_fixtures.FixtureTest):
         assert not s.is_modified(user, include_collections=False)
 
     def test_is_modified_passive_off(self):
+        """as of 0.8 no SQL is emitted for is_modified()
+        regardless of the passive flag"""
+
         User, Address = self._default_mapping_fixture()
 
         s = Session()
@@ -1062,7 +1065,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
         self.assert_sql_count(
             testing.db,
             go,
-            1
+            0
         )
 
         s.expire_all()
