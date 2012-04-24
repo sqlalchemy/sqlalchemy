@@ -4,6 +4,7 @@ import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc, pool
 from sqlalchemy.engine import _coerce_config
+from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy as tsa
 from test.lib import fixtures, testing
 
@@ -314,6 +315,44 @@ pool_timeout=10
             module=mock_sqlite_dbapi,
             _initialize=False,
             )
+
+class TestRegNewDBAPI(fixtures.TestBase):
+    def test_register_base(self):
+        from sqlalchemy.dialects import registry
+        registry.register("mockdialect", __name__, "MockDialect")
+
+        e = create_engine("mockdialect://")
+        assert isinstance(e.dialect, MockDialect)
+
+    def test_register_dotted(self):
+        from sqlalchemy.dialects import registry
+        registry.register("mockdialect.foob", __name__, "MockDialect")
+
+        e = create_engine("mockdialect+foob://")
+        assert isinstance(e.dialect, MockDialect)
+
+    def test_register_legacy(self):
+        from sqlalchemy.dialects import registry
+        tokens = __name__.split(".")
+
+        global dialect
+        dialect = MockDialect
+        registry.register("mockdialect.foob", ".".join(tokens[0:-1]), tokens[-1])
+
+        e = create_engine("mockdialect+foob://")
+        assert isinstance(e.dialect, MockDialect)
+
+    def test_register_per_dbapi(self):
+        from sqlalchemy.dialects import registry
+        registry.register("mysql.my_mock_dialect", __name__, "MockDialect")
+
+        e = create_engine("mysql+my_mock_dialect://")
+        assert isinstance(e.dialect, MockDialect)
+
+class MockDialect(DefaultDialect):
+    @classmethod
+    def dbapi(cls, **kw):
+        return MockDBAPI()
 
 class MockDBAPI(object):
     version_info = sqlite_version_info = 99, 9, 9

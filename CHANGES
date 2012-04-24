@@ -116,7 +116,13 @@ CHANGES
     [ticket:2454].  Courtesy Jeff Dairiki
     also in 0.7.7.
 
-- sql
+- engine
+  - [feature] Added a new system
+    for registration of new dialects in-process
+    without using an entrypoint.  See the
+    docs for "Registering New Dialects".
+    [ticket:2462]
+
   - [bug] The names of the columns on the
     .c. attribute of a select().apply_labels()
     is now based on <tablename>_<colkey> instead
@@ -124,6 +130,8 @@ CHANGES
     that have a distinctly named .key.
     [ticket:2397]
 
+
+- sql
   - [feature] The Inspector object can now be 
     acquired using the new inspect() service,
     part of [ticket:2208]

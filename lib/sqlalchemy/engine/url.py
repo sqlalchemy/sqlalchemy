@@ -14,6 +14,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 
 import re, urllib
 from sqlalchemy import exc, util
+from sqlalchemy.engine import base
 
 
 class URL(object):
@@ -96,49 +97,21 @@ class URL(object):
         to this URL's driver name.
         """
 
-        try:
-            if '+' in self.drivername:
-                dialect, driver = self.drivername.split('+')
-            else:
-                dialect, driver = self.drivername, 'base'
-
-            module = __import__('sqlalchemy.dialects.%s' % (dialect, )).dialects
-            module = getattr(module, dialect)
-            if hasattr(module, driver):
-                module = getattr(module, driver)
-            else:
-                module = self._load_entry_point()
-                if module is None:
-                    raise exc.ArgumentError(
-                        "Could not determine dialect for '%s'." % 
-                        self.drivername)
-
-            return module.dialect
-        except ImportError:
-            module = self._load_entry_point()
-            if module is not None:
-                return module
-            else:
-                raise exc.ArgumentError(
-                    "Could not determine dialect for '%s'." % self.drivername)
-
-    def _load_entry_point(self):
-        """attempt to load this url's dialect from entry points, or return None
-        if pkg_resources is not installed or there is no matching entry point.
-
-        Raise ImportError if the actual load fails.
-
-        """
-        try:
-            import pkg_resources
-        except ImportError:
-            return None
-
-        for res in pkg_resources.iter_entry_points('sqlalchemy.dialects'):
-            if res.name == self.drivername.replace("+", "."):
-                return res.load()
+        if '+' not in self.drivername:
+            name = self.drivername
         else:
-            return None
+            name = self.drivername.replace('+', '.')
+        from sqlalchemy.dialects import registry
+        cls = registry.load(name)
+        # check for legacy dialects that
+        # would return a module with 'dialect' as the
+        # actual class
+        if hasattr(cls, 'dialect') and \
+            isinstance(cls.dialect, type) and \
+            issubclass(cls.dialect, base.Dialect):
+            return cls.dialect
+        else:
+            return cls
 
     def translate_connect_args(self, names=[], **kw):
         """Translate url attributes into a dictionary of connection arguments.

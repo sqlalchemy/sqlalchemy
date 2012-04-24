@@ -52,6 +52,45 @@ def decorator(target):
         return update_wrapper(decorated, fn)
     return update_wrapper(decorate, target)
 
+class PluginLoader(object):
+    def __init__(self, group, auto_fn=None):
+        self.group = group
+        self.impls = {}
+        self.auto_fn = auto_fn
+
+    def load(self, name):
+        if name in self.impls:
+             return self.impls[name]()
+
+        if self.auto_fn:
+            loader = self.auto_fn(name)
+            if loader:
+                self.impls[name] = loader
+                return loader()
+
+        try:
+            import pkg_resources
+        except ImportError:
+            pass
+        else:
+            for impl in pkg_resources.iter_entry_points(
+                                self.group, name):
+                self.impls[name] = impl.load
+                return impl.load()
+
+        from sqlalchemy import exc
+        raise exc.ArgumentError(
+                "Can't load plugin: %s:%s" % 
+                (self.group, name))
+
+    def register(self, name, modulepath, objname):
+        def load():
+            mod = __import__(modulepath)
+            for token in modulepath.split(".")[1:]:
+                mod = getattr(mod, token)
+            return getattr(mod, objname)
+        self.impls[name] = load
+
 
 def get_cls_kwargs(cls):
     """Return the full set of inherited kwargs for the given `cls`.

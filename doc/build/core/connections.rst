@@ -367,6 +367,52 @@ Calling :meth:`~.Connection.close` on the "contextual" connection does not relea
 its resources until all other usages of that resource are closed as well, including
 that any ongoing transactions are rolled back or committed.
 
+Registering New Dialects
+========================
+
+The :func:`.create_engine` function call locates the given dialect
+using setuptools entrypoints.   These entry points can be established
+for third party dialects within the setup.py script.  For example,
+to create a new dialect "foodialect://", the steps are as follows:
+
+1. Create a package called ``foodialect``.
+2. The package should have a module containing the dialect class,
+   which is typically a subclass of :class:`sqlalchemy.engine.default.DefaultDialect`.
+   In this example let's say it's called ``FooDialect`` and its module is accessed
+   via ``foodialect.dialect``.
+3. The entry point can be established in setup.py as follows::
+
+      entry_points="""
+      [sqlalchemy.dialects]
+      foodialect = foodialect.dialect:FooDialect
+      """
+
+If the dialect is providing support for a particular DBAPI on top of
+an existing SQLAlchemy-supported database, the name can be given 
+including a database-qualification.  For example, if ``FooDialect``
+were in fact a MySQL dialect, the entry point could be established like this::
+
+      entry_points="""
+      [sqlalchemy.dialects]
+      mysql.foodialect = foodialect.dialect:FooDialect
+      """
+
+The above entrypoint would then be accessed as ``create_engine("mysql+foodialect://")``.
+
+Registering Dialects In-Process
+-------------------------------
+
+SQLAlchemy also allows a dialect to be registered within the current process, bypassing
+the need for separate installation.   Use the ``register()`` function as follows::
+
+    from sqlalchemy.dialects import register
+    registry.register("mysql.foodialect", "myapp.dialect", "MyMySQLDialect")
+
+The above will respond to ``create_engine("mysql+foodialect://")`` and load the
+``MyMySQLDialect`` class from the ``myapp.dialect`` module.
+
+The ``register()`` function is new in SQLAlchemy 0.8.
+
 Connection / Engine API
 =======================
 
