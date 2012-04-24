@@ -545,19 +545,18 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         eq_(c1._label, "t1_c1")
 
 class AnonLabelTest(fixtures.TestBase):
-    """Test behaviors that we hope to change with [ticket:2168]."""
+    """Test behaviors fixed by [ticket:2168]."""
 
     def test_anon_labels_named_column(self):
         c1 = column('x')
 
-        # surprising
-        assert c1.label(None) is c1
-        eq_(str(select([c1.label(None)])), "SELECT x")
+        assert c1.label(None) is not c1
+        eq_(str(select([c1.label(None)])), "SELECT x AS x_1")
 
     def test_anon_labels_literal_column(self):
         c1 = literal_column('x')
-        assert c1.label(None) is c1
-        eq_(str(select([c1.label(None)])), "SELECT x")
+        assert c1.label(None) is not c1
+        eq_(str(select([c1.label(None)])), "SELECT x AS x_1")
 
     def test_anon_labels_func(self):
         c1 = func.count('*')

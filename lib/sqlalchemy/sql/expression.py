@@ -4120,18 +4120,6 @@ class ColumnClause(_Immutable, ColumnElement):
         else:
             return name
 
-    def label(self, name):
-        # currently, anonymous labels don't occur for 
-        # ColumnClause.   The use at the moment
-        # is that they do not generate nicely for 
-        # is_literal clauses.   We would like to change
-        # this so that label(None) acts as would be expected.
-        # See [ticket:2168].
-        if name is None:
-            return self
-        else:
-            return super(ColumnClause, self).label(name)
-
 
     def _bind_param(self, operator, obj):
         return _BindParamClause(self.name, obj,

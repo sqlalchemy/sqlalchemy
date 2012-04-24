@@ -1277,8 +1277,8 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             q3,
             "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS anon_1_users_name,"
-            " anon_1.anon_2 AS anon_1_anon_2 FROM (SELECT users.id AS users_id, users.name AS"
-            " users_name, :param_1 AS anon_2 FROM users UNION SELECT users.id AS users_id, "
+            " anon_1.param_1 AS anon_1_param_1 FROM (SELECT users.id AS users_id, users.name AS"
+            " users_name, :param_1 AS param_1 FROM users UNION SELECT users.id AS users_id, "
             "users.name AS users_name, 'y' FROM users) AS anon_1"
         )
 
@@ -1300,7 +1300,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
             ['User', 'foo']
         )
 
-        for q in (q3.order_by(User.id, "anon_1_anon_2"), q6.order_by(User.id, "foo")):
+        for q in (q3.order_by(User.id, "anon_1_param_1"), q6.order_by(User.id, "foo")):
             eq_(q.all(),
                 [
                     (User(id=7, name=u'jack'), u'x'), 

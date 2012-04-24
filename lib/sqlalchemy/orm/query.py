@@ -3240,8 +3240,9 @@ class _ColumnEntity(_QueryEntity):
         # can be located in the result even
         # if the expression's identity has been changed
         # due to adaption.
-        if not column._label:
-            column = column.label(None)
+
+        if not column._label and not getattr(column, 'is_literal', False):
+            column = column.label(self._label_name)
 
         query._entities.append(self)
 

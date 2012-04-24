@@ -144,6 +144,11 @@ CHANGES
     "inspector" object as the first argument.  
     [ticket:2418]
 
+  - [bug] column.label(None) now produces an 
+    anonymous label, instead of returning the
+    column object itself, consistent with the behavior
+    of label(column, None).  [ticket:2168]
+
   - [bug] Removed warning when Index is created
     with no columns; while this might not be what 
     the user intended, it is a valid use case 
