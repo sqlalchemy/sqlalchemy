@@ -83,10 +83,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
     
     The default string storage format is::
     
-        "%04d-%02d-%02d %02d:%02d:%02d.%06d" % (value.year, 
-                                value.month, value.day,
-                                value.hour, value.minute, 
-                                value.second, value.microsecond)
+        "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(min)02d:%(second)02d.%(microsecond)06d"
     
     e.g.::
     
@@ -99,22 +96,38 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         from sqlalchemy.dialects.sqlite import DATETIME
         
         dt = DATETIME(
-                storage_format="%04d/%02d/%02d %02d-%02d-%02d-%06d",
-                regexp=re.compile("(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)(?:-(\d+))?")
+                storage_format="%(year)04d/%(month)02d/%(day)02d %(hour)02d:%(min)02d:%(second)02d",
+                regexp=re.compile("(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)")
             )
     
     :param storage_format: format string which will be applied to the 
-     tuple ``(value.year, value.month, value.day, value.hour,
-     value.minute, value.second, value.microsecond)``, given a
-     Python datetime.datetime() object.
+     dict with keys year, month, day, hour, minute, second, and microsecond.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is applied to
-     the Python datetime() constructor via ``*map(int,
-     match_obj.groups(0))``.
+     incoming result rows. If the regexp contains named groups, the
+     resulting match dict is applied to the Python datetime() constructor
+     as keyword arguments. Otherwise, if positional groups are used, the
+     the datetime() constructor is called with positional arguments via
+     ``*map(int, match_obj.groups(0))``.
     """
 
-    _storage_format = "%04d-%02d-%02d %02d:%02d:%02d.%06d"
+    _storage_format = (
+        "%(year)04d-%(month)02d-%(day)02d "
+        "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
+    )
+
+    def __init__(self, *args, **kwargs):
+        truncate_microseconds = kwargs.pop('truncate_microseconds', False)
+        super(DATETIME, self).__init__(*args, **kwargs)
+        if truncate_microseconds:
+            assert 'storage_format' not in kwargs, "You can specify only "\
+                "one of truncate_microseconds or storage_format."
+            assert 'regexp' not in kwargs, "You can specify only one of "\
+                "truncate_microseconds or regexp."
+            self._storage_format = (
+                "%(year)04d-%(month)02d-%(day)02d "
+                "%(hour)02d:%(minute)02d:%(second)02d"
+            )
 
     def bind_processor(self, dialect):
         datetime_datetime = datetime.datetime
@@ -124,12 +137,25 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
             if value is None:
                 return None
             elif isinstance(value, datetime_datetime):
-                return format % (value.year, value.month, value.day,
-                                 value.hour, value.minute, value.second,
-                                 value.microsecond)
+                return format % {
+                    'year': value.year,
+                    'month': value.month,
+                    'day': value.day,
+                    'hour': value.hour,
+                    'minute': value.minute,
+                    'second': value.second,
+                    'microsecond': value.microsecond,
+                }
             elif isinstance(value, datetime_date):
-                return format % (value.year, value.month, value.day,
-                                 0, 0, 0, 0)
+                return format % {
+                    'year': value.year,
+                    'month': value.month,
+                    'day': value.day,
+                    'hour': 0,
+                    'minute': 0,
+                    'second': 0,
+                    'microsecond': 0,
+                }
             else:
                 raise TypeError("SQLite DateTime type only accepts Python "
                                 "datetime and date objects as input.")
@@ -147,7 +173,7 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
     The default string storage format is::
     
-        "%04d-%02d-%02d" % (value.year, value.month, value.day)
+        "%(year)04d-%(month)02d-%(day)02d"
     
     e.g.::
     
@@ -160,22 +186,22 @@ class DATE(_DateTimeMixin, sqltypes.Date):
         from sqlalchemy.dialects.sqlite import DATE
 
         d = DATE(
-                storage_format="%02d/%02d/%02d",
-                regexp=re.compile("(\d+)/(\d+)/(\d+)")
+                storage_format="%(month)02d/%(day)02d/%(year)04d",
+                regexp=re.compile("(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)")
             )
     
     :param storage_format: format string which will be applied to the 
-     tuple ``(value.year, value.month, value.day)``,
-     given a Python datetime.date() object.
+     dict with keys year, month, and day.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is applied to
-     the Python date() constructor via ``*map(int,
-     match_obj.groups(0))``.
-     
+     incoming result rows. If the regexp contains named groups, the
+     resulting match dict is applied to the Python date() constructor
+     as keyword arguments. Otherwise, if positional groups are used, the
+     the date() constructor is called with positional arguments via
+     ``*map(int, match_obj.groups(0))``.
     """
 
-    _storage_format = "%04d-%02d-%02d"
+    _storage_format = "%(year)04d-%(month)02d-%(day)02d"
 
     def bind_processor(self, dialect):
         datetime_date = datetime.date
@@ -184,7 +210,11 @@ class DATE(_DateTimeMixin, sqltypes.Date):
             if value is None:
                 return None
             elif isinstance(value, datetime_date):
-                return format % (value.year, value.month, value.day)
+                return format % {
+                    'year': value.year,
+                    'month': value.month,
+                    'day': value.day,
+                }
             else:
                 raise TypeError("SQLite Date type only accepts Python "
                                 "date objects as input.")
@@ -202,9 +232,7 @@ class TIME(_DateTimeMixin, sqltypes.Time):
     
     The default string storage format is::
     
-        "%02d:%02d:%02d.%06d" % (value.hour, value.minute, 
-                                value.second,
-                                 value.microsecond)
+        "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
     
     e.g.::
     
@@ -217,22 +245,32 @@ class TIME(_DateTimeMixin, sqltypes.Time):
         from sqlalchemy.dialects.sqlite import TIME
 
         t = TIME(
-                storage_format="%02d-%02d-%02d-%06d",
+                storage_format="%(hour)02d-%(minute)02d-%(second)02d-%(microsecond)06d",
                 regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
             )
     
-    :param storage_format: format string which will be applied 
-     to the tuple ``(value.hour, value.minute, value.second,
-     value.microsecond)``, given a Python datetime.time() object.
+    :param storage_format: format string which will be applied to the 
+     dict with keys hour, minute, second, and microsecond.
     
     :param regexp: regular expression which will be applied to 
-     incoming result rows. The resulting match object is applied to
-     the Python time() constructor via ``*map(int,
-     match_obj.groups(0))``.
-
+     incoming result rows. If the regexp contains named groups, the
+     resulting match dict is applied to the Python time() constructor
+     as keyword arguments. Otherwise, if positional groups are used, the
+     the time() constructor is called with positional arguments via
+     ``*map(int, match_obj.groups(0))``.
     """
 
-    _storage_format = "%02d:%02d:%02d.%06d"
+    _storage_format = "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
+
+    def __init__(self, *args, **kwargs):
+        truncate_microseconds = kwargs.pop('truncate_microseconds', False)
+        super(TIME, self).__init__(*args, **kwargs)
+        if truncate_microseconds:
+            assert 'storage_format' not in kwargs, "You can specify only "\
+                "one of truncate_microseconds or storage_format."
+            assert 'regexp' not in kwargs, "You can specify only one of "\
+                "truncate_microseconds or regexp."
+            self._storage_format = "%(hour)02d:%(minute)02d:%(second)02d"
 
     def bind_processor(self, dialect):
         datetime_time = datetime.time
@@ -241,8 +279,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
             if value is None:
                 return None
             elif isinstance(value, datetime_time):
-                return format % (value.hour, value.minute, value.second,
-                                 value.microsecond)
+                return format % {
+                    'hour': value.hour,
+                    'minute': value.minute,
+                    'second': value.second,
+                    'microsecond': value.microsecond,
+                }
             else:
                 raise TypeError("SQLite Time type only accepts Python "
                                 "time objects as input.")

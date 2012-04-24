@@ -177,6 +177,17 @@ CHANGES
     propagating the exception onward normally.
     also in 0.7.7.
 
+- sqlite
+  - [feature] the SQLite date and time types
+    have been overhauled to support a more open
+    ended format for input and output, using 
+    name based format strings and regexps.  A
+    new argument "microseconds" also provides
+    the option to omit the "microseconds" 
+    portion of timestamps.  Thanks to 
+    Nathan Wright for the work and tests on
+    this.  [ticket:2363]
+
 - mssql
   - [bug] removed legacy behavior whereby 
     a column comparison to a scalar SELECT via 
