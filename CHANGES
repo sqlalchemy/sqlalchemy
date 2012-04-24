@@ -173,6 +173,16 @@ CHANGES
     by setting "case_insensitive=False" on 
     create_engine().  [ticket:2423]
 
+  - [bug] All of UniqueConstraint, ForeignKeyConstraint,
+    CheckConstraint, and PrimaryKeyConstraint will
+    attach themselves to their parent table automatically
+    when they refer to a Table-bound Column object directly
+    (i.e. not just string column name), and refer to
+    one and only one Table.   Prior to 0.8 this behavior
+    occurred for UniqueConstraint and PrimaryKeyConstraint,
+    but not ForeignKeyConstraint or CheckConstraint.
+    [ticket:2410]
+
   - [bug] column.label(None) now produces an 
     anonymous label, instead of returning the
     column object itself, consistent with the behavior

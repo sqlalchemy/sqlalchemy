@@ -1980,6 +1980,14 @@ class CheckConstraint(Constraint):
         self.sqltext = expression._literal_as_text(sqltext)
         if table is not None:
             self._set_parent_with_dispatch(table)
+        else:
+            cols = sqlutil.find_columns(self.sqltext)
+            tables = set([c.table for c in cols 
+                        if c.table is not None])
+            if len(tables) == 1:
+                self._set_parent_with_dispatch(
+                        tables.pop())
+
 
     def __visit_name__(self):
         if isinstance(self.parent, Table):
@@ -2083,6 +2091,11 @@ class ForeignKeyConstraint(Constraint):
 
         if table is not None:
             self._set_parent_with_dispatch(table)
+        elif columns and \
+            isinstance(columns[0], Column) and \
+            columns[0].table is not None:
+            self._set_parent_with_dispatch(columns[0].table)
+
 
     @property
     def columns(self):
