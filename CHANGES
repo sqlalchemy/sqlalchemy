@@ -3,14 +3,6 @@
 =======
 CHANGES
 =======
-0.7.7 - 0.7.xx
-==============
-
-Changes which apply to 0.7.7 and subsequent versions of 0.7
-are listed in the CHANGES file within the 0.7 branch.  All
-those changes which are also in the 0.8 series (which is typically
-all of them) are listed inline within the 0.8 changes above,
-those which apply to an 0.7 release are noted.
 
 0.8.0b1
 =======
@@ -205,6 +197,15 @@ those which apply to an 0.7 release are noted.
     grouped; grouping is now applied to those
     expressions.  [ticket:2467]
     also in 0.7.7.
+
+0.7.7 - 0.7.xx
+==============
+
+Changes which apply to 0.7.7 and subsequent versions of 0.7
+are listed in the CHANGES file within the 0.7 branch.  All
+those changes which are also in the 0.8 series (which is typically
+all of them) are listed inline within the 0.8 changes above,
+those which apply to an 0.7 release are noted.
 
 0.7.6
 =====
