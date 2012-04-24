@@ -103,6 +103,13 @@ CHANGES
     also in 0.7.7.
 
 - sql
+  - [bug] The names of the columns on the
+    .c. attribute of a select().apply_labels()
+    is now based on <tablename>_<colkey> instead
+    of <tablename>_<colname>, for those columns
+    that have a distinctly named .key.
+    [ticket:2397]
+
   - [feature] The Inspector object can now be 
     acquired using the new inspect() service,
     part of [ticket:2208]

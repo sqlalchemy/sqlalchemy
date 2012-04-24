@@ -1280,28 +1280,13 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = testing.db.execute(select([keyed1, keyed2])).first()
-        # without #2397, row.b is unambiguous
+        # row.b is unambiguous
         eq_(row.b, "b2")
         # row.a is ambiguous
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambig",
             getattr, row, "a"
-        )
-
-    @testing.fails_if(lambda: True, "Possible future behavior")
-    def test_keyed_accessor_composite_conflict_2397(self):
-        keyed1 = self.tables.keyed1
-        keyed2 = self.tables.keyed2
-
-        row = testing.db.execute(select([keyed1, keyed2])).first()
-        # with #2397, row.a is unambiguous
-        eq_(row.a, "a2")
-        # row.b is ambiguous
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "Ambiguous column name 'b'",
-            getattr, row, 'b'
         )
 
     def test_keyed_accessor_composite_names_precedent(self):
@@ -1326,17 +1311,6 @@ class KeyTargetingTest(fixtures.TablesTest):
             "Ambiguous column name 'a'",
             getattr, row, "a"
         )
-        eq_(row.d, "d3")
-
-    @testing.fails_if(lambda: True, "Possible future behavior")
-    def test_keyed_accessor_composite_2397(self):
-        keyed1 = self.tables.keyed1
-        keyed3 = self.tables.keyed3
-
-        row = testing.db.execute(select([keyed1, keyed3])).first()
-        eq_(row.b, "a1")
-        eq_(row.q, "c1")
-        eq_(row.a, "a3")
         eq_(row.d, "d3")
 
     def test_keyed_accessor_composite_labeled(self):
@@ -1366,21 +1340,11 @@ class KeyTargetingTest(fixtures.TablesTest):
         assert sql.column('content_type') in row
 
     def test_column_label_overlap_fallback_2(self):
-        # this fails with #2397
         content, bar = self.tables.content, self.tables.bar
         row = testing.db.execute(content.select(use_labels=True)).first()
         assert content.c.type in row
         assert bar.c.content_type not in row
         assert sql.column('content_type') not in row
-
-    @testing.fails_if(lambda: True, "Possible future behavior")
-    def test_column_label_overlap_fallback_3(self):
-        # this passes with #2397
-        content, bar = self.tables.content, self.tables.bar
-        row = testing.db.execute(content.select(use_labels=True)).first()
-        assert content.c.type in row
-        assert bar.c.content_type not in row
-        assert sql.column('content_type') in row
 
 
 class LimitTest(fixtures.TestBase):

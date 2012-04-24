@@ -248,14 +248,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT sum(lala(mytable.myid)) AS bar FROM mytable"
         )
 
-        # changes with #2397
         self.assert_compile(
             select([keyed]),
             "SELECT keyed.x, keyed.y"
             ", keyed.z FROM keyed"
         )
 
-        # changes with #2397
         self.assert_compile(
             select([keyed]).apply_labels(),
             "SELECT keyed.x AS keyed_x, keyed.y AS "
@@ -316,7 +314,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         # using alternate keys.  
-        # this will change with #2397
         a, b, c = Column('a', Integer, key='b'), \
                     Column('b', Integer), \
                     Column('c', Integer, key='a')
@@ -370,7 +367,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                             'AS anon_1')
 
     def test_nested_label_targeting_keyed(self):
-        # this behavior chagnes with #2397
         s1 = keyed.select()
         s2 = s1.alias()
         s3 = select([s2], use_labels=True)

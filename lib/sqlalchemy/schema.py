@@ -1084,7 +1084,7 @@ class Column(SchemaItem, expression.ColumnClause):
         c.dispatch._update(self.dispatch)
         return c
 
-    def _make_proxy(self, selectable, name=None):
+    def _make_proxy(self, selectable, name=None, key=None):
         """Create a *proxy* for this column.
 
         This is a copy of this ``Column`` referenced by a different parent
@@ -1102,7 +1102,7 @@ class Column(SchemaItem, expression.ColumnClause):
             c = self._constructor(
                 expression._as_truncated(name or self.name), 
                 self.type, 
-                key = name or self.key, 
+                key = key if key else name if name else self.key, 
                 primary_key = self.primary_key, 
                 nullable = self.nullable, 
                 quote=self.quote, _proxies=[self], *fk)

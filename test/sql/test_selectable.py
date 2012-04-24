@@ -100,8 +100,6 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         s = select([keyed])
         eq_(s.c.colx.key, 'colx')
 
-        # this would change to 'colx' 
-        # with #2397
         eq_(s.c.colx.name, 'x')
 
         assert s.corresponding_column(keyed.c.colx) is s.c.colx
@@ -113,6 +111,17 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert sel2.corresponding_column(keyed.c.coly) is sel2.c.coly
         assert sel2.corresponding_column(keyed.c.z) is sel2.c.z
 
+    def test_keyed_label_gen(self):
+        s = select([keyed]).apply_labels()
+
+        assert s.corresponding_column(keyed.c.colx) is s.c.keyed_colx
+        assert s.corresponding_column(keyed.c.coly) is s.c.keyed_coly
+        assert s.corresponding_column(keyed.c.z) is s.c.keyed_z
+
+        sel2 = s.alias()
+        assert sel2.corresponding_column(keyed.c.colx) is sel2.c.keyed_colx
+        assert sel2.corresponding_column(keyed.c.coly) is sel2.c.keyed_coly
+        assert sel2.corresponding_column(keyed.c.z) is sel2.c.keyed_z
 
     def test_distance_on_aliases(self):
         a1 = table1.alias('a1')

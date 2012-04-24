@@ -2163,7 +2163,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         return hasattr(other, 'name') and hasattr(self, 'name') and \
                 other.name == self.name
 
-    def _make_proxy(self, selectable, name=None):
+    def _make_proxy(self, selectable, name=None, **kw):
         """Create a new :class:`.ColumnElement` representing this
         :class:`.ColumnElement` as it appears in the select list of a
         descending selectable.
@@ -2171,14 +2171,10 @@ class ColumnElement(ClauseElement, _CompareMixin):
         """
         if name is None:
             name = self.anon_label
-            # TODO: may want to change this to anon_label,
-            # or some value that is more useful than the
-            # compiled form of the expression
             key = str(self)
         else:
             key = name
-
-        co = ColumnClause(_as_truncated(name), 
+        co = ColumnClause(_as_truncated(name),
                             selectable, 
                             type_=getattr(self,
                           'type', None))
@@ -3981,8 +3977,9 @@ class _Label(ColumnElement):
     def _from_objects(self):
         return self.element._from_objects
 
-    def _make_proxy(self, selectable, name = None):
-        e = self.element._make_proxy(selectable, name=name or self.name)
+    def _make_proxy(self, selectable, name=None, **kw):
+        e = self.element._make_proxy(selectable, 
+                                name=name if name else self.name)
         e.proxies.append(self)
         return e
 
@@ -4142,12 +4139,12 @@ class ColumnClause(_Immutable, ColumnElement):
                                 _compared_to_type=self.type,
                                 unique=True)
 
-    def _make_proxy(self, selectable, name=None, attach=True):
+    def _make_proxy(self, selectable, name=None, attach=True, **kw):
         # propagate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
         c = self._constructor(
-                    _as_truncated(name or self.name), 
+                    _as_truncated(name if name else self.name), 
                     selectable=selectable, 
                     type_=self.type, 
                     is_literal=is_literal
@@ -4158,7 +4155,7 @@ class ColumnClause(_Immutable, ColumnElement):
                 selectable._is_clone_of.columns[c.name]
 
         if attach:
-            selectable._columns[c.name] = c
+            selectable._columns[c.key] = c
         return c
 
 class TableClause(_Immutable, FromClause):
@@ -4584,8 +4581,9 @@ class _ScalarSelect(_Grouping):
     def self_group(self, **kwargs):
         return self
 
-    def _make_proxy(self, selectable, name):
-        return list(self.inner_columns)[0]._make_proxy(selectable, name)
+    def _make_proxy(self, selectable, name=None, **kw):
+        return list(self.inner_columns)[0]._make_proxy(
+                            selectable, name=name)
 
 class CompoundSelect(_SelectBase):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other 
@@ -4649,8 +4647,9 @@ class CompoundSelect(_SelectBase):
             # ForeignKeys in. this would allow the union() to have all
             # those fks too.
 
-            proxy = cols[0]._make_proxy(self, name=self.use_labels
-                    and cols[0]._label or None)
+            proxy = cols[0]._make_proxy(self, 
+                    name=cols[0]._label if self.use_labels else None,
+                    key=cols[0]._key_label if self.use_labels else None)
 
             # hand-construct the "proxies" collection to include all
             # derived columns place a 'weight' annotation corresponding
@@ -5268,8 +5267,8 @@ class Select(_SelectBase):
         for c in self.inner_columns:
             if hasattr(c, '_make_proxy'):
                 c._make_proxy(self, 
-                        name=self.use_labels 
-                            and c._label or None)
+                        name=c._label if self.use_labels else None,
+                        key=c._key_label if self.use_labels else None)
 
     def self_group(self, against=None):
         """return a 'grouping' construct as per the ClauseElement
