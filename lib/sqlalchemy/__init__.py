@@ -7,8 +7,6 @@
 import inspect as _inspect
 import sys
 
-import sqlalchemy.exc as exceptions
-
 from sqlalchemy.sql import (
     alias,
     and_,

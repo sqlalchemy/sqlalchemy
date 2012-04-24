@@ -6,6 +6,14 @@ CHANGES
 
 0.8.0b1
 =======
+- general
+  - SQLAlchemy 0.8 now targets Python 2.5 and
+    above.  Python 2.4 is no longer supported.
+
+  - [removed] The "sqlalchemy.exceptions" 
+    synonym for "sqlalchemy.exc" is removed
+    fully.  [ticket:2433]
+
 - orm
   - [removed] The legacy "mutable" system of the
     ORM, including the MutableType class as well
@@ -239,6 +247,12 @@ CHANGES
     grouped; grouping is now applied to those
     expressions.  [ticket:2467]
     also in 0.7.7.
+
+- extensions
+  - [removed] The SQLSoup extension is removed from 
+    SQLAlchemy, and is now an external project.
+    See http://pypi.python.org/pypi/sqlsoup .
+    [ticket:2262]
 
 0.7.7 - 0.7.xx
 ==============
