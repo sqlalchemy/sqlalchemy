@@ -111,7 +111,6 @@ class SessionTransactionTest(FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        users.delete().execute()
 
         s1 = create_session(bind=testing.db, autocommit=False)
         s2 = create_session(bind=testing.db, autocommit=False)
@@ -453,6 +452,56 @@ class FixtureDataTest(_LocalFixture):
         s2.commit()
 
         assert u1.name == 'will'
+
+class CleanSavepointTest(FixtureTest):
+    """test the behavior for [ticket:2452] - rollback on begin_nested()
+    only expires objects tracked as being modified in that transaction.
+    
+    """
+    run_inserts = None
+
+    def _run_test(self, update_fn):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(bind=testing.db)
+        u1 = User(name='u1')
+        u2 = User(name='u2')
+        s.add_all([u1, u2])
+        s.commit()
+        u1.name
+        u2.name
+        s.begin_nested()
+        update_fn(s, u2)
+        eq_(u2.name, 'u2modified')
+        s.rollback()
+        eq_(u1.__dict__['name'], 'u1')
+        assert 'name' not in u2.__dict__
+        eq_(u2.name, 'u2')
+
+    @testing.requires.savepoints
+    def test_rollback_ignores_clean_on_savepoint(self):
+        User, users = self.classes.User, self.tables.users
+        def update_fn(s, u2):
+            u2.name = 'u2modified'
+        self._run_test(update_fn)
+
+    @testing.requires.savepoints
+    def test_rollback_ignores_clean_on_savepoint_agg_upd_eval(self):
+        User, users = self.classes.User, self.tables.users
+        def update_fn(s, u2):
+            s.query(User).filter_by(name='u2').update(dict(name='u2modified'), 
+                                    synchronize_session='evaluate')
+        self._run_test(update_fn)
+
+    @testing.requires.savepoints
+    def test_rollback_ignores_clean_on_savepoint_agg_upd_fetch(self):
+        User, users = self.classes.User, self.tables.users
+        def update_fn(s, u2):
+            s.query(User).filter_by(name='u2').update(dict(name='u2modified'), 
+                                    synchronize_session='fetch')
+        self._run_test(update_fn)
 
 class AutoExpireTest(_LocalFixture):
 

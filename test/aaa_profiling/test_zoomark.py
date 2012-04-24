@@ -377,8 +377,8 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
-    @profiling.function_call_count(3340, {'2.7':3333, 
-                                        '2.7+cextension':3317, '2.6':3333})
+    @profiling.function_call_count(3340, {'2.7':3109, 
+                                        '2.7+cextension':3109, '2.6':3109})
     def test_profile_3_properties(self):
         self.test_baseline_3_properties()
 

@@ -339,13 +339,14 @@ class UOWTransaction(object):
         execute() method has succeeded and the transaction has been committed.
 
         """
-        for state, (isdelete, listonly) in self.states.iteritems():
-            if isdelete:
-                self.session._remove_newly_deleted(state)
-            else:
-                # if listonly:
-                #   debug... would like to see how many do this
-                self.session._register_newly_persistent(state)
+        states = set(self.states)
+        isdel = set(
+            s for (s, (isdelete, listonly)) in self.states.iteritems()
+            if isdelete
+        )
+        other = states.difference(isdel)
+        self.session._remove_newly_deleted(isdel)
+        self.session._register_newly_persistent(other)
 
 class IterateMappersMixin(object):
     def _mappers(self, uow):

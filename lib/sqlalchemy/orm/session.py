@@ -211,6 +211,7 @@ class SessionTransaction(object):
         if not self._is_transaction_boundary:
             self._new = self._parent._new
             self._deleted = self._parent._deleted
+            self._dirty = self._parent._dirty
             return
 
         if not self.session._flushing:
@@ -218,8 +219,9 @@ class SessionTransaction(object):
 
         self._new = weakref.WeakKeyDictionary()
         self._deleted = weakref.WeakKeyDictionary()
+        self._dirty = weakref.WeakKeyDictionary()
 
-    def _restore_snapshot(self):
+    def _restore_snapshot(self, dirty_only=False):
         assert self._is_transaction_boundary
 
         for s in set(self._new).union(self.session._new):
@@ -236,7 +238,8 @@ class SessionTransaction(object):
         assert not self.session._deleted
 
         for s in self.session.identity_map.all_states():
-            s.expire(s.dict, self.session.identity_map._modified)
+            if not dirty_only or s.modified or s in self._dirty:
+                s.expire(s.dict, self.session.identity_map._modified)
 
     def _remove_snapshot(self):
         assert self._is_transaction_boundary
@@ -351,7 +354,7 @@ class SessionTransaction(object):
                     "Session's state has been changed on "
                     "a non-active transaction - this state "
                     "will be discarded.")
-            self._restore_snapshot()
+            self._restore_snapshot(dirty_only=self.nested)
 
         self.close()
         if self._parent and _capture_exception:
@@ -366,7 +369,7 @@ class SessionTransaction(object):
             t[1].rollback()
 
         if self.session._enable_transaction_accounting:
-            self._restore_snapshot()
+            self._restore_snapshot(dirty_only=self.nested)
 
         self.session.dispatch.after_rollback(self.session)
 
@@ -1185,53 +1188,62 @@ class Session(object):
         elif self.transaction:
             self.transaction._deleted.pop(state, None)
 
-    def _register_newly_persistent(self, state):
-        mapper = _state_mapper(state)
+    def _register_newly_persistent(self, states):
+        for state in states:
+            mapper = _state_mapper(state)
 
-        # prevent against last minute dereferences of the object
-        obj = state.obj()
-        if obj is not None:
+            # prevent against last minute dereferences of the object
+            obj = state.obj()
+            if obj is not None:
 
-            instance_key = mapper._identity_key_from_state(state)
+                instance_key = mapper._identity_key_from_state(state)
 
-            if _none_set.issubset(instance_key[1]) and \
-                not mapper.allow_partial_pks or \
-                _none_set.issuperset(instance_key[1]):
-                raise exc.FlushError(
-                    "Instance %s has a NULL identity key.  If this is an "
-                    "auto-generated value, check that the database table "
-                    "allows generation of new primary key values, and that "
-                    "the mapped Column object is configured to expect these "
-                    "generated values.  Ensure also that this flush() is "
-                    "not occurring at an inappropriate time, such as within "
-                    "a load() event." % mapperutil.state_str(state)
-                )
+                if _none_set.issubset(instance_key[1]) and \
+                    not mapper.allow_partial_pks or \
+                    _none_set.issuperset(instance_key[1]):
+                    raise exc.FlushError(
+                        "Instance %s has a NULL identity key.  If this is an "
+                        "auto-generated value, check that the database table "
+                        "allows generation of new primary key values, and that "
+                        "the mapped Column object is configured to expect these "
+                        "generated values.  Ensure also that this flush() is "
+                        "not occurring at an inappropriate time, such as within "
+                        "a load() event." % mapperutil.state_str(state)
+                    )
 
-            if state.key is None:
-                state.key = instance_key
-            elif state.key != instance_key:
-                # primary key switch. use discard() in case another 
-                # state has already replaced this one in the identity 
-                # map (see test/orm/test_naturalpks.py ReversePKsTest)
-                self.identity_map.discard(state)
-                state.key = instance_key
+                if state.key is None:
+                    state.key = instance_key
+                elif state.key != instance_key:
+                    # primary key switch. use discard() in case another 
+                    # state has already replaced this one in the identity 
+                    # map (see test/orm/test_naturalpks.py ReversePKsTest)
+                    self.identity_map.discard(state)
+                    state.key = instance_key
 
-            self.identity_map.replace(state)
-            state.commit_all(state.dict, self.identity_map)
+                self.identity_map.replace(state)
+                state.commit_all(state.dict, self.identity_map)
 
+        self._register_altered(states)
         # remove from new last, might be the last strong ref
-        if state in self._new:
-            if self._enable_transaction_accounting and self.transaction:
-                self.transaction._new[state] = True
+        for state in set(states).intersection(self._new):
             self._new.pop(state)
 
-    def _remove_newly_deleted(self, state):
+    def _register_altered(self, states):
         if self._enable_transaction_accounting and self.transaction:
-            self.transaction._deleted[state] = True
+            for state in states:
+                if state in self._new:
+                    self.transaction._new[state] = True
+                else:
+                    self.transaction._dirty[state] = True
 
-        self.identity_map.discard(state)
-        self._deleted.pop(state, None)
-        state.deleted = True
+    def _remove_newly_deleted(self, states):
+        for state in states:
+            if self._enable_transaction_accounting and self.transaction:
+                self.transaction._deleted[state] = True
+
+            self.identity_map.discard(state)
+            self._deleted.pop(state, None)
+            state.deleted = True
 
     def add(self, instance):
         """Place an object in the ``Session``.

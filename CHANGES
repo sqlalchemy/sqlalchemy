@@ -60,6 +60,17 @@ CHANGES
     of current object state, history of
     attributes, etc.  [ticket:2208]
 
+  - [feature] Calling rollback() within a 
+    session.begin_nested() will now only expire
+    those objects that had net changes within the 
+    scope of that transaction, that is objects which
+    were dirty or were modified on a flush.  This
+    allows the typical use case for begin_nested(),
+    that of altering a small subset of objects, to
+    leave in place the data from the larger enclosing
+    set of objects that weren't modified in 
+    that sub-transaction.  [ticket:2452]
+
   - [bug] The "passive" flag on Session.is_modified()
     no longer has any effect. is_modified() in 
     all cases looks only at local in-memory

@@ -2424,7 +2424,7 @@ class Query(object):
                 try:
                     state(passive)
                 except orm_exc.ObjectDeletedError:
-                    session._remove_newly_deleted(state)
+                    session._remove_newly_deleted([state])
                     return None
             return instance
         else:
@@ -2650,18 +2650,20 @@ class Query(object):
         result = session.execute(delete_stmt, params=self._params)
 
         if synchronize_session == 'evaluate':
-            for obj in objs_to_expunge:
-                session._remove_newly_deleted(attributes.instance_state(obj))
+            session._remove_newly_deleted([attributes.instance_state(obj) 
+                                            for obj in objs_to_expunge])
         elif synchronize_session == 'fetch':
             target_mapper = self._mapper_zero()
             for primary_key in matched_rows:
+                # TODO: inline this and call remove_newly_deleted
+                # once
                 identity_key = target_mapper.identity_key_from_primary_key(
                                                             list(primary_key))
                 if identity_key in session.identity_map:
                     session._remove_newly_deleted(
-                        attributes.instance_state(
+                        [attributes.instance_state(
                             session.identity_map[identity_key]
-                        )
+                        )]
                     )
 
         session.dispatch.after_bulk_delete(session, self, context, result)
@@ -2788,7 +2790,7 @@ class Query(object):
 
         if synchronize_session == 'evaluate':
             target_cls = self._mapper_zero().class_
-
+            states = set()
             for obj in matched_objects:
                 state, dict_ = attributes.instance_state(obj),\
                                         attributes.instance_dict(obj)
@@ -2806,18 +2808,24 @@ class Query(object):
                 state.expire_attributes(dict_,
                                 set(evaluated_keys).
                                     difference(to_evaluate))
+                states.add(state)
+            session._register_altered(states)
 
         elif synchronize_session == 'fetch':
             target_mapper = self._mapper_zero()
 
-            for primary_key in matched_rows:
-                identity_key = target_mapper.identity_key_from_primary_key(
+            states = set([
+                attributes.instance_state(session.identity_map[identity_key])
+                for identity_key in [
+                    target_mapper.identity_key_from_primary_key(
                                                             list(primary_key))
-                if identity_key in session.identity_map:
-                    session.expire(
-                                session.identity_map[identity_key], 
-                                [_attr_as_key(k) for k in values]
-                                )
+                    for primary_key in matched_rows
+                ]
+            ])
+            attrib = [_attr_as_key(k) for k in values]
+            for state in states:
+                session._expire_state(state, attrib)
+            session._register_altered(states)
 
         session.dispatch.after_bulk_update(session, self, context, result)
 

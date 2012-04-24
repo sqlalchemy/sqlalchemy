@@ -237,7 +237,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         eq_(
             insp.identity_key,
-            (User, (11, ))
+            (User, (u1.id, ))
         )
 
     def test_persistence_states(self):
