@@ -92,20 +92,20 @@ class JoinCondition(object):
         if self.prop is None:
             return
         log = self.prop.logger
-        log.info('%s setup primary join %s', self,
+        log.info('%s setup primary join %s', self.prop,
                          self.primaryjoin)
-        log.info('%s setup secondary join %s', self,
+        log.info('%s setup secondary join %s', self.prop,
                          self.secondaryjoin)
-        log.info('%s synchronize pairs [%s]', self,
+        log.info('%s synchronize pairs [%s]', self.prop,
                          ','.join('(%s => %s)' % (l, r) for (l, r) in
                          self.synchronize_pairs))
-        log.info('%s secondary synchronize pairs [%s]', self,
+        log.info('%s secondary synchronize pairs [%s]', self.prop,
                          ','.join('(%s => %s)' % (l, r) for (l, r) in
                          self.secondary_synchronize_pairs or []))
-        log.info('%s local/remote pairs [%s]', self,
+        log.info('%s local/remote pairs [%s]', self.prop,
                          ','.join('(%s / %s)' % (l, r) for (l, r) in
                          self.local_remote_pairs))
-        log.info('%s relationship direction %s', self,
+        log.info('%s relationship direction %s', self.prop,
                          self.direction)
 
     def _determine_joins(self):
