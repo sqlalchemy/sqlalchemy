@@ -15,7 +15,7 @@ See the example ``examples/association/proxied_association.py``.
 import itertools
 import operator
 import weakref
-from sqlalchemy import exceptions
+from sqlalchemy import exc
 from sqlalchemy import orm
 from sqlalchemy import util
 from sqlalchemy.orm import collections, ColumnProperty
@@ -295,7 +295,7 @@ class AssociationProxy(object):
         elif self.collection_class is set:
             return _AssociationSet(lazy_collection, creator, getter, setter, self)
         else:
-            raise exceptions.ArgumentError(
+            raise exc.ArgumentError(
                 'could not guess which interface to use for '
                 'collection_class "%s" backing "%s"; specify a '
                 'proxy_factory and proxy_bulk_set manually' %
@@ -323,7 +323,7 @@ class AssociationProxy(object):
         elif self.collection_class is set:
             proxy.update(values)
         else:
-            raise exceptions.ArgumentError(
+            raise exc.ArgumentError(
                'no proxy_bulk_set supplied for custom '
                'collection_class implementation')
 
@@ -405,7 +405,7 @@ class _lazy_collection(object):
     def __call__(self):
         obj = self.ref()
         if obj is None:
-            raise exceptions.InvalidRequestError(
+            raise exc.InvalidRequestError(
                "stale association proxy, parent object has gone out of "
                "scope")
         return getattr(obj, self.target)

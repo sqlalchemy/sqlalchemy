@@ -1257,31 +1257,31 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_filter_scalar_contains_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
-        assert_raises(exceptions.InvalidRequestError, lambda : \
+        assert_raises(exc.InvalidRequestError, lambda : \
                       Keyword.user.contains(self.u))
 
     def test_filter_scalar_any_fails_nul_nul(self):
         Keyword = self.classes.Keyword
 
-        assert_raises(exceptions.InvalidRequestError, lambda : \
+        assert_raises(exc.InvalidRequestError, lambda : \
                       Keyword.user.any(name='user2'))
 
     def test_filter_collection_has_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exceptions.InvalidRequestError, lambda : \
+        assert_raises(exc.InvalidRequestError, lambda : \
                       User.keywords.has(keyword='quick'))
 
     def test_filter_collection_eq_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exceptions.InvalidRequestError, lambda : \
+        assert_raises(exc.InvalidRequestError, lambda : \
                       User.keywords == self.kw)
 
     def test_filter_collection_ne_fails_ul_nul(self):
         User = self.classes.User
 
-        assert_raises(exceptions.InvalidRequestError, lambda : \
+        assert_raises(exc.InvalidRequestError, lambda : \
                       User.keywords != self.kw)
 
     def test_join_separate_attr(self):
