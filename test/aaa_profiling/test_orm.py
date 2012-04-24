@@ -91,11 +91,10 @@ class MergeTest(fixtures.MappedTest):
         @profiling.function_call_count(variance=0.10,
                                 versions={'2.5':1050, '2.6':1050,
                                         '2.6+cextension':988, 
-                                        '2.7':1005,
+                                        '2.7':1014,
                                         '3':1050}
                             )
         def go():
-            print "GO"
             p2 = sess2.merge(p1)
         go()
 
