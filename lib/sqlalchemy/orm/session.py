@@ -1460,10 +1460,10 @@ class Session(object):
                 "Object '%s' already has an identity - it can't be registered "
                 "as pending" % mapperutil.state_str(state))
 
-        self._attach(state)
         if state not in self._new:
             self._new[state] = state.obj()
             state.insert_order = len(self._new)
+        self._attach(state)
 
     def _update_impl(self, state):
         if (self.identity_map.contains_state(state) and
@@ -1481,9 +1481,9 @@ class Session(object):
                 "function to send this object back to the transient state." %
                 mapperutil.state_str(state)
             )
-        self._attach(state)
         self._deleted.pop(state, None)
         self.identity_map.add(state)
+        self._attach(state)
 
     def _save_or_update_impl(self, state):
         if state.key is None:

@@ -6,7 +6,7 @@ from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, \
     create_session, class_mapper, \
     Mapper, column_property, \
-    Session, sessionmaker
+    Session, sessionmaker, attributes
 from sqlalchemy.orm.instrumentation import ClassManager
 from test.lib.testing import eq_
 from test.lib import fixtures
@@ -657,6 +657,25 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.commit()
         eq_(canary, ['before_commit', 'before_flush', 'after_flush',
                        'after_flush_postexec', 'after_commit'])
+
+    def test_state_after_attach(self):
+        User, users = self.classes.User, self.tables.users
+        sess = Session()
+
+        @event.listens_for(sess, "after_attach")
+        def listener(session, inst):
+            state = attributes.instance_state(inst)
+            if state.key:
+                assert session.identity_map[state.key] is inst
+            else:
+                assert inst in session.new
+
+        mapper(User, users)
+        u= User(name='u1')
+        sess.add(u)
+        sess.flush()
+        sess.expunge(u)
+        sess.add(u)
 
     def test_standalone_on_commit_hook(self):
         sess, canary = self._listener_fixture()

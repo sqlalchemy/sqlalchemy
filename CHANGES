@@ -105,6 +105,14 @@ CHANGES
     "is_remove" when this flag is used.
     also in 0.7.7.
 
+  - [feature] The after_attach event is now
+    emitted after the object is established
+    in Session.new or Session.identity_map
+    upon Session.add(), Session.merge(), 
+    etc., so that the object is represented
+    in these collections when the event 
+    is called. [ticket:2464]
+
   - [bug] Fixed bug whereby polymorphic_on
     column that's not otherwise mapped on the 
     class would be incorrectly included
