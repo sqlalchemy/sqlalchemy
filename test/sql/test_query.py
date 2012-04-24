@@ -852,9 +852,7 @@ class QueryTest(fixtures.TestBase):
             result.fetchone
         )
 
-    def test_result_case_sensitivity(self):
-        """test name normalization for result sets."""
-
+    def test_row_case_sensitive(self):
         row = testing.db.execute(
             select([
                 literal_column("1").label("case_insensitive"),
@@ -862,7 +860,33 @@ class QueryTest(fixtures.TestBase):
             ])
         ).first()
 
-        assert row.keys() == ["case_insensitive", "CaseSensitive"]
+        eq_(row.keys(), ["case_insensitive", "CaseSensitive"])
+        eq_(row["case_insensitive"], 1)
+        eq_(row["CaseSensitive"], 2)
+
+        assert_raises(
+            KeyError,
+            lambda: row["Case_insensitive"]
+        )
+        assert_raises(
+            KeyError,
+            lambda: row["casesensitive"]
+        )
+
+    def test_row_case_insensitive(self):
+        ins_db = engines.testing_engine(options={"case_sensitive":False})
+        row = ins_db.execute(
+            select([
+                literal_column("1").label("case_insensitive"),
+                literal_column("2").label("CaseSensitive")
+            ])
+        ).first()
+
+        eq_(row.keys(), ["case_insensitive", "CaseSensitive"])
+        eq_(row["case_insensitive"], 1)
+        eq_(row["CaseSensitive"], 2)
+        eq_(row["Case_insensitive"],1)
+        eq_(row["casesensitive"],2)
 
 
     def test_row_as_args(self):

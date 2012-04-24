@@ -2724,6 +2724,7 @@ class ResultMetaData(object):
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
         translate_colname = dialect._translate_colname
+        self.case_sensitive = dialect.case_sensitive
 
         # high precedence key values.
         primary_keymap = {}
@@ -2738,9 +2739,14 @@ class ResultMetaData(object):
             if translate_colname:
                 colname, untranslated = translate_colname(colname)
 
+            if dialect.requires_name_normalize:
+                colname = dialect.normalize_name(colname)
+
             if context.result_map:
                 try:
-                    name, obj, type_ = context.result_map[colname.lower()]
+                    name, obj, type_ = context.result_map[colname 
+                                                    if self.case_sensitive 
+                                                    else colname.lower()]
                 except KeyError:
                     name, obj, type_ = \
                         colname, None, typemap.get(coltype, types.NULLTYPE)
@@ -2758,17 +2764,20 @@ class ResultMetaData(object):
             primary_keymap[i] = rec
 
             # populate primary keymap, looking for conflicts.
-            if primary_keymap.setdefault(name.lower(), rec) is not rec: 
+            if primary_keymap.setdefault(
+                                name if self.case_sensitive 
+                                else name.lower(), 
+                                rec) is not rec: 
                 # place a record that doesn't have the "index" - this
                 # is interpreted later as an AmbiguousColumnError,
                 # but only when actually accessed.   Columns 
                 # colliding by name is not a problem if those names
                 # aren't used; integer and ColumnElement access is always
                 # unambiguous.
-                primary_keymap[name.lower()] = (processor, obj, None)
+                primary_keymap[name 
+                                if self.case_sensitive 
+                                else name.lower()] = (processor, obj, None)
 
-            if dialect.requires_name_normalize:
-                colname = dialect.normalize_name(colname)
 
             self.keys.append(colname)
             if obj:
@@ -2797,7 +2806,9 @@ class ResultMetaData(object):
         row.
 
         """
-        rec = (processor, obj, i) = self._keymap[origname.lower()]
+        rec = (processor, obj, i) = self._keymap[origname if 
+                                                self.case_sensitive 
+                                                else origname.lower()]
         if self._keymap.setdefault(name, rec) is not rec:
             self._keymap[name] = (processor, obj, None)
 
@@ -2805,17 +2816,27 @@ class ResultMetaData(object):
         map = self._keymap
         result = None
         if isinstance(key, basestring):
-            result = map.get(key.lower())
+            result = map.get(key if self.case_sensitive else key.lower())
         # fallback for targeting a ColumnElement to a textual expression
         # this is a rare use case which only occurs when matching text()
         # or colummn('name') constructs to ColumnElements, or after a 
         # pickle/unpickle roundtrip
         elif isinstance(key, expression.ColumnElement):
-            if key._label and key._label.lower() in map:
-                result = map[key._label.lower()]
-            elif hasattr(key, 'name') and key.name.lower() in map:
+            if key._label and (
+                            key._label 
+                            if self.case_sensitive 
+                            else key._label.lower()) in map:
+                result = map[key._label 
+                            if self.case_sensitive 
+                            else key._label.lower()]
+            elif hasattr(key, 'name') and (
+                                    key.name 
+                                    if self.case_sensitive 
+                                    else key.name.lower()) in map:
                 # match is only on name.
-                result = map[key.name.lower()]
+                result = map[key.name 
+                            if self.case_sensitive 
+                            else key.name.lower()]
             # search extra hard to make sure this 
             # isn't a column/label name overlap.
             # this check isn't currently available if the row
@@ -2851,7 +2872,8 @@ class ResultMetaData(object):
                 for key, (processor, obj, index) in self._keymap.iteritems()
                 if isinstance(key, (basestring, int))
             ),
-            'keys': self.keys
+            'keys': self.keys,
+            "case_sensitive":self.case_sensitive,
         }
 
     def __setstate__(self, state):
@@ -2864,6 +2886,7 @@ class ResultMetaData(object):
             # proxy comparison fails with the unpickle
             keymap[key] = (None, None, index)
         self.keys = state['keys']
+        self.case_sensitive = state['case_sensitive']
         self._echo = False
 
 

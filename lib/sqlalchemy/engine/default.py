@@ -105,6 +105,7 @@ class DefaultDialect(base.Dialect):
     def __init__(self, convert_unicode=False, assert_unicode=False,
                  encoding='utf-8', paramstyle=None, dbapi=None,
                  implicit_returning=None,
+                 case_sensitive=True,
                  label_length=None, **kwargs):
 
         if not getattr(self, 'ported_sqla_06', True):
@@ -138,6 +139,8 @@ class DefaultDialect(base.Dialect):
         self.positional = self.paramstyle in ('qmark', 'format', 'numeric')
         self.identifier_preparer = self.preparer(self)
         self.type_compiler = self.type_compiler(self)
+
+        self.case_sensitive = case_sensitive
 
         if label_length and label_length > self.max_identifier_length:
             raise exc.ArgumentError(

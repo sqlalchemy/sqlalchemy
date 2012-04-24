@@ -160,6 +160,19 @@ CHANGES
     "inspector" object as the first argument.  
     [ticket:2418]
 
+  - [feature] The behavior of column targeting
+    in result sets is now case sensitive by 
+    default.   SQLAlchemy for many years would
+    run a case-insensitive conversion on these values,
+    probably to alleviate early case sensitivity
+    issues with dialects like Oracle and 
+    Firebird.   These issues have been more cleanly
+    solved in more modern versions so the performance
+    hit of calling lower() on identifiers is removed.
+    The case insensitive comparisons can be re-enabled
+    by setting "case_insensitive=False" on 
+    create_engine().  [ticket:2423]
+
   - [bug] column.label(None) now produces an 
     anonymous label, instead of returning the
     column object itself, consistent with the behavior

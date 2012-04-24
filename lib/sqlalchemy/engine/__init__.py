@@ -143,6 +143,12 @@ def create_engine(*args, **kwargs):
         :class:`.String` type - see that 
         type for further details.
 
+    :param case_sensitive=True: if False, result column names
+       will match in a case-insensitive fashion, that is,
+       ``row['SomeColumn']``.  By default, result row names
+       match case-sensitively as of version 0.8.  In version
+       0.7 and prior, all matches were case-insensitive.
+
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
         additional keyword arguments.  See the example

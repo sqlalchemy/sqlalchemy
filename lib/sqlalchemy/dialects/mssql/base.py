@@ -856,7 +856,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                         t, column)
 
                 if result_map is not None:
-                    result_map[column.name.lower()] = \
+                    result_map[column.name 
+                                if self.dialect.case_sensitive 
+                                else column.name.lower()] = \
                                     (column.name, (column, ), 
                                                     column.type)
 
@@ -1300,6 +1302,7 @@ class MSDialect(default.DefaultDialect):
             whereclause = columns.c.table_name==tablename
         s = sql.select([columns], whereclause,
                         order_by=[columns.c.ordinal_position])
+
         c = connection.execute(s)
         cols = []
         while True:

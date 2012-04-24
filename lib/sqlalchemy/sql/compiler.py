@@ -365,7 +365,9 @@ class SQLCompiler(engine.Compiled):
                 labelname = label.name
 
             if result_map is not None:
-                result_map[labelname.lower()] = (
+                result_map[labelname 
+                            if self.dialect.case_sensitive 
+                            else labelname.lower()] = (
                         label.name, 
                         (label, label.element, labelname, ) + 
                             label._alt_names,
@@ -393,7 +395,9 @@ class SQLCompiler(engine.Compiled):
             name = self._truncated_identifier("colident", name)
 
         if result_map is not None:
-            result_map[name.lower()] = (orig_name, 
+            result_map[name 
+                        if self.dialect.case_sensitive 
+                        else name.lower()] = (orig_name, 
                                         (column, name, column.key), 
                                         column.type)
 
@@ -441,7 +445,10 @@ class SQLCompiler(engine.Compiled):
     def visit_textclause(self, textclause, **kwargs):
         if textclause.typemap is not None:
             for colname, type_ in textclause.typemap.iteritems():
-                self.result_map[colname.lower()] = (colname, None, type_)
+                self.result_map[colname 
+                                if self.dialect.case_sensitive 
+                                else colname.lower()] = \
+                                (colname, None, type_)
 
         def do_bindparam(m):
             name = m.group(1)
@@ -518,7 +525,10 @@ class SQLCompiler(engine.Compiled):
 
     def visit_function(self, func, result_map=None, **kwargs):
         if result_map is not None:
-            result_map[func.name.lower()] = (func.name, None, func.type)
+            result_map[func.name 
+                        if self.dialect.case_sensitive 
+                        else func.name.lower()] = \
+                        (func.name, None, func.type)
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
         if disp:
