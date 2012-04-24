@@ -176,6 +176,11 @@ CHANGES
     by setting "case_insensitive=False" on 
     create_engine().  [ticket:2423]
 
+  - [feature] The "unconsumed column names" warning emitted
+    when keys are present in insert.values() or update.values()
+    that aren't in the target table is now an exception.
+    [ticket:2415]
+
   - [bug] All of UniqueConstraint, ForeignKeyConstraint,
     CheckConstraint, and PrimaryKeyConstraint will
     attach themselves to their parent table automatically

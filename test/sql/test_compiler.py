@@ -3020,18 +3020,18 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("t", column("x"), column("y"))
         t2 = table("t2", column("q"), column("z"))
         assert_raises_message(
-            exc.SAWarning,
+            exc.CompileError,
             "Unconsumed column names: z",
             t.insert().values(x=5, z=5).compile,
         )
         assert_raises_message(
-            exc.SAWarning,
+            exc.CompileError,
             "Unconsumed column names: z",
             t.update().values(x=5, z=5).compile,
         )
 
         assert_raises_message(
-            exc.SAWarning,
+            exc.CompileError,
             "Unconsumed column names: j",
             t.update().values(x=5, j=7).values({t2.c.z:5}).
                 where(t.c.x==t2.c.q).compile,
@@ -3053,7 +3053,7 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         assert_raises_message(
-            exc.SAWarning,
+            exc.CompileError,
             "Unconsumed column names: j",
             t.update().values(x=5, j=7).compile,
             column_keys=['j']

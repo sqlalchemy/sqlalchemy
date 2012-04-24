@@ -1411,7 +1411,7 @@ class SQLCompiler(engine.Compiled):
                 sql._column_as_key(k) for k in stmt.parameters
             ).difference(check_columns)
             if check:
-                util.warn(
+                raise exc.CompileError(
                     "Unconsumed column names: %s" % 
                     (", ".join(check))
                 )
