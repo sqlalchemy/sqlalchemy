@@ -713,13 +713,13 @@ class SQLiteDialect(default.DefaultDialect):
         return columns
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         cols = self.get_columns(connection, table_name, schema, **kw)
         pkeys = []
         for col in cols:
             if col['primary_key']:
                 pkeys.append(col['name'])
-        return pkeys
+        return {'constrained_columns':pkeys, 'name':None}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):

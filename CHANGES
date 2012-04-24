@@ -146,6 +146,9 @@ CHANGES
     that have a distinctly named .key.
     [ticket:2397]
 
+  - [feature] Inspector.get_primary_keys() is 
+    deprecated; use Inspector.get_pk_constraint().
+    Courtesy Diana Clarke.  [ticket:2422]
 
 - sql
   - [feature] The Inspector object can now be 

@@ -411,7 +411,8 @@ class InformixDialect(default.DefaultDialect):
                   and t3.tabid = t2.tabid and t3.colno = t1.colno
                 order by t1.colno""", table_name, schema)
 
-        primary_cols = self.get_primary_keys(connection, table_name, schema, **kw)
+        pk_constraint = self.get_pk_constraint(connection, table_name, schema, **kw)
+        primary_cols = pk_constraint['constrained_columns']
 
         columns = []
         rows = c.fetchall()
@@ -514,7 +515,7 @@ class InformixDialect(default.DefaultDialect):
         return fkeys.values()
 
     @reflection.cache
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         schema = schema or self.default_schema_name
 
         # Select the column positions from sysindexes for sysconstraints
@@ -533,7 +534,7 @@ class InformixDialect(default.DefaultDialect):
             colpositions |= colpos
 
         if not len(colpositions):
-            return []
+            return {'constrained_columns':[], 'name':None}
 
         # Select the column names using the columnpositions
         # TODO: Maybe cache a bit of those col infos (eg select all colnames for one table)
@@ -546,7 +547,8 @@ class InformixDialect(default.DefaultDialect):
             table_name, *colpositions
         ).fetchall()
 
-        return reduce(lambda x,y: list(x)+list(y), c, [])
+        cols = reduce(lambda x,y: list(x)+list(y), c, [])
+        return {'constrained_columns':cols, 'name':None}
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):

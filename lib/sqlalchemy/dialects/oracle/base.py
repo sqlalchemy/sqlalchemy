@@ -941,10 +941,10 @@ class OracleDialect(default.DefaultDialect):
                                 schema=self.denormalize_name(schema))
         indexes = []
         last_index_name = None
-        pkeys = self.get_primary_keys(connection, table_name, schema,
-                                      resolve_synonyms=resolve_synonyms,
-                                      dblink=dblink,
-                                      info_cache=kw.get('info_cache'))
+        pk_constraint = self.get_pk_constraint(
+            connection, table_name, schema, resolve_synonyms=resolve_synonyms,
+            dblink=dblink, info_cache=kw.get('info_cache'))
+        pkeys = pk_constraint['constrained_columns']
         uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
 
         oracle_sys_col = re.compile(r'SYS_NC\d+\$', re.IGNORECASE)
@@ -1006,20 +1006,8 @@ class OracleDialect(default.DefaultDialect):
         constraint_data = rp.fetchall()
         return constraint_data
 
-    def get_primary_keys(self, connection, table_name, schema=None, **kw):
-        """
-
-        kw arguments can be:
-
-            oracle_resolve_synonyms
-
-            dblink
-
-        """
-        return self._get_primary_keys(connection, table_name, schema, **kw)[0]
-
     @reflection.cache
-    def _get_primary_keys(self, connection, table_name, schema=None, **kw):
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         resolve_synonyms = kw.get('oracle_resolve_synonyms', False)
         dblink = kw.get('dblink', '')
         info_cache = kw.get('info_cache')
@@ -1035,22 +1023,13 @@ class OracleDialect(default.DefaultDialect):
                                         info_cache=kw.get('info_cache'))
 
         for row in constraint_data:
-            #print "ROW:" , row
             (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = \
                 row[0:2] + tuple([self.normalize_name(x) for x in row[2:6]])
             if cons_type == 'P':
                 if constraint_name is None:
                     constraint_name = self.normalize_name(cons_name)
                 pkeys.append(local_column)
-        return pkeys, constraint_name
-
-    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
-        cols, name = self._get_primary_keys(connection, table_name, schema=schema, **kw)
-
-        return {
-            'constrained_columns':cols,
-            'name':name
-        }
+        return {'constrained_columns':pkeys, 'name':constraint_name}
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):

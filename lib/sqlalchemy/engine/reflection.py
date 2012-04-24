@@ -26,10 +26,11 @@ methods such as get_table_names, get_columns, etc.
 
 import sqlalchemy
 from sqlalchemy import exc, sql
-from sqlalchemy import util
-from sqlalchemy.util import topological
-from sqlalchemy.types import TypeEngine
 from sqlalchemy import schema as sa_schema
+from sqlalchemy import util
+from sqlalchemy.types import TypeEngine
+from sqlalchemy.util import deprecated
+from sqlalchemy.util import topological
 from sqlalchemy import inspection
 from sqlalchemy.engine.base import Connectable
 
@@ -233,6 +234,8 @@ class Inspector(object):
                 col_def['type'] = coltype()
         return col_defs
 
+    @deprecated('0.7', 'Call to deprecated method get_primary_keys.'
+                '  Use get_pk_constraint instead.')
     def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.
 
@@ -240,11 +243,9 @@ class Inspector(object):
         primary key information as a list of column names.
         """
 
-        pkeys = self.dialect.get_primary_keys(self.bind, table_name, schema,
-                                              info_cache=self.info_cache,
-                                              **kw)
-
-        return pkeys
+        return self.dialect.get_pk_constraint(self.bind, table_name, schema,
+                                               info_cache=self.info_cache,
+                                               **kw)['constrained_columns']
 
     def get_pk_constraint(self, table_name, schema=None, **kw):
         """Return information about primary key constraint on `table_name`.
@@ -259,11 +260,9 @@ class Inspector(object):
           optional name of the primary key constraint.
 
         """
-        pkeys = self.dialect.get_pk_constraint(self.bind, table_name, schema,
+        return self.dialect.get_pk_constraint(self.bind, table_name, schema,
                                               info_cache=self.info_cache,
                                               **kw)
-
-        return pkeys
 
 
     def get_foreign_keys(self, table_name, schema=None, **kw):
@@ -293,10 +292,9 @@ class Inspector(object):
 
         """
 
-        fk_defs = self.dialect.get_foreign_keys(self.bind, table_name, schema,
+        return self.dialect.get_foreign_keys(self.bind, table_name, schema,
                                                 info_cache=self.info_cache,
                                                 **kw)
-        return fk_defs
 
     def get_indexes(self, table_name, schema=None, **kw):
         """Return information about indexes in `table_name`.
@@ -317,10 +315,9 @@ class Inspector(object):
           other options passed to the dialect's get_indexes() method.
         """
 
-        indexes = self.dialect.get_indexes(self.bind, table_name,
+        return self.dialect.get_indexes(self.bind, table_name,
                                                   schema,
                                             info_cache=self.info_cache, **kw)
-        return indexes
 
     def reflecttable(self, table, include_columns, exclude_columns=()):
         """Given a Table object, load its internal constructs based on introspection.
