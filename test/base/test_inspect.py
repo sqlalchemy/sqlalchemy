@@ -32,10 +32,10 @@ class TestEvents(fixtures.TestBase):
         class SomeFoo(TestFixture):
             pass
 
-        @inspection._inspects(SomeFoo)
         class SomeFooInspect(object):
             def __init__(self, target):
                 self.target = target
+        SomeFooInspect = inspection._inspects(SomeFoo)(SomeFooInspect)
 
         somefoo = SomeFoo()
         insp = inspect(somefoo)
