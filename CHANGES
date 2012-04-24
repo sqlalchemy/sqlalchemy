@@ -42,6 +42,13 @@ those which apply to an 0.7 release are noted.
     approach can be upgraded to this new 
     approach. [ticket:1401]
 
+  - [feature] New standalone function with_polymorphic()
+    provides the functionality of query.with_polymorphic()
+    in a standalone form.   It can be applied to any
+    entity within a query, including as the target
+    of a join in place of the "of_type()" modifier.
+    [ticket:2333]
+
   - [feature] Added new core function "inspect()", 
     which serves as a generic gateway to
     introspection into mappers, objects,

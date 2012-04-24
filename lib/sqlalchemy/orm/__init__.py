@@ -35,6 +35,7 @@ from sqlalchemy.orm.util import (
      outerjoin,
      polymorphic_union,
      with_parent,
+     with_polymorphic,
      )
 from sqlalchemy.orm.properties import (
      ColumnProperty,

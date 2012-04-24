@@ -468,12 +468,6 @@ Base Type API
    :inherited-members:
    :show-inheritance:
 
-.. autoclass:: MutableType
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :show-inheritance:
-
 .. autoclass:: Concatenable
    :members:
    :undoc-members:

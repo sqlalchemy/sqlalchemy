@@ -31,6 +31,7 @@ from sqlalchemy.orm import (
     )
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
+    _extended_entity_info,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
     join as orm_join,with_parent, _attr_as_key, aliased
     )
@@ -92,6 +93,7 @@ class Query(object):
     _from_obj = ()
     _join_entities = ()
     _select_from_entity = None
+    _mapper_adapter_map = {}
     _filter_aliases = None
     _from_obj_alias = None
     _joinpath = _joinpoint = util.immutabledict()
@@ -114,50 +116,43 @@ class Query(object):
         for ent in util.to_list(entities):
             entity_wrapper(self, ent)
 
-        self._setup_aliasizers(self._entities)
+        self._set_entity_selectables(self._entities)
 
-    def _setup_aliasizers(self, entities):
-        if hasattr(self, '_mapper_adapter_map'):
-            # usually safe to share a single map, but copying to prevent
-            # subtle leaks if end-user is reusing base query with arbitrary
-            # number of aliased() objects
-            self._mapper_adapter_map = d = self._mapper_adapter_map.copy()
-        else:
-            self._mapper_adapter_map = d = {}
+    def _set_entity_selectables(self, entities):
+        self._mapper_adapter_map = d = self._mapper_adapter_map.copy()
 
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
-                    mapper, selectable, is_aliased_class = \
-                                            _entity_info(entity)
+                    mapper, selectable, \
+                    is_aliased_class, with_polymorphic_mappers, \
+                    with_polymorphic_discriminator = \
+                                            _extended_entity_info(entity)
                     if not is_aliased_class and mapper.with_polymorphic:
-                        with_polymorphic = mapper._with_polymorphic_mappers
                         if mapper.mapped_table not in \
                                             self._polymorphic_adapters:
                             self._mapper_loads_polymorphically_with(mapper, 
                                 sql_util.ColumnAdapter(
                                             selectable, 
                                             mapper._equivalent_columns))
-                        adapter = None
+                        aliased_adapter = None
                     elif is_aliased_class:
-                        adapter = sql_util.ColumnAdapter(
+                        aliased_adapter = sql_util.ColumnAdapter(
                                             selectable, 
                                             mapper._equivalent_columns)
-                        with_polymorphic = None
                     else:
-                        with_polymorphic = adapter = None
+                        aliased_adapter = None
 
-                    d[entity] = (mapper, adapter, selectable, 
-                                        is_aliased_class, with_polymorphic)
+                    d[entity] = (mapper, aliased_adapter, selectable, 
+                                        is_aliased_class, with_polymorphic_mappers,
+                                        with_polymorphic_discriminator)
                 ent.setup_entity(entity, *d[entity])
 
     def _mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers:
             self._polymorphic_adapters[m2] = adapter
             for m in m2.iterate_to_root():
-                self._polymorphic_adapters[m.mapped_table] = \
-                                self._polymorphic_adapters[m.local_table] = \
-                                adapter
+                self._polymorphic_adapters[m.local_table] = adapter
 
     def _set_select_from(self, *obj):
 
@@ -180,10 +175,9 @@ class Query(object):
         for m2 in mapper._with_polymorphic_mappers:
             self._polymorphic_adapters.pop(m2, None)
             for m in m2.iterate_to_root():
-                self._polymorphic_adapters.pop(m.mapped_table, None)
                 self._polymorphic_adapters.pop(m.local_table, None)
 
-    def __adapt_polymorphic_element(self, element):
+    def _adapt_polymorphic_element(self, element):
         if isinstance(element, expression.FromClause):
             search = element
         elif hasattr(element, 'table'):
@@ -241,7 +235,7 @@ class Query(object):
         if self._polymorphic_adapters:
             adapters.append(
                 (
-                    orm_only, self.__adapt_polymorphic_element
+                    orm_only, self._adapt_polymorphic_element
                 )
             )
 
@@ -617,35 +611,29 @@ class Query(object):
     @_generative(_no_clauseelement_condition)
     def with_polymorphic(self, 
                                     cls_or_mappers, 
-                                    selectable=None, discriminator=None):
-        """Load columns for descendant mappers of this Query's mapper.
-
-        Using this method will ensure that each descendant mapper's
-        tables are included in the FROM clause, and will allow filter()
-        criterion to be used against those tables.  The resulting
-        instances will also have those columns already loaded so that
-        no "post fetch" of those columns will be required.
-
-        :param cls_or_mappers: a single class or mapper, or list of
-            class/mappers, which inherit from this Query's mapper.
-            Alternatively, it may also be the string ``'*'``, in which case
-            all descending mappers will be added to the FROM clause.
-
-        :param selectable: a table or select() statement that will
-            be used in place of the generated FROM clause. This argument is
-            required if any of the desired mappers use concrete table
-            inheritance, since SQLAlchemy currently cannot generate UNIONs
-            among tables automatically. If used, the ``selectable`` argument
-            must represent the full set of tables and columns mapped by every
-            desired mapper. Otherwise, the unaccounted mapped columns will
-            result in their table being appended directly to the FROM clause
-            which will usually lead to incorrect results.
-
-        :param discriminator: a column to be used as the "discriminator"
-            column for the given selectable. If not given, the polymorphic_on
-            attribute of the mapper will be used, if any. This is useful for
-            mappers that don't have polymorphic loading behavior by default,
-            such as concrete table mappers.
+                                    selectable=None, 
+                                    polymorphic_on=None):
+        """Load columns for inheriting classes.
+        
+        :meth:`.Query.with_polymorphic` applies transformations 
+        to the "main" mapped class represented by this :class:`.Query`.
+        The "main" mapped class here means the :class:`.Query`
+        object's first argument is a full class, i.e. ``session.query(SomeClass)``.
+        These transformations allow additional tables to be present
+        in the FROM clause so that columns for a joined-inheritance
+        subclass are available in the query, both for the purposes
+        of load-time efficiency as well as the ability to use 
+        these columns at query time.
+        
+        See the documentation section :ref:`with_polymorphic` for
+        details on how this method is used.
+        
+        As of 0.8, a new and more flexible function 
+        :func:`.orm.with_polymorphic` supersedes 
+        :meth:`.Query.with_polymorphic`, as it can apply the equivalent
+        functionality to any set of columns or classes in the
+        :class:`.Query`, not just the "zero mapper".  See that
+        function for a description of arguments.
 
         """
 
@@ -657,7 +645,7 @@ class Query(object):
         entity.set_with_polymorphic(self, 
                                         cls_or_mappers, 
                                         selectable=selectable,
-                                        discriminator=discriminator)
+                                        polymorphic_on=polymorphic_on)
 
     @_generative()
     def yield_per(self, count):
@@ -881,7 +869,7 @@ class Query(object):
 
         self._entities = list(self._entities)
         m = _MapperEntity(self, entity)
-        self._setup_aliasizers([m])
+        self._set_entity_selectables([m])
 
     @_generative()
     def with_session(self, session):
@@ -998,7 +986,7 @@ class Query(object):
             _ColumnEntity(self, c)
         # _ColumnEntity may add many entities if the
         # given arg is a FROM clause
-        self._setup_aliasizers(self._entities[l:])
+        self._set_entity_selectables(self._entities[l:])
 
     @util.pending_deprecation("0.7", 
                 ":meth:`.add_column` is superseded by :meth:`.add_columns`", 
@@ -2998,7 +2986,7 @@ class Query(object):
         selected from the total results.
 
         """
-        for entity, (mapper, adapter, s, i, w) in \
+        for entity, (mapper, adapter, s, i, w, d) in \
                             self._mapper_adapter_map.iteritems():
             if entity in self._join_entities:
                 continue
@@ -3042,14 +3030,16 @@ class _MapperEntity(_QueryEntity):
         self.entities = [entity]
         self.entity_zero = self.expr = entity
 
-    def setup_entity(self, entity, mapper, adapter, 
-                        from_obj, is_aliased_class, with_polymorphic):
+    def setup_entity(self, entity, mapper, aliased_adapter, 
+                        from_obj, is_aliased_class, 
+                        with_polymorphic,
+                        with_polymorphic_discriminator):
         self.mapper = mapper
-        self.adapter = adapter
+        self.aliased_adapter = aliased_adapter
         self.selectable  = from_obj
-        self._with_polymorphic = with_polymorphic
-        self._polymorphic_discriminator = None
         self.is_aliased_class = is_aliased_class
+        self._with_polymorphic = with_polymorphic
+        self._polymorphic_discriminator = with_polymorphic_discriminator
         if is_aliased_class:
             self.path_entity = self.entity_zero = entity
             self._path = (entity,)
@@ -3062,9 +3052,14 @@ class _MapperEntity(_QueryEntity):
             self.entity_zero = mapper
             self._label_name = self.mapper.class_.__name__
 
-
     def set_with_polymorphic(self, query, cls_or_mappers, 
-                                selectable, discriminator):
+                                selectable, polymorphic_on):
+        if self.is_aliased_class:
+            raise NotImplementedError(
+                        "Can't use with_polymorphic() against "
+                        "an Aliased object"
+                        )
+
         if cls_or_mappers is None:
             query._reset_polymorphic_adapter(self.mapper)
             return
@@ -3072,15 +3067,12 @@ class _MapperEntity(_QueryEntity):
         mappers, from_obj = self.mapper._with_polymorphic_args(
                                                 cls_or_mappers, selectable)
         self._with_polymorphic = mappers
-        self._polymorphic_discriminator = discriminator
+        self._polymorphic_discriminator = polymorphic_on
 
-        # TODO: do the wrapped thing here too so that 
-        # with_polymorphic() can be applied to aliases
-        if not self.is_aliased_class:
-            self.selectable = from_obj
-            query._mapper_loads_polymorphically_with(self.mapper, 
-                    sql_util.ColumnAdapter(from_obj, 
-                            self.mapper._equivalent_columns))
+        self.selectable = from_obj
+        query._mapper_loads_polymorphically_with(self.mapper, 
+                sql_util.ColumnAdapter(from_obj, 
+                        self.mapper._equivalent_columns))
 
     filter_fn = id
 
@@ -3104,11 +3096,12 @@ class _MapperEntity(_QueryEntity):
     def _get_entity_clauses(self, query, context):
 
         adapter = None
-        if not self.is_aliased_class and query._polymorphic_adapters:
-            adapter = query._polymorphic_adapters.get(self.mapper, None)
 
-        if not adapter and self.adapter:
-            adapter = self.adapter
+        if not self.is_aliased_class:
+            if query._polymorphic_adapters:
+                adapter = query._polymorphic_adapters.get(self.mapper, None)
+        else:
+            adapter = self.aliased_adapter
 
         if adapter:
             if query._from_obj_alias:
@@ -3194,7 +3187,10 @@ class _MapperEntity(_QueryEntity):
                 column_collection=context.primary_columns
             )
 
-        if self._polymorphic_discriminator is not None:
+        if self._polymorphic_discriminator is not None and \
+            self._polymorphic_discriminator \
+                is not self.mapper.polymorphic_on:
+
             if adapter:
                 pd = adapter.columns[self._polymorphic_discriminator]
             else:
@@ -3297,7 +3293,8 @@ class _ColumnEntity(_QueryEntity):
         c.entities = self.entities
 
     def setup_entity(self, entity, mapper, adapter, from_obj,
-                                is_aliased_class, with_polymorphic):
+                                is_aliased_class, with_polymorphic,
+                                with_polymorphic_discriminator):
         if 'selectable' not in self.__dict__: 
             self.selectable = from_obj
         self.froms.add(from_obj)

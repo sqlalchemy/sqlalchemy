@@ -294,16 +294,28 @@ class AliasedClass(object):
      ``adapt_on_names`` is new in 0.7.3.
 
     """
-    def __init__(self, cls, alias=None, name=None, adapt_on_names=False):
+    def __init__(self, cls, alias=None, 
+                            name=None, 
+                            adapt_on_names=False,
+                            with_polymorphic_mappers=(),
+                            with_polymorphic_discriminator=None):
         self.__mapper = _class_to_mapper(cls)
         self.__target = self.__mapper.class_
         self.__adapt_on_names = adapt_on_names
         if alias is None:
-            alias = self.__mapper._with_polymorphic_selectable.alias(name=name)
+            alias = self.__mapper._with_polymorphic_selectable.alias(
+                                    name=name)
         self.__adapter = sql_util.ClauseAdapter(alias,
-                                equivalents=self.__mapper._equivalent_columns,
-                                adapt_on_names=self.__adapt_on_names)
+                            equivalents=self.__mapper._equivalent_columns,
+                            adapt_on_names=self.__adapt_on_names)
         self.__alias = alias
+        self.__with_polymorphic_mappers = with_polymorphic_mappers
+        self.__with_polymorphic_discriminator = \
+                        with_polymorphic_discriminator
+        for poly in with_polymorphic_mappers:
+            setattr(self, poly.class_.__name__, 
+                    AliasedClass(poly.class_, alias))
+
         # used to assign a name to the RowTuple object
         # returned by Query.
         self._sa_label_name = name
@@ -315,6 +327,10 @@ class AliasedClass(object):
             'alias':self.__alias, 
             'name':self._sa_label_name,
             'adapt_on_names':self.__adapt_on_names,
+            'with_polymorphic_mappers':
+                self.__with_polymorphic_mappers,
+            'with_polymorphic_discriminator':
+                self.__with_polymorphic_discriminator
         }
 
     def __setstate__(self, state):
@@ -323,9 +339,13 @@ class AliasedClass(object):
         self.__adapt_on_names = state['adapt_on_names']
         alias = state['alias']
         self.__adapter = sql_util.ClauseAdapter(alias,
-                                equivalents=self.__mapper._equivalent_columns,
-                                adapt_on_names=self.__adapt_on_names)
+                            equivalents=self.__mapper._equivalent_columns,
+                            adapt_on_names=self.__adapt_on_names)
         self.__alias = alias
+        self.__with_polymorphic_mappers = \
+                        state.get('with_polymorphic_mappers')
+        self.__with_polymorphic_discriminator = \
+                        state.get('with_polymorphic_discriminator')
         name = state['name']
         self._sa_label_name = name
         self.__name__ = 'AliasedClass_' + str(self.__target)
@@ -379,10 +399,75 @@ class AliasedClass(object):
 def aliased(element, alias=None, name=None, adapt_on_names=False):
     if isinstance(element, expression.FromClause):
         if adapt_on_names:
-            raise sa_exc.ArgumentError("adapt_on_names only applies to ORM elements")
+            raise sa_exc.ArgumentError(
+                "adapt_on_names only applies to ORM elements"
+            )
         return element.alias(name)
     else:
-        return AliasedClass(element, alias=alias, name=name, adapt_on_names=adapt_on_names)
+        return AliasedClass(element, alias=alias, 
+                    name=name, adapt_on_names=adapt_on_names)
+
+def with_polymorphic(base, classes, selectable=False, 
+                        polymorphic_on=None, aliased=False):
+    """Produce an :class:`.AliasedClass` construct which specifies
+    columns for descendant mappers of the given base.
+
+    .. note::
+    
+       :func:`.orm.with_polymorphic` is new in version 0.8.
+       It is in addition to the existing :class:`.Query` method
+       :meth:`.Query.with_polymorphic`, which has the same purpose
+       but is not as flexible in its usage.
+
+    Using this method will ensure that each descendant mapper's
+    tables are included in the FROM clause, and will allow filter()
+    criterion to be used against those tables.  The resulting
+    instances will also have those columns already loaded so that
+    no "post fetch" of those columns will be required.
+    
+    See the examples at :ref:`with_polymorphic`.
+
+    :param base: Base class to be aliased.
+    
+    :param cls_or_mappers: a single class or mapper, or list of
+        class/mappers, which inherit from the base class.
+        Alternatively, it may also be the string ``'*'``, in which case
+        all descending mapped classes will be added to the FROM clause.
+    
+    :param aliased: when True, the selectable will be wrapped in an
+        alias, that is ``(SELECT * FROM <fromclauses>) AS anon_1``.
+        This can be important when using the with_polymorphic()
+        to create the target of a JOIN on a backend that does not
+        support parenthesized joins, such as SQLite and older
+        versions of MySQL.
+        
+    :param selectable: a table or select() statement that will
+        be used in place of the generated FROM clause. This argument is
+        required if any of the desired classes use concrete table
+        inheritance, since SQLAlchemy currently cannot generate UNIONs
+        among tables automatically. If used, the ``selectable`` argument
+        must represent the full set of tables and columns mapped by every
+        mapped class. Otherwise, the unaccounted mapped columns will
+        result in their table being appended directly to the FROM clause
+        which will usually lead to incorrect results.
+
+    :param polymorphic_on: a column to be used as the "discriminator"
+        column for the given selectable. If not given, the polymorphic_on
+        attribute of the base classes' mapper will be used, if any. This 
+        is useful for mappings that don't have polymorphic loading 
+        behavior by default.
+
+    """
+    primary_mapper = class_mapper(base)
+    mappers, selectable = primary_mapper.\
+                    _with_polymorphic_args(classes, selectable)
+    if aliased:
+        selectable = selectable.alias()
+    return AliasedClass(base, 
+                selectable, 
+                with_polymorphic_mappers=mappers, 
+                with_polymorphic_discriminator=polymorphic_on)
+
 
 def _orm_annotate(element, exclude=None):
     """Deep copy the given ClauseElement, annotating each element with the
@@ -560,6 +645,35 @@ def with_parent(instance, prop):
                         value_is_parent=True)
 
 
+def _extended_entity_info(entity, compile=True):
+    if isinstance(entity, AliasedClass):
+        return entity._AliasedClass__mapper, \
+                entity._AliasedClass__alias, \
+                True, \
+                entity._AliasedClass__with_polymorphic_mappers, \
+                entity._AliasedClass__with_polymorphic_discriminator
+
+    if isinstance(entity, mapperlib.Mapper):
+        mapper = entity
+
+    elif isinstance(entity, type):
+        class_manager = attributes.manager_of_class(entity)
+
+        if class_manager is None:
+            return None, entity, False, [], None
+
+        mapper = class_manager.mapper
+    else:
+        return None, entity, False, [], None
+
+    if compile and mapperlib.module._new_mappers:
+        mapperlib.configure_mappers()
+    return mapper, \
+            mapper._with_polymorphic_selectable, \
+            False, \
+            mapper._with_polymorphic_mappers, \
+            mapper.polymorphic_on
+
 def _entity_info(entity, compile=True):
     """Return mapping information given a class, mapper, or AliasedClass.
 
@@ -571,25 +685,7 @@ def _entity_info(entity, compile=True):
     unmapped selectables through.
 
     """
-    if isinstance(entity, AliasedClass):
-        return entity._AliasedClass__mapper, entity._AliasedClass__alias, True
-
-    if isinstance(entity, mapperlib.Mapper):
-        mapper = entity
-
-    elif isinstance(entity, type):
-        class_manager = attributes.manager_of_class(entity)
-
-        if class_manager is None:
-            return None, entity, False
-
-        mapper = class_manager.mapper
-    else:
-        return None, entity, False
-
-    if compile and mapperlib.module._new_mappers:
-        mapperlib.configure_mappers()
-    return mapper, mapper._with_polymorphic_selectable, False
+    return _extended_entity_info(entity, compile)[0:3]
 
 def _entity_descriptor(entity, key):
     """Return a class attribute given an entity and string name.

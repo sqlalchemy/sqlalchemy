@@ -1358,7 +1358,8 @@ class Mapper(object):
                 spec = self.with_polymorphic[0]
             if selectable is False:
                 selectable = self.with_polymorphic[1]
-
+        elif selectable is False:
+            selectable = None
         mappers = self._mappers_from_spec(spec, selectable)
         if selectable is not None:
             return mappers, selectable
