@@ -158,29 +158,6 @@ following ALTER DATABASE commands executed at the SQL prompt::
 Background on SQL Server snapshot isolation is available at
 http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
-Scalar Select Comparisons
--------------------------
-
-The MSSQL dialect contains a legacy behavior whereby comparing
-a scalar select to a value using the ``=`` or ``!=`` operator
-will resolve to IN or NOT IN, respectively.  This behavior is 
-deprecated and will be removed in 0.8 - the ``s.in_()``/``~s.in_()`` operators 
-should be used when IN/NOT IN are desired.
-
-For the time being, the existing behavior prevents a comparison
-between scalar select and another value that actually wants to use ``=``.
-To remove this behavior in a forwards-compatible way, apply this
-compilation rule by placing the following code at the module import
-level::
-
-    from sqlalchemy.ext.compiler import compiles
-    from sqlalchemy.sql.expression import _BinaryExpression
-    from sqlalchemy.sql.compiler import SQLCompiler
-
-    @compiles(_BinaryExpression, 'mssql')
-    def override_legacy_binary(element, compiler, **kw):
-        return SQLCompiler.visit_binary(compiler, element, **kw)
-
 Known Issues
 ------------
 
@@ -906,31 +883,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                                                              binary.left, 
                                                              binary.operator), 
                                 **kwargs)
-        else:
-            if (
-                (binary.operator is operator.eq or 
-                binary.operator is operator.ne) 
-                and (
-                    (isinstance(binary.left, expression._FromGrouping) 
-                     and isinstance(binary.left.element, 
-                                    expression._ScalarSelect)) 
-                    or (isinstance(binary.right, expression._FromGrouping) 
-                        and isinstance(binary.right.element, 
-                                       expression._ScalarSelect)) 
-                    or isinstance(binary.left, expression._ScalarSelect) 
-                    or isinstance(binary.right, expression._ScalarSelect)
-                    )
-               ):
-                op = binary.operator == operator.eq and "IN" or "NOT IN"
-                util.warn_deprecated("Comparing a scalar select using ``=``/``!=`` will "
-                                    "no longer produce IN/NOT IN in 0.8.  To remove this "
-                                    "behavior immediately, use the recipe at "
-                        "http://www.sqlalchemy.org/docs/07/dialects/mssql.html#scalar-select-comparisons")
-                return self.process(
-                        expression._BinaryExpression(binary.left,
-                                                     binary.right, op),
-                                    **kwargs)
-            return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
+        return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
     def returning_clause(self, stmt, returning_cols):
 

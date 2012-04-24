@@ -136,6 +136,15 @@ those which apply to an 0.7 release are noted.
     also in 0.7.7.
 
 - mssql
+  - [bug] removed legacy behavior whereby 
+    a column comparison to a scalar SELECT via 
+    == would coerce to an IN with the SQL server
+    dialect.  This is implicit
+    behavior which fails in other scenarios
+    so is removed.  Code which relies on this
+    needs to be modified to use column.in_(select)
+    explicitly.  [ticket:2277]
+
   - [feature] Added interim create_engine flag
     supports_unicode_binds to PyODBC dialect,
     to force whether or not the dialect

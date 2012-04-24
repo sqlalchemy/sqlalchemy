@@ -183,10 +183,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(expr, compile, dialect=mxodbc_dialect)
 
-    @testing.uses_deprecated
     def test_in_with_subqueries(self):
-        """Test that when using subqueries in a binary expression
-        the == and != are changed to IN and NOT IN respectively.
+        """Test removal of legacy behavior that converted "x==subquery"
+        to use IN.
 
         """
 
@@ -194,14 +193,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(t.select().where(t.c.somecolumn
                             == t.select()),
                             'SELECT sometable.somecolumn FROM '
-                            'sometable WHERE sometable.somecolumn IN '
+                            'sometable WHERE sometable.somecolumn = '
                             '(SELECT sometable.somecolumn FROM '
                             'sometable)')
         self.assert_compile(t.select().where(t.c.somecolumn
                             != t.select()),
                             'SELECT sometable.somecolumn FROM '
-                            'sometable WHERE sometable.somecolumn NOT '
-                            'IN (SELECT sometable.somecolumn FROM '
+                            'sometable WHERE sometable.somecolumn != '
+                            '(SELECT sometable.somecolumn FROM '
                             'sometable)')
 
     def test_count(self):
