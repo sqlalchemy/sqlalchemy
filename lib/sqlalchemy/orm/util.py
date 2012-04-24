@@ -759,7 +759,11 @@ def object_state(instance):
     """
     try:
         return attributes.instance_state(instance)
-    except (exc.UnmappedClassError, exc.NO_STATE):
+        # TODO: whats the py-2/3 syntax to catch two
+        # different kinds of exceptions at once ?
+    except exc.UnmappedClassError:
+        raise exc.UnmappedInstanceError(instance)
+    except exc.NO_STATE:
         raise exc.UnmappedInstanceError(instance)
 
 
