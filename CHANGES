@@ -272,8 +272,14 @@ CHANGES
     with_lockmode("read_nowait").
     These emit "FOR SHARE" and "FOR SHARE NOWAIT",
     respectively.  Courtesy Diana Clarke 
-    [ticket:2445]
-    also in 0.7.7.
+    [ticket:2445] Also in 0.7.7.
+
+  - [feature] postgresql.ARRAY features an optional
+    "dimension" argument, will assign a specific
+    number of dimensions to the array which will
+    render in DDL as ARRAY[][]..., also improves
+    performance of bind/result processing.
+    [ticket:2441]
 
 - mysql
   - [bug] Fixed bug whereby column name inside 

@@ -472,10 +472,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL):
     def test_generate_multiple(self):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.
-        
+
         A 'memo' collection held by the DDL runner
         now handles this.
-        
+
         """
         metadata = self.metadata
 
@@ -1920,10 +1920,32 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
     def setup_class(cls):
         global metadata, arrtable
         metadata = MetaData(testing.db)
-        arrtable = Table('arrtable', metadata, Column('id', Integer,
-                         primary_key=True), Column('intarr',
-                         postgresql.ARRAY(Integer)), Column('strarr',
-                         postgresql.ARRAY(Unicode()), nullable=False))
+
+        class ProcValue(TypeDecorator):
+            impl = postgresql.ARRAY(Integer, dimensions=2)
+
+            def process_bind_param(self, value, dialect):
+                if value is None:
+                    return None
+                return [
+                    [x + 5 for x in v]
+                    for v in value
+                ]
+
+            def process_result_value(self, value, dialect):
+                if value is None:
+                    return None
+                return [
+                    [x - 7 for x in v]
+                    for v in value
+                ]
+
+        arrtable = Table('arrtable', metadata, 
+                        Column('id', Integer, primary_key=True), 
+                        Column('intarr',postgresql.ARRAY(Integer)), 
+                         Column('strarr',postgresql.ARRAY(Unicode())),
+                        Column('dimarr', ProcValue)
+                    )
         metadata.create_all()
 
     def teardown(self):
@@ -1994,73 +2016,23 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
 
-    @testing.fails_on('postgresql+pg8000',
-                      'pg8000 has poor support for PG arrays')
-    @testing.fails_on('postgresql+zxjdbc',
-                      'zxjdbc has no support for PG arrays')
-    def test_array_mutability(self):
-
-        class Foo(object):
-            pass
-
-        footable = Table('foo', metadata, 
-                        Column('id', Integer,primary_key=True), 
-                        Column('intarr', 
-                            postgresql.ARRAY(Integer, mutable=True), 
-                            nullable=True))
-        mapper(Foo, footable)
-        metadata.create_all()
-        sess = create_session()
-        foo = Foo()
-        foo.id = 1
-        foo.intarr = [1, 2, 3]
-        sess.add(foo)
-        sess.flush()
-        sess.expunge_all()
-        foo = sess.query(Foo).get(1)
-        eq_(foo.intarr, [1, 2, 3])
-        foo.intarr.append(4)
-        sess.flush()
-        sess.expunge_all()
-        foo = sess.query(Foo).get(1)
-        eq_(foo.intarr, [1, 2, 3, 4])
-        foo.intarr = []
-        sess.flush()
-        sess.expunge_all()
-        eq_(foo.intarr, [])
-        foo.intarr = None
-        sess.flush()
-        sess.expunge_all()
-        eq_(foo.intarr, None)
-
-        # Errors in r4217:
-
-        foo = Foo()
-        foo.id = 2
-        sess.add(foo)
-        sess.flush()
-
     @testing.fails_on('+zxjdbc',
                       "Can't infer the SQL type to use for an instance "
                       "of org.python.core.PyList.")
     @testing.provide_metadata
     def test_tuple_flag(self):
         metadata = self.metadata
-        assert_raises_message(
-            exc.ArgumentError, 
-            "mutable must be set to False if as_tuple is True.",
-            postgresql.ARRAY, Integer, mutable=True, 
-                as_tuple=True)
 
         t1 = Table('t1', metadata,
             Column('id', Integer, primary_key=True),
-            Column('data', postgresql.ARRAY(String(5), as_tuple=True, mutable=False)),
-            Column('data2', postgresql.ARRAY(Numeric(asdecimal=False), as_tuple=True, mutable=False)),
+            Column('data', postgresql.ARRAY(String(5), as_tuple=True)),
+            Column('data2', postgresql.ARRAY(Numeric(asdecimal=False), as_tuple=True)),
         )
         metadata.create_all()
         testing.db.execute(t1.insert(), id=1, data=["1","2","3"], data2=[5.4, 5.6])
         testing.db.execute(t1.insert(), id=2, data=["4", "5", "6"], data2=[1.0])
-        testing.db.execute(t1.insert(), id=3, data=[["4", "5"], ["6", "7"]], data2=[[5.4, 5.6], [1.0, 1.1]])
+        testing.db.execute(t1.insert(), id=3, data=[["4", "5"], ["6", "7"]], 
+                        data2=[[5.4, 5.6], [1.0, 1.1]])
 
         r = testing.db.execute(t1.select().order_by(t1.c.id)).fetchall()
         eq_(
@@ -2077,7 +2049,12 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
             set([('1', '2', '3'), ('4', '5', '6'), (('4', '5'), ('6', '7'))])
         )
 
-
+    def test_dimension(self):
+        testing.db.execute(arrtable.insert(), dimarr=[[1, 2, 3], [4,5, 6]])
+        eq_(
+            testing.db.scalar(select([arrtable.c.dimarr])),
+            [[-1, 0, 1], [2, 3, 4]]
+        )
 
 class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = 'postgresql'
