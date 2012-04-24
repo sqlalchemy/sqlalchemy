@@ -72,6 +72,13 @@ CHANGES
      a tuple is inadvertently passed to session.query()
      [ticket:2297].
 
+- engine
+  - Backported the fix for [ticket:2317] introduced
+    in 0.7.4, which ensures that the connection
+    is in a valid state before attempting to call
+    rollback()/prepare()/release() on savepoint
+    and two-phase transactions.
+
 - sql
   - Fixed two subtle bugs involving column 
     correspondence in a selectable,

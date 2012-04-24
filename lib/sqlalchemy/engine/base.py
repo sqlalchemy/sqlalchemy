@@ -930,6 +930,13 @@ class Connection(Connectable):
         return getattr(self.__connection, 'is_valid', False)
 
     @property
+    def _still_open_and_connection_is_valid(self):
+        return \
+            not self.closed and \
+            not self.invalidated and \
+            getattr(self.__connection, 'is_valid', False)
+
+    @property
     def info(self):
         """A collection of per-DB-API connection instance properties."""
 
@@ -1077,8 +1084,7 @@ class Connection(Connectable):
             raise
 
     def _rollback_impl(self):
-        if not self.closed and not self.invalidated and \
-                        self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             if self._echo:
                 self.engine.logger.info("ROLLBACK")
             try:
@@ -1109,32 +1115,32 @@ class Connection(Connectable):
             return name
 
     def _rollback_to_savepoint_impl(self, name, context):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             self.engine.dialect.do_rollback_to_savepoint(self, name)
         self.__transaction = context
 
     def _release_savepoint_impl(self, name, context):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             self.engine.dialect.do_release_savepoint(self, name)
         self.__transaction = context
 
     def _begin_twophase_impl(self, xid):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             self.engine.dialect.do_begin_twophase(self, xid)
 
     def _prepare_twophase_impl(self, xid):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_prepare_twophase(self, xid)
 
     def _rollback_twophase_impl(self, xid, is_prepared):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_rollback_twophase(self, xid, is_prepared)
         self.__transaction = None
 
     def _commit_twophase_impl(self, xid, is_prepared):
-        if self._connection_is_valid:
+        if self._still_open_and_connection_is_valid:
             assert isinstance(self.__transaction, TwoPhaseTransaction)
             self.engine.dialect.do_commit_twophase(self, xid, is_prepared)
         self.__transaction = None
@@ -1341,6 +1347,7 @@ class Connection(Connectable):
                 context.handle_dbapi_exception(e)
 
             is_disconnect = self.dialect.is_disconnect(e)
+
             if is_disconnect:
                 self.invalidate(e)
                 self.engine.dispose()
