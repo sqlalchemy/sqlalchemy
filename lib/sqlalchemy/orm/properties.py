@@ -1064,7 +1064,8 @@ class RelationshipProperty(StrategizedProperty):
         if self.cascade.delete_orphan and not self.single_parent \
             and (self.direction is MANYTOMANY or self.direction
                  is MANYTOONE):
-            util.warn('On %s, delete-orphan cascade is not supported '
+            raise sa_exc.ArgumentError(
+                    'On %s, delete-orphan cascade is not supported '
                       'on a many-to-many or many-to-one relationship '
                       'when single_parent is not set.   Set '
                       'single_parent=True on the relationship().'

@@ -4,7 +4,8 @@ from sqlalchemy import Integer, String, ForeignKey, Sequence, \
     exc as sa_exc
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    sessionmaker, class_mapper, backref, Session, util as orm_util
+    sessionmaker, class_mapper, backref, Session, util as orm_util,\
+    configure_mappers
 from sqlalchemy.orm import attributes, exc as orm_exc
 from test.lib import testing
 from test.lib.testing import eq_
@@ -1724,6 +1725,24 @@ class M2MCascadeTest(fixtures.MappedTest):
         assert atob.count().scalar() ==0
         assert b.count().scalar() == 0
         assert a.count().scalar() == 0
+
+    def test_single_parent_error(self):
+        a, A, B, b, atob = (self.tables.a,
+                                self.classes.A,
+                                self.classes.B,
+                                self.tables.b,
+                                self.tables.atob)
+
+        mapper(A, a, properties={
+            'bs':relationship(B, secondary=atob, 
+                        cascade="all, delete-orphan")
+        })
+        mapper(B, b)
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "On A.bs, delete-orphan cascade is not supported",
+            configure_mappers
+        )
 
     def test_single_parent_raise(self):
         a, A, B, b, atob = (self.tables.a,

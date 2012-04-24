@@ -59,6 +59,13 @@ CHANGES
     SQL or invoke loader callables/initializers.  
     [ticket:2320]
 
+  - [bug] The warning emitted when using 
+    delete-orphan cascade with one-to-many
+    or many-to-many without single-parent=True
+    is now an error.  The ORM
+    would fail to function subsequent to this
+    warning in any case.  [ticket:2405]
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
