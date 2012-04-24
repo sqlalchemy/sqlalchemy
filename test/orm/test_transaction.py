@@ -121,6 +121,26 @@ class SessionTransactionTest(FixtureTest):
 
         assert s2.query(User).all() == []
 
+    @testing.requires.savepoints
+    def test_rollback_ignores_clean_on_savepoint(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(bind=testing.db)
+        u1 = User(name='u1')
+        u2 = User(name='u2')
+        s.add_all([u1, u2])
+        s.commit()
+        u1.name
+        u2.name
+        s.begin_nested()
+        u2.name = 'u2modified'
+        s.rollback()
+        assert 'name' not in u1.__dict__
+        assert 'name' not in u2.__dict__
+        eq_(u2.name, 'u2')
+
     @testing.requires.two_phase_transactions
     def test_twophase(self):
         users, Address, addresses, User = (self.tables.users,
