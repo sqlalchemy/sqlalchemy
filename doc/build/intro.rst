@@ -170,7 +170,7 @@ current list is at :ref:`supported_dbapis`.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 0.7. If you're working on a
+This documentation covers SQLAlchemy version 0.8. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -178,12 +178,12 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     0.7.0
+     0.8.0
 
 .. _migration:
 
-0.6 to 0.7 Migration
+0.7 to 0.8 Migration
 =====================
 
-Notes on what's changed from 0.6 to 0.7 is available on the SQLAlchemy wiki at
-`07Migration <http://www.sqlalchemy.org/trac/wiki/07Migration>`_.
+Notes on what's changed from 0.7 to 0.8 is available on the SQLAlchemy wiki at
+`08Migration <http://www.sqlalchemy.org/trac/wiki/08Migration>`_.
