@@ -1255,4 +1255,11 @@ Relationships API
 
 .. autofunction:: dynamic_loader
 
+.. autofunction:: foreign
+
+.. autofunction:: remote
+
+.. autofunction:: remote_foreign
+
+
 

@@ -396,6 +396,11 @@ def relationship(argument, secondary=None, **kwargs):
       which is evaluated at mapper initialization time, and may be passed as a 
       Python-evaluable string when using Declarative.
       
+      As of 0.8, the :func:`.foreign` annotation can also be applied
+      directly to the ``primaryjoin`` expression, which is an alternate,
+      more specific system of describing which columns in a particular
+      ``primaryjoin`` should be considered "foreign".
+      
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
@@ -581,6 +586,11 @@ def relationship(argument, secondary=None, **kwargs):
       ``remote_side`` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a 
       Python-evaluable string when using Declarative.
+
+      As of 0.8, the :func:`.remote` annotation can also be applied
+      directly to the ``primaryjoin`` expression, which is an alternate,
+      more specific system of describing which columns in a particular
+      ``primaryjoin`` should be considered "remote".
 
     :param query_class:
       a :class:`.Query` subclass that will be used as the base of the

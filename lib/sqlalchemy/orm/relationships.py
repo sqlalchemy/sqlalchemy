@@ -21,12 +21,75 @@ from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
 
 def remote(expr):
+    """Annotate a portion of a primaryjoin expression 
+    with a 'remote' annotation.
+    
+    :func:`.remote`, :func:`.foreign`, and :func:`.remote_foreign`
+    are intended to be used with 
+    :func:`.relationship` in conjunction with a 
+    ``primaryjoin`` expression which contains
+    indirect equality conditions, meaning the comparison
+    of mapped columns involves extraneous SQL functions
+    such as :func:`.cast`.  They can also be used in 
+    lieu of the ``foreign_keys`` and ``remote_side``
+    parameters to :func:`.relationship`, if a 
+    primaryjoin expression is also being sent explicitly.
+    
+    Below, a mapped class ``DNSRecord`` relates to the
+    ``DHCPHost`` class using a primaryjoin that casts
+    the ``content`` column to a string.  The :func:`.foreign`
+    and :func:`.remote` annotation functions are used 
+    to mark with full accuracy those mapped columns that
+    are significant to the :func:`.relationship`, in terms
+    of how they are joined::
+
+        from sqlalchemy import cast, String
+        from sqlalchemy.orm import remote, foreign
+        from sqlalchemy.dialects.postgresql import INET
+        
+        class DNSRecord(Base):
+            __tablename__ = 'dns'
+        
+            id = Column(Integer, primary_key=True)
+            content = Column(INET)
+            dhcphost = relationship(DHCPHost,
+                primaryjoin=cast(foreign(content), String) == 
+                                remote(DHCPHost.ip_address)
+            )
+
+    New in 0.8.
+
+    See also:
+    
+    * :func:`.foreign`
+    
+    * :func:`.remote_foreign`
+    
+    """
     return _annotate_columns(expr, {"remote":True})
 
 def foreign(expr):
+    """Annotate a portion of a primaryjoin expression 
+    with a 'foreign' annotation.
+
+    See the example at :func:`.remote`.
+
+    New in 0.8.
+
+    """
+
     return _annotate_columns(expr, {"foreign":True})
 
 def remote_foreign(expr):
+    """Annotate a portion of a primaryjoin expression 
+    with a 'remote' and 'foreign' annotation.
+    
+    See the example at :func:`.remote`.
+
+    New in 0.8.
+    
+    """
+
     return _annotate_columns(expr, {"foreign":True, 
                                 "remote":True})
 
