@@ -1916,6 +1916,8 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = 'postgresql'
 
+    __unsupported_on__ = 'postgresql+pg8000', 'postgresql+zxjdbc'
+
     @classmethod
     def setup_class(cls):
         global metadata, arrtable
@@ -1963,8 +1965,6 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
-    @testing.fails_on('postgresql+zxjdbc',
-                      'zxjdbc has no support for PG arrays')
     def test_insert_array(self):
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
                                   u'def'])
@@ -1973,10 +1973,6 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(results[0]['intarr'], [1, 2, 3])
         eq_(results[0]['strarr'], ['abc', 'def'])
 
-    @testing.fails_on('postgresql+pg8000',
-                      'pg8000 has poor support for PG arrays')
-    @testing.fails_on('postgresql+zxjdbc',
-                      'zxjdbc has no support for PG arrays')
     def test_array_where(self):
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
                                   u'def'])
@@ -1986,12 +1982,6 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(len(results), 1)
         eq_(results[0]['intarr'], [1, 2, 3])
 
-    @testing.fails_on('postgresql+pg8000',
-                      'pg8000 has poor support for PG arrays')
-    @testing.fails_on('postgresql+pypostgresql',
-                      'pypostgresql fails in coercing an array')
-    @testing.fails_on('postgresql+zxjdbc',
-                      'zxjdbc has no support for PG arrays')
     def test_array_concat(self):
         arrtable.insert().execute(intarr=[1, 2, 3], strarr=[u'abc',
                                   u'def'])
@@ -2000,10 +1990,6 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(len(results), 1)
         eq_(results[0][0], [ 1, 2, 3, 4, 5, 6, ])
 
-    @testing.fails_on('postgresql+pg8000',
-                      'pg8000 has poor support for PG arrays')
-    @testing.fails_on('postgresql+zxjdbc',
-                      'zxjdbc has no support for PG arrays')
     def test_array_subtype_resultprocessor(self):
         arrtable.insert().execute(intarr=[4, 5, 6],
                                   strarr=[[u'm\xe4\xe4'], [u'm\xf6\xf6'
@@ -2016,9 +2002,6 @@ class ArrayTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(results[0]['strarr'], [u'm\xe4\xe4', u'm\xf6\xf6'])
         eq_(results[1]['strarr'], [[u'm\xe4\xe4'], [u'm\xf6\xf6']])
 
-    @testing.fails_on('+zxjdbc',
-                      "Can't infer the SQL type to use for an instance "
-                      "of org.python.core.PyList.")
     @testing.provide_metadata
     def test_tuple_flag(self):
         metadata = self.metadata

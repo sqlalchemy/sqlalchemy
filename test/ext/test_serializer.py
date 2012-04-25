@@ -140,7 +140,8 @@ class SerializeTest(fixtures.MappedTest):
         eq_(list(q2.all()), [(u7, u8), (u7, u9), (u7, u10), (u8, u9),
             (u8, u10)])
 
-    @testing.fails_if(lambda: util.pypy, "problem in pickle")
+    @testing.skip_if(lambda: util.pypy, "pickle sometimes has "
+                        "problems here, sometimes not")
     def test_any(self):
         r = User.addresses.any(Address.email == 'x')
         ser = serializer.dumps(r, -1)
