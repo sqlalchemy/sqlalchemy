@@ -88,7 +88,8 @@ class SerializeTest(fixtures.MappedTest):
         eq_(re_expr.execute().fetchall(), [(7, u'jack'), (8, u'ed'),
             (8, u'ed'), (8, u'ed'), (9, u'fred')])
 
-    @testing.fails_if(lambda: util.pypy, "problem in pickle")
+    @testing.skip_if(lambda: util.pypy, "pickle sometimes has "
+                        "problems here, sometimes not")
     def test_query(self):
         q = Session.query(User).filter(User.name == 'ed'
                 ).options(joinedload(User.addresses))
