@@ -603,6 +603,16 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self._test(None == Address.user, "addresses.user_id IS NULL")
         self._test(~(None == Address.user), "addresses.user_id IS NOT NULL")
 
+    def test_relationship_unimplemented(self):
+        User, Address = self.classes.User, self.classes.Address
+        for op in [
+            User.addresses.like,
+            User.addresses.ilike,
+            User.addresses.__le__,
+            User.addresses.__gt__,
+        ]:
+            assert_raises(NotImplementedError, op, "x")
+
     def test_relationship(self):
         User, Address = self.classes.User, self.classes.Address
 

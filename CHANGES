@@ -41,6 +41,12 @@ CHANGES
     OrderingList from being pickleable
     [ticket:2454].  Courtesy Jeff Dairiki
 
+  - [bug] Fixed bug in relationship comparisons
+    whereby calling unimplemented methods like
+    SomeClass.somerelationship.like() would
+    produce a recursion overflow, instead
+    of NotImplementedError.
+
 - sql
   - [bug] Removed warning when Index is created
     with no columns; while this might not be what 

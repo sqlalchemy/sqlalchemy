@@ -323,12 +323,6 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 return elem
 
-        def operate(self, op, *other, **kwargs):
-            return op(self, *other, **kwargs)
-
-        def reverse_operate(self, op, other, **kwargs):
-            return op(self, *other, **kwargs)
-
         def of_type(self, cls):
             """Produce a construct that represents a particular 'subtype' of
             attribute for the parent class.
