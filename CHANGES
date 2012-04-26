@@ -75,7 +75,7 @@ CHANGES
     whereby calling unimplemented methods like
     SomeClass.somerelationship.like() would
     produce a recursion overflow, instead
-    of NotImplementedError.
+    of NotImplementedError. Also in 0.7.7.
 
   - [bug] The "passive" flag on Session.is_modified()
     no longer has any effect. is_modified() in 
