@@ -33,7 +33,7 @@ of Python objects, proceed first to the tutorial.
 * **Configuration Extensions:**
   :doc:`Declarative Extension <orm/extensions/declarative>` |
   :doc:`Association Proxy <orm/extensions/associationproxy>` |
-  :doc:`Hybrid Attrbutes <orm/extensions/hybrid>` |
+  :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
   :doc:`Mutable Scalars <orm/extensions/mutable>` |
   :doc:`Ordered List <orm/extensions/orderinglist>`
 
