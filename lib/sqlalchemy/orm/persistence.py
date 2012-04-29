@@ -16,11 +16,13 @@ in unitofwork.py.
 import operator
 from itertools import groupby
 
-from sqlalchemy import sql, util, exc as sa_exc
+from sqlalchemy import sql, util, exc as sa_exc, schema
 from sqlalchemy.orm import attributes, sync, \
-                        exc as orm_exc
+                        exc as orm_exc,\
+                        evaluator
 
-from sqlalchemy.orm.util import _state_mapper, state_str
+from sqlalchemy.orm.util import _state_mapper, state_str, _attr_as_key
+from sqlalchemy.sql import expression
 
 def save_obj(base_mapper, states, uowtransaction, single=False):
     """Issue ``INSERT`` and/or ``UPDATE`` statements for a list 
@@ -121,13 +123,13 @@ def delete_obj(base_mapper, states, uowtransaction):
 def _organize_states_for_save(base_mapper, states, uowtransaction):
     """Make an initial pass across a set of states for INSERT or
     UPDATE.
-    
+
     This includes splitting out into distinct lists for
     each, calling before_insert/before_update, obtaining
     key information for each state including its dictionary,
     mapper, the connection to use for the execution per state,
     and the identity flag.
-    
+
     """
 
     states_to_insert = []
@@ -191,22 +193,22 @@ def _organize_states_for_post_update(base_mapper, states,
                                                 uowtransaction):
     """Make an initial pass across a set of states for UPDATE
     corresponding to post_update.
-    
+
     This includes obtaining key information for each state 
     including its dictionary, mapper, the connection to use for 
     the execution per state.
-    
+
     """
     return list(_connections_for_states(base_mapper, uowtransaction, 
                                             states))
 
 def _organize_states_for_delete(base_mapper, states, uowtransaction):
     """Make an initial pass across a set of states for DELETE.
-    
+
     This includes calling out before_delete and obtaining
     key information for each state including its dictionary,
     mapper, the connection to use for the execution per state.
-    
+
     """
     states_to_delete = []
 
@@ -224,7 +226,7 @@ def _collect_insert_commands(base_mapper, uowtransaction, table,
                                                 states_to_insert):
     """Identify sets of values to use in INSERT statements for a
     list of states.
-    
+
     """
     insert = []
     for state, state_dict, mapper, connection, has_identity, \
@@ -267,7 +269,7 @@ def _collect_update_commands(base_mapper, uowtransaction,
                                 table, states_to_update):
     """Identify sets of values to use in UPDATE statements for a
     list of states.
-    
+
     This function works intricately with the history system
     to determine exactly what values should be updated
     as well as how the row should be matched within an UPDATE
@@ -675,7 +677,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
                             states_to_insert, states_to_update):
     """finalize state on states that have been inserted or updated,
     including calling after_insert/after_update events.
-    
+
     """
     for state, state_dict, mapper, connection, has_identity, \
                     instance_key, row_switch in states_to_insert + \
@@ -735,11 +737,11 @@ def _postfetch(mapper, uowtransaction, table,
 
 def _connections_for_states(base_mapper, uowtransaction, states):
     """Return an iterator of (state, state.dict, mapper, connection).
-    
+
     The states are sorted according to _sort_states, then paired
     with the connection they should be using for the given
     unit of work transaction.
-    
+
     """
     # if session has a connection callable,
     # organize individual states with the connection 
@@ -774,4 +776,235 @@ def _sort_states(states):
     return sorted(pending, key=operator.attrgetter("insert_order")) + \
                 sorted(persistent, key=lambda q:q.key[1])
 
+class BulkUD(object):
+    """Handle bulk update and deletes via a :class:`.Query`."""
+
+    def __init__(self, query):
+        self.query = query.enable_eagerloads(False)
+
+    @classmethod
+    def _factory(cls, lookup, synchronize_session, *arg):
+        try:
+            klass = lookup[synchronize_session]
+        except KeyError:
+            raise sa_exc.ArgumentError(
+                            "Valid strategies for session synchronization "
+                            "are %s" % (", ".join(sorted(repr(x) 
+                                for x in lookup.keys()))))
+        else:
+            return klass(*arg)
+
+    def exec_(self):
+        self._do_pre()
+        self._do_pre_synchronize()
+        self._do_exec()
+        self._do_post_synchronize()
+        self._do_post()
+
+    def _do_pre(self):
+        query = self.query
+        self.context = context = query._compile_context()
+        if len(context.statement.froms) != 1 or \
+                    not isinstance(context.statement.froms[0], schema.Table):
+            raise sa_exc.ArgumentError(
+                            "Only update via a single table query is "
+                            "currently supported")
+        self.primary_table = context.statement.froms[0]
+
+        session = query.session
+
+        if query._autoflush:
+            session._autoflush()
+
+    def _do_pre_synchronize(self):
+        pass
+
+    def _do_post_synchronize(self):
+        pass
+
+class BulkEvaluate(BulkUD):
+    """BulkUD which does the 'evaluate' method of session state resolution."""
+
+    def _additional_evaluators(self, evaluator_compiler):
+        pass
+
+    def _do_pre_synchronize(self):
+        query = self.query
+        try:
+            evaluator_compiler = evaluator.EvaluatorCompiler()
+            if query.whereclause is not None:
+                eval_condition = evaluator_compiler.process(
+                                                query.whereclause)
+            else:
+                def eval_condition(obj):
+                    return True
+
+            self._additional_evaluators(evaluator_compiler)
+
+        except evaluator.UnevaluatableError:
+            raise sa_exc.InvalidRequestError(
+                    "Could not evaluate current criteria in Python. "
+                    "Specify 'fetch' or False for the "
+                    "synchronize_session parameter.")
+        target_cls = query._mapper_zero().class_
+
+        #TODO: detect when the where clause is a trivial primary key match
+        self.matched_objects = [
+                            obj for (cls, pk),obj in
+                            query.session.identity_map.iteritems()
+                            if issubclass(cls, target_cls) and
+                            eval_condition(obj)]
+
+class BulkFetch(BulkUD):
+    """BulkUD which does the 'fetch' method of session state resolution."""
+
+    def _do_pre_synchronize(self):
+        query = self.query
+        session = query.session
+        select_stmt = self.context.statement.with_only_columns(
+                                            self.primary_table.primary_key)
+        self.matched_rows = session.execute(
+                                    select_stmt,
+                                    params=query._params).fetchall()
+
+class BulkUpdate(BulkUD):
+    """BulkUD which handles UPDATEs."""
+
+    def __init__(self, query, values):
+        super(BulkUpdate, self).__init__(query)
+        self.query._no_select_modifiers("update")
+        self.values = values
+
+    @classmethod
+    def factory(cls, query, synchronize_session, values):
+        return BulkUD._factory({
+            "evaluate":BulkUpdateEvaluate,
+            "fetch":BulkUpdateFetch,
+            False:BulkUpdate
+        }, synchronize_session, query, values)
+
+    def _do_exec(self):
+        update_stmt = sql.update(self.primary_table, 
+                            self.context.whereclause, self.values)
+
+        self.result = self.query.session.execute(
+                            update_stmt, params=self.query._params)
+        self.rowcount = self.result.rowcount
+
+    def _do_post(self):
+        session = self.query.session
+        session.dispatch.after_bulk_update(session, self.query, 
+                                self.context, self.result)
+
+class BulkDelete(BulkUD):
+    """BulkUD which handles DELETEs."""
+
+    def __init__(self, query):
+        super(BulkDelete, self).__init__(query)
+        self.query._no_select_modifiers("delete")
+
+    @classmethod
+    def factory(cls, query, synchronize_session):
+        return BulkUD._factory({
+            "evaluate":BulkDeleteEvaluate,
+            "fetch":BulkDeleteFetch,
+            False:BulkDelete
+        }, synchronize_session, query)
+
+    def _do_exec(self):
+        delete_stmt = sql.delete(self.primary_table, 
+                                    self.context.whereclause)
+
+        self.result = self.query.session.execute(delete_stmt, 
+                                    params=self.query._params)
+        self.rowcount = self.result.rowcount
+
+    def _do_post(self):
+        session = self.query.session
+        session.dispatch.after_bulk_delete(session, self.query, 
+                        self.context, self.result)
+
+class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
+    """BulkUD which handles UPDATEs using the "evaluate" 
+    method of session resolution."""
+
+    def _additional_evaluators(self,evaluator_compiler):
+        self.value_evaluators = {}
+        for key,value in self.values.iteritems():
+            key = _attr_as_key(key)
+            self.value_evaluators[key] = evaluator_compiler.process(
+                                expression._literal_as_binds(value))
+
+    def _do_post_synchronize(self):
+        session = self.query.session
+        states = set()
+        evaluated_keys = self.value_evaluators.keys()
+        for obj in self.matched_objects:
+            state, dict_ = attributes.instance_state(obj),\
+                                    attributes.instance_dict(obj)
+
+            # only evaluate unmodified attributes
+            to_evaluate = state.unmodified.intersection(
+                                                    evaluated_keys)
+            for key in to_evaluate:
+                dict_[key] = self.value_evaluators[key](obj)
+
+            state.commit(dict_, list(to_evaluate))
+
+            # expire attributes with pending changes 
+            # (there was no autoflush, so they are overwritten)
+            state.expire_attributes(dict_,
+                            set(evaluated_keys).
+                                difference(to_evaluate))
+            states.add(state)
+        session._register_altered(states)
+
+class BulkDeleteEvaluate(BulkEvaluate, BulkDelete):
+    """BulkUD which handles DELETEs using the "evaluate" 
+    method of session resolution."""
+
+    def _do_post_synchronize(self):
+        self.query.session._remove_newly_deleted(
+                [attributes.instance_state(obj) 
+                    for obj in self.matched_objects])
+
+class BulkUpdateFetch(BulkFetch, BulkUpdate):
+    """BulkUD which handles UPDATEs using the "fetch" 
+    method of session resolution."""
+
+    def _do_post_synchronize(self):
+        session = self.query.session
+        target_mapper = self.query._mapper_zero()
+
+        states = set([
+            attributes.instance_state(session.identity_map[identity_key])
+            for identity_key in [
+                target_mapper.identity_key_from_primary_key(
+                                                        list(primary_key))
+                for primary_key in self.matched_rows
+            ]
+        ])
+        attrib = [_attr_as_key(k) for k in self.values]
+        for state in states:
+            session._expire_state(state, attrib)
+        session._register_altered(states)
+
+class BulkDeleteFetch(BulkFetch, BulkDelete):
+    """BulkUD which handles DELETEs using the "fetch" 
+    method of session resolution."""
+
+    def _do_post_synchronize(self):
+        session = self.query.session
+        target_mapper = self.query._mapper_zero()
+        for primary_key in self.matched_rows:
+            # TODO: inline this and call remove_newly_deleted
+            # once
+            identity_key = target_mapper.identity_key_from_primary_key(
+                                                        list(primary_key))
+            if identity_key in session.identity_map:
+                session._remove_newly_deleted(
+                    [attributes.instance_state(
+                        session.identity_map[identity_key]
+                    )]
+                )
 

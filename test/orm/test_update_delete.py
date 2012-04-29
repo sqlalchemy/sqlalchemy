@@ -40,6 +40,18 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         mapper(User, users)
 
+    def test_illegal_eval(self):
+        User = self.classes.User
+        s = Session()
+        assert_raises_message(
+            exc.ArgumentError,
+            "Valid strategies for session synchronization "
+            "are 'evaluate', 'fetch', False",
+            s.query(User).update,
+            {},
+            synchronize_session="fake"
+        )
+
     def test_illegal_operations(self):
         User = self.classes.User
 
