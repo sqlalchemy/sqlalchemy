@@ -716,38 +716,91 @@ class QueryTest(fixtures.TestBase):
         self.assert_(r[1:] == (2, 'foo@bar.com'))
         self.assert_(r[:-1] == (1, 2))
 
-    def test_column_accessor(self):
-        users.insert().execute(user_id=1, user_name='john')
-        users.insert().execute(user_id=2, user_name='jack')
-        addresses.insert().execute(address_id=1, user_id=2, address='foo@bar.com')
+    def test_column_accessor_basic_compiled(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+            dict(user_id=2, user_name='jack')
+        )
 
         r = users.select(users.c.user_id==2).execute().first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
 
+    def test_column_accessor_basic_text(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+            dict(user_id=2, user_name='jack')
+        )
         r = text("select * from query_users where user_id=2", bind=testing.db).execute().first()
         self.assert_(r.user_id == r['user_id'] == r[users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[users.c.user_name] == 'jack')
+
+    def test_column_accessor_dotted_union(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
 
         # test a little sqlite weirdness - with the UNION, 
         # cols come back as "query_users.user_id" in cursor.description
         r = text("select query_users.user_id, query_users.user_name from query_users "
             "UNION select query_users.user_id, query_users.user_name from query_users",
             bind=testing.db).execute().first()
-        self.assert_(r['user_id']) == 1
-        self.assert_(r['user_name']) == "john"
+        eq_(r['user_id'], 1)
+        eq_(r['user_name'], "john")
+        eq_(r.keys(), ["user_id", "user_name"])
 
+    @testing.only_on("sqlite", "sqlite specific feature")
+    def test_column_accessor_sqlite_raw(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
+
+        r = text("select query_users.user_id, query_users.user_name from query_users "
+            "UNION select query_users.user_id, query_users.user_name from query_users",
+            bind=testing.db).execution_options(sqlite_raw_colnames=True).execute().first()
+        assert 'user_id' not in r
+        assert 'user_name' not in r
+        eq_(r['query_users.user_id'], 1)
+        eq_(r['query_users.user_name'], "john")
+        eq_(r.keys(), ["query_users.user_id", "query_users.user_name"])
+
+    @testing.only_on("sqlite", "sqlite specific feature")
+    def test_column_accessor_sqlite_translated(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
+
+        r = text("select query_users.user_id, query_users.user_name from query_users "
+            "UNION select query_users.user_id, query_users.user_name from query_users",
+            bind=testing.db).execute().first()
+        eq_(r['user_id'], 1)
+        eq_(r['user_name'], "john")
+        eq_(r['query_users.user_id'], 1)
+        eq_(r['query_users.user_name'], "john")
+        eq_(r.keys(), ["user_id", "user_name"])
+
+    def test_column_accessor_labels_w_dots(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
         # test using literal tablename.colname
         r = text('select query_users.user_id AS "query_users.user_id", '
                 'query_users.user_name AS "query_users.user_name" from query_users', 
-                bind=testing.db).execute().first()
-        self.assert_(r['query_users.user_id']) == 1
-        self.assert_(r['query_users.user_name']) == "john"
+                bind=testing.db).execution_options(sqlite_raw_colnames=True).execute().first()
+        eq_(r['query_users.user_id'], 1)
+        eq_(r['query_users.user_name'], "john")
+        assert "user_name" not in r
+        eq_(r.keys(), ["query_users.user_id", "query_users.user_name"])
+
+    def test_column_accessor_unary(self):
+        users.insert().execute(
+            dict(user_id=1, user_name='john'),
+        )
 
         # unary experssions
         r = select([users.c.user_name.distinct()]).order_by(users.c.user_name).execute().first()
-        eq_(r[users.c.user_name], 'jack')
-        eq_(r.user_name, 'jack')
+        eq_(r[users.c.user_name], 'john')
+        eq_(r.user_name, 'john')
 
     def test_column_accessor_err(self):
         r = testing.db.execute(select([1])).first()

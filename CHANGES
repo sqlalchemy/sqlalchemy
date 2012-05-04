@@ -123,6 +123,15 @@ CHANGES
     grouped; grouping is now applied to those
     expressions.  [ticket:2467]
 
+- sqlite
+
+  - [feature] Added SQLite execution option
+    "sqlite_raw_colnames=True", will bypass
+    attempts to remove "." from column names
+    returned by SQLite cursor.description.
+    [ticket:2475]
+
+
 0.7.6
 =====
 - orm

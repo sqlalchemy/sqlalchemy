@@ -441,6 +441,22 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
             result = self.quote_schema(index.table.schema, index.table.quote_schema) + "." + result
         return result
 
+class SQLiteExecutionContext(default.DefaultExecutionContext):
+    @util.memoized_property
+    def _preserve_raw_colnames(self):
+        return self.execution_options.get("sqlite_raw_colnames", False)
+
+    def _translate_colname(self, colname):
+        # adjust for dotted column names.  SQLite
+        # in the case of UNION may store col names as 
+        # "tablename.colname"
+        # in cursor.description
+        if not self._preserve_raw_colnames  and "." in colname:
+            return colname.split(".")[1], colname
+        else:
+            return colname, None
+
+
 class SQLiteDialect(default.DefaultDialect):
     name = 'sqlite'
     supports_alter = False
@@ -451,6 +467,7 @@ class SQLiteDialect(default.DefaultDialect):
     supports_cast = True
 
     default_paramstyle = 'qmark'
+    execution_ctx_cls = SQLiteExecutionContext
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler
     type_compiler = SQLiteTypeCompiler
@@ -524,16 +541,6 @@ class SQLiteDialect(default.DefaultDialect):
             return connect
         else:
             return None
-
-    def _translate_colname(self, colname):
-        # adjust for dotted column names.  SQLite
-        # in the case of UNION may store col names as 
-        # "tablename.colname"
-        # in cursor.description
-        if "." in colname:
-            return colname.split(".")[1], colname
-        else:
-            return colname, None
 
     @reflection.cache
     def get_table_names(self, connection, schema=None, **kw):

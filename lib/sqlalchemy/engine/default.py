@@ -96,10 +96,6 @@ class DefaultDialect(base.Dialect):
     # and denormalize_name() must be provided.
     requires_name_normalize = False
 
-    # a hook for SQLite's translation of 
-    # result column names
-    _translate_colname = None
-
     reflection_options = ()
 
     def __init__(self, convert_unicode=False, assert_unicode=False,
@@ -357,6 +353,10 @@ class DefaultExecutionContext(base.ExecutionContext):
     statement = None
     _is_implicit_returning = False
     _is_explicit_returning = False
+
+    # a hook for SQLite's translation of 
+    # result column names
+    _translate_colname = None
 
     @classmethod
     def _init_ddl(cls, dialect, connection, dbapi_connection, compiled_ddl):
