@@ -71,6 +71,13 @@ CHANGES
     set of objects that weren't modified in 
     that sub-transaction.  [ticket:2452]
 
+  - [bug] Fixed issue in unit of work
+    whereby setting a non-None self-referential
+    many-to-one relationship to None
+    would fail to persist the change if the
+    former value was not already loaded.
+    [ticket:2477]. Also in 0.7.7
+
   - [bug] Fixed bug in relationship comparisons
     whereby calling unimplemented methods like
     SomeClass.somerelationship.like() would

@@ -777,6 +777,31 @@ class SingleCycleTest(UOWTest):
                         lambda ctx: {'id':n1.id})
         )
 
+    def test_many_to_one_set_null_unloaded(self):
+        Node, nodes = self.classes.Node, self.tables.nodes
+
+        mapper(Node, nodes, properties={
+            'parent':relationship(Node, remote_side=nodes.c.id)
+        })
+        sess = create_session()
+        n1 = Node(data='n1')
+        n2 = Node(data='n2', parent=n1)
+        sess.add_all([n1, n2])
+        sess.flush()
+        sess.close()
+
+        n2 = sess.query(Node).filter_by(data='n2').one()
+        n2.parent = None
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            CompiledSQL(
+                "UPDATE nodes SET parent_id=:parent_id WHERE "
+                "nodes.id = :nodes_id",
+                lambda ctx: {"parent_id":None, "nodes_id":n2.id}
+            )
+        )
+
     def test_cycle_rowswitch(self):
         Node, nodes = self.classes.Node, self.tables.nodes
 
