@@ -307,6 +307,10 @@ CHANGES
     performance of bind/result processing.
     [ticket:2441]
 
+  - [bug] removed unnecessary table clause
+    when reflecting domains, [ticket:2473]
+    also in 0.7.7
+
 - mysql
   - [bug] Fixed bug whereby column name inside 
     of "KEY" clause for autoincrement composite
