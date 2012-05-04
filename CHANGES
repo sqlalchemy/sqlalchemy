@@ -65,6 +65,9 @@ CHANGES
     Connection is closed explicitly before 
     propagating the exception onward normally.
 
+  - [bug] Add BINARY, VARBINARY to types.__all__,
+    [ticket:2474]
+
 - mssql
   - [feature] Added interim create_engine flag
     supports_unicode_binds to PyODBC dialect,
