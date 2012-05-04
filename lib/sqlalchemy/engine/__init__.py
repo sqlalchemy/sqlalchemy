@@ -317,8 +317,17 @@ def create_engine(*args, **kwargs):
         with :class:`~sqlalchemy.pool.QueuePool`.
 
     :param strategy='plain': selects alternate engine implementations.
-        Currently available is the ``threadlocal``
-        strategy, which is described in :ref:`threadlocal_strategy`.
+        Currently available are:
+
+        * the ``threadlocal`` strategy, which is described in
+          :ref:`threadlocal_strategy`;
+        * the ``mock`` strategy, which dispatches all statement
+          execution to a function passed as the argument ``executor``.
+          See `example in the FAQ <http://www.sqlalchemy.org/trac/wiki/FAQ#HowcanIgettheCREATETABLEDROPTABLEoutputasastring>`_.
+
+    :param executor=None: a function taking arguments
+        ``(sql, *multiparams, **params)``, to which the ``mock`` strategy will
+        dispatch all statement execution. Used only by ``strategy='mock'``.
 
     """
 
