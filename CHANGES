@@ -233,6 +233,9 @@ CHANGES
     propagating the exception onward normally.
     also in 0.7.7.
 
+  - [bug] Add BINARY, VARBINARY to types.__all__,
+    [ticket:2474] Also in 0.7.7
+
 - sqlite
   - [feature] the SQLite date and time types
     have been overhauled to support a more open
