@@ -1106,7 +1106,7 @@ class Query(object):
 
             ``'update_nowait'`` - passes ``for_update='nowait'``, which
             translates to ``FOR UPDATE NOWAIT`` (supported by Oracle, 
-            PostgreSQL)
+            PostgreSQL 8.1 upwards)
 
             ``'read'`` - passes ``for_update='read'``, which translates to
             ``LOCK IN SHARE MODE`` (for MySQL), and ``FOR SHARE`` (for 

@@ -390,12 +390,14 @@ def relationship(argument, secondary=None, **kwargs):
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
-      of this option is strictly one of performance, as inner joins
-      generally perform better than outer joins.  This flag can
-      be set to ``True`` when the relationship references an object
-      via many-to-one using local foreign keys that are not nullable,
-      or when the reference is one-to-one or a collection that is 
-      guaranteed to have one or at least one entry.
+      of this option is generally one of performance, as inner joins
+      generally perform better than outer joins. Another reason can be
+      the use of ``with_lockmode``, which does not support outer joins.
+
+      This flag can be set to ``True`` when the relationship references an
+      object via many-to-one using local foreign keys that are not nullable,
+      or when the reference is one-to-one or a collection that is guaranteed
+      to have one or at least one entry.
 
     :param join_depth:
       when non-``None``, an integer value indicating how many levels
