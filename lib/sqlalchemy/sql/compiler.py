@@ -686,7 +686,7 @@ class SQLCompiler(engine.Compiled):
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
 
-        return self.bindparam_string(name)
+        return self.bindparam_string(name, quote=bindparam.quote)
 
     def render_literal_bindparam(self, bindparam, **kw):
         value = bindparam.value
@@ -756,7 +756,7 @@ class SQLCompiler(engine.Compiled):
         self.anon_map[derived] = anonymous_counter + 1
         return derived + "_" + str(anonymous_counter)
 
-    def bindparam_string(self, name):
+    def bindparam_string(self, name, quote=None):
         if self.positional:
             self.positiontup.append(name)
             return self.bindtemplate % {
@@ -1206,7 +1206,8 @@ class SQLCompiler(engine.Compiled):
 
     def _create_crud_bind_param(self, col, value, required=False):
         bindparam = sql.bindparam(col.key, value, 
-                            type_=col.type, required=required)
+                            type_=col.type, required=required,
+                            quote=col.quote)
         bindparam._is_crud = True
         return bindparam._compiler_dispatch(self)
 

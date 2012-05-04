@@ -296,8 +296,9 @@ class _OracleRowid(oracle.ROWID):
         return dbapi.ROWID
 
 class OracleCompiler_cx_oracle(OracleCompiler):
-    def bindparam_string(self, name):
-        if self.preparer._bindparam_requires_quotes(name):
+    def bindparam_string(self, name, quote=None):
+        if quote is True or quote is not False and \
+            self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
             return OracleCompiler.bindparam_string(self, quoted_name)

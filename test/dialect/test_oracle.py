@@ -47,10 +47,42 @@ create or replace procedure foo(x_in IN number, x_out OUT number, y_out OUT numb
     def teardown_class(cls):
          testing.db.execute("DROP PROCEDURE foo")
 
+class QuotedBindRoundTripTest(fixtures.TestBase):
+
+    __only_on__ = 'oracle'
+
+    @testing.provide_metadata
+    def test_table_round_trip(self):
+        oracle.RESERVED_WORDS.remove('UNION')
+
+        metadata = self.metadata
+        table = Table("t1", metadata,
+            Column("option", Integer),
+            Column("plain", Integer, quote=True),
+            # test that quote works for a reserved word
+            # that the dialect isn't aware of when quote
+            # is set
+            Column("union", Integer, quote=True)
+        )
+        metadata.create_all()
+
+        table.insert().execute(
+            {"option":1, "plain":1, "union":1}
+        )
+        eq_(
+            testing.db.execute(table.select()).first(),
+            (1, 1, 1)
+        )
+        table.update().values(option=2, plain=2, union=2).execute()
+        eq_(
+            testing.db.execute(table.select()).first(),
+            (2, 2, 2)
+        )
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __dialect__ = oracle.OracleDialect()
+    __dialect__ = oracle.dialect()
 
     def test_owner(self):
         meta = MetaData()
@@ -72,6 +104,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(s, "SELECT col1, col2 FROM (SELECT "
                                 "sometable.col1 AS col1, sometable.col2 "
                                 "AS col2 FROM sometable)")
+
+    def test_bindparam_quote(self):
+        """test that bound parameters take on quoting for reserved words,
+        column names quote flag enabled."""
+        # note: this is only in cx_oracle at the moment.  not sure
+        # what other hypothetical oracle dialects might need
+
+        self.assert_compile(
+            bindparam("option"), ':"option"'
+        )
+        self.assert_compile(
+            bindparam("plain"), ':plain'
+        )
+        t = Table("s", MetaData(), Column('plain', Integer, quote=True))
+        self.assert_compile(
+            t.insert().values(plain=5), 'INSERT INTO s ("plain") VALUES (:"plain")'
+        )
+        self.assert_compile(
+            t.update().values(plain=5), 'UPDATE s SET "plain"=:"plain"'
+        )
 
     def test_limit(self):
         t = table('sometable', column('col1'), column('col2'))

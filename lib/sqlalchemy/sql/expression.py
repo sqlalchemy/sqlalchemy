@@ -987,7 +987,8 @@ def table(name, *columns):
     """
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type_=None, unique=False, required=False, callable_=None):
+def bindparam(key, value=None, type_=None, unique=False, required=False, 
+                        quote=None, callable_=None):
     """Create a bind parameter clause with the given key.
 
         :param key:
@@ -1024,15 +1025,19 @@ def bindparam(key, value=None, type_=None, unique=False, required=False, callabl
         :param required:
           a value is required at execution time.
 
+        :param quote:
+          True if this parameter name requires quoting and is not
+          currently known as a SQLAlchemy reserved word; this currently
+          only applies to the Oracle backend.
+
     """
     if isinstance(key, ColumnClause):
-        return _BindParamClause(key.name, value, type_=key.type, 
-                                callable_=callable_,
-                                unique=unique, required=required)
-    else:
-        return _BindParamClause(key, value, type_=type_, 
-                                callable_=callable_,
-                                unique=unique, required=required)
+        type_ = key.type
+        key = key.name
+    return _BindParamClause(key, value, type_=type_, 
+                            callable_=callable_,
+                            unique=unique, required=required,
+                            quote=quote)
 
 def outparam(key, type_=None):
     """Create an 'OUT' parameter for usage in functions (stored procedures),
@@ -2613,6 +2618,7 @@ class _BindParamClause(ColumnElement):
     def __init__(self, key, value, type_=None, unique=False, 
                             callable_=None,
                             isoutparam=False, required=False, 
+                            quote=None,
                             _compared_to_operator=None,
                             _compared_to_type=None):
         """Construct a _BindParamClause.
@@ -2648,6 +2654,11 @@ class _BindParamClause(ColumnElement):
           already has been located within the containing
           :class:`.ClauseElement`.
 
+        :param quote: 
+          True if this parameter name requires quoting and is not
+          currently known as a SQLAlchemy reserved word; this currently
+          only applies to the Oracle backend.
+
         :param required:
           a value is required at execution time.
 
@@ -2677,6 +2688,7 @@ class _BindParamClause(ColumnElement):
         self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
+        self.quote = quote
         if type_ is None:
             if _compared_to_type is not None:
                 self.type = \

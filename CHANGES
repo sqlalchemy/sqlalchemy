@@ -330,6 +330,14 @@ CHANGES
     expressions.  [ticket:2467]
     also in 0.7.7.
 
+- oracle
+  - [bug] Quoting information is now passed along
+    from a Column with quote=True when generating
+    a same-named bound parameter to the bindparam()
+    object, as is the case in generated INSERT and UPDATE 
+    statements, so that unknown reserved names can 
+    be fully supported.  [ticket:2437]
+
 - extensions
   - [removed] The SQLSoup extension is removed from 
     SQLAlchemy, and is now an external project.
