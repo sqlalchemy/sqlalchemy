@@ -6,6 +6,13 @@ CHANGES
 0.7.7
 =====
 - orm
+  - [bug] Fixed issue in unit of work
+    whereby setting a non-None self-referential
+    many-to-one relationship to None
+    would fail to persist the change if the
+    former value was not already loaded.
+    [ticket:2477].
+
   - [feature] Added prefix_with() method
     to Query, calls upon select().prefix_with()
     to allow placement of MySQL SELECT

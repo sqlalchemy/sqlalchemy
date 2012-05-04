@@ -653,7 +653,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             if current is not None:
                 ret = [(instance_state(current), current)]
             else:
-                ret = []
+                ret = [(None, None)]
 
             if self.key in state.committed_state:
                 original = state.committed_state[self.key]
