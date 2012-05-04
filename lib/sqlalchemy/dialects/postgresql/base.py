@@ -1656,7 +1656,6 @@ class PGDialect(default.DefaultDialect):
                n.nspname as "schema"
             FROM pg_catalog.pg_type t
                LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
-               LEFT JOIN pg_catalog.pg_constraint r ON t.oid = r.contypid
             WHERE t.typtype = 'd'
         """
 

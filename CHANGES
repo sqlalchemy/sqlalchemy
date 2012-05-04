@@ -103,6 +103,10 @@ CHANGES
     respectively.  Courtesy Diana Clarke 
     [ticket:2445]
 
+  - [bug] removed unnecessary table clause
+    when reflecting domains, [ticket:2473]
+
+
 - mysql
   - [bug] Fixed bug whereby column name inside 
     of "KEY" clause for autoincrement composite
