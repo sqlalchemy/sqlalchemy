@@ -2726,7 +2726,7 @@ class ResultMetaData(object):
         context = parent.context
         dialect = context.dialect
         typemap = dialect.dbapi_type_map
-        translate_colname = dialect._translate_colname
+        translate_colname = context._translate_colname
         self.case_sensitive = dialect.case_sensitive
 
         # high precedence key values.

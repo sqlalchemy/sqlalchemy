@@ -247,6 +247,12 @@ CHANGES
     Nathan Wright for the work and tests on
     this.  [ticket:2363]
 
+  - [feature] Added SQLite execution option
+    "sqlite_raw_colnames=True", will bypass
+    attempts to remove "." from column names
+    returned by SQLite cursor.description.
+    [ticket:2475] Also in 0.7.7.
+
 - mssql
   - [bug] removed legacy behavior whereby 
     a column comparison to a scalar SELECT via 
