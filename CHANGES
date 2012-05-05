@@ -20,9 +20,9 @@ CHANGES
     if against a column expression that combined
     multiple entities together.  [ticket:2197]
 
-   - [bug] fixed inappropriate evaluation of user-mapped
-     object in a boolean context within query.get()
-     [ticket:2310].
+  - [bug] fixed inappropriate evaluation of user-mapped
+    object in a boolean context within query.get()
+    [ticket:2310].
 
   - Fixed bug apparent only in Python 3 whereby
     sorting of persistent + pending objects during
@@ -68,9 +68,9 @@ CHANGES
   - Cls.column.collate("some collation") now
     works.  [ticket:1776]
 
-   - [bug] Fixed the error formatting raised when 
-     a tuple is inadvertently passed to session.query()
-     [ticket:2297].
+  - [bug] Fixed the error formatting raised when 
+    a tuple is inadvertently passed to session.query()
+    [ticket:2297].
 
 - engine
   - Backported the fix for [ticket:2317] introduced

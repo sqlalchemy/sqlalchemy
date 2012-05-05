@@ -14,6 +14,9 @@ from sqlalchemy.test.testing import eq_
 from test.orm import _base, _fixtures
 
 class NaturalPKTest(_base.MappedTest):
+    # MySQL 5.5 on Windows crashes (the entire server, not the client)
+    # if you screw around with ON UPDATE CASCADE type of stuff.
+    __requires__ = 'skip_mysql_on_windows',
 
     @classmethod
     def define_tables(cls, metadata):

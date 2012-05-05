@@ -325,10 +325,24 @@ def _has_sqlite():
     except ImportError:
         return False
 
+def _has_mysql_on_windows():
+    return testing.against('mysql') and \
+            testing.db.dialect._server_casing == 1
+
 def sqlite(fn):
     return _chain_decorators_on(
         fn,
         skip_if(lambda: not _has_sqlite())
+    )
+
+def skip_mysql_on_windows(fn):
+    """Catchall for a large variety of MySQL on Windows failures"""
+
+    return _chain_decorators_on(
+        fn,
+        skip_if(_has_mysql_on_windows,
+            "Not supported on MySQL + Windows"
+        )
     )
 
 def english_locale_on_postgresql(fn):
