@@ -1,5 +1,5 @@
 from test.lib.testing import eq_, assert_raises, assert_raises_message
-from test.lib import testing
+from test.lib import testing, engines
 from test.lib.schema import Table, Column
 from test.orm import _fixtures
 from test.lib import fixtures
@@ -623,6 +623,16 @@ class RudimentaryFlushTest(UOWTest):
 
 
 class SingleCycleTest(UOWTest):
+    def teardown(self):
+        engines.testing_reaper.rollback_all()
+        # mysql can't handle delete from nodes
+        # since it doesn't deal with the FKs correctly,
+        # so wipe out the parent_id first
+        testing.db.execute(
+            self.tables.nodes.update().values(parent_id=None)
+        )
+        super(SingleCycleTest, self).teardown()
+
     def test_one_to_many_save(self):
         Node, nodes = self.classes.Node, self.tables.nodes
 
@@ -935,6 +945,7 @@ class SingleCycleTest(UOWTest):
 
         n1.children
         self._assert_uow_size(sess, 2)
+
 
     def test_delete_unloaded_m2o(self):
         Node, nodes = self.classes.Node, self.tables.nodes
