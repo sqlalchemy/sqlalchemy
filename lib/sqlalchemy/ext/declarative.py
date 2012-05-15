@@ -1026,13 +1026,11 @@ __all__ = 'declarative_base', 'synonym_for', \
             'comparable_using', 'instrument_declarative'
 
 def declared_mapping_info(cls):
-    if '__mapper__' in cls.__dict__:
-        return cls.__mapper__
+    # deferred mapping
+    if cls in _MapperThingy.thingies:
+        return _MapperThingy.thingies[cls]
+    # regular mapping
     elif _is_mapped_class(cls):
-        # TODO: make sure there's coverage here, need
-        # a declared to inherit from a classical mapping.
-        # if this is not possible then this codepath
-        # goes away
         return class_mapper(cls, compile=False)
     else:
         return None
@@ -1339,14 +1337,13 @@ def _as_declarative(cls, classname, dict_):
                     our_stuff[k] = p.columns + [col]
 
 
-    cls.__mapper__ = _MapperThingy(
-                        mapper_cls, 
-                        cls, table, our_stuff, mapper_args)
+    mt = _MapperThingy(mapper_cls, 
+                       cls, table, our_stuff, mapper_args)
     if not hasattr(cls, '__prepare__'):
-        cls.__mapper__.map()
+        mt.map()
 
 class _MapperThingy(object):
-    thingies = set()
+    thingies = util.OrderedDict()
 
     def __init__(self, mapper_cls, cls, table, properties, mapper_args):
         self.mapper_cls = mapper_cls
@@ -1357,10 +1354,10 @@ class _MapperThingy(object):
         self._columntoproperty = set()
         if table is not None:
             self._columntoproperty.update(table.c)
-        self.thingies.add(self)
+        self.thingies[cls] = self
 
     def map(self):
-        self.thingies.discard(self)
+        self.thingies.pop(self.cls, None)
         self.cls.__mapper__ = self.mapper_cls(
             self.cls,
             self.local_table,
@@ -1369,7 +1366,7 @@ class _MapperThingy(object):
         )
 
 def prepare_deferred_mapping(base, *arg, **kw):
-    to_map = set([m for m in _MapperThingy.thingies 
+    to_map = set([m for m in _MapperThingy.thingies.values()
                 if issubclass(m.cls, base)])
     for thingy in to_map:
         base.__prepare__(thingy, *arg, **kw)
