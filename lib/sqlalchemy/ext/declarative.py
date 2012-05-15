@@ -1025,6 +1025,18 @@ from sqlalchemy.orm.util import polymorphic_union, _mapper_or_none
 __all__ = 'declarative_base', 'synonym_for', \
             'comparable_using', 'instrument_declarative'
 
+def declared_mapping_info(cls):
+    if '__mapper__' in cls.__dict__:
+        return cls.__mapper__
+    elif _is_mapped_class(cls):
+        # TODO: make sure there's coverage here, need
+        # a declared to inherit from a classical mapping.
+        # if this is not possible then this codepath
+        # goes away
+        return class_mapper(cls, compile=False)
+    else:
+        return None
+
 def instrument_declarative(cls, registry, metadata):
     """Given a class, configure the class declaratively,
     using the given registry, which can be any dictionary, and
@@ -1076,7 +1088,7 @@ def _as_declarative(cls, classname, dict_):
             ):
                 return
 
-        class_mapped = _is_mapped_class(base)
+        class_mapped = declared_mapping_info(base) is not None
         if class_mapped:
             parent_columns = base.__table__.c.keys()
 
@@ -1251,7 +1263,7 @@ def _as_declarative(cls, classname, dict_):
 
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
-            if _is_mapped_class(c):
+            if declared_mapping_info(c) is not None:
                 mapper_args['inherits'] = c
                 break
 
@@ -1268,8 +1280,7 @@ def _as_declarative(cls, classname, dict_):
             )
 
     elif 'inherits' in mapper_args and not mapper_args.get('concrete', False):
-        inherited_mapper = class_mapper(mapper_args['inherits'],
-                                            compile=False)
+        inherited_mapper = declared_mapping_info(mapper_args['inherits'])
         inherited_table = inherited_mapper.local_table
 
         if table is None:
@@ -1300,8 +1311,7 @@ def _as_declarative(cls, classname, dict_):
         # exclude any cols on the inherited table which are not mapped on the
         # parent class, to avoid
         # mapping columns specific to sibling/nephew classes
-        inherited_mapper = class_mapper(mapper_args['inherits'],
-                                            compile=False)
+        inherited_mapper = declared_mapping_info(mapper_args['inherits'])
         inherited_table = inherited_mapper.local_table
 
         if 'exclude_properties' not in mapper_args:
@@ -1329,10 +1339,41 @@ def _as_declarative(cls, classname, dict_):
                     our_stuff[k] = p.columns + [col]
 
 
-    cls.__mapper__ = mapper_cls(cls, 
-                                table, 
-                                properties=our_stuff, 
-                                **mapper_args)
+    cls.__mapper__ = _MapperThingy(
+                        mapper_cls, 
+                        cls, table, our_stuff, mapper_args)
+    if not hasattr(cls, '__prepare__'):
+        cls.__mapper__.map()
+
+class _MapperThingy(object):
+    thingies = set()
+
+    def __init__(self, mapper_cls, cls, table, properties, mapper_args):
+        self.mapper_cls = mapper_cls
+        self.cls = cls
+        self.local_table = table
+        self.properties = properties
+        self.mapper_args = mapper_args
+        self._columntoproperty = set()
+        if table is not None:
+            self._columntoproperty.update(table.c)
+        self.thingies.add(self)
+
+    def map(self):
+        self.thingies.discard(self)
+        self.cls.__mapper__ = self.mapper_cls(
+            self.cls,
+            self.local_table,
+            properties=self.properties,
+            **self.mapper_args
+        )
+
+def prepare_deferred_mapping(base, *arg, **kw):
+    to_map = set([m for m in _MapperThingy.thingies 
+                if issubclass(m.cls, base)])
+    for thingy in to_map:
+        base.__prepare__(thingy, *arg, **kw)
+        thingy.map()
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
