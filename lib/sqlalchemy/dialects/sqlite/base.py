@@ -53,6 +53,38 @@ connection.   Valid values for this parameter are ``SERIALIZABLE`` and
 See the section :ref:`pysqlite_serializable` for an important workaround
 when using serializable isolation with Pysqlite.
 
+Database Locking Behavior / Concurrency
+---------------------------------------
+
+Note that SQLite is not designed for a high level of concurrency.   The database
+itself, being a file, is locked completely during write operations and within 
+transactions, meaning exactly one connection has exclusive access to the database
+during this period - all other connections will be blocked during this time.
+
+The Python DBAPI specification also calls for a connection model that is always
+in a transaction; there is no BEGIN method, only commit and rollback.  This implies
+that a SQLite DBAPI driver would technically allow only serialized access to a 
+particular database file at all times.   The pysqlite driver attempts to ameliorate this by
+deferring the actual BEGIN statement until the first DML (INSERT, UPDATE, or
+DELETE) is received within a transaction.  While this breaks serializable isolation,
+it at least delays the exclusive locking inherent in SQLite's design.
+
+SQLAlchemy's default mode of usage with the ORM is known 
+as "autocommit=False", which means the moment the :class:`.Session` begins to be 
+used, a transaction is begun.   As the :class:`.Session` is used, the autoflush
+feature, also on by default, will flush out pending changes to the database 
+before each query.  The effect of this is that a :class:`.Session` used in its
+default mode will often emit DML early on, long before the transaction is actually
+committed.  This again will have the effect of serializing access to the SQLite 
+database.   If highly concurrent reads are desired against the SQLite database,
+it is advised that the autoflush feature be disabled, and potentially even
+that autocommit be re-enabled, which has the effect of each SQL statement and
+flush committing changes immediately.
+
+For more information on SQLite's lack of concurrency by design, please 
+see `Situations Where Another RDBMS May Work Better - High Concurrency <http://www.sqlite.org/whentouse.html>`_
+near the bottom of the page.
+
 """
 
 import datetime, re
