@@ -12,6 +12,9 @@ CHANGES
     distinct class encountered in the polymorphic
     result.  [ticket:2480]
 
+- oracle
+  - [bug] Added ROWID to oracle.*, [ticket:2483]
+
 0.7.7
 =====
 - orm
