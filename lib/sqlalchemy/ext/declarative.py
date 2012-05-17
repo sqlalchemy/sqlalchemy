@@ -325,12 +325,13 @@ in conjunction with a mapped class::
 
 However, one improvement that can be made here is to not 
 require the :class:`.Engine` to be available when classes are 
-being first declared.   To achieve this, use the example
-described at :ref:`examples_declarative_reflection` to build a 
-declarative base that sets up mappings only after a special 
-``prepare(engine)`` step is called::
+being first declared.   To achieve this, use the
+:class:`.DeferredReflection` mixin, which sets up mappings 
+only after a special ``prepare(engine)`` step is called::
 
-    Base = declarative_base(cls=DeclarativeReflectedBase)
+    from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
+
+    Base = declarative_base(cls=DeferredReflection)
 
     class Foo(Base):
         __tablename__ = 'foo'
@@ -346,7 +347,9 @@ declarative base that sets up mappings only after a special
 
     Base.prepare(e)
 
-        
+.. versionadded:: 0.8
+   Added :class:`.DeferredReflection`.
+
 Mapper Configuration
 ====================
 
@@ -1871,8 +1874,8 @@ class DeferredReflection(object):
     def prepare(cls, engine):
         """Reflect all :class:`.Table` objects for all current
         :class:`.DeferredReflection` subclasses"""
-        to_map = set([m for m in _MapperConfig.configs.values()
-                    if issubclass(m.cls, cls)])
+        to_map = [m for m in _MapperConfig.configs.values()
+                    if issubclass(m.cls, cls)]
         for thingy in to_map:
             cls.__prepare__(thingy.args, engine)
             thingy.map()

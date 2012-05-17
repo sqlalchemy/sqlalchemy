@@ -201,7 +201,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert len(t2.indexes) == 2
 
     @testing.provide_metadata
-    def test_autoload_replace_foreign_key(self):
+    def test_autoload_replace_foreign_key_nonpresent(self):
+        """test autoload_replace=False with col plus FK 
+        establishes the FK not present in the DB.
+        
+        """
         a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
         b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
                                     Column('a_id', Integer))
@@ -217,6 +221,51 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert b2.c.id is not None
         assert b2.c.a_id.references(a2.c.id)
         eq_(len(b2.constraints), 2)
+
+    @testing.provide_metadata
+    def test_autoload_replace_foreign_key_ispresent(self):
+        """test autoload_replace=False with col plus FK mirroring
+        DB-reflected FK skips the reflected FK and installs 
+        the in-python one only.
+        
+        """
+        a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
+        b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
+                                    Column('a_id', Integer, sa.ForeignKey('a.id')))
+        self.metadata.create_all()
+
+        m2 = MetaData()
+        b2 = Table('b', m2, Column('a_id', Integer, sa.ForeignKey('a.id')))
+        a2 = Table('a', m2, autoload=True, autoload_with=testing.db)
+        b2 = Table('b', m2, extend_existing=True, autoload=True, 
+                                autoload_with=testing.db, 
+                                autoload_replace=False)
+
+        assert b2.c.id is not None
+        assert b2.c.a_id.references(a2.c.id)
+        eq_(len(b2.constraints), 2)
+
+    @testing.provide_metadata
+    def test_autoload_replace_foreign_key_removed(self):
+        """test autoload_replace=False with col minus FK that's in the
+        DB means the FK is skipped and doesn't get installed at all.
+
+        """
+        a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
+        b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
+                                    Column('a_id', Integer, sa.ForeignKey('a.id')))
+        self.metadata.create_all()
+
+        m2 = MetaData()
+        b2 = Table('b', m2, Column('a_id', Integer))
+        a2 = Table('a', m2, autoload=True, autoload_with=testing.db)
+        b2 = Table('b', m2, extend_existing=True, autoload=True, 
+                                autoload_with=testing.db, 
+                                autoload_replace=False)
+
+        assert b2.c.id is not None
+        assert not b2.c.a_id.references(a2.c.id)
+        eq_(len(b2.constraints), 1)
 
     @testing.provide_metadata
     def test_autoload_replace_primary_key(self):

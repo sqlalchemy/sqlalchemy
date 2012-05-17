@@ -26,3 +26,4 @@ API Reference
 
 .. autoclass:: ConcreteBase
 
+.. autoclass:: DeferredReflection

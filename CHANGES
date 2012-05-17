@@ -49,6 +49,14 @@ CHANGES
     of a join in place of the "of_type()" modifier.
     [ticket:2333]
 
+  - [feature] The "deferred declarative 
+    reflection" system has been moved into the 
+    declarative extension itself, using the
+    new DeferredReflection class.  This
+    class is now tested with both single
+    and joined table inheritance use cases.
+    [ticket:2485]
+
   - [feature] Added new core function "inspect()", 
     which serves as a generic gateway to
     introspection into mappers, objects,
@@ -173,6 +181,14 @@ CHANGES
   - [feature] Inspector.get_primary_keys() is 
     deprecated; use Inspector.get_pk_constraint().
     Courtesy Diana Clarke.  [ticket:2422]
+
+  - [bug] The autoload_replace flag on Table,
+    when False, will cause any reflected foreign key
+    constraints which refer to already-declared
+    columns to be skipped, assuming that the
+    in-Python declared column will take over 
+    the task of specifying in-Python ForeignKey 
+    or ForeignKeyConstraint declarations.
 
 - sql
   - [feature] The Inspector object can now be 

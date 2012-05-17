@@ -431,6 +431,9 @@ class Inspector(object):
         for fkey_d in fkeys:
             conname = fkey_d['name']
             constrained_columns = fkey_d['constrained_columns']
+            if exclude_columns and set(constrained_columns).intersection(
+                                exclude_columns):
+                continue
             referred_schema = fkey_d['referred_schema']
             referred_table = fkey_d['referred_table']
             referred_columns = fkey_d['referred_columns']

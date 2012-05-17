@@ -13,6 +13,10 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
         global Base
         Base = decl.declarative_base(testing.db)
 
+    def teardown(self):
+        super(DeclarativeReflectionBase, self).teardown()
+        clear_mappers()
+
 class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
     @classmethod
@@ -215,4 +219,169 @@ class DeferredReflectionTest(DeferredReflectBase):
             __tablename__ = 'nonexistent'
 
         DefBase.prepare(testing.db)
+        self._roundtrip()
+
+    def test_redefine_fk_double(self):
+        class User(decl.DeferredReflection, fixtures.ComparableEntity, 
+                            Base):
+            __tablename__ = 'users'
+            addresses = relationship("Address", backref="user")
+
+        class Address(decl.DeferredReflection, fixtures.ComparableEntity, 
+                            Base):
+            __tablename__ = 'addresses'
+            user_id = Column(Integer, ForeignKey('users.id'))
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+
+class DeferredInhReflectBase(DeferredReflectBase):
+    def _roundtrip(self):
+        Foo = Base._decl_class_registry['Foo']
+        Bar = Base._decl_class_registry['Bar']
+
+        s = Session(testing.db)
+ 
+        s.add_all([
+            Bar(data='d1', bar_data='b1'),
+            Bar(data='d2', bar_data='b2'),
+            Bar(data='d3', bar_data='b3'),
+            Foo(data='d4')
+        ])
+        s.commit()
+
+        eq_(
+            s.query(Foo).order_by(Foo.id).all(),
+            [
+                Bar(data='d1', bar_data='b1'),
+                Bar(data='d2', bar_data='b2'),
+                Bar(data='d3', bar_data='b3'),
+                Foo(data='d4')
+            ]
+        )
+
+class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("foo", metadata,
+            Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+            Column('type', String(32)),
+            Column('data', String(30)),
+            Column('bar_data', String(30))
+        )
+
+    def test_basic(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+
+        class Bar(Foo):
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_subclass_column(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+
+        class Bar(Foo):
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+            bar_data = Column(String(30))
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_pk_column(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+            id = Column(Integer, primary_key=True)
+
+        class Bar(Foo):
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("foo", metadata,
+            Column('id', Integer, primary_key=True, 
+                        test_needs_autoincrement=True),
+            Column('type', String(32)),
+            Column('data', String(30)),
+        )
+        Table('bar', metadata,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+            Column('bar_data', String(30))
+        )
+
+    def test_basic(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_subclass_column(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+            bar_data = Column(String(30))
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_pk_column(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+            id = Column(Integer, primary_key=True)
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+
+        decl.DeferredReflection.prepare(testing.db)
+        self._roundtrip()
+
+    def test_add_fk_pk_column(self):
+        class Foo(decl.DeferredReflection, fixtures.ComparableEntity, 
+                    Base):
+            __tablename__ = 'foo'
+            __mapper_args__ = {"polymorphic_on":"type", 
+                        "polymorphic_identity":"foo"}
+
+        class Bar(Foo):
+            __tablename__ = 'bar'
+            __mapper_args__ = {"polymorphic_identity":"bar"}
+            id = Column(Integer, ForeignKey('foo.id'), primary_key=True)
+
+        decl.DeferredReflection.prepare(testing.db)
         self._roundtrip()
