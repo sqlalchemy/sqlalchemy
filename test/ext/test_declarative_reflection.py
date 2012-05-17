@@ -321,10 +321,12 @@ class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
                         test_needs_autoincrement=True),
             Column('type', String(32)),
             Column('data', String(30)),
+            test_needs_fk=True,
         )
         Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-            Column('bar_data', String(30))
+            Column('bar_data', String(30)),
+            test_needs_fk=True,
         )
 
     def test_basic(self):
