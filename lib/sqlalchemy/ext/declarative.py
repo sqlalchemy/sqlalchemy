@@ -1025,10 +1025,10 @@ from sqlalchemy.orm.util import polymorphic_union, _mapper_or_none
 __all__ = 'declarative_base', 'synonym_for', \
             'comparable_using', 'instrument_declarative'
 
-def declared_mapping_info(cls):
+def _declared_mapping_info(cls):
     # deferred mapping
-    if cls in _MapperThingy.thingies:
-        return _MapperThingy.thingies[cls]
+    if cls in _MapperConfig.configs:
+        return _MapperConfig.configs[cls]
     # regular mapping
     elif _is_mapped_class(cls):
         return class_mapper(cls, compile=False)
@@ -1086,7 +1086,7 @@ def _as_declarative(cls, classname, dict_):
             ):
                 return
 
-        class_mapped = declared_mapping_info(base) is not None
+        class_mapped = _declared_mapping_info(base) is not None
         if class_mapped:
             parent_columns = base.__table__.c.keys()
 
@@ -1261,7 +1261,7 @@ def _as_declarative(cls, classname, dict_):
 
     if 'inherits' not in mapper_args:
         for c in cls.__bases__:
-            if declared_mapping_info(c) is not None:
+            if _declared_mapping_info(c) is not None:
                 mapper_args['inherits'] = c
                 break
 
@@ -1278,7 +1278,7 @@ def _as_declarative(cls, classname, dict_):
             )
 
     elif 'inherits' in mapper_args and not mapper_args.get('concrete', False):
-        inherited_mapper = declared_mapping_info(mapper_args['inherits'])
+        inherited_mapper = _declared_mapping_info(mapper_args['inherits'])
         inherited_table = inherited_mapper.local_table
 
         if table is None:
@@ -1309,7 +1309,7 @@ def _as_declarative(cls, classname, dict_):
         # exclude any cols on the inherited table which are not mapped on the
         # parent class, to avoid
         # mapping columns specific to sibling/nephew classes
-        inherited_mapper = declared_mapping_info(mapper_args['inherits'])
+        inherited_mapper = _declared_mapping_info(mapper_args['inherits'])
         inherited_table = inherited_mapper.local_table
 
         if 'exclude_properties' not in mapper_args:
@@ -1336,41 +1336,37 @@ def _as_declarative(cls, classname, dict_):
                     # change this ordering when we do [ticket:1892]
                     our_stuff[k] = p.columns + [col]
 
-
-    mt = _MapperThingy(mapper_cls, 
-                       cls, table, our_stuff, mapper_args)
+    mt = _MapperConfig(mapper_cls, 
+                       cls, table, 
+                       properties=our_stuff, 
+                       **mapper_args)
     if not hasattr(cls, '__prepare__'):
         mt.map()
 
-class _MapperThingy(object):
-    thingies = util.OrderedDict()
+class _MapperConfig(object):
+    configs = util.OrderedDict()
 
-    def __init__(self, mapper_cls, cls, table, properties, mapper_args):
+    def __init__(self, mapper_cls, cls, table, **mapper_args):
         self.mapper_cls = mapper_cls
         self.cls = cls
         self.local_table = table
-        self.properties = properties
         self.mapper_args = mapper_args
         self._columntoproperty = set()
         if table is not None:
             self._columntoproperty.update(table.c)
-        self.thingies[cls] = self
+        self.configs[cls] = self
+
+    @property
+    def args(self):
+        return self.cls, self.local_table, self.mapper_args
 
     def map(self):
-        self.thingies.pop(self.cls, None)
+        self.configs.pop(self.cls, None)
         self.cls.__mapper__ = self.mapper_cls(
             self.cls,
             self.local_table,
-            properties=self.properties,
             **self.mapper_args
         )
-
-def prepare_deferred_mapping(base, *arg, **kw):
-    to_map = set([m for m in _MapperThingy.thingies.values()
-                if issubclass(m.cls, base)])
-    for thingy in to_map:
-        base.__prepare__(thingy, *arg, **kw)
-        thingy.map()
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_):
@@ -1803,3 +1799,96 @@ class AbstractConcreteBase(ConcreteBase):
             sm = _mapper_or_none(scls)
             if sm.concrete and cls in scls.__bases__:
                 sm._set_concrete_base(m)
+
+
+class DeferredReflection(object):
+    """A helper class for construction of mappings based on 
+    a deferred reflection step.
+    
+    Normally, declarative can be used with reflection by
+    setting a :class:`.Table` object using autoload=True
+    as the ``__table__`` attribute on a declarative class.
+    The caveat is that the :class:`.Table` must be fully
+    reflected, or at the very least have a primary key column,
+    at the point at which a normal declarative mapping is
+    constructed, meaning the :class:`.Engine` must be available
+    at class declaration time.
+    
+    The :class:`.DeferredReflection` mixin moves the construction
+    of mappers to be at a later point, after a specific
+    method is called which first reflects all :class:`.Table`
+    objects created so far.   Classes can define it as such::
+    
+        from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
+        Base = declarative_base()
+        
+        class MyClass(DeferredReflection, Base):
+            __tablename__ = 'mytable'
+        
+    Above, ``MyClass`` is not yet mapped.   After a series of
+    classes have been defined in the above fashion, all tables
+    can be reflected and mappings created using :meth:`.DeferredReflection.prepare`::
+    
+        engine = create_engine("someengine://...")
+        DeferredReflection.prepare(engine)
+
+    The :class:`.DeferredReflection` mixin can be applied to individual
+    classes, used as the base for the declarative base itself, 
+    or used in a custom abstract class.   Using an abstract base
+    allows that only a subset of classes to be prepared for a 
+    particular prepare step, which is necessary for applications
+    that use more than one engine.  For example, if an application
+    has two engines, you might use two bases, and prepare each
+    separately, e.g.::
+    
+        class ReflectedOne(DeferredReflection, Base):
+            __abstract__ = True
+
+        class ReflectedTwo(DeferredReflection, Base):
+            __abstract__ = True
+        
+        class MyClass(ReflectedOne):
+            __tablename__ = 'mytable'
+        
+        class MyOtherClass(ReflectedOne):
+            __tablename__ = 'myothertable'
+
+        class YetAnotherClass(ReflectedTwo):
+            __tablename__ = 'yetanothertable'
+        
+        # ... etc.
+        
+    Above, the class hierarchies for ``ReflectedOne`` and
+    ``ReflectedTwo`` can be configured separately::
+    
+        ReflectedOne.prepare(engine_one)
+        ReflectedTwo.prepare(engine_two)
+    
+    .. versionadded:: 0.8
+    
+    """
+    @classmethod
+    def prepare(cls, engine):
+        """Reflect all :class:`.Table` objects for all current
+        :class:`.DeferredReflection` subclasses"""
+        to_map = set([m for m in _MapperConfig.configs.values()
+                    if issubclass(m.cls, cls)])
+        for thingy in to_map:
+            cls.__prepare__(thingy.args, engine)
+            thingy.map()
+
+    @classmethod
+    def __prepare__(cls, mapper_args, engine):
+        cls, local_table, args = mapper_args
+        # autoload Table, which is already
+        # present in the metadata.  This
+        # will fill in db-loaded columns
+        # into the existing Table object.
+        if local_table is not None:
+            Table(local_table.name,
+                local_table.metadata,
+                extend_existing=True,
+                autoload_replace=False,
+                autoload=True,
+                autoload_with=engine,
+                schema=local_table.schema)
