@@ -934,7 +934,13 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
         q = context.attributes[('subquery', reduced_path)]
 
-        collections = dict(
+        # cache the loaded collections in the context
+        # so that inheriting mappers don't re-load when they
+        # call upon create_row_processor again
+        if ('collections', reduced_path) in context.attributes:
+            collections = context.attributes[('collections', reduced_path)]
+        else:
+            collections = context.attributes[('collections', reduced_path)] = dict(
                     (k, [v[0] for v in v]) 
                     for k, v in itertools.groupby(
                         q, 
