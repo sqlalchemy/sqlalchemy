@@ -79,6 +79,12 @@ CHANGES
     set of objects that weren't modified in 
     that sub-transaction.  [ticket:2452]
 
+  - [bug] Fixed bug whereby subqueryload() from 
+    a polymorphic mapping to a target would incur
+    a new invocation of the query for each 
+    distinct class encountered in the polymorphic
+    result.  [ticket:2480].  Also in 0.7.8.
+
   - [bug] Fixed issue in unit of work
     whereby setting a non-None self-referential
     many-to-one relationship to None
