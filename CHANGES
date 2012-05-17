@@ -377,6 +377,9 @@ CHANGES
     statements, so that unknown reserved names can 
     be fully supported.  [ticket:2437]
 
+  - [bug] Added ROWID to oracle.*, [ticket:2483]
+    Also in 0.7.8.
+
 - extensions
   - [removed] The SQLSoup extension is removed from 
     SQLAlchemy, and is now an external project.
