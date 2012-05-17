@@ -79,6 +79,12 @@ CHANGES
     set of objects that weren't modified in 
     that sub-transaction.  [ticket:2452]
 
+  - [feature] Added utility feature 
+    Session.enable_relationship_loading(),
+    supersedes relationship.load_on_pending.
+    Both features should be avoided, however.
+    [ticket:2372]
+
   - [bug] Fixed bug whereby subqueryload() from 
     a polymorphic mapping to a target would incur
     a new invocation of the query for each 

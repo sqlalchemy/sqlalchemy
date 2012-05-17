@@ -465,20 +465,17 @@ def relationship(argument, secondary=None, **kwargs):
 
     :param load_on_pending=False:
       Indicates loading behavior for transient or pending parent objects.
+      
+      .. note::
+      
+      load_on_pending is superseded by :meth:`.Session.enable_relationship_loading`.
 
       When set to ``True``, causes the lazy-loader to
       issue a query for a parent object that is not persistent, meaning it has
       never been flushed.  This may take effect for a pending object when
       autoflush is disabled, or for a transient object that has been
       "attached" to a :class:`.Session` but is not part of its pending
-      collection. Attachment of transient objects to the session without
-      moving to the "pending" state is not a supported behavior at this time.
-
-      Note that the load of related objects on a pending or transient object
-      also does not trigger any attribute change events - no user-defined
-      events will be emitted for these attributes, and if and when the 
-      object is ultimately flushed, only the user-specific foreign key 
-      attributes will be part of the modified state.
+      collection. 
 
       The load_on_pending flag does not improve behavior
       when the ORM is used normally - object references should be constructed
@@ -486,7 +483,7 @@ def relationship(argument, secondary=None, **kwargs):
       are present in an ordinary way before flush() proceeds.  This flag
       is not not intended for general use.
 
-      New in 0.6.5.
+      .. versionadded:: 0.6.5
 
     :param order_by:
       indicates the ordering that should be applied when loading these

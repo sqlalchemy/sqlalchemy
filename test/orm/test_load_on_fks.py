@@ -112,6 +112,17 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         # should be turned on.
         assert c3 not in p1.children
 
+    def test_enable_rel_loading_disallows_backref_event(self):
+        sess.autoflush = False
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+        c3.parent = p1
+
+        # c3.parent is already acting like a "load" here,
+        # so backref events don't work
+        assert c3 not in p1.children
+
     def test_load_on_persistent_allows_backref_event(self):
         Child.parent.property.load_on_pending = True
         c3 = Child()
@@ -120,6 +131,16 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
         c3.parent = p1
 
         assert c3 in p1.children
+
+    def test_enable_rel_loading_on_persistent_disallows_backref_event(self):
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+        c3.parent = p1
+
+        # c3.parent is already acting like a "load" here,
+        # so backref events don't work
+        assert c3 not in p1.children
 
     def test_no_load_on_pending_allows_backref_event(self):
         # users who stick with the program and don't use
@@ -274,21 +295,25 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
             for attach in (False, True):
                 for autoflush in (False, True):
                     for manualflush in (False, True):
-                        Child.parent.property.load_on_pending = loadonpending
-                        sess.autoflush = autoflush
-                        c2 = Child()
+                        for enable_relationship_rel in (False, True):
+                            Child.parent.property.load_on_pending = loadonpending
+                            sess.autoflush = autoflush
+                            c2 = Child()
 
-                        if attach:
-                            sess._attach(instance_state(c2))
+                            if attach:
+                                sess._attach(instance_state(c2))
 
-                        c2.parent_id = p2.id
+                            if enable_relationship_rel:
+                                sess.enable_relationship_loading(c2)
 
-                        if manualflush:
-                           sess.flush()
+                            c2.parent_id = p2.id
 
-                        if loadonpending and attach:
-                            assert c2.parent is p2
-                        else:
-                            assert c2.parent is None
+                            if manualflush:
+                               sess.flush()
 
-                        sess.rollback()
+                            if (loadonpending and attach) or enable_relationship_rel:
+                                assert c2.parent is p2
+                            else:
+                                assert c2.parent is None
+
+                            sess.rollback()

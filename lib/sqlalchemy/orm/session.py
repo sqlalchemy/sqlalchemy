@@ -1514,6 +1514,50 @@ class Session(object):
         self._deleted[state] = state.obj()
         self.identity_map.add(state)
 
+    def enable_relationship_loading(self, obj):
+        """Associate an object with this :class:`.Session` for related
+        object loading.
+
+        Accesses of attributes mapped with :class:`.relationship`
+        will attempt to load a value from the database using this
+        :class:`.Session` as the source of connectivity.  The values
+        will be loaded based on foreign key values present on this
+        object - it follows that this functionality
+        generally only works for many-to-one-relationships.
+
+        The object will be attached to this session, but will
+        ''not'' participate in any persistence operations; its state
+        for almost all purposes will remain either "transient" or
+        "detached", except for the case of relationship loading.
+        
+        Also note that backrefs will often not work as expected.
+        Altering a relationship-bound attribute on the target object
+        may not fire off a backref event, if the effective value
+        is what was already loaded from a foreign-key-holding value.
+        
+        The :meth:`.Session.enable_relationship_loading` method supersedes
+        the ``load_on_pending`` flag on :func:`.relationship`.   Unlike
+        that flag, :meth:`.Session.enable_relationship_loading` allows
+        an object to remain transient while still being able to load
+        related items.   
+        
+        To make a transient object associated with a :class:`.Session`
+        via :meth:`.Session.enable_relationship_loading` pending, add
+        it to the :class:`.Session` using :meth:`.Session.add` normally.
+
+        :meth:`.Session.enable_relationship_loading` does not improve
+        behavior when the ORM is used normally - object references should be constructed
+        at the object level, not at the foreign key level, so that they
+        are present in an ordinary way before flush() proceeds.  This method
+        is not intended for general use.
+
+        .. versionadded:: 0.8
+        
+        """
+        state = attributes.instance_state(obj)
+        self._attach(state)
+        state._load_pending = True
+
     def _attach(self, state):
         if state.key and \
             state.key in self.identity_map and \

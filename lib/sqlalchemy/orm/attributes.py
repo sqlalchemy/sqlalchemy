@@ -817,7 +817,6 @@ class CollectionAttributeImpl(AttributeImpl):
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         if initiator and initiator.parent_token is self.parent_token:
             return
-
         collection = self.get_collection(state, dict_, passive=passive)
         if collection is PASSIVE_NO_RESULT:
             value = self.fire_append_event(state, dict_, value, initiator)

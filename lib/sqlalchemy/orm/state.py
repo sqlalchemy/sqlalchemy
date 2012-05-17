@@ -37,6 +37,7 @@ class InstanceState(object):
     modified = False
     expired = False
     deleted = False
+    _load_pending = False
 
     def __init__(self, obj, manager):
         self.class_ = obj.__class__
