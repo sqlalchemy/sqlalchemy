@@ -235,6 +235,37 @@ class DeferredReflectionTest(DeferredReflectBase):
         decl.DeferredReflection.prepare(testing.db)
         self._roundtrip()
 
+    def test_mapper_args_deferred(self):
+        """test that __mapper_args__ is not called until *after* table reflection"""
+
+        class User(decl.DeferredReflection, fixtures.ComparableEntity, 
+                            Base):
+            __tablename__ = 'users'
+
+            @decl.declared_attr
+            def __mapper_args__(cls):
+                return {
+                    "order_by":cls.__table__.c.name
+                }
+
+        decl.DeferredReflection.prepare(testing.db)
+        sess = Session()
+        sess.add_all([
+            User(name='G'),
+            User(name='Q'),
+            User(name='A'),
+            User(name='C'),
+        ])
+        sess.commit()
+        eq_(
+            sess.query(User).all(),
+            [
+                User(name='A'),
+                User(name='C'),
+                User(name='G'),
+                User(name='Q'),
+            ]
+        )
 
 class DeferredInhReflectBase(DeferredReflectBase):
     def _roundtrip(self):
