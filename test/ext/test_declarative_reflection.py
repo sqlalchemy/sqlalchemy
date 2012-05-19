@@ -153,6 +153,32 @@ class DeferredReflectBase(DeclarativeReflectionBase):
         from sqlalchemy.ext.declarative import _MapperConfig
         _MapperConfig.configs.clear()
 
+class DeferredReflectPKFKTest(DeferredReflectBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("a", metadata,
+            Column('id', Integer,
+                primary_key=True, test_needs_autoincrement=True),
+        )
+        Table("b", metadata, 
+            Column('id', Integer,
+                ForeignKey('a.id'),
+                primary_key=True),
+            Column('x', Integer, primary_key=True)
+        )
+
+    def test_pk_fk(self):
+        class B(decl.DeferredReflection, fixtures.ComparableEntity, 
+                            Base):
+            __tablename__ = 'b'
+            a = relationship("A")
+
+        class A(decl.DeferredReflection, fixtures.ComparableEntity, 
+                            Base):
+            __tablename__ = 'a'
+
+        decl.DeferredReflection.prepare(testing.db)
+
 class DeferredReflectionTest(DeferredReflectBase):
 
     @classmethod

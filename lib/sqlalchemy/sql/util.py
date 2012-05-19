@@ -575,7 +575,7 @@ def reduce_columns(columns, *clauses, **kw):
     to further identify columns that are "equivalent".
 
     \**kw may specify 'ignore_nonexistent_tables' to ignore foreign keys
-    whose tables are not yet configured.
+    whose tables are not yet configured, or columns that aren't yet present.
 
     This function is primarily used to determine the most minimal "primary key"
     from a selectable, by reducing the set of primary key columns present
@@ -594,7 +594,16 @@ def reduce_columns(columns, *clauses, **kw):
                     continue
                 try:
                     fk_col = fk.column
+                except exc.NoReferencedColumnError:
+                    # TODO: add specific coverage here
+                    # to test/sql/test_selectable ReduceTest
+                    if ignore_nonexistent_tables:
+                        continue
+                    else:
+                        raise
                 except exc.NoReferencedTableError:
+                    # TODO: add specific coverage here
+                    # to test/sql/test_selectable ReduceTest
                     if ignore_nonexistent_tables:
                         continue
                     else:
