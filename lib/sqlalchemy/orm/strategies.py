@@ -448,10 +448,14 @@ class LazyLoader(AbstractRelationshipLoader):
         return criterion
 
     def _load_for_state(self, state, passive):
-        if not state.session_id or \
-            not state.key and \
-            not self.parent_property.load_on_pending and \
-            not state._load_pending:
+        if not state.key and \
+            (
+                (
+                    not self.parent_property.load_on_pending
+                    and not state._load_pending
+                )
+                or not state.session_id
+            ):
             return attributes.ATTR_EMPTY
 
         pending = not state.key
