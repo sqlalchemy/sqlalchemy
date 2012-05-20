@@ -1316,7 +1316,7 @@ def _as_declarative(cls, classname, dict_):
                        column_copies,
                        our_stuff, 
                        mapper_args_fn)
-    if not hasattr(cls, '__prepare__'):
+    if not hasattr(cls, '_sa_decl_prepare'):
         mt.map()
 
 class _MapperConfig(object):
@@ -1914,11 +1914,11 @@ class DeferredReflection(object):
         to_map = [m for m in _MapperConfig.configs.values()
                     if issubclass(m.cls, cls)]
         for thingy in to_map:
-            cls.__prepare__(thingy.local_table, engine)
+            cls._sa_decl_prepare(thingy.local_table, engine)
             thingy.map()
 
     @classmethod
-    def __prepare__(cls, local_table, engine):
+    def _sa_decl_prepare(cls, local_table, engine):
         # autoload Table, which is already
         # present in the metadata.  This
         # will fill in db-loaded columns
