@@ -81,6 +81,11 @@ class _JoinFixtures(object):
                                 primary_key=True),
             Column('base_id', Integer, ForeignKey('base.id'))
         )
+        cls.sub_w_sub_rel = Table('sub_w_sub_rel', m, 
+            Column('id', Integer, ForeignKey('base.id'), 
+                                primary_key=True),
+            Column('sub_id', Integer, ForeignKey('sub.id'))
+        )
         cls.right_w_base_rel = Table('right_w_base_rel', m,
             Column('id', Integer, primary_key=True),
             Column('base_id', Integer, ForeignKey('base.id'))
@@ -283,6 +288,17 @@ class _JoinFixtures(object):
             primaryjoin=self.sub_w_base_rel.c.base_id==self.base.c.id
         )
 
+    def _join_fixture_o2m_joined_sub_to_sub(self, **kw):
+        left = self.base.join(self.sub, self.base.c.id==self.sub.c.id)
+        right = self.base.join(self.sub_w_sub_rel, self.base.c.id==self.sub_w_sub_rel.c.id)
+        return relationships.JoinCondition(
+            left,
+            right,
+            self.sub,
+            self.sub_w_sub_rel,
+            primaryjoin=self.sub.c.id==self.sub_w_sub_rel.c.sub_id
+        )
+
     def _join_fixture_m2o_sub_to_joined_sub(self, **kw):
         # see test.orm.test_mapper:MapperTest.test_add_column_prop_deannotate,
         right = self.base.join(self.right_w_base_rel, 
@@ -481,6 +497,26 @@ class ColumnCollectionsTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL
             joincond.local_remote_pairs,
             [
                 (self.right_w_base_rel.c.base_id, self.base.c.id)
+            ]
+        )
+
+    def test_determine_remote_columns_o2m_joined_sub_to_sub(self):
+        def _join_fixture_o2m_joined_sub_to_sub(self, **kw):
+            left = self.base.join(self.sub, self.base.c.id==self.sub.c.id)
+            right = self.base.join(self.sub_w_sub_rel, self.base.c.id==self.sub_w_sub_rel.c.id)
+            return relationships.JoinCondition(
+                left,
+                right,
+                self.sub,
+                self.sub_w_sub_rel,
+                primaryjoin=self.sub.c.id==self.sub_w_sub_rel.c.sub_id
+            )
+
+        joincond = self._join_fixture_o2m_joined_sub_to_sub()
+        eq_(
+            joincond.local_remote_pairs,
+            [
+                (self.sub.c.id, self.sub_w_sub_rel.c.sub_id)
             ]
         )
 
