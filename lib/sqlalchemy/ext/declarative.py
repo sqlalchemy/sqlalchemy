@@ -1388,11 +1388,9 @@ class _MapperConfig(object):
                 if k in inherited_mapper._props:
                     p = inherited_mapper._props[k]
                     if isinstance(p, ColumnProperty):
-                        # note here we place the superclass column
-                        # first.  this corresponds to the 
-                        # append() in mapper._configure_property().
-                        # change this ordering when we do [ticket:1892]
-                        properties[k] = p.columns + [col]
+                        # note here we place the subclass column
+                        # first.  See [ticket:1892] for background.
+                        properties[k] = [col] + p.columns
 
         result_mapper_args = mapper_args.copy()
         result_mapper_args['properties'] = properties
@@ -1401,7 +1399,6 @@ class _MapperConfig(object):
     def map(self):
         self.configs.pop(self.cls, None)
         mapper_args = self._prepare_mapper_arguments()
-
         self.cls.__mapper__ = self.mapper_cls(
             self.cls,
             self.local_table,

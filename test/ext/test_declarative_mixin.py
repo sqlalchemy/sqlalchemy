@@ -314,8 +314,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert len(General.bar.prop.columns) == 1
         assert Specific.bar.prop is not General.bar.prop
         assert len(Specific.bar.prop.columns) == 2
-        assert Specific.bar.prop.columns[0] is General.__table__.c.bar_newname
-        assert Specific.bar.prop.columns[1] is Specific.__table__.c.bar_newname
+        assert Specific.bar.prop.columns[0] is Specific.__table__.c.bar_newname
+        assert Specific.bar.prop.columns[1] is General.__table__.c.bar_newname
 
     def test_column_join_checks_superclass_type(self):
         """Test that the logic which joins subclass props to those

@@ -118,6 +118,19 @@ CHANGES
     would fail to function subsequent to this
     warning in any case.  [ticket:2405]
 
+  - [bug] Fixed bug in declarative 
+    whereby the precedence of columns 
+    in a joined-table, composite
+    column (typically for id) would fail to
+    be correct if the columns contained
+    names distinct from their attribute 
+    names.  This would cause things like
+    primaryjoin conditions made against the
+    entity attributes to be incorrect.  Related
+    to [ticket:1892] as this was supposed
+    to be part of that, this is [ticket:2491].
+    Also in 0.7.8.
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
