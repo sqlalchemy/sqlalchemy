@@ -382,6 +382,11 @@ CHANGES
     expressions.  [ticket:2467]
     also in 0.7.7.
 
+  - [bug] Dialect no longer emits expensive server
+    collations query, as well as server casing,
+    on first connect.  These functions are still 
+    available as semi-private. [ticket:2404]
+
 - oracle
   - [bug] Quoting information is now passed along
     from a Column with quote=True when generating

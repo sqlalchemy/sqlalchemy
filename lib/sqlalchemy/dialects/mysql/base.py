@@ -1980,8 +1980,6 @@ class MySQLDialect(default.DefaultDialect):
     def initialize(self, connection):
         default.DefaultDialect.initialize(self, connection)
         self._connection_charset = self._detect_charset(connection)
-        self._server_casing = self._detect_casing(connection)
-        self._server_collations = self._detect_collations(connection)
         self._detect_ansiquotes(connection)
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer

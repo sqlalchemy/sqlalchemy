@@ -395,11 +395,11 @@ def _has_sqlite():
 
 def _has_mysql_on_windows():
     return testing.against('mysql') and \
-            testing.db.dialect._server_casing == 1
+            testing.db.dialect._detect_casing(testing.db) == 1
 
 def _has_mysql_fully_case_sensitive():
     return testing.against('mysql') and \
-            testing.db.dialect._server_casing == 0
+            testing.db.dialect._detect_casing(testing.db) == 0
 
 def sqlite(fn):
     return _chain_decorators_on(
