@@ -16,7 +16,7 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 from sqlalchemy import sql, util, log, exc as sa_exc, schema
 from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
     join_condition, _shallow_annotate, visit_binary_product,\
-    _deep_deannotate
+    _deep_deannotate, find_tables
 from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
 
@@ -418,10 +418,11 @@ class JoinCondition(object):
     def _tables_overlap(self):
         """Return True if parent/child tables have some overlap."""
 
-        return self.parent_selectable.is_derived_from(
-                        self.child_local_selectable) or \
-            self.child_selectable.is_derived_from(
-                        self.parent_local_selectable)
+        return  bool(
+            set(find_tables(self.parent_selectable)).intersection(
+                find_tables(self.child_selectable)
+            )
+        )
 
     def _annotate_remote(self):
         """Annotate the primaryjoin and secondaryjoin
