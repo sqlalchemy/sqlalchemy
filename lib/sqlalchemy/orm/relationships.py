@@ -66,7 +66,7 @@ def remote(expr):
     * :func:`.remote_foreign`
     
     """
-    return _annotate_columns(expr, {"remote":True})
+    return _annotate_columns(expression._clause_element_as_expr(expr), {"remote":True})
 
 def foreign(expr):
     """Annotate a portion of a primaryjoin expression 
@@ -78,7 +78,7 @@ def foreign(expr):
 
     """
 
-    return _annotate_columns(expr, {"foreign":True})
+    return _annotate_columns(expression._clause_element_as_expr(expr), {"foreign":True})
 
 def remote_foreign(expr):
     """Annotate a portion of a primaryjoin expression 

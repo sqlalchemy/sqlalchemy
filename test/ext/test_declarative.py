@@ -266,6 +266,29 @@ class DeclarativeTest(DeclarativeTestBase):
                               "does not have a mapped column named "
                               "'__table__'", configure_mappers)
 
+    def test_string_w_pj_annotations(self):
+
+        class User(Base, fixtures.ComparableEntity):
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            name = Column(String(50))
+        class Address(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True,
+                        test_needs_autoincrement=True)
+            email = Column(String(50))
+            user_id = Column(Integer) 
+            user = relationship("User", 
+                primaryjoin="remote(User.id)==foreign(Address.user_id)"
+            )
+
+        eq_(
+            Address.user.property._join_condition.local_remote_pairs,
+            [(Address.__table__.c.user_id, User.__table__.c.id)]
+        )
+
     def test_string_dependency_resolution_no_magic(self):
         """test that full tinkery expressions work as written"""
 
