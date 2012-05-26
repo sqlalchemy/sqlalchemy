@@ -27,6 +27,11 @@ CHANGES
 - oracle
   - [bug] Added ROWID to oracle.*, [ticket:2483]
 
+- mysql
+  - [feature] Added a new dialect for Google App
+    Engine.  [ticket:2484]
+
+
 0.7.7
 =====
 - orm
