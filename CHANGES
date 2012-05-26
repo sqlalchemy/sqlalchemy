@@ -388,7 +388,8 @@ CHANGES
     available as semi-private. [ticket:2404]
 
   - [feature] Added a new dialect for Google App
-    Engine.  Also in 0.7.8.  [ticket:2484]
+    Engine.  Courtesy Richie Foreman. 
+    Also in 0.7.8.  [ticket:2484]
 
 - oracle
   - [bug] Quoting information is now passed along
