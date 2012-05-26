@@ -1,3 +1,5 @@
+.. _access_toplevel:
+
 Microsoft Access
 ================
 

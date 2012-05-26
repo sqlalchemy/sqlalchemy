@@ -176,6 +176,11 @@ MySQL-Connector Notes
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
+Google App Engine Notes
+-----------------------
+
+.. automodule:: sqlalchemy.dialects.mysql.gaerdbms
+
 pyodbc Notes
 --------------
 

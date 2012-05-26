@@ -1,3 +1,5 @@
+.. _informix_toplevel:
+
 Informix
 ========
 

@@ -1,3 +1,5 @@
+.. _firebird_toplevel:
+
 Firebird
 ========
 
