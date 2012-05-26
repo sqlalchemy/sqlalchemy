@@ -29,7 +29,7 @@ CHANGES
 
 - mysql
   - [feature] Added a new dialect for Google App
-    Engine.  [ticket:2484]
+    Engine.  Courtesy Richie Foreman. [ticket:2484]
 
 
 0.7.7
