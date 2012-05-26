@@ -1,3 +1,5 @@
+.. _sybase_toplevel:
+
 Sybase
 ======
 

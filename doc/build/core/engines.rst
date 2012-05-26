@@ -62,49 +62,50 @@ translate as:
   information on current support.
 * \* - indicates the given DBAPI is the "default" for SQLAlchemy, i.e. when just the database name is specified
 
-=========================  ===========================  ===========  ===========   ===========  =================  ============
-Driver                     Connect string               Py2K         Py3K          Jython       Unix               Windows
-=========================  ===========================  ===========  ===========   ===========  =================  ============
+===============================================================  ===========================  ===========  ===========   ===========  =================  ============
+Driver                                                           Connect string               Py2K         Py3K          Jython       Unix               Windows
+===============================================================  ===========================  ===========  ===========   ===========  =================  ============
 **DB2/Informix IDS**
-ibm-db_                    thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
-**Drizzle**
-mysql-python_              ``drizzle+mysqldb``\*        yes          development   no           yes                yes
-**Firebird / Interbase**
-kinterbasdb_               ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
-**Informix**
-informixdb_                ``informix+informixdb``\*    yes          development   no           unknown            unknown
-**MaxDB**
-sapdb_                     ``maxdb+sapdb``\*            development  development   no           yes                unknown
-**Microsoft Access**
-pyodbc_                    ``access+pyodbc``\*          development  development   no           unknown            yes
-**Microsoft SQL Server**
-adodbapi_                  ``mssql+adodbapi``           development  development   no           no                 yes
-`jTDS JDBC Driver`_        ``mssql+zxjdbc``             no           no            development  yes                yes
-mxodbc_                    ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
-pyodbc_                    ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
-pymssql_                   ``mssql+pymssql``            yes          development   no           yes                yes
-**MySQL**
-`MySQL Connector/J`_       ``mysql+zxjdbc``             no           no            yes          yes                yes
-`MySQL Connector/Python`_  ``mysql+mysqlconnector``     yes          development   no           yes                yes
-mysql-python_              ``mysql+mysqldb``\*          yes          development   no           yes                yes
-OurSQL_                    ``mysql+oursql``             yes          yes           no           yes                yes
-pymysql_                   ``mysql+pymysql``            yes          development   no           yes                yes
-**Oracle**
-cx_oracle_                 ``oracle+cx_oracle``\*       yes          development   no           yes                yes
-`Oracle JDBC Driver`_      ``oracle+zxjdbc``            no           no            yes          yes                yes
-**Postgresql**
-pg8000_                    ``postgresql+pg8000``        yes          yes           no           yes                yes
-`PostgreSQL JDBC Driver`_  ``postgresql+zxjdbc``        no           no            yes          yes                yes
-psycopg2_                  ``postgresql+psycopg2``\*    yes          yes           no           yes                yes
-pypostgresql_              ``postgresql+pypostgresql``  no           yes           no           yes                yes
-**SQLite**
-pysqlite_                  ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
-sqlite3_                   ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
-**Sybase ASE**
-mxodbc_                    ``sybase+mxodbc``            development  development   no           yes                yes
-pyodbc_                    ``sybase+pyodbc``\*          partial      development   no           unknown            unknown
-python-sybase_             ``sybase+pysybase``          yes [1]_     development   no           yes                yes
-=========================  ===========================  ===========  ===========   ===========  =================  ============
+ibm-db_                                                          thirdparty                   thirdparty   thirdparty    thirdparty   thirdparty         thirdparty
+**Drizzle** :ref:`(docs) <drizzle_toplevel>`
+mysql-python_                                                    ``drizzle+mysqldb``\*        yes          development   no           yes                yes
+**Firebird / Interbase** :ref:`(docs) <firebird_toplevel>`
+kinterbasdb_                                                     ``firebird+kinterbasdb``\*   yes          development   no           yes                yes
+**Informix** :ref:`(docs) <informix_toplevel>`
+informixdb_                                                      ``informix+informixdb``\*    yes          development   no           unknown            unknown
+**MaxDB** :ref:`(docs) <maxdb_toplevel>`
+sapdb_                                                           ``maxdb+sapdb``\*            development  development   no           yes                unknown
+**Microsoft Access** :ref:`(docs) <access_toplevel>`
+pyodbc_                                                          ``access+pyodbc``\*          development  development   no           unknown            yes
+**Microsoft SQL Server** :ref:`(docs) <mssql_toplevel>`
+adodbapi_                                                        ``mssql+adodbapi``           development  development   no           no                 yes
+`jTDS JDBC Driver`_                                              ``mssql+zxjdbc``             no           no            development  yes                yes
+mxodbc_                                                          ``mssql+mxodbc``             yes          development   no           yes with FreeTDS_  yes
+pyodbc_                                                          ``mssql+pyodbc``\*           yes          development   no           yes with FreeTDS_  yes
+pymssql_                                                         ``mssql+pymssql``            yes          development   no           yes                yes
+**MySQL** :ref:`(docs) <mysql_toplevel>`
+`MySQL Connector/J`_                                             ``mysql+zxjdbc``             no           no            yes          yes                yes
+`MySQL Connector/Python`_                                        ``mysql+mysqlconnector``     yes          development   no           yes                yes
+mysql-python_                                                    ``mysql+mysqldb``\*          yes          development   no           yes                yes
+OurSQL_                                                          ``mysql+oursql``             yes          yes           no           yes                yes
+pymysql_                                                         ``mysql+pymysql``            yes          development   no           yes                yes
+rdbms_ (Google Appengine)                                        ``mysql+gaerdbms``           yes          development   no           no                 no
+**Oracle** :ref:`(docs) <oracle_toplevel>`
+cx_oracle_                                                       ``oracle+cx_oracle``\*       yes          development   no           yes                yes
+`Oracle JDBC Driver`_                                            ``oracle+zxjdbc``            no           no            yes          yes                yes
+**Postgresql** :ref:`(docs) <postgresql_toplevel>`
+pg8000_                                                          ``postgresql+pg8000``        yes          yes           no           yes                yes
+`PostgreSQL JDBC Driver`_                                        ``postgresql+zxjdbc``        no           no            yes          yes                yes
+psycopg2_                                                        ``postgresql+psycopg2``\*    yes          yes           no           yes                yes
+pypostgresql_                                                    ``postgresql+pypostgresql``  no           yes           no           yes                yes
+**SQLite** :ref:`(docs) <sqlite_toplevel>`
+pysqlite_                                                        ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
+sqlite3_                                                         ``sqlite+pysqlite``\*        yes          yes           no           yes                yes
+**Sybase ASE** :ref:`(docs) <sybase_toplevel>`
+mxodbc_                                                          ``sybase+mxodbc``            development  development   no           yes                yes
+pyodbc_                                                          ``sybase+pyodbc``\*          partial      development   no           unknown            unknown
+python-sybase_                                                   ``sybase+pysybase``          yes [1]_     development   no           yes                yes
+===============================================================  ===========================  ===========  ===========   ===========  =================  ============
 
 .. [1] The Sybase dialect currently lacks the ability to reflect tables.
 .. _psycopg2: http://www.initd.org/
@@ -114,6 +115,7 @@ python-sybase_             ``sybase+pysybase``          yes [1]_     development
 .. _MySQL Connector/Python: https://launchpad.net/myconnpy
 .. _OurSQL: http://packages.python.org/oursql/
 .. _pymysql: http://code.google.com/p/pymysql/
+.. _rdbms: https://developers.google.com/cloud-sql/docs/developers_guide_python
 .. _PostgreSQL JDBC Driver: http://jdbc.postgresql.org/
 .. _sqlite3: http://docs.python.org/library/sqlite3.html
 .. _pysqlite: http://pypi.python.org/pypi/pysqlite/

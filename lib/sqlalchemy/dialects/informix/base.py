@@ -7,8 +7,11 @@
 
 """Support for the Informix database.
 
-This dialect is mostly functional as of SQLAlchemy 0.6.5.
+.. note::
 
+    The Informix dialect functions on current SQLAlchemy versions
+    but is not regularly tested, and may have many issues and 
+    caveats not currently handled.
 
 """
 

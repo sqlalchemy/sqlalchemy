@@ -1,3 +1,5 @@
+.. _drizzle_toplevel:
+
 Drizzle
 =======
 

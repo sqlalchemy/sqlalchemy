@@ -1,3 +1,5 @@
+.. _maxdb_toplevel:
+
 MaxDB
 =====
 

@@ -9,9 +9,10 @@
 """
 Support for the Microsoft Access database.
 
-This dialect is *not* ported to SQLAlchemy 0.6 or 0.7.
+.. note::
 
-This dialect is *not* tested on SQLAlchemy 0.6 or 0.7.
+    The Access dialect is **non-functional as of SQLAlchemy 0.6**, 
+    pending development efforts to bring it up-to-date.
 
 
 """
