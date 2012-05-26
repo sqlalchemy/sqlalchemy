@@ -2085,6 +2085,61 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         assert A.__mapper__.inherits is a_1.__mapper__
 
+class OverlapColPrecedenceTest(DeclarativeTestBase):
+    """test #1892 cases when declarative does column precedence."""
+
+    def _run_test(self, Engineer, e_id, p_id):
+        p_table = Base.metadata.tables['person']
+        e_table = Base.metadata.tables['engineer']
+        assert Engineer.id.property.columns[0] is e_table.c[e_id]
+        assert Engineer.id.property.columns[1] is p_table.c[p_id]
+
+    def test_basic(self):
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+
+        class Engineer(Person):
+            __tablename__ = 'engineer'
+            id = Column(Integer, ForeignKey('person.id'), primary_key=True)
+
+        self._run_test(Engineer, "id", "id")
+
+    def test_alt_name_base(self):
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column("pid", Integer, primary_key=True)
+
+        class Engineer(Person):
+            __tablename__ = 'engineer'
+            id = Column(Integer, ForeignKey('person.pid'), primary_key=True)
+
+        self._run_test(Engineer, "id", "pid")
+
+    def test_alt_name_sub(self):
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+
+        class Engineer(Person):
+            __tablename__ = 'engineer'
+            id = Column("eid", Integer, ForeignKey('person.id'), primary_key=True)
+
+        self._run_test(Engineer, "eid", "id")
+
+    def test_alt_name_both(self):
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column("pid", Integer, primary_key=True)
+
+        class Engineer(Person):
+            __tablename__ = 'engineer'
+            id = Column("eid", Integer, ForeignKey('person.pid'), primary_key=True)
+
+        self._run_test(Engineer, "eid", "pid")
+
+
+
 from test.orm.test_events import _RemoveListeners
 class ConcreteInhTest(_RemoveListeners, DeclarativeTestBase):
     def _roundtrip(self, Employee, Manager, Engineer, Boss, polymorphic=True):
@@ -2785,8 +2840,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert len(General.bar.prop.columns) == 1
         assert Specific.bar.prop is not General.bar.prop
         assert len(Specific.bar.prop.columns) == 2
-        assert Specific.bar.prop.columns[0] is General.__table__.c.bar_newname
-        assert Specific.bar.prop.columns[1] is Specific.__table__.c.bar_newname
+        assert Specific.bar.prop.columns[0] is Specific.__table__.c.bar_newname
+        assert Specific.bar.prop.columns[1] is General.__table__.c.bar_newname
 
     def test_column_join_checks_superclass_type(self):
         """Test that the logic which joins subclass props to those

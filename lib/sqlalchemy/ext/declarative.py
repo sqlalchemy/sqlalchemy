@@ -1322,11 +1322,9 @@ def _as_declarative(cls, classname, dict_):
             if k in inherited_mapper._props:
                 p = inherited_mapper._props[k]
                 if isinstance(p, ColumnProperty):
-                    # note here we place the superclass column
-                    # first.  this corresponds to the 
-                    # append() in mapper._configure_property().
-                    # change this ordering when we do [ticket:1892]
-                    our_stuff[k] = p.columns + [col]
+                    # note here we place the subclass column
+                    # first.  See [ticket:1892] for background.
+                    our_stuff[k] = [col] + p.columns
 
 
     cls.__mapper__ = mapper_cls(cls, 
