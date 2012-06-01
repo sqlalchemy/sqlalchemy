@@ -1,5 +1,6 @@
 from sqlalchemy import *
 from test.lib import *
+from test.lib.testing import eq_
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 
@@ -93,3 +94,60 @@ class ExecutionTest(fixtures.TestBase):
             e.execute("select 1")
         go()
 
+
+class RowProxyTest(fixtures.TestBase):
+    def _rowproxy_fixture(self, keys, processors, row):
+        from sqlalchemy.engine.base import RowProxy
+        class MockMeta(object):
+            def __init__(self):
+                pass
+
+        metadata = MockMeta()
+
+        keymap = {}
+        for index, (keyobjs, processor, values) in \
+            enumerate(zip(keys, processors, row)):
+            for key in keyobjs:
+                keymap[key] = (processor, key, index)
+            keymap[index] = (processor, key, index)
+        return RowProxy(metadata, row, processors, keymap)
+
+    def _test_getitem_value_refcounts(self, seq_factory):
+        import sys
+        col1, col2 = object(), object()
+        def proc1(value):
+            return value
+        value1, value2 = "x", "y"
+        row = self._rowproxy_fixture(
+            [(col1, "a"),(col2, "b")],
+            [proc1, None],
+            seq_factory([value1, value2])
+        )
+
+        v1_refcount = sys.getrefcount(value1)
+        v2_refcount = sys.getrefcount(value2)
+        for i in range(10):
+            row[col1]
+            row["a"]
+            row[col2]
+            row["b"]
+            row[0]
+            row[1]
+            row[0:2]
+        eq_(sys.getrefcount(value1), v1_refcount)
+        eq_(sys.getrefcount(value2), v2_refcount)
+
+    def test_value_refcounts_pure_tuple(self):
+        self._test_getitem_value_refcounts(tuple)
+
+    def test_value_refcounts_custom_seq(self):
+        class CustomSeq(object):
+            def __init__(self, data):
+                self.data = data
+
+            def __getitem__(self, item):
+                return self.data[item]
+
+            def __iter__(self):
+                return iter(self.data)
+        self._test_getitem_value_refcounts(CustomSeq)

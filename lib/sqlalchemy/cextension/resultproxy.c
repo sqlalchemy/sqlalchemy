@@ -241,13 +241,14 @@ static PyObject *
 BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
 {
     PyObject *processors, *values;
-    PyObject *processor, *value;
+    PyObject *processor, *value, *processed_value;
     PyObject *row, *record, *result, *indexobject;
     PyObject *exc_module, *exception;
     char *cstr_key;
     long index;
     int key_fallback = 0;
-
+    int tuple_check = 0;
+    
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
     } else if (PyLong_CheckExact(key)) {
@@ -319,17 +320,28 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
         return NULL;
 
     row = self->row;
-    if (PyTuple_CheckExact(row))
+    if (PyTuple_CheckExact(row)) {
         value = PyTuple_GetItem(row, index);
-    else
+        tuple_check = 1;
+    }
+    else {
         value = PySequence_GetItem(row, index);
+        tuple_check = 0;
+    }
+        
     if (value == NULL)
         return NULL;
 
     if (processor != Py_None) {
-        return PyObject_CallFunctionObjArgs(processor, value, NULL);
+        processed_value = PyObject_CallFunctionObjArgs(processor, value, NULL);
+        if (!tuple_check) {
+            Py_DECREF(value);
+        }
+        return processed_value;
     } else {
-        Py_INCREF(value);
+        if (tuple_check) {
+            Py_INCREF(value);
+        }
         return value;
     }
 }
