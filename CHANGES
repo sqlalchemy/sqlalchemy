@@ -190,6 +190,13 @@ CHANGES
     also in 0.7.7.
 
 - engine
+  - [bug] Fixed memory leak in C version of
+    result proxy whereby DBAPIs which don't deliver
+    pure Python tuples for result rows would
+    fail to decrement refcounts correctly.
+    The most prominently affected DBAPI
+    is pyodbc.  [ticket:2489]
+
   - [feature] Added a new system
     for registration of new dialects in-process
     without using an entrypoint.  See the
