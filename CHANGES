@@ -131,6 +131,11 @@ CHANGES
     to be part of that, this is [ticket:2491].
     Also in 0.7.8.
 
+  - [feature] The 'objects' argument to 
+    flush() is no longer deprecated, as some
+    valid use cases have been identified.  
+    Also in 0.7.8.
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
