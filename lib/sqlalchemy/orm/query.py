@@ -462,7 +462,7 @@ class Query(object):
 
         Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
 
@@ -475,7 +475,7 @@ class Query(object):
 
         Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
 
@@ -878,7 +878,7 @@ class Query(object):
             q = q.join((subq, subq.c.email < Address.email)).\\
                         limit(1)
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
         self._set_entities(entities)
@@ -1725,9 +1725,11 @@ class Query(object):
         unique entity or entities - this is a successful result for one().
 
         Calling ``one()`` results in an execution of the underlying query.
-        As of 0.6, ``one()`` fully fetches all results instead of applying 
-        any kind of limit, so that the "unique"-ing of entities does not 
-        conceal multiple object identities.
+
+        .. versionchanged:: 0.6
+            ``one()`` fully fetches all results instead of applying 
+            any kind of limit, so that the "unique"-ing of entities does not 
+            conceal multiple object identities.
 
         """
         ret = list(self)

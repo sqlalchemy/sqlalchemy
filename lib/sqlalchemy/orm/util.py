@@ -491,11 +491,12 @@ def with_parent(instance, prop):
     Python without the need to render joins to the parent table
     in the rendered statement.
 
-    As of 0.6.4, this method accepts parent instances in all 
-    persistence states, including transient, persistent, and detached.
-    Only the requisite primary key/foreign key attributes need to
-    be populated.  Previous versions didn't work with transient
-    instances.
+    .. versionchanged:: 0.6.4
+        This method accepts parent instances in all 
+        persistence states, including transient, persistent, and detached.
+        Only the requisite primary key/foreign key attributes need to
+        be populated.  Previous versions didn't work with transient
+        instances.
 
     :param instance:
       An instance which has some :func:`.relationship`.

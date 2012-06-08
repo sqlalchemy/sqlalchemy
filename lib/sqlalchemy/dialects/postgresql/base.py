@@ -281,7 +281,9 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
         :param as_tuple=False: Specify whether return results should be converted
           to tuples from lists.  DBAPIs such as psycopg2 return lists by default.
           When tuples are returned, the results are hashable.   This flag can only
-          be set to ``True`` when ``mutable`` is set to ``False``. (new in 0.6.5)
+          be set to ``True`` when ``mutable`` is set to ``False``.
+
+          .. versionadded:: 0.6.5
 
         """
         if isinstance(item_type, ARRAY):

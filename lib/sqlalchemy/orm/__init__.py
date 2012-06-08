@@ -182,10 +182,8 @@ def create_session(bind=None, **kwargs):
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
-    .. note:: 
-    
-       :func:`relationship` is historically known as
-       :func:`relation` prior to version 0.6.
+    .. versionchanged:: 0.6
+        :func:`relationship` is historically known as :func:`relation`.
 
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`RelationshipProperty`.
@@ -216,7 +214,9 @@ def relationship(argument, secondary=None, **kwargs):
       value in order to perform a flush. This flag is available
       for applications that make use of
       :func:`.attributes.get_history` which also need to know
-      the "previous" value of the attribute. (New in 0.6.6)
+      the "previous" value of the attribute.
+
+      .. versionadded:: 0.6.6
 
     :param backref:
       indicates the string name of a property to be placed on the related
@@ -295,7 +295,7 @@ def relationship(argument, secondary=None, **kwargs):
                 )
         })
       
-      ``cascade_backrefs`` is new in 0.6.5.
+      .. versionadded:: 0.6.5
 
     :param collection_class:
       a class or callable that returns a new list-holding object. will
@@ -369,7 +369,9 @@ def relationship(argument, secondary=None, **kwargs):
 
       * ``immediate`` - items should be loaded as the parents are loaded,
         using a separate SELECT statement, or identity map fetch for
-        simple many-to-one references.  (new as of 0.6.5)
+        simple many-to-one references.
+
+        .. versionadded:: 0.6.5
 
       * ``joined`` - items should be loaded "eagerly" in the same query as
         that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
@@ -623,7 +625,9 @@ def column_property(*args, **kwargs):
       aware of the "new" value in order to perform a flush. This
       flag is available for applications that make use of
       :func:`.attributes.get_history` which also need to know
-      the "previous" value of the attribute. (new in 0.6.6)
+      the "previous" value of the attribute.
+
+      .. versionadded:: 0.6.6
 
     :param comparator_factory: a class which extends
        :class:`.ColumnProperty.Comparator` which provides custom SQL clause
@@ -1057,12 +1061,11 @@ def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
     name into an joined eager load.
 
-    .. note:: 
-    
-       This function is known as :func:`eagerload` in all versions
-       of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
-       series. :func:`eagerload` will remain available for the foreseeable
-       future in order to enable cross-compatibility.
+    .. versionchanged:: 0.6beta3
+        This function is known as :func:`eagerload` in all versions
+        of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
+        series. :func:`eagerload` will remain available for the foreseeable
+        future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1114,8 +1117,7 @@ def joinedload_all(*keys, **kw):
     """Return a ``MapperOption`` that will convert all properties along the
     given dot-separated path into an joined eager load.
 
-    .. note:: 
-    
+    .. versionchanged:: 0.6beta3
         This function is known as :func:`eagerload_all` in all versions
         of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
         series. :func:`eagerload_all` will remain available for the
@@ -1236,7 +1238,7 @@ def immediateload(*keys):
 
     See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
 
-    New as of verison 0.6.5.
+    .. versionadded:: 0.6.5
 
     """
     return strategies.EagerLazyOption(keys, lazy='immediate')

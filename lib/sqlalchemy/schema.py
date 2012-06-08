@@ -1529,7 +1529,8 @@ class DefaultClause(FetchedValue):
 class PassiveDefault(DefaultClause):
     """A DDL-specified DEFAULT column value.
 
-    .. deprecated:: 0.6 :class:`.PassiveDefault` is deprecated. 
+    .. deprecated:: 0.6
+        :class:`.PassiveDefault` is deprecated. 
         Use :class:`.DefaultClause`.
     """
     @util.deprecated("0.6", 

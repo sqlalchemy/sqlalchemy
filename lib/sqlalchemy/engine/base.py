@@ -2330,7 +2330,7 @@ class ResultProxy(object):
         :meth:`~.ResultProxy.fetchmany`
         :meth:`~.ResultProxy.fetchall`.
         
-        New in 0.6.7.
+        .. versionadded:: 0.6.7
 
         """
         return self._metadata is not None
@@ -2346,7 +2346,7 @@ class ResultProxy(object):
         assuming the statement did not include
         a user defined "returning" construct.
 
-        New in 0.6.7.
+        .. versionadded:: 0.6.7
         
         """
         return self.context.isinsert

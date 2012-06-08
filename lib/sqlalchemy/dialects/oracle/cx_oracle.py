@@ -54,6 +54,9 @@ handler so that all string based result values are returned as unicode as well.
 Note that this behavior is disabled when Oracle 8 is detected, as it has been 
 observed that issues remain when passing Python unicodes to cx_oracle with Oracle 8.
 
+.. versionchanged:: 0.6
+    Use of native unicode mode provided as of cx_oracle 5.
+
 LOB Objects
 -----------
 
@@ -111,10 +114,13 @@ environment variable. Upon first connection, the dialect runs a
 test to determine the current "decimal" character, which can be
 a comma "," for european locales. From that point forward the
 outputtypehandler uses that character to represent a decimal
-point (this behavior is new in version 0.6.6). Note that
-cx_oracle 5.0.3 or greater is required when dealing with
-numerics with locale settings that don't use a period "." as the
-decimal character.
+point. Note that cx_oracle 5.0.3 or greater is required
+when dealing with numerics with locale settings that don't use
+a period "." as the decimal character.
+
+.. versionchanged:: 0.6.6
+    The outputtypehandler uses a comma "," character to represent
+    a decimal point.
 
 .. _OCI: http://www.oracle.com/technetwork/database/features/oci/index.html
 

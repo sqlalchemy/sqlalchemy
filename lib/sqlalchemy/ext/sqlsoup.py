@@ -5,6 +5,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """
+.. versionchanged:: 0.8
+    SQLSoup is now its own project.  Documentation
+    and project status are available at:
+    http://pypi.python.org/pypi/sqlsoup and
+    http://readthedocs.org/docs/sqlsoup\ .
+    SQLSoup will no longer be included with SQLAlchemy.
+
 Introduction
 ============
 
@@ -625,7 +632,7 @@ class SqlSoup(object):
         This is the "master" method that can be used to create any 
         configuration.
 
-        (new in 0.6.6)
+        .. versionadded:: 0.6.6
 
         :param attrname: String attribute name which will be
           established as an attribute on this :class:.`.SqlSoup`
@@ -706,8 +713,9 @@ class SqlSoup(object):
     def map(self, selectable, base=None, **mapper_args):
         """Map a selectable directly.
 
-        The class and its mapping are not cached and will
-        be discarded once dereferenced (as of 0.6.6).
+        .. versionchanged:: 0.6.6
+            The class and its mapping are not cached and will
+            be discarded once dereferenced.
 
         :param selectable: an :func:`.expression.select` construct.
         :param base: a Python class which will be used as the
@@ -732,8 +740,9 @@ class SqlSoup(object):
         """Map a selectable directly, wrapping the 
         selectable in a subquery with labels.
 
-        The class and its mapping are not cached and will
-        be discarded once dereferenced (as of 0.6.6).
+        .. versionchanged:: 0.6.6
+            The class and its mapping are not cached and will
+            be discarded once dereferenced.
 
         :param selectable: an :func:`.expression.select` construct.
         :param base: a Python class which will be used as the
@@ -756,8 +765,9 @@ class SqlSoup(object):
                 base=None, **mapper_args):
         """Create an :func:`.expression.join` and map to it.
 
-        The class and its mapping are not cached and will
-        be discarded once dereferenced (as of 0.6.6).
+        .. versionchanged:: 0.6.6
+            The class and its mapping are not cached and will
+            be discarded once dereferenced.
 
         :param left: a mapped class or table object.
         :param right: a mapped class or table object.

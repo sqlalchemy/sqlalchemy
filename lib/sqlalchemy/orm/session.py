@@ -199,8 +199,10 @@ class SessionTransaction(object):
     instances behind the scenes, with one ``Transaction`` per ``Engine`` in
     use.
 
-    Direct usage of ``SessionTransaction`` is not necessary as of SQLAlchemy
-    0.4; use the ``begin()`` and ``commit()`` methods on ``Session`` itself.
+    .. versionchanged:: 0.4
+        Direct usage of ``SessionTransaction`` is not
+        necessary; use the ``begin()`` and ``commit()``
+        methods on ``Session`` itself.
 
     The ``SessionTransaction`` object is **not** thread-safe.
 
