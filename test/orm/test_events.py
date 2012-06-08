@@ -553,6 +553,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             'after_flush',
             'after_flush_postexec',
             'after_begin',
+            'before_attach',
             'after_attach',
             'after_bulk_update',
             'after_bulk_delete'
@@ -575,7 +576,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         eq_(
             canary, 
-            [ 'after_attach', 'before_flush', 'after_begin',
+            [ 'before_attach', 'after_attach', 'before_flush', 'after_begin',
             'after_flush', 'after_flush_postexec', 
             'before_commit', 'after_commit',]
         )
@@ -596,9 +597,9 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             sess.commit
         )
         sess.rollback()
-        eq_(canary, ['after_attach', 'before_commit', 'before_flush', 
+        eq_(canary, ['before_attach', 'after_attach', 'before_commit', 'before_flush', 
         'after_begin', 'after_flush', 'after_flush_postexec', 
-        'after_commit', 'after_attach', 'before_commit', 
+        'after_commit', 'before_attach', 'after_attach', 'before_commit', 
         'before_flush', 'after_begin', 'after_rollback', 
         'after_soft_rollback', 'after_soft_rollback'])
 
@@ -639,7 +640,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        eq_(canary, ['after_attach', 'before_flush', 'after_begin',
+        eq_(canary, ['before_attach', 'after_attach', 'before_flush', 'after_begin',
                        'after_flush', 'after_flush_postexec'])
 
     def test_flush_in_commit_hook(self):
@@ -657,6 +658,25 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.commit()
         eq_(canary, ['before_commit', 'before_flush', 'after_flush',
                        'after_flush_postexec', 'after_commit'])
+
+    def test_state_before_attach(self):
+        User, users = self.classes.User, self.tables.users
+        sess = Session()
+
+        @event.listens_for(sess, "before_attach")
+        def listener(session, inst):
+            state = attributes.instance_state(inst)
+            if state.key:
+                assert state.key not in session.identity_map
+            else:
+                assert inst not in session.new
+
+        mapper(User, users)
+        u= User(name='u1')
+        sess.add(u)
+        sess.flush()
+        sess.expunge(u)
+        sess.add(u)
 
     def test_state_after_attach(self):
         User, users = self.classes.User, self.tables.users

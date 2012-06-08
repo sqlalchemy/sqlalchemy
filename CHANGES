@@ -168,7 +168,10 @@ CHANGES
     upon Session.add(), Session.merge(), 
     etc., so that the object is represented
     in these collections when the event 
-    is called. [ticket:2464]
+    is called.  Added before_attach
+    event to accommodate use cases that 
+    need autoflush w pre-attached object.  
+    [ticket:2464]
 
   - [bug] Fixed bug whereby polymorphic_on
     column that's not otherwise mapped on the 

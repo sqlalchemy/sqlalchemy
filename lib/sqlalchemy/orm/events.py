@@ -1061,10 +1061,36 @@ class SessionEvents(event.Events):
         
         """
 
+    def before_attach(self, session, instance):
+        """Execute before an instance is attached to a session.
+
+        This is called before an add, delete or merge causes
+        the object to be part of the session.
+        
+        .. versionadded:: 0.8.  Note that :meth:`.after_attach` now 
+           fires off after the item is part of the session.  
+           :meth:`.before_attach` is provided for those cases where
+           the item should not yet be part of the session state.
+           
+        """
+
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.
 
-        This is called after an add, delete or merge. """
+        This is called after an add, delete or merge. 
+        
+        .. note::
+           
+           As of 0.8, this event fires off *after* the item
+           has been fully associated with the session, which is
+           different than previous releases.  For event
+           handlers that require the object not yet 
+           be part of session state (such as handlers which
+           may autoflush while the target object is not
+           yet complete) consider the
+           new :meth:`.before_attach` event.
+           
+        """
 
     def after_bulk_update( self, session, query, query_context, result):
         """Execute after a bulk update operation to the session.

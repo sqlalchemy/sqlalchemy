@@ -1300,7 +1300,7 @@ class Session(object):
         # ensure object is attached to allow the 
         # cascade operation to load deferred attributes
         # and collections
-        self._attach(state)
+        self._attach(state, include_before=True)
 
         # grab the cascades before adding the item to the deleted list
         # so that autoflush does not delete the item
@@ -1472,6 +1472,7 @@ class Session(object):
                 "Object '%s' already has an identity - it can't be registered "
                 "as pending" % mapperutil.state_str(state))
 
+        self._before_attach(state)
         if state not in self._new:
             self._new[state] = state.obj()
             state.insert_order = len(self._new)
@@ -1493,6 +1494,7 @@ class Session(object):
                 "function to send this object back to the transient state." %
                 mapperutil.state_str(state)
             )
+        self._before_attach(state)
         self._deleted.pop(state, None)
         self.identity_map.add(state)
         self._attach(state)
@@ -1510,7 +1512,7 @@ class Session(object):
         if state.key is None:
             return
 
-        self._attach(state)
+        self._attach(state, include_before=True)
         self._deleted[state] = state.obj()
         self.identity_map.add(state)
 
@@ -1555,10 +1557,15 @@ class Session(object):
         
         """
         state = attributes.instance_state(obj)
-        self._attach(state)
+        self._attach(state, include_before=True)
         state._load_pending = True
 
-    def _attach(self, state):
+    def _before_attach(self, state):
+        if state.session_id != self.hash_key and \
+            self.dispatch.before_attach:
+            self.dispatch.before_attach(self, state.obj())
+
+    def _attach(self, state, include_before=False):
         if state.key and \
             state.key in self.identity_map and \
             not self.identity_map.contains_state(state):
@@ -1576,6 +1583,9 @@ class Session(object):
                                     state.session_id, self.hash_key))
 
         if state.session_id != self.hash_key:
+            if include_before and \
+                self.dispatch.before_attach:
+                self.dispatch.before_attach(self, state.obj())
             state.session_id = self.hash_key
             if self.dispatch.after_attach:
                 self.dispatch.after_attach(self, state.obj())
