@@ -309,11 +309,19 @@ div.note, div.warning, p.deprecated, div.topic  {
 }
 
 
-div.admonition, div.topic, p.deprecated {
+div.admonition, div.topic, p.deprecated, p.versionadded, p.versionchanged {
     border:1px solid #CCCCCC;
     padding:5px 10px;
     font-size:.9em;
     box-shadow: 2px 2px 3px #DFDFDF;
+}
+
+p.versionadded span.versionmodified,
+p.versionchanged span.versionmodified,
+p.deprecated span.versionmodified {
+    background-color: #ECF0F3;
+    color: #990000;
+    font-style: italic;
 }
 
 div.warning .admonition-title {
