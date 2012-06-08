@@ -102,8 +102,11 @@ Installing the C Extensions
 ----------------------------------
 
 SQLAlchemy includes C extensions which provide an extra speed boost for
-dealing with result sets.  In version 0.6, these extensions must be explicitly
-enabled (in 0.7 they will build by default).   
+dealing with result sets.
+
+.. versionchanged:: 0.7
+    In version 0.6, these extensions must be explicitly
+    enabled (in 0.7 they will build by default).
 
 To install including building the C extensions, use the ``--with-cextensions`` flag.
 This flag must be on the command line before the actual install or build command::

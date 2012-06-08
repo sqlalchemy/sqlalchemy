@@ -890,8 +890,7 @@ from ``Address`` to ``User`` it is **many to one**, and from ``User`` to
 ``Address`` it is **one to many**. SQLAlchemy is automatically aware of
 many-to-one/one-to-many based on foreign keys.
 
-.. note:: 
-
+.. versionchanged:: 0.6beta2
     The :func:`~sqlalchemy.orm.relationship()` function has historically
     been known as :func:`~sqlalchemy.orm.relation()`, which is the name that's
     available in all versions of SQLAlchemy prior to 0.6beta2, including the 0.5

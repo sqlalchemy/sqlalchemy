@@ -73,12 +73,16 @@ In some cases, multiple columns may have the same name, such as when
 mapping to a join of two or more tables that share some column name.  To 
 exclude or include individual columns, :class:`.Column` objects
 may also be placed within the "include_properties" and "exclude_properties"
-collections (new feature as of 0.6.4)::
+collections::
 
     mapper(UserAddress, users_table.join(addresses_table),
                 exclude_properties=[addresses_table.c.id],
                 primary_key=[users_table.c.id]
             )
+
+.. versionadded:: 0.6.4
+    :class:`.Column` objects may also be placed within
+    the "include_properties" and "exclude_properties" collections.
 
 It should be noted that insert and update defaults configured on individal
 :class:`.Column` objects, such as those configured by the "default",

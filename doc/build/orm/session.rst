@@ -519,9 +519,10 @@ is extremely convenient.  The solution here would usually be to not assign
 ``a1.user`` to an object already persistent in the target
 session.
 
-Note that a new :func:`.relationship` option introduced in 0.6.5, 
-``cascade_backrefs=False``, will also prevent the ``Address`` from
-being added to the session via the ``a1.user = u1`` assignment.
+.. versionadded:: 0.6.5
+    Note that new :func:`.relationship` option,
+   ``cascade_backrefs=False``, will also prevent the ``Address`` from
+    being added to the session via the ``a1.user = u1`` assignment.
 
 Further detail on cascade operation is at :ref:`unitofwork_cascades`.
 
@@ -930,7 +931,11 @@ is already present in a session will also be added to that same session.
 relationship()-based attribute, meaning that objects which were removed from a
 scalar or collection attribute whose changes have not yet been flushed are
 also placed into the new session - this so that foreign key clear operations
-and deletions will take place (new in 0.6).
+and deletions will take place.
+
+.. versionadded:: 0.6
+    ``save-update`` cascading the pending history of
+    a relationship()-based attribute.
 
 Note that the ``delete-orphan`` cascade only functions for relationships where
 the target object can have a single parent at a time, meaning it is only
@@ -969,12 +974,15 @@ place::
     >>> i1 in session
     True
 
-This behavior can be disabled as of 0.6.5 using the ``cascade_backrefs`` flag::
+This behavior can be disabled using the ``cascade_backrefs`` flag::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, backref='order', 
                                     cascade_backrefs=False)
     })
+
+.. versionadded:: 0.6.5
+    Disabling the ``save-update`` cascade by the ``cascade_backrefs`` flag.
 
 So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
 collection of ``o1``, but will not add ``i1`` to the session.   You can, of
@@ -982,7 +990,6 @@ course, :func:`~.Session.add` ``i1`` to the session at a later point.   This opt
 may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.
-
 
 .. _unitofwork_transaction:
 
