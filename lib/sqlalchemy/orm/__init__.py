@@ -398,8 +398,10 @@ def relation(argument, secondary=None, **kwargs):
       This is used for many-to-one or many-to-many relationships that
       should be treated either as one-to-one or one-to-many.  Its
       usage is optional unless delete-orphan cascade is also 
-      set on this relation(), in which case its required (new in 0.5.2).
-      
+      set on this relation(), in which case its required.
+
+      .. versionadded:: 0.5.2
+
     :param uselist=(True|False):
       a boolean that indicates if this property should be loaded as a
       list or a scalar. In most cases, this value is determined

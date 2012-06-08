@@ -60,7 +60,7 @@ Compiling sub-elements of a custom expression construct
 The ``compiler`` argument is the :class:`~sqlalchemy.engine.base.Compiled` object
 in use.  This object can be inspected for any information about the in-progress 
 compilation, including ``compiler.dialect``, ``compiler.statement`` etc.
-The :class:`~sqlalchemy.sql.compiler.SQLCompiler` and :class:`~sqlalchemy.sql.compiler.DDLCompiler` (DDLCompiler is 0.6. only)
+The :class:`~sqlalchemy.sql.compiler.SQLCompiler` and :class:`~sqlalchemy.sql.compiler.DDLCompiler`
 both include a ``process()`` method which can be used for compilation of embedded attributes::
 
     class InsertFromSelect(ClauseElement):
@@ -81,6 +81,9 @@ both include a ``process()`` method which can be used for compilation of embedde
 Produces::
 
     "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z FROM mytable WHERE mytable.x > :x_1)"
+
+.. versionadded:: 0.6
+    :class:`~sqlalchemy.sql.compiler.DDLCompiler`\ .
 
 Changing the default compilation of existing constructs
 =======================================================

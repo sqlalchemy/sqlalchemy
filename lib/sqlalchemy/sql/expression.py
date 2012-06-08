@@ -2565,8 +2565,10 @@ class Join(FromClause):
           select, for columns that are calculated to be "equivalent"
           based on the join criterion of this :class:`Join`. This will
           recursively apply to any joins directly nested by this one
-          as well.  This flag is specific to a particular use case
-          by the ORM and will be deprecated in 0.6.
+          as well.
+
+          .. deprecated:: 0.6
+              This flag is specific to a particular use case by the ORM.
 
         :param \**kwargs: all other kwargs are sent to the 
           underlying :func:`select()` function.

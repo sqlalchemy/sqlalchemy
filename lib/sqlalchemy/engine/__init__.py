@@ -124,7 +124,9 @@ def create_engine(*args, **kwargs):
         parameters are instances of ``unicode``, otherwise raises an
         error. Only takes effect when ``convert_unicode==True``. This
         flag is also available on the ``String`` type and its
-        descendants. New in 0.4.2.
+        descendants.
+
+        .. versionadded:: 0.4.2
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as

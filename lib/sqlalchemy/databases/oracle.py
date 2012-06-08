@@ -92,13 +92,20 @@ of LOB objects, can be disabled using auto_convert_lobs=False.
 LIMIT/OFFSET Support
 --------------------
 
-Oracle has no support for the LIMIT or OFFSET keywords.  Whereas previous versions of SQLAlchemy
-used the "ROW NUMBER OVER..." construct to simulate LIMIT/OFFSET, SQLAlchemy 0.5 now uses 
-a wrapped subquery approach in conjunction with ROWNUM.  The exact methodology is taken from
-http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .  Note that the 
-"FIRST ROWS()" optimization keyword mentioned is not used by default, as the user community felt
-this was stepping into the bounds of optimization that is better left on the DBA side, but this
-prefix can be added by enabling the optimize_limits=True flag on create_engine().
+Oracle has no support for the LIMIT or OFFSET keywords.
+
+.. versionchanged:: 0.5
+    Whereas previous versions of SQLAlchemy used the "ROW NUMBER OVER..."
+    construct to simulate LIMIT/OFFSET, SQLAlchemy 0.5 now uses 
+    a wrapped subquery approach in conjunction with ROWNUM.
+    The exact methodology is taken from
+    http://www.oracle.com/technology/oramag/oracle/06-sep/o56asktom.html .
+    Note that the 
+    "FIRST ROWS()" optimization keyword mentioned is not used by default,
+    as the user community felt this was stepping into the bounds
+    of optimization that is better left on the DBA side, but this
+    prefix can be added by enabling the optimize_limits=True flag
+    on create_engine().
 
 Two Phase Transaction Support
 -----------------------------

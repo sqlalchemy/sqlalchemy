@@ -1,7 +1,8 @@
 """
 information schema implementation.
 
-This module is deprecated and will not be present in this form in SQLAlchemy 0.6.
+.. deprecated::
+    This module is deprecated and will not be present in this form in SQLAlchemy 0.6.
 
 """
 from sqlalchemy import util
