@@ -291,7 +291,7 @@ class AliasedClass(object):
      have any "column correspondence" to the actual ``UnitPrice.price`` column
      as it is not a proxy of the original.
 
-     ``adapt_on_names`` is new in 0.7.3.
+     .. versionadded:: 0.7.3
 
     """
     def __init__(self, cls, alias=None, 
@@ -412,12 +412,10 @@ def with_polymorphic(base, classes, selectable=False,
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
 
-    .. note::
-    
-       :func:`.orm.with_polymorphic` is new in version 0.8.
-       It is in addition to the existing :class:`.Query` method
-       :meth:`.Query.with_polymorphic`, which has the same purpose
-       but is not as flexible in its usage.
+    .. versionadded:: 0.8
+        :func:`.orm.with_polymorphic` is in addition to the existing
+        :class:`.Query` method :meth:`.Query.with_polymorphic`,
+        which has the same purpose but is not as flexible in its usage.
 
     Using this method will ensure that each descendant mapper's
     tables are included in the FROM clause, and will allow filter()
@@ -619,11 +617,12 @@ def with_parent(instance, prop):
     Python without the need to render joins to the parent table
     in the rendered statement.
 
-    As of 0.6.4, this method accepts parent instances in all 
-    persistence states, including transient, persistent, and detached.
-    Only the requisite primary key/foreign key attributes need to
-    be populated.  Previous versions didn't work with transient
-    instances.
+    .. versionchanged:: 0.6.4
+        This method accepts parent instances in all 
+        persistence states, including transient, persistent, and detached.
+        Only the requisite primary key/foreign key attributes need to
+        be populated.  Previous versions didn't work with transient
+        instances.
 
     :param instance:
       An instance which has some :func:`.relationship`.

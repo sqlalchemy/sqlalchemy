@@ -427,7 +427,7 @@ class ConnectionEvents(event.Events):
         exception is then wrapped in a SQLAlchemy DBAPI exception
         wrapper and re-thrown.
         
-        New in 0.7.7.
+        .. versionadded:: 0.7.7
 
         """
 

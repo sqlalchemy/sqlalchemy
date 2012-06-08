@@ -109,11 +109,12 @@ class SessionTransaction(object):
     instances behind the scenes, with one :class:`~.engine.base.Transaction`
     per :class:`~.engine.base.Engine` in use.
 
-    Direct usage of :class:`.SessionTransaction` is not typically 
-    necessary as of SQLAlchemy 0.4; use the :meth:`.Session.rollback` and 
-    :meth:`.Session.commit` methods on :class:`.Session` itself to 
-    control the transaction.
-    
+    .. versionchanged:: 0.4
+        Direct usage of :class:`.SessionTransaction` is not typically
+        necessary; use the :meth:`.Session.rollback` and 
+        :meth:`.Session.commit` methods on :class:`.Session` itself to 
+        control the transaction.
+
     The current instance of :class:`.SessionTransaction` for a given
     :class:`.Session` is available via the :attr:`.Session.transaction`
     attribute.
@@ -1001,7 +1002,7 @@ class Session(object):
         of objects which involve existing database queries,
         where the uncompleted object should not yet be flushed.
         
-        New in 0.7.6.
+        .. versionadded:: 0.7.6
 
         """
         autoflush = self.autoflush
@@ -1755,19 +1756,16 @@ class Session(object):
         E.g.::
         
             return session.is_modified(someobject)
-            
-        .. note:: 
-          
-           When using SQLAlchemy 0.7 and earlier, the ``passive`` 
-           flag should **always** be explicitly set to ``True``,
-           else SQL loads/autoflushes may proceed which can affect 
-           the modified state itself::
-           
-               session.is_modified(someobject, passive=True)
-           
-           In 0.8 and above, the behavior is corrected and 
-           this flag is ignored.
-           
+
+        .. versionchanged:: 0.8
+            When using SQLAlchemy 0.7 and earlier, the ``passive`` 
+            flag should **always** be explicitly set to ``True``,
+            else SQL loads/autoflushes may proceed which can affect 
+            the modified state itself:
+            ``session.is_modified(someobject, passive=True)``\ .
+            In 0.8 and above, the behavior is corrected and 
+            this flag is ignored.
+
         A few caveats to this method apply:
 
         * Instances present in the :attr:`.Session.dirty` collection may report 
@@ -1800,9 +1798,11 @@ class Session(object):
          only local-column based properties (i.e. scalar columns or many-to-one
          foreign keys) that would result in an UPDATE for this instance upon
          flush.
-        :param passive: Ignored for backwards compatibility in 
-         0.8 and above.   When using SQLAlchemy 0.7 and earlier, this
-         flag should always be set to ``True``.
+        :param passive:
+         .. versionchanged:: 0.8
+             Ignored for backwards compatibility.
+             When using SQLAlchemy 0.7 and earlier, this flag should always
+             be set to ``True``.
 
         """
         state = object_state(instance)

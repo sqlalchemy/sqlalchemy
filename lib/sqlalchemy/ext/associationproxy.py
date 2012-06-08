@@ -141,7 +141,7 @@ class AssociationProxy(object):
         """The 'remote' :class:`.MapperProperty` referenced by this
         :class:`.AssociationProxy`.
         
-        New in 0.7.3.
+        .. versionadded:: 0.7.3
         
         See also:
         
@@ -157,7 +157,7 @@ class AssociationProxy(object):
         """The 'local' :class:`.MapperProperty` referenced by this
         :class:`.AssociationProxy`.
 
-        New in 0.7.3.
+        .. versionadded:: 0.7.3
         
         See also:
         
@@ -177,7 +177,7 @@ class AssociationProxy(object):
         
             sess.query(Parent).join(*Parent.proxied.attr)
 
-        New in 0.7.3.
+        .. versionadded:: 0.7.3
         
         See also:
         

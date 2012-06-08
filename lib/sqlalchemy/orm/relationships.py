@@ -57,7 +57,7 @@ def remote(expr):
                                 remote(DHCPHost.ip_address)
             )
 
-    New in 0.8.
+    .. versionadded:: 0.8
 
     See also:
     
@@ -74,7 +74,7 @@ def foreign(expr):
 
     See the example at :func:`.remote`.
 
-    New in 0.8.
+    .. versionadded:: 0.8
 
     """
 
@@ -86,8 +86,8 @@ def remote_foreign(expr):
     
     See the example at :func:`.remote`.
 
-    New in 0.8.
-    
+    .. versionadded:: 0.8
+
     """
 
     return _annotate_columns(expr, {"foreign":True, 

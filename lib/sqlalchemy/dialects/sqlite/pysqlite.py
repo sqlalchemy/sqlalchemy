@@ -118,12 +118,10 @@ SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
   prevents a connection from being used again in a different thread and works
   best with SQLite's coarse-grained file locking.
 
-  .. note:: 
-  
-     The default selection of :class:`.NullPool` for SQLite file-based databases 
-     is new in SQLAlchemy 0.7. Previous versions
-     select :class:`.SingletonThreadPool` by
-     default for all SQLite databases.
+  .. versionchanged:: 0.7
+      Default selection of :class:`.NullPool` for SQLite file-based databases.
+      Previous versions select :class:`.SingletonThreadPool` by
+      default for all SQLite databases.
 
 Modern versions of SQLite no longer have the threading restrictions, and assuming
 the sqlite3/pysqlite library was built with SQLite's default threading mode

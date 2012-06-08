@@ -642,9 +642,8 @@ class QueuePool(Pool):
 
         :param reset_on_return: Determine steps to take on 
           connections as they are returned to the pool.   
-          As of SQLAlchemy 0.7.6, reset_on_return can have any 
-          of these values:
-          
+          reset_on_return can have any of these values:
+
           * 'rollback' - call rollback() on the connection,
             to release locks and transaction resources.
             This is the default value.  The vast majority
@@ -659,18 +658,21 @@ class QueuePool(Pool):
             value is more dangerous than 'rollback' because
             any data changes present on the transaction
             are committed unconditionally.
-           * None - don't do anything on the connection.
-             This setting should only be made on a database
-             that has no transaction support at all,
-             namely MySQL MyISAM.   By not doing anything,
-             performance can be improved.   This
-             setting should **never be selected** for a 
-             database that supports transactions,
-             as it will lead to deadlocks and stale
-             state.
-            * False - same as None, this is here for
-              backwards compatibility.
-          
+          * None - don't do anything on the connection.
+            This setting should only be made on a database
+            that has no transaction support at all,
+            namely MySQL MyISAM.   By not doing anything,
+            performance can be improved.   This
+            setting should **never be selected** for a 
+            database that supports transactions,
+            as it will lead to deadlocks and stale
+            state.
+          * False - same as None, this is here for
+            backwards compatibility.
+
+          .. versionchanged:: 0.7.6
+              ``reset_on_return`` accepts values.
+
         :param listeners: A list of
           :class:`~sqlalchemy.interfaces.PoolListener`-like objects or
           dictionaries of callables that receive events when DB-API
@@ -784,9 +786,9 @@ class NullPool(Pool):
     invalidation are not supported by this Pool implementation, since
     no connections are held persistently.
 
-    :class:`.NullPool` is used by the SQlite dialect automatically
-    when a file-based database is used (as of SQLAlchemy 0.7).
-    See :ref:`sqlite_toplevel`.
+    .. versionchanged:: 0.7
+        :class:`.NullPool` is used by the SQlite dialect automatically
+        when a file-based database is used. See :ref:`sqlite_toplevel`.
 
     """
 
@@ -865,10 +867,11 @@ class AssertionPool(Pool):
     This will raise an exception if more than one connection is checked out
     at a time.  Useful for debugging code that is using more connections
     than desired.
-    
-    :class:`.AssertionPool` also logs a traceback of where
-    the original connection was checked out, and reports
-    this in the assertion error raised (new in 0.7).
+
+    .. versionchanged:: 0.7
+        :class:`.AssertionPool` also logs a traceback of where
+        the original connection was checked out, and reports
+        this in the assertion error raised.
 
     """
     def __init__(self, *args, **kw):

@@ -136,7 +136,7 @@ class TypeEngine(AbstractType):
         :param dialect_name: base name of the dialect which uses 
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
-        New in 0.7.2.
+        .. versionadded:: 0.7.2
 
         """
         return Variant(self, {dialect_name:type_})
@@ -720,7 +720,7 @@ class Variant(TypeDecorator):
     The :class:`.Variant` type is typically constructed
     using the :meth:`.TypeEngine.with_variant` method.
     
-    New in 0.7.2.
+    .. versionadded:: 0.7.2
     
     """
 
@@ -752,8 +752,6 @@ class Variant(TypeDecorator):
         :param dialect_name: base name of the dialect which uses 
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
-        New in 0.7.2.
-        
         """
 
         if dialect_name in self.mapping:

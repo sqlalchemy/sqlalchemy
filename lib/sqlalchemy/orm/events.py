@@ -1007,7 +1007,7 @@ class SessionEvents(event.Events):
          for the given :class:`.Session` is available via the
          :attr:`.Session.transaction` attribute.
 
-        New in 0.7.3.
+        .. versionadded:: 0.7.3
 
         """
 

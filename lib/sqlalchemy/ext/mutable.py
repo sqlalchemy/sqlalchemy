@@ -217,12 +217,13 @@ be assigned an object value which represents information "composed" from one
 or more columns from the underlying mapped table. The usual example is that of
 a geometric "point", and is introduced in :ref:`mapper_composite`.
 
-As of SQLAlchemy 0.7, the internals of :func:`.orm.composite` have been
-greatly simplified and in-place mutation detection is no longer enabled by
-default; instead, the user-defined value must detect changes on its own and
-propagate them to all owning parents. The :mod:`sqlalchemy.ext.mutable`
-extension provides the helper class :class:`.MutableComposite`, which is a
-slight variant on the :class:`.Mutable` class.
+.. versionchanged:: 0.7
+    The internals of :func:`.orm.composite` have been
+    greatly simplified and in-place mutation detection is no longer enabled by
+    default; instead, the user-defined value must detect changes on its own and
+    propagate them to all owning parents. The :mod:`sqlalchemy.ext.mutable`
+    extension provides the helper class :class:`.MutableComposite`, which is a
+    slight variant on the :class:`.Mutable` class.
 
 As is the case with :class:`.Mutable`, the user-defined composite class
 subclasses :class:`.MutableComposite` as a mixin, and detects and delivers

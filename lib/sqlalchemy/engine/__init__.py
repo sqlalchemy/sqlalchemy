@@ -145,9 +145,11 @@ def create_engine(*args, **kwargs):
 
     :param case_sensitive=True: if False, result column names
        will match in a case-insensitive fashion, that is,
-       ``row['SomeColumn']``.  By default, result row names
-       match case-sensitively as of version 0.8.  In version
-       0.7 and prior, all matches were case-insensitive.
+       ``row['SomeColumn']``.
+
+       .. versionchanged:: 0.8
+           By default, result row names match case-sensitively.
+           In version 0.7 and prior, all matches were case-insensitive.
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
@@ -316,7 +318,9 @@ def create_engine(*args, **kwargs):
         behavior of the pool, which is whether ``rollback()``, 
         ``commit()``, or nothing is called upon connections
         being returned to the pool.  See the docstring for
-        ``reset_on_return`` at :class:`.Pool`. (new as of 0.7.6)
+        ``reset_on_return`` at :class:`.Pool`.
+
+        .. versionadded:: 0.7.6
 
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used

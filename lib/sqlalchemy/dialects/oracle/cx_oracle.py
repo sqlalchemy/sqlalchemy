@@ -98,7 +98,8 @@ to :func:`.create_engine`::
     engine = create_engine("oracle+cx_oracle://dsn", 
                         coerce_to_decimal=False)
 
-The ``coerce_to_decimal`` flag is new in 0.7.6.
+.. versionadded:: 0.7.6
+    Add the ``coerce_to_decimal`` flag.
 
 Another alternative to performance is to use the 
 `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library; 
@@ -128,10 +129,13 @@ environment variable. Upon first connection, the dialect runs a
 test to determine the current "decimal" character, which can be
 a comma "," for european locales. From that point forward the
 outputtypehandler uses that character to represent a decimal
-point (this behavior is new in version 0.6.6). Note that
-cx_oracle 5.0.3 or greater is required when dealing with
-numerics with locale settings that don't use a period "." as the
-decimal character.
+point. Note that cx_oracle 5.0.3 or greater is required
+when dealing with numerics with locale settings that don't use
+a period "." as the decimal character.
+
+.. versionchanged:: 0.6.6
+    The outputtypehandler uses a comma "," character to represent
+    a decimal point.
 
 .. _OCI: http://www.oracle.com/technetwork/database/features/oci/index.html
 

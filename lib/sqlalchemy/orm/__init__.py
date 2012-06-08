@@ -189,10 +189,8 @@ def create_session(bind=None, **kwargs):
 def relationship(argument, secondary=None, **kwargs):
     """Provide a relationship of a primary Mapper to a secondary Mapper.
 
-    .. note:: 
-    
-       :func:`relationship` is historically known as
-       :func:`relation` prior to version 0.6.
+    .. versionchanged:: 0.6
+        :func:`relationship` is historically known as :func:`relation`.
 
     This corresponds to a parent-child or associative table relationship.  The
     constructed class is an instance of :class:`.RelationshipProperty`.
@@ -308,11 +306,13 @@ def relationship(argument, secondary=None, **kwargs):
 
       * ``delete-orphan`` - if an item of the child's type is 
         detached from its parent, mark it for deletion.  
-        As of version 0.7, this option does not prevent
-        a new instance of the child object from being persisted
-        without a parent to start with; to constrain against
-        that case, ensure the child's foreign key column(s)
-        is configured as NOT NULL
+
+        .. versionchanged:: 0.7
+            This option does not prevent
+            a new instance of the child object from being persisted
+            without a parent to start with; to constrain against
+            that case, ensure the child's foreign key column(s)
+            is configured as NOT NULL
 
       * ``refresh-expire`` - cascade the :meth:`.Session.expire` 
         and :meth:`~sqlalchemy.orm.session.Session.refresh` operations
@@ -395,12 +395,13 @@ def relationship(argument, secondary=None, **kwargs):
       ``foreign_keys`` may also be passed as a callable function
       which is evaluated at mapper initialization time, and may be passed as a 
       Python-evaluable string when using Declarative.
-      
-      As of 0.8, the :func:`.foreign` annotation can also be applied
-      directly to the ``primaryjoin`` expression, which is an alternate,
-      more specific system of describing which columns in a particular
-      ``primaryjoin`` should be considered "foreign".
-      
+
+      .. versionchanged:: 0.8
+          The :func:`.foreign` annotation can also be applied
+          directly to the ``primaryjoin`` expression, which is an alternate,
+          more specific system of describing which columns in a particular
+          ``primaryjoin`` should be considered "foreign".
+
     :param innerjoin=False:
       when ``True``, joined eager loads will use an inner join to join
       against related tables instead of an outer join.  The purpose
@@ -433,7 +434,9 @@ def relationship(argument, secondary=None, **kwargs):
 
       * ``immediate`` - items should be loaded as the parents are loaded,
         using a separate SELECT statement, or identity map fetch for
-        simple many-to-one references.  (new as of 0.6.5)
+        simple many-to-one references.
+
+        .. versionadded:: 0.6.5
 
       * ``joined`` - items should be loaded "eagerly" in the same query as
         that of the parent, using a JOIN or LEFT OUTER JOIN.  Whether
@@ -586,10 +589,11 @@ def relationship(argument, secondary=None, **kwargs):
       which is evaluated at mapper initialization time, and may be passed as a 
       Python-evaluable string when using Declarative.
 
-      As of 0.8, the :func:`.remote` annotation can also be applied
-      directly to the ``primaryjoin`` expression, which is an alternate,
-      more specific system of describing which columns in a particular
-      ``primaryjoin`` should be considered "remote".
+      .. versionchanged:: 0.8
+          The :func:`.remote` annotation can also be applied
+          directly to the ``primaryjoin`` expression, which is an alternate,
+          more specific system of describing which columns in a particular
+          ``primaryjoin`` should be considered "remote".
 
     :param query_class:
       a :class:`.Query` subclass that will be used as the base of the
@@ -686,7 +690,9 @@ def column_property(*cols, **kw):
       flag is available for applications that make use of
       :func:`.attributes.get_history` or :meth:`.Session.is_modified`
       which also need to know
-      the "previous" value of the attribute. (new in 0.6.6)
+      the "previous" value of the attribute.
+
+      .. versionadded:: 0.6.6
 
     :param comparator_factory: a class which extends
        :class:`.ColumnProperty.Comparator` which provides custom SQL clause
@@ -718,8 +724,8 @@ def column_property(*cols, **kw):
         Note however that the :class:`.Session` with default expiration
         settings still expires 
         all attributes after a :meth:`.Session.commit` call, however.
-        New in 0.7.3.
-        
+
+        .. versionadded:: 0.7.3
 
     :param extension:
         an
@@ -750,8 +756,10 @@ def composite(class_, *cols, **kwargs):
       When ``True``, indicates that the "previous" value for a
       scalar attribute should be loaded when replaced, if not
       already loaded.  See the same flag on :func:`.column_property`.
-      (This flag becomes meaningful specifically for 
-      :func:`.composite` in 0.7 - previously it was a placeholder).
+
+      .. versionchanged:: 0.7
+          This flag specifically becomes meaningful
+          - previously it was a placeholder.
 
     :param group:
       A group name for this property when marked as deferred.
@@ -991,7 +999,7 @@ def mapper(class_, local_table=None, *args, **params):
                     "polymorphic_identity":"employee"
                 }
         
-          As of SQLAlchemy 0.7.4, it may also be specified
+          It may also be specified
           as a SQL expression, as in this example where we 
           use the :func:`.case` construct to provide a conditional
           approach::
@@ -1010,7 +1018,7 @@ def mapper(class_, local_table=None, *args, **params):
                     "polymorphic_identity":"employee"
                 }
         
-          Also as of 0.7.4, it may also refer to any attribute 
+          It may also refer to any attribute 
           configured with :func:`.column_property`, or to the
           string name of one::
             
@@ -1030,7 +1038,12 @@ def mapper(class_, local_table=None, *args, **params):
                         "polymorphic_on":employee_type,
                         "polymorphic_identity":"employee"
                     }
-            
+
+          .. versionchanged:: 0.7.4
+              ``polymorphic_on`` may be specified as a SQL expression,
+              or refer to any attribute configured with
+              :func:`.column_property`, or to the string name of one.
+
           When setting ``polymorphic_on`` to reference an
           attribute or expression that's not present in the
           locally mapped :class:`.Table`, yet the value 
@@ -1137,11 +1150,10 @@ def synonym(name, map_column=False, descriptor=None,
                         comparator_factory=None, doc=None):
     """Denote an attribute name as a synonym to a mapped property.
 
-    .. note:: 
-    
-       :func:`.synonym` is superseded as of 0.7 by 
-       the :mod:`~sqlalchemy.ext.hybrid` extension.  See 
-       the documentation for hybrids at :ref:`hybrids_toplevel`.
+    .. versionchanged:: 0.7
+        :func:`.synonym` is superseded by the :mod:`~sqlalchemy.ext.hybrid`
+        extension.  See  the documentation for hybrids
+        at :ref:`hybrids_toplevel`.
 
     Used with the ``properties`` dictionary sent to
     :func:`~sqlalchemy.orm.mapper`::
@@ -1181,12 +1193,11 @@ def comparable_property(comparator_factory, descriptor=None):
     """Provides a method of applying a :class:`.PropComparator` 
     to any Python descriptor attribute.
 
-    .. note:: 
-    
-       :func:`.comparable_property` is superseded as of 0.7 by 
-       the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example 
-       at :ref:`hybrid_custom_comparators`.
-    
+    .. versionchanged:: 0.7
+        :func:`.comparable_property` is superseded by
+        the :mod:`~sqlalchemy.ext.hybrid` extension.  See the example 
+        at :ref:`hybrid_custom_comparators`.
+
     Allows any Python descriptor to behave like a SQL-enabled 
     attribute when used at the class level in queries, allowing
     redefinition of expression operator behavior.
@@ -1285,12 +1296,11 @@ def joinedload(*keys, **kw):
     """Return a ``MapperOption`` that will convert the property of the given
     name or series of mapped attributes into an joined eager load.
 
-    .. note:: 
-    
-       This function is known as :func:`eagerload` in all versions
-       of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
-       series. :func:`eagerload` will remain available for the foreseeable
-       future in order to enable cross-compatibility.
+    .. versionchanged:: 0.6beta3
+        This function is known as :func:`eagerload` in all versions
+        of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
+        series. :func:`eagerload` will remain available for the foreseeable
+        future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1345,12 +1355,11 @@ def joinedload_all(*keys, **kw):
     given dot-separated path or series of mapped attributes 
     into an joined eager load.
 
-    .. note:: 
-    
-       This function is known as :func:`eagerload_all` in all versions
-       of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
-       series. :func:`eagerload_all` will remain available for the
-       foreseeable future in order to enable cross-compatibility.
+    .. versionchanged:: 0.6beta3
+        This function is known as :func:`eagerload_all` in all versions
+        of SQLAlchemy prior to version 0.6beta3, including the 0.5 and 0.4
+        series. :func:`eagerload_all` will remain available for the
+        foreseeable future in order to enable cross-compatibility.
 
     Used with :meth:`~sqlalchemy.orm.query.Query.options`.
 
@@ -1496,7 +1505,7 @@ def immediateload(*keys):
 
     See also:  :func:`lazyload`, :func:`eagerload`, :func:`subqueryload`
 
-    New as of verison 0.6.5.
+    .. versionadded:: 0.6.5
 
     """
     return strategies.EagerLazyOption(keys, lazy='immediate')
