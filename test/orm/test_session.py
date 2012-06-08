@@ -1226,7 +1226,6 @@ class SessionInterface(fixtures.TestBase):
                       Integer, primary_key=True,
                       test_needs_autoincrement=True)))
 
-    @testing.uses_deprecated()
     def _test_instance_guards(self, user_arg):
         watchdog = set()
 

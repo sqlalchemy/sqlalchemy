@@ -2611,7 +2611,6 @@ class PartialFlushTest(fixtures.MappedTest):
             Column("parent_id", Integer, ForeignKey("parent.id"))
         )
 
-    @testing.uses_deprecated()
     def test_o2m_m2o(self):
         base, noninh_child = self.tables.base, self.tables.noninh_child
 
@@ -2662,7 +2661,6 @@ class PartialFlushTest(fixtures.MappedTest):
         assert c2 in sess and c2 not in sess.new
         assert b1 in sess and b1 in sess.new
 
-    @testing.uses_deprecated()
     def test_circular_sort(self):
         """test ticket 1306"""
 
