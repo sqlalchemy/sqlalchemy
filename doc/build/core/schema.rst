@@ -1180,7 +1180,7 @@ INDEX" is issued right after the create statements for the table:
 
 Note in the example above, the :class:`.Index` construct is created
 externally to the table which it corresponds, using :class:`.Column` 
-objects directly.  As of SQLAlchemy 0.7, :class:`.Index` also supports
+objects directly.  :class:`.Index` also supports
 "inline" definition inside the :class:`.Table`, using string names to 
 identify columns::
 
@@ -1199,6 +1199,10 @@ identify columns::
         # place a unique index on col3, col4
         Index('idx_col34', 'col3', 'col4', unique=True)
     )
+
+.. versionadded:: 0.7
+    Support of "inline" definition inside the :class:`.Table`
+    for :class:`.Index`\ .
 
 The :class:`~sqlalchemy.schema.Index` object also supports its own ``create()`` method:
 

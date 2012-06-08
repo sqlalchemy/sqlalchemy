@@ -250,9 +250,8 @@ Note that if you only need to load a single subtype, such as just the
 ``Engineer`` objects, :func:`.orm.with_polymorphic` is
 not needed since you would query against the ``Engineer`` class directly.
 
-:func:`.orm.with_polymorphic` is new in 0.8 and is an improved
-version of the existing :meth:`.Query.with_polymorphic` method.
-:meth:`.Query.with_polymorphic` has the same purpose, except is not as
+:meth:`.Query.with_polymorphic` has the same purpose
+as :func:`.orm.with_polymorphic`, except is not as
 flexible in its usage patterns in that it only applies to the first full
 mapping, which then impacts all occurrences of that class or the target
 subclasses within the :class:`.Query`.  For simple cases it might be
@@ -260,6 +259,10 @@ considered to be more succinct::
 
     session.query(Employee).with_polymorphic([Engineer, Manager]).\
         filter(or_(Engineer.engineer_info=='w', Manager.manager_data=='q'))
+
+.. versionadded:: 0.8
+    :func:`.orm.with_polymorphic`, an improved version of
+    :meth:`.Query.with_polymorphic` method.
 
 The mapper also accepts ``with_polymorphic`` as a configurational argument so
 that the joined-style load will be issued automatically. This argument may be
@@ -589,8 +592,9 @@ Upon select, the polymorphic union produces a query like this:
 Concrete Inheritance with Declarative
 ++++++++++++++++++++++++++++++++++++++
 
-As of 0.7.3, the :ref:`declarative_toplevel` module includes helpers for concrete inheritance.
-See :ref:`declarative_concrete_helpers` for more information.
+.. versionadded:: 0.7.3
+    The :ref:`declarative_toplevel` module includes helpers for concrete
+    inheritance. See :ref:`declarative_concrete_helpers` for more information.
 
 Using Relationships with Inheritance
 ------------------------------------

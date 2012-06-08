@@ -411,7 +411,7 @@ the need for separate installation.   Use the ``register()`` function as follows
 The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 ``MyMySQLDialect`` class from the ``myapp.dialect`` module.
 
-The ``register()`` function is new in SQLAlchemy 0.8.
+.. versionadded:: 0.8
 
 Connection / Engine API
 =======================

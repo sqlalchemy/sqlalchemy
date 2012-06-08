@@ -703,7 +703,10 @@ Synonyms
 --------
 
 Synonyms are a mapper-level construct that applies expression behavior to a descriptor
-based attribute.  The functionality of synonym is superceded as of 0.7 by hybrid attributes.
+based attribute.
+
+.. versionchanged:: 0.7
+    The functionality of synonym is superceded as of 0.7 by hybrid attributes.
 
 .. autofunction:: synonym
 
@@ -770,8 +773,8 @@ Sets of columns can be associated with a single user-defined datatype. The ORM
 provides a single attribute which represents the group of columns using the
 class you provide.
 
-.. note::
-    As of SQLAlchemy 0.7, composites have been simplified such that 
+.. versionchanged:: 0.7
+    Composites have been simplified such that 
     they no longer "conceal" the underlying column based attributes.  Additionally,
     in-place mutation is no longer automatic; see the section below on
     enabling mutability to support tracking of in-place changes.
@@ -864,12 +867,15 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
 Tracking In-Place Mutations on Composites
 -----------------------------------------
 
-As of SQLAlchemy 0.7, in-place changes to an existing composite value are 
+In-place changes to an existing composite value are 
 not tracked automatically.  Instead, the composite class needs to provide
 events to its parent object explicitly.   This task is largely automated 
 via the usage of the :class:`.MutableComposite` mixin, which uses events
 to associate each user-defined composite object with all parent associations.
 Please see the example in :ref:`mutable_composites`.
+
+.. versionchanged:: 0.7
+    No automatic tracking of in-place changes to an existing composite value.
 
 Redefining Comparison Operations for Composites
 -----------------------------------------------

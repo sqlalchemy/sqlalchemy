@@ -4,9 +4,11 @@ Events
 ======
 
 SQLAlchemy includes an event API which publishes a wide variety of hooks into 
-the internals of both SQLAlchemy Core and ORM.   The system is all new
-as of version 0.7 and supercedes the previous system of "extension", "proxy", 
-and "listener" classes.
+the internals of both SQLAlchemy Core and ORM.
+
+.. versionadded:: 0.7
+    The system supercedes the previous system of "extension", "proxy",
+    and "listener" classes.
 
 Event Registration
 ------------------

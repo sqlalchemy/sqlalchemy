@@ -1513,9 +1513,7 @@ table, or the same table:
 Multiple Table Updates
 ----------------------
 
-.. note:: 
-
-   This feature is new as of version 0.7.4.
+.. versionadded:: 0.7.4
 
 The Postgresql, Microsoft SQL Server, and MySQL backends all support UPDATE statements
 that refer to multiple tables.   For PG and MSSQL, this is the "UPDATE FROM" syntax,
