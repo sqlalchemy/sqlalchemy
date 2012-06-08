@@ -312,7 +312,9 @@ The "equals" comparison operation by default produces an AND of all correspondin
 Controlling Ordering 
 ---------------------
 
-As of version 0.5, the ORM does not generate ordering for any query unless explicitly configured.
+.. versionchanged:: 0.5
+    The ORM does not generate ordering for any query unless
+    explicitly configured.
 
 The "default" ordering for a collection, which applies to list-based collections, can be configured using the ``order_by`` keyword argument on ``relation()``::
 
@@ -824,7 +826,10 @@ example:
 
 The "non primary mapper" is a rarely needed feature of SQLAlchemy; in most cases, the ``Query`` object can produce any kind of query that's desired.  It's recommended that a straight ``Query`` be used in place of a non-primary mapper unless the mapper approach is absolutely needed.  Current use cases for the "non primary mapper" are when you want to map the class to a particular select statement or view to which additional query criterion can be added, and for when the particular mapped select statement or view is to be placed in a ``relation()`` of a parent mapper.
 
-Versions of SQLAlchemy previous to 0.5 included another mapper flag called "entity_name", as of version 0.5.0 this feature has been removed (it never worked very well).
+.. versionchanged:: 0.5
+    Versions of SQLAlchemy previous to 0.5 included another mapper flag
+    called "entity_name", as of version 0.5.0 this feature has been removed
+    (it never worked very well).
 
 Constructors and Object Initialization 
 ---------------------------------------
@@ -1767,7 +1772,10 @@ When ``passive_deletes`` is applied, the ``children`` relation will not be loade
 Mutable Primary Keys / Update Cascades 
 ---------------------------------------
 
-As of SQLAlchemy 0.4.2, the primary key attributes of an instance can be changed freely, and will be persisted upon flush.  When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_updates`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_updates`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
+The primary key attributes of an instance can be changed freely, and will be persisted upon flush.  When the primary key of an entity changes, related items which reference the primary key must also be updated as well.  For databases which enforce referential integrity, it's required to use the database's ON UPDATE CASCADE functionality in order to propagate primary key changes.  For those which don't, the ``passive_updates`` flag can be set to ``False`` which instructs SQLAlchemy to issue UPDATE statements individually.  The ``passive_updates`` flag can also be ``False`` in conjunction with ON UPDATE CASCADE functionality, although in that case it issues UPDATE statements unnecessarily.
+
+.. versionchanged:: 0.4.2
+    The primary key attributes of an instance can be changed freely.
 
 A typical mutable primary key setup might look like:
 

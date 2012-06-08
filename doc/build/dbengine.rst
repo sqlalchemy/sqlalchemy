@@ -184,7 +184,7 @@ The ``execute()`` methods on both ``Engine`` and ``Connection`` can also receive
 
 The above SQL construct is known as a ``select()``.  The full range of SQL constructs available are described in :ref:`sqlexpression_toplevel`.
 
-Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable`` which specifies common functionality between the two objects, namely being able to call ``connect()`` to return a ``Connection`` object (``Connection`` just returns itself), and being able to call ``execute()`` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an ``Engine`` as a parameter or attribute with which to execute SQL will also accept a ``Connection``.  As of SQLAlchemy 0.3.9, this argument is named ``bind``::
+Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable`` which specifies common functionality between the two objects, namely being able to call ``connect()`` to return a ``Connection`` object (``Connection`` just returns itself), and being able to call ``execute()`` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an ``Engine`` as a parameter or attribute with which to execute SQL will also accept a ``Connection``, named ``bind``::
 
     engine = create_engine('sqlite:///:memory:')
     
@@ -198,6 +198,10 @@ Both ``Connection`` and ``Engine`` fulfill an interface known as ``Connectable``
     # drop the table with a Connection off the Engine
     connection = engine.connect()
     table.drop(bind=connection)
+
+.. versionchanged:: 0.3.9
+    ``Connection`` parameter or attribute named ``bind`` for most functions
+    and objects accepting an ``Engine`` as a parameter or attribute.
 
 .. index::
    single: thread safety; connections
@@ -261,7 +265,9 @@ Note that SQLAlchemy's Object Relational Mapper also provides a way to control t
 Transaction Facts:
 
 * the Transaction object, just like its parent Connection, is **not thread-safe**.
-* SQLAlchemy 0.4 will feature transactions with two-phase commit capability as well as SAVEPOINT capability.
+* .. versionadded:: 0.4
+      SQLAlchemy feature transactions with two-phase commit capability
+      as well as SAVEPOINT capability.
 
 Understanding Autocommit
 ------------------------
