@@ -159,9 +159,8 @@ loading**; these are described in :ref:`largecollections`.
 Default Loading Strategies
 --------------------------
 
-.. note::
-
-   Default loader strategies are a new feature as of version 0.7.5.
+.. versionadded:: 0.7.5
+    Default loader strategies as a new feature.
 
 Each of :func:`.joinedload`, :func:`.subqueryload`, :func:`.lazyload`, 
 and :func:`.noload` can be used to set the default style of

@@ -8,9 +8,10 @@ Deprecated Event Interfaces
 This section describes the class-based core event interface introduced in 
 SQLAlchemy 0.5.  The ORM analogue is described at :ref:`dep_interfaces_orm_toplevel`.
 
-As of SQLAlchemy 0.7, the new event system described in
-:ref:`event_toplevel` replaces the extension/proxy/listener system, providing
-a consistent interface to all events without the need for subclassing.
+.. deprecated:: 0.7
+    The new event system described in :ref:`event_toplevel` replaces
+    the extension/proxy/listener system, providing a consistent interface
+    to all events without the need for subclassing.
 
 Execution, Connection and Cursor Events
 ---------------------------------------

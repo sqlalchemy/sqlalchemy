@@ -535,8 +535,9 @@ Upon select, the polymorphic union produces a query like this:
 Concrete Inheritance with Declarative
 ++++++++++++++++++++++++++++++++++++++
 
-As of 0.7.3, the :ref:`declarative_toplevel` module includes helpers for concrete inheritance.
-See :ref:`declarative_concrete_helpers` for more information.
+.. versionadded:: 0.7.3
+    The :ref:`declarative_toplevel` module includes helpers for concrete
+    inheritance. See :ref:`declarative_concrete_helpers` for more information.
 
 Using Relationships with Inheritance
 ------------------------------------

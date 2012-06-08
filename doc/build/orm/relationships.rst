@@ -1179,9 +1179,12 @@ as illustrated below::
 The above mapping features a composite :class:`.ForeignKeyConstraint`
 bridging the ``widget_id`` and ``favorite_entry_id`` columns.  To ensure
 that ``Widget.widget_id`` remains an "autoincrementing" column we specify
-``autoincrement='ignore_fk'`` on :class:`.Column` (new in 0.7.4), and additionally on each
+``autoincrement='ignore_fk'`` on :class:`.Column`, and additionally on each
 :func:`.relationship` we must limit those columns considered as part of
 the foreign key for the purposes of joining and cross-population.
+
+.. versionadded:: 0.7.4
+    ``autoincrement='ignore_fk'`` on :class:`.Column`\ .
 
 .. _passive_updates:
 
