@@ -254,8 +254,9 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       * With the Oracle and Postgresql dialects, the value ``"nowait"``
         translates to ``FOR UPDATE NOWAIT``.
       * With the Postgresql dialect, the values "read" and ``"read_nowait"``
-        translate to ``FOR SHARE`` and ``FOR SHARE NOWAIT``, respectively
-        (new in 0.7.7).
+        translate to ``FOR SHARE`` and ``FOR SHARE NOWAIT``, respectively.
+
+        .. versionadded:: 0.7.7
 
     :param group_by:
       a list of :class:`.ClauseElement` objects which will comprise the
@@ -395,7 +396,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
      may prefer to use the generative :meth:`~Update.where()` 
      method to specify the ``WHERE`` clause.
      
-     The WHERE clause can refer to multiple tables as of version 0.7.4.
+     The WHERE clause can refer to multiple tables.
      For databases which support this, an ``UPDATE FROM`` clause will
      be generated, or on MySQL, a multi-table update.  The statement 
      will fail on databases that don't have support for multi-table
@@ -408,6 +409,9 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
                             where(addresses.c.user_id==users.c.id).\\
                             as_scalar()
                 )
+
+     .. versionchanged:: 0.7.4
+         The WHERE clause can refer to multiple tables.
 
     :param values:
       Optional dictionary which specifies the ``SET`` conditions of the
@@ -1168,7 +1172,7 @@ def over(func, partition_by=None, order_by=None):
     This function is also available from the :attr:`~.expression.func`
     construct itself via the :meth:`.FunctionElement.over` method.
 
-    New in 0.7.
+    .. versionadded:: 0.7
 
     """
     return _Over(func, partition_by=partition_by, order_by=order_by)
@@ -3189,7 +3193,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         See :func:`~.expression.over` for a full description.
 
-        New in 0.7.
+        .. versionadded:: 0.7
 
         """
         return over(self, partition_by=partition_by, order_by=order_by)
@@ -3733,7 +3737,7 @@ class CTE(Alias):
     :meth:`._SelectBase.cte` method from any selectable.
     See that method for complete examples.
     
-    New in 0.7.6.
+    .. versionadded:: 0.7.6
 
     """
     __visit_name__ = 'cte'
@@ -4352,8 +4356,8 @@ class _SelectBase(Executable, FromClause):
         to be delivered to the FROM clause of the statement as well
         as to a WITH clause at the top of the statement.
 
-        The :meth:`._SelectBase.cte` method is new in 0.7.6.
-        
+        .. versionadded:: 0.7.6
+
         :param name: name given to the common table expression.  Like
          :meth:`._FromClause.alias`, the name can be left as ``None``
          in which case an anonymous symbol will be used at query
@@ -4975,26 +4979,25 @@ class Select(_SelectBase):
         """Return a new :func:`.select` construct with its columns 
         clause replaced with the given columns.
         
-        .. note:: 
-        
-           Due to a bug fix, this method has a slight 
-           behavioral change as of version 0.7.3.  
-           Prior to version 0.7.3, the FROM clause of 
-           a :func:`.select` was calculated upfront and as new columns
-           were added; in 0.7.3 and later it's calculated 
-           at compile time, fixing an issue regarding late binding
-           of columns to parent tables.  This changes the behavior of 
-           :meth:`.Select.with_only_columns` in that FROM clauses no
-           longer represented in the new list are dropped, 
-           but this behavior is more consistent in 
-           that the FROM clauses are consistently derived from the
-           current columns clause.  The original intent of this method
-           is to allow trimming of the existing columns list to be fewer
-           columns than originally present; the use case of replacing
-           the columns list with an entirely different one hadn't
-           been anticipated until 0.7.3 was released; the usage
-           guidelines below illustrate how this should be done.
-           
+        .. versionchanged:: 0.7.3
+            Due to a bug fix, this method has a slight 
+            behavioral change as of version 0.7.3.  
+            Prior to version 0.7.3, the FROM clause of 
+            a :func:`.select` was calculated upfront and as new columns
+            were added; in 0.7.3 and later it's calculated 
+            at compile time, fixing an issue regarding late binding
+            of columns to parent tables.  This changes the behavior of 
+            :meth:`.Select.with_only_columns` in that FROM clauses no
+            longer represented in the new list are dropped, 
+            but this behavior is more consistent in 
+            that the FROM clauses are consistently derived from the
+            current columns clause.  The original intent of this method
+            is to allow trimming of the existing columns list to be fewer
+            columns than originally present; the use case of replacing
+            the columns list with an entirely different one hadn't
+            been anticipated until 0.7.3 was released; the usage
+            guidelines below illustrate how this should be done.
+
         This method is exactly equivalent to as if the original 
         :func:`.select` had been called with the given columns 
         clause.   I.e. a statement::
@@ -5440,7 +5443,7 @@ class UpdateBase(Executable, ClauseElement):
 
             mytable.insert().with_hint("WITH (PAGLOCK)", dialect_name="mssql")
 
-        New in 0.7.6.
+        .. versionadded:: 0.7.6
 
         :param text: Text of the hint.
         :param selectable: optional :class:`.Table` that specifies

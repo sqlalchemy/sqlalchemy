@@ -995,8 +995,10 @@ class Connection(Connectable):
           containing percent signs (and possibly other characters)
           that is neutral regarding whether it's executed by the DBAPI
           or piped into a script that's later invoked by 
-          command line tools.  New in 0.7.6.
-          
+          command line tools.
+
+          .. versionadded:: 0.7.6
+
         :param stream_results: Available on: Connection, statement.
           Indicate to the dialect that results should be 
           "streamed" and not pre-buffered, if possible.  This is a limitation
@@ -2343,7 +2345,7 @@ class Engine(Connectable, log.Identified):
         close the :class:`.Connection` when that :class:`.ResultProxy`
         has exhausted all result rows.
 
-        New in 0.7.6.
+        .. versionadded:: 0.7.6
         
         See also:
         

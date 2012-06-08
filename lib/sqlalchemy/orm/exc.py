@@ -27,12 +27,14 @@ class StaleDataError(sa.exc.SQLAlchemyError):
     * A mapped object with version_id_col was refreshed, 
       and the version number coming back from the database does
       not match that of the object itself.
-      
+
     * A object is detached from its parent object, however
       the object was previously attached to a different parent
       identity which was garbage collected, and a decision
       cannot be made if the new parent was really the most
-      recent "parent" (new in 0.7.4).
+      recent "parent".
+
+      .. versionadded:: 0.7.4
 
     """
 

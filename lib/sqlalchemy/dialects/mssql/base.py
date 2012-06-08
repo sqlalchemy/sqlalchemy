@@ -161,11 +161,12 @@ http://msdn.microsoft.com/en-us/library/ms175095.aspx.
 Scalar Select Comparisons
 -------------------------
 
-The MSSQL dialect contains a legacy behavior whereby comparing
-a scalar select to a value using the ``=`` or ``!=`` operator
-will resolve to IN or NOT IN, respectively.  This behavior is 
-deprecated and will be removed in 0.8 - the ``s.in_()``/``~s.in_()`` operators 
-should be used when IN/NOT IN are desired.
+.. deprecated:: 0.8
+    The MSSQL dialect contains a legacy behavior whereby comparing
+    a scalar select to a value using the ``=`` or ``!=`` operator
+    will resolve to IN or NOT IN, respectively.  This behavior
+    will be removed in 0.8 - the ``s.in_()``/``~s.in_()`` operators 
+    should be used when IN/NOT IN are desired.
 
 For the time being, the existing behavior prevents a comparison
 between scalar select and another value that actually wants to use ``=``.

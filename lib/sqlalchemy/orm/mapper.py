@@ -2311,7 +2311,9 @@ def validates(*names, **kw):
     :param \*names: list of attribute names to be validated.
     :param include_removes: if True, "remove" events will be 
      sent as well - the validation function must accept an additional
-     argument "is_remove" which will be a boolean.  New in 0.7.7.
+     argument "is_remove" which will be a boolean.
+
+     .. versionadded:: 0.7.7
 
     """
     include_removes = kw.pop('include_removes', False)

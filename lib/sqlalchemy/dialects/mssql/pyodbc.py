@@ -104,7 +104,10 @@ best guess as to whether or not the driver deals with unicode literals
 well.  When ``False``, unicode literals will be encoded first, and when
 ``True`` unicode literals will be passed straight through.  This is an interim
 flag that hopefully should not be needed when the unicode situation stabilizes
-for unix + PyODBC.  New in 0.7.7.
+for unix + PyODBC.
+
+.. versionadded:: 0.7.7
+    ``supports_unicode_binds`` parameter to ``create_engine()``\ .
 
 """
 

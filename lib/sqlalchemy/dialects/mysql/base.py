@@ -99,7 +99,7 @@ every new connection. Valid values for this parameter are
                     isolation_level="READ UNCOMMITTED"
                 )
 
-(new in 0.7.6)
+.. versionadded:: 0.7.6
 
 Keys
 ----

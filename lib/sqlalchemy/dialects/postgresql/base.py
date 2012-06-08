@@ -82,9 +82,10 @@ to inspect the actual value using::
 
     SHOW search_path;
 
-Prior to version 0.7.3, cross-schema foreign keys when the schemas
-were also in the ``search_path`` could make an incorrect assumption
-if the schemas were explicitly stated on each :class:`.Table`.
+.. versionchanged:: 0.7.3
+    Prior to this version, cross-schema foreign keys when the schemas
+    were also in the ``search_path`` could make an incorrect assumption
+    if the schemas were explicitly stated on each :class:`.Table`.
 
 Background on PG's ``search_path`` is at: 
 http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH
@@ -137,13 +138,16 @@ Operator Classes
 PostgreSQL allows the specification of an *operator class* for each column of
 an index (see http://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
 The :class:`.Index` construct allows these to be specified via the ``postgresql_ops``
-keyword argument (new as of SQLAlchemy 0.7.2)::
+keyword argument::
 
     Index('my_index', my_table.c.id, my_table.c.data, 
                             postgresql_ops={
                                 'data': 'text_pattern_ops', 
                                 'id': 'int4_ops'
                             }) 
+
+.. versionadded:: 0.7.2
+    ``postgresql_ops`` keyword argument to :class:`.Index` construct.
 
 Note that the keys in the ``postgresql_ops`` dictionary are the "key" name of
 the :class:`.Column`, i.e. the name used to access it from the ``.c`` collection
@@ -348,21 +352,24 @@ class ARRAY(sqltypes.MutableType, sqltypes.Concatenable, sqltypes.TypeEngine):
           class should be considered mutable - this enables 
           "mutable types" mode in the ORM.  Be sure to read the 
           notes for :class:`.MutableType` regarding ORM 
-          performance implications (default changed from ``True`` in 
-          0.7.0).
+          performance implications.
 
-          .. note:: 
-          
-             This functionality is now superseded by the
-             ``sqlalchemy.ext.mutable`` extension described in 
-             :ref:`mutable_toplevel`.
+          .. versionchanged:: 0.7.0
+              Default changed from ``True``\ .
+
+          .. versionchanged:: 0.7
+              This functionality is now superseded by the
+              ``sqlalchemy.ext.mutable`` extension described in 
+              :ref:`mutable_toplevel`.
 
         :param as_tuple=False: Specify whether return results
           should be converted to tuples from lists. DBAPIs such
           as psycopg2 return lists by default. When tuples are
           returned, the results are hashable. This flag can only
           be set to ``True`` when ``mutable`` is set to
-          ``False``. (new in 0.6.5)
+          ``False``.
+
+          .. versionadded:: 0.6.5
 
         """
         if isinstance(item_type, ARRAY):
@@ -489,8 +496,9 @@ class ENUM(sqltypes.Enum):
          the :meth:`~.postgresql.ENUM.create` and
          :meth:`~.postgresql.ENUM.drop` methods can
          be used to emit SQL to a target bind.
-         (new in 0.7.4)
-         
+
+         .. versionadded:: 0.7.4
+
         """
         self.create_type = kw.pop("create_type", True)
         super(ENUM, self).__init__(*enums, **kw)

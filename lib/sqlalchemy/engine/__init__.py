@@ -310,7 +310,9 @@ def create_engine(*args, **kwargs):
         behavior of the pool, which is whether ``rollback()``, 
         ``commit()``, or nothing is called upon connections
         being returned to the pool.  See the docstring for
-        ``reset_on_return`` at :class:`.Pool`. (new as of 0.7.6)
+        ``reset_on_return`` at :class:`.Pool`.
+
+        .. versionadded:: 0.7.6
 
     :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used

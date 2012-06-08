@@ -109,11 +109,12 @@ class SessionTransaction(object):
     instances behind the scenes, with one :class:`~.engine.base.Transaction`
     per :class:`~.engine.base.Engine` in use.
 
-    Direct usage of :class:`.SessionTransaction` is not typically 
-    necessary as of SQLAlchemy 0.4; use the :meth:`.Session.rollback` and 
-    :meth:`.Session.commit` methods on :class:`.Session` itself to 
-    control the transaction.
-    
+    .. versionchanged:: 0.4
+        Direct usage of :class:`.SessionTransaction` is not typically
+        necessary; use the :meth:`.Session.rollback` and 
+        :meth:`.Session.commit` methods on :class:`.Session` itself to 
+        control the transaction.
+
     The current instance of :class:`.SessionTransaction` for a given
     :class:`.Session` is available via the :attr:`.Session.transaction`
     attribute.
@@ -998,7 +999,7 @@ class Session(object):
         of objects which involve existing database queries,
         where the uncompleted object should not yet be flushed.
         
-        New in 0.7.6.
+        .. versionadded:: 0.7.6
 
         """
         autoflush = self.autoflush
@@ -1689,19 +1690,18 @@ class Session(object):
         E.g.::
         
             return session.is_modified(someobject, passive=True)
-            
-        .. note:: 
-          
-           In SQLAlchemy 0.7 and earlier, the ``passive`` 
-           flag should **always** be explicitly set to ``True``. 
-           The current default value of :data:`.attributes.PASSIVE_OFF`
-           for this flag is incorrect, in that it loads unloaded
-           collections and attributes which by definition 
-           have no modified state, and furthermore trips off 
-           autoflush which then causes all subsequent, possibly
-           modified attributes to lose their modified state.   
-           The default value of the flag will be changed in 0.8.
-           
+
+        .. versionchanged:: 0.8
+            In SQLAlchemy 0.7 and earlier, the ``passive`` 
+            flag should **always** be explicitly set to ``True``. 
+            The current default value of :data:`.attributes.PASSIVE_OFF`
+            for this flag is incorrect, in that it loads unloaded
+            collections and attributes which by definition 
+            have no modified state, and furthermore trips off 
+            autoflush which then causes all subsequent, possibly
+            modified attributes to lose their modified state.   
+            The default value of the flag will be changed in 0.8.
+
         A few caveats to this method apply:
 
         * Instances present in the :attr:`.Session.dirty` collection may report 
@@ -1745,10 +1745,11 @@ class Session(object):
          is a bug, as unloaded attributes by definition have 
          no changes, and the load operation also triggers an
          autoflush which then cancels out subsequent changes.
-         This flag should **always be set to 
-         True**.  In 0.8 the flag will be deprecated and the default
-         set to ``True``.
+         This flag should **always be set to True**.
 
+         .. versionchanged:: 0.8
+             The flag will be deprecated and the default
+             set to ``True``.
 
         """
         try:

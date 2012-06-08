@@ -96,8 +96,9 @@ on all new connections based on the value passed to
     engine = create_engine("postgresql://user:pass@host/dbname", client_encoding='utf8')
 
 This overrides the encoding specified in the Postgresql client configuration.
-The psycopg2-specific ``client_encoding`` parameter to :func:`.create_engine` is new as of 
-SQLAlchemy 0.7.3.
+
+.. versionadded:: 0.7.3
+    The psycopg2-specific ``client_encoding`` parameter to :func:`.create_engine`.
 
 SQLAlchemy can also be instructed to skip the usage of the psycopg2
 ``UNICODE`` extension and to instead utilize it's own unicode encode/decode

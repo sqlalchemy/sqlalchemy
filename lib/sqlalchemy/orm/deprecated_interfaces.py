@@ -247,10 +247,11 @@ class MapperExtension(object):
         instance population will not proceed, giving this extension an
         opportunity to populate the instance itself, if desired.
 
-        As of 0.5, most usages of this hook are obsolete.  For a
-        generic "object has been newly created from a row" hook, use
-        ``reconstruct_instance()``, or the ``@orm.reconstructor``
-        decorator.
+        .. deprecated:: 0.5
+            Most usages of this hook are obsolete.  For a
+            generic "object has been newly created from a row" hook, use
+            ``reconstruct_instance()``, or the ``@orm.reconstructor``
+            decorator.
 
         """
         return EXT_CONTINUE

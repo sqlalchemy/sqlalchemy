@@ -455,7 +455,7 @@ class Query(object):
         """Return the full SELECT statement represented by this :class:`.Query`
         represented as a common table expression (CTE).
 
-        The :meth:`.Query.cte` method is new in 0.7.6.
+        .. versionadded:: 0.7.6
         
         Parameters and usage are the same as those of the 
         :meth:`._SelectBase.cte` method; see that method for 
@@ -513,7 +513,7 @@ class Query(object):
 
         Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
 
@@ -526,7 +526,7 @@ class Query(object):
 
         Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
 
@@ -981,7 +981,7 @@ class Query(object):
             q = q.join((subq, subq.c.email < Address.email)).\\
                         limit(1)
 
-        New in 0.6.5.
+        .. versionadded:: 0.6.5
 
         """
         self._set_entities(entities)
@@ -1058,7 +1058,7 @@ class Query(object):
         This allows ad-hoc recipes to be created for :class:`.Query`
         objects.  See the example at :ref:`hybrid_transformers`.
 
-        :meth:`~.Query.with_transformation` is new in SQLAlchemy 0.7.4.
+        .. versionadded:: 0.7.4
 
         """
         return fn(self)
@@ -1115,7 +1115,8 @@ class Query(object):
             ``'read_nowait'`` - passes ``for_update='read_nowait'``, which 
             translates to ``FOR SHARE NOWAIT`` (supported by PostgreSQL).
             
-            New in 0.7.7: ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL)
+            .. versionadded:: 0.7.7
+                ``FOR SHARE`` and ``FOR SHARE NOWAIT`` (PostgreSQL).
         """
 
         self._lockmode = mode
@@ -1149,7 +1150,7 @@ class Query(object):
         
             session.query(MyClass).filter(MyClass.name == 'some name')
         
-        Multiple criteria are joined together by AND (new in 0.7.5)::
+        Multiple criteria are joined together by AND::
         
             session.query(MyClass).\\
                 filter(MyClass.name == 'some name', MyClass.id > 5)
@@ -1157,6 +1158,9 @@ class Query(object):
         The criterion is any SQL expression object applicable to the 
         WHERE clause of a select.   String expressions are coerced
         into SQL expression constructs via the :func:`.text` construct.
+
+        .. versionchanged:: 0.7.5
+            Multiple criteria joined by AND.
 
         See also:
         
@@ -1481,18 +1485,15 @@ class Query(object):
         
             q = session.query(User).join(Address, User.id==Address.user_id)
         
-        .. note:: 
-        
-           In SQLAlchemy 0.6 and earlier, the two argument form of 
-           :meth:`~.Query.join` requires the usage of a tuple::
-           
-               query(User).join((Address, User.id==Address.user_id))
-           
-           This calling form is accepted in 0.7 and further, though
-           is not necessary unless multiple join conditions are passed to
-           a single :meth:`~.Query.join` call, which itself is also not
-           generally necessary as it is now equivalent to multiple
-           calls (this wasn't always the case).
+        .. versionchanged:: 0.7
+            In SQLAlchemy 0.6 and earlier, the two argument form of 
+            :meth:`~.Query.join` requires the usage of a tuple:
+            ``query(User).join((Address, User.id==Address.user_id))``\ .
+            This calling form is accepted in 0.7 and further, though
+            is not necessary unless multiple join conditions are passed to
+            a single :meth:`~.Query.join` call, which itself is also not
+            generally necessary as it is now equivalent to multiple
+            calls (this wasn't always the case).
            
         **Advanced Join Targeting and Adaption**
 
@@ -2097,7 +2098,7 @@ class Query(object):
             SELECT HIGH_PRIORITY SQL_SMALL_RESULT ALL users.name AS users_name 
             FROM users
         
-        New in 0.7.7.
+        .. versionadded:: 0.7.7
 
         """
         if self._prefixes:
@@ -2173,9 +2174,11 @@ class Query(object):
         unique entity or entities - this is a successful result for one().
 
         Calling ``one()`` results in an execution of the underlying query.
-        As of 0.6, ``one()`` fully fetches all results instead of applying 
-        any kind of limit, so that the "unique"-ing of entities does not 
-        conceal multiple object identities.
+
+        .. versionchanged:: 0.6
+            ``one()`` fully fetches all results instead of applying 
+            any kind of limit, so that the "unique"-ing of entities does not 
+            conceal multiple object identities.
 
         """
         ret = list(self)
@@ -2537,8 +2540,8 @@ class Query(object):
                 SELECT <rest of query follows...>
             ) AS anon_1
 
-        Note the above scheme is newly refined in 0.7 
-        (as of 0.7b3).
+        .. versionchanged:: 0.7
+            The above scheme is newly refined as of 0.7b3.
         
         For fine grained control over specific columns 
         to count, to skip the usage of a subquery or

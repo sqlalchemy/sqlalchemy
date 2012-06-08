@@ -153,7 +153,9 @@ class Table(SchemaItem, expression.TableClause):
         excluded from the reflection process.    Note that this does
         not impact ``Column`` objects specified in the same call to ``Table``
         which includes ``autoload``, those always take precedence.
-        Defaults to ``True``.  New in 0.7.5.
+        Defaults to ``True``.
+
+        .. versionadded:: 0.7.5
 
     :param autoload_with: If autoload==True, this is an optional Engine 
         or Connection instance to be used for the table reflection. If
@@ -167,12 +169,14 @@ class Table(SchemaItem, expression.TableClause):
         raised if additional table modifiers are specified when 
         the given :class:`.Table` is already present in the :class:`.MetaData`.
 
-        As of version 0.7.4, ``extend_existing`` will work in conjunction
-        with ``autoload=True`` to run a new reflection operation against
-        the database; new :class:`.Column` objects will be produced
-        from database metadata to replace those existing with the same
-        name, and additional :class:`.Column` objects not present
-        in the :class:`.Table` will be added.
+        .. versionchanged:: 0.7.4
+            ``extend_existing`` will work in conjunction
+            with ``autoload=True`` to run a new reflection operation against
+            the database; new :class:`.Column` objects will be produced
+            from database metadata to replace those existing with the same
+            name, and additional :class:`.Column` objects not present
+            in the :class:`.Table` will be added.
+
         As is always the case with ``autoload=True``, :class:`.Column`
         objects can be specified in the same :class:`.Table` constructor,
         which will take precedence.  I.e.::
@@ -727,7 +731,9 @@ class Column(SchemaItem, expression.ColumnClause):
           * Part of the primary key
 
           * Are not referenced by any foreign keys, unless
-            the value is specified as ``'ignore_fk'`` (new in 0.7.4)
+            the value is specified as ``'ignore_fk'``
+
+            .. versionadded:: 0.7.4
 
           * have no server side or client side defaults (with the exception
             of Postgresql SERIAL).
@@ -752,11 +758,12 @@ class Column(SchemaItem, expression.ColumnClause):
             to generate primary key identifiers (i.e. Firebird, Postgresql, 
             Oracle).
 
-          As of 0.7.4, ``autoincrement`` accepts a special value ``'ignore_fk'``
-          to indicate that autoincrementing status regardless of foreign key
-          references.  This applies to certain composite foreign key
-          setups, such as the one demonstrated in the ORM documentation
-          at :ref:`post_update`.
+          .. versionchanged:: 0.7.4
+              ``autoincrement`` accepts a special value ``'ignore_fk'``
+              to indicate that autoincrementing status regardless of foreign key
+              references.  This applies to certain composite foreign key
+              setups, such as the one demonstrated in the ORM documentation
+              at :ref:`post_update`.
 
         :param default: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing the
@@ -1199,9 +1206,9 @@ class ForeignKey(SchemaItem):
             (defaults to the column name itself), unless ``link_to_name`` is
             ``True`` in which case the rendered name of the column is used.
 
-            Note that if the schema name is not included, and the underlying
-            :class:`.MetaData` has a "schema", that value will be used.
-            (new in 0.7.4)
+            .. versionadded:: 0.7.4
+                Note that if the schema name is not included, and the underlying
+                :class:`.MetaData` has a "schema", that value will be used.
 
         :param name: Optional string. An in-database name for the key if
             `constraint` is not provided.
@@ -1635,10 +1642,13 @@ class Sequence(DefaultGenerator):
          that is associated with a :class:`.MetaData` gains access to the 
          ``bind`` of that :class:`.MetaData`, meaning the :meth:`.Sequence.create`
          and :meth:`.Sequence.drop` methods will make usage of that engine
-         automatically.   Additionally, the appropriate CREATE SEQUENCE/
-         DROP SEQUENCE DDL commands will be emitted corresponding to this
-         :class:`.Sequence` when :meth:`.MetaData.create_all` and 
-         :meth:`.MetaData.drop_all` are invoked (new in 0.7).
+         automatically.
+
+         .. versionchanged:: 0.7
+             Additionally, the appropriate CREATE SEQUENCE/
+             DROP SEQUENCE DDL commands will be emitted corresponding to this
+             :class:`.Sequence` when :meth:`.MetaData.create_all` and 
+             :meth:`.MetaData.drop_all` are invoked.
 
          Note that when a :class:`.Sequence` is applied to a :class:`.Column`, 
          the :class:`.Sequence` is automatically associated with the 
@@ -1802,7 +1812,8 @@ class DefaultClause(FetchedValue):
 class PassiveDefault(DefaultClause):
     """A DDL-specified DEFAULT column value.
 
-    .. deprecated:: 0.6 :class:`.PassiveDefault` is deprecated. 
+    .. deprecated:: 0.6
+        :class:`.PassiveDefault` is deprecated. 
         Use :class:`.DefaultClause`.
     """
     @util.deprecated("0.6", 
@@ -2328,12 +2339,14 @@ class MetaData(SchemaItem):
         :param schema:
            The default schema to use for the :class:`.Table`, :class:`.Sequence`, and other
            objects associated with this :class:`.MetaData`.
-           Defaults to ``None``.  New in 0.7.4.
- 
+           Defaults to ``None``.
+
         :param quote_schema:
             Sets the ``quote_schema`` flag for those :class:`.Table`, :class:`.Sequence`,
             and other objects which make usage of the local ``schema`` name.
-            New in 0.7.4.
+
+        .. versionadded:: 0.7.4
+            ``schema`` and ``quote_schema`` parameters.
 
         """
         self.tables = util.immutabledict()
@@ -3055,7 +3068,7 @@ class _CreateDropBase(DDLElement):
 class CreateSchema(_CreateDropBase):
     """Represent a CREATE SCHEMA statement.
 
-    New in 0.7.4.
+    .. versionadded:: 0.7.4
 
     The argument here is the string name of the schema.
 
@@ -3074,7 +3087,8 @@ class DropSchema(_CreateDropBase):
 
     The argument here is the string name of the schema.
 
-    New in 0.7.4.
+    .. versionadded:: 0.7.4
+
     """
 
     __visit_name__ = "drop_schema"

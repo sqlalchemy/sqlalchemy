@@ -158,7 +158,7 @@ class TypeEngine(AbstractType):
         :param dialect_name: base name of the dialect which uses 
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
-        New in 0.7.2.
+        .. versionadded:: 0.7.2
 
         """
         return Variant(self, {dialect_name:type_})
@@ -784,7 +784,7 @@ class Variant(TypeDecorator):
     The :class:`.Variant` type is typically constructed
     using the :meth:`.TypeEngine.with_variant` method.
     
-    New in 0.7.2.
+    .. versionadded:: 0.7.2
     
     """
 
@@ -816,8 +816,6 @@ class Variant(TypeDecorator):
         :param dialect_name: base name of the dialect which uses 
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
-        New in 0.7.2.
-        
         """
 
         if dialect_name in self.mapping:
@@ -833,9 +831,8 @@ class MutableType(object):
     a mutable Python object type.   This functionality is used
     only by the ORM.
 
-    .. note:: 
-    
-       :class:`.MutableType` is superseded as of SQLAlchemy 0.7
+    .. versionchanged:: 0.7
+       :class:`.MutableType` is superseded
        by the ``sqlalchemy.ext.mutable`` extension described in
        :ref:`mutable_toplevel`.   This extension provides an event
        driven approach to in-place mutation detection that does not
@@ -880,11 +877,12 @@ class MutableType(object):
         the 6000 objects that have mutable attributes, possibly resulting
         in tens of thousands of additional method calls for every query.
 
-        As of SQLAlchemy 0.7, the ``sqlalchemy.ext.mutable`` is provided which
-        allows an event driven approach to in-place mutation detection. This
-        approach should now be favored over the usage of :class:`.MutableType`
-        with ``mutable=True``. ``sqlalchemy.ext.mutable`` is described in
-        :ref:`mutable_toplevel`.
+        .. versionchanged:: 0.7
+            As of SQLAlchemy 0.7, the ``sqlalchemy.ext.mutable`` is provided
+            which allows an event driven approach to in-place
+            mutation detection. This approach should now be favored over
+            the usage of :class:`.MutableType` with ``mutable=True``.
+            ``sqlalchemy.ext.mutable`` is described in :ref:`mutable_toplevel`.
 
     """
 
@@ -1990,8 +1988,10 @@ class PickleType(MutableType, TypeDecorator):
           using the Python "equals" operator, unless the 
           ``comparator`` argument is present.   See
           :class:`.MutableType` for details on "mutable" type
-          behavior. (default changed from ``True`` in 
-          0.7.0).
+          behavior.
+
+          .. versionchanged:: 0.7.0
+              Default changed from ``True``.
 
           .. note:: 
           

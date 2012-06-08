@@ -12,9 +12,10 @@ Then, a second class-level method ``prepare()`` is used to iterate
 through all mapping configurations collected, reflect the tables
 named within and generate the actual mappers.
 
-The example is new in 0.7.5 and makes usage of the new
-``autoload_replace`` flag on :class:`.Table` to allow declared
-classes to override reflected columns.
+.. versionadded:: 0.7.5
+    This new example makes usage of the new
+    ``autoload_replace`` flag on :class:`.Table` to allow declared
+    classes to override reflected columns.
 
 Usage example::
 

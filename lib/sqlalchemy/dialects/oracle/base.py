@@ -63,10 +63,12 @@ used on the SQLAlchemy side.
 Unicode
 -------
 
-SQLAlchemy 0.6 uses the "native unicode" mode provided as of cx_oracle 5.  cx_oracle 5.0.2
-or greater is recommended for support of NCLOB.   If not using cx_oracle 5, the NLS_LANG
-environment variable needs to be set in order for the oracle client library to use 
-proper encoding, such as "AMERICAN_AMERICA.UTF8".
+.. versionchanged:: 0.6
+    SQLAlchemy uses the "native unicode" mode provided as of cx_oracle 5.
+    cx_oracle 5.0.2 or greater is recommended for support of NCLOB.
+    If not using cx_oracle 5, the NLS_LANG environment variable needs
+    to be set in order for the oracle client library to use proper encoding,
+    such as "AMERICAN_AMERICA.UTF8".
 
 Also note that Oracle supports unicode data through the NVARCHAR and NCLOB data types.
 When using the SQLAlchemy Unicode and UnicodeText types, these DDL types will be used
