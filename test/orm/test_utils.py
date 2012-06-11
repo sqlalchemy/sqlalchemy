@@ -198,6 +198,16 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         key = util.identity_key(User, ident=[1])
         eq_(key, (User, (1,)))
 
+    def test_identity_key_scalar(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        key = util.identity_key(User, 1)
+        eq_(key, (User, (1,)))
+        key = util.identity_key(User, ident=1)
+        eq_(key, (User, (1,)))
+
     def test_identity_key_2(self):
         users, User = self.tables.users, self.classes.User
 

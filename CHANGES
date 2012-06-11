@@ -136,6 +136,11 @@ CHANGES
     valid use cases have been identified.  
     Also in 0.7.8.
 
+  - [bug] Fixed identity_key() function which 
+    was not accepting a scalar argument 
+    for the identity.  [ticket:2508]. Also
+    in 0.7.8.
+
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
