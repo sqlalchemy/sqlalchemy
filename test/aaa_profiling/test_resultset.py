@@ -109,6 +109,7 @@ class RowProxyTest(fixtures.TestBase):
             enumerate(zip(keys, processors, row)):
             for key in keyobjs:
                 keymap[key] = (processor, key, index)
+            keymap[index] = (processor, key, index)
         return RowProxy(metadata, row, processors, keymap)
 
     def _test_getitem_value_refcounts(self, seq_factory):
