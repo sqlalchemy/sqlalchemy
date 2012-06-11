@@ -28,6 +28,10 @@ CHANGES
     flush() is no longer deprecated, as some
     valid use cases have been identified.  
 
+  - [bug] Fixed identity_key() function which 
+    was not accepting a scalar argument 
+    for the identity.  [ticket:2508].
+
 - engine
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver

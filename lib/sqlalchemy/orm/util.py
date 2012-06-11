@@ -199,7 +199,7 @@ def identity_key(*args, **kwargs):
                 % ", ".join(kwargs.keys()))
         mapper = class_mapper(class_)
         if "ident" in locals():
-            return mapper.identity_key_from_primary_key(ident)
+            return mapper.identity_key_from_primary_key(util.to_list(ident))
         return mapper.identity_key_from_row(row)
     instance = kwargs.pop("instance")
     if kwargs:
