@@ -210,6 +210,13 @@ CHANGES
     The most prominently affected DBAPI
     is pyodbc.  Also in 0.7.8.  [ticket:2489]
 
+  - [bug] Fixed bug affecting Py3K whereby
+    string positional parameters passed to 
+    engine/connection execute() would fail to be
+    interpreted correctly, due to __iter__
+    being present on Py3K string.  
+    [ticket:2503].  Also in 0.7.8.
+
   - [feature] Added a new system
     for registration of new dialects in-process
     without using an entrypoint.  See the

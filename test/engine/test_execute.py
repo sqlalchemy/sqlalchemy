@@ -79,6 +79,22 @@ class ExecuteTest(fixtures.TestBase):
                 (6, 'donkey'),
                 (7, 'sally'),
                 ]
+            for multiparam, param in [
+                (("jack", "fred"), {}),
+                ((["jack", "fred"],), {})
+            ]:
+                res = conn.execute(
+                    "select * from users where user_name=? or "
+                    "user_name=? order by user_id", 
+                    *multiparam, **param)
+                assert res.fetchall() == [
+                    (1, 'jack'),
+                    (2, 'fred')
+                ]
+            res = conn.execute("select * from users where user_name=?",
+                "jack"
+            )
+            assert res.fetchall() == [(1, 'jack')]
             conn.execute('delete from users')
 
         go(testing.db)
@@ -104,6 +120,23 @@ class ExecuteTest(fixtures.TestBase):
             res = conn.execute('select * from users order by user_id')
             assert res.fetchall() == [(1, 'jack'), (2, 'ed'), (3,
                     'horse'), (4, 'sally'), (5, None)]
+            for multiparam, param in [
+                (("jack", "ed"), {}),
+                ((["jack", "ed"],), {})
+            ]:
+                res = conn.execute(
+                    "select * from users where user_name=%s or "
+                    "user_name=%s order by user_id", 
+                    *multiparam, **param)
+                assert res.fetchall() == [
+                    (1, 'jack'),
+                    (2, 'ed')
+                ]
+            res = conn.execute("select * from users where user_name=%s",
+                "jack"
+            )
+            assert res.fetchall() == [(1, 'jack')]
+
             conn.execute('delete from users')
         go(testing.db)
         conn = testing.db.connect()
