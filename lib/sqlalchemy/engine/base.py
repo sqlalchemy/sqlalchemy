@@ -663,13 +663,10 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
     def get_rowcount(self):
-        """Return the number of rows produced (by a SELECT query)
-        or affected (by an INSERT/UPDATE/DELETE statement).
-
-        Note that this row count may not be properly implemented 
-        in some dialects; this is indicated by the 
-        ``supports_sane_rowcount`` and ``supports_sane_multi_rowcount``
-        dialect attributes.
+        """Return the DBAPI ``cursor.rowcount`` value, or in some
+        cases an interpreted value.
+        
+        See :attr:`.ResultProxy.rowcount` for details on this.
 
         """
 
@@ -2924,18 +2921,41 @@ class ResultProxy(object):
     def rowcount(self):
         """Return the 'rowcount' for this result.
 
-        The 'rowcount' reports the number of rows affected
-        by an UPDATE or DELETE statement.  It has *no* other
-        uses and is not intended to provide the number of rows
-        present from a SELECT.
+        The 'rowcount' reports the number of rows *matched*
+        by the WHERE criterion of an UPDATE or DELETE statement.  
+        
+        .. note::
+        
+           Notes regarding :attr:`.ResultProxy.rowcount`:
+           
+           
+           * This attribute returns the number of rows *matched*,
+             which is not necessarily the same as the number of rows
+             that were actually *modified* - an UPDATE statement, for example,
+             may have no net change on a given row if the SET values
+             given are the same as those present in the row already.
+             Such a row would be matched but not modified.
+             On backends that feature both styles, such as MySQL, 
+             rowcount is configured by default to return the match 
+             count in all cases.
 
-        Note that this row count may not be properly implemented in some
-        dialects; this is indicated by
-        :meth:`~sqlalchemy.engine.base.ResultProxy.supports_sane_rowcount()`
-        and
-        :meth:`~sqlalchemy.engine.base.ResultProxy.supports_sane_multi_rowcount()`.
-        ``rowcount()`` also may not work at this time for a statement that
-        uses ``returning()``.
+           * :attr:`.ResultProxy.rowcount` is *only* useful in conjunction
+             with an UPDATE or DELETE statement.  Contrary to what the Python
+             DBAPI says, it does *not* return the
+             number of rows available from the results of a SELECT statement
+             as DBAPIs cannot support this functionality when rows are 
+             unbuffered.
+        
+           * :attr:`.ResultProxy.rowcount` may not be fully implemented by
+             all dialects.  In particular, most DBAPIs do not support an
+             aggregate rowcount result from an executemany call.
+             The :meth:`.ResultProxy.supports_sane_rowcount` and 
+             :meth:`.ResultProxy.supports_sane_multi_rowcount` methods
+             will report from the dialect if each usage is known to be
+             supported.
+         
+           * Statements that use RETURNING may not return a correct
+             rowcount.
 
         """
         try:
@@ -3115,12 +3135,20 @@ class ResultProxy(object):
         return self.context.prefetch_cols
 
     def supports_sane_rowcount(self):
-        """Return ``supports_sane_rowcount`` from the dialect."""
+        """Return ``supports_sane_rowcount`` from the dialect.
+        
+        See :attr:`.ResultProxy.rowcount` for background.
+        
+        """
 
         return self.dialect.supports_sane_rowcount
 
     def supports_sane_multi_rowcount(self):
-        """Return ``supports_sane_multi_rowcount`` from the dialect."""
+        """Return ``supports_sane_multi_rowcount`` from the dialect.
+
+        See :attr:`.ResultProxy.rowcount` for background.
+        
+        """
 
         return self.dialect.supports_sane_multi_rowcount
 
