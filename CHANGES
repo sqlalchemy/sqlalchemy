@@ -40,6 +40,13 @@ CHANGES
     The most prominently affected DBAPI
     is pyodbc.  [ticket:2489]
 
+  - [bug] Fixed bug affecting Py3K whereby
+    string positional parameters passed to 
+    engine/connection execute() would fail to be
+    interpreted correctly, due to __iter__
+    being present on Py3K string.  
+    [ticket:2503].
+
 - oracle
   - [bug] Added ROWID to oracle.*, [ticket:2483]
 
