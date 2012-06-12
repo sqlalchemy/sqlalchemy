@@ -1477,12 +1477,17 @@ class Connection(Connectable):
             zero = multiparams[0]
             if isinstance(zero, (list, tuple)):
                 if not zero or isinstance(zero[0], (list, tuple, dict)):
+                    # execute(stmt, [{}, {}, {}, ...])
+                    # execute(stmt, [(), (), (), ...])
                     return zero
                 else:
+                    # execute(stmt, ("value", "value"))
                     return [zero]
             elif hasattr(zero, 'keys'):
+                # execute(stmt, {"key":"value"})
                 return [zero]
             else:
+                # execute(stmt, "value")
                 return [[zero]]
         else:
             if isinstance(multiparams[0], (list, tuple, dict)):
