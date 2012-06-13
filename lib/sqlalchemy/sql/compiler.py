@@ -963,12 +963,6 @@ class SQLCompiler(engine.Compiled):
         if self.ctes and \
             compound_index==1 and not entry:
             text  = self._render_cte_clause() + text
-            #cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
-            #cte_text += ", \n".join(
-            #    [txt for txt in self.ctes.values()]
-            #)
-            #cte_text += "\n "
-            #text = cte_text + text
 
         self.stack.pop(-1)
 
