@@ -345,7 +345,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(s.positiontup, ['a', 'b', 'c'])
 
     def test_nested_label_targeting(self):
-        """test nested anonymous label generation.  
+        """test nested anonymous label generation.
 
         """
         s1 = table1.select()
@@ -1203,7 +1203,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE",
             dialect=postgresql.dialect())
-        
+
         self.assert_compile(
             table1.select(table1.c.myid==7, for_update="read_nowait"),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -2445,6 +2445,46 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 "GROUP BY anon_1.sub_part",
                 dialect=mssql.dialect()
             )
+
+    def test_cte_union(self):
+        orders = table('orders', 
+            column('region'),
+            column('amount'),
+        )
+
+        regional_sales = select([
+                            orders.c.region,
+                            orders.c.amount
+                        ]).cte("regional_sales")
+
+        s = select([regional_sales.c.region]).\
+                where(
+                    regional_sales.c.amount > 500
+                )
+
+        self.assert_compile(s, 
+            "WITH regional_sales AS "
+            "(SELECT orders.region AS region, "
+            "orders.amount AS amount FROM orders) "
+            "SELECT regional_sales.region "
+            "FROM regional_sales WHERE "
+            "regional_sales.amount > :amount_1")
+
+        s = s.union_all(
+            select([regional_sales.c.region]).\
+                where(
+                    regional_sales.c.amount < 300
+                )
+        )
+        self.assert_compile(s, 
+            "WITH regional_sales AS "
+            "(SELECT orders.region AS region, "
+            "orders.amount AS amount FROM orders) "
+            "SELECT regional_sales.region FROM regional_sales "
+            "WHERE regional_sales.amount > :amount_1 "
+            "UNION ALL SELECT regional_sales.region "
+            "FROM regional_sales WHERE "
+            "regional_sales.amount < :amount_2")
 
     def test_date_between(self):
         import datetime

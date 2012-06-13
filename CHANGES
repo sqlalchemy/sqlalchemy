@@ -315,6 +315,13 @@ CHANGES
     also in 0.7.7, [ticket:2499] also 
     in 0.7.8.
 
+  - [bug] Repaired common table expression
+    rendering to function correctly when the 
+    SELECT statement contains UNION or other
+    compound expressions, courtesy btbuilder.  
+    [ticket:2490]  Also in 0.7.8.
+
+
 - sqlite
   - [feature] the SQLite date and time types
     have been overhauled to support a more open

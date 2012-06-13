@@ -572,6 +572,10 @@ class SQLCompiler(engine.Compiled):
         text += (cs._limit is not None or cs._offset is not None) and \
                         self.limit_clause(cs) or ""
 
+        if self.ctes and \
+            compound_index==1 and not entry:
+            text = self._render_cte_clause() + text
+
         self.stack.pop(-1)
         if asfrom and parens:
             return "(" + text + ")"
@@ -968,12 +972,7 @@ class SQLCompiler(engine.Compiled):
 
         if self.ctes and \
             compound_index==1 and not entry:
-            cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
-            cte_text += ", \n".join(
-                [txt for txt in self.ctes.values()]
-            )
-            cte_text += "\n "
-            text = cte_text + text
+            text  = self._render_cte_clause() + text
 
         self.stack.pop(-1)
 
@@ -981,6 +980,14 @@ class SQLCompiler(engine.Compiled):
             return "(" + text + ")"
         else:
             return text
+
+    def _render_cte_clause(self):
+        cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
+        cte_text += ", \n".join(
+            [txt for txt in self.ctes.values()]
+        )
+        cte_text += "\n "
+        return cte_text
 
     def get_cte_preamble(self, recursive):
         if recursive:
