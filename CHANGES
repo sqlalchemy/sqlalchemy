@@ -39,6 +39,12 @@ CHANGES
     this breakage doesn't occur again.
     [ticket:2499]
 
+  - [bug] Repaired common table expression
+    rendering to function correctly when the 
+    SELECT statement contains UNION or other
+    compound expressions, courtesy btbuilder.  
+    [ticket:2490]
+
 - engine
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver
