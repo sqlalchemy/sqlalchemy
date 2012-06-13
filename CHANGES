@@ -32,6 +32,13 @@ CHANGES
     was not accepting a scalar argument 
     for the identity.  [ticket:2508].
 
+- sql
+  - [bug] added BIGINT to types.__all__,
+    BIGINT, BINARY, VARBINARY to sqlalchemy
+    module namespace, plus test to ensure
+    this breakage doesn't occur again.
+    [ticket:2499]
+
 - engine
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver
