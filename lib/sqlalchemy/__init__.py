@@ -48,6 +48,8 @@ from sqlalchemy.sql import (
     )
 
 from sqlalchemy.types import (
+    BIGINT,
+    BINARY,
     BLOB,
     BOOLEAN,
     BigInteger,
@@ -85,6 +87,7 @@ from sqlalchemy.types import (
     TypeDecorator,
     Unicode,
     UnicodeText,
+    VARBINARY,
     VARCHAR,
     )
 

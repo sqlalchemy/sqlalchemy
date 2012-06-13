@@ -308,8 +308,12 @@ CHANGES
     propagating the exception onward normally.
     also in 0.7.7.
 
-  - [bug] Add BINARY, VARBINARY to types.__all__,
-    [ticket:2474] Also in 0.7.7
+  - [bug] Added BIGINT, BINARY, VARBINARY to 
+    types.__all__, sqlalchemy namespaces,
+    plus tests to make sure new types 
+    remain importable.  [ticket:2474] 
+    also in 0.7.7, [ticket:2499] also 
+    in 0.7.8.
 
 - sqlite
   - [feature] the SQLite date and time types

@@ -14,7 +14,7 @@ For more information see the SQLAlchemy documentation on types.
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text',
             'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 
-            'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'SMALLINT',
+            'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT', 'SMALLINT',
             'INTEGER', 'DATE', 'TIME', 'String', 'Integer', 'SmallInteger',
             'BigInteger', 'Numeric', 'Float', 'DateTime', 'Date', 'Time',
             'LargeBinary', 'Binary', 'Boolean', 'Unicode', 'Concatenable',

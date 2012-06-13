@@ -29,19 +29,26 @@ class AdaptTest(fixtures.TestBase):
         return [d.base.dialect() for d in 
                 self._all_dialect_modules()]
 
-    def _all_types(self):
-        def types_for_mod(mod):
-            for key in dir(mod):
-                typ = getattr(mod, key)
-                if not isinstance(typ, type) or not issubclass(typ, types.TypeEngine):
-                    continue
-                yield typ
+    def _types_for_mod(self, mod):
+        for key in dir(mod):
+            typ = getattr(mod, key)
+            if not isinstance(typ, type) or not issubclass(typ, types.TypeEngine):
+                continue
+            yield typ
 
-        for typ in types_for_mod(types):
+    def _all_types(self):
+        for typ in self._types_for_mod(types):
             yield typ
         for dialect in self._all_dialect_modules():
-            for typ in types_for_mod(dialect):
+            for typ in self._types_for_mod(dialect):
                 yield typ
+
+    def test_uppercase_importable(self):
+        import sqlalchemy as sa
+        for typ in self._types_for_mod(types):
+            if typ.__name__ == typ.__name__.upper():
+                assert getattr(sa, typ.__name__) is typ
+                assert typ.__name__ in types.__all__
 
     def test_uppercase_rendering(self):
         """Test that uppercase types from types.py always render as their
