@@ -748,13 +748,15 @@ def _connections_for_states(base_mapper, uowtransaction, states):
         connection_callable = \
                 uowtransaction.session.connection_callable
     else:
-        connection = uowtransaction.transaction.connection(
-                                                    base_mapper)
+        connection = None
         connection_callable = None
 
     for state in _sort_states(states):
         if connection_callable:
             connection = connection_callable(base_mapper, state.obj())
+        elif not connection:
+            connection = uowtransaction.transaction.connection(
+                                                    base_mapper)
 
         mapper = _state_mapper(state)
 
