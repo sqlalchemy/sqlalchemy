@@ -64,6 +64,11 @@ CHANGES
     being present on Py3K string.  
     [ticket:2503].
 
+- postgresql
+  - [bug] removed unnecessary table clause when
+    reflecting enums, [ticket:2510].  Courtesy
+    Gunnlaugur Þór Briem.
+
 - oracle
   - [bug] Added ROWID to oracle.*, [ticket:2483]
 

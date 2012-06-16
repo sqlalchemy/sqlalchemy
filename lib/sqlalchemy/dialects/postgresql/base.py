@@ -1622,7 +1622,6 @@ class PGDialect(default.DefaultDialect):
                e.enumlabel as "label"
             FROM pg_catalog.pg_type t
                  LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
-                 LEFT JOIN pg_catalog.pg_constraint r ON t.oid = r.contypid
                  LEFT JOIN pg_catalog.pg_enum e ON t.oid = e.enumtypid
             WHERE t.typtype = 'e'
             ORDER BY "name", e.oid -- e.oid gives us label order
