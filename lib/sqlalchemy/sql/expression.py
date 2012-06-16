@@ -2172,7 +2172,7 @@ class ColumnElement(ClauseElement, _CompareMixin):
         co.proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = \
-                selectable._is_clone_of.columns[key]
+                selectable._is_clone_of.columns.get(key)
         selectable._columns[key] = co
         return co
 
@@ -4138,7 +4138,7 @@ class ColumnClause(_Immutable, ColumnElement):
         c.proxies = [self]
         if selectable._is_clone_of is not None:
             c._is_clone_of = \
-                selectable._is_clone_of.columns[c.name]
+                selectable._is_clone_of.columns.get(c.name)
 
         if attach:
             selectable._columns[c.name] = c

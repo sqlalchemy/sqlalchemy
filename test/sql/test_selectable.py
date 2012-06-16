@@ -138,6 +138,13 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         assert j2.corresponding_column(table1.c.col1) \
             is j2.c.table1_col1
 
+    def test_clone_append_column(self):
+        sel = select([literal_column('1').label('a')]) 
+        cloned = visitors.ReplacingCloningVisitor().traverse(sel)
+        cloned.append_column(literal_column('2').label('b')) 
+        cloned.append_column(func.foo()) 
+        eq_(cloned.c.keys(), ['a', 'b', 'foo()']) 
+
     def test_against_cloned_non_table(self):
         # test that corresponding column digs across
         # clone boundaries with anonymous labeled elements

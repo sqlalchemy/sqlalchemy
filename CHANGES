@@ -49,6 +49,11 @@ CHANGES
     compound expressions, courtesy btbuilder.  
     [ticket:2490]
 
+  - [bug] Fixed bug whereby append_column()
+    wouldn't function correctly on a cloned
+    select() construct, courtesy 
+    Gunnlaugur Þór Briem.  [ticket:2482]
+
 - engine
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver
