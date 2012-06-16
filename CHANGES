@@ -247,6 +247,17 @@ CHANGES
     the task of specifying in-Python ForeignKey 
     or ForeignKeyConstraint declarations.
 
+  - [bug] The ResultProxy methods inserted_primary_key,
+    last_updated_params(), last_inserted_params(),
+    postfetch_cols(), prefetch_cols() all
+    assert that the given statement is a compiled
+    construct, and is an insert() or update()
+    statement as is appropriate, else
+    raise InvalidRequestError.  [ticket:2498]
+
+  - ResultProxy.last_inserted_ids is removed,
+    replaced by inserted_primary_key.
+
 - sql
   - [feature] The Inspector object can now be 
     acquired using the new inspect() service,

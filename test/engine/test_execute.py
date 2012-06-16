@@ -896,6 +896,60 @@ class ResultProxyTest(fixtures.TestBase):
         writer.writerow(row)
         assert s.getvalue().strip() == '1,Test'
 
+    @testing.requires.selectone
+    def test_empty_accessors(self):
+        statements = [
+            (
+                "select 1",
+                [
+                    lambda r: r.last_inserted_params(),
+                    lambda r: r.last_updated_params(),
+                    lambda r: r.prefetch_cols(),
+                    lambda r: r.postfetch_cols(),
+                    lambda r : r.inserted_primary_key
+                ],
+                "Statement is not a compiled expression construct."
+            ),
+            (
+                select([1]),
+                [
+                    lambda r: r.last_inserted_params(),
+                    lambda r : r.inserted_primary_key
+                ],
+                r"Statement is not an insert\(\) expression construct."
+            ),
+            (
+                select([1]),
+                [
+                    lambda r: r.last_updated_params(),
+                ],
+                r"Statement is not an update\(\) expression construct."
+            ),
+            (
+                select([1]),
+                [
+                    lambda r: r.prefetch_cols(),
+                    lambda r : r.postfetch_cols()
+                ],
+                r"Statement is not an insert\(\) "
+                r"or update\(\) expression construct."
+            ),
+        ]
+
+        for stmt, meths, msg in statements:
+            r = testing.db.execute(stmt)
+            try:
+                for meth in meths:
+                    assert_raises_message(
+                        tsa.exc.InvalidRequestError,
+                        msg,
+                        meth, r
+                    )
+
+            finally:
+                r.close()
+
+
 class AlternateResultProxyTest(fixtures.TestBase):
     __requires__ = ('sqlite', )
 

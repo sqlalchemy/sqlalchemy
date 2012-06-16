@@ -601,6 +601,10 @@ class ExecutionContext(object):
     should_autocommit
       True if the statement is a "committable" statement.
 
+    prefetch_cols
+      a list of Column objects for which a client-side default 
+      was fired off.  Applies to inserts and updates.
+
     postfetch_cols
       a list of Column objects for which a server-side default or
       inline SQL expression value was fired off.  Applies to inserts
@@ -3005,7 +3009,8 @@ class ResultProxy(object):
         where it is appropriate.  It's behavior is not 
         consistent across backends.
 
-        Usage of this method is normally unnecessary; the
+        Usage of this method is normally unnecessary when 
+        using insert() expression constructs; the
         :attr:`~ResultProxy.inserted_primary_key` attribute provides a
         tuple of primary key values for a newly inserted row,
         regardless of database backend.
@@ -3107,30 +3112,46 @@ class ResultProxy(object):
         supports "returning" and the insert statement executed
         with the "implicit returning" enabled.
 
+        Raises :class:`.InvalidRequestError` if the executed
+        statement is not a compiled expression construct
+        or is not an insert() construct.
+
         """
 
-        if not self.context.isinsert:
+        if not self.context.compiled:
             raise exc.InvalidRequestError(
-                        "Statement is not an insert() expression construct.")
+                        "Statement is not a compiled "
+                        "expression construct.")
+        elif not self.context.isinsert:
+            raise exc.InvalidRequestError(
+                        "Statement is not an insert() "
+                        "expression construct.")
         elif self.context._is_explicit_returning:
             raise exc.InvalidRequestError(
-                        "Can't call inserted_primary_key when returning() "
+                        "Can't call inserted_primary_key "
+                        "when returning() "
                         "is used.")
 
         return self.context.inserted_primary_key
-
-    @util.deprecated("0.6", "Use :attr:`.ResultProxy.inserted_primary_key`")
-    def last_inserted_ids(self):
-        """Return the primary key for the row just inserted."""
-
-        return self.inserted_primary_key
 
     def last_updated_params(self):
         """Return the collection of updated parameters from this
         execution.
 
+        Raises :class:`.InvalidRequestError` if the executed
+        statement is not a compiled expression construct
+        or is not an update() construct.
+
         """
-        if self.context.executemany:
+        if not self.context.compiled:
+            raise exc.InvalidRequestError(
+                        "Statement is not a compiled "
+                        "expression construct.")
+        elif not self.context.isupdate:
+            raise exc.InvalidRequestError(
+                        "Statement is not an update() "
+                        "expression construct.")
+        elif self.context.executemany:
             return self.context.compiled_parameters
         else:
             return self.context.compiled_parameters[0]
@@ -3139,30 +3160,74 @@ class ResultProxy(object):
         """Return the collection of inserted parameters from this
         execution.
 
+        Raises :class:`.InvalidRequestError` if the executed
+        statement is not a compiled expression construct
+        or is not an insert() construct.
+
         """
-        if self.context.executemany:
+        if not self.context.compiled:
+            raise exc.InvalidRequestError(
+                        "Statement is not a compiled "
+                        "expression construct.")
+        elif not self.context.isinsert:
+            raise exc.InvalidRequestError(
+                        "Statement is not an insert() "
+                        "expression construct.")
+        elif self.context.executemany:
             return self.context.compiled_parameters
         else:
             return self.context.compiled_parameters[0]
 
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying
-        ExecutionContext.
+        :class:`.ExecutionContext`.
 
-        See ExecutionContext for details.
+        See :class:`.ExecutionContext` for details.
+        
         """
 
         return self.context.lastrow_has_defaults()
 
     def postfetch_cols(self):
-        """Return ``postfetch_cols()`` from the underlying ExecutionContext.
+        """Return ``postfetch_cols()`` from the underlying :class:`.ExecutionContext`.
 
-        See ExecutionContext for details.
+        See :class:`.ExecutionContext` for details.
+
+        Raises :class:`.InvalidRequestError` if the executed
+        statement is not a compiled expression construct
+        or is not an insert() or update() construct.
+        
         """
 
+        if not self.context.compiled:
+            raise exc.InvalidRequestError(
+                        "Statement is not a compiled "
+                        "expression construct.")
+        elif not self.context.isinsert and not self.context.isupdate:
+            raise exc.InvalidRequestError(
+                        "Statement is not an insert() or update() "
+                        "expression construct.")
         return self.context.postfetch_cols
 
     def prefetch_cols(self):
+        """Return ``prefetch_cols()`` from the underlying :class:`.ExecutionContext`.
+
+        See :class:`.ExecutionContext` for details.
+
+        Raises :class:`.InvalidRequestError` if the executed
+        statement is not a compiled expression construct
+        or is not an insert() or update() construct.
+        
+        """
+
+        if not self.context.compiled:
+            raise exc.InvalidRequestError(
+                        "Statement is not a compiled "
+                        "expression construct.")
+        elif not self.context.isinsert and not self.context.isupdate:
+            raise exc.InvalidRequestError(
+                        "Statement is not an insert() or update() "
+                        "expression construct.")
         return self.context.prefetch_cols
 
     def supports_sane_rowcount(self):

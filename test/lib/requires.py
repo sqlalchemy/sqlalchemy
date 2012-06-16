@@ -436,3 +436,11 @@ def english_locale_on_postgresql(fn):
         skip_if(lambda: testing.against('postgresql') \
                 and not testing.db.scalar('SHOW LC_COLLATE').startswith('en'))
     )
+
+def selectone(fn):
+    """target driver must support the literal statement 'select 1'"""
+    return _chain_decorators_on(
+        fn,
+        skip_if(lambda: testing.against('oracle'), 
+            "non-standard SELECT scalar syntax")
+    )
