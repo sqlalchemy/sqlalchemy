@@ -32,6 +32,10 @@ CHANGES
     was not accepting a scalar argument 
     for the identity.  [ticket:2508].
 
+  - [bug] Fixed bug whereby populate_existing
+    option would not propagate to subquery
+    eager loaders.  [ticket:2497].
+
 - sql
   - [bug] added BIGINT to types.__all__,
     BIGINT, BINARY, VARBINARY to sqlalchemy

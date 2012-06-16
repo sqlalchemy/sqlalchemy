@@ -861,6 +861,18 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
         assert 'addresses' not in u1.__dict__
 
+    def test_populate_existing_propagate(self):
+        User, Address, sess = self._eager_config_fixture()
+        u1 = sess.query(User).get(8)
+        u1.addresses[2].email_address = "foofoo"
+        del u1.addresses[1]
+        u1 = sess.query(User).populate_existing().filter_by(id=8).one()
+        # collection is reverted
+        eq_(len(u1.addresses), 3)
+
+        # attributes on related items reverted
+        eq_(u1.addresses[2].email_address, "ed@lala.com")
+
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 

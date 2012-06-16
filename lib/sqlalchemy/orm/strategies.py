@@ -897,6 +897,8 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # these will fire relative to subq_path.
         q = q._with_current_path(subq_path)
         q = q._conditional_options(*orig_query._with_options)
+        if orig_query._populate_existing: 
+            q._populate_existing = orig_query._populate_existing
         return q
 
     def _setup_outermost_orderby(self, q):
