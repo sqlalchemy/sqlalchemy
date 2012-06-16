@@ -337,6 +337,11 @@ CHANGES
     compound expressions, courtesy btbuilder.  
     [ticket:2490]  Also in 0.7.8.
 
+  - [bug] Fixed bug whereby append_column()
+    wouldn't function correctly on a cloned
+    select() construct, courtesy 
+    Gunnlaugur Þór Briem.  [ticket:2482]
+    Also in 0.7.8.
 
 - sqlite
   - [feature] the SQLite date and time types
