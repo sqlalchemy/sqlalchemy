@@ -351,6 +351,8 @@ class DefaultExecutionContext(base.ExecutionContext):
     result_map = None
     compiled = None
     statement = None
+    postfetch_cols = None
+    prefetch_cols = None
     _is_implicit_returning = False
     _is_explicit_returning = False
 
