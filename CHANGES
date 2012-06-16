@@ -402,6 +402,10 @@ CHANGES
     when reflecting domains, [ticket:2473]
     also in 0.7.7
 
+  - [bug] removed unnecessary table clause when
+    reflecting enums, [ticket:2510].  Courtesy
+    Gunnlaugur Þór Briem.  Also in 0.7.8.
+
 - mysql
   - [bug] Fixed bug whereby column name inside 
     of "KEY" clause for autoincrement composite
