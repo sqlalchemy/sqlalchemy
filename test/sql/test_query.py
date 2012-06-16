@@ -879,14 +879,6 @@ class QueryTest(fixtures.TestBase):
             )
             trans.rollback()
 
-    def test_no_inserted_pk_on_non_insert(self):
-        result = testing.db.execute("select * from query_users")
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"Statement is not an insert\(\) expression construct.",
-            getattr, result, 'inserted_primary_key'
-        )
-
     @testing.requires.returning
     def test_no_inserted_pk_on_returning(self):
         result = testing.db.execute(users.insert().returning(users.c.user_id, users.c.user_name))
