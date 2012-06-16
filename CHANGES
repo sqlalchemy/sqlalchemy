@@ -202,6 +202,11 @@ CHANGES
     [ticket:2454].  Courtesy Jeff Dairiki
     also in 0.7.7.
 
+  - [bug] Fixed bug whereby populate_existing
+    option would not propagate to subquery
+    eager loaders.  [ticket:2497].  Also
+    in 0.7.8.
+
 - engine
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver
