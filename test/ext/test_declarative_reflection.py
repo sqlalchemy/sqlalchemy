@@ -9,6 +9,8 @@ from sqlalchemy.orm import relationship, create_session, \
 from test.lib import fixtures
 
 class DeclarativeReflectionBase(fixtures.TablesTest):
+    __requires__ = 'reflectable_autoincrement',
+
     def setup(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -319,6 +321,7 @@ class DeferredInhReflectBase(DeferredReflectBase):
         )
 
 class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
+
     @classmethod
     def define_tables(cls, metadata):
         Table("foo", metadata,

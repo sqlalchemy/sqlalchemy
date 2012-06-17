@@ -74,6 +74,21 @@ def identity(fn):
         no_support('sybase', 'not supported by database'),
         )
 
+def reflectable_autoincrement(fn):
+    """Target database must support tables that can automatically generate
+    PKs assuming they were reflected.
+    
+    this is essentially all the DBs in "identity" plus Postgresql, which
+    has SERIAL support.  FB and Oracle (and sybase?) require the Sequence to 
+    be explicitly added, including if the table was reflected.
+    """
+    return _chain_decorators_on(
+        fn,
+        no_support('firebird', 'not supported by database'),
+        no_support('oracle', 'not supported by database'),
+        no_support('sybase', 'not supported by database'),
+        )
+
 def independent_cursors(fn):
     """Target must support simultaneous, independent database cursors on a single connection."""
 
