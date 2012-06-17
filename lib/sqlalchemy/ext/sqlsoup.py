@@ -252,7 +252,7 @@ Advanced Use
 ============
 
 Sessions, Transactions and Application Integration
--------------------------------------------------
+---------------------------------------------------
 
 .. note::
 
