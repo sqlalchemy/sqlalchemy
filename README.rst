@@ -19,29 +19,32 @@ Major SQLAlchemy features include:
 * An industrial strength ORM, built 
   from the core on the identity map, unit of work,
   and data mapper patterns.   These patterns
-  allow 100% of object persistence behavior to 
-  be defined declaratively.  The domain model
+  allow transparent persistence of objects 
+  using a declarative configuration system.
+  Domain models
   can be constructed and manipulated naturally,
   and changes are synchronized with the
   current transaction automatically.
 * A relationally-oriented query system, exposing
-  joins, subqueries, correlation, and everything
-  else explicitly, in terms of the object model.
+  the full range of SQL's capabilities 
+  explicitly, including joins, subqueries, 
+  correlation, and most everything else, 
+  in terms of the object model.
   Writing queries with the ORM uses the same 
   techniques of relational composition you use 
   when writing SQL.  While you can drop into
   literal SQL at any time, it's virtually never
   needed.
-* The most comprehensive and flexible system anywhere 
-  of eager loading of related collections and objects.
-  Collections are fully cached within a session,
+* A comprehensive and flexible system 
+  of eager loading for related collections and objects.
+  Collections are cached within a session,
   and can be loaded on individual access, all 
   at once using joins, or by query per collection
   across the full result set.
 * A Core SQL construction system and DBAPI 
   interaction layer.  The SQLAlchemy Core is
   separate from the ORM and is a full database
-  abstraction layer in it's own right, and includes
+  abstraction layer in its own right, and includes
   an extensible Python-based SQL expression 
   language, schema metadata, connection pooling, 
   type coercion, and custom types.
