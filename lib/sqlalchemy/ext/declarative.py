@@ -400,8 +400,8 @@ table::
 
 Note that above, the ``Engineer.id`` attribute, since it shares the
 same attribute name as the ``Person.id`` attribute, will in fact
-represent the ``people.id`` and ``engineers.id`` columns together, and
-will render inside a query as ``"people.id"``. 
+represent the ``people.id`` and ``engineers.id`` columns together,
+with the "Engineer.id" column taking precedence if queried directly.
 To provide the ``Engineer`` class with an attribute that represents
 only the ``engineers.id`` column, give it a different attribute name::
 
@@ -412,6 +412,11 @@ only the ``engineers.id`` column, give it a different attribute name::
                                                     primary_key=True)
         primary_language = Column(String(50))
 
+
+.. versionchanged:: 0.7 joined table inheritance favors the subclass
+   column over that of the superclass, such as querying above
+   for ``Engineer.id``.  Prior to 0.7 this was the reverse.
+   
 Single Table Inheritance
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
