@@ -35,7 +35,7 @@ To run all tests:
 If you're running the tests on Microsoft Windows, then there is an additional
 argument that must be passed to ./sqla_nose.py:
 
-    > ./sqla_nose.py --first-package-wins=True
+    > ./sqla_nose.py --first-package-wins
 
 This is required because nose's importer will normally evict a package from
 sys.modules if it sees a package with the same name in a different location.
