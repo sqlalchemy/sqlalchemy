@@ -1078,7 +1078,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         for u in s1_users:
             ustate = attributes.instance_state(u)
-            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_path.path, (umapper, ))
             eq_(ustate.load_options, set([opt2]))
 
         # test 2.  present options are replaced by merge options
@@ -1086,7 +1086,7 @@ class MergeTest(_fixtures.FixtureTest):
         s1_users = sess.query(User).options(opt1).all()
         for u in s1_users:
             ustate = attributes.instance_state(u)
-            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_path.path, (umapper, ))
             eq_(ustate.load_options, set([opt1]))
 
         for u in s2_users:
@@ -1094,7 +1094,7 @@ class MergeTest(_fixtures.FixtureTest):
 
         for u in s1_users:
             ustate = attributes.instance_state(u)
-            eq_(ustate.load_path, (umapper, ))
+            eq_(ustate.load_path.path, (umapper, ))
             eq_(ustate.load_options, set([opt2]))
 
 

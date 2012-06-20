@@ -112,7 +112,8 @@ __all__ = (
     'synonym',
     'undefer',
     'undefer_group',
-    'validates'
+    'validates',
+    'with_polymorphic'
     )
 
 

@@ -24,6 +24,7 @@ from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, \
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 
+
 class InstanceState(object):
     """tracks state information at the instance level."""
 
@@ -177,7 +178,7 @@ class InstanceState(object):
             ) if k in self.__dict__ 
         )
         if self.load_path:
-            d['load_path'] = interfaces.serialize_path(self.load_path)
+            d['load_path'] = self.load_path.serialize()
 
         self.manager.dispatch.pickle(self, d)
 
@@ -222,7 +223,8 @@ class InstanceState(object):
         ])
 
         if 'load_path' in state:
-            self.load_path = interfaces.deserialize_path(state['load_path'])
+            self.load_path = orm_util.PathRegistry.\
+                                deserialize(state['load_path'])
 
         # setup _sa_instance_state ahead of time so that 
         # unpickle events can access the object normally.

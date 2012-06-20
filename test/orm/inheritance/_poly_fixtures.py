@@ -154,6 +154,54 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         cls.c1_employees = [e1, e2, b1, m1]
         cls.c2_employees = [e3]
 
+    def _company_with_emps_machines_fixture(self):
+        fixture = self._company_with_emps_fixture()
+        fixture[0].employees[0].machines = [
+            Machine(name="IBM ThinkPad"),
+            Machine(name="IPhone"),
+        ]
+        fixture[0].employees[1].machines = [
+            Machine(name="Commodore 64")
+        ]
+        return fixture
+
+    def _company_with_emps_fixture(self):
+        return [
+            Company(
+                name="MegaCorp, Inc.",
+                employees=[
+                    Engineer(
+                        name="dilbert",
+                        engineer_name="dilbert",
+                        primary_language="java",
+                        status="regular engineer"
+                    ),
+                    Engineer(
+                        name="wally",
+                        engineer_name="wally",
+                        primary_language="c++",
+                        status="regular engineer"),
+                    Boss(
+                        name="pointy haired boss",
+                        golf_swing="fore",
+                        manager_name="pointy",
+                        status="da boss"),
+                    Manager(
+                        name="dogbert",
+                        manager_name="dogbert",
+                        status="regular manager"),
+                ]),
+            Company(
+                name="Elbonia, Inc.",
+                employees=[
+                    Engineer(
+                        name="vlad",
+                        engineer_name="vlad",
+                        primary_language="cobol",
+                        status="elbonian engineer")
+                ])
+        ]
+
     def _emps_wo_relationships_fixture(self):
         return [
             Engineer(

@@ -108,6 +108,8 @@ class PickleTest(fixtures.MappedTest):
         eq_(str(u1), "User(name='ed')")
 
     def test_serialize_path(self):
+        from sqlalchemy.orm.util import PathRegistry
+
         users, addresses = (self.tables.users,
                                 self.tables.addresses)
 
@@ -117,24 +119,24 @@ class PickleTest(fixtures.MappedTest):
         amapper = mapper(Address, addresses)
 
         # this is a "relationship" path with mapper, key, mapper, key
-        p1 = (umapper, 'addresses', amapper, 'email_address')
+        p1 = PathRegistry.coerce((umapper, 'addresses', amapper, 'email_address'))
         eq_(
-            interfaces.deserialize_path(interfaces.serialize_path(p1)),
+            PathRegistry.deserialize(p1.serialize()),
             p1
         )
 
         # this is a "mapper" path with mapper, key, mapper, no key
         # at the end.
-        p2 = (umapper, 'addresses', amapper, )
+        p2 = PathRegistry.coerce((umapper, 'addresses', amapper, ))
         eq_(
-            interfaces.deserialize_path(interfaces.serialize_path(p2)),
+            PathRegistry.deserialize(p2.serialize()),
             p2
         )
 
         # test a blank path
-        p3 = ()
+        p3 = PathRegistry.root
         eq_(
-            interfaces.deserialize_path(interfaces.serialize_path(p3)),
+            PathRegistry.deserialize(p3.serialize()),
             p3
         )
 

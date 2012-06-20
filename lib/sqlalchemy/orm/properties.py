@@ -18,7 +18,8 @@ from sqlalchemy.sql import operators, expression, visitors
 from sqlalchemy.orm import attributes, dependency, mapper, \
     object_mapper, strategies, configure_mappers, relationships
 from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
-    _orm_annotate, _orm_deannotate, _orm_full_deannotate
+    _orm_annotate, _orm_deannotate, _orm_full_deannotate,\
+    _entity_info
 
 from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
     MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
@@ -305,7 +306,7 @@ class RelationshipProperty(StrategizedProperty):
             self.mapper = mapper
             self.adapter = adapter
             if of_type:
-                self._of_type = _class_to_mapper(of_type)
+                self._of_type = of_type
 
         def adapted(self, adapter):
             """Return a copy of this PropComparator which will use the
@@ -318,7 +319,7 @@ class RelationshipProperty(StrategizedProperty):
                                   getattr(self, '_of_type', None),
                                   adapter)
 
-        @property
+        @util.memoized_property
         def parententity(self):
             return self.property.parent
 
@@ -406,9 +407,8 @@ class RelationshipProperty(StrategizedProperty):
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
-                target_mapper = self._of_type
-                to_selectable = target_mapper._with_polymorphic_selectable
-                if self.property._is_self_referential:
+                target_mapper, to_selectable, is_aliased_class = _entity_info(self._of_type)
+                if self.property._is_self_referential and not is_aliased_class:
                     to_selectable = to_selectable.alias()
 
                 single_crit = target_mapper._single_table_criterion
@@ -418,6 +418,7 @@ class RelationshipProperty(StrategizedProperty):
                     else:
                         criterion = single_crit
             else:
+                is_aliased_class = False
                 to_selectable = None
 
             if self.adapter:
@@ -445,8 +446,7 @@ class RelationshipProperty(StrategizedProperty):
             else:
                 j = _orm_annotate(pj, exclude=self.property.remote_side)
 
-            # MARKMARK
-            if criterion is not None and target_adapter:
+            if criterion is not None and target_adapter and not is_aliased_class:
                 # limit this adapter to annotated only?
                 criterion = target_adapter.traverse(criterion)
 
@@ -460,8 +460,10 @@ class RelationshipProperty(StrategizedProperty):
 
             crit = j & criterion
 
-            return sql.exists([1], crit, from_obj=dest).\
-                            correlate(source._annotate({'_orm_adapt':True}))
+            ex = sql.exists([1], crit, from_obj=dest).correlate_except(dest)
+            if secondary is not None:
+                ex = ex.correlate_except(secondary)
+            return ex
 
         def any(self, criterion=None, **kwargs):
             """Produce an expression that tests a collection against

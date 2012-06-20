@@ -28,7 +28,8 @@ from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
                                 PropComparator
 
 from sqlalchemy.orm.util import _INSTRUMENTOR, _class_to_mapper, \
-     _state_mapper, class_mapper, instance_str, state_str
+     _state_mapper, class_mapper, instance_str, state_str,\
+     PathRegistry
 
 import sys
 sessionlib = util.importlater("sqlalchemy.orm", "session")
@@ -431,6 +432,10 @@ class Mapper(object):
     """A synonym for :attr:`~.Mapper.columns`."""
 
     dispatch = event.dispatcher(events.MapperEvents)
+
+    @util.memoized_property
+    def _sa_path_registry(self):
+        return PathRegistry.per_mapper(self)
 
     def _configure_inheritance(self):
         """Configure settings related to inherting and/or inherited mappers
@@ -1302,13 +1307,12 @@ class Mapper(object):
 
         return mappers
 
-    def _selectable_from_mappers(self, mappers):
+    def _selectable_from_mappers(self, mappers, innerjoin):
         """given a list of mappers (assumed to be within this mapper's
         inheritance hierarchy), construct an outerjoin amongst those mapper's
         mapped tables.
 
         """
-
         from_obj = self.mapped_table
         for m in mappers:
             if m is self:
@@ -1318,7 +1322,11 @@ class Mapper(object):
                         "'with_polymorphic()' requires 'selectable' argument "
                         "when concrete-inheriting mappers are used.")
             elif not m.single:
-                from_obj = from_obj.outerjoin(m.local_table,
+                if innerjoin:
+                    from_obj = from_obj.join(m.local_table,
+                                                m.inherit_condition)
+                else:
+                    from_obj = from_obj.outerjoin(m.local_table,
                                                 m.inherit_condition)
 
         return from_obj
@@ -1350,9 +1358,11 @@ class Mapper(object):
             return selectable
         else:
             return self._selectable_from_mappers(
-                            self._mappers_from_spec(spec, selectable))
+                            self._mappers_from_spec(spec, selectable),
+                            False)
 
-    def _with_polymorphic_args(self, spec=None, selectable=False):
+    def _with_polymorphic_args(self, spec=None, selectable=False, 
+                                innerjoin=False):
         if self.with_polymorphic:
             if not spec:
                 spec = self.with_polymorphic[0]
@@ -1364,7 +1374,8 @@ class Mapper(object):
         if selectable is not None:
             return mappers, selectable
         else:
-            return mappers, self._selectable_from_mappers(mappers)
+            return mappers, self._selectable_from_mappers(mappers, 
+                                innerjoin)
 
     @_memoized_configured_property
     def _polymorphic_properties(self):
@@ -1926,7 +1937,7 @@ class Mapper(object):
         return result
 
 
-    def _instance_processor(self, context, path, reduced_path, adapter, 
+    def _instance_processor(self, context, path, adapter, 
                                 polymorphic_from=None, 
                                 only_load_props=None, refresh_state=None,
                                 polymorphic_discriminator=None):
@@ -1951,7 +1962,7 @@ class Mapper(object):
                 polymorphic_on = self.polymorphic_on
             polymorphic_instances = util.PopulateDict(
                                         self._configure_subclass_mapper(
-                                                context, path, reduced_path, adapter)
+                                                context, path, adapter)
                                         )
 
         version_id_col = self.version_id_col
@@ -1968,7 +1979,9 @@ class Mapper(object):
         new_populators = []
         existing_populators = []
         eager_populators = []
-        load_path = context.query._current_path + path
+        load_path = context.query._current_path + path \
+                    if context.query._current_path.path \
+                    else path
 
         def populate_state(state, dict_, row, isnew, only_load_props):
             if isnew:
@@ -1978,7 +1991,7 @@ class Mapper(object):
                     state.load_path = load_path
 
             if not new_populators:
-                self._populators(context, path, reduced_path, row, adapter,
+                self._populators(context, path, row, adapter,
                                 new_populators,
                                 existing_populators,
                                 eager_populators
@@ -2015,7 +2028,7 @@ class Mapper(object):
 
         def _instance(row, result):
             if not new_populators and invoke_all_eagers:
-                self._populators(context, path, reduced_path, row, adapter,
+                self._populators(context, path, row, adapter,
                                 new_populators,
                                 existing_populators,
                                 eager_populators
@@ -2191,16 +2204,17 @@ class Mapper(object):
             return instance
         return _instance
 
-    def _populators(self, context, path, reduced_path, row, adapter,
+    def _populators(self, context, path, row, adapter,
             new_populators, existing_populators, eager_populators):
-        """Produce a collection of attribute level row processor callables."""
+        """Produce a collection of attribute level row processor 
+        callables."""
 
         delayed_populators = []
-        pops = (new_populators, existing_populators, delayed_populators, eager_populators)
+        pops = (new_populators, existing_populators, delayed_populators, 
+                            eager_populators)
         for prop in self._props.itervalues():
             for i, pop in enumerate(prop.create_row_processor(
-                                        context, path, 
-                                        reduced_path,
+                                        context, path,
                                         self, row, adapter)):
                 if pop is not None:
                     pops[i].append((prop.key, pop))
@@ -2208,7 +2222,7 @@ class Mapper(object):
         if delayed_populators:
             new_populators.extend(delayed_populators)
 
-    def _configure_subclass_mapper(self, context, path, reduced_path, adapter):
+    def _configure_subclass_mapper(self, context, path, adapter):
         """Produce a mapper level row processor callable factory for mappers
         inheriting this one."""
 
@@ -2223,18 +2237,17 @@ class Mapper(object):
                 return None
 
             # replace the tip of the path info with the subclass mapper 
-            # being used. that way accurate "load_path" info is available 
-            # for options invoked during deferred loads.
-            # we lose AliasedClass path elements this way, but currently,
-            # those are not needed at this stage.
-
-            # this asserts to true
-            #assert mapper.isa(_class_to_mapper(path[-1]))
-
-            return mapper._instance_processor(context, path[0:-1] + (mapper,), 
-                                                    reduced_path[0:-1] + (mapper.base_mapper,),
-                                                    adapter,
-                                                    polymorphic_from=self)
+            # being used, that way accurate "load_path" info is available 
+            # for options invoked during deferred loads, e.g.
+            # query(Person).options(defer(Engineer.machines, Machine.name)).
+            # for AliasedClass paths, disregard this step (new in 0.8).
+            return mapper._instance_processor(
+                                context, 
+                                path.parent[mapper] 
+                                    if not path.is_aliased_class 
+                                    else path, 
+                                adapter,
+                                polymorphic_from=self)
         return configure_subclass_mapper
 
 log.class_logger(Mapper)

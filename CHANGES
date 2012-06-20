@@ -49,6 +49,14 @@ CHANGES
     of a join in place of the "of_type()" modifier.
     [ticket:2333]
 
+  - [feature] The of_type() construct on attributes
+    now accepts aliased() class constructs as well
+    as with_polymorphic constructs, and works with
+    query.join(), any(), has(), and also
+    eager loaders subqueryload(), joinedload(),
+    contains_eager()
+    [ticket:2438] [ticket:1106]
+
   - [feature] The "deferred declarative 
     reflection" system has been moved into the 
     declarative extension itself, using the
@@ -295,6 +303,10 @@ CHANGES
     when keys are present in insert.values() or update.values()
     that aren't in the target table is now an exception.
     [ticket:2415]
+
+  - [feature] select() features a correlate_except()
+    method, auto correlates all selectables except those
+    passed.
 
   - [bug] All of UniqueConstraint, ForeignKeyConstraint,
     CheckConstraint, and PrimaryKeyConstraint will

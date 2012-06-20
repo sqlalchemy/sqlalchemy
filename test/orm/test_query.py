@@ -9,7 +9,8 @@ from sqlalchemy.sql import expression
 from sqlalchemy.engine import default
 from sqlalchemy.orm import attributes, mapper, relationship, backref, \
     configure_mappers, create_session, synonym, Session, class_mapper, \
-    aliased, column_property, joinedload_all, joinedload, Query
+    aliased, column_property, joinedload_all, joinedload, Query,\
+    util as orm_util
 from test.lib.assertsql import CompiledSQL
 from test.lib.testing import eq_
 from test.lib.schema import Table, Column
@@ -2119,7 +2120,7 @@ class ExecutionOptionsTest(QueryTest):
 
 
 class OptionsTest(QueryTest):
-    """Test the _get_paths() method of PropertyOption."""
+    """Test the _process_paths() method of PropertyOption."""
 
     def _option_fixture(self, *arg):
         from sqlalchemy.orm import interfaces
@@ -2136,11 +2137,15 @@ class OptionsTest(QueryTest):
             r.append(item)
         return tuple(r)
 
-    def _assert_path_result(self, opt, q, paths, mappers):
+    def _make_path_registry(self, path):
+        return orm_util.PathRegistry.coerce(self._make_path(path))
+
+    def _assert_path_result(self, opt, q, paths):
+        q._attributes = q._attributes.copy()
+        assert_paths = opt._process_paths(q, False)
         eq_(
-            opt._get_paths(q, False),
-            ([self._make_path(p) for p in paths], 
-            [class_mapper(c) for c in mappers])
+            [p.path for p in assert_paths],
+            [self._make_path(p) for p in paths]
         )
 
     def test_get_path_one_level_string(self):
@@ -2150,7 +2155,7 @@ class OptionsTest(QueryTest):
         q = sess.query(User)
 
         opt = self._option_fixture("addresses")
-        self._assert_path_result(opt, q, [(User, 'addresses')], [User])
+        self._assert_path_result(opt, q, [(User, 'addresses')])
 
     def test_get_path_one_level_attribute(self):
         User = self.classes.User
@@ -2159,7 +2164,7 @@ class OptionsTest(QueryTest):
         q = sess.query(User)
 
         opt = self._option_fixture(User.addresses)
-        self._assert_path_result(opt, q, [(User, 'addresses')], [User])
+        self._assert_path_result(opt, q, [(User, 'addresses')])
 
     def test_path_on_entity_but_doesnt_match_currentpath(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2170,8 +2175,10 @@ class OptionsTest(QueryTest):
         sess = Session()
         q = sess.query(User)
         opt = self._option_fixture('email_address', 'id')
-        q = sess.query(Address)._with_current_path([class_mapper(User), 'addresses'])
-        self._assert_path_result(opt, q, [], [])
+        q = sess.query(Address)._with_current_path(
+                orm_util.PathRegistry.coerce([class_mapper(User), 'addresses'])
+            )
+        self._assert_path_result(opt, q, [])
 
     def test_get_path_one_level_with_unrelated(self):
         Order = self.classes.Order
@@ -2179,7 +2186,7 @@ class OptionsTest(QueryTest):
         sess = Session()
         q = sess.query(Order)
         opt = self._option_fixture("addresses")
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_path_multilevel_string(self):
         Item, User, Order = (self.classes.Item,
@@ -2194,8 +2201,7 @@ class OptionsTest(QueryTest):
             (User, 'orders'), 
             (User, 'orders', Order, 'items'),
             (User, 'orders', Order, 'items', Item, 'keywords')
-        ], 
-        [User, Order, Item])
+        ])
 
     def test_path_multilevel_attribute(self):
         Item, User, Order = (self.classes.Item,
@@ -2210,8 +2216,7 @@ class OptionsTest(QueryTest):
             (User, 'orders'), 
             (User, 'orders', Order, 'items'),
             (User, 'orders', Order, 'items', Item, 'keywords')
-        ], 
-        [User, Order, Item])
+        ])
 
     def test_with_current_matching_string(self):
         Item, User, Order = (self.classes.Item,
@@ -2220,13 +2225,13 @@ class OptionsTest(QueryTest):
 
         sess = Session()
         q = sess.query(Item)._with_current_path(
-                self._make_path([User, 'orders', Order, 'items'])
+                self._make_path_registry([User, 'orders', Order, 'items'])
             )
 
         opt = self._option_fixture("orders.items.keywords")
         self._assert_path_result(opt, q, [
             (Item, 'keywords')
-        ], [Item])
+        ])
 
     def test_with_current_matching_attribute(self):
         Item, User, Order = (self.classes.Item,
@@ -2235,13 +2240,13 @@ class OptionsTest(QueryTest):
 
         sess = Session()
         q = sess.query(Item)._with_current_path(
-                self._make_path([User, 'orders', Order, 'items'])
+                self._make_path_registry([User, 'orders', Order, 'items'])
             )
 
         opt = self._option_fixture(User.orders, Order.items, Item.keywords)
         self._assert_path_result(opt, q, [
             (Item, 'keywords')
-        ], [Item])
+        ])
 
     def test_with_current_nonmatching_string(self):
         Item, User, Order = (self.classes.Item,
@@ -2250,14 +2255,14 @@ class OptionsTest(QueryTest):
 
         sess = Session()
         q = sess.query(Item)._with_current_path(
-                self._make_path([User, 'orders', Order, 'items'])
+                self._make_path_registry([User, 'orders', Order, 'items'])
             )
 
         opt = self._option_fixture("keywords")
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
         opt = self._option_fixture("items.keywords")
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_with_current_nonmatching_attribute(self):
         Item, User, Order = (self.classes.Item,
@@ -2266,14 +2271,14 @@ class OptionsTest(QueryTest):
 
         sess = Session()
         q = sess.query(Item)._with_current_path(
-                self._make_path([User, 'orders', Order, 'items'])
+                self._make_path_registry([User, 'orders', Order, 'items'])
             )
 
         opt = self._option_fixture(Item.keywords)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
         opt = self._option_fixture(Order.items, Item.keywords)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_from_base_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
@@ -2288,7 +2293,7 @@ class OptionsTest(QueryTest):
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.flub)
 
-        self._assert_path_result(opt, q, [(Address, 'flub')], [SubAddr])
+        self._assert_path_result(opt, q, [(Address, 'flub')])
 
     def test_from_subclass_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
@@ -2303,7 +2308,7 @@ class OptionsTest(QueryTest):
         q = sess.query(SubAddr)
         opt = self._option_fixture(SubAddr.flub)
 
-        self._assert_path_result(opt, q, [(SubAddr, 'flub')], [SubAddr])
+        self._assert_path_result(opt, q, [(SubAddr, 'flub')])
 
     def test_from_base_to_base_attr_via_subclass(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
@@ -2318,7 +2323,7 @@ class OptionsTest(QueryTest):
         q = sess.query(Address)
         opt = self._option_fixture(SubAddr.user)
 
-        self._assert_path_result(opt, q, [(Address, 'user')], [Address])
+        self._assert_path_result(opt, q, [(Address, 'user')])
 
     def test_of_type(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2334,7 +2339,7 @@ class OptionsTest(QueryTest):
         self._assert_path_result(opt, q, [
             (User, 'addresses'),
             (User, 'addresses', SubAddr, 'user')
-        ], [User, Address])
+        ])
 
     def test_of_type_plus_level(self):
         Dingaling, User, Address = (self.classes.Dingaling,
@@ -2354,7 +2359,7 @@ class OptionsTest(QueryTest):
         self._assert_path_result(opt, q, [
             (User, 'addresses'),
             (User, 'addresses', SubAddr, 'flub')
-        ], [User, SubAddr])
+        ])
 
     def test_aliased_single(self):
         User = self.classes.User
@@ -2363,7 +2368,7 @@ class OptionsTest(QueryTest):
         ualias = aliased(User)
         q = sess.query(ualias)
         opt = self._option_fixture(ualias.addresses)
-        self._assert_path_result(opt, q, [(ualias, 'addresses')], [User])
+        self._assert_path_result(opt, q, [(ualias, 'addresses')])
 
     def test_with_current_aliased_single(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2371,10 +2376,10 @@ class OptionsTest(QueryTest):
         sess = Session()
         ualias = aliased(User)
         q = sess.query(ualias)._with_current_path(
-                        self._make_path([Address, 'user'])
+                        self._make_path_registry([Address, 'user'])
                 )
         opt = self._option_fixture(Address.user, ualias.addresses)
-        self._assert_path_result(opt, q, [(ualias, 'addresses')], [User])
+        self._assert_path_result(opt, q, [(ualias, 'addresses')])
 
     def test_with_current_aliased_single_nonmatching_option(self):
         User, Address = self.classes.User, self.classes.Address
@@ -2382,22 +2387,21 @@ class OptionsTest(QueryTest):
         sess = Session()
         ualias = aliased(User)
         q = sess.query(User)._with_current_path(
-                        self._make_path([Address, 'user'])
+                        self._make_path_registry([Address, 'user'])
                 )
         opt = self._option_fixture(Address.user, ualias.addresses)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
-    @testing.fails_if(lambda: True, "Broken feature")
     def test_with_current_aliased_single_nonmatching_entity(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = Session()
         ualias = aliased(User)
         q = sess.query(ualias)._with_current_path(
-                        self._make_path([Address, 'user'])
+                        self._make_path_registry([Address, 'user'])
                 )
         opt = self._option_fixture(Address.user, User.addresses)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_multi_entity_opt_on_second(self):
         Item = self.classes.Item
@@ -2405,7 +2409,7 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(Order.items)
         sess = Session()
         q = sess.query(Item, Order)
-        self._assert_path_result(opt, q, [(Order, "items")], [Order])
+        self._assert_path_result(opt, q, [(Order, "items")])
 
     def test_multi_entity_opt_on_string(self):
         Item = self.classes.Item
@@ -2413,7 +2417,7 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture("items")
         sess = Session()
         q = sess.query(Item, Order)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_multi_entity_no_mapped_entities(self):
         Item = self.classes.Item
@@ -2421,7 +2425,7 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture("items")
         sess = Session()
         q = sess.query(Item.id, Order.id)
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
     def test_path_exhausted(self):
         User = self.classes.User
@@ -2430,9 +2434,9 @@ class OptionsTest(QueryTest):
         opt = self._option_fixture(User.orders)
         sess = Session()
         q = sess.query(Item)._with_current_path(
-                        self._make_path([User, 'orders', Order, 'items'])
+                        self._make_path_registry([User, 'orders', Order, 'items'])
                 )
-        self._assert_path_result(opt, q, [], [])
+        self._assert_path_result(opt, q, [])
 
 class OptionsNoPropTest(_fixtures.FixtureTest):
     """test the error messages emitted when using property

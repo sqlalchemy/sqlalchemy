@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
     )
 from sqlalchemy.orm.util import (
     AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
-    _extended_entity_info,
+    _extended_entity_info, PathRegistry,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
     join as orm_join,with_parent, _attr_as_key, aliased
     )
@@ -52,6 +52,8 @@ def _generative(*assertions):
         fn(self, *args[1:], **kw)
         return self
     return generate
+
+_path_registry = PathRegistry.root
 
 class Query(object):
     """ORM-level SQL construction object.
@@ -88,7 +90,6 @@ class Query(object):
     _invoke_all_eagers = True
     _version_check = False
     _autoflush = True
-    _current_path = ()
     _only_load_props = None
     _refresh_state = None
     _from_obj = ()
@@ -104,6 +105,8 @@ class Query(object):
     _with_options = ()
     _with_hints = ()
     _enable_single_crit = True
+
+    _current_path = _path_registry
 
     def __init__(self, entities, session=None):
         self.session = session
@@ -125,28 +128,25 @@ class Query(object):
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
-                    mapper, selectable, \
-                    is_aliased_class, with_polymorphic_mappers, \
-                    with_polymorphic_discriminator = \
-                                            _extended_entity_info(entity)
-                    if not is_aliased_class and mapper.with_polymorphic:
-                        if mapper.mapped_table not in \
+                    ext_info = _extended_entity_info(entity)
+                    if not ext_info.is_aliased_class and ext_info.mapper.with_polymorphic:
+                        if ext_info.mapper.mapped_table not in \
                                             self._polymorphic_adapters:
-                            self._mapper_loads_polymorphically_with(mapper, 
+                            self._mapper_loads_polymorphically_with(ext_info.mapper, 
                                 sql_util.ColumnAdapter(
-                                            selectable, 
-                                            mapper._equivalent_columns))
+                                            ext_info.selectable, 
+                                            ext_info.mapper._equivalent_columns))
                         aliased_adapter = None
-                    elif is_aliased_class:
+                    elif ext_info.is_aliased_class:
                         aliased_adapter = sql_util.ColumnAdapter(
-                                            selectable, 
-                                            mapper._equivalent_columns)
+                                            ext_info.selectable, 
+                                            ext_info.mapper._equivalent_columns)
                     else:
                         aliased_adapter = None
 
-                    d[entity] = (mapper, aliased_adapter, selectable, 
-                                        is_aliased_class, with_polymorphic_mappers,
-                                        with_polymorphic_discriminator)
+                    d[entity] = (ext_info.mapper, aliased_adapter, ext_info.selectable, 
+                                        ext_info.is_aliased_class, ext_info.with_polymorphic_mappers,
+                                        ext_info.with_polymorphic_discriminator)
                 ent.setup_entity(entity, *d[entity])
 
     def _mapper_loads_polymorphically_with(self, mapper, adapter):
@@ -1251,7 +1251,7 @@ class Query(object):
     def having(self, criterion):
         """apply a HAVING criterion to the query and return the
         newly resulting :class:`.Query`.
-        
+
         :meth:`having` is used in conjunction with :meth:`group_by`.
  
         HAVING criterion makes it possible to use filters on aggregate
@@ -1940,7 +1940,6 @@ class Query(object):
             raise sa_exc.InvalidRequestError(
                     "Could not find a FROM clause to join from.  "
                     "Tried joining to %s, but got: %s" % (right, ae))
-
         self._from_obj = self._from_obj + (clause,)
 
     def _reset_joinpoint(self):
@@ -2872,7 +2871,7 @@ class _MapperEntity(_QueryEntity):
         query._entities.append(self)
 
         self.entities = [entity]
-        self.entity_zero = self.expr = entity
+        self.expr = entity
 
     def setup_entity(self, entity, mapper, aliased_adapter, 
                         from_obj, is_aliased_class, 
@@ -2885,16 +2884,12 @@ class _MapperEntity(_QueryEntity):
         self._with_polymorphic = with_polymorphic
         self._polymorphic_discriminator = with_polymorphic_discriminator
         if is_aliased_class:
-            self.path_entity = self.entity_zero = entity
-            self._path = (entity,)
+            self.entity_zero = entity
             self._label_name = self.entity_zero._sa_label_name
-            self._reduced_path = (self.path_entity, )
         else:
-            self.path_entity = mapper
-            self._path = (mapper,)
-            self._reduced_path = (mapper.base_mapper, )
             self.entity_zero = mapper
             self._label_name = self.mapper.class_.__name__
+        self.path = self.entity_zero._sa_path_registry
 
     def set_with_polymorphic(self, query, cls_or_mappers, 
                                 selectable, polymorphic_on):
@@ -2929,10 +2924,13 @@ class _MapperEntity(_QueryEntity):
         return self.entity_zero
 
     def corresponds_to(self, entity):
-        if _is_aliased_class(entity) or self.is_aliased_class:
-            return entity is self.path_entity
+        entity_info = _extended_entity_info(entity)
+        if entity_info.is_aliased_class or self.is_aliased_class:
+            return entity is self.entity_zero \
+                or \
+                entity in self._with_polymorphic
         else:
-            return entity.common_parent(self.path_entity)
+            return entity.common_parent(self.entity_zero)
 
     def adapt_to_selectable(self, query, sel):
         query._entities.append(self)
@@ -2976,8 +2974,7 @@ class _MapperEntity(_QueryEntity):
         if self.primary_entity:
             _instance = self.mapper._instance_processor(
                                 context, 
-                                self._path,
-                                self._reduced_path,
+                                self.path,
                                 adapter,
                                 only_load_props=query._only_load_props,
                                 refresh_state=context.refresh_state,
@@ -2987,8 +2984,7 @@ class _MapperEntity(_QueryEntity):
         else:
             _instance = self.mapper._instance_processor(
                                 context, 
-                                self._path,
-                                self._reduced_path,
+                                self.path,
                                 adapter,
                                 polymorphic_discriminator=
                                     self._polymorphic_discriminator)
@@ -3024,8 +3020,7 @@ class _MapperEntity(_QueryEntity):
             value.setup(
                 context,
                 self,
-                self._path,
-                self._reduced_path,
+                self.path,
                 adapter,
                 only_load_props=query._only_load_props,
                 column_collection=context.primary_columns
@@ -3211,7 +3206,8 @@ class QueryContext(object):
         self.create_eager_joins = []
         self.propagate_options = set(o for o in query._with_options if
                                         o.propagate_to_loaders)
-        self.attributes = query._attributes.copy()
+        self.attributes = self._attributes = query._attributes.copy()
+
 
 class AliasOption(interfaces.MapperOption):
 

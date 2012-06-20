@@ -103,12 +103,14 @@ class QueryableAttribute(interfaces.PropComparator):
     """Base class for class-bound attributes. """
 
     def __init__(self, class_, key, impl=None, 
-                        comparator=None, parententity=None):
+                        comparator=None, parententity=None,
+                        of_type=None):
         self.class_ = class_
         self.key = key
         self.impl = impl
         self.comparator = comparator
         self.parententity = parententity
+        self._of_type = of_type
 
         manager = manager_of_class(class_)
         # manager is None in the case of AliasedClass
@@ -136,6 +138,15 @@ class QueryableAttribute(interfaces.PropComparator):
 
     def __clause_element__(self):
         return self.comparator.__clause_element__()
+
+    def of_type(self, cls):
+        return QueryableAttribute(
+                    self.class_,
+                    self.key,
+                    self.impl,
+                    self.comparator.of_type(cls),
+                    self.parententity,
+                    of_type=cls)
 
     def label(self, name):
         return self.__clause_element__().label(name)

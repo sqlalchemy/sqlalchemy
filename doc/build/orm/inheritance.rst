@@ -423,6 +423,20 @@ Using ``aliased=True`` instead renders it more like::
 
     FROM x JOIN (SELECT * FROM y JOIN z ON <onclause>) AS anon_1 ON <onclause>
 
+The above join can also be expressed more succinctly by combining ``of_type()``
+with the polymorphic construct::
+
+    manager_and_engineer = with_polymorphic(
+                                Employee, [Manager, Engineer], 
+                                aliased=True)
+
+    session.query(Company).\
+        join(Company.employees.of_type(manager_and_engineer)).\
+        filter(
+            or_(manager_and_engineer.Engineer.engineer_info=='someinfo', 
+                manager_and_engineer.Manager.manager_data=='somedata')
+        )
+
 The ``any()`` and ``has()`` operators also can be used with
 :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` when the embedded
 criterion is in terms of a subclass::
@@ -447,6 +461,28 @@ EXISTS query. To build one by hand looks like::
 The EXISTS subquery above selects from the join of ``employees`` to
 ``engineers``, and also specifies criterion which correlates the EXISTS
 subselect back to the parent ``companies`` table.
+
+.. versionadded:: 0.8
+   :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` accepts
+   :func:`.orm.aliased` and :func:`.orm.with_polymorphic` constructs in conjunction
+   with :meth:`.Query.join`, ``any()`` and ``has()``.
+
+Eager Loading of Specific Subtypes
+++++++++++++++++++++++++++++++++++
+
+The :func:`.joinedload` and :func:`.subqueryload` options also support
+paths which make use of :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
+Below we load ``Company`` rows while eagerly loading related ``Engineer`` 
+objects, querying the ``employee`` and ``engineer`` tables simultaneously::
+
+    session.query(Company).\
+        options(subqueryload_all(Company.employees.of_type(Engineer), 
+                        Engineer.machines))
+
+.. versionadded:: 0.8
+    :func:`.joinedload` and :func:`.subqueryload` support
+    paths that are qualified with 
+    :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
 
 Single Table Inheritance
 ------------------------

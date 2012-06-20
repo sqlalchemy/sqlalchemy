@@ -112,6 +112,18 @@ else:
     reduce = reduce
 
 try:
+    from collections import namedtuple
+except ImportError:
+    def namedtuple(typename, fieldnames):
+        def __new__(cls, *values):
+            tup = tuple.__new__(tuptype, values)
+            for i, fname in enumerate(fieldnames):
+                setattr(tup, fname, tup[i])
+            return tup
+        tuptype = type(typename, (tuple, ), {'__new__':__new__})
+        return tuptype
+
+try:
     from collections import defaultdict
 except ImportError:
     class defaultdict(dict):

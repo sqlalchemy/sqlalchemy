@@ -42,7 +42,6 @@ __all__ = (
     'SessionExtension',
     'StrategizedOption',
     'StrategizedProperty',
-    'build_path',
     )
 
 EXT_CONTINUE = util.symbol('EXT_CONTINUE')
@@ -77,7 +76,7 @@ class MapperProperty(object):
 
     """
 
-    def setup(self, context, entity, path, reduced_path, adapter, **kwargs):
+    def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
 
         Each MapperProperty associated with the target mapper processes the
@@ -87,7 +86,7 @@ class MapperProperty(object):
 
         pass
 
-    def create_row_processor(self, context, path, reduced_path, 
+    def create_row_processor(self, context, path, 
                                             mapper, row, adapter):
         """Return a 3-tuple consisting of three row processing functions.
 
@@ -112,7 +111,7 @@ class MapperProperty(object):
     def set_parent(self, parent, init):
         self.parent = parent
 
-    def instrument_class(self, mapper):
+    def instrument_class(self, mapper):  # pragma: no-coverage
         raise NotImplementedError()
 
     _compile_started = False
@@ -308,15 +307,23 @@ class StrategizedProperty(MapperProperty):
 
     strategy_wildcard_key = None
 
-    def _get_context_strategy(self, context, reduced_path):
-        key = ('loaderstrategy', reduced_path)
+    @util.memoized_property
+    def _wildcard_path(self):
+        if self.strategy_wildcard_key:
+            return ('loaderstrategy', (self.strategy_wildcard_key,))
+        else:
+            return None
+
+    def _get_context_strategy(self, context, path):
+        # this is essentially performance inlining.
+        key = ('loaderstrategy', path.reduced_path + (self.key,))
         cls = None
         if key in context.attributes:
             cls = context.attributes[key]
-        elif self.strategy_wildcard_key:
-            key = ('loaderstrategy', (self.strategy_wildcard_key,))
-            if key in context.attributes:
-                cls = context.attributes[key]
+        else:
+            wc_key = self._wildcard_path
+            if wc_key and wc_key in context.attributes:
+                cls = context.attributes[wc_key]
 
         if cls:
             try:
@@ -335,15 +342,15 @@ class StrategizedProperty(MapperProperty):
         self._strategies[cls] = strategy = cls(self)
         return strategy
 
-    def setup(self, context, entity, path, reduced_path, adapter, **kwargs):
-        self._get_context_strategy(context, reduced_path + (self.key,)).\
+    def setup(self, context, entity, path, adapter, **kwargs):
+        self._get_context_strategy(context, path).\
                     setup_query(context, entity, path, 
-                                    reduced_path, adapter, **kwargs)
+                                    adapter, **kwargs)
 
-    def create_row_processor(self, context, path, reduced_path, mapper, row, adapter):
-        return self._get_context_strategy(context, reduced_path + (self.key,)).\
+    def create_row_processor(self, context, path, mapper, row, adapter):
+        return self._get_context_strategy(context, path).\
                     create_row_processor(context, path, 
-                                    reduced_path, mapper, row, adapter)
+                                    mapper, row, adapter)
 
     def do_init(self):
         self._strategies = {}
@@ -353,30 +360,6 @@ class StrategizedProperty(MapperProperty):
         if self.is_primary() and \
             not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
-
-def build_path(entity, key, prev=None):
-    if prev:
-        return prev + (entity, key)
-    else:
-        return (entity, key)
-
-def serialize_path(path):
-    if path is None:
-        return None
-
-    return zip(
-        [m.class_ for m in [path[i] for i in range(0, len(path), 2)]], 
-        [path[i] for i in range(1, len(path), 2)] + [None]
-    )
-
-def deserialize_path(path):
-    if path is None:
-        return None
-
-    p = tuple(chain(*[(mapperutil.class_mapper(cls), key) for cls, key in path]))
-    if p and p[-1] is None:
-        p = p[0:-1]
-    return p
 
 class MapperOption(object):
     """Describe a modification to a Query."""
@@ -414,11 +397,11 @@ class PropertyOption(MapperOption):
         self._process(query, False)
 
     def _process(self, query, raiseerr):
-        paths, mappers = self._get_paths(query, raiseerr)
+        paths = self._process_paths(query, raiseerr)
         if paths:
-            self.process_query_property(query, paths, mappers)
+            self.process_query_property(query, paths)
 
-    def process_query_property(self, query, paths, mappers):
+    def process_query_property(self, query, paths):
         pass
 
     def __getstate__(self):
@@ -450,8 +433,7 @@ class PropertyOption(MapperOption):
             searchfor = mapperutil._class_to_mapper(mapper)
             isa = True
         for ent in query._mapper_entities:
-            if searchfor is ent.path_entity or isa \
-                and searchfor.common_parent(ent.path_entity):
+            if ent.corresponds_to(searchfor):
                 return ent
         else:
             if raiseerr:
@@ -488,15 +470,21 @@ class PropertyOption(MapperOption):
             else:
                 return None
 
-    def _get_paths(self, query, raiseerr):
-        path = None
+    def _process_paths(self, query, raiseerr):
+        """reconcile the 'key' for this PropertyOption with
+        the current path and entities of the query.
+        
+        Return a list of affected paths.
+        
+        """
+        path = mapperutil.PathRegistry.root
         entity = None
-        l = []
-        mappers = []
+        paths = []
+        no_result = []
 
         # _current_path implies we're in a 
         # secondary load with an existing path
-        current_path = list(query._current_path)
+        current_path = list(query._current_path.path)
 
         tokens = deque(self.key)
         while tokens:
@@ -504,7 +492,7 @@ class PropertyOption(MapperOption):
             if isinstance(token, basestring):
                 # wildcard token
                 if token.endswith(':*'):
-                    return [(token,)], []
+                    return [path.token(token)]
                 sub_tokens = token.split(".", 1)
                 token = sub_tokens[0]
                 tokens.extendleft(sub_tokens[1:])
@@ -516,7 +504,7 @@ class PropertyOption(MapperOption):
                         current_path = current_path[2:]
                         continue
                     else:
-                        return [], []
+                        return no_result
 
                 if not entity:
                     entity = self._find_entity_basestring(
@@ -524,10 +512,10 @@ class PropertyOption(MapperOption):
                                         token, 
                                         raiseerr)
                     if entity is None:
-                        return [], []
-                    path_element = entity.path_entity
+                        return no_result
+                    path_element = entity.entity_zero
                     mapper = entity.mapper
-                mappers.append(mapper)
+
                 if hasattr(mapper.class_, token):
                     prop = getattr(mapper.class_, token).property
                 else:
@@ -538,7 +526,7 @@ class PropertyOption(MapperOption):
                                 token, mapper)
                         )
                     else:
-                        return [], []
+                        return no_result
             elif isinstance(token, PropComparator):
                 prop = token.property
 
@@ -550,7 +538,7 @@ class PropertyOption(MapperOption):
                         current_path = current_path[2:]
                         continue
                     else:
-                        return [], []
+                        return no_result
 
                 if not entity:
                     entity = self._find_entity_prop_comparator(
@@ -559,10 +547,9 @@ class PropertyOption(MapperOption):
                                             token.parententity, 
                                             raiseerr)
                     if not entity:
-                        return [], []
-                    path_element = entity.path_entity
+                        return no_result
+                    path_element = entity.entity_zero
                     mapper = entity.mapper
-                mappers.append(prop.parent)
             else:
                 raise sa_exc.ArgumentError(
                         "mapper option expects "
@@ -572,11 +559,20 @@ class PropertyOption(MapperOption):
                 raise sa_exc.ArgumentError("Attribute '%s' does not "
                             "link from element '%s'" % (token, path_element))
 
-            path = build_path(path_element, prop.key, path)
+            path = path[path_element][prop.key]
 
-            l.append(path)
+            paths.append(path)
+
             if getattr(token, '_of_type', None):
-                path_element = mapper = token._of_type
+                ac = token._of_type
+                ext_info = mapperutil._extended_entity_info(ac)
+                path_element = mapper = ext_info.mapper
+                if not ext_info.is_aliased_class:
+                    ac = mapperutil.with_polymorphic(
+                                ext_info.mapper.base_mapper, 
+                                ext_info.mapper, aliased=True)
+                    ext_info = mapperutil._extended_entity_info(ac)
+                path.set(query, "path_with_polymorphic", ext_info)
             else:
                 path_element = mapper = getattr(prop, 'mapper', None)
                 if mapper is None and tokens:
@@ -590,9 +586,9 @@ class PropertyOption(MapperOption):
             # ran out of tokens before 
             # current_path was exhausted.
             assert not tokens
-            return [], []
+            return no_result
 
-        return l, mappers
+        return paths
 
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used
@@ -601,39 +597,24 @@ class StrategizedOption(PropertyOption):
 
     chained = False
 
-    def process_query_property(self, query, paths, mappers):
-
-        # _get_context_strategy may receive the path in terms of a base
-        # mapper - e.g.  options(eagerload_all(Company.employees,
-        # Engineer.machines)) in the polymorphic tests leads to
-        # "(Person, 'machines')" in the path due to the mechanics of how
-        # the eager strategy builds up the path
-
+    def process_query_property(self, query, paths):
+        strategy = self.get_strategy_class()
         if self.chained:
             for path in paths:
-                query._attributes[('loaderstrategy',
-                                  _reduce_path(path))] = \
-                    self.get_strategy_class()
+                path.set(
+                    query,
+                    "loaderstrategy",
+                    strategy
+                )
         else:
-            query._attributes[('loaderstrategy',
-                              _reduce_path(paths[-1]))] = \
-                self.get_strategy_class()
+            paths[-1].set(
+                query,
+                "loaderstrategy",
+                strategy
+            )
 
     def get_strategy_class(self):
         raise NotImplementedError()
-
-def _reduce_path(path):
-    """Convert a (mapper, path) path to use base mappers.
-
-    This is used to allow more open ended selection of loader strategies, i.e.
-    Mapper -> prop1 -> Subclass -> prop2, where Subclass is a sub-mapper
-    of the mapper referenced by Mapper.prop1.
-
-    """
-    return tuple([i % 2 != 0 and 
-                    element or 
-                    getattr(element, 'base_mapper', element) 
-                    for i, element in enumerate(path)])
 
 class LoaderStrategy(object):
     """Describe the loading behavior of a StrategizedProperty object.
@@ -663,22 +644,14 @@ class LoaderStrategy(object):
         self.is_class_level = False
         self.parent = self.parent_property.parent
         self.key = self.parent_property.key
-        # TODO: there's no particular reason we need
-        # the separate .init() method at this point.
-        # It's possible someone has written their
-        # own LS object.
-        self.init()
-
-    def init(self):
-        raise NotImplementedError("LoaderStrategy")
 
     def init_class_attribute(self, mapper):
         pass
 
-    def setup_query(self, context, entity, path, reduced_path, adapter, **kwargs):
+    def setup_query(self, context, entity, path, adapter, **kwargs):
         pass
 
-    def create_row_processor(self, context, path, reduced_path, mapper, 
+    def create_row_processor(self, context, path, mapper, 
                                 row, adapter):
         """Return row processing functions which fulfill the contract
         specified by MapperProperty.create_row_processor.
@@ -691,16 +664,6 @@ class LoaderStrategy(object):
     def __str__(self):
         return str(self.parent_property)
 
-    def debug_callable(self, fn, logger, announcement, logfn):
-        if announcement:
-            logger.debug(announcement)
-        if logfn:
-            def call(*args, **kwargs):
-                logger.debug(logfn(*args, **kwargs))
-                return fn(*args, **kwargs)
-            return call
-        else:
-            return fn
 
 class InstrumentationManager(object):
     """User-defined class instrumentation extension.

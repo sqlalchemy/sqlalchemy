@@ -1,17 +1,14 @@
-from sqlalchemy import Integer, String, ForeignKey, func, desc, and_, or_
-from sqlalchemy.orm import interfaces, relationship, mapper, \
-    clear_mappers, create_session, joinedload, joinedload_all, \
-    subqueryload, subqueryload_all, polymorphic_union, aliased,\
+from sqlalchemy import func, desc
+from sqlalchemy.orm import interfaces, create_session, joinedload, joinedload_all, \
+    subqueryload, subqueryload_all, aliased,\
     class_mapper
 from sqlalchemy import exc as sa_exc
-from sqlalchemy.engine import default
 
-from test.lib import AssertsCompiledSQL, fixtures, testing
-from test.lib.schema import Table, Column
+from test.lib import testing
 from test.lib.testing import assert_raises, eq_
 
 from _poly_fixtures import Company, Person, Engineer, Manager, Boss, \
-    Machine, Paperwork, _PolymorphicFixtureBase, _Polymorphic,\
+    Machine, Paperwork, _Polymorphic,\
     _PolymorphicPolymorphic, _PolymorphicUnions, _PolymorphicJoins,\
     _PolymorphicAliasedJoins
 
@@ -323,31 +320,6 @@ class _PolymorphicTestBase(object):
                 .filter(any_).all(),
             [])
 
-    def test_polymorphic_any_four(self):
-        sess = create_session()
-        any_ = Company.employees.of_type(Engineer).any(
-            Engineer.primary_language == 'cobol')
-        eq_(sess.query(Company).filter(any_).one(), c2)
-
-    def test_polymorphic_any_five(self):
-        sess = create_session()
-        calias = aliased(Company)
-        any_ = calias.employees.of_type(Engineer).any(
-            Engineer.primary_language == 'cobol')
-        eq_(sess.query(calias).filter(any_).one(), c2)
-
-    def test_polymorphic_any_six(self):
-        sess = create_session()
-        any_ = Company.employees.of_type(Boss).any(
-            Boss.golf_swing == 'fore')
-        eq_(sess.query(Company).filter(any_).one(), c1)
-
-    def test_polymorphic_any_seven(self):
-        sess = create_session()
-        any_ = Company.employees.of_type(Boss).any(
-            Manager.manager_name == 'pointy')
-        eq_(sess.query(Company).filter(any_).one(), c1)
-
     def test_polymorphic_any_eight(self):
         sess = create_session()
         any_ = Engineer.machines.any(
@@ -360,11 +332,6 @@ class _PolymorphicTestBase(object):
             Paperwork.description == "review #2")
         eq_(sess.query(Person).filter(any_).all(), [m1])
 
-    def test_polymorphic_any_ten(self):
-        sess = create_session()
-        any_ = Company.employees.of_type(Engineer).any(
-            and_(Engineer.primary_language == 'cobol'))
-        eq_(sess.query(Company).filter(any_).one(), c2)
 
     def test_join_from_columns_or_subclass_one(self):
         sess = create_session()
@@ -529,17 +496,21 @@ class _PolymorphicTestBase(object):
                 .all(),
             expected)
 
+    # TODO: this fails due to the change
+    # in _configure_subclass_mapper.  however we might not
+    # need it anymore.
     def test_polymorphic_option(self):
         """
         Test that polymorphic loading sets state.load_path with its 
         actual mapper on a subclass, and not the superclass mapper.
-        """
 
+        This only works for non-aliased mappers.
+        """
         paths = []
         class MyOption(interfaces.MapperOption):
             propagate_to_loaders = True
             def process_query_conditionally(self, query):
-                paths.append(query._current_path)
+                paths.append(query._current_path.path)
 
         sess = create_session()
         names = ['dilbert', 'pointy haired boss']
@@ -555,6 +526,17 @@ class _PolymorphicTestBase(object):
         eq_(paths,
             [(class_mapper(Engineer), 'machines'),
             (class_mapper(Boss), 'paperwork')])
+
+    def test_subclass_option_pathing(self):
+        from sqlalchemy.orm import defer
+        sess = create_session()
+        names = ['dilbert', 'pointy haired boss']
+        dilbert = sess.query(Person).\
+                options(defer(Engineer.machines, Machine.name)).\
+                filter(Person.name == 'dilbert').first()
+        m = dilbert.machines[0]
+        assert 'name' not in m.__dict__
+        eq_(m.name, 'IBM ThinkPad')
 
     def test_expire(self):
         """
@@ -639,68 +621,41 @@ class _PolymorphicTestBase(object):
             self._emps_wo_relationships_fixture())
 
 
-    def test_relationship_to_polymorphic(self):
-        expected = [
-            Company(
-                name="MegaCorp, Inc.",
-                employees=[
-                    Engineer(
-                        name="dilbert",
-                        engineer_name="dilbert",
-                        primary_language="java",
-                        status="regular engineer",
-                        machines=[
-                            Machine(name="IBM ThinkPad"),
-                            Machine(name="IPhone")]),
-                    Engineer(
-                        name="wally",
-                        engineer_name="wally",
-                        primary_language="c++",
-                        status="regular engineer"),
-                    Boss(
-                        name="pointy haired boss",
-                        golf_swing="fore",
-                        manager_name="pointy",
-                        status="da boss"),
-                    Manager(
-                        name="dogbert",
-                        manager_name="dogbert",
-                        status="regular manager"),
-                ]),
-            Company(
-                name="Elbonia, Inc.",
-                employees=[
-                    Engineer(
-                        name="vlad",
-                        engineer_name="vlad",
-                        primary_language="cobol",
-                        status="elbonian engineer")
-                ])
-        ]
-
+    def test_relationship_to_polymorphic_one(self):
+        expected = self._company_with_emps_machines_fixture()
         sess = create_session()
         def go():
             # test load Companies with lazy load to 'employees'
             eq_(sess.query(Company).all(), expected)
-        count = {'':9, 'Polymorphic':4}.get(self.select_type, 5)
+        count = {'':10, 'Polymorphic':5}.get(self.select_type, 6)
         self.assert_sql_count(testing.db, go, count)
 
+    def test_relationship_to_polymorphic_two(self):
+        expected = self._company_with_emps_machines_fixture()
         sess = create_session()
         def go():
-            # currently, it doesn't matter if we say Company.employees, 
-            # or Company.employees.of_type(Engineer).  joinedloader 
-            # doesn't pick up on the "of_type()" as of yet.
+            # with #2438, of_type() is recognized.  This
+            # overrides the with_polymorphic of the mapper
+            # and we get a consistent 3 queries now.
             eq_(sess.query(Company)
                     .options(joinedload_all(
                         Company.employees.of_type(Engineer),
                         Engineer.machines))
                     .all(),
                 expected)
-        # in the case of select_type='', the joinedload 
-        # doesn't take in this case; it joinedloads company->people, 
-        # then a load for each of 5 rows, then lazyload of "machines"
-        count = {'':7, 'Polymorphic':1}.get(self.select_type, 2)
+
+        # in the old case, we would get this
+        #count = {'':7, 'Polymorphic':1}.get(self.select_type, 2)
+
+        # query one is company->Person/Engineer->Machines
+        # query two is managers + boss for row #3
+        # query three is managers for row #4
+        count = 3
         self.assert_sql_count(testing.db, go, count)
+
+    def test_relationship_to_polymorphic_three(self):
+        expected = self._company_with_emps_machines_fixture()
+        sess = create_session()
 
         sess = create_session()
         def go():
@@ -710,12 +665,20 @@ class _PolymorphicTestBase(object):
                         Engineer.machines))
                     .all(),
                 expected)
-        count = {
-            '':8,
-            'Joins':4,
-            'Unions':4,
-            'Polymorphic':3,
-            'AliasedJoins':4}[self.select_type]
+
+        # the old case where subqueryload_all
+        # didn't work with of_tyoe
+        #count = { '':8, 'Joins':4, 'Unions':4, 'Polymorphic':3,
+        #    'AliasedJoins':4}[self.select_type]
+
+        # query one is company->Person/Engineer->Machines
+        # query two is Person/Engineer subq
+        # query three is Machines subq 
+        # (however this test can't tell if the Q was a 
+        # lazyload or subqload ...)
+        # query four is managers + boss for row #3
+        # query five is managers for row #4
+        count = 5
         self.assert_sql_count(testing.db, go, count)
 
     def test_joinedload_on_subclass(self):
@@ -868,40 +831,6 @@ class _PolymorphicTestBase(object):
                 .join(Engineer.machines)
                 .filter(Machine.name.ilike("%ibm%")).all(),
             [e1, e3])
-
-    def test_join_to_subclass_eightteen(self):
-        sess = create_session()
-        # here's the new way
-        eq_(sess.query(Company)
-                .join(Company.employees.of_type(Engineer))
-                .filter(Engineer.primary_language == 'java').all(),
-            [c1])
-
-    def test_join_to_subclass_nineteen(self):
-        sess = create_session()
-        eq_(sess.query(Company)
-                .join(Company.employees.of_type(Engineer), 'machines')
-                .filter(Machine.name.ilike("%thinkpad%")).all(),
-            [c1])
-
-    def test_join_to_subclass_count(self):
-        sess = create_session()
-
-        eq_(sess.query(Company, Engineer)
-                .join(Company.employees.of_type(Engineer))
-                .filter(Engineer.primary_language == 'java').count(),
-            1)
-
-        # test [ticket:2093]
-        eq_(sess.query(Company.company_id, Engineer)
-                .join(Company.employees.of_type(Engineer))
-                .filter(Engineer.primary_language == 'java').count(),
-            1)
-
-        eq_(sess.query(Company)
-                .join(Company.employees.of_type(Engineer))
-                .filter(Engineer.primary_language == 'java').count(),
-            1)
 
     def test_join_through_polymorphic_nonaliased_one(self):
         sess = create_session()
@@ -1363,7 +1292,6 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
 
 class PolymorphicAliasedJoinsTest(_PolymorphicTestBase, _PolymorphicAliasedJoins):
     pass
-
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
     pass
