@@ -1,6 +1,7 @@
 """Test event registration and listening."""
 
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises, assert_raises_message, \
+    is_, is_not_
 from sqlalchemy import event, exc, util
 from test.lib import fixtures
 
@@ -117,7 +118,55 @@ class TestEvents(fixtures.TestBase):
             [listen_two]
         )
 
+    def test_no_instance_level_collections(self):
+        @event.listens_for(self.Target, "event_one")
+        def listen_one(x, y):
+            pass
+        t1 = self.Target()
+        t2 = self.Target()
+        t1.dispatch.event_one(5, 6)
+        t2.dispatch.event_one(5, 6)
+        is_(
+            t1.dispatch.__dict__['event_one'],
+            self.Target.dispatch.event_one.\
+                _empty_listeners[self.Target]
+        )
+
+        @event.listens_for(t1, "event_one")
+        def listen_two(x, y):
+            pass
+        is_not_(
+            t1.dispatch.__dict__['event_one'],
+            self.Target.dispatch.event_one.\
+                _empty_listeners[self.Target]
+        )
+        is_(
+            t2.dispatch.__dict__['event_one'],
+            self.Target.dispatch.event_one.\
+                _empty_listeners[self.Target]
+        )
+
+    def test_immutable_methods(self):
+        t1 = self.Target()
+        for meth in [
+            t1.dispatch.event_one.exec_once,
+            t1.dispatch.event_one.insert,
+            t1.dispatch.event_one.append,
+            t1.dispatch.event_one.remove,
+            t1.dispatch.event_one.clear,
+        ]:
+            assert_raises_message(
+                NotImplementedError,
+                r"need to call for_modify\(\)",
+                meth
+            )
+
 class TestClsLevelListen(fixtures.TestBase):
+
+
+    def tearDown(self):
+        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
+
     def setUp(self):
         class TargetEventsOne(event.Events):
             def event_one(self, x, y):
@@ -193,34 +242,6 @@ class TestClsLevelListen(fixtures.TestBase):
         assert handler2 not in s2.dispatch.event_one
 
 
-class TestClsLevelListen(fixtures.TestBase):
-    def setUp(self):
-        class TargetEventsOne(event.Events):
-            def event_one(self, x, y):
-                pass
-        class TargetOne(object):
-            dispatch = event.dispatcher(TargetEventsOne)
-        self.TargetOne = TargetOne
-
-    def tearDown(self):
-        event._remove_dispatcher(self.TargetOne.__dict__['dispatch'].events)
-
-    def test_lis_subcalss_lis(self):
-        @event.listens_for(self.TargetOne, "event_one")
-        def handler1(x, y):
-            print 'handler1'
-
-        class SubTarget(self.TargetOne):
-            pass
-
-        @event.listens_for(self.TargetOne, "event_one")
-        def handler2(x, y):
-            pass
-
-        eq_(
-            len(SubTarget().dispatch.event_one),
-            2
-        )
 class TestAcceptTargets(fixtures.TestBase):
     """Test default target acceptance."""
 

@@ -208,6 +208,13 @@ CHANGES
     in 0.7.8.
 
 - engine
+  - [feature] Dramatic improvement in memory
+    usage of the event system; instance-level
+    collections are no longer created for a
+    particular type of event until 
+    instance-level listeners are established 
+    for that event.  [ticket:2516] Also in 0.7.9.
+
   - [bug] Fixed memory leak in C version of
     result proxy whereby DBAPIs which don't deliver
     pure Python tuples for result rows would

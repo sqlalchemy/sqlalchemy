@@ -120,7 +120,8 @@ class _Dispatch(object):
             object."""
 
         for ls in _event_descriptors(other):
-            getattr(self, ls.name)._update(ls, only_propagate=only_propagate)
+            getattr(self, ls.name).\
+                for_modify(self)._update(ls, only_propagate=only_propagate)
 
 def _event_descriptors(target):
     return [getattr(target, k) for k in dir(target) if _is_event_name(k)]
@@ -180,9 +181,11 @@ class Events(object):
     @classmethod
     def _listen(cls, target, identifier, fn, propagate=False, insert=False):
         if insert:
-            getattr(target.dispatch, identifier).insert(fn, target, propagate)
+            getattr(target.dispatch, identifier).\
+                    for_modify(target.dispatch).insert(fn, target, propagate)
         else:
-            getattr(target.dispatch, identifier).append(fn, target, propagate)
+            getattr(target.dispatch, identifier).\
+                    for_modify(target.dispatch).append(fn, target, propagate)
 
     @classmethod
     def _remove(cls, target, identifier, fn):
@@ -201,6 +204,7 @@ class _DispatchDescriptor(object):
         self.__name__ = fn.__name__
         self.__doc__ = fn.__doc__
         self._clslevel = util.defaultdict(list)
+        self._empty_listeners = {}
 
     def insert(self, obj, target, propagate):
         assert isinstance(target, type), \
@@ -250,17 +254,90 @@ class _DispatchDescriptor(object):
         for dispatcher in self._clslevel.values():
             dispatcher[:] = []
 
+    def for_modify(self, obj):
+        """Return an event collection which can be modified.
+
+        For _DispatchDescriptor at the class level of
+        a dispatcher, this returns self.
+
+        """
+        return self
+
     def __get__(self, obj, cls):
         if obj is None:
             return self
-        obj.__dict__[self.__name__] = result = \
-                            _ListenerCollection(self, obj._parent_cls)
+        elif obj._parent_cls in self._empty_listeners:
+            ret = self._empty_listeners[obj._parent_cls]
+        else:
+            self._empty_listeners[obj._parent_cls] = ret = \
+                _EmptyListener(self, obj._parent_cls)
+        # assigning it to __dict__ means
+        # memoized for fast re-access.  but more memory.
+        obj.__dict__[self.__name__] = ret
+        return ret
+
+class _EmptyListener(object):
+    """Serves as a class-level interface to the events
+    served by a _DispatchDescriptor, when there are no 
+    instance-level events present.
+
+    Is replaced by _ListenerCollection when instance-level
+    events are added.
+
+    """
+    def __init__(self, parent, target_cls):
+        if target_cls not in parent._clslevel:
+            parent.update_subclass(target_cls)
+        self.parent = parent
+        self.parent_listeners = parent._clslevel[target_cls]
+        self.name = parent.__name__
+        self.propagate = frozenset()
+        self.listeners = ()
+
+    def for_modify(self, obj):
+        """Return an event collection which can be modified.
+
+        For _EmptyListener at the instance level of
+        a dispatcher, this generates a new 
+        _ListenerCollection, applies it to the instance,
+        and returns it.
+
+        """
+        obj.__dict__[self.name] = result = _ListenerCollection(
+                                        self.parent, obj._parent_cls)
         return result
+
+    def _needs_modify(self, *args, **kw):
+        raise NotImplementedError("need to call for_modify()")
+
+    exec_once = insert = append = remove = clear = _needs_modify
+
+    def __call__(self, *args, **kw):
+        """Execute this event."""
+
+        for fn in self.parent_listeners:
+            fn(*args, **kw)
+
+    def __len__(self):
+        return len(self.parent_listeners)
+
+    def __iter__(self):
+        return iter(self.parent_listeners)
+
+    def __getitem__(self, index):
+        return (self.parent_listeners)[index]
+
+    def __nonzero__(self):
+        return bool(self.listeners)
+
 
 class _ListenerCollection(object):
     """Instance-level attributes on instances of :class:`._Dispatch`.
 
     Represents a collection of listeners.
+
+    As of 0.7.9, _ListenerCollection is only first
+    created via the _EmptyListener.for_modify() method.
 
     """
 
@@ -273,6 +350,15 @@ class _ListenerCollection(object):
         self.name = parent.__name__
         self.listeners = []
         self.propagate = set()
+
+    def for_modify(self, obj):
+        """Return an event collection which can be modified.
+
+        For _ListenerCollection at the instance level of
+        a dispatcher, this returns self.
+
+        """
+        return self
 
     def exec_once(self, *args, **kw):
         """Execute this event, but only if it has not been
@@ -293,12 +379,10 @@ class _ListenerCollection(object):
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
     # at any point.
-    #
-    # alternatively, _DispatchDescriptor could notify
-    # all _ListenerCollection objects, but then we move
-    # to a higher memory model, i.e.weakrefs to all _ListenerCollection
-    # objects, the _DispatchDescriptor collection repeated
-    # for all instances.
+    # 
+    # In the absense of instance-level listeners,
+    # we stay with the _EmptyListener object when called
+    # at the instance level.
 
     def __len__(self):
         return len(self.parent_listeners + self.listeners)
