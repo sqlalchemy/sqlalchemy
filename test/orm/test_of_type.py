@@ -1,0 +1,569 @@
+from sqlalchemy.orm import Session, aliased, with_polymorphic, \
+    contains_eager, joinedload, subqueryload, relationship,\
+    subqueryload_all, joinedload_all
+from sqlalchemy import and_
+from test.lib import testing, fixtures
+from test.lib.testing import assert_raises, eq_
+from test.lib.schema import Column
+from test.lib.entities import ComparableEntity
+from sqlalchemy import Integer, String, ForeignKey
+from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
+    Machine, Paperwork, _PolymorphicFixtureBase, _Polymorphic,\
+    _PolymorphicPolymorphic, _PolymorphicUnions, _PolymorphicJoins,\
+    _PolymorphicAliasedJoins
+
+class _PolymorphicTestBase(object):
+
+    def test_any_one(self):
+        sess = Session()
+        any_ = Company.employees.of_type(Engineer).any(
+            Engineer.primary_language == 'cobol')
+        eq_(sess.query(Company).filter(any_).one(), self.c2)
+
+    def test_any_two(self):
+        sess = Session()
+        calias = aliased(Company)
+        any_ = calias.employees.of_type(Engineer).any(
+            Engineer.primary_language == 'cobol')
+        eq_(sess.query(calias).filter(any_).one(), self.c2)
+
+    def test_any_three(self):
+        sess = Session()
+        any_ = Company.employees.of_type(Boss).any(
+            Boss.golf_swing == 'fore')
+        eq_(sess.query(Company).filter(any_).one(), self.c1)
+
+    def test_any_four(self):
+        sess = Session()
+        any_ = Company.employees.of_type(Boss).any(
+            Manager.manager_name == 'pointy')
+        eq_(sess.query(Company).filter(any_).one(), self.c1)
+
+    def test_any_five(self):
+        sess = Session()
+        any_ = Company.employees.of_type(Engineer).any(
+            and_(Engineer.primary_language == 'cobol'))
+        eq_(sess.query(Company).filter(any_).one(), self.c2)
+
+    def test_join_to_subclass_one(self):
+        sess = Session()
+        eq_(sess.query(Company)
+                .join(Company.employees.of_type(Engineer))
+                .filter(Engineer.primary_language == 'java').all(),
+            [self.c1])
+
+    def test_join_to_subclass_two(self):
+        sess = Session()
+        eq_(sess.query(Company)
+                .join(Company.employees.of_type(Engineer), 'machines')
+                .filter(Machine.name.ilike("%thinkpad%")).all(),
+            [self.c1])
+
+    def test_join_to_subclass_three(self):
+        sess = Session()
+        eq_(sess.query(Company, Engineer)
+                .join(Company.employees.of_type(Engineer))
+                .filter(Engineer.primary_language == 'java').count(),
+            1)
+
+        # test [ticket:2093]
+        eq_(sess.query(Company.company_id, Engineer)
+                .join(Company.employees.of_type(Engineer))
+                .filter(Engineer.primary_language == 'java').count(),
+            1)
+
+        eq_(sess.query(Company)
+                .join(Company.employees.of_type(Engineer))
+                .filter(Engineer.primary_language == 'java').count(),
+            1)
+
+    def test_with_polymorphic_join_compile_one(self):
+        sess = Session()
+
+        self.assert_compile(
+            sess.query(Company).join(
+                    Company.employees.of_type(
+                        with_polymorphic(Person, [Engineer, Manager], aliased=True)
+                    )
+                ),
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name FROM companies "
+            "JOIN %s"
+             % (
+                self._polymorphic_join_target([Engineer, Manager])
+            )
+        )
+
+    def test_with_polymorphic_join_exec_contains_eager_one(self):
+        sess = Session()
+        def go():
+            wp = with_polymorphic(Person, [Engineer, Manager], aliased=True)
+            eq_(
+                sess.query(Company).join(
+                    Company.employees.of_type(wp)
+                ).order_by(Company.company_id, wp.person_id).\
+                options(contains_eager(Company.employees, alias=wp)).all(),
+                [self.c1, self.c2]
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_with_polymorphic_any(self):
+        sess = Session()
+        wp = with_polymorphic(Person, [Engineer], aliased=True)
+        eq_(
+            sess.query(Company.company_id).\
+                filter(
+                    Company.employees.of_type(wp).any(
+                            wp.Engineer.primary_language=='java')
+                ).all(),
+            [(1, )]
+        )
+
+    def test_subqueryload_implicit_withpoly(self):
+        sess = Session()
+        def go():
+            eq_(
+                sess.query(Company).\
+                    filter_by(company_id=1).\
+                    options(subqueryload(Company.employees.of_type(Engineer))).\
+                    all(),
+                [self._company_with_emps_fixture()[0]]
+            )
+        self.assert_sql_count(testing.db, go, 4)
+
+    def test_joinedload_implicit_withpoly(self):
+        sess = Session()
+        def go():
+            eq_(
+                sess.query(Company).\
+                    filter_by(company_id=1).\
+                    options(joinedload(Company.employees.of_type(Engineer))).\
+                    all(),
+                [self._company_with_emps_fixture()[0]]
+            )
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_subqueryload_explicit_withpoly(self):
+        sess = Session()
+        def go():
+            target = with_polymorphic(Person, Engineer, aliased=True)
+            eq_(
+                sess.query(Company).\
+                    filter_by(company_id=1).\
+                    options(subqueryload(Company.employees.of_type(target))).\
+                    all(),
+                [self._company_with_emps_fixture()[0]]
+            )
+        self.assert_sql_count(testing.db, go, 4)
+
+    def test_joinedload_explicit_withpoly(self):
+        sess = Session()
+        def go():
+            target = with_polymorphic(Person, Engineer, aliased=True)
+            eq_(
+                sess.query(Company).\
+                    filter_by(company_id=1).\
+                    options(joinedload(Company.employees.of_type(target))).\
+                    all(),
+                [self._company_with_emps_fixture()[0]]
+            )
+        self.assert_sql_count(testing.db, go, 3)
+
+class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
+    def _polymorphic_join_target(self, cls):
+        from sqlalchemy.orm import class_mapper
+
+        m, sel = class_mapper(Person)._with_polymorphic_args(cls)
+        sel = sel.alias()
+        comp_sel = sel.compile()
+
+        return \
+            comp_sel.process(sel, asfrom=True).replace("\n", "") + \
+            " ON companies.company_id = anon_1.people_company_id"
+
+class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
+    def _polymorphic_join_target(self, cls):
+        from sqlalchemy.orm import class_mapper
+
+        sel = class_mapper(Person)._with_polymorphic_selectable.element
+        comp_sel = sel.compile()
+
+        return \
+            comp_sel.process(sel, asfrom=True).replace("\n", "") + \
+            " AS anon_1 ON companies.company_id = anon_1.company_id"
+
+class PolymorphicAliasedJoinsTest(_PolymorphicTestBase, _PolymorphicAliasedJoins):
+    def _polymorphic_join_target(self, cls):
+        from sqlalchemy.orm import class_mapper
+
+        sel = class_mapper(Person)._with_polymorphic_selectable.element
+        comp_sel = sel.compile()
+
+        return \
+            comp_sel.process(sel, asfrom=True).replace("\n", "") + \
+            " AS anon_1 ON companies.company_id = anon_1.people_company_id"
+
+class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
+    def _polymorphic_join_target(self, cls):
+        from sqlalchemy.orm import class_mapper
+
+        sel = class_mapper(Person)._with_polymorphic_selectable.alias()
+        comp_sel = sel.compile()
+
+        return \
+            comp_sel.process(sel, asfrom=True).replace("\n", "") + \
+            " ON companies.company_id = anon_1.people_company_id"
+
+
+class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
+    """There's overlap here vs. the ones above."""
+
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+    run_inserts = 'once'
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+        class Job(ComparableEntity, Base):
+            __tablename__ = "job"
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(10))
+            container_id = Column(Integer, ForeignKey('data_container.id'))
+            __mapper_args__ = {"polymorphic_on":type}
+
+        class SubJob(Job):
+            __tablename__ = 'subjob'
+            id = Column(Integer, ForeignKey('job.id'), primary_key=True)
+            attr = Column(String(10))
+            __mapper_args__ = {"polymorphic_identity":"sub"}
+
+        class ParentThing(ComparableEntity, Base):
+            __tablename__ = 'parent'
+            id = Column(Integer, primary_key=True)
+            container_id = Column(Integer, ForeignKey('data_container.id'))
+            container = relationship("DataContainer")
+
+        class DataContainer(ComparableEntity, Base):
+            __tablename__ = "data_container"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(10))
+            jobs = relationship(Job, order_by=Job.id)
+
+    @classmethod
+    def insert_data(cls):
+        s = Session(testing.db)
+
+        s.add_all(cls._fixture())
+        s.commit()
+
+    @classmethod
+    def _fixture(cls):
+        ParentThing, DataContainer, SubJob = \
+            cls.classes.ParentThing,\
+            cls.classes.DataContainer,\
+            cls.classes.SubJob
+        return [
+            ParentThing(
+                container=DataContainer(name="d1", 
+                    jobs=[
+                        SubJob(attr="s1"),
+                        SubJob(attr="s2")
+                    ])
+            ),
+            ParentThing(
+                container=DataContainer(name="d2",
+                    jobs=[
+                        SubJob(attr="s3"),
+                        SubJob(attr="s4")
+                    ])
+            ),
+        ]
+
+    @classmethod
+    def _dc_fixture(cls):
+        return [p.container for p in cls._fixture()]
+
+    def test_contains_eager_wpoly(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True)
+
+        s = Session(testing.db)
+        q = s.query(DataContainer).\
+                    join(DataContainer.jobs.of_type(Job_P)).\
+                        options(contains_eager(DataContainer.jobs.of_type(Job_P)))
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_joinedload_wpoly(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True)
+
+        s = Session(testing.db)
+        q = s.query(DataContainer).\
+                        options(joinedload(DataContainer.jobs.of_type(Job_P)))
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_joinedload_wsubclass(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+        s = Session(testing.db)
+        q = s.query(DataContainer).\
+                        options(joinedload(DataContainer.jobs.of_type(SubJob)))
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_lazyload(self):
+        DataContainer = self.classes.DataContainer
+        s = Session(testing.db)
+        q = s.query(DataContainer)
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
+            )
+        # SELECT data container
+        # SELECT job * 2 container rows
+        # SELECT subjob * 4 rows
+        self.assert_sql_count(testing.db, go, 7)
+
+    def test_subquery_wsubclass(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+        s = Session(testing.db)
+        q = s.query(DataContainer).\
+                        options(subqueryload(DataContainer.jobs.of_type(SubJob)))
+        def go():
+            eq_(
+                q.all(),
+                self._dc_fixture()
+            )
+        self.assert_sql_count(testing.db, go, 2)
+
+    def test_twolevel_subqueryload_wsubclass(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+        s = Session(testing.db)
+        q = s.query(ParentThing).\
+                        options(
+                            subqueryload_all(
+                                ParentThing.container, 
+                                DataContainer.jobs.of_type(SubJob)
+                        ))
+        def go():
+            eq_(
+                q.all(),
+                self._fixture()
+            )
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_twolevel_joinedload_wsubclass(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+        s = Session(testing.db)
+        q = s.query(ParentThing).\
+                        options(
+                            joinedload_all(
+                                ParentThing.container, 
+                                DataContainer.jobs.of_type(SubJob)
+                        ))
+        def go():
+            eq_(
+                q.all(),
+                self._fixture()
+            )
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_any_wpoly(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True)
+
+        s = Session()
+        q = s.query(Job).join(DataContainer.jobs).\
+                        filter(
+                            DataContainer.jobs.of_type(Job_P).\
+                                any(Job_P.id < Job.id)
+                        )
+        self.assert_compile(q, 
+            "SELECT job.id AS job_id, job.type AS job_type, "
+            "job.container_id "
+            "AS job_container_id "
+            "FROM data_container "
+            "JOIN job ON data_container.id = job.container_id "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM (SELECT job.id AS job_id, job.type AS job_type, "
+            "job.container_id AS job_container_id, "
+            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
+            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) AS anon_1 "
+            "WHERE data_container.id = anon_1.job_container_id AND job.id > anon_1.job_id)"
+        )
+
+    def test_any_walias(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_A = aliased(Job)
+
+        s = Session()
+        q = s.query(Job).join(DataContainer.jobs).\
+                        filter(
+                            DataContainer.jobs.of_type(Job_A).\
+                                any(and_(Job_A.id < Job.id, Job_A.type=='fred'))
+                        )
+        self.assert_compile(q, 
+            "SELECT job.id AS job_id, job.type AS job_type, "
+            "job.container_id AS job_container_id "
+            "FROM data_container JOIN job ON data_container.id = job.container_id "
+            "WHERE EXISTS (SELECT 1 "
+            "FROM job AS job_1 "
+            "WHERE data_container.id = job_1.container_id "
+            "AND job.id > job_1.id AND job_1.type = :type_1)"
+        )
+
+    def test_join_wpoly(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True)
+
+        s = Session()
+        q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
+        self.assert_compile(q, 
+            "SELECT data_container.id AS data_container_id, "
+            "data_container.name AS data_container_name "
+            "FROM data_container JOIN (SELECT job.id AS job_id, "
+            "job.type AS job_type, job.container_id AS job_container_id, "
+            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
+            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) "
+            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+
+    def test_join_wsubclass(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        s = Session()
+        q = s.query(DataContainer).join(DataContainer.jobs.of_type(SubJob))
+        # note the of_type() here renders JOIN for the Job->SubJob. 
+        # this is because it's using the SubJob mapper directly within
+        # query.join().  When we do joinedload() etc., we're instead
+        # doing a with_polymorphic(), and there we need the join to be
+        # outer by default.
+        self.assert_compile(q, 
+            "SELECT data_container.id AS data_container_id, "
+            "data_container.name AS data_container_name "
+            "FROM data_container JOIN (SELECT job.id AS job_id, "
+            "job.type AS job_type, job.container_id AS job_container_id, "
+            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
+            "FROM job JOIN subjob ON job.id = subjob.id) AS anon_1 "
+            "ON data_container.id = anon_1.job_container_id"
+        )
+
+    def test_join_wpoly_innerjoin(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True, innerjoin=True)
+
+        s = Session()
+        q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
+        self.assert_compile(q, 
+            "SELECT data_container.id AS data_container_id, "
+            "data_container.name AS data_container_name "
+            "FROM data_container JOIN (SELECT job.id AS job_id, "
+            "job.type AS job_type, job.container_id AS job_container_id, "
+            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
+            "FROM job JOIN subjob ON job.id = subjob.id) "
+            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+
+    def test_join_walias(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_A = aliased(Job)
+
+        s = Session()
+        q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_A))
+        self.assert_compile(q, 
+            "SELECT data_container.id AS data_container_id, "
+            "data_container.name AS data_container_name "
+            "FROM data_container JOIN job AS job_1 "
+            "ON data_container.id = job_1.container_id")
+
+    def test_join_explicit_wpoly(self):
+        ParentThing, DataContainer, Job, SubJob = \
+            self.classes.ParentThing,\
+            self.classes.DataContainer,\
+            self.classes.Job,\
+            self.classes.SubJob
+
+        Job_P = with_polymorphic(Job, SubJob, aliased=True)
+
+        s = Session()
+        q = s.query(DataContainer).join(Job_P, DataContainer.jobs)
+        self.assert_compile(q, 
+            "SELECT data_container.id AS data_container_id, "
+            "data_container.name AS data_container_name "
+            "FROM data_container JOIN (SELECT job.id AS job_id, "
+            "job.type AS job_type, job.container_id AS job_container_id, "
+            "subjob.id AS subjob_id, subjob.attr AS subjob_attr "
+            "FROM job LEFT OUTER JOIN subjob ON job.id = subjob.id) "
+            "AS anon_1 ON data_container.id = anon_1.job_container_id")
+
