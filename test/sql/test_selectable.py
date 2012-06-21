@@ -145,6 +145,33 @@ class SelectableTest(fixtures.TestBase, AssertsExecutionResults, AssertsCompiled
         cloned.append_column(func.foo()) 
         eq_(cloned.c.keys(), ['a', 'b', 'foo()']) 
 
+    def test_append_column_after_replace_selectable(self):
+        basesel = select([literal_column('1').label('a')])
+        tojoin = select([
+            literal_column('1').label('a'),
+            literal_column('2').label('b')
+            ])
+        basefrom = basesel.alias('basefrom')
+        joinfrom = tojoin.alias('joinfrom')
+        sel = select([basefrom.c.a])
+        replaced = sel.replace_selectable(
+            basefrom,
+            basefrom.join(joinfrom, basefrom.c.a == joinfrom.c.a)
+        )
+        self.assert_compile(
+            replaced,
+            "SELECT basefrom.a FROM (SELECT 1 AS a) AS basefrom "
+            "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
+            "ON basefrom.a = joinfrom.a"
+        )
+        replaced.append_column(joinfrom.c.b) 
+        self.assert_compile(
+            replaced,
+            "SELECT basefrom.a, joinfrom.b FROM (SELECT 1 AS a) AS basefrom "
+            "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
+            "ON basefrom.a = joinfrom.a"
+        )
+
     def test_against_cloned_non_table(self):
         # test that corresponding column digs across
         # clone boundaries with anonymous labeled elements

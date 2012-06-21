@@ -237,18 +237,18 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
       generative method.
 
       .. note:: 
-      
+
          The ``distinct`` keyword's acceptance of a string
          argument for usage with MySQL is deprecated.  Use
          the ``prefixes`` argument or :meth:`~.Select.prefix_with`.
 
     :param for_update=False:
       when ``True``, applies ``FOR UPDATE`` to the end of the
-      resulting statement.  
-      
+      resulting statement.
+
       Certain database dialects also support
       alternate values for this parameter:
-      
+
       * With the MySQL dialect, the value ``"read"`` translates to 
         ``LOCK IN SHARE MODE``.
       * With the Oracle and Postgresql dialects, the value ``"nowait"``
@@ -376,14 +376,14 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     E.g.::
 
         from sqlalchemy import update
-        
+
         stmt = update(users).where(users.c.id==5).\\
                 values(name='user #5')
 
     Similar functionality is available via the :meth:`~.TableClause.update` method on
     :class:`.Table`::
-    
-        
+
+
         stmt = users.update().\\
                     where(users.c.id==5).\\
                     values(name='user #5')
@@ -395,7 +395,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
      condition of the ``UPDATE`` statement.   Modern applications
      may prefer to use the generative :meth:`~Update.where()` 
      method to specify the ``WHERE`` clause.
-     
+
      The WHERE clause can refer to multiple tables.
      For databases which support this, an ``UPDATE FROM`` clause will
      be generated, or on MySQL, a multi-table update.  The statement 
@@ -403,7 +403,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
      update statements.  A SQL-standard method of referring to
      additional tables in the WHERE clause is to use a correlated
      subquery::
-     
+
         users.update().values(name='ed').where(
                 users.c.name==select([addresses.c.email_address]).\\
                             where(addresses.c.user_id==users.c.id).\\
@@ -420,7 +420,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
       statement during the execution and/or compilation of the 
       statement.   When compiled standalone without any parameters,
       the ``SET`` clause generates for all columns.
-      
+
       Modern applications may prefer to use the generative 
       :meth:`.Update.values` method to set the values of the 
       UPDATE statement.
@@ -445,9 +445,9 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     to be updated.  However when using MySQL, a multiple-table
     UPDATE statement can refer to columns from any of
     the tables referred to in the WHERE clause.
-    
+
     The values referred to in ``values`` are typically:
-    
+
     * a literal data value (i.e. string, number, etc.)
     * a SQL expression, such as a related :class:`.Column`,
       a scalar-returning :func:`.select` construct, 
@@ -459,7 +459,7 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
     *correlated* to the parent table, that is, providing criterion
     which links the table inside the subquery to the outer table
     being updated::
-    
+
         users.update().values(
                 name=select([addresses.c.email_address]).\\
                         where(addresses.c.user_id==users.c.id).\\
@@ -470,8 +470,8 @@ def update(table, whereclause=None, values=None, inline=False, **kwargs):
 
         :ref:`inserts_and_updates` - SQL Expression 
         Language Tutorial
-    
-    
+
+
     """
     return Update(
             table, 
@@ -494,7 +494,7 @@ def delete(table, whereclause = None, **kwargs):
       :meth:`~Delete.where()` generative method may be used instead.
 
     See also:
-    
+
         :ref:`deletes` - SQL Expression Tutorial
 
     """
@@ -844,7 +844,7 @@ def tuple_(*expr):
         )
 
     .. warning::
-    
+
         The composite IN construct is not supported by all backends, 
         and is currently known to work on Postgresql and MySQL,
         but not SQLite.   Unsupported backends will raise
@@ -1326,7 +1326,7 @@ class _anonymous_label(_truncated_label):
 
 def _as_truncated(value):
     """coerce the given value to :class:`._truncated_label`.
-    
+
     Existing :class:`._truncated_label` and 
     :class:`._anonymous_label` objects are passed
     unchanged.
@@ -2440,7 +2440,20 @@ class FromClause(Selectable):
         An example would be an Alias of a Table is derived from that Table.
 
         """
+        # this is essentially an "identity" check in the base class.
+        # Other constructs override this to traverse through 
+        # contained elements.
         return fromclause in self._cloned_set
+
+    def _is_lexical_equivalent(self, other):
+        """Return True if this FromClause and the other represent
+        the same lexical identity.
+        
+        This tests if either one is a copy of the other, or 
+        if they are the same via annotation identity.
+
+        """
+        return self._cloned_set.intersection(other._cloned_set) 
 
     def replace_selectable(self, old, alias):
         """replace all occurrences of FromClause 'old' with the given Alias 
@@ -2685,11 +2698,11 @@ class _BindParamClause(ColumnElement):
     def effective_value(self):
         """Return the value of this bound parameter, 
         taking into account if the ``callable`` parameter
-        was set.  
-        
+        was set.
+
         The ``callable`` value will be evaluated
         and returned if present, else ``value``.
-        
+
         """
         if self.callable:
             return self.callable()
@@ -3732,11 +3745,11 @@ class Alias(FromClause):
 
 class CTE(Alias):
     """Represent a Common Table Expression.
-    
+
     The :class:`.CTE` object is obtained using the
     :meth:`._SelectBase.cte` method from any selectable.
     See that method for complete examples.
-    
+
     .. versionadded:: 0.7.6
 
     """
@@ -4225,13 +4238,13 @@ class TableClause(_Immutable, FromClause):
     def insert(self, values=None, inline=False, **kwargs):
         """Generate an :func:`.insert` construct against this
         :class:`.TableClause`.
-        
+
         E.g.::
-        
+
             table.insert().values(name='foo')
-        
+
         See :func:`.insert` for argument and usage information.
-        
+
         """
 
         return insert(self, values=values, inline=inline, **kwargs)
@@ -4239,13 +4252,13 @@ class TableClause(_Immutable, FromClause):
     def update(self, whereclause=None, values=None, inline=False, **kwargs):
         """Generate an :func:`.update` construct against this
         :class:`.TableClause`.
-        
+
         E.g.::
-        
+
             table.update().where(table.c.id==7).values(name='foo')
-        
+
         See :func:`.update` for argument and usage information.
-        
+
         """
 
         return update(self, whereclause=whereclause, 
@@ -4254,13 +4267,13 @@ class TableClause(_Immutable, FromClause):
     def delete(self, whereclause=None, **kwargs):
         """Generate a :func:`.delete` construct against this
         :class:`.TableClause`.
-        
+
         E.g.::
-        
+
             table.delete().where(table.c.id==7)
-        
+
         See :func:`.delete` for argument and usage information.
-        
+
         """
 
         return delete(self, whereclause, **kwargs)
@@ -4343,14 +4356,14 @@ class _SelectBase(Executable, FromClause):
 
     def cte(self, name=None, recursive=False):
         """Return a new :class:`.CTE`, or Common Table Expression instance.
-        
+
         Common table expressions are a SQL standard whereby SELECT
         statements can draw upon secondary statements specified along
         with the primary statement, using a clause called "WITH".
         Special semantics regarding UNION can also be employed to 
         allow "recursive" queries, where a SELECT statement can draw 
         upon the set of rows that have previously been selected.
-        
+
         SQLAlchemy detects :class:`.CTE` objects, which are treated
         similarly to :class:`.Alias` objects, as special elements
         to be delivered to the FROM clause of the statement as well
@@ -4370,9 +4383,9 @@ class _SelectBase(Executable, FromClause):
         The following examples illustrate two examples from 
         Postgresql's documentation at
         http://www.postgresql.org/docs/8.4/static/queries-with.html.
-        
+
         Example 1, non recursive::
-        
+
             from sqlalchemy import Table, Column, String, Integer, MetaData, \\
                 select, func
 
@@ -4407,9 +4420,9 @@ class _SelectBase(Executable, FromClause):
                 ]).where(orders.c.region.in_(
                     select([top_regions.c.region])
                 )).group_by(orders.c.region, orders.c.product)
-        
+
             result = conn.execute(statement).fetchall()
-            
+
         Example 2, WITH RECURSIVE::
 
             from sqlalchemy import Table, Column, String, Integer, MetaData, \\
@@ -4452,9 +4465,9 @@ class _SelectBase(Executable, FromClause):
 
             result = conn.execute(statement).fetchall()
 
-        
+
         See also:
-        
+
         :meth:`.orm.query.Query.cte` - ORM version of :meth:`._SelectBase.cte`.
 
         """
@@ -4807,11 +4820,13 @@ class Select(_SelectBase):
         toremove = set(itertools.chain(*[f._hide_froms for f in froms]))
         if toremove:
             # if we're maintaining clones of froms,
-            # add the copies out to the toremove list
+            # add the copies out to the toremove list.  only include
+            # clones that are lexical equivalents.
             if self._from_cloned:
                 toremove.update(
                     self._from_cloned[f] for f in 
                     toremove.intersection(self._from_cloned)
+                    if self._from_cloned[f]._is_lexical_equivalent(f)
                 )
             # filter out to FROM clauses not in the list,
             # using a list to maintain ordering
@@ -4978,10 +4993,10 @@ class Select(_SelectBase):
     def with_only_columns(self, columns):
         """Return a new :func:`.select` construct with its columns 
         clause replaced with the given columns.
-        
+
         .. versionchanged:: 0.7.3
             Due to a bug fix, this method has a slight 
-            behavioral change as of version 0.7.3.  
+            behavioral change as of version 0.7.3.
             Prior to version 0.7.3, the FROM clause of 
             a :func:`.select` was calculated upfront and as new columns
             were added; in 0.7.3 and later it's calculated 
@@ -5001,18 +5016,18 @@ class Select(_SelectBase):
         This method is exactly equivalent to as if the original 
         :func:`.select` had been called with the given columns 
         clause.   I.e. a statement::
-        
+
             s = select([table1.c.a, table1.c.b])
             s = s.with_only_columns([table1.c.b])
-            
+
         should be exactly equivalent to::
-        
+
             s = select([table1.c.b])
-        
+
         This means that FROM clauses which are only derived 
         from the column list will be discarded if the new column 
         list no longer contains that FROM::
-        
+
             >>> table1 = table('t1', column('a'), column('b'))
             >>> table2 = table('t2', column('a'), column('b'))
             >>> s1 = select([table1.c.a, table2.c.b])
@@ -5021,18 +5036,18 @@ class Select(_SelectBase):
             >>> s2 = s1.with_only_columns([table2.c.b])
             >>> print s2
             SELECT t2.b FROM t1
-        
+
         The preferred way to maintain a specific FROM clause
         in the construct, assuming it won't be represented anywhere
         else (i.e. not in the WHERE clause, etc.) is to set it using 
         :meth:`.Select.select_from`::
-        
+
             >>> s1 = select([table1.c.a, table2.c.b]).\\
             ...         select_from(table1.join(table2, table1.c.a==table2.c.a))
             >>> s2 = s1.with_only_columns([table2.c.b])
             >>> print s2
             SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
-            
+
         Care should also be taken to use the correct
         set of column objects passed to :meth:`.Select.with_only_columns`.
         Since the method is essentially equivalent to calling the
@@ -5042,12 +5057,12 @@ class Select(_SelectBase):
         to the :func:`.select` construct, not those which are available
         from the ``.c`` collection of that :func:`.select`.  That
         is::
-        
+
             s = select([table1.c.a, table1.c.b]).select_from(table1)
             s = s.with_only_columns([table1.c.b])
-        
+
         and **not**::
-        
+
             # usually incorrect
             s = s.with_only_columns([s.c.b])
 
@@ -5056,10 +5071,10 @@ class Select(_SelectBase):
             SELECT b 
             FROM (SELECT t1.a AS a, t1.b AS b 
             FROM t1), t1
-        
+
         Since the :func:`.select` construct is essentially being
         asked to select both from ``table1`` as well as itself.
-        
+
         """
         self._reset_exported()
         rc = []
@@ -5131,16 +5146,16 @@ class Select(_SelectBase):
     def select_from(self, fromclause):
         """return a new :func:`.select` construct with the given FROM expression
         merged into its list of FROM objects.
-        
+
         E.g.::
-        
+
             table1 = table('t1', column('a'))
             table2 = table('t2', column('b'))
             s = select([table1.c.a]).\\
                 select_from(
                     table1.join(table2, table1.c.a==table2.c.b)
                 )
-        
+
         The "from" list is a unique set on the identity of each element,
         so adding an already present :class:`.Table` or other selectable
         will have no effect.   Passing a :class:`.Join` that refers
@@ -5148,14 +5163,14 @@ class Select(_SelectBase):
         the effect of concealing the presence of that selectable as 
         an individual element in the rendered FROM list, instead rendering it into a
         JOIN clause.
-        
+
         While the typical purpose of :meth:`.Select.select_from` is to replace
         the default, derived FROM clause with a join, it can also be called with
         individual table elements, multiple times if desired, in the case that the 
         FROM clause cannot be fully derived from the columns clause::
-        
+
             select([func.count('*')]).select_from(table1)
-        
+
         """
         self.append_from(fromclause)
 
@@ -5430,7 +5445,7 @@ class UpdateBase(Executable, ClauseElement):
          Microsoft SQL Server.  For MySQL INSERT hints, use
          :meth:`.Insert.prefix_with`.   UPDATE/DELETE hints for 
          MySQL will be added in a future release.
-         
+
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
         to the :class:`.Table` that is the subject of this
@@ -5496,7 +5511,7 @@ class ValuesBase(UpdateBase):
             :func:`~.expression.insert` - produce an ``INSERT`` statement
 
             :func:`~.expression.update` - produce an ``UPDATE`` statement
-        
+
         """
         if args:
             v = args[0]

@@ -5,6 +5,12 @@ CHANGES
 =======
 0.7.9
 =====
+- sql
+  - [bug] Fixed regression introduced in 0.7.6 
+    whereby the FROM list of a SELECT statement
+    could be incorrect in certain "clone+replace"
+    scenarios.  [ticket:2518]
+
 - engine
   - [feature] Dramatic improvement in memory
     usage of the event system; instance-level
