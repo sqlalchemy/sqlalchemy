@@ -86,7 +86,6 @@ class Mapper(object):
                  polymorphic_identity=None,
                  concrete=False,
                  with_polymorphic=None,
-                 allow_null_pks=None,
                  allow_partial_pks=True,
                  batch=True,
                  column_prefix=None,
@@ -141,13 +140,6 @@ class Mapper(object):
         self._compiled_cache_size = _compiled_cache_size
         self._reconstructor = None
         self._deprecated_extensions = util.to_list(extension or [])
-
-        if allow_null_pks:
-            util.warn_deprecated(
-                    "the allow_null_pks option to Mapper() is "
-                    "deprecated.  It is now allow_partial_pks=False|True, "
-                    "defaults to True.")
-            allow_partial_pks = allow_null_pks
 
         self.allow_partial_pks = allow_partial_pks
 
@@ -595,8 +587,9 @@ class Mapper(object):
 
         if self.inherits:
             self.dispatch._update(self.inherits.dispatch)
-            super_extensions = set(chain(*[m._deprecated_extensions 
-                                    for m in self.inherits.iterate_to_root()]))
+            super_extensions = set(
+                        chain(*[m._deprecated_extensions 
+                        for m in self.inherits.iterate_to_root()]))
         else:
             super_extensions = set()
 
@@ -606,8 +599,9 @@ class Mapper(object):
 
     def _configure_listeners(self):
         if self.inherits:
-            super_extensions = set(chain(*[m._deprecated_extensions 
-                                    for m in self.inherits.iterate_to_root()]))
+            super_extensions = set(
+                        chain(*[m._deprecated_extensions 
+                        for m in self.inherits.iterate_to_root()]))
         else:
             super_extensions = set()
 
@@ -1260,12 +1254,6 @@ class Mapper(object):
         except KeyError:
             raise sa_exc.InvalidRequestError(
                     "Mapper '%s' has no property '%s'" % (self, key))
-
-    @util.deprecated('0.6.4',
-                     'Call to deprecated function mapper._get_col_to_pr'
-                     'op(). Use mapper.get_property_by_column()')
-    def _get_col_to_prop(self, col):
-        return self._columntoproperty[col]
 
     def get_property_by_column(self, column):
         """Given a :class:`.Column` object, return the

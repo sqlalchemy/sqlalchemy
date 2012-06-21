@@ -1315,7 +1315,7 @@ class Session(object):
         for o, m, st_, dct_ in cascade_states:
             self._delete_impl(st_)
 
-    def merge(self, instance, load=True, **kw):
+    def merge(self, instance, load=True):
         """Copy the state an instance onto the persistent instance with the
         same identifier.
 
@@ -1331,10 +1331,6 @@ class Session(object):
         See :ref:`unitofwork_merging` for a detailed discussion of merging.
 
         """
-        if 'dont_load' in kw:
-            load = not kw['dont_load']
-            util.warn_deprecated('dont_load=True has been renamed to '
-                                 'load=False.')
 
         _recursive = {}
 

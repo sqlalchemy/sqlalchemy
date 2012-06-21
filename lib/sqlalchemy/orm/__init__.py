@@ -736,7 +736,6 @@ def column_property(*cols, **kw):
         descriptor placed on the class. 
         **Deprecated.** Please see :class:`.AttributeEvents`.
 
-
     """
 
     return ColumnProperty(*cols, **kw)
@@ -879,9 +878,6 @@ def mapper(class_, local_table=None, *args, **params):
            whatever information was loaded from the database. Usage of this
            flag is highly discouraged; as an alternative, see the method
            :meth:`.Query.populate_existing`.
-
-        :param allow_null_pks: This flag is deprecated - this is stated as
-           allow_partial_pks which defaults to True.
 
         :param allow_partial_pks: Defaults to True.  Indicates that a
            composite primary key with some NULL values should be considered as

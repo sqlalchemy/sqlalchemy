@@ -22,7 +22,7 @@ underneath "0.7.xx".
   - [removed] The legacy "mutable" system of the
     ORM, including the MutableType class as well
     as the mutable=True flag on PickleType
-    and postgresql.ARRAY has been removed.   
+    and postgresql.ARRAY has been removed.
     In-place mutations are detected by the ORM
     using the sqlalchemy.ext.mutable extension,
     introduced in 0.7.   The removal of MutableType
@@ -101,7 +101,7 @@ underneath "0.7.xx".
     no longer has any effect. is_modified() in 
     all cases looks only at local in-memory
     modified flags and will not emit any
-    SQL or invoke loader callables/initializers.  
+    SQL or invoke loader callables/initializers.
     [ticket:2320]
 
   - [bug] The warning emitted when using 
@@ -128,8 +128,22 @@ underneath "0.7.xx".
     in these collections when the event 
     is called.  Added before_attach
     event to accommodate use cases that 
-    need autoflush w pre-attached object.  
+    need autoflush w pre-attached object.
     [ticket:2464]
+
+  - [removed] Deprecated identifiers removed:
+
+    * allow_null_pks mapper() argument
+      (use allow_partial_pks)
+
+    * _get_col_to_prop() mapper method
+      (use get_property_by_column())
+
+    * dont_load argument to Session.merge()
+      (use load=True)
+
+    * sqlalchemy.orm.shard module
+      (use sqlalchemy.ext.horizontal_shard)
 
 - engine
   - [feature] Added a new system
@@ -178,7 +192,7 @@ underneath "0.7.xx".
     argument, preceding "table".   Code which
     uses the 0.7 version of this very new 
     event will need modification to add the 
-    "inspector" object as the first argument.  
+    "inspector" object as the first argument.
     [ticket:2418]
 
   - [feature] The behavior of column targeting
@@ -286,7 +300,7 @@ underneath "0.7.xx".
 
 0.7.7 - 0.7.xx
 ==============
-0.8 development begins during 0.7.7 development.   
+0.8 development begins during 0.7.7 development.
 All relevant bug fixes 
 and features listed below from version 0.7.7 on 
 are also present in 0.8.
@@ -336,7 +350,7 @@ are also present in 0.8.
 
   - [feature] The 'objects' argument to 
     flush() is no longer deprecated, as some
-    valid use cases have been identified.  
+    valid use cases have been identified.
 
   - [bug] Fixed identity_key() function which 
     was not accepting a scalar argument 
@@ -356,7 +370,7 @@ are also present in 0.8.
   - [bug] Repaired common table expression
     rendering to function correctly when the 
     SELECT statement contains UNION or other
-    compound expressions, courtesy btbuilder.  
+    compound expressions, courtesy btbuilder.
     [ticket:2490]
 
   - [bug] Fixed bug whereby append_column()
@@ -376,7 +390,7 @@ are also present in 0.8.
     string positional parameters passed to 
     engine/connection execute() would fail to be
     interpreted correctly, due to __iter__
-    being present on Py3K string.  
+    being present on Py3K string.
     [ticket:2503].
 
 - postgresql
@@ -575,13 +589,13 @@ are also present in 0.8.
     would not get the appropriate collection
     instrumentation if it were only used
     in a custom subclass that used
-    @collection.internally_instrumented.  
+    @collection.internally_instrumented.
     [ticket:2406]
 
   - [bug] Fixed bug whereby SQL adaption mechanics
     would fail in a very nested scenario involving
     joined-inheritance, joinedload(), limit(), and a
-    derived function in the columns clause.  
+    derived function in the columns clause.
     [ticket:2419]
 
   - [bug] Fixed the repr() for CascadeOptions to
@@ -591,7 +605,7 @@ are also present in 0.8.
 
   - [feature] Added the ability to query for
     Table-bound column names when using 
-    query(sometable).filter_by(colname=value).  
+    query(sometable).filter_by(colname=value).
     [ticket:2400]
 
   - [bug] Improved the "declarative reflection" 
@@ -803,7 +817,7 @@ are also present in 0.8.
   - [bug] Fixed bug whereby event.listen(SomeClass)
     forced an entirely unnecessary compile of the 
     mapper, making events very hard to set up
-    at module import time (nobody noticed this ??)  
+    at module import time (nobody noticed this ??)
     [ticket:2367]
 
   - [bug] Fixed bug whereby hybrid_property didn't 
@@ -875,7 +889,7 @@ are also present in 0.8.
 - engine
   - [bug] Added __reduce__ to StatementError, 
     DBAPIError, column errors so that exceptions 
-    are pickleable, as when using multiprocessing.  
+    are pickleable, as when using multiprocessing.
     However, not 
     all DBAPIs support this yet, such as 
     psycopg2. [ticket:2371]

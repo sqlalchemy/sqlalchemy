@@ -1290,9 +1290,6 @@ class JoinedLoader(AbstractRelationshipLoader):
                 load_scalar_from_joined_existing_row, \
                 None, load_scalar_from_joined_exec
 
-EagerLoader = JoinedLoader
-"""Deprecated, use JoinedLoader"""
-
 log.class_logger(JoinedLoader)
 
 class EagerLazyOption(StrategizedOption):
