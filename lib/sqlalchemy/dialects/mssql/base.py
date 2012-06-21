@@ -818,8 +818,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         else:
             return None
 
-    def visit_table(self, table, mssql_aliased=False, **kwargs):
-        if mssql_aliased is table:
+    def visit_table(self, table, mssql_aliased=False, iscrud=False, **kwargs):
+        if mssql_aliased is table or iscrud:
             return super(MSSQLCompiler, self).visit_table(table, **kwargs)
 
         # alias schema-qualified tables

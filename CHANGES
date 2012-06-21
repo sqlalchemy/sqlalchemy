@@ -203,6 +203,11 @@ underneath "0.7.xx".
     ForeignKeyConstraint, courtesy Ryan Kelly.
     [ticket:2502]
 
+  - [feature] Added support for DELETE and UPDATE from
+    an alias of a table, which would assumedly
+    be related to itself elsewhere in the query,
+    courtesy Ryan Kelly.  [ticket:2507]
+
   - [feature] select() features a correlate_except()
     method, auto correlates all selectables except those
     passed.
@@ -251,6 +256,13 @@ underneath "0.7.xx".
     render in DDL as ARRAY[][]..., also improves
     performance of bind/result processing.
     [ticket:2441]
+
+  - [feature] Added support for the Postgresql ONLY
+    keyword, which can appear corresponding to a 
+    table in a SELECT, UPDATE, or DELETE statement.
+    The phrase is established using with_hint().
+    Courtesy Ryan Kelly [ticket:2506]
+
 
 - mysql
   - [bug] Dialect no longer emits expensive server

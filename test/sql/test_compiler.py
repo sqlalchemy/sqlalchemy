@@ -2906,6 +2906,18 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable.myid = hoho(:hoho_1) AND mytable.name = :param_2 || "
             "mytable.name || :param_3")
 
+    def test_aliased_update(self):
+        talias1 = table1.alias('t1')
+        self.assert_compile(
+                update(talias1, talias1.c.myid == 7),
+                "UPDATE mytable AS t1 SET name=:name WHERE t1.myid = :myid_1",
+                params = {table1.c.name:'fred'})
+        self.assert_compile(
+                update(talias1, table1.c.myid == 7),
+                "UPDATE mytable AS t1 SET name=:name FROM "
+                "mytable WHERE mytable.myid = :myid_1",
+                params = {table1.c.name:'fred'})
+
     def test_correlated_update(self):
         # test against a straight text subquery
         u = update(table1, values = {
@@ -2987,6 +2999,12 @@ class CRUDTest(fixtures.TestBase, AssertsCompiledSQL):
                                         where(table1.c.name=='somename'), 
                         "DELETE FROM mytable WHERE mytable.myid = :myid_1 "
                         "AND mytable.name = :name_1")
+
+    def test_aliased_delete(self):
+        talias1 = table1.alias('t1')
+        self.assert_compile(
+                        delete(talias1).where(talias1.c.myid == 7),
+                        "DELETE FROM mytable AS t1 WHERE t1.myid = :myid_1")
 
     def test_correlated_delete(self):
         # test a non-correlated WHERE clause

@@ -114,6 +114,24 @@ use the :meth:`._UpdateBase.returning` method on a per-statement basis::
         where(table.c.name=='foo')
     print result.fetchall()
 
+FROM ONLY ...
+------------------------
+
+The dialect supports PostgreSQL's ONLY keyword for targeting only a particular
+table in an inheritance hierarchy. This can be used to produce the
+``SELECT ... FROM ONLY``, ``UPDATE ONLY ...``, and ``DELETE FROM ONLY ...``
+syntaxes. It uses SQLAlchemy's hints mechanism:
+
+    # SELECT ... FROM ONLY ...
+    result = table.select().with_hint(table, 'ONLY', 'postgresql')
+    print result.fetchall()
+
+    # UPDATE ONLY ...
+    table.update(values=dict(foo='bar')).with_hint('ONLY',
+                                                   dialect_name='postgresql')
+
+    # DELETE FROM ONLY ...
+    table.delete().with_hint('ONLY', dialect_name='postgresql')
 
 .. _postgresql_indexes:
 
@@ -641,6 +659,11 @@ class PGCompiler(compiler.SQLCompiler):
                 text += " \n LIMIT ALL"
             text += " OFFSET " + self.process(sql.literal(select._offset))
         return text
+
+    def format_from_hint_text(self, sqltext, table, hint, iscrud):
+        if hint.upper() != 'ONLY':
+            raise exc.CompileError("Unrecognized hint: %r" % hint)
+        return "ONLY " + sqltext
 
     def get_select_precolumns(self, select):
         if select._distinct is not False:

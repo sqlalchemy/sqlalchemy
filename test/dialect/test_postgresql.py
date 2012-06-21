@@ -272,6 +272,56 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(x, 
             '''SELECT pg_table.col1, pg_table."variadic" FROM pg_table''')
 
+    def test_from_only(self):
+        m = MetaData()
+        tbl1 = Table('testtbl1', m, Column('id', Integer))
+        tbl2 = Table('testtbl2', m, Column('id', Integer))
+
+        stmt = tbl1.select().with_hint(tbl1, 'ONLY', 'postgresql')
+        expected = 'SELECT testtbl1.id FROM ONLY testtbl1'
+        self.assert_compile(stmt, expected)
+
+        talias1 = tbl1.alias('foo')
+        stmt = talias1.select().with_hint(talias1, 'ONLY', 'postgresql')
+        expected = 'SELECT foo.id FROM ONLY testtbl1 AS foo'
+        self.assert_compile(stmt, expected)
+
+        stmt = select([tbl1, tbl2]).with_hint(tbl1, 'ONLY', 'postgresql')
+        expected = ('SELECT testtbl1.id, testtbl2.id FROM ONLY testtbl1, '
+                    'testtbl2')
+        self.assert_compile(stmt, expected)
+
+        stmt = select([tbl1, tbl2]).with_hint(tbl2, 'ONLY', 'postgresql')
+        expected = ('SELECT testtbl1.id, testtbl2.id FROM testtbl1, ONLY '
+                    'testtbl2')
+        self.assert_compile(stmt, expected)
+
+        stmt = select([tbl1, tbl2])
+        stmt = stmt.with_hint(tbl1, 'ONLY', 'postgresql')
+        stmt = stmt.with_hint(tbl2, 'ONLY', 'postgresql')
+        expected = ('SELECT testtbl1.id, testtbl2.id FROM ONLY testtbl1, '
+                    'ONLY testtbl2')
+        self.assert_compile(stmt, expected)
+
+        stmt = update(tbl1, values=dict(id=1))
+        stmt = stmt.with_hint('ONLY', dialect_name='postgresql')
+        expected = 'UPDATE ONLY testtbl1 SET id=%(id)s'
+        self.assert_compile(stmt, expected)
+
+        stmt = delete(tbl1).with_hint('ONLY', selectable=tbl1, dialect_name='postgresql')
+        expected = 'DELETE FROM ONLY testtbl1'
+        self.assert_compile(stmt, expected)
+
+        tbl3 = Table('testtbl3', m, Column('id', Integer), schema='testschema')
+        stmt = tbl3.select().with_hint(tbl3, 'ONLY', 'postgresql')
+        expected = 'SELECT testschema.testtbl3.id FROM ONLY testschema.testtbl3'
+        self.assert_compile(stmt, expected)
+
+        assert_raises(
+            exc.CompileError,
+            tbl3.select().with_hint(tbl3, "FAKE", "postgresql").compile,
+            dialect=postgresql.dialect()
+        )
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = 'postgresql'
