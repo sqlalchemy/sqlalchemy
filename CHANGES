@@ -6,6 +6,10 @@ CHANGES
 
 0.8.0b1
 =======
+Changes noted below are specific to version 0.8.
+For changes that are in both 0.7 and 0.8, see below
+underneath "0.7.xx".
+
 - general
   - SQLAlchemy 0.8 now targets Python 2.5 and
     above.  Python 2.4 is no longer supported.
@@ -93,25 +97,6 @@ CHANGES
     Both features should be avoided, however.
     [ticket:2372]
 
-  - [bug] Fixed bug whereby subqueryload() from 
-    a polymorphic mapping to a target would incur
-    a new invocation of the query for each 
-    distinct class encountered in the polymorphic
-    result.  [ticket:2480].  Also in 0.7.8.
-
-  - [bug] Fixed issue in unit of work
-    whereby setting a non-None self-referential
-    many-to-one relationship to None
-    would fail to persist the change if the
-    former value was not already loaded.
-    [ticket:2477]. Also in 0.7.7
-
-  - [bug] Fixed bug in relationship comparisons
-    whereby calling unimplemented methods like
-    SomeClass.somerelationship.like() would
-    produce a recursion overflow, instead
-    of NotImplementedError. Also in 0.7.7.
-
   - [bug] The "passive" flag on Session.is_modified()
     no longer has any effect. is_modified() in 
     all cases looks only at local in-memory
@@ -126,29 +111,6 @@ CHANGES
     would fail to function subsequent to this
     warning in any case.  [ticket:2405]
 
-  - [bug] Fixed bug in declarative 
-    whereby the precedence of columns 
-    in a joined-table, composite
-    column (typically for id) would fail to
-    be correct if the columns contained
-    names distinct from their attribute 
-    names.  This would cause things like
-    primaryjoin conditions made against the
-    entity attributes to be incorrect.  Related
-    to [ticket:1892] as this was supposed
-    to be part of that, this is [ticket:2491].
-    Also in 0.7.8.
-
-  - [feature] The 'objects' argument to 
-    flush() is no longer deprecated, as some
-    valid use cases have been identified.  
-    Also in 0.7.8.
-
-  - [bug] Fixed identity_key() function which 
-    was not accepting a scalar argument 
-    for the identity.  [ticket:2508]. Also
-    in 0.7.8.
-
   - [feature] Query now "auto correlates" by 
     default in the same way as select() does.
     Previously, a Query used as a subquery
@@ -157,28 +119,6 @@ CHANGES
     correlate a table on the inside to the
     outside.  As always, correlate(None)
     disables correlation.  [ticket:2179]
-
-  - [feature] Added prefix_with() method
-    to Query, calls upon select().prefix_with()
-    to allow placement of MySQL SELECT
-    directives in statements.  Courtesy
-    Diana Clarke [ticket:2443]
-    also in 0.7.7.
-
-  - [bug] Fixed bug in 0.7.6 introduced by 
-    [ticket:2409] whereby column_mapped_collection
-    used against columns that were mapped as
-    joins or other indirect selectables
-    would fail to function.
-    also in 0.7.7.
-
-  - [feature] Added new flag to @validates
-    include_removes.  When True, collection
-    remove and attribute del events
-    will also be sent to the validation function,
-    which accepts an additional argument
-    "is_remove" when this flag is used.
-    also in 0.7.7.
 
   - [feature] The after_attach event is now
     emitted after the object is established
@@ -191,52 +131,7 @@ CHANGES
     need autoflush w pre-attached object.  
     [ticket:2464]
 
-  - [bug] Fixed bug whereby polymorphic_on
-    column that's not otherwise mapped on the 
-    class would be incorrectly included
-    in a merge() operation, raising an error.
-    [ticket:2449]
-    also in 0.7.7.
-
-  - [bug] Fixed bug in expression annotation
-    mechanics which could lead to incorrect
-    rendering of SELECT statements with aliases
-    and joins, particularly when using 
-    column_property().  [ticket:2453]
-    also in 0.7.7.
-
-  - [bug] Fixed bug which would prevent
-    OrderingList from being pickleable
-    [ticket:2454].  Courtesy Jeff Dairiki
-    also in 0.7.7.
-
-  - [bug] Fixed bug whereby populate_existing
-    option would not propagate to subquery
-    eager loaders.  [ticket:2497].  Also
-    in 0.7.8.
-
 - engine
-  - [feature] Dramatic improvement in memory
-    usage of the event system; instance-level
-    collections are no longer created for a
-    particular type of event until 
-    instance-level listeners are established 
-    for that event.  [ticket:2516] Also in 0.7.9.
-
-  - [bug] Fixed memory leak in C version of
-    result proxy whereby DBAPIs which don't deliver
-    pure Python tuples for result rows would
-    fail to decrement refcounts correctly.
-    The most prominently affected DBAPI
-    is pyodbc.  Also in 0.7.8.  [ticket:2489]
-
-  - [bug] Fixed bug affecting Py3K whereby
-    string positional parameters passed to 
-    engine/connection execute() would fail to be
-    interpreted correctly, due to __iter__
-    being present on Py3K string.  
-    [ticket:2503].  Also in 0.7.8.
-
   - [feature] Added a new system
     for registration of new dialects in-process
     without using an entrypoint.  See the
@@ -323,45 +218,6 @@ CHANGES
     column object itself, consistent with the behavior
     of label(column, None).  [ticket:2168]
 
-  - [bug] Removed warning when Index is created
-    with no columns; while this might not be what 
-    the user intended, it is a valid use case 
-    as an Index could be a placeholder for just an 
-    index of a certain name.
-    also in 0.7.7.
-
-  - [feature] Added new connection event
-    dbapi_error(). Is called for all DBAPI-level
-    errors passing the original DBAPI exception
-    before SQLAlchemy modifies the state 
-    of the cursor.
-    also in 0.7.7.
-
-  - [bug] If conn.begin() fails when calling
-    "with engine.begin()", the newly acquired
-    Connection is closed explicitly before 
-    propagating the exception onward normally.
-    also in 0.7.7.
-
-  - [bug] Added BIGINT, BINARY, VARBINARY to 
-    types.__all__, sqlalchemy namespaces,
-    plus tests to make sure new types 
-    remain importable.  [ticket:2474] 
-    also in 0.7.7, [ticket:2499] also 
-    in 0.7.8.
-
-  - [bug] Repaired common table expression
-    rendering to function correctly when the 
-    SELECT statement contains UNION or other
-    compound expressions, courtesy btbuilder.  
-    [ticket:2490]  Also in 0.7.8.
-
-  - [bug] Fixed bug whereby append_column()
-    wouldn't function correctly on a cloned
-    select() construct, courtesy 
-    Gunnlaugur Þór Briem.  [ticket:2482]
-    Also in 0.7.8.
-
 - sqlite
   - [feature] the SQLite date and time types
     have been overhauled to support a more open
@@ -373,12 +229,6 @@ CHANGES
     Nathan Wright for the work and tests on
     this.  [ticket:2363]
 
-  - [feature] Added SQLite execution option
-    "sqlite_raw_colnames=True", will bypass
-    attempts to remove "." from column names
-    returned by SQLite cursor.description.
-    [ticket:2475] Also in 0.7.7.
-
 - mssql
   - [bug] removed legacy behavior whereby 
     a column comparison to a scalar SELECT via 
@@ -389,42 +239,7 @@ CHANGES
     needs to be modified to use column.in_(select)
     explicitly.  [ticket:2277]
 
-  - [feature] Added interim create_engine flag
-    supports_unicode_binds to PyODBC dialect,
-    to force whether or not the dialect
-    passes Python unicode literals to PyODBC 
-    or not.
-    also in 0.7.7.
-
-  - [bug] Repaired the use_scope_identity
-    create_engine() flag when using the pyodbc
-    dialect.  Previously this flag would be
-    ignored if set to False.  When set to False,
-    you'll get "SELECT @@identity" after each 
-    INSERT to get at the last inserted ID,
-    for those tables which have "implicit_returning"
-    set to False.
-    also in 0.7.7.
- 
-  - [bug] UPDATE..FROM syntax with SQL Server
-    requires that the updated table be present
-    in the FROM clause when an alias of that
-    table is also present in the FROM clause.
-    The updated table is now always present
-    in the FROM, when FROM is present 
-    in the first place.  Courtesy sayap.
-    [ticket:2468]
-    also in 0.7.7.
-
 - postgresql
-  - [feature] Added new for_update/with_lockmode()
-    options for Postgresql: for_update="read"/
-    with_lockmode("read"),
-    for_update="read_nowait"/
-    with_lockmode("read_nowait").
-    These emit "FOR SHARE" and "FOR SHARE NOWAIT",
-    respectively.  Courtesy Diana Clarke 
-    [ticket:2445] Also in 0.7.7.
 
   - [feature] postgresql.ARRAY features an optional
     "dimension" argument, will assign a specific
@@ -433,45 +248,11 @@ CHANGES
     performance of bind/result processing.
     [ticket:2441]
 
-  - [bug] removed unnecessary table clause
-    when reflecting domains, [ticket:2473]
-    also in 0.7.7
-
-  - [bug] removed unnecessary table clause when
-    reflecting enums, [ticket:2510].  Courtesy
-    Gunnlaugur Þór Briem.  Also in 0.7.8.
-
 - mysql
-  - [bug] Fixed bug whereby column name inside 
-    of "KEY" clause for autoincrement composite
-    column with InnoDB would double quote a 
-    name that's a reserved word.  Courtesy Jeff
-    Dairiki. [ticket:2460]
-    also in 0.7.7.
-
-  - [bug] Fixed bug whereby get_view_names() for
-    "information_schema" schema would fail
-    to retrieve views marked as "SYSTEM VIEW".
-    courtesy Matthew Turland.
-    also in 0.7.7.
-
-  - [bug] Fixed bug whereby if cast() is used
-    on a SQL expression whose type is not supported
-    by cast() and therefore CAST isn't rendered by
-    the dialect, the order of evaluation could change
-    if the casted expression required that it be
-    grouped; grouping is now applied to those
-    expressions.  [ticket:2467]
-    also in 0.7.7.
-
   - [bug] Dialect no longer emits expensive server
     collations query, as well as server casing,
     on first connect.  These functions are still 
     available as semi-private. [ticket:2404]
-
-  - [feature] Added a new dialect for Google App
-    Engine.  Courtesy Richie Foreman. 
-    Also in 0.7.8.  [ticket:2484]
 
 - oracle
   - [bug] Quoting information is now passed along
@@ -481,9 +262,6 @@ CHANGES
     statements, so that unknown reserved names can 
     be fully supported.  [ticket:2437]
 
-  - [bug] Added ROWID to oracle.*, [ticket:2483]
-    Also in 0.7.8.
-
 - extensions
   - [removed] The SQLSoup extension is removed from 
     SQLAlchemy, and is now an external project.
@@ -492,12 +270,237 @@ CHANGES
 
 0.7.7 - 0.7.xx
 ==============
+0.8 development begins during 0.7.7 development.   
+All relevant bug fixes 
+and features listed below from version 0.7.7 on 
+are also present in 0.8.
 
-Changes which apply to 0.7.7 and subsequent versions of 0.7
-are listed in the CHANGES file within the 0.7 branch.  All
-those changes which are also in the 0.8 series (which is typically
-all of them) are listed inline within the 0.8 changes above,
-those which apply to an 0.7 release are noted.
+0.7.9
+=====
+- engine
+  - [feature] Dramatic improvement in memory
+    usage of the event system; instance-level
+    collections are no longer created for a
+    particular type of event until 
+    instance-level listeners are established 
+    for that event.  [ticket:2516]
+
+0.7.8
+=====
+- orm
+  - [bug] Fixed bug whereby subqueryload() from 
+    a polymorphic mapping to a target would incur
+    a new invocation of the query for each 
+    distinct class encountered in the polymorphic
+    result.  [ticket:2480]
+
+  - [bug] Fixed bug in declarative 
+    whereby the precedence of columns 
+    in a joined-table, composite
+    column (typically for id) would fail to
+    be correct if the columns contained
+    names distinct from their attribute 
+    names.  This would cause things like
+    primaryjoin conditions made against the
+    entity attributes to be incorrect.  Related
+    to [ticket:1892] as this was supposed
+    to be part of that, this is [ticket:2491].
+
+  - [feature] The 'objects' argument to 
+    flush() is no longer deprecated, as some
+    valid use cases have been identified.  
+
+  - [bug] Fixed identity_key() function which 
+    was not accepting a scalar argument 
+    for the identity.  [ticket:2508].
+
+  - [bug] Fixed bug whereby populate_existing
+    option would not propagate to subquery
+    eager loaders.  [ticket:2497].
+
+- sql
+  - [bug] added BIGINT to types.__all__,
+    BIGINT, BINARY, VARBINARY to sqlalchemy
+    module namespace, plus test to ensure
+    this breakage doesn't occur again.
+    [ticket:2499]
+
+  - [bug] Repaired common table expression
+    rendering to function correctly when the 
+    SELECT statement contains UNION or other
+    compound expressions, courtesy btbuilder.  
+    [ticket:2490]
+
+  - [bug] Fixed bug whereby append_column()
+    wouldn't function correctly on a cloned
+    select() construct, courtesy 
+    Gunnlaugur Þór Briem.  [ticket:2482]
+
+- engine
+  - [bug] Fixed memory leak in C version of
+    result proxy whereby DBAPIs which don't deliver
+    pure Python tuples for result rows would
+    fail to decrement refcounts correctly.
+    The most prominently affected DBAPI
+    is pyodbc.  [ticket:2489]
+
+  - [bug] Fixed bug affecting Py3K whereby
+    string positional parameters passed to 
+    engine/connection execute() would fail to be
+    interpreted correctly, due to __iter__
+    being present on Py3K string.  
+    [ticket:2503].
+
+- postgresql
+  - [bug] removed unnecessary table clause when
+    reflecting enums, [ticket:2510].  Courtesy
+    Gunnlaugur Þór Briem.
+
+- oracle
+  - [bug] Added ROWID to oracle.*, [ticket:2483]
+
+- mysql
+  - [feature] Added a new dialect for Google App
+    Engine.  Courtesy Richie Foreman. [ticket:2484]
+
+
+0.7.7
+=====
+- orm
+  - [bug] Fixed issue in unit of work
+    whereby setting a non-None self-referential
+    many-to-one relationship to None
+    would fail to persist the change if the
+    former value was not already loaded.
+    [ticket:2477].
+
+  - [feature] Added prefix_with() method
+    to Query, calls upon select().prefix_with()
+    to allow placement of MySQL SELECT
+    directives in statements.  Courtesy
+    Diana Clarke [ticket:2443]
+
+  - [bug] Fixed bug in 0.7.6 introduced by 
+    [ticket:2409] whereby column_mapped_collection
+    used against columns that were mapped as
+    joins or other indirect selectables
+    would fail to function.
+
+  - [feature] Added new flag to @validates
+    include_removes.  When True, collection
+    remove and attribute del events
+    will also be sent to the validation function,
+    which accepts an additional argument
+    "is_remove" when this flag is used.
+
+  - [bug] Fixed bug whereby polymorphic_on
+    column that's not otherwise mapped on the 
+    class would be incorrectly included
+    in a merge() operation, raising an error.
+    [ticket:2449]
+
+  - [bug] Fixed bug in expression annotation
+    mechanics which could lead to incorrect
+    rendering of SELECT statements with aliases
+    and joins, particularly when using 
+    column_property().  [ticket:2453]
+
+  - [bug] Fixed bug which would prevent
+    OrderingList from being pickleable
+    [ticket:2454].  Courtesy Jeff Dairiki
+
+  - [bug] Fixed bug in relationship comparisons
+    whereby calling unimplemented methods like
+    SomeClass.somerelationship.like() would
+    produce a recursion overflow, instead
+    of NotImplementedError.
+
+- sql
+  - [bug] Removed warning when Index is created
+    with no columns; while this might not be what 
+    the user intended, it is a valid use case 
+    as an Index could be a placeholder for just an 
+    index of a certain name.
+
+  - [feature] Added new connection event
+    dbapi_error(). Is called for all DBAPI-level
+    errors passing the original DBAPI exception
+    before SQLAlchemy modifies the state 
+    of the cursor.
+
+  - [bug] If conn.begin() fails when calling
+    "with engine.begin()", the newly acquired
+    Connection is closed explicitly before 
+    propagating the exception onward normally.
+
+  - [bug] Add BINARY, VARBINARY to types.__all__,
+    [ticket:2474]
+
+- mssql
+  - [feature] Added interim create_engine flag
+    supports_unicode_binds to PyODBC dialect,
+    to force whether or not the dialect
+    passes Python unicode literals to PyODBC 
+    or not.
+
+  - [bug] Repaired the use_scope_identity
+    create_engine() flag when using the pyodbc
+    dialect.  Previously this flag would be
+    ignored if set to False.  When set to False,
+    you'll get "SELECT @@identity" after each 
+    INSERT to get at the last inserted ID,
+    for those tables which have "implicit_returning"
+    set to False.
+ 
+  - [bug] UPDATE..FROM syntax with SQL Server
+    requires that the updated table be present
+    in the FROM clause when an alias of that
+    table is also present in the FROM clause.
+    The updated table is now always present
+    in the FROM, when FROM is present 
+    in the first place.  Courtesy sayap.
+    [ticket:2468]
+
+- postgresql
+  - [feature] Added new for_update/with_lockmode()
+    options for Postgresql: for_update="read"/
+    with_lockmode("read"),
+    for_update="read_nowait"/
+    with_lockmode("read_nowait").
+    These emit "FOR SHARE" and "FOR SHARE NOWAIT",
+    respectively.  Courtesy Diana Clarke 
+    [ticket:2445]
+
+  - [bug] removed unnecessary table clause
+    when reflecting domains, [ticket:2473]
+
+- mysql
+  - [bug] Fixed bug whereby column name inside 
+    of "KEY" clause for autoincrement composite
+    column with InnoDB would double quote a 
+    name that's a reserved word.  Courtesy Jeff
+    Dairiki. [ticket:2460]
+
+  - [bug] Fixed bug whereby get_view_names() for
+    "information_schema" schema would fail
+    to retrieve views marked as "SYSTEM VIEW".
+    courtesy Matthew Turland.
+
+  - [bug] Fixed bug whereby if cast() is used
+    on a SQL expression whose type is not supported
+    by cast() and therefore CAST isn't rendered by
+    the dialect, the order of evaluation could change
+    if the casted expression required that it be
+    grouped; grouping is now applied to those
+    expressions.  [ticket:2467]
+
+- sqlite
+
+  - [feature] Added SQLite execution option
+    "sqlite_raw_colnames=True", will bypass
+    attempts to remove "." from column names
+    returned by SQLite cursor.description.
+    [ticket:2475]
 
 0.7.6
 =====
