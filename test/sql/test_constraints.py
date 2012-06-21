@@ -355,6 +355,25 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "(a) DEFERRABLE INITIALLY DEFERRED)",
         )
 
+    def test_fk_match_clause(self):
+        t = Table('tbl', MetaData(),
+                  Column('a', Integer),
+                  Column('b', Integer,
+                         ForeignKey('tbl.a', match="SIMPLE")))
+
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE tbl (a INTEGER, b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES tbl "
+            "(a) MATCH SIMPLE)",
+        )
+
+        self.assert_compile(
+            schema.AddConstraint(list(t.foreign_keys)[0].constraint),
+            "ALTER TABLE tbl ADD FOREIGN KEY(b) "
+            "REFERENCES tbl (a) MATCH SIMPLE"
+        )
+
     def test_deferrable_unique(self):
         factory = lambda **kw: UniqueConstraint('b', **kw)
         self._test_deferrable(factory)

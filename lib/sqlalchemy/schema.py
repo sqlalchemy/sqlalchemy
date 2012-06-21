@@ -1191,7 +1191,7 @@ class ForeignKey(SchemaItem):
     def __init__(self, column, _constraint=None, use_alter=False, name=None,
                     onupdate=None, ondelete=None, deferrable=None,
                     schema=None,
-                    initially=None, link_to_name=False):
+                    initially=None, link_to_name=False, match=None):
         """
         Construct a column-level FOREIGN KEY.
 
@@ -1236,6 +1236,10 @@ class ForeignKey(SchemaItem):
             generated/dropped externally from the CREATE TABLE/ DROP TABLE
             statement. See that classes' constructor for details.
 
+        :param match: Optional string. If set, emit MATCH <value> when issuing
+            DDL for this constraint. Typical values include SIMPLE, PARTIAL
+            and FULL.
+
         """
 
         self._colspec = column
@@ -1255,6 +1259,7 @@ class ForeignKey(SchemaItem):
         self.deferrable = deferrable
         self.initially = initially
         self.link_to_name = link_to_name
+        self.match = match
 
     def __repr__(self):
         return "ForeignKey(%r)" % self._get_colspec()
@@ -1283,7 +1288,8 @@ class ForeignKey(SchemaItem):
                 ondelete=self.ondelete,
                 deferrable=self.deferrable,
                 initially=self.initially,
-                link_to_name=self.link_to_name
+                link_to_name=self.link_to_name,
+                match=self.match
                 )
         fk.dispatch._update(self.dispatch)
         return fk
@@ -1445,6 +1451,7 @@ class ForeignKey(SchemaItem):
                 [], [], use_alter=self.use_alter, name=self.name,
                 onupdate=self.onupdate, ondelete=self.ondelete,
                 deferrable=self.deferrable, initially=self.initially,
+                match=self.match,
                 )
             self.constraint._elements[self.parent] = self
             self.constraint._set_parent_with_dispatch(table)
@@ -2031,7 +2038,7 @@ class ForeignKeyConstraint(Constraint):
 
     def __init__(self, columns, refcolumns, name=None, onupdate=None,
             ondelete=None, deferrable=None, initially=None, use_alter=False,
-            link_to_name=False, table=None):
+            link_to_name=False, match=None, table=None):
         """Construct a composite-capable FOREIGN KEY.
 
         :param columns: A sequence of local column names. The named columns
@@ -2072,6 +2079,10 @@ class ForeignKeyConstraint(Constraint):
           This is normally used to generate/drop constraints on objects that
           are mutually dependent on each other.
 
+        :param match: Optional string. If set, emit MATCH <value> when issuing
+            DDL for this constraint. Typical values include SIMPLE, PARTIAL
+            and FULL.
+
         """
         super(ForeignKeyConstraint, self).\
                         __init__(name, deferrable, initially)
@@ -2082,6 +2093,7 @@ class ForeignKeyConstraint(Constraint):
         if self.name is None and use_alter:
             raise exc.ArgumentError("Alterable Constraint requires a name")
         self.use_alter = use_alter
+        self.match = match
 
         self._elements = util.OrderedDict()
 
@@ -2097,7 +2109,8 @@ class ForeignKeyConstraint(Constraint):
                     onupdate=self.onupdate, 
                     ondelete=self.ondelete, 
                     use_alter=self.use_alter, 
-                    link_to_name=self.link_to_name
+                    link_to_name=self.link_to_name,
+                    match=self.match
                 )
 
         if table is not None:
@@ -2153,7 +2166,8 @@ class ForeignKeyConstraint(Constraint):
                     use_alter=self.use_alter,
                     deferrable=self.deferrable,
                     initially=self.initially,
-                    link_to_name=self.link_to_name
+                    link_to_name=self.link_to_name,
+                    match=self.match
                 )
         fkc.dispatch._update(self.dispatch)
         return fkc

@@ -1726,6 +1726,7 @@ class DDLCompiler(engine.Compiled):
             ', '.join(preparer.quote(f.column.name, f.column.quote)
                       for f in constraint._elements.values())
         )
+        text += self.define_constraint_match(constraint)
         text += self.define_constraint_cascades(constraint)
         text += self.define_constraint_deferrability(constraint)
         return text
@@ -1763,6 +1764,12 @@ class DDLCompiler(engine.Compiled):
                 text += " NOT DEFERRABLE"
         if constraint.initially is not None:
             text += " INITIALLY %s" % constraint.initially
+        return text
+
+    def define_constraint_match(self, constraint):
+        text = ""
+        if constraint.match is not None:
+            text += " MATCH %s" % constraint.match
         return text
 
 
