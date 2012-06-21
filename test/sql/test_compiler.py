@@ -2490,6 +2490,20 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM regional_sales WHERE "
             "regional_sales.amount < :amount_2")
 
+    def test_cte_reserved_quote(self):
+        orders = table('orders', 
+            column('order'),
+        )
+        s = select([orders.c.order]).cte("regional_sales", recursive=True)
+        s = select([s.c.order])
+        self.assert_compile(s,
+            'WITH RECURSIVE regional_sales("order") AS '
+            '(SELECT orders."order" AS "order" '
+            "FROM orders)"
+            ' SELECT regional_sales."order" '
+            "FROM regional_sales"
+            )
+
     def test_date_between(self):
         import datetime
         table = Table('dt', metadata,

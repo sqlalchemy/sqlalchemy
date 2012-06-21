@@ -6,6 +6,12 @@ CHANGES
 0.7.9
 =====
 - sql
+  - [bug] quoting is applied to the column names
+    inside the WITH RECURSIVE clause of a 
+    common table expression according to the 
+    quoting rules for the originating Column.
+    [ticket:2512]
+
   - [bug] Fixed regression introduced in 0.7.6 
     whereby the FROM list of a SELECT statement
     could be incorrect in certain "clone+replace"

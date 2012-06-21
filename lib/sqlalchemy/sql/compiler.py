@@ -780,10 +780,13 @@ class SQLCompiler(engine.Compiled):
                     col_source = cte.original.selects[0]
                 else:
                     assert False
-                recur_cols = [c.key for c in util.unique_list(col_source.inner_columns)
+                recur_cols = [c for c in 
+                            util.unique_list(col_source.inner_columns)
                                 if c is not None]
 
-                text += "(%s)" % (", ".join(recur_cols))
+                text += "(%s)" % (", ".join(
+                                    self.preparer.format_column(ident) 
+                                    for ident in recur_cols))
             text += " AS \n" + \
                         cte.original._compiler_dispatch(
                                 self, asfrom=True, **kwargs
