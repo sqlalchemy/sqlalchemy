@@ -580,7 +580,6 @@ class AssertsCompiledSQL(object):
                         checkparams=None, dialect=None, 
                         use_default_dialect=False,
                         allow_dialect_select=False):
-
         if use_default_dialect:
             dialect = default.DefaultDialect()
         elif dialect == None and not allow_dialect_select:

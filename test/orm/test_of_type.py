@@ -5,6 +5,7 @@ from sqlalchemy import and_
 from test.lib import testing, fixtures
 from test.lib.testing import assert_raises, eq_
 from test.lib.schema import Column
+from sqlalchemy.engine import default
 from test.lib.entities import ComparableEntity
 from sqlalchemy import Integer, String, ForeignKey
 from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, Boss, \
@@ -13,6 +14,7 @@ from .inheritance._poly_fixtures import Company, Person, Engineer, Manager, Boss
     _PolymorphicAliasedJoins
 
 class _PolymorphicTestBase(object):
+    __dialect__ = 'default'
 
     def test_any_one(self):
         sess = Session()
@@ -175,18 +177,19 @@ class PolymorphicPolymorphicTest(_PolymorphicTestBase, _PolymorphicPolymorphic):
 
         m, sel = class_mapper(Person)._with_polymorphic_args(cls)
         sel = sel.alias()
-        comp_sel = sel.compile()
+        comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
             " ON companies.company_id = anon_1.people_company_id"
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
+
     def _polymorphic_join_target(self, cls):
         from sqlalchemy.orm import class_mapper
 
         sel = class_mapper(Person)._with_polymorphic_selectable.element
-        comp_sel = sel.compile()
+        comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
@@ -197,7 +200,7 @@ class PolymorphicAliasedJoinsTest(_PolymorphicTestBase, _PolymorphicAliasedJoins
         from sqlalchemy.orm import class_mapper
 
         sel = class_mapper(Person)._with_polymorphic_selectable.element
-        comp_sel = sel.compile()
+        comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
@@ -208,7 +211,7 @@ class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
         from sqlalchemy.orm import class_mapper
 
         sel = class_mapper(Person)._with_polymorphic_selectable.alias()
-        comp_sel = sel.compile()
+        comp_sel = sel.compile(dialect=default.DefaultDialect())
 
         return \
             comp_sel.process(sel, asfrom=True).replace("\n", "") + \
