@@ -22,7 +22,6 @@ from sqlalchemy import exc, log, event, events, interfaces, util
 from sqlalchemy.util import queue as sqla_queue
 from sqlalchemy.util import threading, memoized_property, \
     chop_traceback
-
 proxies = {}
 
 def manage(module, **params):
@@ -211,6 +210,17 @@ class Pool(log.Identified):
         """
 
         raise NotImplementedError()
+
+    def _replace(self):
+        """Dispose + recreate this pool.
+        
+        Subclasses may employ special logic to 
+        move threads waiting on this pool to the
+        new one.
+        
+        """
+        self.dispose()
+        return self.recreate()
 
     def connect(self):
         """Return a DBAPI connection from the pool.
@@ -580,6 +590,12 @@ class SingletonThreadPool(Pool):
             self._cleanup()
         return c
 
+class DummyLock(object):
+    def acquire(self, wait=True):
+        return True
+    def release(self):
+        pass
+
 class QueuePool(Pool):
     """A :class:`.Pool` that imposes a limit on the number of open connections.
 
@@ -688,37 +704,26 @@ class QueuePool(Pool):
         self._max_overflow = max_overflow
         self._timeout = timeout
         self._overflow_lock = self._max_overflow > -1 and \
-                                    threading.Lock() or None
-
-    def recreate(self):
-        self.logger.info("Pool recreating")
-        return self.__class__(self._creator, pool_size=self._pool.maxsize, 
-                          max_overflow=self._max_overflow,
-                          timeout=self._timeout, 
-                          recycle=self._recycle, echo=self.echo, 
-                          logging_name=self._orig_logging_name,
-                          use_threadlocal=self._use_threadlocal,
-                          _dispatch=self.dispatch)
+                                    threading.Lock() or DummyLock()
 
     def _do_return_conn(self, conn):
         try:
             self._pool.put(conn, False)
         except sqla_queue.Full:
             conn.close()
-            if self._overflow_lock is None:
+            self._overflow_lock.acquire()
+            try:
                 self._overflow -= 1
-            else:
-                self._overflow_lock.acquire()
-                try:
-                    self._overflow -= 1
-                finally:
-                    self._overflow_lock.release()
+            finally:
+                self._overflow_lock.release()
 
     def _do_get(self):
         try:
             wait = self._max_overflow > -1 and \
                         self._overflow >= self._max_overflow
             return self._pool.get(wait, self._timeout)
+        except sqla_queue.SAAbort, aborted:
+            return aborted.context._do_get()
         except sqla_queue.Empty:
             if self._max_overflow > -1 and \
                         self._overflow >= self._max_overflow:
@@ -730,22 +735,27 @@ class QueuePool(Pool):
                             "connection timed out, timeout %d" % 
                             (self.size(), self.overflow(), self._timeout))
 
-            if self._overflow_lock is not None:
-                self._overflow_lock.acquire()
-
-            if self._max_overflow > -1 and \
-                        self._overflow >= self._max_overflow:
-                if self._overflow_lock is not None:
-                    self._overflow_lock.release()
-                return self._do_get()
-
+            self._overflow_lock.acquire()
             try:
-                con = self._create_connection()
-                self._overflow += 1
+                if self._max_overflow > -1 and \
+                            self._overflow >= self._max_overflow:
+                    return self._do_get()
+                else:
+                    con = self._create_connection()
+                    self._overflow += 1
+                    return con
             finally:
-                if self._overflow_lock is not None:
-                    self._overflow_lock.release()
-            return con
+                self._overflow_lock.release()
+
+    def recreate(self):
+        self.logger.info("Pool recreating")
+        return self.__class__(self._creator, pool_size=self._pool.maxsize, 
+                          max_overflow=self._max_overflow,
+                          timeout=self._timeout, 
+                          recycle=self._recycle, echo=self.echo, 
+                          logging_name=self._orig_logging_name,
+                          use_threadlocal=self._use_threadlocal,
+                          _dispatch=self.dispatch)
 
     def dispose(self):
         while True:
@@ -757,6 +767,12 @@ class QueuePool(Pool):
 
         self._overflow = 0 - self.size()
         self.logger.info("Pool disposed. %s", self.status())
+
+    def _replace(self):
+        self.dispose()
+        np = self.recreate()
+        self._pool.abort(np)
+        return np
 
     def status(self):
         return "Pool size: %d  Connections in pool: %d "\

@@ -146,6 +146,17 @@ underneath "0.7.xx".
       (use sqlalchemy.ext.horizontal_shard)
 
 - engine
+  - [bug] Fixed bug whereby 
+    a disconnect detect + dispose that occurs
+    when the QueuePool has threads waiting
+    for connections would leave those
+    threads waiting for the duration of 
+    the timeout on the old pool.   The fix
+    now notifies those waiters with a special
+    exception case and has them move onto
+    the new pool.  This fix may or may
+    not be ported to 0.7.  [ticket:2522]
+
   - [feature] Added a new system
     for registration of new dialects in-process
     without using an entrypoint.  See the

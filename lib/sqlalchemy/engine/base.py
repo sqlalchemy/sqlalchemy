@@ -2253,8 +2253,7 @@ class Engine(Connectable, log.Identified):
         the engine are not affected. 
 
         """
-        self.pool.dispose()
-        self.pool = self.pool.recreate()
+        self.pool = self.pool._replace()
 
     @util.deprecated("0.7", "Use the create() method on the given schema "
                             "object directly, i.e. :meth:`.Table.create`, "
