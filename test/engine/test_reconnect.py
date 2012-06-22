@@ -264,6 +264,33 @@ class RealReconnectTest(fixtures.TestBase):
 
         conn.close()
 
+    def test_multiple_invalidate(self):
+        c1 = engine.connect()
+        c2 = engine.connect()
+
+        eq_(c1.execute(select([1])).scalar(), 1)
+
+        p1 = engine.pool
+        engine.test_shutdown()
+
+        try:
+            c1.execute(select([1]))
+            assert False
+        except tsa.exc.DBAPIError, e:
+            assert e.connection_invalidated
+
+        p2 = engine.pool
+
+        try:
+            c2.execute(select([1]))
+            assert False
+        except tsa.exc.DBAPIError, e:
+            assert e.connection_invalidated
+
+        # pool isn't replaced
+        assert engine.pool is p2
+
+
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
             # connection is still present

@@ -1833,8 +1833,11 @@ class Connection(Connectable):
 
 
             if is_disconnect:
+                dbapi_conn_wrapper = self.connection
                 self.invalidate(e)
-                self.engine.dispose()
+                if not hasattr(dbapi_conn_wrapper, '_pool') or \
+                    dbapi_conn_wrapper._pool is self.engine.pool:
+                    self.engine.dispose()
             else:
                 if cursor:
                     self._safe_close_cursor(cursor)

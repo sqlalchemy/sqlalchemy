@@ -157,6 +157,12 @@ underneath "0.7.xx".
     the new pool.  This fix may or may
     not be ported to 0.7.  [ticket:2522]
 
+  - [bug] Fixed bug whereby if a database restart
+    affected multiple connections, each 
+    connection would individually invoke a new
+    disposal of the pool, even though only 
+    one disposal is needed.  [ticket:2522]
+
   - [feature] Added a new system
     for registration of new dialects in-process
     without using an entrypoint.  See the
