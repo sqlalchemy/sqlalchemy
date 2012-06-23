@@ -32,9 +32,9 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     # probably
     # due to the event mechanics being established
     # or not already...
-    @profiling.function_call_count(72, {'2.4': 63, '2.7':67, 
-                                            '2.7+cextension':67,
-                                            '3':55},
+    @profiling.function_call_count(72, {'2.4': 68, '2.7':75, 
+                                            '2.7+cextension':75,
+                                            '3':62},
                                             variance=.10)
     def test_first_connect(self):
         conn = pool.connect()
