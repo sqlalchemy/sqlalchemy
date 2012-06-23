@@ -19,7 +19,7 @@ instance only.
 
 import logging
 import sys
-from sqlalchemy import util
+from . import util
 
 # set initial level to WARN.  This so that
 # log statements don't occur in the absense of explicit

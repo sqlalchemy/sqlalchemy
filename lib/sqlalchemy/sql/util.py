@@ -4,9 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import exc, schema, util, sql, types as sqltypes
-from sqlalchemy.util import topological
-from sqlalchemy.sql import expression, operators, visitors
+from .. import exc, schema, util, sql
+from ..util import topological
+from . import expression, operators, visitors
 from itertools import chain
 from collections import deque
 

@@ -29,10 +29,10 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from sqlalchemy import util, exc
-from sqlalchemy.sql import operators
-from sqlalchemy.sql.operators import Operators, ColumnOperators
-from sqlalchemy.sql.visitors import Visitable, cloned_traverse
+from .. import util, exc
+from . import operators
+from .operators import ColumnOperators
+from .visitors import Visitable, cloned_traverse
 import operator
 
 functions = util.importlater("sqlalchemy.sql", "functions")

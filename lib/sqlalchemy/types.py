@@ -20,18 +20,14 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'LargeBinary', 'Binary', 'Boolean', 'Unicode', 'Concatenable',
             'UnicodeText','PickleType', 'Interval', 'Enum' ]
 
-import inspect
 import datetime as dt
 import codecs
 
-from sqlalchemy import exc, schema
-from sqlalchemy.sql import expression, operators
-from sqlalchemy.util import pickle
-from sqlalchemy.util.compat import decimal
-from sqlalchemy.sql.visitors import Visitable
-from sqlalchemy import util
-from sqlalchemy import processors, events, event
-import collections
+from . import exc, schema, util, processors, events, event
+from .sql import operators
+from .util import pickle
+from .util.compat import decimal
+from .sql.visitors import Visitable
 default = util.importlater("sqlalchemy.engine", "default")
 
 NoneType = type(None)

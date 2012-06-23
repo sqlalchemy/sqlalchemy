@@ -12,7 +12,7 @@ event system.
 
 """
 
-from sqlalchemy import event, util
+from . import event, util
 
 class PoolListener(object):
     """Hooks into the lifecycle of connections in a :class:`.Pool`.

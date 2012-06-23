@@ -4,12 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types as sqltypes, schema
-from sqlalchemy.sql.expression import (
+from .. import types as sqltypes, schema
+from .expression import (
     ClauseList, Function, _literal_as_binds, text, _type_from_args
     )
-from sqlalchemy.sql import operators
-from sqlalchemy.sql.visitors import VisitableType
+from . import operators
+from .visitors import VisitableType
 
 class _GenericMeta(VisitableType):
     def __call__(self, *args, **kwargs):

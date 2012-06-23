@@ -16,7 +16,7 @@ so that they may return a context object given a certain kind
 of argument.
 """
 
-from sqlalchemy import util
+from . import util
 _registrars = util.defaultdict(list)
 
 def inspect(subject):

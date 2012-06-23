@@ -6,7 +6,7 @@
 
 """Core event interfaces."""
 
-from sqlalchemy import event, exc, util
+from . import event, exc, util
 engine = util.importlater('sqlalchemy', 'engine')
 pool = util.importlater('sqlalchemy', 'pool')
 

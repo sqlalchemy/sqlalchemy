@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.sql.expression import (
+from .expression import (
     Alias,
     ClauseElement,
     ColumnCollection,
@@ -62,7 +62,7 @@ from sqlalchemy.sql.expression import (
     update,
     )
 
-from sqlalchemy.sql.visitors import ClauseVisitor
+from .visitors import ClauseVisitor
 
 __tmp = locals().keys()
 __all__ = sorted([i for i in __tmp if not i.startswith('__')])

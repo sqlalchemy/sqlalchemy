@@ -19,7 +19,6 @@ from .attributes import (
     SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
     PASSIVE_NO_INITIALIZE
     )
-
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 

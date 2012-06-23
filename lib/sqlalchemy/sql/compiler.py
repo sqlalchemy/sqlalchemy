@@ -24,10 +24,10 @@ To generate user-defined SQL strings, see
 
 import re
 import sys
-from sqlalchemy import schema, engine, util, exc
-from sqlalchemy.sql import operators, functions, util as sql_util, \
-    visitors
-from sqlalchemy.sql import expression as sql
+from .. import schema, engine, util, exc
+from . import (
+    operators, functions, util as sql_util, visitors, expression as sql
+)
 import decimal
 
 RESERVED_WORDS = set([

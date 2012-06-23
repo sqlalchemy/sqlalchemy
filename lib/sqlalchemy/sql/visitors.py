@@ -25,7 +25,7 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/
 
 from collections import deque
 import re
-from sqlalchemy import util
+from .. import util
 import operator
 
 __all__ = ['VisitableType', 'Visitable', 'ClauseVisitor', 

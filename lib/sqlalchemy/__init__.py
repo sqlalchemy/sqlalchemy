@@ -7,7 +7,7 @@
 import inspect as _inspect
 import sys
 
-from sqlalchemy.sql import (
+from .sql import (
     alias,
     and_,
     asc,
@@ -47,7 +47,7 @@ from sqlalchemy.sql import (
     update,
     )
 
-from sqlalchemy.types import (
+from .types import (
     BIGINT,
     BINARY,
     BLOB,
@@ -92,7 +92,7 @@ from sqlalchemy.types import (
     )
 
 
-from sqlalchemy.schema import (
+from .schema import (
     CheckConstraint,
     Column,
     ColumnDefault,
@@ -112,9 +112,9 @@ from sqlalchemy.schema import (
     UniqueConstraint,
     )
 
-from sqlalchemy.inspection import inspect
+from .inspection import inspect
 
-from sqlalchemy.engine import create_engine, engine_from_config
+from .engine import create_engine, engine_from_config
 
 
 __all__ = sorted(name for name, obj in locals().items()
@@ -124,5 +124,5 @@ __version__ = '0.8.0b1'
 
 del _inspect, sys
 
-from sqlalchemy import util as _sa_util
+from . import util as _sa_util
 _sa_util.importlater.resolve_all()

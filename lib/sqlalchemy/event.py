@@ -6,7 +6,7 @@
 
 """Base event API."""
 
-from sqlalchemy import util, exc
+from . import util, exc
 
 CANCEL = util.symbol('CANCEL')
 NO_RETVAL = util.symbol('NO_RETVAL')

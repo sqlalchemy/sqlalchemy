@@ -18,9 +18,9 @@ SQLAlchemy connection pool.
 
 import weakref, time, traceback
 
-from sqlalchemy import exc, log, event, events, interfaces, util
-from sqlalchemy.util import queue as sqla_queue
-from sqlalchemy.util import threading, memoized_property, \
+from . import exc, log, event, events, interfaces, util
+from .util import queue as sqla_queue
+from .util import threading, memoized_property, \
     chop_traceback
 proxies = {}
 

@@ -28,10 +28,8 @@ as components in SQL expressions.
 
 """
 import re, inspect
-from sqlalchemy import exc, util, dialects
-from sqlalchemy.sql import expression, visitors
-from sqlalchemy import event, events
-
+from . import exc, util, dialects, event, events
+from .sql import expression, visitors
 
 ddl = util.importlater("sqlalchemy.engine", "ddl")
 sqlutil = util.importlater("sqlalchemy.sql", "util")

@@ -17,7 +17,7 @@ from operator import (
 from operator import (div,)
 # end Py2K
 
-from sqlalchemy.util import symbol
+from ..util import symbol
 
 class Operators(object):
     """Base of comparison and logical operators.
