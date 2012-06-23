@@ -78,6 +78,7 @@ class SerializeTest(fixtures.MappedTest):
         assert serializer.loads(serializer.dumps(User.name, -1), None,
                                 None) is User.name
 
+    @testing.requires.python26  # crashes in 2.5
     def test_expression(self):
         expr = \
             select([users]).select_from(users.join(addresses)).limit(5)
@@ -88,6 +89,7 @@ class SerializeTest(fixtures.MappedTest):
         eq_(re_expr.execute().fetchall(), [(7, u'jack'), (8, u'ed'),
             (8, u'ed'), (8, u'ed'), (9, u'fred')])
 
+    @testing.requires.python26  # namedtuple workaround not serializable in 2.5
     @testing.skip_if(lambda: util.pypy, "pickle sometimes has "
                         "problems here, sometimes not")
     def test_query(self):
@@ -126,6 +128,7 @@ class SerializeTest(fixtures.MappedTest):
         #eq_(q2.all(), [User(name='fred')])
         #eq_(list(q2.values(User.id, User.name)), [(9, u'fred')])
 
+    @testing.requires.python26 # namedtuple workaround not serializable in 2.5
     @testing.exclude('sqlite', '<=', (3, 5, 9),
                      'id comparison failing on the buildbot')
     def test_aliases(self):

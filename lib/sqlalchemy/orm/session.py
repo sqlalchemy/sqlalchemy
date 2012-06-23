@@ -1012,10 +1012,6 @@ class Session(object):
         if self.autoflush and not self._flushing:
             self.flush()
 
-    def _finalize_loaded(self, states):
-        for state, dict_ in states.items():
-            state.commit_all(dict_, self.identity_map)
-
     def refresh(self, instance, attribute_names=None, lockmode=None):
         """Expire and refresh the attributes on the given instance.
 

@@ -80,7 +80,9 @@ def instances(query, cursor, context):
                     context.refresh_state.dict, query._only_load_props)
             context.progress.pop(context.refresh_state)
 
-        session._finalize_loaded(context.progress)
+        for state, dict_ in context.progress.items():
+            state.commit_all(dict_, session.identity_map)
+
 
         for ii, (dict_, attrs) in context.partials.iteritems():
             ii.commit(dict_, attrs)
