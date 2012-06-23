@@ -13,24 +13,23 @@ This is a semi-private module; the main configurational API of the ORM is
 available in :class:`~sqlalchemy.orm.`.
 
 """
-
+from __future__ import absolute_import
 import types
 import weakref
 import operator
 from itertools import chain, groupby
-deque = __import__('collections').deque
+from collections import deque
 
-from sqlalchemy import sql, util, log, exc as sa_exc, event, schema
-from sqlalchemy.sql import expression, visitors, operators, util as sqlutil
-from sqlalchemy.orm import instrumentation, attributes, sync, \
-                        exc as orm_exc, unitofwork, events
-from sqlalchemy.orm.interfaces import MapperProperty, EXT_CONTINUE, \
+from .. import sql, util, log, exc as sa_exc, event, schema
+from ..sql import expression, visitors, operators, util as sql_util
+from . import instrumentation, attributes, sync, \
+                        exc as orm_exc, unitofwork, events, loading
+from .interfaces import MapperProperty, EXT_CONTINUE, \
                                 PropComparator
 
-from sqlalchemy.orm.util import _INSTRUMENTOR, _class_to_mapper, \
+from .util import _INSTRUMENTOR, _class_to_mapper, \
      _state_mapper, class_mapper, instance_str, state_str,\
-     PathRegistry
-
+     PathRegistry, _none_set
 import sys
 sessionlib = util.importlater("sqlalchemy.orm", "session")
 properties = util.importlater("sqlalchemy.orm", "properties")
@@ -46,7 +45,6 @@ __all__ = (
 _mapper_registry = weakref.WeakKeyDictionary()
 _new_mappers = False
 _already_compiling = False
-_none_set = frozenset([None])
 
 _memoized_configured_property = util.group_expirable_memoized_property()
 
@@ -466,7 +464,7 @@ class Mapper(object):
                         # immediate table of the inherited mapper, not its
                         # full table which could pull in other stuff we dont
                         # want (allows test/inheritance.InheritTest4 to pass)
-                        self.inherit_condition = sqlutil.join_condition(
+                        self.inherit_condition = sql_util.join_condition(
                                                     self.inherits.local_table,
                                                     self.local_table)
                     self.mapped_table = sql.join(
@@ -475,7 +473,7 @@ class Mapper(object):
                                                 self.inherit_condition)
 
                     fks = util.to_set(self.inherit_foreign_keys)
-                    self._inherits_equated_pairs = sqlutil.criterion_as_pairs(
+                    self._inherits_equated_pairs = sql_util.criterion_as_pairs(
                                                 self.mapped_table.onclause,
                                                 consider_as_foreign_keys=fks)
             else:
@@ -717,7 +715,7 @@ class Mapper(object):
 
     def _configure_pks(self):
 
-        self.tables = sqlutil.find_tables(self.mapped_table)
+        self.tables = sql_util.find_tables(self.mapped_table)
 
         self._pks_by_table = {}
         self._cols_by_table = {}
@@ -782,12 +780,12 @@ class Mapper(object):
             # determine primary key from argument or mapped_table pks - 
             # reduce to the minimal set of columns
             if self._primary_key_argument:
-                primary_key = sqlutil.reduce_columns(
+                primary_key = sql_util.reduce_columns(
                     [self.mapped_table.corresponding_column(c) for c in
                     self._primary_key_argument],
                     ignore_nonexistent_tables=True)
             else:
-                primary_key = sqlutil.reduce_columns(
+                primary_key = sql_util.reduce_columns(
                                 self._pks_by_table[self.mapped_table],
                                 ignore_nonexistent_tables=True)
 
@@ -1289,7 +1287,7 @@ class Mapper(object):
             mappers = []
 
         if selectable is not None:
-            tables = set(sqlutil.find_tables(selectable,
+            tables = set(sql_util.find_tables(selectable,
                             include_aliases=True))
             mappers = [m for m in mappers if m.local_table in tables]
 
@@ -1698,10 +1696,12 @@ class Mapper(object):
         if self.inherits and not self.concrete:
             statement = self._optimized_get_statement(state, attribute_names)
             if statement is not None:
-                result = session.query(self).from_statement(statement).\
-                                        _load_on_ident(None, 
-                                            only_load_props=attribute_names, 
-                                            refresh_state=state)
+                result = loading.load_on_ident(
+                            session.query(self).from_statement(statement),
+                                None, 
+                                only_load_props=attribute_names, 
+                                refresh_state=state
+                            )
 
         if result is False:
             if has_key:
@@ -1727,10 +1727,11 @@ class Mapper(object):
                             % state_str(state))
                 return
 
-            result = session.query(self)._load_on_ident(
-                                                identity_key, 
-                                                refresh_state=state, 
-                                                only_load_props=attribute_names)
+            result = loading.load_on_ident(
+                        session.query(self),
+                                    identity_key, 
+                                    refresh_state=state, 
+                                    only_load_props=attribute_names)
 
         # if instance is pending, a refresh operation 
         # may not complete (even if PK attributes are assigned)
@@ -1750,7 +1751,7 @@ class Mapper(object):
         props = self._props
 
         tables = set(chain(
-                        *[sqlutil.find_tables(c, check_columns=True) 
+                        *[sql_util.find_tables(c, check_columns=True) 
                         for key in attribute_names
                         for c in props[key].columns]
                     ))
@@ -1866,7 +1867,7 @@ class Mapper(object):
             for t in mapper.tables:
                 table_to_mapper[t] = mapper
 
-        sorted_ = sqlutil.sort_tables(table_to_mapper.iterkeys())
+        sorted_ = sql_util.sort_tables(table_to_mapper.iterkeys())
         ret = util.OrderedDict()
         for t in sorted_:
             ret[t] = table_to_mapper[t]
@@ -1923,320 +1924,6 @@ class Mapper(object):
                     result[table].append((m, m._inherits_equated_pairs))
 
         return result
-
-
-    def _instance_processor(self, context, path, adapter, 
-                                polymorphic_from=None, 
-                                only_load_props=None, refresh_state=None,
-                                polymorphic_discriminator=None):
-
-        """Produce a mapper level row processor callable 
-           which processes rows into mapped instances."""
-
-        # note that this method, most of which exists in a closure
-        # called _instance(), resists being broken out, as 
-        # attempts to do so tend to add significant function
-        # call overhead.  _instance() is the most
-        # performance-critical section in the whole ORM.
-
-        pk_cols = self.primary_key
-
-        if polymorphic_from or refresh_state:
-            polymorphic_on = None
-        else:
-            if polymorphic_discriminator is not None:
-                polymorphic_on = polymorphic_discriminator
-            else:
-                polymorphic_on = self.polymorphic_on
-            polymorphic_instances = util.PopulateDict(
-                                        self._configure_subclass_mapper(
-                                                context, path, adapter)
-                                        )
-
-        version_id_col = self.version_id_col
-
-        if adapter:
-            pk_cols = [adapter.columns[c] for c in pk_cols]
-            if polymorphic_on is not None:
-                polymorphic_on = adapter.columns[polymorphic_on]
-            if version_id_col is not None:
-                version_id_col = adapter.columns[version_id_col]
-
-        identity_class = self._identity_class
-
-        new_populators = []
-        existing_populators = []
-        eager_populators = []
-        load_path = context.query._current_path + path \
-                    if context.query._current_path.path \
-                    else path
-
-        def populate_state(state, dict_, row, isnew, only_load_props):
-            if isnew:
-                if context.propagate_options:
-                    state.load_options = context.propagate_options
-                if state.load_options:
-                    state.load_path = load_path
-
-            if not new_populators:
-                self._populators(context, path, row, adapter,
-                                new_populators,
-                                existing_populators,
-                                eager_populators
-                )
-
-            if isnew:
-                populators = new_populators
-            else:
-                populators = existing_populators
-
-            if only_load_props is None:
-                for key, populator in populators:
-                    populator(state, dict_, row)
-            elif only_load_props:
-                for key, populator in populators:
-                    if key in only_load_props:
-                        populator(state, dict_, row)
-
-        session_identity_map = context.session.identity_map
-
-        listeners = self.dispatch
-
-        translate_row = listeners.translate_row or None
-        create_instance = listeners.create_instance or None
-        populate_instance = listeners.populate_instance or None
-        append_result = listeners.append_result or None
-        populate_existing = context.populate_existing or self.always_refresh
-        invoke_all_eagers = context.invoke_all_eagers
-
-        if self.allow_partial_pks:
-            is_not_primary_key = _none_set.issuperset
-        else:
-            is_not_primary_key = _none_set.issubset
-
-        def _instance(row, result):
-            if not new_populators and invoke_all_eagers:
-                self._populators(context, path, row, adapter,
-                                new_populators,
-                                existing_populators,
-                                eager_populators
-                )
-
-            if translate_row:
-                for fn in translate_row:
-                    ret = fn(self, context, row)
-                    if ret is not EXT_CONTINUE:
-                        row = ret
-                        break
-
-            if polymorphic_on is not None:
-                discriminator = row[polymorphic_on]
-                if discriminator is not None:
-                    _instance = polymorphic_instances[discriminator]
-                    if _instance:
-                        return _instance(row, result)
-
-            # determine identity key
-            if refresh_state:
-                identitykey = refresh_state.key
-                if identitykey is None:
-                    # super-rare condition; a refresh is being called
-                    # on a non-instance-key instance; this is meant to only
-                    # occur within a flush()
-                    identitykey = self._identity_key_from_state(refresh_state)
-            else:
-                identitykey = (
-                                identity_class, 
-                                tuple([row[column] for column in pk_cols])
-                            )
-
-            instance = session_identity_map.get(identitykey)
-            if instance is not None:
-                state = attributes.instance_state(instance)
-                dict_ = attributes.instance_dict(instance)
-
-                isnew = state.runid != context.runid
-                currentload = not isnew
-                loaded_instance = False
-
-                if not currentload and \
-                        version_id_col is not None and \
-                        context.version_check and \
-                        self._get_state_attr_by_column(
-                                state, 
-                                dict_, 
-                                self.version_id_col) != \
-                                        row[version_id_col]:
-
-                    raise orm_exc.StaleDataError(
-                            "Instance '%s' has version id '%s' which "
-                            "does not match database-loaded version id '%s'." 
-                            % (state_str(state), 
-                                self._get_state_attr_by_column(
-                                            state, dict_,
-                                            self.version_id_col),
-                                    row[version_id_col]))
-            elif refresh_state:
-                # out of band refresh_state detected (i.e. its not in the
-                # session.identity_map) honor it anyway.  this can happen 
-                # if a _get() occurs within save_obj(), such as
-                # when eager_defaults is True.
-                state = refresh_state
-                instance = state.obj()
-                dict_ = attributes.instance_dict(instance)
-                isnew = state.runid != context.runid
-                currentload = True
-                loaded_instance = False
-            else:
-                # check for non-NULL values in the primary key columns,
-                # else no entity is returned for the row
-                if is_not_primary_key(identitykey[1]):
-                    return None
-
-                isnew = True
-                currentload = True
-                loaded_instance = True
-
-                if create_instance:
-                    for fn in create_instance:
-                        instance = fn(self, context, 
-                                            row, self.class_)
-                        if instance is not EXT_CONTINUE:
-                            manager = attributes.manager_of_class(
-                                                    instance.__class__)
-                            # TODO: if manager is None, raise a friendly error
-                            # about returning instances of unmapped types
-                            manager.setup_instance(instance)
-                            break
-                    else:
-                        instance = self.class_manager.new_instance()
-                else:
-                    instance = self.class_manager.new_instance()
-
-                dict_ = attributes.instance_dict(instance)
-                state = attributes.instance_state(instance)
-                state.key = identitykey
-
-                # attach instance to session.
-                state.session_id = context.session.hash_key
-                session_identity_map.add(state)
-
-            if currentload or populate_existing:
-                # state is being fully loaded, so populate.
-                # add to the "context.progress" collection.
-                if isnew:
-                    state.runid = context.runid
-                    context.progress[state] = dict_
-
-                if populate_instance:
-                    for fn in populate_instance:
-                        ret = fn(self, context, row, state, 
-                            only_load_props=only_load_props, 
-                            instancekey=identitykey, isnew=isnew)
-                        if ret is not EXT_CONTINUE:
-                            break
-                    else:
-                        populate_state(state, dict_, row, isnew, only_load_props)
-                else:
-                    populate_state(state, dict_, row, isnew, only_load_props)
-
-                if loaded_instance:
-                    state.manager.dispatch.load(state, context)
-                elif isnew:
-                    state.manager.dispatch.refresh(state, context, only_load_props)
-
-            elif state in context.partials or state.unloaded or eager_populators:
-                # state is having a partial set of its attributes
-                # refreshed.  Populate those attributes,
-                # and add to the "context.partials" collection.
-                if state in context.partials:
-                    isnew = False
-                    (d_, attrs) = context.partials[state]
-                else:
-                    isnew = True
-                    attrs = state.unloaded
-                    context.partials[state] = (dict_, attrs)
-
-                if populate_instance:
-                    for fn in populate_instance:
-                        ret = fn(self, context, row, state, 
-                            only_load_props=attrs, 
-                            instancekey=identitykey, isnew=isnew)
-                        if ret is not EXT_CONTINUE:
-                            break
-                    else:
-                        populate_state(state, dict_, row, isnew, attrs)
-                else:
-                    populate_state(state, dict_, row, isnew, attrs)
-
-                for key, pop in eager_populators:
-                    if key not in state.unloaded:
-                        pop(state, dict_, row)
-
-                if isnew:
-                    state.manager.dispatch.refresh(state, context, attrs)
-
-
-            if result is not None:
-                if append_result:
-                    for fn in append_result:
-                        if fn(self, context, row, state, 
-                                    result, instancekey=identitykey,
-                                    isnew=isnew) is not EXT_CONTINUE:
-                            break
-                    else:
-                        result.append(instance)
-                else:
-                    result.append(instance)
-
-            return instance
-        return _instance
-
-    def _populators(self, context, path, row, adapter,
-            new_populators, existing_populators, eager_populators):
-        """Produce a collection of attribute level row processor 
-        callables."""
-
-        delayed_populators = []
-        pops = (new_populators, existing_populators, delayed_populators, 
-                            eager_populators)
-        for prop in self._props.itervalues():
-            for i, pop in enumerate(prop.create_row_processor(
-                                        context, path,
-                                        self, row, adapter)):
-                if pop is not None:
-                    pops[i].append((prop.key, pop))
-
-        if delayed_populators:
-            new_populators.extend(delayed_populators)
-
-    def _configure_subclass_mapper(self, context, path, adapter):
-        """Produce a mapper level row processor callable factory for mappers
-        inheriting this one."""
-
-        def configure_subclass_mapper(discriminator):
-            try:
-                mapper = self.polymorphic_map[discriminator]
-            except KeyError:
-                raise AssertionError(
-                        "No such polymorphic_identity %r is defined" %
-                        discriminator)
-            if mapper is self:
-                return None
-
-            # replace the tip of the path info with the subclass mapper 
-            # being used, that way accurate "load_path" info is available 
-            # for options invoked during deferred loads, e.g.
-            # query(Person).options(defer(Engineer.machines, Machine.name)).
-            # for AliasedClass paths, disregard this step (new in 0.8).
-            return mapper._instance_processor(
-                                context, 
-                                path.parent[mapper] 
-                                    if not path.is_aliased_class 
-                                    else path, 
-                                adapter,
-                                polymorphic_from=self)
-        return configure_subclass_mapper
 
 log.class_logger(Mapper)
 

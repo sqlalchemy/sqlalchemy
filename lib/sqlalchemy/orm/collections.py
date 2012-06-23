@@ -108,8 +108,11 @@ import operator
 import sys
 import weakref
 
-from sqlalchemy.sql import expression
-from sqlalchemy import schema, util, exc as sa_exc
+from ..sql import expression
+from .. import util, exc as sa_exc
+orm_util = util.importlater("sqlalchemy.orm", "util")
+attributes = util.importlater("sqlalchemy.orm", "attributes")
+
 
 __all__ = ['collection', 'collection_adapter',
            'mapped_collection', 'column_mapped_collection',
@@ -138,8 +141,8 @@ class _PlainColumnGetter(object):
         return self.cols
 
     def __call__(self, value):
-        state = instance_state(value)
-        m = _state_mapper(state)
+        state = attributes.instance_state(value)
+        m = orm_util._state_mapper(state)
 
         key = [
             m._get_state_attr_by_column(state, state.dict, col)
@@ -163,8 +166,8 @@ class _SerializableColumnGetter(object):
     def __reduce__(self):
         return _SerializableColumnGetter, (self.colkeys,)
     def __call__(self, value):
-        state = instance_state(value)
-        m = _state_mapper(state)
+        state = attributes.instance_state(value)
+        m = orm_util._state_mapper(state)
         key = [m._get_state_attr_by_column(
                         state, state.dict, 
                         m.mapped_table.columns[k])
@@ -228,10 +231,6 @@ def column_mapped_collection(mapping_spec):
     after a session flush.
 
     """
-    global _state_mapper, instance_state
-    from sqlalchemy.orm.util import _state_mapper
-    from sqlalchemy.orm.attributes import instance_state
-
     cols = [expression._only_column_elements(q, "mapping_spec")
                 for q in util.to_list(mapping_spec)
             ]

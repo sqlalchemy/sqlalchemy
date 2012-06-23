@@ -12,7 +12,8 @@ from test.lib import engines, testing, pickleable
 from test.lib.schema import Table
 from test.lib.schema import Column
 from sqlalchemy.orm import mapper, relationship, create_session, \
-    column_property, attributes, Session, reconstructor, object_session
+    column_property, attributes, Session, reconstructor, object_session,\
+    exc as orm_exc
 from test.lib.testing import eq_, ne_
 from test.lib.util import gc_collect
 from test.lib import fixtures
@@ -2466,7 +2467,7 @@ class PartialNullPKTest(fixtures.MappedTest):
         t1 = s.query(T1).first()
         t1.col2 = 5
         assert_raises_message(
-            sa.exc.FlushError,
+            orm_exc.FlushError,
             "Can't update table using NULL for primary key value",
             s.commit
         )
@@ -2479,7 +2480,7 @@ class PartialNullPKTest(fixtures.MappedTest):
         t1 = s.query(T1).first()
         t1.col3 = 'hi'
         assert_raises_message(
-            sa.exc.FlushError,
+            orm_exc.FlushError,
             "Can't update table using NULL for primary key value",
             s.commit
         )
@@ -2492,7 +2493,7 @@ class PartialNullPKTest(fixtures.MappedTest):
         t1 = s.query(T1).first()
         s.delete(t1)
         assert_raises_message(
-            sa.exc.FlushError,
+            orm_exc.FlushError,
             "Can't delete from table using NULL for primary key value",
             s.commit
         )
@@ -2502,7 +2503,7 @@ class PartialNullPKTest(fixtures.MappedTest):
         s = Session()
         s.add(T1(col1=None, col2=None))
         assert_raises_message(
-            sa.exc.FlushError,
+            orm_exc.FlushError,
             r"Instance \<T1 at .+?\> has a NULL "
             "identity key.  If this is an auto-generated value, "
             "check that the database table allows generation ",

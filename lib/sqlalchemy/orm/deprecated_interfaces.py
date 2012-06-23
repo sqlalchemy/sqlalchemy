@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import event, util
+from .. import event, util
 from interfaces import EXT_CONTINUE
 
 

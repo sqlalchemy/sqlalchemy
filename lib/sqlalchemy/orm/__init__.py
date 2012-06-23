@@ -12,14 +12,16 @@ documentation for an overview of how this module is used.
 
 """
 
-from sqlalchemy.orm import exc
-from sqlalchemy.orm.mapper import (
+from . import exc
+from .mapper import (
      Mapper,
      _mapper_registry,
      class_mapper,
-     configure_mappers
+     configure_mappers,
+     reconstructor,
+     validates
      )
-from sqlalchemy.orm.interfaces import (
+from .interfaces import (
      EXT_CONTINUE,
      EXT_STOP,
      InstrumentationManager,
@@ -28,7 +30,7 @@ from sqlalchemy.orm.interfaces import (
      SessionExtension,
      AttributeExtension,
      )
-from sqlalchemy.orm.util import (
+from .util import (
      aliased,
      join,
      object_mapper,
@@ -37,7 +39,7 @@ from sqlalchemy.orm.util import (
      with_parent,
      with_polymorphic,
      )
-from sqlalchemy.orm.properties import (
+from .properties import (
      ColumnProperty,
      ComparableProperty,
      CompositeProperty,
@@ -45,21 +47,25 @@ from sqlalchemy.orm.properties import (
      PropertyLoader,
      SynonymProperty,
      )
-from sqlalchemy.orm.relationships import (
+from .relationships import (
     foreign,
     remote,
     remote_foreign
 )
-from sqlalchemy.orm import mapper as mapperlib
-from sqlalchemy.orm.mapper import reconstructor, validates
-from sqlalchemy.orm import strategies
-from sqlalchemy.orm.query import AliasOption, Query
-from sqlalchemy.sql import util as sql_util
-from sqlalchemy.orm.session import Session
-from sqlalchemy.orm.session import object_session, sessionmaker, \
+from .session import (
+    Session, 
+    object_session, 
+    sessionmaker, 
     make_transient
-from sqlalchemy.orm.scoping import ScopedSession
-from sqlalchemy import util as sa_util
+)
+from .scoping import (
+    ScopedSession
+)
+from . import mapper as mapperlib
+from . import strategies
+from .query import AliasOption, Query
+from ..sql import util as sql_util
+from .. import util as sa_util
 
 __all__ = (
     'EXT_CONTINUE',
@@ -1578,8 +1584,8 @@ def contains_eager(*keys, **kwargs):
     """
     alias = kwargs.pop('alias', None)
     if kwargs:
-        raise exceptions.ArgumentError('Invalid kwargs for contains_eag'
-                'er: %r' % kwargs.keys())
+        raise exc.ArgumentError(
+                'Invalid kwargs for contains_eager: %r' % kwargs.keys())
     return strategies.EagerLazyOption(keys, lazy='joined',
             propagate_to_loaders=False, chained=True), \
         strategies.LoadEagerFromAliasOption(keys, alias=alias, chained=True)

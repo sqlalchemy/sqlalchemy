@@ -8,10 +8,10 @@
 
 """
 
-from sqlalchemy import sql, util, exc as sa_exc
-from sqlalchemy.orm import attributes, exc, sync, unitofwork, \
+from .. import sql, util, exc as sa_exc
+from . import attributes, exc, sync, unitofwork, \
                                         util as mapperutil
-from sqlalchemy.orm.interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
+from .interfaces import ONETOMANY, MANYTOONE, MANYTOMANY
 
 class DependencyProcessor(object):
     def __init__(self, prop):
@@ -704,7 +704,6 @@ class ManyToOneDP(DependencyProcessor):
                                         self.key, 
                                         self._passive_delete_flag)
                 if history:
-                    ret = True
                     for child in history.deleted:
                         if self.hasparent(child) is False:
                             uowcommit.register_object(child, isdelete=True, 
@@ -932,12 +931,14 @@ class ManyToManyDP(DependencyProcessor):
             ])
 
     def presort_deletes(self, uowcommit, states):
+        # TODO: no tests fail if this whole
+        # thing is removed !!!!
         if not self.passive_deletes:
             # if no passive deletes, load history on 
             # the collection, so that prop_has_changes()
             # returns True
             for state in states:
-                history = uowcommit.get_attribute_history(
+                uowcommit.get_attribute_history(
                                         state, 
                                         self.key, 
                                         self._passive_delete_flag)

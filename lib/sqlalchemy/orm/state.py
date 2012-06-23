@@ -11,15 +11,14 @@ defines a large part of the ORM's interactivity.
 
 """
 
-from sqlalchemy.util import EMPTY_SET
 import weakref
-from sqlalchemy import util
-
-from sqlalchemy.orm import exc as orm_exc, attributes, interfaces,\
-        util as orm_util
-from sqlalchemy.orm.attributes import PASSIVE_NO_RESULT, \
+from .. import util
+from . import exc as orm_exc, attributes,util as orm_util
+from .attributes import (
+    PASSIVE_NO_RESULT, 
     SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
     PASSIVE_NO_INITIALIZE
+    )
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 sessionlib = util.importlater("sqlalchemy.orm", "session")
@@ -31,7 +30,7 @@ class InstanceState(object):
     session_id = None
     key = None
     runid = None
-    load_options = EMPTY_SET
+    load_options = util.EMPTY_SET
     load_path = ()
     insert_order = None
     _strong_obj = None

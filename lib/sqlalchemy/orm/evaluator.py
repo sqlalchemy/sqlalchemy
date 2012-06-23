@@ -5,9 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import operator
-from sqlalchemy.sql import operators, functions
-from sqlalchemy.sql import expression as sql
-
+from ..sql import operators
 
 class UnevaluatableError(Exception):
     pass
@@ -22,15 +20,16 @@ _straight_ops = set(getattr(operators, op)
 
 
 _notimplemented_ops = set(getattr(operators, op)
-                          for op in ('like_op', 'notlike_op', 'ilike_op',
-                                     'notilike_op', 'between_op', 'in_op',
-                                     'notin_op', 'endswith_op', 'concat_op'))
+                      for op in ('like_op', 'notlike_op', 'ilike_op',
+                                 'notilike_op', 'between_op', 'in_op',
+                                 'notin_op', 'endswith_op', 'concat_op'))
 
 class EvaluatorCompiler(object):
     def process(self, clause):
         meth = getattr(self, "visit_%s" % clause.__visit_name__, None)
         if not meth:
-            raise UnevaluatableError("Cannot evaluate %s" % type(clause).__name__)
+            raise UnevaluatableError(
+                "Cannot evaluate %s" % type(clause).__name__)
         return meth(clause)
 
     def visit_grouping(self, clause):
@@ -71,12 +70,15 @@ class EvaluatorCompiler(object):
                         return False
                 return True
         else:
-            raise UnevaluatableError("Cannot evaluate clauselist with operator %s" % clause.operator)
+            raise UnevaluatableError(
+                "Cannot evaluate clauselist with operator %s" % 
+                clause.operator)
 
         return evaluate
 
     def visit_binary(self, clause):
-        eval_left,eval_right = map(self.process, [clause.left, clause.right])
+        eval_left,eval_right = map(self.process, 
+                                [clause.left, clause.right])
         operator = clause.operator
         if operator is operators.is_:
             def evaluate(obj):
@@ -92,7 +94,9 @@ class EvaluatorCompiler(object):
                     return None
                 return operator(eval_left(obj), eval_right(obj))
         else:
-            raise UnevaluatableError("Cannot evaluate %s with operator %s" % (type(clause).__name__, clause.operator))
+            raise UnevaluatableError(
+                    "Cannot evaluate %s with operator %s" % 
+                    (type(clause).__name__, clause.operator))
         return evaluate
 
     def visit_unary(self, clause):
@@ -104,7 +108,9 @@ class EvaluatorCompiler(object):
                     return None
                 return not value
             return evaluate
-        raise UnevaluatableError("Cannot evaluate %s with operator %s" % (type(clause).__name__, clause.operator))
+        raise UnevaluatableError(
+                    "Cannot evaluate %s with operator %s" % 
+                    (type(clause).__name__, clause.operator))
 
     def visit_bindparam(self, clause):
         val = clause.value

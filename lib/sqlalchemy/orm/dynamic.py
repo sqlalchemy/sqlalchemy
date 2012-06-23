@@ -11,16 +11,13 @@ basic add/delete mutation.
 
 """
 
-from sqlalchemy import log, util
-from sqlalchemy import exc as sa_exc
-from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.sql import operators
-from sqlalchemy.orm import (
-    attributes, object_session, util as mapperutil, strategies, object_mapper
+from .. import log, util
+from ..sql import operators
+from . import (
+    attributes, object_session, util as orm_util, strategies, 
+    object_mapper, exc as orm_exc, collections
     )
-from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.util import has_identity
-from sqlalchemy.orm import attributes, collections
+from .query import Query
 
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
@@ -199,7 +196,7 @@ class AppenderMixin(object):
     query_class = None
 
     def __init__(self, attr, state):
-        Query.__init__(self, attr.target_mapper, None)
+        super(AppenderMixin, self).__init__(attr.target_mapper, None)
         self.instance = instance = state.obj()
         self.attr = attr
 
@@ -219,7 +216,7 @@ class AppenderMixin(object):
         if sess is not None and self.autoflush and sess.autoflush \
             and self.instance in sess:
             sess.flush()
-        if not has_identity(self.instance):
+        if not orm_util.has_identity(self.instance):
             return None
         else:
             return sess
@@ -268,7 +265,7 @@ class AppenderMixin(object):
                     "Parent instance %s is not bound to a Session, and no "
                     "contextual session is established; lazy load operation "
                     "of attribute '%s' cannot proceed" % (
-                        mapperutil.instance_str(instance), self.attr.key))
+                        orm_util.instance_str(instance), self.attr.key))
 
         if self.query_class:
             query = self.query_class(self.attr.target_mapper, session=sess)

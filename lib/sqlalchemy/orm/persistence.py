@@ -15,14 +15,10 @@ in unitofwork.py.
 
 import operator
 from itertools import groupby
-
-from sqlalchemy import sql, util, exc as sa_exc, schema
-from sqlalchemy.orm import attributes, sync, \
-                        exc as orm_exc,\
-                        evaluator
-
-from sqlalchemy.orm.util import _state_mapper, state_str, _attr_as_key
-from sqlalchemy.sql import expression
+from .. import sql, util, exc as sa_exc, schema
+from . import attributes, sync, exc as orm_exc, evaluator
+from .util import _state_mapper, state_str, _attr_as_key
+from ..sql import expression
 
 def save_obj(base_mapper, states, uowtransaction, single=False):
     """Issue ``INSERT`` and/or ``UPDATE`` statements for a list 
@@ -372,7 +368,7 @@ def _collect_update_commands(base_mapper, uowtransaction,
                     params[col._label] = value
         if hasdata:
             if hasnull:
-                raise sa_exc.FlushError(
+                raise orm_exc.FlushError(
                             "Can't update table "
                             "using NULL for primary "
                             "key value")
@@ -436,7 +432,7 @@ def _collect_delete_commands(base_mapper, uowtransaction, table,
                     mapper._get_state_attr_by_column(
                                     state, state_dict, col)
             if value is None:
-                raise sa_exc.FlushError(
+                raise orm_exc.FlushError(
                             "Can't delete from table "
                             "using NULL for primary "
                             "key value")
@@ -695,7 +691,9 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction,
         # refresh whatever has been expired.
         if base_mapper.eager_defaults and state.unloaded:
             state.key = base_mapper._identity_key_from_state(state)
-            uowtransaction.session.query(base_mapper)._load_on_ident(
+            from . import loading
+            loading.load_on_ident(
+                uowtransaction.session.query(base_mapper),
                 state.key, refresh_state=state,
                 only_load_props=state.unloaded)
 

@@ -4,7 +4,7 @@ from sqlalchemy.orm import dynamic_loader, backref
 from test.lib import testing
 from sqlalchemy import Integer, String, ForeignKey, desc, select, func
 from test.lib.schema import Table, Column
-from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
+from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes, exc as orm_exc
 from sqlalchemy.orm.dynamic import AppenderMixin
 from test.lib.testing import eq_, AssertsCompiledSQL, assert_raises_message, assert_raises
 from test.lib import fixtures
@@ -53,6 +53,24 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "SELECT addresses.id, addresses.user_id, addresses.email_address FROM "
             "addresses WHERE :param_1 = addresses.user_id",
             use_default_dialect=True
+        )
+
+    def test_detached_raise(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+
+        mapper(User, users, properties={
+            'addresses':dynamic_loader(mapper(Address, addresses))
+        })
+        sess = create_session()
+        u = sess.query(User).get(8)
+        sess.expunge(u)
+        assert_raises(
+            orm_exc.DetachedInstanceError,
+            u.addresses.filter_by,
+            email_address='e'
         )
 
     def test_order_by(self):

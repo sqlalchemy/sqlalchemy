@@ -7,22 +7,20 @@
 """Provides the Session class and related utilities."""
 
 import weakref
-from itertools import chain
-from sqlalchemy import util, sql, engine, log, exc as sa_exc
-from sqlalchemy.sql import util as sql_util, expression
-from sqlalchemy.orm import (
-    SessionExtension, attributes, exc, query, unitofwork, util as mapperutil, state
+from .. import util, sql, engine, exc as sa_exc, event
+from ..sql import util as sql_util, expression
+from . import (
+    SessionExtension, attributes, exc, query, util as orm_util,
+    loading, identity
     )
-from sqlalchemy.orm.util import object_mapper as _object_mapper
-from sqlalchemy.orm.util import class_mapper as _class_mapper
-from sqlalchemy.orm.util import (
-    _class_to_mapper, _state_mapper, object_state
+from .util import (
+    object_mapper, class_mapper,
+    _class_to_mapper, _state_mapper, object_state,
+    _none_set
     )
-from sqlalchemy.orm.mapper import Mapper, _none_set
-from sqlalchemy.orm.unitofwork import UOWTransaction
-from sqlalchemy.orm import identity
-from sqlalchemy import event
-from sqlalchemy.orm.events import SessionEvents
+from .unitofwork import UOWTransaction
+from .mapper import Mapper
+from .events import SessionEvents
 
 import sys
 
@@ -190,8 +188,8 @@ class SessionTransaction(object):
 
     def connection(self, bindkey, **kwargs):
         self._assert_is_active()
-        engine = self.session.get_bind(bindkey, **kwargs)
-        return self._connection_for_bind(engine)
+        bind = self.session.get_bind(bindkey, **kwargs)
+        return self._connection_for_bind(bind)
 
     def _begin(self, nested=False):
         self._assert_is_active()
@@ -862,7 +860,7 @@ class Session(object):
 
         """
         if isinstance(mapper, type):
-            mapper = _class_mapper(mapper)
+            mapper = class_mapper(mapper)
 
         self.__binds[mapper.base_mapper] = bind
         for t in mapper._all_tables:
@@ -1053,13 +1051,14 @@ class Session(object):
 
         self._expire_state(state, attribute_names)
 
-        if self.query(_object_mapper(instance))._load_on_ident(
+        if loading.load_on_ident(
+                self.query(object_mapper(instance)),
                 state.key, refresh_state=state,
                 lockmode=lockmode,
                 only_load_props=attribute_names) is None:
             raise sa_exc.InvalidRequestError(
                 "Could not refresh instance '%s'" %
-                mapperutil.instance_str(instance))
+                orm_util.instance_str(instance))
 
     def expire_all(self):
         """Expires all persistent instances within this Session.
@@ -1170,7 +1169,7 @@ class Session(object):
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Instance %s is not present in this Session" %
-                mapperutil.state_str(state))
+                orm_util.state_str(state))
 
         cascaded = list(state.manager.mapper.cascade_iterator(
                                     'expunge', state))
@@ -1209,7 +1208,7 @@ class Session(object):
                         "the mapped Column object is configured to expect these "
                         "generated values.  Ensure also that this flush() is "
                         "not occurring at an inappropriate time, such as within "
-                        "a load() event." % mapperutil.state_str(state)
+                        "a load() event." % orm_util.state_str(state)
                     )
 
                 if state.key is None:
@@ -1293,7 +1292,7 @@ class Session(object):
         if state.key is None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
-                mapperutil.state_str(state))
+                orm_util.state_str(state))
 
         if state in self._deleted:
             return
@@ -1338,7 +1337,7 @@ class Session(object):
             # flush current contents if we expect to load data
             self._autoflush()
 
-        _object_mapper(instance) # verify mapped
+        object_mapper(instance) # verify mapped
         autoflush = self.autoflush
         try:
             self.autoflush = False
@@ -1427,7 +1426,7 @@ class Session(object):
                             "merging to update the most recent version."
                             % (
                                 existing_version,
-                                mapperutil.state_str(merged_state),
+                                orm_util.state_str(merged_state),
                                 merged_version
                             ))
 
@@ -1449,7 +1448,7 @@ class Session(object):
 
     @classmethod
     def identity_key(cls, *args, **kwargs):
-        return mapperutil.identity_key(*args, **kwargs)
+        return orm_util.identity_key(*args, **kwargs)
 
     @classmethod
     def object_session(cls, instance):
@@ -1461,13 +1460,13 @@ class Session(object):
         if not self.identity_map.contains_state(state):
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persistent within this Session" %
-                mapperutil.state_str(state))
+                orm_util.state_str(state))
 
     def _save_impl(self, state):
         if state.key is not None:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' already has an identity - it can't be registered "
-                "as pending" % mapperutil.state_str(state))
+                "as pending" % orm_util.state_str(state))
 
         self._before_attach(state)
         if state not in self._new:
@@ -1483,13 +1482,13 @@ class Session(object):
         if state.key is None:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' is not persisted" %
-                mapperutil.state_str(state))
+                orm_util.state_str(state))
 
         if state.deleted:
             raise sa_exc.InvalidRequestError(
                 "Instance '%s' has been deleted.  Use the make_transient() "
                 "function to send this object back to the transient state." %
-                mapperutil.state_str(state)
+                orm_util.state_str(state)
             )
         self._before_attach(state)
         self._deleted.pop(state, None)
@@ -1569,14 +1568,14 @@ class Session(object):
             raise sa_exc.InvalidRequestError("Can't attach instance "
                     "%s; another instance with key %s is already "
                     "present in this session."
-                    % (mapperutil.state_str(state), state.key))
+                    % (orm_util.state_str(state), state.key))
 
         if state.session_id and \
                 state.session_id is not self.hash_key and \
                 state.session_id in _sessions:
             raise sa_exc.InvalidRequestError(
                 "Object '%s' is already attached to session '%s' "
-                "(this is '%s')" % (mapperutil.state_str(state),
+                "(this is '%s')" % (orm_util.state_str(state),
                                     state.session_id, self.hash_key))
 
         if state.session_id != self.hash_key:

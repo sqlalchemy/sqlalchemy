@@ -674,7 +674,7 @@ class RollbackRecoverTest(_LocalFixture):
         u1.name = 'edward'
         a1.email_address = 'foober'
         s.add(u2)
-        assert_raises(sa_exc.FlushError, s.commit)
+        assert_raises(orm_exc.FlushError, s.commit)
         assert_raises(sa_exc.InvalidRequestError, s.commit)
         s.rollback()
         assert u2 not in s
@@ -708,7 +708,7 @@ class RollbackRecoverTest(_LocalFixture):
         a1.email_address = 'foober'
         s.begin_nested()
         s.add(u2)
-        assert_raises(sa_exc.FlushError, s.commit)
+        assert_raises(orm_exc.FlushError, s.commit)
         assert_raises(sa_exc.InvalidRequestError, s.commit)
         s.rollback()
         assert u2 not in s

@@ -21,11 +21,10 @@ An example of full customization is in /examples/custom_attributes.
 """
 
 
-from sqlalchemy.orm import exc, collections, events
-from operator import attrgetter, itemgetter
-from sqlalchemy import event, util, inspection
+from . import exc, collections, events, state, attributes
+from operator import attrgetter
+from .. import event, util
 import weakref
-from sqlalchemy.orm import state, attributes
 
 
 INSTRUMENTATION_MANAGER = '__sa_instrumentation_manager__'

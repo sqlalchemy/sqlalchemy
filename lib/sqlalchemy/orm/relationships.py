@@ -13,12 +13,14 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 
 """
 
-from sqlalchemy import sql, util, log, exc as sa_exc, schema
-from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
-    join_condition, _shallow_annotate, visit_binary_product,\
+from .. import sql, util, exc as sa_exc, schema
+from ..sql.util import (
+    ClauseAdapter, 
+    join_condition, _shallow_annotate, visit_binary_product,
     _deep_deannotate, find_tables
-from sqlalchemy.sql import operators, expression, visitors
-from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
+    )
+from ..sql import operators, expression, visitors
+from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
 
 def remote(expr):
     """Annotate a portion of a primaryjoin expression 
@@ -220,7 +222,7 @@ class JoinCondition(object):
                                 consider_as_foreign_keys=\
                                     self.consider_as_foreign_keys or None
                                 )
-        except sa_exc.NoForeignKeysError, nfke:
+        except sa_exc.NoForeignKeysError:
             if self.secondary is not None:
                 raise sa_exc.NoForeignKeysError("Could not determine join "
                         "condition between parent/child tables on "
@@ -240,7 +242,7 @@ class JoinCondition(object):
                         "with a ForeignKey or ForeignKeyConstraint, or "
                         "specify a 'primaryjoin' expression."
                         % self.prop)
-        except sa_exc.AmbiguousForeignKeysError, afke:
+        except sa_exc.AmbiguousForeignKeysError:
             if self.secondary is not None:
                 raise sa_exc.AmbiguousForeignKeysError(
                         "Could not determine join "
@@ -433,8 +435,6 @@ class JoinCondition(object):
         if self._has_remote_annotations:
             return
 
-        parentcols = util.column_set(self.parent_selectable.c)
-
         if self.secondary is not None:
             self._annotate_remote_secondary()
         elif self._local_remote_pairs or self._remote_side:
@@ -574,8 +574,6 @@ class JoinCondition(object):
         """
         if self._has_annotation(self.primaryjoin, "local"):
             return
-
-        parentcols = util.column_set(self.parent_selectable.c)
 
         if self._local_remote_pairs:
             local_side = util.column_set([l for (l, r) 

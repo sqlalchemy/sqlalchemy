@@ -11,26 +11,31 @@ mapped attributes.
 
 """
 
-from sqlalchemy import sql, util, log, exc as sa_exc
-from sqlalchemy.sql.util import ClauseAdapter, criterion_as_pairs, \
-    join_condition, _shallow_annotate
-from sqlalchemy.sql import operators, expression, visitors
-from sqlalchemy.orm import attributes, dependency, mapper, \
-    object_mapper, strategies, configure_mappers, relationships
-from sqlalchemy.orm.util import CascadeOptions, _class_to_mapper, \
-    _orm_annotate, _orm_deannotate, _orm_full_deannotate,\
-    _entity_info
+from .. import sql, util, log, exc as sa_exc
+from ..sql import operators, expression
+from . import (
+    attributes, dependency, mapper, 
+    strategies, configure_mappers, relationships
+    )
+from .util import (
+    CascadeOptions, \
+        _orm_annotate, _orm_deannotate, _orm_full_deannotate,
+        _entity_info
+    )
 
-from sqlalchemy.orm.interfaces import MANYTOMANY, MANYTOONE, \
-    MapperProperty, ONETOMANY, PropComparator, StrategizedProperty
+from .interfaces import (
+    MANYTOMANY, MANYTOONE, MapperProperty, ONETOMANY, 
+    PropComparator, StrategizedProperty
+    )
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 NoneType = type(None)
+
+from descriptor_props import CompositeProperty, SynonymProperty, \
+            ComparableProperty,ConcreteInheritedProperty
 
 __all__ = ('ColumnProperty', 'CompositeProperty', 'SynonymProperty',
            'ComparableProperty', 'RelationshipProperty', 'RelationProperty')
 
-from descriptor_props import CompositeProperty, SynonymProperty, \
-            ComparableProperty,ConcreteInheritedProperty
 
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column.

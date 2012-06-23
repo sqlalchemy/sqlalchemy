@@ -7,19 +7,19 @@
 """sqlalchemy.orm.interfaces.LoaderStrategy 
    implementations, and related MapperOptions."""
 
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import sql, util, log, event
-from sqlalchemy.sql import util as sql_util
-from sqlalchemy.sql import visitors
-from sqlalchemy.orm import attributes, interfaces, exc as orm_exc
-from sqlalchemy.orm.mapper import _none_set
-from sqlalchemy.orm.interfaces import (
+from .. import exc as sa_exc
+from .. import util, log, event
+from ..sql import util as sql_util, visitors
+from . import (
+        attributes, interfaces, exc as orm_exc, loading, 
+        unitofwork, util as orm_util
+    )
+from .util import _none_set
+from .interfaces import (
     LoaderStrategy, StrategizedOption, MapperOption, PropertyOption,
     StrategizedProperty
     )
-from sqlalchemy.orm import session as sessionlib, unitofwork
-from sqlalchemy.orm import util as mapperutil
-from sqlalchemy.orm.query import Query
+from .session import _state_session
 import itertools
 
 def _register_attribute(strategy, mapper, useobject,
@@ -45,7 +45,7 @@ def _register_attribute(strategy, mapper, useobject,
     if prop.key in prop.parent.validators:
         fn, include_removes = prop.parent.validators[prop.key]
         listen_hooks.append(
-            lambda desc, prop: mapperutil._validator_events(desc, 
+            lambda desc, prop: orm_util._validator_events(desc, 
                                 prop.key, fn, include_removes)
             )
 
@@ -228,16 +228,16 @@ class DeferredColumnLoader(LoaderStrategy):
         # narrow the keys down to just those which have no history
         group = [k for k in toload if k in state.unmodified]
 
-        session = sessionlib._state_session(state)
+        session = _state_session(state)
         if session is None:
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "deferred load operation of attribute '%s' cannot proceed" % 
-                (mapperutil.state_str(state), self.key)
+                (orm_util.state_str(state), self.key)
                 )
 
         query = session.query(localparent)
-        if query._load_on_ident(state.key, 
+        if loading.load_on_ident(query, state.key, 
                     only_load_props=group, refresh_state=state) is None:
             raise orm_exc.ObjectDeletedError(state)
 
@@ -405,7 +405,7 @@ class LazyLoader(AbstractRelationshipLoader):
         # use the "committed state" only if we're in a flush
         # for this state.
 
-        sess = sessionlib._state_session(state)
+        sess = _state_session(state)
         if sess is not None and sess._flushing:
             def visit_bindparam(bindparam):
                 if bindparam._identifying_key in bind_to_col:
@@ -473,12 +473,12 @@ class LazyLoader(AbstractRelationshipLoader):
         ):
             return attributes.PASSIVE_NO_RESULT
 
-        session = sessionlib._state_session(state)
+        session = _state_session(state)
         if not session:
             raise orm_exc.DetachedInstanceError(
                 "Parent instance %s is not bound to a Session; "
                 "lazy load operation of attribute '%s' cannot proceed" % 
-                (mapperutil.state_str(state), self.key)
+                (orm_util.state_str(state), self.key)
             )
 
         # if we have a simple primary key load, check the 
@@ -498,7 +498,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 return None
 
             ident_key = self.mapper.identity_key_from_primary_key(ident)
-            instance = Query._get_from_identity(session, ident_key, passive)
+            instance = loading.get_from_identity(session, ident_key, passive)
             if instance is not None:
                 return instance
             elif not passive & attributes.SQL_OK or \
@@ -544,7 +544,7 @@ class LazyLoader(AbstractRelationshipLoader):
             q = q._conditional_options(*state.load_options)
 
         if self.use_get:
-            return q._load_on_ident(ident_key)
+            return loading.load_on_ident(q, ident_key)
 
         if self.parent_property.order_by:
             q = q.order_by(*util.to_list(self.parent_property.order_by))
@@ -678,7 +678,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
             effective_entity = self.mapper
 
         subq_path = context.attributes.get(('subquery_path', None), 
-                                mapperutil.PathRegistry.root)
+                                orm_util.PathRegistry.root)
 
         subq_path = subq_path + path
 
@@ -734,7 +734,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
 
     def _get_leftmost(self, subq_path):
         subq_path = subq_path.path
-        subq_mapper = mapperutil._class_to_mapper(subq_path[0])
+        subq_mapper = orm_util._class_to_mapper(subq_path[0])
 
         # determine attributes of the leftmost mapper
         if self.parent.isa(subq_mapper) and self.key==subq_path[1]:
@@ -776,7 +776,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # the original query now becomes a subquery
         # which we'll join onto.
         embed_q = q.with_labels().subquery()
-        left_alias = mapperutil.AliasedClass(leftmost_mapper, embed_q)
+        left_alias = orm_util.AliasedClass(leftmost_mapper, embed_q)
         return left_alias
 
 
@@ -793,7 +793,7 @@ class SubqueryLoader(AbstractRelationshipLoader):
         # which needs to be aliased.
 
         if len(to_join) > 1:
-            ext = mapperutil._extended_entity_info(subq_path[-2])
+            ext = orm_util._extended_entity_info(subq_path[-2])
 
         if len(to_join) < 2:
             # in the case of a one level eager load, this is the
@@ -805,11 +805,11 @@ class SubqueryLoader(AbstractRelationshipLoader):
             # in the vast majority of cases, and [ticket:2014] 
             # illustrates a case where sub_path[-2] is a subclass
             # of self.parent
-            parent_alias = mapperutil.AliasedClass(subq_path[-2])
+            parent_alias = orm_util.AliasedClass(subq_path[-2])
         else:
             # if of_type() were used leading to this relationship, 
             # self.parent is more specific than subq_path[-2]
-            parent_alias = mapperutil.AliasedClass(self.parent)
+            parent_alias = orm_util.AliasedClass(self.parent)
 
         local_cols = self.parent_property.local_columns
 
@@ -1049,8 +1049,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         if with_poly_info:
             to_adapt = with_poly_info.entity
         else:
-            to_adapt = mapperutil.AliasedClass(self.mapper)
-        clauses = mapperutil.ORMAdapter(
+            to_adapt = orm_util.AliasedClass(self.mapper)
+        clauses = orm_util.ORMAdapter(
                     to_adapt, 
                     equivalents=self.mapper._equivalent_columns,
                     adapt_required=True)
@@ -1120,7 +1120,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                                 self.parent_property)
             else:
                 onclause = getattr(
-                                mapperutil.AliasedClass(
+                                orm_util.AliasedClass(
                                         self.parent, 
                                         adapter.selectable
                                 ), 
@@ -1137,7 +1137,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         assert clauses.aliased_class is not None
         context.eager_joins[entity_key] = eagerjoin = \
-                                mapperutil.join(
+                                orm_util.join(
                                             towrap, 
                                             clauses.aliased_class, 
                                             onclause, 
@@ -1217,7 +1217,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         if eager_adapter is not False:
             key = self.key
 
-            _instance = self.mapper._instance_processor(
+            _instance = loading.instance_processor(
+                                self.mapper,
                                 context, 
                                 our_path[self.mapper],
                                 eager_adapter)
@@ -1346,7 +1347,7 @@ class LoadEagerFromAliasOption(PropertyOption):
         if alias is not None:
             if not isinstance(alias, basestring):
                 mapper, alias, is_aliased_class = \
-                        mapperutil._entity_info(alias)
+                        orm_util._entity_info(alias)
         self.alias = alias
         self.chained = chained
 
@@ -1372,7 +1373,7 @@ class LoadEagerFromAliasOption(PropertyOption):
         else:
             if paths[-1].contains(query, "path_with_polymorphic"):
                 with_poly_info = paths[-1].get(query, "path_with_polymorphic")
-                adapter = mapperutil.ORMAdapter(
+                adapter = orm_util.ORMAdapter(
                             with_poly_info.entity, 
                             equivalents=prop.mapper._equivalent_columns,
                             adapt_required=True)
@@ -1390,7 +1391,7 @@ def single_parent_validator(desc, prop):
                     "Instance %s is already associated with an instance "
                     "of %s via its %s attribute, and is only allowed a "
                     "single parent." % 
-                    (mapperutil.instance_str(value), state.class_, prop)
+                    (orm_util.instance_str(value), state.class_, prop)
                 )
         return value
 

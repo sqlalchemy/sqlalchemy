@@ -5,13 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from sqlalchemy import sql, util, event, exc as sa_exc, inspection
-from sqlalchemy.sql import expression, util as sql_util, operators
-from sqlalchemy.orm.interfaces import MapperExtension, EXT_CONTINUE,\
-                                PropComparator, MapperProperty
+from .. import sql, util, event, exc as sa_exc, inspection
+from ..sql import expression, util as sql_util, operators
+from .interfaces import PropComparator, MapperProperty
 from itertools import chain
-from sqlalchemy.orm import attributes, exc
-import operator
+from . import attributes, exc
 import re
 
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
@@ -21,6 +19,8 @@ all_cascades = frozenset(("delete", "delete-orphan", "all", "merge",
                           "none"))
 
 _INSTRUMENTOR = ('mapper', 'instrumentor')
+
+_none_set = frozenset([None])
 
 class CascadeOptions(frozenset):
     """Keeps track of the options sent to relationship().cascade"""
@@ -790,7 +790,7 @@ def with_parent(instance, prop):
                         value_is_parent=True)
 
 
-_extended_entity_info_tuple = util.namedtuple("extended_entity_info", [
+extended_entity_info = util.namedtuple("extended_entity_info", [
     "entity",
     "mapper",
     "selectable",
@@ -800,7 +800,7 @@ _extended_entity_info_tuple = util.namedtuple("extended_entity_info", [
 ])
 def _extended_entity_info(entity, compile=True):
     if isinstance(entity, AliasedClass):
-        return _extended_entity_info_tuple(
+        return extended_entity_info(
             entity,
             entity._AliasedClass__mapper, \
                     entity._AliasedClass__alias, \
@@ -816,15 +816,15 @@ def _extended_entity_info(entity, compile=True):
         class_manager = attributes.manager_of_class(entity)
 
         if class_manager is None:
-            return _extended_entity_info_tuple(entity, None, entity, False, [], None)
+            return extended_entity_info(entity, None, entity, False, [], None)
 
         mapper = class_manager.mapper
     else:
-        return _extended_entity_info_tuple(entity, None, entity, False, [], None)
+        return extended_entity_info(entity, None, entity, False, [], None)
 
     if compile and mapperlib.module._new_mappers:
         mapperlib.configure_mappers()
-    return _extended_entity_info_tuple(
+    return extended_entity_info(
         entity, 
         mapper, \
             mapper._with_polymorphic_selectable, \

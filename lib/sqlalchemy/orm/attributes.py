@@ -16,11 +16,9 @@ defines a large part of the ORM's interactivity.
 import operator
 from operator import itemgetter
 
-from sqlalchemy import util, event, exc as sa_exc, inspection
-from sqlalchemy.orm import interfaces, collections, events, exc as orm_exc
-
-
-mapperutil = util.importlater("sqlalchemy.orm", "util")
+from .. import util, event, inspection
+from . import interfaces, collections, events, exc as orm_exc
+orm_util = util.importlater("sqlalchemy.orm", "util")
 
 PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT',
 """Symbol returned by a loader callable or other attribute/history
@@ -415,8 +413,8 @@ class AttributeImpl(object):
                             "but the parent record "
                             "has gone stale, can't be sure this "
                             "is the most recent parent." % 
-                            (mapperutil.state_str(state), 
-                            mapperutil.state_str(parent_state),
+                            (orm_util.state_str(state), 
+                            orm_util.state_str(parent_state),
                             self.key))
 
                     return
@@ -675,8 +673,8 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
             else:
                 raise ValueError(
                     "Object %s not associated with %s on attribute '%s'" % (
-                    mapperutil.instance_str(check_old),
-                   mapperutil.state_str(state),
+                    orm_util.instance_str(check_old),
+                   orm_util.state_str(state),
                    self.key
                 ))
         value = self.fire_replace_event(state, dict_, value, old, initiator)

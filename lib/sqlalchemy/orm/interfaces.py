@@ -15,17 +15,15 @@ Other than the deprecated extensions, this module and the
 classes within should be considered mostly private.
 
 """
-
+from __future__ import absolute_import
 from itertools import chain
 
-from sqlalchemy import exc as sa_exc
-from sqlalchemy import util
-from sqlalchemy.sql import operators
-deque = __import__('collections').deque
+from .. import exc as sa_exc, util
+from ..sql import operators
+from collections import deque
 
-mapperutil = util.importlater('sqlalchemy.orm', 'util')
-
-collections = None
+orm_util = util.importlater('sqlalchemy.orm', 'util')
+collections = util.importlater('sqlalchemy.orm', 'collections')
 
 __all__ = (
     'AttributeExtension',
@@ -51,7 +49,7 @@ ONETOMANY = util.symbol('ONETOMANY')
 MANYTOONE = util.symbol('MANYTOONE')
 MANYTOMANY = util.symbol('MANYTOMANY')
 
-from deprecated_interfaces import AttributeExtension, SessionExtension, \
+from .deprecated_interfaces import AttributeExtension, SessionExtension, \
     MapperExtension
 
 
@@ -426,11 +424,11 @@ class PropertyOption(MapperOption):
         self.__dict__ = state
 
     def _find_entity_prop_comparator(self, query, token, mapper, raiseerr):
-        if mapperutil._is_aliased_class(mapper):
+        if orm_util._is_aliased_class(mapper):
             searchfor = mapper
             isa = False
         else:
-            searchfor = mapperutil._class_to_mapper(mapper)
+            searchfor = orm_util._class_to_mapper(mapper)
             isa = True
         for ent in query._mapper_entities:
             if ent.corresponds_to(searchfor):
@@ -477,7 +475,7 @@ class PropertyOption(MapperOption):
         Return a list of affected paths.
         
         """
-        path = mapperutil.PathRegistry.root
+        path = orm_util.PathRegistry.root
         entity = None
         paths = []
         no_result = []
@@ -565,13 +563,13 @@ class PropertyOption(MapperOption):
 
             if getattr(token, '_of_type', None):
                 ac = token._of_type
-                ext_info = mapperutil._extended_entity_info(ac)
+                ext_info = orm_util._extended_entity_info(ac)
                 path_element = mapper = ext_info.mapper
                 if not ext_info.is_aliased_class:
-                    ac = mapperutil.with_polymorphic(
+                    ac = orm_util.with_polymorphic(
                                 ext_info.mapper.base_mapper, 
                                 ext_info.mapper, aliased=True)
-                    ext_info = mapperutil._extended_entity_info(ac)
+                    ext_info = orm_util._extended_entity_info(ac)
                 path.set(query, "path_with_polymorphic", ext_info)
             else:
                 path_element = mapper = getattr(prop, 'mapper', None)
@@ -722,9 +720,6 @@ class InstrumentationManager(object):
         delattr(class_, key)
 
     def instrument_collection_class(self, class_, key, collection_class):
-        global collections
-        if collections is None:
-            from sqlalchemy.orm import collections
         return collections.prepare_instrumentation(collection_class)
 
     def get_instance_dict(self, class_, instance):

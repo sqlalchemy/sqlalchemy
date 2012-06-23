@@ -9,7 +9,7 @@ between instances based on join conditions.
 
 """
 
-from sqlalchemy.orm import exc, util as mapperutil, attributes
+from . import exc, util as orm_util, attributes
 
 def populate(source, source_mapper, dest, dest_mapper, 
                         synchronize_pairs, uowcommit, flag_cascaded_pks):
@@ -48,7 +48,7 @@ def clear(dest, dest_mapper, synchronize_pairs):
             raise AssertionError(
                                 "Dependency rule tried to blank-out primary key "
                                 "column '%s' on instance '%s'" % 
-                                (r, mapperutil.state_str(dest))
+                                (r, orm_util.state_str(dest))
                             )
         try:
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)

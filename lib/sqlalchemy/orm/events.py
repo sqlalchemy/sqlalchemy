@@ -7,7 +7,7 @@
 """ORM event interfaces.
 
 """
-from sqlalchemy import event, exc, util
+from .. import event, exc, util
 orm = util.importlater("sqlalchemy", "orm")
 import inspect
 

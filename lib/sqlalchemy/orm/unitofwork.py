@@ -12,10 +12,9 @@ organizes them in order of dependency, and executes.
 
 """
 
-from sqlalchemy import util, event
-from sqlalchemy.util import topological
-from sqlalchemy.orm import attributes, interfaces, persistence
-from sqlalchemy.orm import util as mapperutil
+from .. import util, event
+from ..util import topological
+from . import attributes, interfaces, persistence, util as orm_util
 session = util.importlater("sqlalchemy.orm", "session")
 
 def track_cascade_events(descriptor, prop):
@@ -205,7 +204,7 @@ class UOWTransaction(object):
             if not state.deleted and operation is not None:
                 util.warn("Object of type %s not in session, %s operation "
                             "along '%s' will not proceed" % 
-                            (mapperutil.state_class_str(state), operation, prop))
+                            (orm_util.state_class_str(state), operation, prop))
             return False
 
         if state not in self.states:
@@ -537,7 +536,7 @@ class ProcessState(PostSortRec):
         return "%s(%s, %s, delete=%s)" % (
             self.__class__.__name__,
             self.dependency_processor,
-            mapperutil.state_str(self.state),
+            orm_util.state_str(self.state),
             self.delete
         )
 
@@ -561,7 +560,7 @@ class SaveUpdateState(PostSortRec):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            mapperutil.state_str(self.state)
+            orm_util.state_str(self.state)
         )
 
 class DeleteState(PostSortRec):
@@ -584,6 +583,6 @@ class DeleteState(PostSortRec):
     def __repr__(self):
         return "%s(%s)" % (
             self.__class__.__name__,
-            mapperutil.state_str(self.state)
+            orm_util.state_str(self.state)
         )
 
