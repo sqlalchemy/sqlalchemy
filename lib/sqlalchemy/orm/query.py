@@ -2242,7 +2242,7 @@ class Query(object):
                         close_with_result=True)
 
         result = conn.execute(querycontext.statement, self._params)
-        return self.instances(result, querycontext)
+        return loading.instances(self, result, querycontext)
 
     @property
     def column_descriptions(self):
