@@ -4,11 +4,10 @@ Currently includes MySQL and Drizzle.
 
 """
 
-from sqlalchemy.connectors import Connector
-from sqlalchemy.engine import base as engine_base, default
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
-from sqlalchemy import processors
+from . import Connector
+from ..engine import base as engine_base, default
+from ..sql import operators as sql_operators
+from .. import exc, log, schema, sql, types as sqltypes, util, processors
 import re
 
 # the subclassing of Connector by all classes

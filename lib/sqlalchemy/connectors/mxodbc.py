@@ -22,7 +22,7 @@ import sys
 import re
 import warnings
 
-from sqlalchemy.connectors import Connector
+from . import Connector
 
 class MxODBCConnector(Connector):
     driver='mxodbc'

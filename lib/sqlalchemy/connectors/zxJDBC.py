@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sys
-from sqlalchemy.connectors import Connector
+from . import Connector
 
 class ZxJDBCConnector(Connector):
     driver = 'zxjdbc'

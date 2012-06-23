@@ -18,7 +18,7 @@ __all__ = (
     'sybase',
     )
 
-from sqlalchemy import util
+from . import util
 
 def _auto_fn(name):
     """default dialect importer.
