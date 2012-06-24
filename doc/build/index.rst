@@ -51,6 +51,7 @@ of Python objects, proceed first to the tutorial.
   :doc:`Deprecated Event Interfaces <orm/deprecated>` |
   :doc:`ORM Exceptions <orm/exceptions>` |
   :doc:`Horizontal Sharding <orm/extensions/horizontal_shard>` |
+  :doc:`Alternate Instrumentation <orm/extensions/instrumentation>`
 
 SQLAlchemy Core
 ===============

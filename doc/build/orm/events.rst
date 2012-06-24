@@ -42,11 +42,3 @@ Instrumentation Events
 .. autoclass:: sqlalchemy.orm.events.InstrumentationEvents
    :members:
 
-Alternate Class Instrumentation
--------------------------------
-
-.. autoclass:: sqlalchemy.orm.interfaces.InstrumentationManager
-    :members:
-    :undoc-members:
-
-

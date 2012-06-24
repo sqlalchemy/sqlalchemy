@@ -7,27 +7,7 @@ from sqlalchemy.orm import mapper, relationship, create_session, \
 from test.lib.schema import Table
 from test.lib.schema import Column
 from test.lib.testing import eq_, ne_
-from test.lib.util import decorator
 from test.lib import fixtures, testing
-
-@decorator
-def modifies_instrumentation_finders(fn, *args, **kw):
-    pristine = instrumentation.instrumentation_finders[:]
-    try:
-        fn(*args, **kw)
-    finally:
-        del instrumentation.instrumentation_finders[:]
-        instrumentation.instrumentation_finders.extend(pristine)
-
-def with_lookup_strategy(strategy):
-    @decorator
-    def decorate(fn, *args, **kw):
-        try:
-            instrumentation._install_lookup_strategy(strategy)
-            return fn(*args, **kw)
-        finally:
-            instrumentation._install_lookup_strategy(sa.util.symbol('native'))
-    return decorate
 
 
 class InitTest(fixtures.ORMTest):
@@ -464,77 +444,6 @@ class MapperInitTest(fixtures.ORMTest):
         # C is not mapped in the current implementation
         assert_raises(sa.orm.exc.UnmappedClassError, class_mapper, C)
 
-class InstrumentationCollisionTest(fixtures.ORMTest):
-    def test_none(self):
-        class A(object): pass
-        instrumentation.register_class(A)
-
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-        class B(object):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-        instrumentation.register_class(B)
-
-        class C(object):
-            __sa_instrumentation_manager__ = instrumentation.ClassManager
-        instrumentation.register_class(C)
-
-    def test_single_down(self):
-        class A(object): pass
-        instrumentation.register_class(A)
-
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-        class B(A):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-
-        assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B)
-
-    def test_single_up(self):
-
-        class A(object): pass
-        # delay registration
-
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-        class B(A):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-        instrumentation.register_class(B)
-
-        assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, A)
-
-    def test_diamond_b1(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-
-        class A(object): pass
-        class B1(A): pass
-        class B2(A):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-        class C(object): pass
-
-        assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B1)
-
-    def test_diamond_b2(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-
-        class A(object): pass
-        class B1(A): pass
-        class B2(A):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-        class C(object): pass
-
-        instrumentation.register_class(B2)
-        assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B1)
-
-    def test_diamond_c_b(self):
-        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
-
-        class A(object): pass
-        class B1(A): pass
-        class B2(A):
-            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
-        class C(object): pass
-
-        instrumentation.register_class(C)
-
-        assert_raises_message(TypeError, "multiple instrumentation implementations", instrumentation.register_class, B1)
 
 class OnLoadTest(fixtures.ORMTest):
     """Check that Events.load is not hit in regular attributes operations."""
@@ -559,33 +468,8 @@ class OnLoadTest(fixtures.ORMTest):
         finally:
             del A
 
-    @classmethod
-    def teardown_class(cls):
-        clear_mappers()
-        instrumentation._install_lookup_strategy(util.symbol('native'))
-
-
-class ExtendedEventsTest(fixtures.ORMTest):
-    """Allow custom Events implementations."""
-
-    @modifies_instrumentation_finders
-    def test_subclassed(self):
-        class MyEvents(events.InstanceEvents):
-            pass
-        class MyClassManager(instrumentation.ClassManager):
-            dispatch = event.dispatcher(MyEvents)
-
-        instrumentation.instrumentation_finders.insert(0, lambda cls: MyClassManager)
-
-        class A(object): pass
-
-        instrumentation.register_class(A)
-        manager = instrumentation.manager_of_class(A)
-        assert issubclass(manager.dispatch._parent_cls.__dict__['dispatch'].events, MyEvents)
-
 
 class NativeInstrumentationTest(fixtures.ORMTest):
-    @with_lookup_strategy(sa.util.symbol('native'))
     def test_register_reserved_attribute(self):
         class T(object): pass
 
@@ -603,7 +487,6 @@ class NativeInstrumentationTest(fixtures.ORMTest):
         fails('install_descriptor', sa)
         fails('install_descriptor', ma)
 
-    @with_lookup_strategy(sa.util.symbol('native'))
     def test_mapped_stateattr(self):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
@@ -613,7 +496,6 @@ class NativeInstrumentationTest(fixtures.ORMTest):
 
         assert_raises(KeyError, mapper, T, t)
 
-    @with_lookup_strategy(sa.util.symbol('native'))
     def test_mapped_managerattr(self):
         t = Table('t', MetaData(),
                   Column('id', Integer, primary_key=True),
@@ -732,10 +614,13 @@ class MiscTest(fixtures.ORMTest):
         class A(object):pass
 
         manager = instrumentation.register_class(A)
+        attributes.register_attribute(A, 'x', uselist=False, useobject=False)
 
         assert instrumentation.manager_of_class(A) is manager
         instrumentation.unregister_class(A)
         assert instrumentation.manager_of_class(A) is None
+        assert not hasattr(A, 'x')
+        assert A.__init__ is object.__init__
 
     def test_compileonattr_rel_backref_a(self):
         m = MetaData()
@@ -792,50 +677,5 @@ class MiscTest(fixtures.ORMTest):
             session = create_session()
             session.add(a)
             assert b in session, 'base: %s' % base
-
-
-class FinderTest(fixtures.ORMTest):
-    def test_standard(self):
-        class A(object): pass
-
-        instrumentation.register_class(A)
-
-        eq_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
-
-    def test_nativeext_interfaceexact(self):
-        class A(object):
-            __sa_instrumentation_manager__ = sa.orm.interfaces.InstrumentationManager
-
-        instrumentation.register_class(A)
-        ne_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
-
-    def test_nativeext_submanager(self):
-        class Mine(instrumentation.ClassManager): pass
-        class A(object):
-            __sa_instrumentation_manager__ = Mine
-
-        instrumentation.register_class(A)
-        eq_(type(instrumentation.manager_of_class(A)), Mine)
-
-    @modifies_instrumentation_finders
-    def test_customfinder_greedy(self):
-        class Mine(instrumentation.ClassManager): pass
-        class A(object): pass
-        def find(cls):
-            return Mine
-
-        instrumentation.instrumentation_finders.insert(0, find)
-        instrumentation.register_class(A)
-        eq_(type(instrumentation.manager_of_class(A)), Mine)
-
-    @modifies_instrumentation_finders
-    def test_customfinder_pass(self):
-        class A(object): pass
-        def find(cls):
-            return None
-
-        instrumentation.instrumentation_finders.insert(0, find)
-        instrumentation.register_class(A)
-        eq_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
 
 

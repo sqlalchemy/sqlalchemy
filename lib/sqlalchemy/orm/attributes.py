@@ -18,6 +18,8 @@ from operator import itemgetter
 
 from .. import util, event, inspection
 from . import interfaces, collections, events, exc as orm_exc
+from .instrumentation import instance_state, instance_dict, manager_of_class
+
 orm_util = util.importlater("sqlalchemy.orm", "util")
 
 PASSIVE_NO_RESULT = util.symbol('PASSIVE_NO_RESULT',

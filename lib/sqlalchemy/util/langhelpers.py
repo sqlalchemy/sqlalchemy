@@ -622,7 +622,9 @@ class importlater(object):
     def module(self):
         if self in importlater._unresolved:
             raise ImportError(
-                    "importlater.resolve_all() hasn't been called")
+                    "importlater.resolve_all() hasn't "
+                    "been called (this is %s %s)" 
+                    % (self._il_path, self._il_addtl))
 
         m = self._initial_import
         if self._il_addtl:
@@ -820,6 +822,17 @@ class classproperty(property):
 
     def __get__(desc, self, cls):
         return desc.fget(cls)
+
+class hybridmethod(object):
+    """Decorate a function as cls- or instance- level."""
+    def __init__(self, func, expr=None):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self.func.__get__(owner, owner.__class__)
+        else:
+            return self.func.__get__(instance, owner)
 
 
 class _symbol(int):

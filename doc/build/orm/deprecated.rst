@@ -32,4 +32,3 @@ Attribute Events
 .. autoclass:: AttributeExtension
     :members:
 
-## In 0.7, move "interfaces" to here.

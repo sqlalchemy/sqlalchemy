@@ -32,6 +32,18 @@ underneath "0.7.xx".
     a scan of the full contents of the Session 
     when in use. [ticket:2442]
 
+  - [moved] The InstrumentationManager interface
+    and the entire related system of alternate
+    class implementation is now moved out
+    to sqlalchemy.ext.instrumentation.   This is
+    a seldom used system that adds significant 
+    complexity and overhead to the mechanics of 
+    class instrumentation.  The new architecture
+    allows it to remain unused until 
+    InstrumentationManager is actually imported,
+    at which point it is bootstrapped into
+    the core.
+
   - [feature] Major rewrite of relationship() 
     internals now allow join conditions which
     include columns pointing to themselves

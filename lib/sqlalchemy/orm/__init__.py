@@ -24,7 +24,6 @@ from .mapper import (
 from .interfaces import (
      EXT_CONTINUE,
      EXT_STOP,
-     InstrumentationManager,
      MapperExtension,
      PropComparator,
      SessionExtension,
@@ -67,10 +66,19 @@ from .query import AliasOption, Query
 from ..sql import util as sql_util
 from .. import util as sa_util
 
+from . import interfaces
+
+# here, we can establish InstrumentationManager back 
+# in sqlalchemy.orm and sqlalchemy.orm.interfaces, which
+# also re-establishes the extended instrumentation system.
+#from ..ext import instrumentation as _ext_instrumentation
+#InstrumentationManager = \
+#    interfaces.InstrumentationManager = \
+#    _ext_instrumentation.InstrumentationManager
+
 __all__ = (
     'EXT_CONTINUE',
     'EXT_STOP',
-    'InstrumentationManager',
     'MapperExtension',
     'AttributeExtension',
     'PropComparator',

@@ -1,16 +1,38 @@
-from test.lib.testing import eq_, assert_raises, assert_raises_message
-import pickle
+from test.lib.testing import eq_, assert_raises, assert_raises_message, ne_
 from sqlalchemy import util
-from sqlalchemy.orm import attributes, instrumentation
-from sqlalchemy.orm.collections import collection
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm.attributes import set_attribute, get_attribute, del_attribute
 from sqlalchemy.orm.instrumentation import is_instrumented
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import InstrumentationManager
 from test.lib import *
 from test.lib import fixtures
+from sqlalchemy.ext import instrumentation
+from sqlalchemy.orm.instrumentation import register_class
+from test.lib.util import decorator
+from sqlalchemy.orm import events
+from sqlalchemy import event
 
-class MyTypesManager(InstrumentationManager):
+@decorator
+def modifies_instrumentation_finders(fn, *args, **kw):
+    pristine = instrumentation.instrumentation_finders[:]
+    try:
+        fn(*args, **kw)
+    finally:
+        del instrumentation.instrumentation_finders[:]
+        instrumentation.instrumentation_finders.extend(pristine)
+
+def with_lookup_strategy(strategy):
+    @decorator
+    def decorate(fn, *args, **kw):
+        try:
+            ext_instrumentation._install_instrumented_lookups()
+            return fn(*args, **kw)
+        finally:
+            ext_instrumentation._reinstall_default_lookups()
+    return decorate
+
+
+class MyTypesManager(instrumentation.InstrumentationManager):
 
     def instrument_attribute(self, class_, key, attr):
         pass
@@ -52,7 +74,7 @@ class MyListLike(list):
     remove = _sa_remover
 
 class MyBaseClass(object):
-    __sa_instrumentation_manager__ = InstrumentationManager
+    __sa_instrumentation_manager__ = instrumentation.InstrumentationManager
 
 class MyClass(object):
 
@@ -102,13 +124,13 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
     @classmethod
     def teardown_class(cls):
         clear_mappers()
-        instrumentation._install_lookup_strategy(util.symbol('native'))
+        instrumentation._reinstall_default_lookups()
 
     def test_instance_dict(self):
         class User(MyClass):
             pass
 
-        instrumentation.register_class(User)
+        register_class(User)
         attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
         attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
         attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
@@ -124,7 +146,7 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             class User(base):
                 pass
 
-            instrumentation.register_class(User)
+            register_class(User)
             attributes.register_attribute(User, 'user_id', uselist = False, useobject=False)
             attributes.register_attribute(User, 'user_name', uselist = False, useobject=False)
             attributes.register_attribute(User, 'email_address', uselist = False, useobject=False)
@@ -144,7 +166,8 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
 
     def test_deferred(self):
         for base in (object, MyBaseClass, MyClass):
-            class Foo(base):pass
+            class Foo(base):
+                pass
 
             data = {'a':'this is a', 'b':12}
             def loader(state, keys):
@@ -152,12 +175,16 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
                     state.dict[k] = data[k]
                 return attributes.ATTR_WAS_SET
 
-            manager = instrumentation.register_class(Foo)
+            manager = register_class(Foo)
             manager.deferred_scalar_loader = loader
             attributes.register_attribute(Foo, 'a', uselist=False, useobject=False)
             attributes.register_attribute(Foo, 'b', uselist=False, useobject=False)
 
-            assert Foo in instrumentation.instrumentation_registry._state_finders
+            if base is object:
+                assert Foo not in instrumentation._instrumentation_factory._state_finders
+            else:
+                assert Foo in instrumentation._instrumentation_factory._state_finders
+
             f = Foo()
             attributes.instance_state(f).expire(attributes.instance_dict(f), set())
             eq_(f.a, "this is a")
@@ -192,8 +219,8 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             class Foo(base):pass
             class Bar(Foo):pass
 
-            instrumentation.register_class(Foo)
-            instrumentation.register_class(Bar)
+            register_class(Foo)
+            register_class(Bar)
 
             def func1(state, passive):
                 return "this is the foo attr"
@@ -223,8 +250,8 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             class Post(base):pass
             class Blog(base):pass
 
-            instrumentation.register_class(Post)
-            instrumentation.register_class(Blog)
+            register_class(Post)
+            register_class(Blog)
             attributes.register_attribute(Post, 'blog', uselist=False,
                     backref='posts', trackparent=True, useobject=True)
             attributes.register_attribute(Blog, 'posts', uselist=True,
@@ -259,8 +286,8 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             class Bar(base):
                 pass
 
-            instrumentation.register_class(Foo)
-            instrumentation.register_class(Bar)
+            register_class(Foo)
+            register_class(Bar)
             attributes.register_attribute(Foo, "name", uselist=False, useobject=False)
             attributes.register_attribute(Foo, "bars", uselist=True, trackparent=True, useobject=True)
             attributes.register_attribute(Bar, "name", uselist=False, useobject=False)
@@ -294,7 +321,7 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
     def test_null_instrumentation(self):
         class Foo(MyBaseClass):
             pass
-        instrumentation.register_class(Foo)
+        register_class(Foo)
         attributes.register_attribute(Foo, "name", uselist=False, useobject=False)
         attributes.register_attribute(Foo, "bars", uselist=True, trackparent=True, useobject=True)
 
@@ -307,7 +334,7 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
         class Unknown(object): pass
         class Known(MyBaseClass): pass
 
-        instrumentation.register_class(Known)
+        register_class(Known)
         k, u = Known(), Unknown()
 
         assert instrumentation.manager_of_class(Unknown) is None
@@ -321,5 +348,138 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
                           attributes.instance_state, None)
 
 
-if __name__ == '__main__':
-    testing.main()
+class FinderTest(fixtures.ORMTest):
+    def test_standard(self):
+        class A(object): pass
+
+        register_class(A)
+
+        eq_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
+
+    def test_nativeext_interfaceexact(self):
+        class A(object):
+            __sa_instrumentation_manager__ = instrumentation.InstrumentationManager
+
+        register_class(A)
+        ne_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
+
+    def test_nativeext_submanager(self):
+        class Mine(instrumentation.ClassManager): pass
+        class A(object):
+            __sa_instrumentation_manager__ = Mine
+
+        register_class(A)
+        eq_(type(instrumentation.manager_of_class(A)), Mine)
+
+    @modifies_instrumentation_finders
+    def test_customfinder_greedy(self):
+        class Mine(instrumentation.ClassManager): pass
+        class A(object): pass
+        def find(cls):
+            return Mine
+
+        instrumentation.instrumentation_finders.insert(0, find)
+        register_class(A)
+        eq_(type(instrumentation.manager_of_class(A)), Mine)
+
+    @modifies_instrumentation_finders
+    def test_customfinder_pass(self):
+        class A(object): pass
+        def find(cls):
+            return None
+
+        instrumentation.instrumentation_finders.insert(0, find)
+        register_class(A)
+        eq_(type(instrumentation.manager_of_class(A)), instrumentation.ClassManager)
+
+class InstrumentationCollisionTest(fixtures.ORMTest):
+    def test_none(self):
+        class A(object): pass
+        register_class(A)
+
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        class B(object):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+        register_class(B)
+
+        class C(object):
+            __sa_instrumentation_manager__ = instrumentation.ClassManager
+        register_class(C)
+
+    def test_single_down(self):
+        class A(object): pass
+        register_class(A)
+
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        class B(A):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+
+        assert_raises_message(TypeError, "multiple instrumentation implementations", register_class, B)
+
+    def test_single_up(self):
+
+        class A(object): pass
+        # delay registration
+
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+        class B(A):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+        register_class(B)
+
+        assert_raises_message(TypeError, "multiple instrumentation implementations", register_class, A)
+
+    def test_diamond_b1(self):
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+
+        class A(object): pass
+        class B1(A): pass
+        class B2(A):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+        class C(object): pass
+
+        assert_raises_message(TypeError, "multiple instrumentation implementations", register_class, B1)
+
+    def test_diamond_b2(self):
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+
+        class A(object): pass
+        class B1(A): pass
+        class B2(A):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+        class C(object): pass
+
+        register_class(B2)
+        assert_raises_message(TypeError, "multiple instrumentation implementations", register_class, B1)
+
+    def test_diamond_c_b(self):
+        mgr_factory = lambda cls: instrumentation.ClassManager(cls)
+
+        class A(object): pass
+        class B1(A): pass
+        class B2(A):
+            __sa_instrumentation_manager__ = staticmethod(mgr_factory)
+        class C(object): pass
+
+        register_class(C)
+
+        assert_raises_message(TypeError, "multiple instrumentation implementations", register_class, B1)
+
+
+class ExtendedEventsTest(fixtures.ORMTest):
+    """Allow custom Events implementations."""
+
+    @modifies_instrumentation_finders
+    def test_subclassed(self):
+        class MyEvents(events.InstanceEvents):
+            pass
+        class MyClassManager(instrumentation.ClassManager):
+            dispatch = event.dispatcher(MyEvents)
+
+        instrumentation.instrumentation_finders.insert(0, lambda cls: MyClassManager)
+
+        class A(object): pass
+
+        register_class(A)
+        manager = instrumentation.manager_of_class(A)
+        assert issubclass(manager.dispatch._parent_cls.__dict__['dispatch'].events, MyEvents)
+
