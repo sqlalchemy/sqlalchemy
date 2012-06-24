@@ -35,7 +35,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     @profiling.function_call_count(72, {'2.4': 68, '2.7':75, 
                                             '2.7+cextension':75,
                                             '3':62},
-                                            variance=.10)
+                                            variance=.15)
     def test_first_connect(self):
         conn = pool.connect()
 
