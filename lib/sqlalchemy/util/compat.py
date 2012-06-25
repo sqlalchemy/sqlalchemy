@@ -40,6 +40,11 @@ else:
 
     set_types = set, sets.Set
 
+if sys.version_info < (2, 6):
+    def next(iter):
+        return iter.next()
+else:
+    next = next
 if py3k_warning:
     import pickle
 else:
