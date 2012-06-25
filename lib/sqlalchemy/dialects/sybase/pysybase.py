@@ -52,7 +52,7 @@ class SybaseExecutionContext_pysybase(SybaseExecutionContext):
 
 
 class SybaseSQLCompiler_pysybase(SybaseSQLCompiler):
-    def bindparam_string(self, name):
+    def bindparam_string(self, name, **kw):
         return "@" + name
 
 class SybaseDialect_pysybase(SybaseDialect):
