@@ -286,7 +286,7 @@ class SQLCompiler(engine.Compiled):
         poscount = itertools.count(1)
         self.string = re.sub(
                         r'\[_POSITION\]', 
-                        lambda m:str(next(poscount)), 
+                        lambda m:str(util.next(poscount)), 
                         self.string)
 
     @util.memoized_property
