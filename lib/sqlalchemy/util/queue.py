@@ -183,7 +183,7 @@ class Queue:
         if not self.not_full.acquire(False):
             return
         try:
-            self.not_empty.notify()
+            self.not_empty.notify_all()
         finally:
             self.not_full.release()
 
