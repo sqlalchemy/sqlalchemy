@@ -578,6 +578,7 @@ class adict(dict):
 class AssertsCompiledSQL(object):
     def assert_compile(self, clause, result, params=None, 
                         checkparams=None, dialect=None, 
+                        checkpositional=None,
                         use_default_dialect=False,
                         allow_dialect_select=False):
         if use_default_dialect:
@@ -612,6 +613,9 @@ class AssertsCompiledSQL(object):
 
         if checkparams is not None:
             eq_(c.construct_params(params), checkparams)
+        if checkpositional is not None:
+            p = c.construct_params(params)
+            eq_(tuple([p[x] for x in c.positiontup]), checkpositional)
 
 class ComparesTables(object):
     def assert_tables_equal(self, table, reflected_table, strict_types=False):
