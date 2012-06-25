@@ -25,8 +25,17 @@ within QueuePool.
 from collections import deque
 from time import time as _time
 from sqlalchemy.util import threading
+import sys
+
+if sys.version_info < (2, 6):
+    def notify_all(condition):
+        condition.notify()
+else:
+    def notify_all(condition):
+        condition.notify_all()
 
 __all__ = ['Empty', 'Full', 'Queue', 'SAAbort']
+
 
 class Empty(Exception):
     "Exception raised by Queue.get(block=0)/get_nowait()."
@@ -183,7 +192,7 @@ class Queue:
         if not self.not_full.acquire(False):
             return
         try:
-            self.not_empty.notify_all()
+            notify_all(self.not_empty)
         finally:
             self.not_full.release()
 

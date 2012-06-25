@@ -839,6 +839,7 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(1)
         eq_(len(success), 12)
 
+    @testing.requires.python26
     def test_notify_waiters(self):
         dbapi = MockDBAPI()
         canary = []
