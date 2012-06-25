@@ -29,6 +29,7 @@ from sqlalchemy.sql import operators, functions, util as sql_util, \
     visitors
 from sqlalchemy.sql import expression as sql
 import decimal
+import itertools
 
 RESERVED_WORDS = set([
     'all', 'analyse', 'analyze', 'and', 'any', 'array',
@@ -59,7 +60,7 @@ BIND_TEMPLATES = {
     'pyformat':"%%(%(name)s)s",
     'qmark':"?",
     'format':"%%s",
-    'numeric':":%(position)s",
+    'numeric':":[_POSITION]",
     'named':":%(name)s"
 }
 
@@ -252,15 +253,17 @@ class SQLCompiler(engine.Compiled):
         # column targeting
         self.result_map = {}
 
-        # collect CTEs to tack on top of a SELECT
-        self.ctes = util.OrderedDict()
-        self.ctes_recursive = False
-
         # true if the paramstyle is positional
         self.positional = dialect.positional
         if self.positional:
             self.positiontup = []
         self.bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
+
+        # collect CTEs to tack on top of a SELECT
+        self.ctes = util.OrderedDict()
+        self.ctes_recursive = False
+        if self.positional:
+            self.cte_positional = []
 
         # an IdentifierPreparer that formats the quoting of identifiers
         self.preparer = dialect.identifier_preparer
@@ -276,7 +279,15 @@ class SQLCompiler(engine.Compiled):
         self.truncated_names = {}
         engine.Compiled.__init__(self, dialect, statement, **kwargs)
 
+        if self.positional and dialect.paramstyle == 'numeric':
+            self._apply_numbered_params()
 
+    def _apply_numbered_params(self):
+        poscount = itertools.count(1)
+        self.string = re.sub(
+                        r'\[_POSITION\]', 
+                        lambda m:str(next(poscount)), 
+                        self.string)
 
     @util.memoized_property
     def _bind_processors(self):
@@ -448,7 +459,7 @@ class SQLCompiler(engine.Compiled):
             if name in textclause.bindparams:
                 return self.process(textclause.bindparams[name])
             else:
-                return self.bindparam_string(name)
+                return self.bindparam_string(name, **kwargs)
 
         # un-escape any \:params
         return BIND_PARAMS_ESC.sub(lambda m: m.group(1),
@@ -680,7 +691,7 @@ class SQLCompiler(engine.Compiled):
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
 
-        return self.bindparam_string(name)
+        return self.bindparam_string(name, **kwargs)
 
     def render_literal_bindparam(self, bindparam, **kw):
         value = bindparam.value
@@ -750,16 +761,19 @@ class SQLCompiler(engine.Compiled):
         self.anon_map[derived] = anonymous_counter + 1
         return derived + "_" + str(anonymous_counter)
 
-    def bindparam_string(self, name):
+    def bindparam_string(self, name, positional_names=None, **kw):
         if self.positional:
-            self.positiontup.append(name)
-            return self.bindtemplate % {
-                        'name':name, 'position':len(self.positiontup)}
-        else:
-            return self.bindtemplate % {'name':name}
+            if positional_names is not None:
+                positional_names.append(name)
+            else:
+                self.positiontup.append(name)
+        return self.bindtemplate % {'name':name}
 
     def visit_cte(self, cte, asfrom=False, ashint=False, 
                                 fromhints=None, **kwargs):
+        if self.positional:
+            kwargs['positional_names'] = self.cte_positional
+
         if isinstance(cte.name, sql._truncated_label):
             cte_name = self._truncated_identifier("alias", cte.name)
         else:
@@ -867,7 +881,8 @@ class SQLCompiler(engine.Compiled):
 
     def visit_select(self, select, asfrom=False, parens=True, 
                             iswrapper=False, fromhints=None, 
-                            compound_index=1, **kwargs):
+                            compound_index=1, 
+                            positional_names=None, **kwargs):
 
         entry = self.stack and self.stack[-1] or {}
 
@@ -886,9 +901,10 @@ class SQLCompiler(engine.Compiled):
                           : iswrapper})
 
         if compound_index==1 and not entry or entry.get('iswrapper', False):
-            column_clause_args = {'result_map':self.result_map}
+            column_clause_args = {'result_map':self.result_map, 
+                                    'positional_names':positional_names}
         else:
-            column_clause_args = {}
+            column_clause_args = {'positional_names':positional_names}
 
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
@@ -975,6 +991,8 @@ class SQLCompiler(engine.Compiled):
             return text
 
     def _render_cte_clause(self):
+        if self.positional:
+            self.positiontup = self.cte_positional + self.positiontup
         cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
         cte_text += ", \n".join(
             [txt for txt in self.ctes.values()]

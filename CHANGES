@@ -6,6 +6,14 @@ CHANGES
 0.7.9
 =====
 - sql
+  - [bug] Fixed CTE bug whereby positional 
+    bound parameters present in the CTEs themselves
+    would corrupt the overall ordering of 
+    bound parameters.  This primarily
+    affected SQL Server as the platform with 
+    positional binds + CTE support.  
+    [ticket:2521]
+
   - [bug] quoting is applied to the column names
     inside the WITH RECURSIVE clause of a 
     common table expression according to the 

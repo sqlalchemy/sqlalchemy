@@ -300,13 +300,13 @@ class _OracleRowid(oracle.ROWID):
         return dbapi.ROWID
 
 class OracleCompiler_cx_oracle(OracleCompiler):
-    def bindparam_string(self, name):
+    def bindparam_string(self, name, **kw):
         if self.preparer._bindparam_requires_quotes(name):
             quoted_name = '"%s"' % name
             self._quoted_bind_names[name] = quoted_name
-            return OracleCompiler.bindparam_string(self, quoted_name)
+            return OracleCompiler.bindparam_string(self, quoted_name, **kw)
         else:
-            return OracleCompiler.bindparam_string(self, name)
+            return OracleCompiler.bindparam_string(self, name, **kw)
 
 
 class OracleExecutionContext_cx_oracle(OracleExecutionContext):
