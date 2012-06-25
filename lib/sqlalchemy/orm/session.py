@@ -21,7 +21,7 @@ from .util import (
 from .unitofwork import UOWTransaction
 from .mapper import Mapper
 from .events import SessionEvents
-
+statelib = util.importlater("sqlalchemy.orm", "state")
 import sys
 
 __all__ = ['Session', 'SessionTransaction', 'SessionExtension']
@@ -1217,7 +1217,11 @@ class Session(object):
                     state.key = instance_key
 
                 self.identity_map.replace(state)
-                state.commit_all(state.dict, self.identity_map)
+
+        statelib.InstanceState.commit_all_states(
+            ((state, state.dict) for state in states),
+            self.identity_map
+        )
 
         self._register_altered(states)
         # remove from new last, might be the last strong ref

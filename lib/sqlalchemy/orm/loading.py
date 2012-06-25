@@ -18,6 +18,7 @@ from . import attributes, exc as orm_exc
 from .interfaces import EXT_CONTINUE
 from ..sql import util as sql_util
 from .util import _none_set, state_str
+statelib = util.importlater("sqlalchemy.orm", "state")
 
 _new_runid = util.counter()
 
@@ -80,9 +81,10 @@ def instances(query, cursor, context):
                     context.refresh_state.dict, query._only_load_props)
             context.progress.pop(context.refresh_state)
 
-        for state, dict_ in context.progress.items():
-            state.commit_all(dict_, session.identity_map)
-
+        statelib.InstanceState.commit_all_states(
+            context.progress.items(),
+            session.identity_map
+        )
 
         for ii, (dict_, attrs) in context.partials.iteritems():
             ii.commit(dict_, attrs)

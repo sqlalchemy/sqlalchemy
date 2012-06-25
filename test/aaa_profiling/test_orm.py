@@ -70,7 +70,7 @@ class MergeTest(fixtures.MappedTest):
         # third call, merge object already present. almost no calls.
 
         @profiling.function_call_count(variance=0.05,
-                versions={'2.7':14, '2.6':14, '2.5':15, '3': 15})
+                versions={'2.7':15, '2.6':15, '2.5':16, '3': 16})
         def go():
             return sess2.merge(p2, load=False)
         p3 = go()

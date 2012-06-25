@@ -435,24 +435,30 @@ class InstanceState(object):
          - the "modified" flag is set to False
          - any "expired" markers/callables for attributes loaded are removed.
 
-        Attributes marked as "expired" can potentially remain "expired" after this step
-        if a value was not populated in state.dict.
+        Attributes marked as "expired" can potentially remain 
+        "expired" after this step if a value was not populated in state.dict.
 
         """
+        self.commit_all_states([(self, dict_)], instance_dict)
 
-        self.committed_state.clear()
-        self.__dict__.pop('_pending_mutations', None)
+    @classmethod
+    def commit_all_states(self, iter, instance_dict=None):
+        """Mass version of commit_all()."""
 
-        callables = self.callables
-        for key in list(callables):
-            if key in dict_ and callables[key] is self:
-                del callables[key]
+        for state, dict_ in iter:
+            state.committed_state.clear()
+            state.__dict__.pop('_pending_mutations', None)
 
-        if instance_dict and self.modified:
-            instance_dict._modified.discard(self)
+            callables = state.callables
+            for key in list(callables):
+                if key in dict_ and callables[key] is state:
+                    del callables[key]
 
-        self.modified = self.expired = False
-        self._strong_obj = None
+            if instance_dict and state.modified:
+                instance_dict._modified.discard(state)
+
+            state.modified = state.expired = False
+            state._strong_obj = None
 
 class InspectAttr(object):
     """Provide inspection interface to an object's state."""
