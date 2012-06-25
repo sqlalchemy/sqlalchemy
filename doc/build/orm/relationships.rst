@@ -184,6 +184,55 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
                         secondary="association", 
                         backref="parents")
 
+Deleting Rows from the Many to Many Table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A behavior which is unique to the ``secondary`` argument to :func:`.relationship`
+is that the :class:`.Table` which is specified here is automatically subject 
+to INSERT and DELETE statements, as objects are added or removed from the collection.
+There is **no need to delete from this table manually**.   The act of removing a 
+record from the collection will have the effect of the row being deleted on flush::
+
+    # row will be deleted from the "secondary" table
+    # automatically
+    myparent.children.remove(somechild)
+
+A question which often arises is how the row in the "secondary" table can be deleted
+when the child object is handed directly to :meth:`.Session.delete`::
+
+    session.delete(somechild)
+
+There are several possibilities here:
+
+* If there is a :func:`.relationship` from ``Parent`` to ``Child``, but there is 
+  **not** a reverse-relationship that links a particular ``Child`` to each ``Parent``,
+  SQLAlchemy will not have any awareness that when deleting this particular
+  ``Child`` object, it needs to maintain the "secondary" table that links it to
+  the ``Parent``.  No delete of the "secondary" table will occur.
+* If there is a relationship that links a particular ``Child`` to each ``Parent``,
+  suppose it's called ``Child.parents``, SQLAlchemy by default will load in 
+  the ``Child.parents`` collection to locate all ``Parent`` objects, and remove
+  each row from the "secondary" table which establishes this link.  Note that
+  this relationship does not need to be bidrectional; SQLAlchemy is strictly
+  looking at every :func:`.relationship` associated with the ``Child`` object
+  being deleted.
+* A higher performing option here is to use ON DELETE CASCADE directives 
+  with the foreign keys used by the database.   Assuming the database supports
+  this feature, the database itself can be made to automatically delete rows in the 
+  "secondary" table as referencing rows in "child" are deleted.   SQLAlchemy
+  can be instructed to forego actively loading in the ``Child.parents`` 
+  collection in this case using the ``passive_deletes=True`` directive
+  on :meth:`.relationship`; see :ref:`passive_deletes` for more details
+  on this.
+
+Note again, these behaviors are *only* relevant to the ``secondary`` option
+used with :func:`.relationship`.   If dealing with association tables that
+are mapped explicitly and are *not* present in the ``secondary`` option
+of a relevant :func:`.relationship`, cascade rules can be used instead
+to automatically delete entities in reaction to a related entity being
+deleted - see :ref:`unitofwork_cascades` for information on this feature.
+
+
 .. _association_pattern:
 
 Association Object
