@@ -802,7 +802,104 @@ class QueuePoolTest(PoolTestBase):
 
         lazy_gc()
         assert not pool._refs
+
+    def test_waiters_handled(self):
+        """test that threads waiting for connections are
+        handled when the pool is replaced.
+        
+        """
+        dbapi = MockDBAPI()
+        def creator():
+            return dbapi.connect()
  
+        success = []
+        for timeout in (None, 30):
+            for max_overflow in (0, -1, 3):
+                p = pool.QueuePool(creator=creator,
+                                   pool_size=2, timeout=timeout,
+                                   max_overflow=max_overflow)
+                def waiter(p):
+                    conn = p.connect()
+                    time.sleep(1)
+                    success.append(True)
+                    conn.close()
+
+                time.sleep(.2)
+                c1 = p.connect()
+                c2 = p.connect()
+
+                for i in range(2):
+                    t = threading.Thread(target=waiter, args=(p, ))
+                    t.setDaemon(True) # so the tests dont hang if this fails
+                    t.start()
+
+                c1.invalidate()
+                c2.invalidate()
+                p2 = p._replace()
+        time.sleep(1)
+        eq_(len(success), 12)
+
+    @testing.requires.python26
+    def test_notify_waiters(self):
+        dbapi = MockDBAPI()
+        canary = []
+        def creator1():
+            canary.append(1)
+            return dbapi.connect()
+        def creator2():
+            canary.append(2)
+            return dbapi.connect()
+        p1 = pool.QueuePool(creator=creator1,
+                           pool_size=1, timeout=None,
+                           max_overflow=0)
+        p2 = pool.QueuePool(creator=creator2,
+                           pool_size=1, timeout=None,
+                           max_overflow=-1)
+        def waiter(p):
+            conn = p.connect()
+            time.sleep(.5)
+            conn.close()
+
+        c1 = p1.connect()
+
+        for i in range(5):
+            t = threading.Thread(target=waiter, args=(p1, ))
+            t.setDaemon(True)
+            t.start()
+        time.sleep(.5)
+        eq_(canary, [1])
+        p1._pool.abort(p2)
+        time.sleep(1)
+        eq_(canary, [1, 2, 2, 2, 2, 2])
+
+    def test_dispose_closes_pooled(self):
+        dbapi = MockDBAPI()
+        def creator():
+            return dbapi.connect()
+ 
+        p = pool.QueuePool(creator=creator,
+                           pool_size=2, timeout=None,
+                           max_overflow=0)
+        c1 = p.connect()
+        c2 = p.connect()
+        conns = [c1.connection, c2.connection]
+        c1.close()
+        eq_([c.closed for c in conns], [False, False])
+        p.dispose()
+        eq_([c.closed for c in conns], [True, False])
+
+        # currently, if a ConnectionFairy is closed
+        # after the pool has been disposed, there's no
+        # flag that states it should be invalidated
+        # immediately - it just gets returned to the
+        # pool normally...
+        c2.close()
+        eq_([c.closed for c in conns], [True, False])
+
+        # ...and that's the one we'll get back next.
+        c3 = p.connect()
+        assert c3.connection is conns[1]
+
     def test_no_overflow(self):
         self._test_overflow(40, 0)
  

@@ -16,6 +16,15 @@ condition."""
 from collections import deque
 from time import time as _time
 from sqlalchemy.util import threading
+import sys
+
+if sys.version_info < (2, 6):
+    def notify_all(condition):
+        condition.notify()
+else:
+    def notify_all(condition):
+        condition.notify_all()
+
 
 __all__ = ['Empty', 'Full', 'Queue']
 
@@ -28,6 +37,11 @@ class Full(Exception):
     "Exception raised by Queue.put(block=0)/put_nowait()."
 
     pass
+
+class SAAbort(Exception):
+    "Special SQLA exception to abort waiting"
+    def __init__(self, context):
+        self.context = context
 
 class Queue:
     def __init__(self, maxsize=0):
@@ -48,6 +62,9 @@ class Queue:
         # Notify not_full whenever an item is removed from the queue;
         # a thread waiting to put is notified then.
         self.not_full = threading.Condition(self.mutex)
+
+        # when this is set, SAAbort is raised within get().
+        self._sqla_abort_context = False
 
     def qsize(self):
         """Return the approximate size of the queue (not reliable!)."""
@@ -138,6 +155,8 @@ class Queue:
             elif timeout is None:
                 while self._empty():
                     self.not_empty.wait()
+                    if self._sqla_abort_context:
+                        raise SAAbort(self._sqla_abort_context)
             else:
                 if timeout < 0:
                     raise ValueError("'timeout' must be a positive number")
@@ -147,11 +166,26 @@ class Queue:
                     if remaining <= 0.0:
                         raise Empty
                     self.not_empty.wait(remaining)
+                    if self._sqla_abort_context:
+                        raise SAAbort(self._sqla_abort_context)
             item = self._get()
             self.not_full.notify()
             return item
         finally:
             self.not_empty.release()
+
+    def abort(self, context):
+        """Issue an 'abort', will force any thread waiting on get()
+        to stop waiting and raise SAAbort.
+
+        """
+        self._sqla_abort_context = context
+        if not self.not_full.acquire(False):
+            return
+        try:
+            notify_all(self.not_empty)
+        finally:
+            self.not_full.release()
 
     def get_nowait(self):
         """Remove and return an item from the queue without blocking.

@@ -118,10 +118,10 @@ class Dialect(object):
       Postgresql.
 
     implicit_returning
-      use RETURNING or equivalent during INSERT execution in order to load 
+      use RETURNING or equivalent during INSERT execution in order to load
       newly generated primary keys and other column defaults in one execution,
       which are then available via inserted_primary_key.
-      If an insert statement has returning() specified explicitly, 
+      If an insert statement has returning() specified explicitly,
       the "implicit" functionality is not used and inserted_primary_key
       will not be available.
 
@@ -200,7 +200,7 @@ class Dialect(object):
         Allows dialects to configure options based on server version info or
         other properties.
 
-        The connection passed here is a SQLAlchemy Connection object, 
+        The connection passed here is a SQLAlchemy Connection object,
         with full capabilities.
 
         The initalize() method of the base dialect should be called via
@@ -219,8 +219,8 @@ class Dialect(object):
         set) is specified, limit the autoload to the given column
         names.
 
-        The default implementation uses the 
-        :class:`~sqlalchemy.engine.reflection.Inspector` interface to 
+        The default implementation uses the
+        :class:`~sqlalchemy.engine.reflection.Inspector` interface to
         provide the output, building upon the granular table/column/
         constraint etc. methods of :class:`.Dialect`.
 
@@ -355,7 +355,7 @@ class Dialect(object):
         raise NotImplementedError()
 
     def normalize_name(self, name):
-        """convert the given name to lowercase if it is detected as 
+        """convert the given name to lowercase if it is detected as
         case insensitive.
 
         this method is only used if the dialect defines
@@ -407,7 +407,7 @@ class Dialect(object):
         raise NotImplementedError()
 
     def _get_default_schema_name(self, connection):
-        """Return the string name of the currently selected schema from 
+        """Return the string name of the currently selected schema from
         the given connection.
 
         This is used by the default implementation to populate the
@@ -419,13 +419,13 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_begin(self, connection):
-        """Provide an implementation of *connection.begin()*, given a 
+        """Provide an implementation of *connection.begin()*, given a
         DB-API connection."""
 
         raise NotImplementedError()
 
     def do_rollback(self, connection):
-        """Provide an implementation of *connection.rollback()*, given 
+        """Provide an implementation of *connection.rollback()*, given
         a DB-API connection."""
 
         raise NotImplementedError()
@@ -441,7 +441,7 @@ class Dialect(object):
         raise NotImplementedError()
 
     def do_commit(self, connection):
-        """Provide an implementation of *connection.commit()*, given a 
+        """Provide an implementation of *connection.commit()*, given a
         DB-API connection."""
 
         raise NotImplementedError()
@@ -520,7 +520,7 @@ class Dialect(object):
     def connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
-        The callable accepts a single argument "conn" which is the 
+        The callable accepts a single argument "conn" which is the
         DBAPI connection itself.  It has no return value.
 
         This is used to set dialect-wide per-connection options such as
@@ -644,13 +644,13 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
     def handle_dbapi_exception(self, e):
-        """Receive a DBAPI exception which occurred upon execute, result 
+        """Receive a DBAPI exception which occurred upon execute, result
         fetch, etc."""
 
         raise NotImplementedError()
 
     def should_autocommit_text(self, statement):
-        """Parse the given textual statement and return True if it refers to 
+        """Parse the given textual statement and return True if it refers to
         a "committable" statement"""
 
         raise NotImplementedError()
@@ -665,7 +665,7 @@ class ExecutionContext(object):
     def get_rowcount(self):
         """Return the DBAPI ``cursor.rowcount`` value, or in some
         cases an interpreted value.
-        
+
         See :attr:`.ResultProxy.rowcount` for details on this.
 
         """
@@ -693,7 +693,7 @@ class Compiled(object):
 
         :param statement: ``ClauseElement`` to be compiled.
 
-        :param bind: Optional Engine or Connection to compile this 
+        :param bind: Optional Engine or Connection to compile this
           statement against.
         """
 
@@ -754,7 +754,7 @@ class Compiled(object):
         return e._execute_compiled(self, multiparams, params)
 
     def scalar(self, *multiparams, **params):
-        """Execute this compiled object and return the result's 
+        """Execute this compiled object and return the result's
         scalar value."""
 
         return self.execute(*multiparams, **params).scalar()
@@ -785,7 +785,7 @@ class Connectable(object):
         """Return a :class:`.Connection` object.
 
         Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly 
+        is already an instance of :class:`.Connection`, or a newly
         procured :class:`.Connection` if this object is an instance
         of :class:`.Engine`.
 
@@ -796,7 +796,7 @@ class Connectable(object):
         context.
 
         Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`.Connection`, or a newly 
+        is already an instance of :class:`.Connection`, or a newly
         procured :class:`.Connection` if this object is an instance
         of :class:`.Engine`.
 
@@ -831,7 +831,7 @@ class Connectable(object):
         """
         raise NotImplementedError()
 
-    def _run_visitor(self, visitorcallable, element, 
+    def _run_visitor(self, visitorcallable, element,
                                     **kwargs):
         raise NotImplementedError()
 
@@ -899,7 +899,7 @@ class Connection(Connectable):
         """
 
         return self.engine._connection_cls(
-                                self.engine, 
+                                self.engine,
                                 self.__connection, _branch=True)
 
     def _clone(self):
@@ -917,7 +917,7 @@ class Connection(Connectable):
         self.close()
 
     def execution_options(self, **opt):
-        """ Set non-SQL options for the connection which take effect 
+        """ Set non-SQL options for the connection which take effect
         during execution.
 
         The method returns a copy of this :class:`.Connection` which references
@@ -932,11 +932,11 @@ class Connection(Connectable):
 
         :meth:`.Connection.execution_options` accepts all options as those
         accepted by :meth:`.Executable.execution_options`.  Additionally,
-        it includes options that are applicable only to 
+        it includes options that are applicable only to
         :class:`.Connection`.
 
         :param autocommit: Available on: Connection, statement.
-          When True, a COMMIT will be invoked after execution 
+          When True, a COMMIT will be invoked after execution
           when executed in 'autocommit' mode, i.e. when an explicit
           transaction is not begun on the connection. Note that DBAPI
           connections by default are always in a transaction - SQLAlchemy uses
@@ -951,17 +951,17 @@ class Connection(Connectable):
 
         :param compiled_cache: Available on: Connection.
           A dictionary where :class:`.Compiled` objects
-          will be cached when the :class:`.Connection` compiles a clause 
+          will be cached when the :class:`.Connection` compiles a clause
           expression into a :class:`.Compiled` object.
           It is the user's responsibility to
           manage the size of this dictionary, which will have keys
           corresponding to the dialect, clause element, the column
-          names within the VALUES or SET clause of an INSERT or UPDATE, 
+          names within the VALUES or SET clause of an INSERT or UPDATE,
           as well as the "batch" mode for an INSERT or UPDATE statement.
           The format of this dictionary is not guaranteed to stay the
           same in future releases.
 
-          Note that the ORM makes use of its own "compiled" caches for 
+          Note that the ORM makes use of its own "compiled" caches for
           some operations, including flush operations.  The caching
           used by the ORM internally supersedes a cache dictionary
           specified here.
@@ -971,33 +971,33 @@ class Connection(Connectable):
           the lifespan of this connection.   Valid values include
           those string values accepted by the ``isolation_level``
           parameter passed to :func:`.create_engine`, and are
-          database specific, including those for :ref:`sqlite_toplevel`, 
+          database specific, including those for :ref:`sqlite_toplevel`,
           :ref:`postgresql_toplevel` - see those dialect's documentation
           for further info.
 
-          Note that this option necessarily affects the underlying 
-          DBAPI connection for the lifespan of the originating 
-          :class:`.Connection`, and is not per-execution. This 
-          setting is not removed until the underlying DBAPI connection 
+          Note that this option necessarily affects the underlying
+          DBAPI connection for the lifespan of the originating
+          :class:`.Connection`, and is not per-execution. This
+          setting is not removed until the underlying DBAPI connection
           is returned to the connection pool, i.e.
           the :meth:`.Connection.close` method is called.
 
-        :param no_parameters: When ``True``, if the final parameter 
-          list or dictionary is totally empty, will invoke the 
+        :param no_parameters: When ``True``, if the final parameter
+          list or dictionary is totally empty, will invoke the
           statement on the cursor as ``cursor.execute(statement)``,
           not passing the parameter collection at all.
           Some DBAPIs such as psycopg2 and mysql-python consider
-          percent signs as significant only when parameters are 
+          percent signs as significant only when parameters are
           present; this option allows code to generate SQL
           containing percent signs (and possibly other characters)
           that is neutral regarding whether it's executed by the DBAPI
-          or piped into a script that's later invoked by 
+          or piped into a script that's later invoked by
           command line tools.
 
           .. versionadded:: 0.7.6
 
         :param stream_results: Available on: Connection, statement.
-          Indicate to the dialect that results should be 
+          Indicate to the dialect that results should be
           "streamed" and not pre-buffered, if possible.  This is a limitation
           of many DBAPIs.  The flag is currently understood only by the
           psycopg2 dialect.
@@ -1010,7 +1010,7 @@ class Connection(Connectable):
         return c
 
     def _set_isolation_level(self):
-        self.dialect.set_isolation_level(self.connection, 
+        self.dialect.set_isolation_level(self.connection,
                                 self._execution_options['isolation_level'])
         self.connection._connection_record.finalize_callback = \
                     self.dialect.reset_isolation_level
@@ -1090,7 +1090,7 @@ class Connection(Connectable):
         return self
 
     def invalidate(self, exception=None):
-        """Invalidate the underlying DBAPI connection associated with 
+        """Invalidate the underlying DBAPI connection associated with
         this Connection.
 
         The underlying DB-API connection is literally closed (if
@@ -1147,26 +1147,26 @@ class Connection(Connectable):
 
         Nested calls to :meth:`.begin` on the same :class:`.Connection`
         will return new :class:`.Transaction` objects that represent
-        an emulated transaction within the scope of the enclosing 
+        an emulated transaction within the scope of the enclosing
         transaction, that is::
-        
+
             trans = conn.begin()   # outermost transaction
-            trans2 = conn.begin()  # "nested" 
+            trans2 = conn.begin()  # "nested"
             trans2.commit()        # does nothing
             trans.commit()         # actually commits
-            
-        Calls to :meth:`.Transaction.commit` only have an effect 
+
+        Calls to :meth:`.Transaction.commit` only have an effect
         when invoked via the outermost :class:`.Transaction` object, though the
         :meth:`.Transaction.rollback` method of any of the
         :class:`.Transaction` objects will roll back the
         transaction.
 
         See also:
-        
+
         :meth:`.Connection.begin_nested` - use a SAVEPOINT
-        
+
         :meth:`.Connection.begin_twophase` - use a two phase /XID transaction
-        
+
         :meth:`.Engine.begin` - context manager available from :class:`.Engine`.
 
         """
@@ -1188,7 +1188,7 @@ class Connection(Connectable):
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
 
-        See also :meth:`.Connection.begin`, 
+        See also :meth:`.Connection.begin`,
         :meth:`.Connection.begin_twophase`.
         """
 
@@ -1207,10 +1207,10 @@ class Connection(Connectable):
         :class:`.Transaction`, also provides a :meth:`~.TwoPhaseTransaction.prepare`
         method.
 
-        :param xid: the two phase transaction id.  If not supplied, a 
+        :param xid: the two phase transaction id.  If not supplied, a
           random id will be generated.
 
-        See also :meth:`.Connection.begin`, 
+        See also :meth:`.Connection.begin`,
         :meth:`.Connection.begin_twophase`.
 
         """
@@ -1385,12 +1385,12 @@ class Connection(Connectable):
     def execute(self, object, *multiparams, **params):
         """Executes the a SQL statement construct and returns a :class:`.ResultProxy`.
 
-        :param object: The statement to be executed.  May be 
+        :param object: The statement to be executed.  May be
          one of:
 
          * a plain string
          * any :class:`.ClauseElement` construct that is also
-           a subclass of :class:`.Executable`, such as a 
+           a subclass of :class:`.Executable`, such as a
            :func:`~.expression.select` construct
          * a :class:`.FunctionElement`, such as that generated
            by :attr:`.func`, will be automatically wrapped in
@@ -1405,7 +1405,7 @@ class Connection(Connectable):
          dictionaries passed to \*multiparams::
 
              conn.execute(
-                 table.insert(), 
+                 table.insert(),
                  {"id":1, "value":"v1"},
                  {"id":2, "value":"v2"}
              )
@@ -1416,10 +1416,10 @@ class Connection(Connectable):
                  table.insert(), id=1, value="v1"
              )
 
-         In the case that a plain SQL string is passed, and the underlying 
+         In the case that a plain SQL string is passed, and the underlying
          DBAPI accepts positional bind parameters, a collection of tuples
          or individual values in \*multiparams may be passed::
- 
+
              conn.execute(
                  "INSERT INTO table (id, value) VALUES (?, ?)",
                  (1, "v1"), (2, "v2")
@@ -1431,9 +1431,9 @@ class Connection(Connectable):
              )
 
          Note above, the usage of a question mark "?" or other
-         symbol is contingent upon the "paramstyle" accepted by the DBAPI 
+         symbol is contingent upon the "paramstyle" accepted by the DBAPI
          in use, which may be any of "qmark", "named", "pyformat", "format",
-         "numeric".   See `pep-249 <http://www.python.org/dev/peps/pep-0249/>`_ 
+         "numeric".   See `pep-249 <http://www.python.org/dev/peps/pep-0249/>`_
          for details on paramstyle.
 
          To execute a textual SQL statement which uses bound parameters in a
@@ -1443,9 +1443,9 @@ class Connection(Connectable):
         for c in type(object).__mro__:
             if c in Connection.executors:
                 return Connection.executors[c](
-                                                self, 
+                                                self,
                                                 object,
-                                                multiparams, 
+                                                multiparams,
                                                 params)
         else:
             raise exc.InvalidRequestError(
@@ -1489,7 +1489,7 @@ class Connection(Connectable):
     def _execute_function(self, func, multiparams, params):
         """Execute a sql.FunctionElement object."""
 
-        return self._execute_clauseelement(func.select(), 
+        return self._execute_clauseelement(func.select(),
                                             multiparams, params)
 
     def _execute_default(self, default, multiparams, params):
@@ -1518,7 +1518,7 @@ class Connection(Connectable):
             self.close()
 
         if self._has_events:
-            self.engine.dispatch.after_execute(self, 
+            self.engine.dispatch.after_execute(self,
                 default, multiparams, params, ret)
 
         return ret
@@ -1537,12 +1537,12 @@ class Connection(Connectable):
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_ddl,
-            compiled, 
+            compiled,
             None,
             compiled
         )
         if self._has_events:
-            self.engine.dispatch.after_execute(self, 
+            self.engine.dispatch.after_execute(self,
                 ddl, multiparams, params, ret)
         return ret
 
@@ -1567,24 +1567,24 @@ class Connection(Connectable):
                 compiled_sql = self._execution_options['compiled_cache'][key]
             else:
                 compiled_sql = elem.compile(
-                                dialect=dialect, column_keys=keys, 
+                                dialect=dialect, column_keys=keys,
                                 inline=len(distilled_params) > 1)
                 self._execution_options['compiled_cache'][key] = compiled_sql
         else:
             compiled_sql = elem.compile(
-                            dialect=dialect, column_keys=keys, 
+                            dialect=dialect, column_keys=keys,
                             inline=len(distilled_params) > 1)
 
 
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
-            compiled_sql, 
+            compiled_sql,
             distilled_params,
             compiled_sql, distilled_params
         )
         if self._has_events:
-            self.engine.dispatch.after_execute(self, 
+            self.engine.dispatch.after_execute(self,
                 elem, multiparams, params, ret)
         return ret
 
@@ -1601,12 +1601,12 @@ class Connection(Connectable):
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
-            compiled, 
+            compiled,
             parameters,
             compiled, parameters
         )
         if self._has_events:
-            self.engine.dispatch.after_execute(self, 
+            self.engine.dispatch.after_execute(self,
                 compiled, multiparams, params, ret)
         return ret
 
@@ -1623,17 +1623,17 @@ class Connection(Connectable):
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_statement,
-            statement, 
+            statement,
             parameters,
             statement, parameters
         )
         if self._has_events:
-            self.engine.dispatch.after_execute(self, 
+            self.engine.dispatch.after_execute(self,
                 statement, multiparams, params, ret)
         return ret
 
-    def _execute_context(self, dialect, constructor, 
-                                    statement, parameters, 
+    def _execute_context(self, dialect, constructor,
+                                    statement, parameters,
                                     *args):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`.ResultProxy`."""
@@ -1646,8 +1646,8 @@ class Connection(Connectable):
 
             context = constructor(dialect, self, conn, *args)
         except Exception, e:
-            self._handle_dbapi_exception(e, 
-                        str(statement), parameters, 
+            self._handle_dbapi_exception(e,
+                        str(statement), parameters,
                         None, None)
             raise
 
@@ -1664,46 +1664,46 @@ class Connection(Connectable):
         if self._has_events:
             for fn in self.engine.dispatch.before_cursor_execute:
                 statement, parameters = \
-                            fn(self, cursor, statement, parameters, 
+                            fn(self, cursor, statement, parameters,
                                         context, context.executemany)
 
         if self._echo:
             self.engine.logger.info(statement)
-            self.engine.logger.info("%r", 
+            self.engine.logger.info("%r",
                     sql_util._repr_params(parameters, batches=10))
         try:
             if context.executemany:
                 self.dialect.do_executemany(
-                                    cursor, 
-                                    statement, 
-                                    parameters, 
+                                    cursor,
+                                    statement,
+                                    parameters,
                                     context)
             elif not parameters and context.no_parameters:
                 self.dialect.do_execute_no_params(
-                                    cursor, 
-                                    statement, 
+                                    cursor,
+                                    statement,
                                     context)
             else:
                 self.dialect.do_execute(
-                                    cursor, 
-                                    statement, 
-                                    parameters, 
+                                    cursor,
+                                    statement,
+                                    parameters,
                                     context)
         except Exception, e:
             self._handle_dbapi_exception(
-                                e, 
-                                statement, 
-                                parameters, 
-                                cursor, 
+                                e,
+                                statement,
+                                parameters,
+                                cursor,
                                 context)
             raise
 
 
         if self._has_events:
-            self.engine.dispatch.after_cursor_execute(self, cursor, 
-                                                statement, 
-                                                parameters, 
-                                                context, 
+            self.engine.dispatch.after_cursor_execute(self, cursor,
+                                                statement,
+                                                parameters,
+                                                context,
                                                 context.executemany)
 
         if context.compiled:
@@ -1723,7 +1723,7 @@ class Connection(Connectable):
             elif not context._is_explicit_returning:
                 result.close(_autoclose_connection=False)
         elif result._metadata is None:
-            # no results, get rowcount 
+            # no results, get rowcount
             # (which requires open cursor on some drivers
             # such as kintersbasdb, mxodbc),
             result.rowcount
@@ -1744,7 +1744,7 @@ class Connection(Connectable):
 
         This method is used by DefaultDialect for special-case
         executions, such as for sequences and column defaults.
-        The path of statement execution in the majority of cases 
+        The path of statement execution in the majority of cases
         terminates at _execute_context().
 
         """
@@ -1753,14 +1753,14 @@ class Connection(Connectable):
             self.engine.logger.info("%r", parameters)
         try:
             self.dialect.do_execute(
-                                cursor, 
-                                statement, 
+                                cursor,
+                                statement,
                                 parameters)
         except Exception, e:
             self._handle_dbapi_exception(
-                                e, 
-                                statement, 
-                                parameters, 
+                                e,
+                                statement,
+                                parameters,
                                 cursor,
                                 None)
             raise
@@ -1782,20 +1782,20 @@ class Connection(Connectable):
             if isinstance(e, (SystemExit, KeyboardInterrupt)):
                 raise
 
-    def _handle_dbapi_exception(self, 
-                                    e, 
-                                    statement, 
-                                    parameters, 
-                                    cursor, 
+    def _handle_dbapi_exception(self,
+                                    e,
+                                    statement,
+                                    parameters,
+                                    cursor,
                                     context):
         if getattr(self, '_reentrant_error', False):
             # Py3K
-            #raise exc.DBAPIError.instance(statement, parameters, e, 
+            #raise exc.DBAPIError.instance(statement, parameters, e,
             #                               self.dialect.dbapi.Error) from e
             # Py2K
-            raise exc.DBAPIError.instance(statement, 
-                                            parameters, 
-                                            e, 
+            raise exc.DBAPIError.instance(statement,
+                                            parameters,
+                                            e,
                                             self.dialect.dbapi.Error), \
                                             None, sys.exc_info()[2]
             # end Py2K
@@ -1808,11 +1808,11 @@ class Connection(Connectable):
 
             if should_wrap and context:
                 if self._has_events:
-                    self.engine.dispatch.dbapi_error(self, 
-                                                    cursor, 
-                                                    statement, 
-                                                    parameters, 
-                                                    context, 
+                    self.engine.dispatch.dbapi_error(self,
+                                                    cursor,
+                                                    statement,
+                                                    parameters,
+                                                    context,
                                                     e)
                 context.handle_dbapi_exception(e)
 
@@ -1835,17 +1835,17 @@ class Connection(Connectable):
 
             # Py3K
             #raise exc.DBAPIError.instance(
-            #                        statement, 
-            #                        parameters, 
-            #                        e, 
+            #                        statement,
+            #                        parameters,
+            #                        e,
             #                        self.dialect.dbapi.Error,
             #                        connection_invalidated=is_disconnect) \
             #                        from e
             # Py2K
             raise exc.DBAPIError.instance(
-                                    statement, 
-                                    parameters, 
-                                    e, 
+                                    statement,
+                                    parameters,
+                                    e,
                                     self.dialect.dbapi.Error,
                                     connection_invalidated=is_disconnect), \
                                     None, sys.exc_info()[2]
@@ -1891,8 +1891,8 @@ class Connection(Connectable):
         set) is specified, limit the autoload to the given column
         names.
 
-        The default implementation uses the 
-        :class:`.Inspector` interface to 
+        The default implementation uses the
+        :class:`.Inspector` interface to
         provide the output, building upon the granular table/column/
         constraint etc. methods of :class:`.Dialect`.
 
@@ -1905,18 +1905,18 @@ class Connection(Connectable):
     def transaction(self, callable_, *args, **kwargs):
         """Execute the given function within a transaction boundary.
 
-        The function is passed this :class:`.Connection` 
+        The function is passed this :class:`.Connection`
         as the first argument, followed by the given \*args and \**kwargs,
         e.g.::
-        
+
             def do_something(conn, x, y):
                 conn.execute("some statement", {'x':x, 'y':y})
 
             conn.transaction(do_something, 5, 10)
 
         The operations inside the function are all invoked within the
-        context of a single :class:`.Transaction`.   
-        Upon success, the transaction is committed.  If an 
+        context of a single :class:`.Transaction`.
+        Upon success, the transaction is committed.  If an
         exception is raised, the transaction is rolled back
         before propagating the exception.
 
@@ -1925,20 +1925,20 @@ class Connection(Connectable):
            The :meth:`.transaction` method is superseded by
            the usage of the Python ``with:`` statement, which can
            be used with :meth:`.Connection.begin`::
-        
+
                with conn.begin():
                    conn.execute("some statement", {'x':5, 'y':10})
-            
+
            As well as with :meth:`.Engine.begin`::
-           
+
                with engine.begin() as conn:
                    conn.execute("some statement", {'x':5, 'y':10})
-        
+
         See also:
-        
-            :meth:`.Engine.begin` - engine-level transactional 
+
+            :meth:`.Engine.begin` - engine-level transactional
             context
-             
+
             :meth:`.Engine.transaction` - engine-level version of
             :meth:`.Connection.transaction`
 
@@ -1960,7 +1960,7 @@ class Connection(Connectable):
         The given \*args and \**kwargs are passed subsequent
         to the :class:`.Connection` argument.
 
-        This function, along with :meth:`.Engine.run_callable`, 
+        This function, along with :meth:`.Engine.run_callable`,
         allows a function to be run with a :class:`.Connection`
         or :class:`.Engine` object without the need to know
         which one is being dealt with.
@@ -1976,7 +1976,7 @@ class Connection(Connectable):
 class Transaction(object):
     """Represent a database transaction in progress.
 
-    The :class:`.Transaction` object is procured by 
+    The :class:`.Transaction` object is procured by
     calling the :meth:`~.Connection.begin` method of
     :class:`.Connection`::
 
@@ -1988,9 +1988,9 @@ class Transaction(object):
         trans.commit()
 
     The object provides :meth:`.rollback` and :meth:`.commit`
-    methods in order to control transaction boundaries.  It 
-    also implements a context manager interface so that 
-    the Python ``with`` statement can be used with the 
+    methods in order to control transaction boundaries.  It
+    also implements a context manager interface so that
+    the Python ``with`` statement can be used with the
     :meth:`.Connection.begin` method::
 
         with connection.begin():
@@ -2136,11 +2136,11 @@ class TwoPhaseTransaction(Transaction):
 
 class Engine(Connectable, log.Identified):
     """
-    Connects a :class:`~sqlalchemy.pool.Pool` and 
-    :class:`~sqlalchemy.engine.base.Dialect` together to provide a source 
+    Connects a :class:`~sqlalchemy.pool.Pool` and
+    :class:`~sqlalchemy.engine.base.Dialect` together to provide a source
     of database connectivity and behavior.
 
-    An :class:`.Engine` object is instantiated publicly using the 
+    An :class:`.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.
 
     See also:
@@ -2155,7 +2155,7 @@ class Engine(Connectable, log.Identified):
     _has_events = False
     _connection_cls = Connection
 
-    def __init__(self, pool, dialect, url, 
+    def __init__(self, pool, dialect, url,
                         logging_name=None, echo=None, proxy=None,
                         execution_options=None
                         ):
@@ -2182,11 +2182,11 @@ class Engine(Connectable, log.Identified):
     dispatch = event.dispatcher(events.ConnectionEvents)
 
     def update_execution_options(self, **opt):
-        """Update the default execution_options dictionary 
+        """Update the default execution_options dictionary
         of this :class:`.Engine`.
 
         The given keys/values in \**opt are added to the
-        default execution options that will be used for 
+        default execution options that will be used for
         all connections.  The initial contents of this dictionary
         can be sent via the ``execution_options`` parameter
         to :func:`.create_engine`.
@@ -2222,27 +2222,27 @@ class Engine(Connectable, log.Identified):
 
         A new connection pool is created immediately after the old one has
         been disposed.   This new pool, like all SQLAlchemy connection pools,
-        does not make any actual connections to the database until one is 
+        does not make any actual connections to the database until one is
         first requested.
 
         This method has two general use cases:
 
          * When a dropped connection is detected, it is assumed that all
-           connections held by the pool are potentially dropped, and 
+           connections held by the pool are potentially dropped, and
            the entire pool is replaced.
 
-         * An application may want to use :meth:`dispose` within a test 
+         * An application may want to use :meth:`dispose` within a test
            suite that is creating multiple engines.
 
         It is critical to note that :meth:`dispose` does **not** guarantee
         that the application will release all open database connections - only
         those connections that are checked into the pool are closed.
         Connections which remain checked out or have been detached from
-        the engine are not affected. 
+        the engine are not affected.
 
         """
         self.pool.dispose()
-        self.pool = self.pool.recreate()
+        self.pool = self.pool._replace()
 
     @util.deprecated("0.7", "Use the create() method on the given schema "
                             "object directly, i.e. :meth:`.Table.create`, "
@@ -2252,7 +2252,7 @@ class Engine(Connectable, log.Identified):
 
         from sqlalchemy.engine import ddl
 
-        self._run_visitor(ddl.SchemaGenerator, entity, 
+        self._run_visitor(ddl.SchemaGenerator, entity,
                                 connection=connection, **kwargs)
 
     @util.deprecated("0.7", "Use the drop() method on the given schema "
@@ -2263,7 +2263,7 @@ class Engine(Connectable, log.Identified):
 
         from sqlalchemy.engine import ddl
 
-        self._run_visitor(ddl.SchemaDropper, entity, 
+        self._run_visitor(ddl.SchemaDropper, entity,
                                 connection=connection, **kwargs)
 
     def _execute_default(self, default):
@@ -2274,15 +2274,15 @@ class Engine(Connectable, log.Identified):
             connection.close()
 
     @property
-    @util.deprecated("0.7", 
+    @util.deprecated("0.7",
                 "Use :attr:`~sqlalchemy.sql.expression.func` to create function constructs.")
     def func(self):
         return expression._FunctionGenerator(bind=self)
 
-    @util.deprecated("0.7", 
+    @util.deprecated("0.7",
                 "Use :func:`.expression.text` to create text constructs.")
     def text(self, text, *args, **kwargs):
-        """Return a :func:`~sqlalchemy.sql.expression.text` construct, 
+        """Return a :func:`~sqlalchemy.sql.expression.text` construct,
         bound to this engine.
 
         This is equivalent to::
@@ -2293,7 +2293,7 @@ class Engine(Connectable, log.Identified):
 
         return expression.text(text, bind=self, *args, **kwargs)
 
-    def _run_visitor(self, visitorcallable, element, 
+    def _run_visitor(self, visitorcallable, element,
                                     connection=None, **kwargs):
         if connection is None:
             conn = self.contextual_connect(close_with_result=False)
@@ -2327,15 +2327,15 @@ class Engine(Connectable, log.Identified):
         with a :class:`.Transaction` established.
 
         E.g.::
-        
+
             with engine.begin() as conn:
                 conn.execute("insert into table (x, y, z) values (1, 2, 3)")
                 conn.execute("my_special_procedure(5)")
 
-        Upon successful operation, the :class:`.Transaction` 
+        Upon successful operation, the :class:`.Transaction`
         is committed.  If an error is raised, the :class:`.Transaction`
-        is rolled back.  
-        
+        is rolled back.
+
         The ``close_with_result`` flag is normally ``False``, and indicates
         that the :class:`.Connection` will be closed when the operation
         is complete.   When set to ``True``, it indicates the :class:`.Connection`
@@ -2345,9 +2345,9 @@ class Engine(Connectable, log.Identified):
         has exhausted all result rows.
 
         .. versionadded:: 0.7.6
-        
+
         See also:
-        
+
         :meth:`.Engine.connect` - procure a :class:`.Connection` from
         an :class:`.Engine`.
 
@@ -2367,19 +2367,19 @@ class Engine(Connectable, log.Identified):
         """Execute the given function within a transaction boundary.
 
         The function is passed a :class:`.Connection` newly procured
-        from :meth:`.Engine.contextual_connect` as the first argument, 
+        from :meth:`.Engine.contextual_connect` as the first argument,
         followed by the given \*args and \**kwargs.
-        
+
         e.g.::
-        
+
             def do_something(conn, x, y):
                 conn.execute("some statement", {'x':x, 'y':y})
 
             engine.transaction(do_something, 5, 10)
-        
+
         The operations inside the function are all invoked within the
-        context of a single :class:`.Transaction`.   
-        Upon success, the transaction is committed.  If an 
+        context of a single :class:`.Transaction`.
+        Upon success, the transaction is committed.  If an
         exception is raised, the transaction is rolled back
         before propagating the exception.
 
@@ -2388,15 +2388,15 @@ class Engine(Connectable, log.Identified):
            The :meth:`.transaction` method is superseded by
            the usage of the Python ``with:`` statement, which can
            be used with :meth:`.Engine.begin`::
-           
+
                with engine.begin() as conn:
                    conn.execute("some statement", {'x':5, 'y':10})
-        
+
         See also:
-        
-            :meth:`.Engine.begin` - engine-level transactional 
+
+            :meth:`.Engine.begin` - engine-level transactional
             context
-             
+
             :meth:`.Connection.transaction` - connection-level version of
             :meth:`.Engine.transaction`
 
@@ -2415,7 +2415,7 @@ class Engine(Connectable, log.Identified):
         The given \*args and \**kwargs are passed subsequent
         to the :class:`.Connection` argument.
 
-        This function, along with :meth:`.Connection.run_callable`, 
+        This function, along with :meth:`.Connection.run_callable`,
         allows a function to be run with a :class:`.Connection`
         or :class:`.Engine` object without the need to know
         which one is being dealt with.
@@ -2486,9 +2486,9 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self._connection_cls(self, 
-                                    self.pool.connect(), 
-                                    close_with_result=close_with_result, 
+        return self._connection_cls(self,
+                                    self.pool.connect(),
+                                    close_with_result=close_with_result,
                                     **kwargs)
 
     def table_names(self, schema=None, connection=None):
@@ -2519,7 +2519,7 @@ class Engine(Connectable, log.Identified):
 
         Uses the given :class:`.Connection`, or if None produces
         its own :class:`.Connection`, and passes the ``table``
-        and ``include_columns`` arguments onto that 
+        and ``include_columns`` arguments onto that
         :class:`.Connection` object's :meth:`.Connection.reflecttable`
         method.  The :class:`.Table` object is then populated
         with new attributes.
@@ -2541,7 +2541,7 @@ class Engine(Connectable, log.Identified):
     def raw_connection(self):
         """Return a "raw" DBAPI connection from the connection pool.
 
-        The returned object is a proxied version of the DBAPI 
+        The returned object is a proxied version of the DBAPI
         connection object used by the underlying driver in use.
         The object will have all the same behavior as the real DBAPI
         connection, except that its ``close()`` method will result in the
@@ -2566,8 +2566,8 @@ try:
     # __setstate__.
     from sqlalchemy.cresultproxy import safe_rowproxy_reconstructor
 
-    # The extra function embedding is needed so that the 
-    # reconstructor function has the same signature whether or not 
+    # The extra function embedding is needed so that the
+    # reconstructor function has the same signature whether or not
     # the extension is present.
     def rowproxy_reconstructor(cls, state):
         return safe_rowproxy_reconstructor(cls, state)
@@ -2701,7 +2701,7 @@ class RowProxy(BaseRowProxy):
         return iter(self)
 
 try:
-    # Register RowProxy with Sequence, 
+    # Register RowProxy with Sequence,
     # so sequence protocol is implemented
     from collections import Sequence
     Sequence.register(RowProxy)
@@ -2759,10 +2759,10 @@ class ResultMetaData(object):
             primary_keymap[i] = rec
 
             # populate primary keymap, looking for conflicts.
-            if primary_keymap.setdefault(name.lower(), rec) is not rec: 
+            if primary_keymap.setdefault(name.lower(), rec) is not rec:
                 # place a record that doesn't have the "index" - this
                 # is interpreted later as an AmbiguousColumnError,
-                # but only when actually accessed.   Columns 
+                # but only when actually accessed.   Columns
                 # colliding by name is not a problem if those names
                 # aren't used; integer and ColumnElement access is always
                 # unambiguous.
@@ -2793,7 +2793,7 @@ class ResultMetaData(object):
     def _set_keymap_synonym(self, name, origname):
         """Set a synonym for the given name.
 
-        Some dialects (SQLite at the moment) may use this to 
+        Some dialects (SQLite at the moment) may use this to
         adjust the column names that are significant within a
         row.
 
@@ -2809,7 +2809,7 @@ class ResultMetaData(object):
             result = map.get(key.lower())
         # fallback for targeting a ColumnElement to a textual expression
         # this is a rare use case which only occurs when matching text()
-        # or colummn('name') constructs to ColumnElements, or after a 
+        # or colummn('name') constructs to ColumnElements, or after a
         # pickle/unpickle roundtrip
         elif isinstance(key, expression.ColumnElement):
             if key._label and key._label.lower() in map:
@@ -2817,7 +2817,7 @@ class ResultMetaData(object):
             elif hasattr(key, 'name') and key.name.lower() in map:
                 # match is only on name.
                 result = map[key.name.lower()]
-            # search extra hard to make sure this 
+            # search extra hard to make sure this
             # isn't a column/label name overlap.
             # this check isn't currently available if the row
             # was unpickled.
@@ -2831,7 +2831,7 @@ class ResultMetaData(object):
         if result is None:
             if raiseerr:
                 raise exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'" % 
+                    "Could not locate column in row for column '%s'" %
                         expression._string_or_unprintable(key))
             else:
                 return None
@@ -2884,7 +2884,7 @@ class ResultProxy(object):
       col3 = row[mytable.c.mycol] # access via Column object.
 
     ``ResultProxy`` also handles post-processing of result column
-    data using ``TypeEngine`` objects, which are referenced from 
+    data using ``TypeEngine`` objects, which are referenced from
     the originating SQL statement that produced this result set.
 
     """
@@ -2922,38 +2922,38 @@ class ResultProxy(object):
         """Return the 'rowcount' for this result.
 
         The 'rowcount' reports the number of rows *matched*
-        by the WHERE criterion of an UPDATE or DELETE statement.  
-        
+        by the WHERE criterion of an UPDATE or DELETE statement.
+
         .. note::
-        
+
            Notes regarding :attr:`.ResultProxy.rowcount`:
-           
-           
+
+
            * This attribute returns the number of rows *matched*,
              which is not necessarily the same as the number of rows
              that were actually *modified* - an UPDATE statement, for example,
              may have no net change on a given row if the SET values
              given are the same as those present in the row already.
              Such a row would be matched but not modified.
-             On backends that feature both styles, such as MySQL, 
-             rowcount is configured by default to return the match 
+             On backends that feature both styles, such as MySQL,
+             rowcount is configured by default to return the match
              count in all cases.
 
            * :attr:`.ResultProxy.rowcount` is *only* useful in conjunction
              with an UPDATE or DELETE statement.  Contrary to what the Python
              DBAPI says, it does *not* return the
              number of rows available from the results of a SELECT statement
-             as DBAPIs cannot support this functionality when rows are 
+             as DBAPIs cannot support this functionality when rows are
              unbuffered.
-        
+
            * :attr:`.ResultProxy.rowcount` may not be fully implemented by
              all dialects.  In particular, most DBAPIs do not support an
              aggregate rowcount result from an executemany call.
-             The :meth:`.ResultProxy.supports_sane_rowcount` and 
+             The :meth:`.ResultProxy.supports_sane_rowcount` and
              :meth:`.ResultProxy.supports_sane_multi_rowcount` methods
              will report from the dialect if each usage is known to be
              supported.
-         
+
            * Statements that use RETURNING may not return a correct
              rowcount.
 
@@ -2971,7 +2971,7 @@ class ResultProxy(object):
 
         This is a DBAPI specific method and is only functional
         for those backends which support it, for statements
-        where it is appropriate.  It's behavior is not 
+        where it is appropriate.  It's behavior is not
         consistent across backends.
 
         Usage of this method is normally unnecessary; the
@@ -2984,7 +2984,7 @@ class ResultProxy(object):
             return self._saved_cursor.lastrowid
         except Exception, e:
             self.connection._handle_dbapi_exception(
-                                 e, None, None, 
+                                 e, None, None,
                                  self._saved_cursor, self.context)
             raise
 
@@ -2992,8 +2992,8 @@ class ResultProxy(object):
     def returns_rows(self):
         """True if this :class:`.ResultProxy` returns rows.
 
-        I.e. if it is legal to call the methods 
-        :meth:`~.ResultProxy.fetchone`, 
+        I.e. if it is legal to call the methods
+        :meth:`~.ResultProxy.fetchone`,
         :meth:`~.ResultProxy.fetchmany`
         :meth:`~.ResultProxy.fetchall`.
 
@@ -3003,10 +3003,10 @@ class ResultProxy(object):
     @property
     def is_insert(self):
         """True if this :class:`.ResultProxy` is the result
-        of a executing an expression language compiled 
+        of a executing an expression language compiled
         :func:`.expression.insert` construct.
 
-        When True, this implies that the 
+        When True, this implies that the
         :attr:`inserted_primary_key` attribute is accessible,
         assuming the statement did not include
         a user defined "returning" construct.
@@ -3059,20 +3059,20 @@ class ResultProxy(object):
     def inserted_primary_key(self):
         """Return the primary key for the row just inserted.
 
-        The return value is a list of scalar values 
+        The return value is a list of scalar values
         corresponding to the list of primary key columns
         in the target table.
 
-        This only applies to single row :func:`.insert` 
-        constructs which did not explicitly specify 
+        This only applies to single row :func:`.insert`
+        constructs which did not explicitly specify
         :meth:`.Insert.returning`.
 
         Note that primary key columns which specify a
-        server_default clause, 
+        server_default clause,
         or otherwise do not qualify as "autoincrement"
         columns (see the notes at :class:`.Column`), and were
         generated using the database-side default, will
-        appear in this list as ``None`` unless the backend 
+        appear in this list as ``None`` unless the backend
         supports "returning" and the insert statement executed
         with the "implicit returning" enabled.
 
@@ -3136,9 +3136,9 @@ class ResultProxy(object):
 
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount`` from the dialect.
-        
+
         See :attr:`.ResultProxy.rowcount` for background.
-        
+
         """
 
         return self.dialect.supports_sane_rowcount
@@ -3147,7 +3147,7 @@ class ResultProxy(object):
         """Return ``supports_sane_multi_rowcount`` from the dialect.
 
         See :attr:`.ResultProxy.rowcount` for background.
-        
+
         """
 
         return self.dialect.supports_sane_multi_rowcount
@@ -3207,7 +3207,7 @@ class ResultProxy(object):
             return l
         except Exception, e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None, 
+                                    e, None, None,
                                     self.cursor, self.context)
             raise
 
@@ -3227,7 +3227,7 @@ class ResultProxy(object):
             return l
         except Exception, e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None, 
+                                    e, None, None,
                                     self.cursor, self.context)
             raise
 
@@ -3247,7 +3247,7 @@ class ResultProxy(object):
                 return None
         except Exception, e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None, 
+                                    e, None, None,
                                     self.cursor, self.context)
             raise
 
@@ -3264,7 +3264,7 @@ class ResultProxy(object):
             row = self._fetchone_impl()
         except Exception, e:
             self.connection._handle_dbapi_exception(
-                                    e, None, None, 
+                                    e, None, None,
                                     self.cursor, self.context)
             raise
 
