@@ -1203,14 +1203,12 @@ which also works as a context manager.
 It can be succinctly used around individual record inserts in order to catch
 things like unique constraint exceptions::
 
-    for i, record in enumerate(records):
+    for record in records:
         try:
             with session.begin_nested():
                 session.merge(record)
         except:
             print "Skipped record %s" % record
-        if not i % 1000:
-            session.flush()
     session.commit()
 
 
