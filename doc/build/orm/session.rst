@@ -41,11 +41,11 @@ of Work <http://martinfowler.com/eaaCatalog/unitOfWork.html>`_ pattern.
 When using a :class:`.Session`, it's important to note that the objects
 which are associated with it are **proxy objects** to the transaction being
 held by the :class:`.Session` - there are a variety of events that will cause
-objects to re-access the database in order to keep synchronized.   It is 
-possible to "detach" objects from a :class:`.Session`, and to continue using 
+objects to re-access the database in order to keep synchronized.   It is
+possible to "detach" objects from a :class:`.Session`, and to continue using
 them, though this practice has its caveats.  It's intended that
-usually, you'd re-associate detached objects another :class:`.Session` when you 
-want to work with them again, so that they can resume their normal task of 
+usually, you'd re-associate detached objects another :class:`.Session` when you
+want to work with them again, so that they can resume their normal task of
 representing database state.
 
 Getting a Session
@@ -89,7 +89,7 @@ to use a particular :class:`.Engine` for connection resources.
 A typical setup will associate the :func:`.sessionmaker` with an :class:`.Engine`,
 so that each :class:`.Session` generated will use this :class:`.Engine`
 to acquire connection resources.   This association can
-be set up as in the example above, using the ``bind`` argument. 
+be set up as in the example above, using the ``bind`` argument.
 
 When you write your application, place the result of the
 :func:`.sessionmaker` call at the global level.   The resulting
@@ -101,17 +101,17 @@ An extremely common step taken by applications, including virtually
 all web applications, is to further wrap the :func:`.sessionmaker`
 construct in a so-called "contextual" session, provided by the
 :func:`.scoped_session` construct.  This construct places the :func:`.sessionmaker`
-into a **registry** that maintains a single :class:`.Session` per 
+into a **registry** that maintains a single :class:`.Session` per
 application thread.   Information on using contextual sessions
 is at :ref:`unitofwork_contextual`.
 
 Adding Additional Configuration to an Existing sessionmaker()
 --------------------------------------------------------------
 
-A common scenario is where the :func:`.sessionmaker` is invoked 
+A common scenario is where the :func:`.sessionmaker` is invoked
 at module import time, however the generation of one or more :class:`.Engine`
 instances to be associated with the :func:`.sessionmaker` has not yet proceeded.
-For this use case, the :func:`.sessionmaker` construct offers the 
+For this use case, the :func:`.sessionmaker` construct offers the
 :meth:`.sessionmaker.configure` method, which will place additional configuration
 directives into an existing :func:`.sessionmaker` that will take place
 when the construct is invoked::
@@ -136,11 +136,11 @@ Creating Ad-Hoc Session Objects with Alternate Arguments
 ---------------------------------------------------------
 
 For the use case where an application needs to create a new :class:`.Session` with
-special arguments that deviate from what is normally used throughout the application, 
-such as a :class:`.Session` that binds to an alternate 
-source of connectivity, or a :class:`.Session` that should 
-have other arguments such as ``expire_on_commit`` established differently from 
-what most of the application wants, specific arguments can be passed to the 
+special arguments that deviate from what is normally used throughout the application,
+such as a :class:`.Session` that binds to an alternate
+source of connectivity, or a :class:`.Session` that should
+have other arguments such as ``expire_on_commit`` established differently from
+what most of the application wants, specific arguments can be passed to the
 :func:`.sessionmaker` construct's class itself.  These arguments will override whatever
 configurations have already been placed, such as below, where a new :class:`.Session`
 is constructed against a specific :class:`.Connection`::
@@ -149,13 +149,13 @@ is constructed against a specific :class:`.Connection`::
     # bound to a specific Engine
     Session = sessionmaker(bind=engine)
 
-    # later, some unit of code wants to create a 
+    # later, some unit of code wants to create a
     # Session that is bound to a specific Connection
     conn = engine.connect()
     session = Session(bind=conn)
 
 The typical rationale for the association of a :class:`.Session` with a specific
-:class:`.Connection` is that of a test fixture that maintains an external 
+:class:`.Connection` is that of a test fixture that maintains an external
 transaction - see :ref:`session_external_transaction` for an example of this.
 
 Using the Session
@@ -251,7 +251,7 @@ Session Frequently Asked Questions
     threads is most safely accomplished by sharing their state among multiple
     instances of those objects, each associated with a distinct
     :class:`.Session` per thread, :meth:`.Session.merge` to transfer state
-    between threads.   This pattern is not a strict requirement by any means, 
+    between threads.   This pattern is not a strict requirement by any means,
     but it has the least chance of introducing concurrency issues.
 
     To help with the recommended :class:`.Session` -per-thread,
@@ -281,7 +281,7 @@ Session Frequently Asked Questions
     The :class:`.Session` is not designed to be a
     global object from which everyone consults as a "registry" of objects.
     That's more the job of a **second level cache**.   SQLAlchemy provides
-    a pattern for implementing second level caching using `Beaker <http://beaker.groovie.org/>`_, 
+    a pattern for implementing second level caching using `Beaker <http://beaker.groovie.org/>`_,
     via the :ref:`examples_caching` example.
 
 * How can I get the :class:`~sqlalchemy.orm.session.Session` for a certain object ?
@@ -459,7 +459,7 @@ Merge Tips
 it deals with the intricate border between objects that are transient/detached and
 those that are persistent, as well as the automated transferrence of state.
 The wide variety of scenarios that can present themselves here often require a
-more careful approach to the state of objects.   Common problems with merge usually involve 
+more careful approach to the state of objects.   Common problems with merge usually involve
 some unexpected state regarding the object being passed to :meth:`~.Session.merge`.
 
 Lets use the canonical example of the User and Address objects::
@@ -495,8 +495,8 @@ A surprise would occur if we said this::
     >>> a1.user = u1
     >>> a1 = session.merge(a1)
     >>> session.commit()
-    sqlalchemy.orm.exc.FlushError: New instance <Address at 0x1298f50> 
-    with identity key (<class '__main__.Address'>, (1,)) conflicts with 
+    sqlalchemy.orm.exc.FlushError: New instance <Address at 0x1298f50>
+    with identity key (<class '__main__.Address'>, (1,)) conflicts with
     persistent instance <Address at 0x12a25d0>
 
 Why is that ?   We weren't careful with our cascades.   The assignment
@@ -536,12 +536,12 @@ Another example of unexpected state::
     >>> True
     >>> a1 = session.merge(a1)
     >>> session.commit()
-    sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id 
+    sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id
     may not be NULL
 
 Here, we accessed a1.user, which returned its default value
-of ``None``, which as a result of this access, has been placed in the ``__dict__`` of 
-our object ``a1``.  Normally, this operation creates no change event, 
+of ``None``, which as a result of this access, has been placed in the ``__dict__`` of
+our object ``a1``.  Normally, this operation creates no change event,
 so the ``user_id`` attribute takes precedence during a
 flush.  But when we merge the ``Address`` object into the session, the operation
 is equivalent to::
@@ -554,8 +554,8 @@ Where above, both ``user_id`` and ``user`` are assigned to, and change events
 are emitted for both.  The ``user`` association
 takes precedence, and None is applied to ``user_id``, causing a failure.
 
-Most :meth:`~.Session.merge` issues can be examined by first checking - 
-is the object prematurely in the session ? 
+Most :meth:`~.Session.merge` issues can be examined by first checking -
+is the object prematurely in the session ?
 
 .. sourcecode:: python+sql
 
@@ -569,9 +569,9 @@ is a quick way to check::
     >>> a1 = Address(id=existing_a1, user_id=user.id)
     >>> a1.user
     >>> a1.__dict__
-    {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x1298d10>, 
-        'user_id': 1, 
-        'id': 1, 
+    {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x1298d10>,
+        'user_id': 1,
+        'id': 1,
         'user': None}
     >>> # we don't want user=None merged, remove it
     >>> del a1.user
@@ -629,7 +629,7 @@ as illustrated in the example below::
     del user.addresses[1]
     session.flush()
 
-Where above, upon removing the ``Address`` object from the ``User.addresses`` 
+Where above, upon removing the ``Address`` object from the ``User.addresses``
 collection, the ``delete-orphan`` cascade has the effect of marking the ``Address``
 object for deletion in the same way as passing it to :meth:`~.Session.delete`.
 
@@ -705,14 +705,14 @@ is that a "transaction" is always present; this behavior can be disabled by
 setting ``autocommit=True``. In autocommit mode, a transaction can be
 initiated by calling the :func:`~sqlalchemy.orm.session.Session.begin` method.
 
-.. note:: 
+.. note::
 
    The term "transaction" here refers to a transactional
    construct within the :class:`.Session` itself which may be
    maintaining zero or more actual database (DBAPI) transactions.  An individual
    DBAPI connection begins participation in the "transaction" as it is first
    used to execute a SQL statement, then remains present until the session-level
-   "transaction" is completed.  See :ref:`unitofwork_transaction` for 
+   "transaction" is completed.  See :ref:`unitofwork_transaction` for
    further detail.
 
 Another behavior of :func:`~sqlalchemy.orm.session.Session.commit` is that by
@@ -799,8 +799,8 @@ transaction isolation is that emitting the same SELECT statement twice will
 return the same results as when it was called the first time, even if the data
 has been modified in another transaction.
 
-For this reason, the :class:`.Session` gains very efficient behavior by 
-loading the attributes of each instance only once.   Subsequent reads of the 
+For this reason, the :class:`.Session` gains very efficient behavior by
+loading the attributes of each instance only once.   Subsequent reads of the
 same row in the same transaction are assumed to have the same value.  The
 user application also gains directly from this assumption, that the transaction
 is regarded as a temporary shield against concurrent changes - a good application
@@ -894,7 +894,7 @@ all objects which have had changes since they were last loaded or saved (i.e.
     # identity key
     session.identity_map
 
-(Documentation: :attr:`.Session.new`, :attr:`.Session.dirty`, 
+(Documentation: :attr:`.Session.new`, :attr:`.Session.dirty`,
 :attr:`.Session.deleted`, :attr:`.Session.identity_map`).
 
 Note that objects within the session are by default *weakly referenced*. This
@@ -919,22 +919,22 @@ Mappers support the concept of configurable **cascade** behavior on
 to how operations performed on a parent object relative to a
 particular :class:`.Session` should be propagated to items
 referred to by that relationship.
-The default cascade behavior is usually suitable for 
+The default cascade behavior is usually suitable for
 most situations, and the option is normally invoked explicitly
 in order to enable ``delete`` and ``delete-orphan`` cascades,
 which refer to how the relationship should be treated when
 the parent is marked for deletion as well as when a child
 is de-associated from its parent.
 
-Cascade behavior is configured by setting the ``cascade`` keyword 
-argument on 
+Cascade behavior is configured by setting the ``cascade`` keyword
+argument on
 :func:`~sqlalchemy.orm.relationship`::
 
     class Order(Base):
         __tablename__ = 'order'
 
         items = relationship("Item", cascade="all, delete-orphan")
-        customer = relationship("User", secondary=user_orders_table, 
+        customer = relationship("User", secondary=user_orders_table,
                                     cascade="save-update")
 
 To set cascades on a backref, the same flag can be used with the
@@ -944,11 +944,11 @@ its arguments back into :func:`~sqlalchemy.orm.relationship`::
     class Item(Base):
         __tablename__ = 'item'
 
-        order = relationship("Order", 
+        order = relationship("Order",
                         backref=backref("items", cascade="all, delete-orphan")
                     )
 
-The default value of ``cascade`` is ``save-update, merge``.  
+The default value of ``cascade`` is ``save-update, merge``.
 The ``all`` symbol in the cascade options indicates that all
 cascade flags should be enabled, with the exception of ``delete-orphan``.
 Typically, cascade is usually left at its default, or configured
@@ -958,7 +958,7 @@ treated as "owned" by the parent.
 The list of available values which can be specified in ``cascade``
 are as follows:
 
-* ``save-update`` - Indicates that when an object is placed into a 
+* ``save-update`` - Indicates that when an object is placed into a
   :class:`.Session`
   via :meth:`.Session.add`, all the objects associated with it via this
   :func:`~sqlalchemy.orm.relationship` should also be added to that
@@ -968,20 +968,20 @@ are as follows:
   added to sets, or otherwise associated with the parent.
 
   ``save-update`` cascade also cascades the *pending history* of the
-  target attribute, meaning that objects which were 
-  removed from a scalar or collection attribute whose changes have not 
+  target attribute, meaning that objects which were
+  removed from a scalar or collection attribute whose changes have not
   yet been flushed are  also placed into the target session.  This
   is because they may have foreign key attributes present which
-  will need to be updated to no longer refer to the parent. 
+  will need to be updated to no longer refer to the parent.
 
   The ``save-update`` cascade is on by default, and it's common to not
   even be aware of it.  It's customary that only a single call to
   :meth:`.Session.add` against the lead object of a structure
-  has the effect of placing the full structure of 
+  has the effect of placing the full structure of
   objects into the :class:`.Session` at once.
 
-  However, it can be turned off, which would 
-  imply that objects associated with a parent would need to be 
+  However, it can be turned off, which would
+  imply that objects associated with a parent would need to be
   placed individually using :meth:`.Session.add` calls for
   each one.
 
@@ -989,25 +989,25 @@ are as follows:
   take effect in the reverse direction, that is, associating a child
   with a parent when a backref is present means both relationships
   are affected; the parent will be added to the child's session.
-  To disable this somewhat indirect session addition, use the 
-  ``cascade_backrefs=False`` option described below in 
+  To disable this somewhat indirect session addition, use the
+  ``cascade_backrefs=False`` option described below in
   :ref:`backref_cascade`.
 
 * ``delete`` - This cascade indicates that when the parent object
-  is marked for deletion, the related objects should also be marked 
+  is marked for deletion, the related objects should also be marked
   for deletion.   Without this cascade present, SQLAlchemy will
-  set the foreign key on a one-to-many relationship to NULL 
+  set the foreign key on a one-to-many relationship to NULL
   when the parent object is deleted.  When enabled, the row is instead
   deleted.
 
   ``delete`` cascade is often used in conjunction with ``delete-orphan``
   cascade, as is appropriate for an object whose foreign key is
-  not intended to be nullable.  On some backends, it's also 
+  not intended to be nullable.  On some backends, it's also
   a good idea to set ``ON DELETE`` on the foreign key itself;
   see the section :ref:`passive_deletes` for more details.
 
-  Note that for many-to-many relationships which make usage of the 
-  ``secondary`` argument to :func:`~.sqlalchemy.orm.relationship`, 
+  Note that for many-to-many relationships which make usage of the
+  ``secondary`` argument to :func:`~.sqlalchemy.orm.relationship`,
   SQLAlchemy always emits
   a DELETE for the association row in between "parent" and "child",
   when the parent is deleted or whenever the linkage between a particular
@@ -1019,20 +1019,20 @@ are as follows:
   for deletion.   This is a common feature when dealing with a related
   object that is "owned" by its parent, with a NOT NULL foreign key,
   so that removal of the item from the parent collection results
-  in its deletion.   
+  in its deletion.
 
-  ``delete-orphan`` cascade implies that each child object can only 
+  ``delete-orphan`` cascade implies that each child object can only
   have one parent at a time, so is configured in the vast majority of cases
-  on a one-to-many relationship.   Setting it on a many-to-one or 
-  many-to-many relationship is more awkward; for this use case, 
+  on a one-to-many relationship.   Setting it on a many-to-one or
+  many-to-many relationship is more awkward; for this use case,
   SQLAlchemy requires that the :func:`~sqlalchemy.orm.relationship`
-  be configured with the ``single_parent=True`` function, which 
+  be configured with the ``single_parent=True`` function, which
   establishes Python-side validation that ensures the object
   is associated with only one parent at a time.
 
 * ``merge`` - This cascade indicates that the :meth:`.Session.merge`
   operation should be propagated from a parent that's the subject
-  of the :meth:`.Session.merge` call down to referred objects. 
+  of the :meth:`.Session.merge` call down to referred objects.
   This cascade is also on by default.
 
 * ``refresh-expire`` - A less common option, indicates that the
@@ -1041,7 +1041,7 @@ are as follows:
   the referred objects are expired only, but not actually refreshed.
 
 * ``expunge`` - Indicate that when the parent object is removed
-  from the :class:`.Session` using :meth:`.Session.expunge`, the 
+  from the :class:`.Session` using :meth:`.Session.expunge`, the
   operation should be propagated down to referred objects.
 
 .. _backref_cascade:
@@ -1076,7 +1076,7 @@ place::
 This behavior can be disabled using the ``cascade_backrefs`` flag::
 
     mapper(Order, order_table, properties={
-        'items' : relationship(Item, backref='order', 
+        'items' : relationship(Item, backref='order',
                                     cascade_backrefs=False)
     })
 
@@ -1094,7 +1094,7 @@ Managing Transactions
 =====================
 
 A newly constructed :class:`.Session` may be said to be in the "begin" state.
-In this state, the :class:`.Session` has not established any connection or 
+In this state, the :class:`.Session` has not established any connection or
 transactional state with any of the :class:`.Engine` objects that may be associated
 with it.
 
@@ -1104,30 +1104,30 @@ Typically, this means it is called upon to execute SQL statements using a partic
 or within a flush operation of pending data, which occurs when such state exists
 and :meth:`.Session.commit` or :meth:`.Session.flush` is called.
 
-As these requests are received, each new :class:`.Engine` encountered is associated 
+As these requests are received, each new :class:`.Engine` encountered is associated
 with an ongoing transactional state maintained by the :class:`.Session`.
 When the first :class:`.Engine` is operated upon, the :class:`.Session` can be said
 to have left the "begin" state and entered "transactional" state.   For each
 :class:`.Engine` encountered, a :class:`.Connection` is associated with it,
 which is acquired via the :meth:`.Engine.contextual_connect` method.  If a
 :class:`.Connection` was directly associated with the :class:`.Session` (see :ref:`session_external_transaction`
-for an example of this), it is 
+for an example of this), it is
 added to the transactional state directly.
 
-For each :class:`.Connection`, the :class:`.Session` also maintains a :class:`.Transaction` object, 
+For each :class:`.Connection`, the :class:`.Session` also maintains a :class:`.Transaction` object,
 which is acquired by calling :meth:`.Connection.begin` on each :class:`.Connection`,
 or if the :class:`.Session`
 object has been established using the flag ``twophase=True``, a :class:`.TwoPhaseTransaction`
-object acquired via :meth:`.Connection.begin_twophase`.  These transactions are all committed or 
-rolled back corresponding to the invocation of the 
+object acquired via :meth:`.Connection.begin_twophase`.  These transactions are all committed or
+rolled back corresponding to the invocation of the
 :meth:`.Session.commit` and :meth:`.Session.rollback` methods.   A commit operation will
 also call the :meth:`.TwoPhaseTransaction.prepare` method on all transactions if applicable.
 
 When the transactional state is completed after a rollback or commit, the :class:`.Session`
 releases all :class:`.Transaction` and :class:`.Connection` resources (which has the effect
-of returning DBAPI connections to the connection pool of each :class:`.Engine`), 
+of returning DBAPI connections to the connection pool of each :class:`.Engine`),
 and goes back to the "begin" state, which
-will again invoke new :class:`.Connection` and :class:`.Transaction` objects as new 
+will again invoke new :class:`.Connection` and :class:`.Transaction` objects as new
 requests to emit SQL statements are received.
 
 The example below illustrates this lifecycle::
@@ -1139,7 +1139,7 @@ The example below illustrates this lifecycle::
     session = Session()
     try:
         # first query.  a Connection is acquired
-        # from the Engine, and a Transaction 
+        # from the Engine, and a Transaction
         # started.
         item1 = session.query(Item).get(1)
 
@@ -1197,6 +1197,23 @@ session is expired, thus causing all subsequent attribute/instance access to
 reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
 before :func:`~sqlalchemy.orm.session.Session.begin_nested` was called.
 
+:meth:`~.Session.begin_nested`, in the same manner as the less often
+used :meth:`~.Session.begin` method, returns a transactional object
+which also works as a context manager.
+It can be succinctly used around individual record inserts in order to catch
+things like unique constraint exceptions::
+
+    for i, record in enumerate(records):
+        try:
+            with session.begin_nested():
+                session.merge(record)
+        except:
+            print "Skipped record %s" % record
+        if not i % 1000:
+            session.flush()
+    session.commit()
+
+
 Autocommit Mode
 ---------------
 
@@ -1215,15 +1232,15 @@ very old versions of SQLAlchemy standardized on this mode, the modern
 :class:`.Session` benefits highly from being given a clear point of transaction
 demarcation via :meth:`.Session.rollback` and :meth:`.Session.commit`.
 The autoflush action can safely emit SQL to the database as needed without
-implicitly producing permanent effects, the contents of attributes 
+implicitly producing permanent effects, the contents of attributes
 are expired only when a logical series of steps has completed.   If the
-:class:`.Session` were to be used in pure "autocommit" mode without 
+:class:`.Session` were to be used in pure "autocommit" mode without
 an ongoing transaction, these features should be disabled, that is,
 ``autoflush=False, expire_on_commit=False``.
 
 Modern usage of "autocommit" is for framework integrations that need to control
-specifically when the "begin" state occurs.  A session which is configured with 
-``autocommit=True`` may be placed into the "begin" state using the 
+specifically when the "begin" state occurs.  A session which is configured with
+``autocommit=True`` may be placed into the "begin" state using the
 :meth:`.Session.begin` method.
 After the cycle completes upon :meth:`.Session.commit` or :meth:`.Session.rollback`,
 connection and transaction resources are released and the :class:`.Session`
@@ -1259,15 +1276,15 @@ statement::
 Using Subtransactions with Autocommit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with 
+A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with
 the ``subtransactions=True`` flag.  This produces a a non-transactional, delimiting construct that
 allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
 It's purpose is to allow the construction of code that can function within a transaction
 both independently of any external code that starts a transaction,
-as well as within a block that has already demarcated a transaction. 
+as well as within a block that has already demarcated a transaction.
 
-``subtransactions=True`` is generally only useful in conjunction with 
-autocommit, and is equivalent to the pattern described at :ref:`connections_nested_transactions`, 
+``subtransactions=True`` is generally only useful in conjunction with
+autocommit, and is equivalent to the pattern described at :ref:`connections_nested_transactions`,
 where any number of functions can call :meth:`.Connection.begin` and :meth:`.Transaction.commit`
 as though they are the initiator of the transaction, but in fact may be participating
 in an already ongoing transaction::
@@ -1448,7 +1465,7 @@ entire database interaction is rolled back::
 
         def tearDown(self):
             # rollback - everything that happened with the
-            # Session above (including calls to commit()) 
+            # Session above (including calls to commit())
             # is rolled back.
             self.trans.rollback()
             self.session.close()
@@ -1573,7 +1590,7 @@ session, and is the most definitive approach to closing out a request.
 
 It's not strictly necessary to remove the session at the end of the request -
 other options include calling :meth:`.Session.close`, :meth:`.Session.rollback`,
-:meth:`.Session.commit` at the end so that the existing session returns 
+:meth:`.Session.commit` at the end so that the existing session returns
 its connections to the pool and removes any existing transactional context.
 Doing nothing is an option too, if individual controller methods take responsibility
 for ensuring that no transactions remain open after a request ends.
@@ -1629,7 +1646,7 @@ a custom :class:`.Session` which delivers the following rules:
 
 1. Flush operations are delivered to the engine named ``master``.
 
-2. Operations on objects that subclass ``MyOtherClass`` all 
+2. Operations on objects that subclass ``MyOtherClass`` all
    occur on the ``other`` engine.
 
 3. Read operations for all other classes occur on a random
@@ -1664,7 +1681,7 @@ argument to :func:`.sessionmaker`::
     Session = sessionmaker(class_=RoutingSession)
 
 This approach can be combined with multiple :class:`.MetaData` objects,
-using an approach such as that of using the declarative ``__abstract__`` 
+using an approach such as that of using the declarative ``__abstract__``
 keyword, described at :ref:`declarative_abstract`.
 
 Horizontal Partitioning
@@ -1702,7 +1719,7 @@ Attribute and State Management Utilities
 These functions are provided by the SQLAlchemy attribute
 instrumentation API to provide a detailed interface for dealing
 with instances, attribute values, and history.  Some of them
-are useful when constructing event listener functions, such as 
+are useful when constructing event listener functions, such as
 those described in :ref:`events_orm_toplevel`.
 
 .. currentmodule:: sqlalchemy.orm.attributes
