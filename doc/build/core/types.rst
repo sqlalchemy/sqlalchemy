@@ -218,7 +218,7 @@ Or some PostgreSQL types::
 
 Each dialect provides the full set of typenames supported by
 that backend within its `__all__` collection, so that a simple
-`import *` or similar will import all supported types as 
+`import *` or similar will import all supported types as
 implemented for that backend::
 
     from sqlalchemy.dialects.postgresql import *
@@ -229,7 +229,7 @@ implemented for that backend::
                Column('inetaddr', INET)
     )
 
-Where above, the INTEGER and VARCHAR types are ultimately from 
+Where above, the INTEGER and VARCHAR types are ultimately from
 sqlalchemy.types, and INET is specific to the Postgresql dialect.
 
 Some dialect level types have the same name as the SQL standard type,
@@ -256,10 +256,10 @@ Overriding Type Compilation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A frequent need is to force the "string" version of a type, that is
-the one rendered in a CREATE TABLE statement or other SQL function 
+the one rendered in a CREATE TABLE statement or other SQL function
 like CAST, to be changed.   For example, an application may want
 to force the rendering of ``BINARY`` for all platforms
-except for one, in which is wants ``BLOB`` to be rendered.  Usage 
+except for one, in which is wants ``BLOB`` to be rendered.  Usage
 of an existing generic type, in this case :class:`.LargeBinary`, is
 preferred for most use cases.  But to control
 types more accurately, a compilation directive that is per-dialect
@@ -273,10 +273,10 @@ can be associated with any type::
         return "BLOB"
 
 The above code allows the usage of :class:`.types.BINARY`, which
-will produce the string ``BINARY`` against all backends except SQLite, 
+will produce the string ``BINARY`` against all backends except SQLite,
 in which case it will produce ``BLOB``.
 
-See the section :ref:`type_compilation_extension`, a subsection of 
+See the section :ref:`type_compilation_extension`, a subsection of
 :ref:`sqlalchemy.ext.compiler_toplevel`, for additional examples.
 
 Augmenting Existing Types
@@ -286,6 +286,14 @@ The :class:`.TypeDecorator` allows the creation of custom types which
 add bind-parameter and result-processing behavior to an existing
 type object.  It is used when additional in-Python marshaling of data
 to and from the database is required.
+
+.. note::
+
+  The bind- and result-processing of :class:`.TypeDecorator`
+  is *in addition* to the processing already performed by the hosted
+  type, which is customized by SQLAlchemy on a per-DBAPI basis to perform
+  processing specific to that DBAPI.  To change the DBAPI-level processing
+  for an existing type, see the section :ref:`replacing_processors`.
 
 .. autoclass:: TypeDecorator
    :members:
@@ -306,10 +314,10 @@ A common source of confusion regarding the :class:`.Unicode` type
 is that it is intended to deal *only* with Python ``unicode`` objects
 on the Python side, meaning values passed to it as bind parameters
 must be of the form ``u'some string'`` if using Python 2 and not 3.
-The encoding/decoding functions it performs are only to suit what the 
+The encoding/decoding functions it performs are only to suit what the
 DBAPI in use requires, and are primarily a private implementation detail.
 
-The use case of a type that can safely receive Python bytestrings, 
+The use case of a type that can safely receive Python bytestrings,
 that is strings that contain non-ASCII characters and are not ``u''``
 objects in Python 2, can be achieved using a :class:`.TypeDecorator`
 which coerces as needed::
@@ -355,9 +363,9 @@ many decimal places.   Here's a recipe that rounds them down::
 Backend-agnostic GUID Type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Receives and returns Python uuid() objects.  Uses the PG UUID type 
+Receives and returns Python uuid() objects.  Uses the PG UUID type
 when using Postgresql, CHAR(32) on other backends, storing them
-in stringified hex format.   Can be modified to store 
+in stringified hex format.   Can be modified to store
 binary in CHAR(16) if desired::
 
     from sqlalchemy.types import TypeDecorator, CHAR
@@ -437,11 +445,56 @@ values are ever mutated once created.  For those which do have this requirment,
 support for mutability is best applied using the ``sqlalchemy.ext.mutable``
 extension - see the example in :ref:`mutable_toplevel`.
 
+.. _replacing_processors:
+
+Replacing the Bind/Result Processing of Existing Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Most augmentation of type behavior at the bind/result level
+is achieved using :class:`.TypeDecorator`.   For the rare scenario
+where the specific processing applied by SQLAlchemy at the DBAPI
+level needs to be replaced, the SQLAlchemy type can be subclassed
+directly, and the ``bind_processor()`` or ``result_processor()``
+methods can be overridden.   Doing so requires that the
+``adapt()`` method also be overridden.  This method is the mechanism
+by which SQLAlchemy produces DBAPI-specific type behavior during
+statement execution.  Overriding it allows a copy of the custom
+type to be used in lieu of a DBAPI-specific type.  Below we subclass
+the :class:`.types.TIME` type to have custom result processing behavior.
+The ``process()`` function will receive ``value`` from the DBAPI
+cursor directly::
+
+  class MySpecialTime(TIME):
+      def __init__(self, special_argument):
+          super(MySpecialTime, self).__init__()
+          self.special_argument = special_argument
+
+      def result_processor(self, dialect, coltype):
+          import datetime
+          time = datetime.time
+          def process(value):
+              if value is not None:
+                  microseconds = value.microseconds
+                  seconds = value.seconds
+                  minutes = seconds / 60
+                  return time(
+                            minutes / 60,
+                            minutes % 60,
+                            seconds - minutes * 60,
+                            microseconds)
+              else:
+                  return None
+          return process
+
+      def adapt(self, impltype):
+          return MySpecialTime(self.special_argument)
+
+
 Creating New Types
 ~~~~~~~~~~~~~~~~~~
 
 The :class:`.UserDefinedType` class is provided as a simple base class
-for defining entirely new database types.   Use this to represent native 
+for defining entirely new database types.   Use this to represent native
 database types not known by SQLAlchemy.   If only Python translation behavior
 is needed, use :class:`.TypeDecorator` instead.
 
