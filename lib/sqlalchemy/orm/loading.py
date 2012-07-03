@@ -7,18 +7,17 @@
 """private module containing functions used to convert database
 rows into object instances and associated state.
 
-the functions here are called primarily by Query, Mapper, 
+the functions here are called primarily by Query, Mapper,
 as well as some of the attribute loading strategies.
 
 """
 from __future__ import absolute_import
 
 from .. import util
-from . import attributes, exc as orm_exc
+from . import attributes, exc as orm_exc, state as statelib
 from .interfaces import EXT_CONTINUE
 from ..sql import util as sql_util
 from .util import _none_set, state_str
-statelib = util.importlater("sqlalchemy.orm", "state")
 
 _new_runid = util.counter()
 
@@ -46,7 +45,7 @@ def instances(query, cursor, context):
 
     (process, labels) = \
                 zip(*[
-                    query_entity.row_processor(query, 
+                    query_entity.row_processor(query,
                             context, custom_rows)
                     for query_entity in query._entities
                 ])
@@ -112,22 +111,22 @@ def merge_result(query, iterator, load=True):
         if single_entity:
             if isinstance(query._entities[0], querylib._MapperEntity):
                 result = [session._merge(
-                        attributes.instance_state(instance), 
-                        attributes.instance_dict(instance), 
+                        attributes.instance_state(instance),
+                        attributes.instance_dict(instance),
                         load=load, _recursive={})
                         for instance in iterator]
             else:
                 result = list(iterator)
         else:
-            mapped_entities = [i for i, e in enumerate(query._entities) 
+            mapped_entities = [i for i, e in enumerate(query._entities)
                                     if isinstance(e, querylib._MapperEntity)]
             result = []
             for row in iterator:
                 newrow = list(row)
                 for i in mapped_entities:
                     newrow[i] = session._merge(
-                            attributes.instance_state(newrow[i]), 
-                            attributes.instance_dict(newrow[i]), 
+                            attributes.instance_state(newrow[i]),
+                            attributes.instance_dict(newrow[i]),
                             load=load, _recursive={})
                 result.append(util.NamedTuple(newrow, row._labels))
 
@@ -136,7 +135,7 @@ def merge_result(query, iterator, load=True):
         session.autoflush = autoflush
 
 def get_from_identity(session, key, passive):
-    """Look up the given key in the given session's identity map, 
+    """Look up the given key in the given session's identity map,
     check the object for expired state if found.
 
     """
@@ -163,7 +162,7 @@ def get_from_identity(session, key, passive):
     else:
         return None
 
-def load_on_ident(query, key, 
+def load_on_ident(query, key,
                     refresh_state=None, lockmode=None,
                         only_load_props=None):
     """Load the given identity key from the database."""
@@ -220,17 +219,17 @@ def load_on_ident(query, key,
     except orm_exc.NoResultFound:
         return None
 
-def instance_processor(mapper, context, path, adapter, 
-                            polymorphic_from=None, 
-                            only_load_props=None, 
+def instance_processor(mapper, context, path, adapter,
+                            polymorphic_from=None,
+                            only_load_props=None,
                             refresh_state=None,
                             polymorphic_discriminator=None):
 
-    """Produce a mapper level row processor callable 
+    """Produce a mapper level row processor callable
        which processes rows into mapped instances."""
 
     # note that this method, most of which exists in a closure
-    # called _instance(), resists being broken out, as 
+    # called _instance(), resists being broken out, as
     # attempts to do so tend to add significant function
     # call overhead.  _instance() is the most
     # performance-critical section in the whole ORM.
@@ -343,7 +342,7 @@ def instance_processor(mapper, context, path, adapter,
                 identitykey = mapper._identity_key_from_state(refresh_state)
         else:
             identitykey = (
-                            identity_class, 
+                            identity_class,
                             tuple([row[column] for column in pk_cols])
                         )
 
@@ -360,22 +359,22 @@ def instance_processor(mapper, context, path, adapter,
                     version_id_col is not None and \
                     context.version_check and \
                     mapper._get_state_attr_by_column(
-                            state, 
-                            dict_, 
+                            state,
+                            dict_,
                             mapper.version_id_col) != \
                                     row[version_id_col]:
 
                 raise orm_exc.StaleDataError(
                         "Instance '%s' has version id '%s' which "
-                        "does not match database-loaded version id '%s'." 
-                        % (state_str(state), 
+                        "does not match database-loaded version id '%s'."
+                        % (state_str(state),
                             mapper._get_state_attr_by_column(
                                         state, dict_,
                                         mapper.version_id_col),
                                 row[version_id_col]))
         elif refresh_state:
             # out of band refresh_state detected (i.e. its not in the
-            # session.identity_map) honor it anyway.  this can happen 
+            # session.identity_map) honor it anyway.  this can happen
             # if a _get() occurs within save_obj(), such as
             # when eager_defaults is True.
             state = refresh_state
@@ -396,7 +395,7 @@ def instance_processor(mapper, context, path, adapter,
 
             if create_instance:
                 for fn in create_instance:
-                    instance = fn(mapper, context, 
+                    instance = fn(mapper, context,
                                         row, mapper.class_)
                     if instance is not EXT_CONTINUE:
                         manager = attributes.manager_of_class(
@@ -427,8 +426,8 @@ def instance_processor(mapper, context, path, adapter,
 
             if populate_instance:
                 for fn in populate_instance:
-                    ret = fn(mapper, context, row, state, 
-                        only_load_props=only_load_props, 
+                    ret = fn(mapper, context, row, state,
+                        only_load_props=only_load_props,
                         instancekey=identitykey, isnew=isnew)
                     if ret is not EXT_CONTINUE:
                         break
@@ -456,8 +455,8 @@ def instance_processor(mapper, context, path, adapter,
 
             if populate_instance:
                 for fn in populate_instance:
-                    ret = fn(mapper, context, row, state, 
-                        only_load_props=attrs, 
+                    ret = fn(mapper, context, row, state,
+                        only_load_props=attrs,
                         instancekey=identitykey, isnew=isnew)
                     if ret is not EXT_CONTINUE:
                         break
@@ -477,7 +476,7 @@ def instance_processor(mapper, context, path, adapter,
         if result is not None:
             if append_result:
                 for fn in append_result:
-                    if fn(mapper, context, row, state, 
+                    if fn(mapper, context, row, state,
                                 result, instancekey=identitykey,
                                 isnew=isnew) is not EXT_CONTINUE:
                         break
@@ -491,11 +490,11 @@ def instance_processor(mapper, context, path, adapter,
 
 def _populators(mapper, context, path, row, adapter,
         new_populators, existing_populators, eager_populators):
-    """Produce a collection of attribute level row processor 
+    """Produce a collection of attribute level row processor
     callables."""
 
     delayed_populators = []
-    pops = (new_populators, existing_populators, delayed_populators, 
+    pops = (new_populators, existing_populators, delayed_populators,
                         eager_populators)
     for prop in mapper._props.itervalues():
         for i, pop in enumerate(prop.create_row_processor(
@@ -521,17 +520,17 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
         if sub_mapper is mapper:
             return None
 
-        # replace the tip of the path info with the subclass mapper 
-        # being used, that way accurate "load_path" info is available 
+        # replace the tip of the path info with the subclass mapper
+        # being used, that way accurate "load_path" info is available
         # for options invoked during deferred loads, e.g.
         # query(Person).options(defer(Engineer.machines, Machine.name)).
         # for AliasedClass paths, disregard this step (new in 0.8).
         return instance_processor(
                             sub_mapper,
-                            context, 
-                            path.parent[sub_mapper] 
-                                if not path.is_aliased_class 
-                                else path, 
+                            context,
+                            path.parent[sub_mapper]
+                                if not path.is_aliased_class
+                                else path,
                             adapter,
                             polymorphic_from=mapper)
     return configure_subclass_mapper

@@ -15,12 +15,13 @@ import weakref
 from .. import util
 from . import exc as orm_exc, attributes,util as orm_util
 from .attributes import (
-    PASSIVE_NO_RESULT, 
+    PASSIVE_NO_RESULT,
     SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
     PASSIVE_NO_INITIALIZE
     )
-from . import mapperlib
-from . import session as sessionlib
+sessionlib = util.importlater("sqlalchemy.orm", "session")
+instrumentation = util.importlater("sqlalchemy.orm", "instrumentation")
+mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
 
 class InstanceState(object):
@@ -170,10 +171,10 @@ class InstanceState(object):
         d = {'instance':self.obj()}
         d.update(
             (k, self.__dict__[k]) for k in (
-                'committed_state', '_pending_mutations', 'modified', 'expired', 
+                'committed_state', '_pending_mutations', 'modified', 'expired',
                 'callables', 'key', 'parents', 'load_options',
                 'class_',
-            ) if k in self.__dict__ 
+            ) if k in self.__dict__
         )
         if self.load_path:
             d['load_path'] = self.load_path.serialize()
@@ -183,7 +184,6 @@ class InstanceState(object):
         return d
 
     def __setstate__(self, state):
-        from sqlalchemy.orm import instrumentation
         inst = state['instance']
         if inst is not None:
             self.obj = weakref.ref(inst, self._cleanup)
@@ -216,28 +216,28 @@ class InstanceState(object):
 
         self.__dict__.update([
             (k, state[k]) for k in (
-                'key', 'load_options', 
-            ) if k in state 
+                'key', 'load_options',
+            ) if k in state
         ])
 
         if 'load_path' in state:
             self.load_path = orm_util.PathRegistry.\
                                 deserialize(state['load_path'])
 
-        # setup _sa_instance_state ahead of time so that 
+        # setup _sa_instance_state ahead of time so that
         # unpickle events can access the object normally.
         # see [ticket:2362]
         manager.setup_instance(inst, self)
         manager.dispatch.unpickle(self, state)
 
     def initialize(self, key):
-        """Set this attribute to an empty value or collection, 
+        """Set this attribute to an empty value or collection,
            based on the AttributeImpl in use."""
 
         self.manager.get_impl(key).initialize(self, self.dict)
 
     def reset(self, dict_, key):
-        """Remove the given attribute and any 
+        """Remove the given attribute and any
            callables associated with it."""
 
         dict_.pop(key, None)
@@ -317,7 +317,7 @@ class InstanceState(object):
 
         self.manager.deferred_scalar_loader(self, toload)
 
-        # if the loader failed, or this 
+        # if the loader failed, or this
         # instance state didn't have an identity,
         # the attributes still might be in the callables
         # dict.  ensure they are removed.
@@ -354,7 +354,7 @@ class InstanceState(object):
     @property
     def expired_attributes(self):
         """Return the set of keys which are 'expired' to be loaded by
-           the manager's deferred scalar loader, assuming no pending 
+           the manager's deferred scalar loader, assuming no pending
            changes.
 
            see also the ``unmodified`` collection which is intersected
@@ -381,7 +381,7 @@ class InstanceState(object):
 
             self.committed_state[attr.key] = previous
 
-        # the "or not self.modified" is defensive at 
+        # the "or not self.modified" is defensive at
         # this point.  The assertion below is expected
         # to be True:
         # assert self._strong_obj is None or self.modified
@@ -396,9 +396,9 @@ class InstanceState(object):
                 raise orm_exc.ObjectDereferencedError(
                         "Can't emit change event for attribute '%s' - "
                         "parent object of type %s has been garbage "
-                        "collected." 
+                        "collected."
                         % (
-                            self.manager[attr.key], 
+                            self.manager[attr.key],
                             orm_util.state_class_str(self)
                         ))
             self.modified = True
@@ -435,7 +435,7 @@ class InstanceState(object):
          - the "modified" flag is set to False
          - any "expired" markers/callables for attributes loaded are removed.
 
-        Attributes marked as "expired" can potentially remain 
+        Attributes marked as "expired" can potentially remain
         "expired" after this step if a value was not populated in state.dict.
 
         """
@@ -478,7 +478,7 @@ class InspectAttr(object):
 
     @property
     def history(self):
-        return self.state.get_history(self.key, 
+        return self.state.get_history(self.key,
                     PASSIVE_NO_INITIALIZE)
 
 
