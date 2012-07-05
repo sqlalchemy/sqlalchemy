@@ -58,6 +58,14 @@ underneath "0.7.xx".
     approach can be upgraded to this new
     approach. [ticket:1401]
 
+  - [bug] ORM will perform extra effort to determine
+    that an FK dependency between two tables is
+    not significant during flush if the tables
+    are related via joined inheritance and the FK
+    dependency is not part of the inherit_condition,
+    saves the user a use_alter directive.
+    [ticket:2527]
+
   - [feature] New standalone function with_polymorphic()
     provides the functionality of query.with_polymorphic()
     in a standalone form.   It can be applied to any
