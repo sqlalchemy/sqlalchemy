@@ -14,6 +14,21 @@ CHANGES
     positional binds + CTE support.
     [ticket:2521]
 
+  - [bug] Fixed more un-intuitivenesses in CTEs
+    which prevented referring to a CTE in a union
+    of itself without it being aliased.
+    CTEs now render uniquely
+    on name, rendering the outermost CTE of a given
+    name only - all other references are rendered
+    just as the name.   This even includes other
+    CTE/SELECTs that refer to different versions
+    of the same CTE object, such as a SELECT
+    or a UNION ALL of that SELECT. We are
+    somewhat loosening the usual link between object
+    identity and lexical identity in this case.
+    A true name conflict between two unrelated
+    CTEs now raises an error.
+
   - [bug] quoting is applied to the column names
     inside the WITH RECURSIVE clause of a
     common table expression according to the

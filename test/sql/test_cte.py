@@ -1,8 +1,9 @@
 from test.lib import fixtures
-from test.lib.testing import AssertsCompiledSQL
+from test.lib.testing import AssertsCompiledSQL, assert_raises_message
 from sqlalchemy.sql import table, column, select, func, literal
 from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
+from sqlalchemy.exc import CompileError
 
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
@@ -118,6 +119,144 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 "GROUP BY anon_1.sub_part",
                 dialect=mssql.dialect()
             )
+
+    def test_recursive_union_no_alias_one(self):
+        s1 = select([literal(0).label("x")])
+        cte = s1.cte(name="cte", recursive=True)
+        cte = cte.union_all(
+            select([cte.c.x + 1]).where(cte.c.x < 10)
+        )
+        s2 = select([cte])
+        self.assert_compile(s2,
+        "WITH RECURSIVE cte(x) AS "
+        "(SELECT :param_1 AS x UNION ALL "
+        "SELECT cte.x + :x_1 AS anon_1 "
+        "FROM cte WHERE cte.x < :x_2) "
+        "SELECT cte.x FROM cte"
+        )
+
+
+    def test_recursive_union_no_alias_two(self):
+        """
+
+        pg's example:
+
+            WITH RECURSIVE t(n) AS (
+                VALUES (1)
+              UNION ALL
+                SELECT n+1 FROM t WHERE n < 100
+            )
+            SELECT sum(n) FROM t;
+
+        """
+
+        # I know, this is the PG VALUES keyword,
+        # we're cheating here.  also yes we need the SELECT,
+        # sorry PG.
+        t = select([func.values(1).label("n")]).cte("t", recursive=True)
+        t = t.union_all(select([t.c.n + 1]).where(t.c.n < 100))
+        s = select([func.sum(t.c.n)])
+        self.assert_compile(s,
+            "WITH RECURSIVE t(n) AS "
+            "(SELECT values(:values_1) AS n "
+            "UNION ALL SELECT t.n + :n_1 AS anon_1 "
+            "FROM t "
+            "WHERE t.n < :n_2) "
+            "SELECT sum(t.n) AS sum_1 FROM t"
+            )
+
+    def test_recursive_union_no_alias_three(self):
+        # like test one, but let's refer to the CTE
+        # in a sibling CTE.
+
+        s1 = select([literal(0).label("x")])
+        cte = s1.cte(name="cte", recursive=True)
+
+        # can't do it here...
+        #bar = select([cte]).cte('bar')
+        cte = cte.union_all(
+            select([cte.c.x + 1]).where(cte.c.x < 10)
+        )
+        bar = select([cte]).cte('bar')
+
+        s2 = select([cte, bar])
+        self.assert_compile(s2,
+        "WITH RECURSIVE cte(x) AS "
+        "(SELECT :param_1 AS x UNION ALL "
+        "SELECT cte.x + :x_1 AS anon_1 "
+        "FROM cte WHERE cte.x < :x_2), "
+        "bar AS (SELECT cte.x AS x FROM cte) "
+        "SELECT cte.x, bar.x FROM cte, bar"
+        )
+
+
+    def test_recursive_union_no_alias_four(self):
+        # like test one and three, but let's refer
+        # previous version of "cte".  here we test
+        # how the compiler resolves multiple instances
+        # of "cte".
+
+        s1 = select([literal(0).label("x")])
+        cte = s1.cte(name="cte", recursive=True)
+
+        bar = select([cte]).cte('bar')
+        cte = cte.union_all(
+            select([cte.c.x + 1]).where(cte.c.x < 10)
+        )
+
+        # outer cte rendered first, then bar, which
+        # includes "inner" cte
+        s2 = select([cte, bar])
+        self.assert_compile(s2,
+        "WITH RECURSIVE cte(x) AS "
+        "(SELECT :param_1 AS x UNION ALL "
+        "SELECT cte.x + :x_1 AS anon_1 "
+        "FROM cte WHERE cte.x < :x_2), "
+        "bar AS (SELECT cte.x AS x FROM cte) "
+        "SELECT cte.x, bar.x FROM cte, bar"
+        )
+
+        # bar rendered, only includes "inner" cte,
+        # "outer" cte isn't present
+        s2 = select([bar])
+        self.assert_compile(s2,
+        "WITH RECURSIVE cte(x) AS "
+        "(SELECT :param_1 AS x), "
+        "bar AS (SELECT cte.x AS x FROM cte) "
+        "SELECT bar.x FROM bar"
+        )
+
+        # bar rendered, but then the "outer"
+        # cte is rendered.
+        s2 = select([bar, cte])
+        self.assert_compile(s2,
+        "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
+        "cte(x) AS "
+        "(SELECT :param_1 AS x UNION ALL "
+        "SELECT cte.x + :x_1 AS anon_1 "
+        "FROM cte WHERE cte.x < :x_2) "
+
+        "SELECT bar.x, cte.x FROM bar, cte"
+        )
+
+    def test_conflicting_names(self):
+        """test a flat out name conflict."""
+
+        s1 = select([1])
+        c1= s1.cte(name='cte1', recursive=True)
+        s2 = select([1])
+        c2 = s2.cte(name='cte1', recursive=True)
+
+        s = select([c1, c2])
+        assert_raises_message(
+                CompileError,
+                "Multiple, unrelated CTEs found "
+                "with the same name: 'cte1'",
+                s.compile
+        )
+
+
+
 
     def test_union(self):
         orders = table('orders', 

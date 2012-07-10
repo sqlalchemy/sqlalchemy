@@ -3754,12 +3754,15 @@ class CTE(Alias):
 
     """
     __visit_name__ = 'cte'
+
     def __init__(self, selectable, 
                         name=None, 
                         recursive=False, 
-                        cte_alias=False):
+                        cte_alias=False,
+                        _restates=frozenset()):
         self.recursive = recursive
         self.cte_alias = cte_alias
+        self._restates = _restates
         super(CTE, self).__init__(selectable, name=name)
 
     def alias(self, name=None):
@@ -3774,14 +3777,16 @@ class CTE(Alias):
         return CTE(
             self.original.union(other),
             name=self.name,
-            recursive=self.recursive
+            recursive=self.recursive,
+            _restates=self._restates.union([self])
         )
 
     def union_all(self, other):
         return CTE(
             self.original.union_all(other),
             name=self.name,
-            recursive=self.recursive
+            recursive=self.recursive,
+            _restates=self._restates.union([self])
         )
 
 
