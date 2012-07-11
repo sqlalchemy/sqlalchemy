@@ -620,7 +620,10 @@ class MiscTest(fixtures.ORMTest):
         instrumentation.unregister_class(A)
         assert instrumentation.manager_of_class(A) is None
         assert not hasattr(A, 'x')
-        assert A.__init__ is object.__init__
+
+        # I prefer 'is' here but on pypy
+        # it seems only == works
+        assert A.__init__ == object.__init__
 
     def test_compileonattr_rel_backref_a(self):
         m = MetaData()
