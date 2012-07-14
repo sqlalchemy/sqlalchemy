@@ -151,6 +151,14 @@ underneath "0.7.xx".
     need autoflush w pre-attached object.
     [ticket:2464]
 
+  - [feature] The registry of classes
+    in declarative_base() is now a
+    WeakValueDictionary.  So subclasses of
+    "Base" that are dereferenced will be
+    garbage collected, *if they are not
+    referred to by any other mappers/superclass
+    mappers*.  [ticket:2526]
+
   - [removed] Deprecated identifiers removed:
 
     * allow_null_pks mapper() argument

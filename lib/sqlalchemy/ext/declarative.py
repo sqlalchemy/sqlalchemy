@@ -1036,7 +1036,7 @@ from sqlalchemy import util, exc
 from sqlalchemy.sql import util as sql_util, expression
 from sqlalchemy import event
 from sqlalchemy.orm.util import polymorphic_union, _mapper_or_none
-
+import weakref
 
 __all__ = 'declarative_base', 'synonym_for', \
             'comparable_using', 'instrument_declarative'
@@ -1718,7 +1718,7 @@ def declarative_base(bind=None, metadata=None, mapper=None, cls=object,
         lcl_metadata.bind = bind
 
     if class_registry is None:
-        class_registry = {}
+        class_registry = weakref.WeakValueDictionary()
 
     bases = not isinstance(cls, tuple) and (cls,) or cls
     class_dict = dict(_decl_class_registry=class_registry,
