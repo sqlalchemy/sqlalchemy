@@ -22,7 +22,7 @@ from collections import deque
 from .. import sql, util, log, exc as sa_exc, event, schema
 from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, \
-                        exc as orm_exc, unitofwork, events, loading
+                        exc as orm_exc, events, loading
 from .interfaces import MapperProperty
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
@@ -112,7 +112,7 @@ class Mapper(object):
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
         self.version_id_generator = version_id_generator or \
-                                        (lambda x:(x or 0) + 1)
+                                        (lambda x: (x or 0) + 1)
         self.concrete = concrete
         self.single = False
         self.inherits = inherits
@@ -124,7 +124,8 @@ class Mapper(object):
         self.batch = batch
         self.eager_defaults = eager_defaults
         self.column_prefix = column_prefix
-        self.polymorphic_on = expression._clause_element_as_expr(polymorphic_on)
+        self.polymorphic_on = expression._clause_element_as_expr(
+                                                polymorphic_on)
         self._dependency_processors = []
         self.validators = util.immutabledict()
         self.passive_updates = passive_updates
@@ -1834,34 +1835,6 @@ class Mapper(object):
         for t in sorted_:
             ret[t] = table_to_mapper[t]
         return ret
-
-    def _per_mapper_flush_actions(self, uow):
-        saves = unitofwork.SaveUpdateAll(uow, self.base_mapper)
-        deletes = unitofwork.DeleteAll(uow, self.base_mapper)
-        uow.dependencies.add((saves, deletes))
-
-        for dep in self._dependency_processors:
-            dep.per_property_preprocessors(uow)
-
-        for prop in self._props.values():
-            prop.per_property_preprocessors(uow)
-
-    def _per_state_flush_actions(self, uow, states, isdelete):
-
-        base_mapper = self.base_mapper
-        save_all = unitofwork.SaveUpdateAll(uow, base_mapper)
-        delete_all = unitofwork.DeleteAll(uow, base_mapper)
-        for state in states:
-            # keep saves before deletes -
-            # this ensures 'row switch' operations work
-            if isdelete:
-                action = unitofwork.DeleteState(uow, state, base_mapper)
-                uow.dependencies.add((save_all, action))
-            else:
-                action = unitofwork.SaveUpdateState(uow, state, base_mapper)
-                uow.dependencies.add((action, delete_all))
-
-            yield action
 
     def _memo(self, key, callable_):
         if key in self._memoized_values:
