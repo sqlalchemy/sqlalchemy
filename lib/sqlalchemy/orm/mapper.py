@@ -16,22 +16,19 @@ available in :class:`~sqlalchemy.orm.`.
 from __future__ import absolute_import
 import types
 import weakref
-import operator
-from itertools import chain, groupby
+from itertools import chain
 from collections import deque
 
 from .. import sql, util, log, exc as sa_exc, event, schema
 from ..sql import expression, visitors, operators, util as sql_util
-from . import instrumentation, attributes, sync, \
+from . import instrumentation, attributes, \
                         exc as orm_exc, unitofwork, events, loading
-from .interfaces import MapperProperty, EXT_CONTINUE, \
-                                PropComparator
+from .interfaces import MapperProperty
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
-     _state_mapper, class_mapper, instance_str, state_str,\
-     PathRegistry, _none_set
+     _state_mapper, class_mapper, \
+     PathRegistry
 import sys
-sessionlib = util.importlater("sqlalchemy.orm", "session")
 properties = util.importlater("sqlalchemy.orm", "properties")
 descriptor_props = util.importlater("sqlalchemy.orm", "descriptor_props")
 
@@ -68,17 +65,17 @@ class Mapper(object):
     def __init__(self,
                  class_,
                  local_table,
-                 properties = None,
-                 primary_key = None,
-                 non_primary = False,
-                 inherits = None,
-                 inherit_condition = None,
-                 inherit_foreign_keys = None,
-                 extension = None,
-                 order_by = False,
-                 always_refresh = False,
-                 version_id_col = None,
-                 version_id_generator = None,
+                 properties=None,
+                 primary_key=None,
+                 non_primary=False,
+                 inherits=None,
+                 inherit_condition=None,
+                 inherit_foreign_keys=None,
+                 extension=None,
+                 order_by=False,
+                 always_refresh=False,
+                 version_id_col=None,
+                 version_id_generator=None,
                  polymorphic_on=None,
                  _polymorphic_map=None,
                  polymorphic_identity=None,
@@ -182,8 +179,8 @@ class Mapper(object):
         self.configured = False
 
         # prevent this mapper from being constructed
-        # while a configure_mappers() is occurring (and defer a configure_mappers()
-        # until construction succeeds)
+        # while a configure_mappers() is occurring (and defer a
+        # configure_mappers() until construction succeeds)
         _COMPILE_MUTEX.acquire()
         try:
             self._configure_inheritance()
@@ -659,7 +656,8 @@ class Mapper(object):
         self.class_manager = manager
 
         manager.mapper = self
-        manager.deferred_scalar_loader = self._load_scalar_attributes
+        manager.deferred_scalar_loader = util.partial(
+                            loading.load_scalar_attributes, self)
 
         # The remaining members can be added by any mapper,
         # e_name None or not.
@@ -676,10 +674,11 @@ class Mapper(object):
                     self._reconstructor = method
                     event.listen(manager, 'load', _event_on_load, raw=True)
                 elif hasattr(method, '__sa_validators__'):
-                    include_removes = getattr(method, "__sa_include_removes__", False)
+                    include_removes = getattr(method,
+                                            "__sa_include_removes__", False)
                     for name in method.__sa_validators__:
                         self.validators = self.validators.union(
-                            {name : (method, include_removes)}
+                            {name: (method, include_removes)}
                         )
 
         manager.info[_INSTRUMENTOR] = self
@@ -1678,65 +1677,6 @@ class Mapper(object):
         return state.manager[prop.key].impl.\
                     get_committed_value(state, dict_, passive=passive)
 
-    def _load_scalar_attributes(self, state, attribute_names):
-        """initiate a column-based attribute refresh operation."""
-
-        #assert mapper is _state_mapper(state)
-        session = sessionlib._state_session(state)
-        if not session:
-            raise orm_exc.DetachedInstanceError(
-                        "Instance %s is not bound to a Session; "
-                        "attribute refresh operation cannot proceed" %
-                        (state_str(state)))
-
-        has_key = bool(state.key)
-
-        result = False
-
-        if self.inherits and not self.concrete:
-            statement = self._optimized_get_statement(state, attribute_names)
-            if statement is not None:
-                result = loading.load_on_ident(
-                            session.query(self).from_statement(statement),
-                                None,
-                                only_load_props=attribute_names,
-                                refresh_state=state
-                            )
-
-        if result is False:
-            if has_key:
-                identity_key = state.key
-            else:
-                # this codepath is rare - only valid when inside a flush, and the
-                # object is becoming persistent but hasn't yet been assigned an identity_key.
-                # check here to ensure we have the attrs we need.
-                pk_attrs = [self._columntoproperty[col].key
-                            for col in self.primary_key]
-                if state.expired_attributes.intersection(pk_attrs):
-                    raise sa_exc.InvalidRequestError("Instance %s cannot be refreshed - it's not "
-                                                    " persistent and does not "
-                                                    "contain a full primary key." % state_str(state))
-                identity_key = self._identity_key_from_state(state)
-
-            if (_none_set.issubset(identity_key) and \
-                    not self.allow_partial_pks) or \
-                    _none_set.issuperset(identity_key):
-                util.warn("Instance %s to be refreshed doesn't "
-                            "contain a full primary key - can't be refreshed "
-                            "(and shouldn't be expired, either)."
-                            % state_str(state))
-                return
-
-            result = loading.load_on_ident(
-                        session.query(self),
-                                    identity_key,
-                                    refresh_state=state,
-                                    only_load_props=attribute_names)
-
-        # if instance is pending, a refresh operation
-        # may not complete (even if PK attributes are assigned)
-        if has_key and result is None:
-            raise orm_exc.ObjectDeletedError(state)
 
     def _optimized_get_statement(self, state, attribute_names):
         """assemble a WHERE clause which retrieves a given state by primary
@@ -2052,6 +1992,7 @@ def validates(*names, **kw):
 
     """
     include_removes = kw.pop('include_removes', False)
+
     def wrap(fn):
         fn.__sa_validators__ = names
         fn.__sa_include_removes__ = include_removes

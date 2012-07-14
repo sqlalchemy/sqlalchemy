@@ -2,7 +2,7 @@
 
 The :mod:`sqlalchemy.ext.instrumentation` package provides for alternate
 systems of class instrumentation within the ORM.  Class instrumentation
-refers to how the ORM places attributes on the class which maintain 
+refers to how the ORM places attributes on the class which maintain
 data and track changes to that data, as well as event hooks installed
 on the class.
 
@@ -11,24 +11,24 @@ on the class.
     with other object management packages, which already perform
     their own instrumentation.  It is not intended for general use.
 
-For examples of how the instrumentation extension is used, 
+For examples of how the instrumentation extension is used,
 see the example :ref:`examples_instrumentation`.
 
 .. versionchanged:: 0.8
-   The :mod:`sqlalchemy.orm.instrumentation` was split out so 
+   The :mod:`sqlalchemy.orm.instrumentation` was split out so
    that all functionality having to do with non-standard
    instrumentation was moved out to :mod:`sqlalchemy.ext.instrumentation`.
    When imported, the module installs itself within
    :mod:`sqlalchemy.orm.instrumentation` so that it
-   takes effect, including recognition of 
-   ``__sa_instrumentation_manager__`` on mapped classes, as 
-   well :attr:`.instrumentation_finders` 
+   takes effect, including recognition of
+   ``__sa_instrumentation_manager__`` on mapped classes, as
+   well :attr:`.instrumentation_finders`
    being used to determine class instrumentation resolution.
-   
+
 """
 from ..orm import instrumentation as orm_instrumentation
 from ..orm.instrumentation import (
-    ClassManager, InstrumentationFactory, _default_state_getter, 
+    ClassManager, InstrumentationFactory, _default_state_getter,
     _default_dict_getter, _default_manager_getter
 )
 from ..orm import attributes, collections
@@ -66,9 +66,10 @@ def find_native_user_instrumentation_hook(cls):
     return getattr(cls, INSTRUMENTATION_MANAGER, None)
 
 instrumentation_finders = [find_native_user_instrumentation_hook]
-"""An extensible sequence of callables which return instrumentation implementations
+"""An extensible sequence of callables which return instrumentation
+implementations
 
-When a class is registered, each callable will be passed a class object.  
+When a class is registered, each callable will be passed a class object.
 If None is returned, the
 next finder in the sequence is consulted.  Otherwise the return must be an
 instrumentation factory that follows the same guidelines as
@@ -82,9 +83,9 @@ ClassManager instrumentation is used.
 
 class ExtendedInstrumentationRegistry(InstrumentationFactory):
     """Extends :class:`.InstrumentationFactory` with additional
-    bookkeeping, to accommodate multiple types of 
+    bookkeeping, to accommodate multiple types of
     class managers.
-    
+
     """
     _manager_finders = weakref.WeakKeyDictionary()
     _state_finders = weakref.WeakKeyDictionary()
@@ -116,7 +117,7 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
 
         if factory != ClassManager and not self._extended:
             # somebody invoked a custom ClassManager.
-            # reinstall global "getter" functions with the more 
+            # reinstall global "getter" functions with the more
             # expensive ones.
             self._extended = True
             _install_instrumented_lookups()
@@ -196,9 +197,9 @@ class InstrumentationManager(object):
 
     .. versionchanged:: 0.8
        :class:`.InstrumentationManager` was moved from
-       :mod:`sqlalchemy.orm.instrumentation` to 
-       :mod:`sqlalchemy.ext.instrumentation`.   
-       
+       :mod:`sqlalchemy.orm.instrumentation` to
+       :mod:`sqlalchemy.ext.instrumentation`.
+
     """
 
     # r4361 added a mandatory (cls) constructor to this interface.
@@ -307,7 +308,7 @@ class _ClassInstrumentationAdapter(ClassManager):
         if delegate:
             return delegate(key, state, factory)
         else:
-            return ClassManager.initialize_collection(self, key, 
+            return ClassManager.initialize_collection(self, key,
                                                         state, factory)
 
     def new_instance(self, state=None):
@@ -340,7 +341,7 @@ class _ClassInstrumentationAdapter(ClassManager):
 
     def has_state(self, instance):
         try:
-            state = self._get_state(instance)
+            self._get_state(instance)
         except orm_exc.NO_STATE:
             return False
         else:

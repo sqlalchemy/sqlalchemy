@@ -13,7 +13,7 @@ defines a large part of the ORM's interactivity.
 
 import weakref
 from .. import util
-from . import exc as orm_exc, attributes,util as orm_util
+from . import exc as orm_exc, attributes, util as orm_util
 from .attributes import (
     PASSIVE_NO_RESULT,
     SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
@@ -198,8 +198,10 @@ class InstanceState(object):
         if manager is None:
             raise orm_exc.UnmappedInstanceError(
                         inst,
-                        "Cannot deserialize object of type %r - no mapper() has"
-                        " been configured for this class within the current Python process!" %
+                        "Cannot deserialize object of type %r - "
+                        "no mapper() has "
+                        "been configured for this class within the current "
+                        "Python process!" %
                         self.class_)
         elif manager.is_mapped and not manager.mapper.configured:
             mapperlib.configure_mappers()

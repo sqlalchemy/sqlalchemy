@@ -18,6 +18,8 @@ from . import attributes, exc as orm_exc, state as statelib
 from .interfaces import EXT_CONTINUE
 from ..sql import util as sql_util
 from .util import _none_set, state_str
+from .. import exc as sa_exc
+sessionlib = util.importlater("sqlalchemy.orm", "session")
 
 _new_runid = util.counter()
 
@@ -534,3 +536,66 @@ def _configure_subclass_mapper(mapper, context, path, adapter):
                             adapter,
                             polymorphic_from=mapper)
     return configure_subclass_mapper
+
+def load_scalar_attributes(mapper, state, attribute_names):
+    """initiate a column-based attribute refresh operation."""
+
+    #assert mapper is _state_mapper(state)
+    session = sessionlib._state_session(state)
+    if not session:
+        raise orm_exc.DetachedInstanceError(
+                    "Instance %s is not bound to a Session; "
+                    "attribute refresh operation cannot proceed" %
+                    (state_str(state)))
+
+    has_key = bool(state.key)
+
+    result = False
+
+    if mapper.inherits and not mapper.concrete:
+        statement = mapper._optimized_get_statement(state, attribute_names)
+        if statement is not None:
+            result = load_on_ident(
+                        session.query(mapper).from_statement(statement),
+                            None,
+                            only_load_props=attribute_names,
+                            refresh_state=state
+                        )
+
+    if result is False:
+        if has_key:
+            identity_key = state.key
+        else:
+            # this codepath is rare - only valid when inside a flush, and the
+            # object is becoming persistent but hasn't yet been assigned
+            # an identity_key.
+            # check here to ensure we have the attrs we need.
+            pk_attrs = [mapper._columntoproperty[col].key
+                        for col in mapper.primary_key]
+            if state.expired_attributes.intersection(pk_attrs):
+                raise sa_exc.InvalidRequestError(
+                            "Instance %s cannot be refreshed - it's not "
+                            " persistent and does not "
+                            "contain a full primary key." % state_str(state))
+            identity_key = mapper._identity_key_from_state(state)
+
+        if (_none_set.issubset(identity_key) and \
+                not mapper.allow_partial_pks) or \
+                _none_set.issuperset(identity_key):
+            util.warn("Instance %s to be refreshed doesn't "
+                        "contain a full primary key - can't be refreshed "
+                        "(and shouldn't be expired, either)."
+                        % state_str(state))
+            return
+
+        result = load_on_ident(
+                    session.query(mapper),
+                                identity_key,
+                                refresh_state=state,
+                                only_load_props=attribute_names)
+
+    # if instance is pending, a refresh operation
+    # may not complete (even if PK attributes are assigned)
+    if has_key and result is None:
+        raise orm_exc.ObjectDeletedError(state)
+
