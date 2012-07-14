@@ -7,7 +7,7 @@
 from compat import callable, cmp, reduce, defaultdict, py25_dict, \
     threading, py3k_warning, jython, pypy, win32, set_types, buffer, pickle, \
     update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
-    parse_qsl, any, contextmanager, namedtuple, next
+    parse_qsl, any, contextmanager, namedtuple, next, WeakSet
 
 from _collections import NamedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
@@ -15,7 +15,7 @@ from _collections import NamedTuple, ImmutableContainer, immutabledict, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
     UniqueAppender, PopulateDict, EMPTY_SET, to_list, to_set, \
     to_column_set, update_copy, flatten_iterator, \
-    LRUCache, ScopedRegistry, ThreadLocalRegistry
+    LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence
 
 from langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \

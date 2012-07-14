@@ -51,36 +51,36 @@ class Grunt(Employee):
 
     employer_id = Column(Integer, ForeignKey('boss.id'))
 
-    # Configure an 'employer' relationship, where Grunt references 
-    # Boss.  This is a joined-table subclass to subclass relationship, 
+    # Configure an 'employer' relationship, where Grunt references
+    # Boss.  This is a joined-table subclass to subclass relationship,
     # which is a less typical case.
 
     # In 0.7, "Boss.id" is the "id" column of "boss", as would be expected.
     if __version__ >= "0.7":
-        employer = relationship("Boss", backref="employees", 
+        employer = relationship("Boss", backref="employees",
                                     primaryjoin=Boss.id==employer_id)
 
     # Prior to 0.7, "Boss.id" is the "id" column of "employee".
     # Long story.  So we hardwire the relationship against the "id"
     # column of Boss' table.
     elif __version__ >= "0.6":
-        employer = relationship("Boss", backref="employees", 
+        employer = relationship("Boss", backref="employees",
                                 primaryjoin=Boss.__table__.c.id==employer_id)
 
-    # In 0.5, the many-to-one loader wouldn't recognize the above as a 
+    # In 0.5, the many-to-one loader wouldn't recognize the above as a
     # simple "identity map" fetch.  So to give 0.5 a chance to emit
     # the same amount of SQL as 0.6, we hardwire the relationship against
     # "employee.id" to work around the bug.
     else:
-        employer = relationship("Boss", backref="employees", 
-                                primaryjoin=Employee.__table__.c.id==employer_id, 
+        employer = relationship("Boss", backref="employees",
+                                primaryjoin=Employee.__table__.c.id==employer_id,
                                 foreign_keys=employer_id)
 
     __mapper_args__ = {'polymorphic_identity':'grunt'}
 
 if os.path.exists('orm2010.db'):
     os.remove('orm2010.db')
-# use a file based database so that cursor.execute() has some 
+# use a file based database so that cursor.execute() has some
 # palpable overhead.
 engine = create_engine('sqlite:///orm2010.db')
 
@@ -92,7 +92,7 @@ def runit():
     # create 1000 Boss objects.
     bosses = [
         Boss(
-            name="Boss %d" % i, 
+            name="Boss %d" % i,
             golf_average=Decimal(random.randint(40, 150))
         )
         for i in xrange(1000)
@@ -111,9 +111,9 @@ def runit():
     ]
 
     # Assign each Grunt a Boss.  Look them up in the DB
-    # to simulate a little bit of two-way activity with the 
+    # to simulate a little bit of two-way activity with the
     # DB while we populate.  Autoflush occurs on each query.
-    # In 0.7 executemany() is used for all the "boss" and "grunt" 
+    # In 0.7 executemany() is used for all the "boss" and "grunt"
     # tables since priamry key fetching is not needed.
     while grunts:
         boss = sess.query(Boss).\
@@ -131,13 +131,13 @@ def runit():
     # load all the Grunts, print a report with their name, stats,
     # and their bosses' stats.
     for grunt in sess.query(Grunt):
-        # here, the overhead of a many-to-one fetch of 
-        # "grunt.employer" directly from the identity map 
+        # here, the overhead of a many-to-one fetch of
+        # "grunt.employer" directly from the identity map
         # is less than half of that of 0.6.
         report.append((
-                        grunt.name, 
-                        grunt.savings, 
-                        grunt.employer.name, 
+                        grunt.name,
+                        grunt.savings,
+                        grunt.employer.name,
                         grunt.employer.golf_average
                     ))
 

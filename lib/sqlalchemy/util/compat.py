@@ -166,6 +166,27 @@ except ImportError:
             return 'defaultdict(%s, %s)' % (self.default_factory,
                                             dict.__repr__(self))
 
+try:
+    from weakref import WeakSet
+except:
+    import weakref
+
+    class WeakSet(object):
+        """Implement the small subset of set() which SQLAlchemy needs
+        here. """
+        def __init__(self, values=None):
+            self._storage = weakref.WeakKeyDictionary()
+            if values is not None:
+                self._storage.update((value, None) for value in values)
+
+        def __iter__(self):
+            return iter(self._storage)
+
+        def union(self, other):
+            return WeakSet(set(self).union(other))
+
+        def add(self, other):
+            self._storage[other] = True
 
 # find or create a dict implementation that supports __missing__
 class _probe(dict):

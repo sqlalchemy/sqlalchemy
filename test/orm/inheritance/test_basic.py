@@ -11,6 +11,7 @@ from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.schema import Table, Column
 from sqlalchemy.ext.declarative import declarative_base
+from test.lib.util import gc_collect
 
 class O2MTest(fixtures.MappedTest):
     """deals with inheritance and one-to-many relationships"""
@@ -1694,6 +1695,62 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 lambda ctx:{u'param_1': s1.id}
             ),
         )
+
+class TransientInheritingGCTest(fixtures.TestBase):
+    def _fixture(self):
+        Base = declarative_base()
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True, test_needs_pk=True)
+            data = Column(String(10))
+        self.A = A
+        return Base
+
+    def setUp(self):
+        self.Base = self._fixture()
+
+    def tearDown(self):
+        self.Base.metadata.drop_all(testing.db)
+        #clear_mappers()
+        self.Base = None
+
+    def _do_test(self, go):
+        B = go()
+        self.Base.metadata.create_all(testing.db)
+        sess = Session(testing.db)
+        sess.add(B(data='some b'))
+        sess.commit()
+
+        b1 = sess.query(B).one()
+        assert isinstance(b1, B)
+        sess.close()
+        del sess
+        del b1
+        del B
+
+        gc_collect()
+
+        eq_(
+            len(self.A.__subclasses__()),
+            0)
+
+    def test_single(self):
+        def go():
+            class B(self.A):
+                pass
+            return B
+        self._do_test(go)
+
+    @testing.fails_if(lambda: True,
+                "not supported for joined inh right now.")
+    def test_joined(self):
+        def go():
+            class B(self.A):
+                __tablename__ = 'b'
+                id = Column(Integer, ForeignKey('a.id'),
+                        primary_key=True)
+            return B
+        self._do_test(go)
 
 class NoPKOnSubTableWarningTest(fixtures.TestBase):
 

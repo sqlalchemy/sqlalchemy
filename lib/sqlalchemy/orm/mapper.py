@@ -431,7 +431,7 @@ class Mapper(object):
         being present."""
 
         # a set of all mappers which inherit from this one.
-        self._inheriting_mappers = set()
+        self._inheriting_mappers = util.WeakSet()
 
         if self.inherits:
             if isinstance(self.inherits, type):
@@ -1308,7 +1308,6 @@ class Mapper(object):
             tables = set(sql_util.find_tables(selectable,
                             include_aliases=True))
             mappers = [m for m in mappers if m.local_table in tables]
-
         return mappers
 
     def _selectable_from_mappers(self, mappers, innerjoin):
@@ -1383,7 +1382,7 @@ class Mapper(object):
 
     @_memoized_configured_property
     def _polymorphic_properties(self):
-        return tuple(self._iterate_polymorphic_properties(
+        return list(self._iterate_polymorphic_properties(
             self._with_polymorphic_mappers))
 
     def _iterate_polymorphic_properties(self, mappers=None):
@@ -1401,8 +1400,10 @@ class Mapper(object):
             # from other mappers, as these are sometimes dependent on that
             # mapper's polymorphic selectable (which we don't want rendered)
             for c in util.unique_list(
-                chain(*[list(mapper.iterate_properties) for mapper in [self] +
-                        mappers])
+                chain(*[
+                        list(mapper.iterate_properties) for mapper in
+                        [self] + mappers
+                    ])
             ):
                 if getattr(c, '_is_polymorphic_discriminator', False) and \
                         (self.polymorphic_on is None or
@@ -1587,7 +1588,7 @@ class Mapper(object):
             item = stack.popleft()
             descendants.append(item)
             stack.extend(item._inheriting_mappers)
-        return tuple(descendants)
+        return util.WeakSequence(descendants)
 
     def polymorphic_iterator(self):
         """Iterate through the collection including this mapper and

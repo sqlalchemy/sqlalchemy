@@ -157,7 +157,21 @@ underneath "0.7.xx".
     "Base" that are dereferenced will be
     garbage collected, *if they are not
     referred to by any other mappers/superclass
-    mappers*.  [ticket:2526]
+    mappers*. See the next note for this ticket.
+    [ticket:2526]
+
+  - [feature] *Very limited* support for
+    inheriting mappers to be GC'ed when the
+    class itself is deferenced.  The mapper
+    must not have its own table (i.e.
+    single table inh only) without polymorphic
+    attributes in place.
+    This allows for the use case of
+    creating a temporary subclass of a declarative
+    mapped class, with no table or mapping
+    directives of its own, to be garbage collected
+    when dereferenced by a unit test.
+    [ticket:2526]
 
   - [removed] Deprecated identifiers removed:
 
