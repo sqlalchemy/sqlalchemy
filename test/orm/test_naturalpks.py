@@ -2,6 +2,7 @@
 Primary key changing capabilities and passive/non-passive cascading updates.
 
 """
+from __future__ import with_statement
 from test.lib.testing import eq_, ne_, \
                         assert_raises, assert_raises_message
 import sqlalchemy as sa

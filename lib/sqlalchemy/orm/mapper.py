@@ -284,11 +284,11 @@ class Mapper(object):
     which comprise the 'primary key' of the mapped table, from the
     perspective of this :class:`.Mapper`.
 
-    This list is against the selectable in :attr:`~.Mapper.mapped_table`.  In the
-    case of inheriting mappers, some columns may be managed by a superclass
-    mapper.  For example, in the case of a :class:`.Join`, the primary
-    key is determined by all of the primary key columns across all tables
-    referenced by the :class:`.Join`.
+    This list is against the selectable in :attr:`~.Mapper.mapped_table`. In
+    the case of inheriting mappers, some columns may be managed by a
+    superclass mapper.  For example, in the case of a :class:`.Join`, the
+    primary key is determined by all of the primary key columns across all
+    tables referenced by the :class:`.Join`.
 
     The list is also not necessarily the same as the primary key column
     collection associated with the underlying tables; the :class:`.Mapper`
@@ -351,8 +351,8 @@ class Mapper(object):
     """
 
     polymorphic_map = None
-    """A mapping of "polymorphic identity" identifiers mapped to :class:`.Mapper`
-    instances, within an inheritance scenario.
+    """A mapping of "polymorphic identity" identifiers mapped to
+    :class:`.Mapper` instances, within an inheritance scenario.
 
     The identifiers can be of any type which is comparable to the
     type of column represented by :attr:`~.Mapper.polymorphic_on`.
@@ -367,11 +367,12 @@ class Mapper(object):
     """
 
     polymorphic_identity = None
-    """Represent an identifier which is matched against the :attr:`~.Mapper.polymorphic_on`
-    column during result row loading.
+    """Represent an identifier which is matched against the
+    :attr:`~.Mapper.polymorphic_on` column during result row loading.
 
     Used only with inheritance, this object can be of any type which is
-    comparable to the type of column represented by :attr:`~.Mapper.polymorphic_on`.
+    comparable to the type of column represented by
+    :attr:`~.Mapper.polymorphic_on`.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
@@ -555,9 +556,9 @@ class Mapper(object):
             self._expire_memoizations()
 
     def _set_concrete_base(self, mapper):
-        """Set the given :class:`.Mapper` as the 'inherits' for this :class:`.Mapper`,
-        assuming this :class:`.Mapper` is concrete and does not already have
-        an inherits."""
+        """Set the given :class:`.Mapper` as the 'inherits' for this
+        :class:`.Mapper`, assuming this :class:`.Mapper` is concrete
+        and does not already have an inherits."""
 
         assert self.concrete
         assert not self.inherits
@@ -733,7 +734,7 @@ class Mapper(object):
             if t.primary_key and pk_cols.issuperset(t.primary_key):
                 # ordering is important since it determines the ordering of
                 # mapper.primary_key (and therefore query.get())
-                self._pks_by_table[t] =\
+                self._pks_by_table[t] = \
                                     util.ordered_column_set(t.primary_key).\
                                     intersection(pk_cols)
             self._cols_by_table[t] = \
@@ -820,7 +821,8 @@ class Mapper(object):
         if self.inherits:
             for key, prop in self.inherits._props.iteritems():
                 if key not in self._props and \
-                    not self._should_exclude(key, key, local=False, column=None):
+                    not self._should_exclude(key, key, local=False,
+                                            column=None):
                     self._adapt_inherited_property(key, prop, False)
 
         # create properties for each column in the mapped table,
@@ -886,7 +888,8 @@ class Mapper(object):
             elif isinstance(self.polymorphic_on, MapperProperty):
                 # polymorphic_on is directly a MapperProperty,
                 # ensure it's a ColumnProperty
-                if not isinstance(self.polymorphic_on, properties.ColumnProperty):
+                if not isinstance(self.polymorphic_on,
+                                    properties.ColumnProperty):
                     raise sa_exc.ArgumentError(
                             "Only direct column-mapped "
                             "property or SQL expression "
@@ -903,27 +906,31 @@ class Mapper(object):
                     "can be passed for polymorphic_on"
                 )
             else:
-                # polymorphic_on is a Column or SQL expression and doesn't
-                # appear to be mapped.
-                # this means it can be 1. only present in the with_polymorphic
-                # selectable or 2. a totally standalone SQL expression which we'd
+                # polymorphic_on is a Column or SQL expression and
+                # doesn't appear to be mapped. this means it can be 1.
+                # only present in the with_polymorphic selectable or
+                # 2. a totally standalone SQL expression which we'd
                 # hope is compatible with this mapper's mapped_table
-                col = self.mapped_table.corresponding_column(self.polymorphic_on)
+                col = self.mapped_table.corresponding_column(
+                            self.polymorphic_on)
                 if col is None:
-                    # polymorphic_on doesn't derive from any column/expression
-                    # isn't present in the mapped table.
-                    # we will make a "hidden" ColumnProperty for it.
-                    # Just check that if it's directly a schema.Column and we
-                    # have with_polymorphic, it's likely a user error if the
-                    # schema.Column isn't represented somehow in either mapped_table or
-                    # with_polymorphic.   Otherwise as of 0.7.4 we just go with it
-                    # and assume the user wants it that way (i.e. a CASE statement)
+                    # polymorphic_on doesn't derive from any
+                    # column/expression isn't present in the mapped
+                    # table. we will make a "hidden" ColumnProperty
+                    # for it. Just check that if it's directly a
+                    # schema.Column and we have with_polymorphic, it's
+                    # likely a user error if the schema.Column isn't
+                    # represented somehow in either mapped_table or
+                    # with_polymorphic.   Otherwise as of 0.7.4 we
+                    # just go with it and assume the user wants it
+                    # that way (i.e. a CASE statement)
                     setter = False
                     instrument = False
                     col = self.polymorphic_on
                     if isinstance(col, schema.Column) and (
                         self.with_polymorphic is  None or \
-                       self.with_polymorphic[1].corresponding_column(col) is None
+                        self.with_polymorphic[1].\
+                            corresponding_column(col) is None
                         ):
                         raise sa_exc.InvalidRequestError(
                             "Could not map polymorphic_on column "
@@ -936,7 +943,8 @@ class Mapper(object):
                     # and is probably mapped, but polymorphic_on itself
                     # is not.  This happens when
                     # the polymorphic_on is only directly present in the
-                    # with_polymorphic selectable, as when use polymorphic_union.
+                    # with_polymorphic selectable, as when use
+                    # polymorphic_union.
                     # we'll make a separate ColumnProperty for it.
                     instrument = True
 
@@ -944,15 +952,18 @@ class Mapper(object):
                 if key:
                     if self._should_exclude(col.key, col.key, False, col):
                         raise sa_exc.InvalidRequestError(
-                        "Cannot exclude or override the discriminator column %r" %
+                        "Cannot exclude or override the "
+                        "discriminator column %r" %
                         col.key)
                 else:
-                    self.polymorphic_on = col = col.label("_sa_polymorphic_on")
+                    self.polymorphic_on = col = \
+                                col.label("_sa_polymorphic_on")
                     key = col.key
 
                 self._configure_property(
                                 key,
-                                properties.ColumnProperty(col, _instrument=instrument),
+                                properties.ColumnProperty(col,
+                                                    _instrument=instrument),
                                 init=init, setparent=True)
                 polymorphic_key = key
         else:
@@ -975,7 +986,8 @@ class Mapper(object):
                     # directly; it ensures the polymorphic_identity of the
                     # instance's mapper is used so is portable to subclasses.
                     if self.polymorphic_on is not None:
-                        self._set_polymorphic_identity = mapper._set_polymorphic_identity
+                        self._set_polymorphic_identity = \
+                            mapper._set_polymorphic_identity
                     else:
                         self._set_polymorphic_identity = None
                     return
@@ -1005,67 +1017,7 @@ class Mapper(object):
         self._log("_configure_property(%s, %s)", key, prop.__class__.__name__)
 
         if not isinstance(prop, MapperProperty):
-            # we were passed a Column or a list of Columns;
-            # generate a properties.ColumnProperty
-            columns = util.to_list(prop)
-            column = columns[0]
-            if not expression.is_column(column):
-                raise sa_exc.ArgumentError(
-                        "%s=%r is not an instance of MapperProperty or Column"
-                        % (key, prop))
-
-            prop = self._props.get(key, None)
-
-            if isinstance(prop, properties.ColumnProperty):
-                if prop.parent is self:
-                    raise sa_exc.InvalidRequestError(
-                            "Implicitly combining column %s with column "
-                            "%s under attribute '%s'.  Please configure one "
-                            "or more attributes for these same-named columns "
-                            "explicitly."
-                             % (prop.columns[-1], column, key))
-
-                # existing properties.ColumnProperty from an inheriting
-                # mapper. make a copy and append our column to it
-                prop = prop.copy()
-                prop.columns.insert(0, column)
-                self._log("inserting column to existing list "
-                            "in properties.ColumnProperty %s" % (key))
-
-            elif prop is None or isinstance(prop, properties.ConcreteInheritedProperty):
-                mapped_column = []
-                for c in columns:
-                    mc = self.mapped_table.corresponding_column(c)
-                    if mc is None:
-                        mc = self.local_table.corresponding_column(c)
-                        if mc is not None:
-                            # if the column is in the local table but not the
-                            # mapped table, this corresponds to adding a
-                            # column after the fact to the local table.
-                            # [ticket:1523]
-                            self.mapped_table._reset_exported()
-                        mc = self.mapped_table.corresponding_column(c)
-                        if mc is None:
-                            raise sa_exc.ArgumentError(
-                            "When configuring property '%s' on %s, "
-                            "column '%s' is not represented in the mapper's "
-                            "table. Use the `column_property()` function to "
-                            "force this column to be mapped as a read-only "
-                            "attribute." % (key, self, c))
-                    mapped_column.append(mc)
-                prop = properties.ColumnProperty(*mapped_column)
-            else:
-                raise sa_exc.ArgumentError(
-                    "WARNING: when configuring property '%s' on %s, "
-                    "column '%s' conflicts with property '%r'. "
-                    "To resolve this, map the column to the class under a "
-                    "different name in the 'properties' dictionary.  Or, "
-                    "to remove all awareness of the column entirely "
-                    "(including its availability as a foreign key), "
-                    "use the 'include_properties' or 'exclude_properties' "
-                    "mapper arguments to control specifically which table "
-                    "columns get mapped." %
-                    (key, self, column.key, prop))
+            prop = self._property_from_column(key, prop)
 
         if isinstance(prop, properties.ColumnProperty):
             col = self.mapped_table.corresponding_column(prop.columns[0])
@@ -1147,6 +1099,73 @@ class Mapper(object):
         if self.configured:
             self._expire_memoizations()
 
+    def _property_from_column(self, key, prop):
+        """generate/update a :class:`.ColumnProprerty` given a
+        :class:`.Column` object. """
+
+        # we were passed a Column or a list of Columns;
+        # generate a properties.ColumnProperty
+        columns = util.to_list(prop)
+        column = columns[0]
+        if not expression.is_column(column):
+            raise sa_exc.ArgumentError(
+                    "%s=%r is not an instance of MapperProperty or Column"
+                    % (key, prop))
+
+        prop = self._props.get(key, None)
+
+        if isinstance(prop, properties.ColumnProperty):
+            if prop.parent is self:
+                raise sa_exc.InvalidRequestError(
+                        "Implicitly combining column %s with column "
+                        "%s under attribute '%s'.  Please configure one "
+                        "or more attributes for these same-named columns "
+                        "explicitly."
+                         % (prop.columns[-1], column, key))
+
+            # existing properties.ColumnProperty from an inheriting
+            # mapper. make a copy and append our column to it
+            prop = prop.copy()
+            prop.columns.insert(0, column)
+            self._log("inserting column to existing list "
+                        "in properties.ColumnProperty %s" % (key))
+            return prop
+        elif prop is None or isinstance(prop,
+                                properties.ConcreteInheritedProperty):
+            mapped_column = []
+            for c in columns:
+                mc = self.mapped_table.corresponding_column(c)
+                if mc is None:
+                    mc = self.local_table.corresponding_column(c)
+                    if mc is not None:
+                        # if the column is in the local table but not the
+                        # mapped table, this corresponds to adding a
+                        # column after the fact to the local table.
+                        # [ticket:1523]
+                        self.mapped_table._reset_exported()
+                    mc = self.mapped_table.corresponding_column(c)
+                    if mc is None:
+                        raise sa_exc.ArgumentError(
+                        "When configuring property '%s' on %s, "
+                        "column '%s' is not represented in the mapper's "
+                        "table. Use the `column_property()` function to "
+                        "force this column to be mapped as a read-only "
+                        "attribute." % (key, self, c))
+                mapped_column.append(mc)
+            return properties.ColumnProperty(*mapped_column)
+        else:
+            raise sa_exc.ArgumentError(
+                "WARNING: when configuring property '%s' on %s, "
+                "column '%s' conflicts with property '%r'. "
+                "To resolve this, map the column to the class under a "
+                "different name in the 'properties' dictionary.  Or, "
+                "to remove all awareness of the column entirely "
+                "(including its availability as a foreign key), "
+                "use the 'include_properties' or 'exclude_properties' "
+                "mapper arguments to control specifically which table "
+                "columns get mapped." %
+                (key, self, column.key, prop))
+
     def _post_configure_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
@@ -1205,7 +1224,6 @@ class Mapper(object):
             "|non-primary" or "") + ")"
 
     def _log(self, msg, *args):
-
         self.logger.info(
             "%s " + msg, *((self._log_desc,) + args)
         )
@@ -1281,7 +1299,7 @@ class Mapper(object):
             for m in mappers:
                 if not m.isa(self):
                     raise sa_exc.InvalidRequestError(
-                                "%r does not inherit from %r"  %
+                                "%r does not inherit from %r" %
                                 (m, self))
         else:
             mappers = []
@@ -1431,7 +1449,7 @@ class Mapper(object):
         """
         params = [(primary_key, sql.bindparam(None, type_=primary_key.type))
                   for primary_key in self.primary_key]
-        return sql.and_(*[k==v for (k, v) in params]), \
+        return sql.and_(*[k == v for (k, v) in params]), \
                 util.column_dict(params)
 
     @_memoized_configured_property
@@ -1456,6 +1474,7 @@ class Mapper(object):
 
         """
         result = util.column_dict()
+
         def visit_binary(binary):
             if binary.operator == operators.eq:
                 if binary.left in result:
@@ -1470,7 +1489,7 @@ class Mapper(object):
             if mapper.inherit_condition is not None:
                 visitors.traverse(
                                     mapper.inherit_condition, {},
-                                    {'binary':visit_binary})
+                                    {'binary': visit_binary})
 
         return result
 
@@ -1723,7 +1742,8 @@ class Mapper(object):
                                     state, state.dict,
                                     rightcol,
                                     passive=attributes.PASSIVE_NO_INITIALIZE)
-                if rightval is attributes.PASSIVE_NO_RESULT or rightval is None:
+                if rightval is attributes.PASSIVE_NO_RESULT or \
+                            rightval is None:
                     raise ColumnsNotAvailable()
                 binary.right = sql.bindparam(None, rightval,
                                             type_=binary.right.type)
@@ -1739,7 +1759,7 @@ class Mapper(object):
                     allconds.append(visitors.cloned_traverse(
                                                 mapper.inherit_condition,
                                                 {},
-                                                {'binary':visit_binary}
+                                                {'binary': visit_binary}
                                         )
                                     )
         except ColumnsNotAvailable:
@@ -1787,7 +1807,7 @@ class Mapper(object):
                 queue = deque(prop.cascade_iterator(type_, parent_state,
                             parent_dict, visited_states, halt_on))
                 if queue:
-                    visitables.append((queue,mpp, None, None))
+                    visitables.append((queue, mpp, None, None))
             elif item_type is mpp:
                 instance, instance_mapper, corresponding_state, \
                                 corresponding_dict = iterator.popleft()
@@ -1905,7 +1925,8 @@ def configure_mappers():
                     try:
                         mapper._post_configure_properties()
                         mapper._expire_memoizations()
-                        mapper.dispatch.mapper_configured(mapper, mapper.class_)
+                        mapper.dispatch.mapper_configured(
+                                mapper, mapper.class_)
                         _call_configured = mapper
                     except:
                         exc = sys.exc_info()[1]
@@ -1945,11 +1966,12 @@ def validates(*names, **kw):
 
     Designates a method as a validator, a method which receives the
     name of the attribute as well as a value to be assigned, or in the
-    case of a collection, the value to be added to the collection.  The function
-    can then raise validation exceptions to halt the process from continuing
-    (where Python's built-in ``ValueError`` and ``AssertionError`` exceptions are
-    reasonable choices), or can modify or replace the value before proceeding.
-    The function should otherwise return the given value.
+    case of a collection, the value to be added to the collection.
+    The function can then raise validation exceptions to halt the
+    process from continuing (where Python's built-in ``ValueError``
+    and ``AssertionError`` exceptions are reasonable choices), or can
+    modify or replace the value before proceeding. The function should
+    otherwise return the given value.
 
     Note that a validator for a collection **cannot** issue a load of that
     collection within the validation routine - this usage raises
