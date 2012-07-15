@@ -19,7 +19,7 @@ from sqlalchemy.sql import expression
 properties = util.importlater('sqlalchemy.orm', 'properties')
 
 class DescriptorProperty(MapperProperty):
-    """:class:`.MapperProperty` which proxies access to a 
+    """:class:`.MapperProperty` which proxies access to a
         user-defined descriptor."""
 
     doc = None
@@ -35,7 +35,7 @@ class DescriptorProperty(MapperProperty):
                 self.key = key
 
             if hasattr(prop, 'get_history'):
-                def get_history(self, state, dict_, 
+                def get_history(self, state, dict_,
                         passive=attributes.PASSIVE_OFF):
                     return prop.get_history(state, dict_, passive)
 
@@ -62,7 +62,7 @@ class DescriptorProperty(MapperProperty):
                     create_proxied_attribute(self.descriptor)\
                     (
                         self.parent.class_,
-                        self.key, 
+                        self.key,
                         self.descriptor,
                         lambda: self._comparator_factory(mapper),
                         doc=self.doc
@@ -89,7 +89,7 @@ class CompositeProperty(DescriptorProperty):
         self._setup_event_handlers()
 
     def do_init(self):
-        """Initialization which occurs after the :class:`.CompositeProperty` 
+        """Initialization which occurs after the :class:`.CompositeProperty`
         has been associated with its parent mapper.
 
         """
@@ -97,7 +97,7 @@ class CompositeProperty(DescriptorProperty):
         self._setup_arguments_on_columns()
 
     def _create_descriptor(self):
-        """Create the Python descriptor that will serve as 
+        """Create the Python descriptor that will serve as
         the access point on instances of the mapped class.
 
         """
@@ -113,12 +113,12 @@ class CompositeProperty(DescriptorProperty):
                 values = [getattr(instance, key) for key in self._attribute_keys]
 
                 # current expected behavior here is that the composite is
-                # created on access if the object is persistent or if 
-                # col attributes have non-None.  This would be better 
+                # created on access if the object is persistent or if
+                # col attributes have non-None.  This would be better
                 # if the composite were created unconditionally,
                 # but that would be a behavioral change.
                 if self.key not in dict_ and (
-                    state.key is not None or 
+                    state.key is not None or
                     not _none_set.issuperset(values)
                 ):
                     dict_[self.key] = self.composite_class(*values)
@@ -139,7 +139,7 @@ class CompositeProperty(DescriptorProperty):
                     setattr(instance, key, None)
             else:
                 for key, value in zip(
-                        self._attribute_keys, 
+                        self._attribute_keys,
                         value.__composite_values__()):
                     setattr(instance, key, value)
 
@@ -198,7 +198,7 @@ class CompositeProperty(DescriptorProperty):
                 return
 
             # if column elements aren't loaded, skip.
-            # __get__() will initiate a load for those 
+            # __get__() will initiate a load for those
             # columns
             for k in self._attribute_keys:
                 if k not in dict_:
@@ -206,7 +206,7 @@ class CompositeProperty(DescriptorProperty):
 
             #assert self.key not in dict_
             dict_[self.key] = self.composite_class(
-                    *[state.dict[key] for key in 
+                    *[state.dict[key] for key in
                     self._attribute_keys]
                 )
 
@@ -217,16 +217,16 @@ class CompositeProperty(DescriptorProperty):
         def insert_update_handler(mapper, connection, state):
             """After an insert or update, some columns may be expired due
             to server side defaults, or re-populated due to client side
-            defaults.  Pop out the composite value here so that it 
+            defaults.  Pop out the composite value here so that it
             recreates.
-            
+
             """
 
             state.dict.pop(self.key, None)
 
-        event.listen(self.parent, 'after_insert', 
+        event.listen(self.parent, 'after_insert',
                                     insert_update_handler, raw=True)
-        event.listen(self.parent, 'after_update', 
+        event.listen(self.parent, 'after_update',
                                     insert_update_handler, raw=True)
         event.listen(self.parent, 'load', load_handler, raw=True, propagate=True)
         event.listen(self.parent, 'refresh', load_handler, raw=True, propagate=True)
@@ -307,19 +307,19 @@ class CompositeProperty(DescriptorProperty):
         return str(self.parent.class_.__name__) + "." + self.key
 
 class ConcreteInheritedProperty(DescriptorProperty):
-    """A 'do nothing' :class:`.MapperProperty` that disables 
+    """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
     on the inherited mapper, not the concrete classes' mapper.
 
     Cases where this occurs include:
 
-    * When the superclass mapper is mapped against a 
-      "polymorphic union", which includes all attributes from 
+    * When the superclass mapper is mapped against a
+      "polymorphic union", which includes all attributes from
       all subclasses.
     * When a relationship() is configured on an inherited mapper,
       but not on the subclass mapper.  Concrete mappers require
-      that relationship() is configured explicitly on each 
-      subclass. 
+      that relationship() is configured explicitly on each
+      subclass.
 
     """
 
@@ -337,7 +337,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
         def warn():
             raise AttributeError("Concrete %s does not implement "
                 "attribute %r at the instance level.  Add this "
-                "property explicitly to %s." % 
+                "property explicitly to %s." %
                 (self.parent, self.key, self.parent))
 
         class NoninheritedConcreteProp(object):
@@ -354,7 +354,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
 
 class SynonymProperty(DescriptorProperty):
 
-    def __init__(self, name, map_column=None, 
+    def __init__(self, name, map_column=None,
                             descriptor=None, comparator_factory=None,
                             doc=None):
         self.name = name
@@ -387,7 +387,7 @@ class SynonymProperty(DescriptorProperty):
             if self.key not in parent.mapped_table.c:
                 raise sa_exc.ArgumentError(
                     "Can't compile synonym '%s': no column on table "
-                    "'%s' named '%s'" 
+                    "'%s' named '%s'"
                      % (self.name, parent.mapped_table.description, self.key))
             elif parent.mapped_table.c[self.key] in \
                     parent._columntoproperty and \
@@ -397,13 +397,13 @@ class SynonymProperty(DescriptorProperty):
                 raise sa_exc.ArgumentError(
                     "Can't call map_column=True for synonym %r=%r, "
                     "a ColumnProperty already exists keyed to the name "
-                    "%r for column %r" % 
+                    "%r for column %r" %
                     (self.key, self.name, self.name, self.key)
                 )
             p = properties.ColumnProperty(parent.mapped_table.c[self.key])
             parent._configure_property(
-                                    self.name, p, 
-                                    init=init, 
+                                    self.name, p,
+                                    init=init,
                                     setparent=True)
             p._mapped_by_synonym = self.key
 

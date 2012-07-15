@@ -5,6 +5,19 @@ CHANGES
 =======
 0.7.9
 =====
+- orm
+  - [bug] Fixed bug mostly local to new
+    AbstractConcreteBase helper where the "type"
+    attribute from the superclass would not
+    be overridden on the subclass to produce the
+    "reserved for base" error message, instead placing
+    a do-nothing attribute there.  This was inconsistent
+    vs. using ConcreteBase as well as all the behavior
+    of classical concrete mappings, where the "type"
+    column from the polymorphic base would be explicitly
+    disabled on subclasses, unless overridden
+    explicitly.
+
 - sql
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves

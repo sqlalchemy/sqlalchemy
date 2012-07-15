@@ -166,8 +166,18 @@ class ConcreteTest(fixtures.MappedTest):
                                polymorphic_identity='hacker')
         session = create_session()
         tom = Manager('Tom', 'knows how to manage things')
+
+        assert_raises_message(AttributeError,
+            "does not implement attribute .?'type' at the instance level.",
+            setattr, tom, "type", "sometype")
+
         jerry = Engineer('Jerry', 'knows how to program')
         hacker = Hacker('Kurt', 'Badass', 'knows how to hack')
+
+        assert_raises_message(AttributeError,
+            "does not implement attribute .?'type' at the instance level.",
+            setattr, hacker, "type", "sometype")
+
         session.add_all((tom, jerry, hacker))
         session.flush()
 
@@ -453,7 +463,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                 })
 
         mapper(Dest, dest_table, properties={
-                    'many_a': relationship(A,back_populates='some_dest'), 
+                    'many_a': relationship(A,back_populates='some_dest'),
                     'many_b': relationship(B,back_populates='some_dest')
                 })
         sess = sessionmaker()()
@@ -490,7 +500,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                                 self.tables.dest_table)
 
 
-        ajoin = polymorphic_union({'a': a_table, 'b': b_table, 'c':c_table}, 
+        ajoin = polymorphic_union({'a': a_table, 'b': b_table, 'c':c_table},
                                 'type','ajoin')
         mapper(
             A,
@@ -524,7 +534,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
 
         mapper(Dest, dest_table, properties={
                 'many_a': relationship(A,
-                            back_populates='some_dest', 
+                            back_populates='some_dest',
                             order_by=ajoin.c.id)
                         }
                 )
@@ -555,10 +565,10 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         def go():
             eq_(
                 [
-                    Dest(many_a=[A(aname='a1'), 
-                                    B(bname='b1'), 
+                    Dest(many_a=[A(aname='a1'),
+                                    B(bname='b1'),
                                     B(bname='b2'),
-                                    C(cname='c1')]), 
+                                    C(cname='c1')]),
                     Dest(many_a=[A(aname='a2'), C(cname='c2')])],
                 sess.query(Dest).options(joinedload(Dest.many_a)).order_by(Dest.id).all())
 
@@ -574,7 +584,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                                 self.classes.Dest,
                                 self.tables.dest_table)
 
-        ajoin = polymorphic_union({'a': a_table, 'b': b_table, 'c':c_table}, 
+        ajoin = polymorphic_union({'a': a_table, 'b': b_table, 'c':c_table},
                                 'type','ajoin')
         mapper(
             A,
@@ -608,7 +618,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
 
         mapper(Dest, dest_table, properties={
                 'many_a': relationship(A,
-                            back_populates='some_dest', 
+                            back_populates='some_dest',
                             order_by=ajoin.c.id)
                         }
                 )
