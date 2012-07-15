@@ -575,6 +575,12 @@ class Mapper(object):
         self.inherits._inheriting_mappers.add(self)
         self.passive_updates = self.inherits.passive_updates
         self._all_tables = self.inherits._all_tables
+        for key, prop in mapper._props.iteritems():
+            if key not in self._props and \
+                not self._should_exclude(key, key, local=False,
+                                        column=None):
+                self._adapt_inherited_property(key, prop, False)
+
 
     def _set_polymorphic_on(self, polymorphic_on):
         self.polymorphic_on = polymorphic_on
@@ -947,7 +953,6 @@ class Mapper(object):
                     # polymorphic_union.
                     # we'll make a separate ColumnProperty for it.
                     instrument = True
-
                 key = getattr(col, 'key', None)
                 if key:
                     if self._should_exclude(col.key, col.key, False, col):
