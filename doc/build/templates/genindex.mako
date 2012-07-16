@@ -14,7 +14,7 @@
 
    % for i, (key, entries) in enumerate(genindexentries):
 <h2 id="${key}">${key}</h2>
-<table width="100%" class="indextable"><tr><td width="33%" valign="top">
+<table width="100%" class="indextable genindextable"><tr><td width="33%" valign="top">
 <dl>
     <%
         breakat = genindexcounts[i] // 2
@@ -32,30 +32,33 @@
     % else:
         ${entryname|h}
     % endif
+</dt>
 
     % if subitems:
-  <dd><dl>
-    % for subentryname, subentrylinks in subitems:
-    <dt><a href="${subentrylinks[0][1]}">${subentryname|h}</a>
-            % for j, (unknown, link) in enumerate(subentrylinks[1:]):
-                <a href="${link}">[${j}]</a>
-            % endfor
-    </dt>
-    % endfor
-  </dl></dd>
-  % endif
- <%
+    <dd><dl>
+      % for subentryname, subentrylinks in subitems:
+      <dt><a href="${subentrylinks[0][1]}">${subentryname|h}</a>
+              % for j, (unknown, link) in enumerate(subentrylinks[1:]):
+                  <a href="${link}">[${j}]</a>
+              % endfor
+      </dt>
+      % endfor
+    </dl></dd>
+    % endif
+
+  <%
     numitems = numitems + 1 + len(subitems)
- %> 
- % if numcols <2 and numitems > breakat:
+  %>
+  % if numcols <2 and numitems > breakat:
      <%
         numcols = numcols + 1
      %>
         </dl></td><td width="33%" valign="top"><dl>
-% endif
+  % endif
 
 % endfor
-</dl></td></tr></table>
+<dt></dt></dl>
+</td></tr></table>
 % endfor
 
 <%def name="sidebarrel()">
