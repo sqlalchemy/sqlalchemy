@@ -93,7 +93,8 @@ def _validator_events(desc, key, validator, include_removes):
     if include_removes:
         event.listen(desc, "remove", remove, raw=True, retval=True)
 
-def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=True):
+def polymorphic_union(table_map, typecolname,
+                        aliasname='p_union', cast_nulls=True):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 
     See  :ref:`concrete_inheritance` for an example of how
@@ -102,13 +103,14 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=Tr
     :param table_map: mapping of polymorphic identities to
      :class:`.Table` objects.
     :param typecolname: string name of a "discriminator" column, which will be
-     derived from the query, producing the polymorphic identity for each row.  If
-     ``None``, no polymorphic discriminator is generated.
+     derived from the query, producing the polymorphic identity for
+     each row.  If ``None``, no polymorphic discriminator is generated.
     :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()`
      construct generated.
-    :param cast_nulls: if True, non-existent columns, which are represented as labeled
-     NULLs, will be passed into CAST.   This is a legacy behavior that is problematic
-     on some backends such as Oracle - in which case it can be set to False.
+    :param cast_nulls: if True, non-existent columns, which are represented
+     as labeled NULLs, will be passed into CAST.   This is a legacy behavior
+     that is problematic on some backends such as Oracle - in which case it
+     can be set to False.
 
     """
 
@@ -312,7 +314,7 @@ class PathRegistry(object):
 
     @classmethod
     def coerce(cls, raw):
-        return util.reduce(lambda prev, next:prev[next], raw, cls.root)
+        return util.reduce(lambda prev, next: prev[next], raw, cls.root)
 
     @classmethod
     def token(cls, token):
@@ -320,7 +322,7 @@ class PathRegistry(object):
 
     def __add__(self, other):
         return util.reduce(
-                    lambda prev, next:prev[next],
+                    lambda prev, next: prev[next],
                     other.path, self)
 
     def __repr__(self):
