@@ -1,6 +1,6 @@
 """test the inspection registry system."""
 
-from test.lib.testing import eq_, assert_raises
+from test.lib.testing import eq_, assert_raises_message
 from sqlalchemy import exc, util
 from sqlalchemy import inspection, inspect
 from test.lib import fixtures
@@ -8,8 +8,7 @@ from test.lib import fixtures
 class TestFixture(object):
     pass
 
-class TestEvents(fixtures.TestBase):
-    """Test class- and instance-level event registration."""
+class TestInspection(fixtures.TestBase):
 
     def tearDown(self):
         for type_ in list(inspection._registrars):
@@ -27,6 +26,16 @@ class TestEvents(fixtures.TestBase):
         somefoo = SomeFoo()
         insp = inspect(somefoo)
         assert insp["insp"] is somefoo
+
+    def test_no_inspect(self):
+        class SomeFoo(TestFixture):
+            pass
+
+        assert_raises_message(
+            exc.NoInspectionAvailable,
+            "No inspection system is available for object of type ",
+            inspect, SomeFoo
+        )
 
     def test_class_insp(self):
         class SomeFoo(TestFixture):

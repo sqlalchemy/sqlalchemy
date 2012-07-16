@@ -7,7 +7,7 @@
 
 from .. import sql, util, event, exc as sa_exc, inspection
 from ..sql import expression, util as sql_util, operators
-from .interfaces import PropComparator, MapperProperty
+from .interfaces import PropComparator, MapperProperty, _InspectionAttr
 from itertools import chain
 from . import attributes, exc
 import re
@@ -31,15 +31,15 @@ class CascadeOptions(frozenset):
 
     def __new__(cls, arg):
         values = set([
-                    c for c 
+                    c for c
                     in re.split('\s*,\s*', arg or "")
                     if c
                 ])
 
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
-                    "Invalid cascade option(s): %s" % 
-                    ", ".join([repr(x) for x in 
+                    "Invalid cascade option(s): %s" %
+                    ", ".join([repr(x) for x in
                         sorted(
                             values.difference(cls._allowed_cascades)
                     )])
@@ -99,12 +99,12 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=Tr
     See  :ref:`concrete_inheritance` for an example of how
     this is used.
 
-    :param table_map: mapping of polymorphic identities to 
+    :param table_map: mapping of polymorphic identities to
      :class:`.Table` objects.
-    :param typecolname: string name of a "discriminator" column, which will be 
+    :param typecolname: string name of a "discriminator" column, which will be
      derived from the query, producing the polymorphic identity for each row.  If
      ``None``, no polymorphic discriminator is generated.
-    :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()` 
+    :param aliasname: name of the :func:`~sqlalchemy.sql.expression.alias()`
      construct generated.
     :param cast_nulls: if True, non-existent columns, which are represented as labeled
      NULLs, will be passed into CAST.   This is a legacy behavior that is problematic
@@ -118,7 +118,7 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union', cast_nulls=Tr
     for key in table_map.keys():
         table = table_map[key]
 
-        # mysql doesnt like selecting from a select; 
+        # mysql doesnt like selecting from a select;
         # make it an alias of the select
         if isinstance(table, sql.Select):
             table = table.alias()
@@ -216,14 +216,14 @@ class ORMAdapter(sql_util.ColumnAdapter):
     and the AliasedClass if any is referenced.
 
     """
-    def __init__(self, entity, equivalents=None, 
+    def __init__(self, entity, equivalents=None,
                             chain_to=None, adapt_required=False):
         self.mapper, selectable, is_aliased_class = _entity_info(entity)
         if is_aliased_class:
             self.aliased_class = entity
         else:
             self.aliased_class = None
-        sql_util.ColumnAdapter.__init__(self, selectable, 
+        sql_util.ColumnAdapter.__init__(self, selectable,
                                         equivalents, chain_to,
                                         adapt_required=adapt_required)
 
@@ -253,9 +253,9 @@ class PathRegistry(object):
 
     The path structure has a limited amount of caching, where each
     "root" ultimately pulls from a fixed registry associated with
-    the first mapper, that also contains elements for each of its 
-    property keys.  However paths longer than two elements, which 
-    are the exception rather than the rule, are generated on an 
+    the first mapper, that also contains elements for each of its
+    property keys.  However paths longer than two elements, which
+    are the exception rather than the rule, are generated on an
     as-needed basis.
 
     """
@@ -290,7 +290,7 @@ class PathRegistry(object):
     def serialize(self):
         path = self.path
         return zip(
-            [m.class_ for m in [path[i] for i in range(0, len(path), 2)]], 
+            [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
             [path[i] for i in range(1, len(path), 2)] + [None]
         )
 
@@ -391,7 +391,7 @@ class AliasedClass(object):
     The resulting object is an instance of :class:`.AliasedClass`, however
     it implements a ``__getattribute__()`` scheme which will proxy attribute
     access to that of the ORM class being aliased.  All classmethods
-    on the mapped entity should also be available here, including 
+    on the mapped entity should also be available here, including
     hybrids created with the :ref:`hybrids_toplevel` extension,
     which will receive the :class:`.AliasedClass` as the "class" argument
     when classmethods are called.
@@ -399,17 +399,18 @@ class AliasedClass(object):
     :param cls: ORM mapped entity which will be "wrapped" around an alias.
     :param alias: a selectable, such as an :func:`.alias` or :func:`.select`
      construct, which will be rendered in place of the mapped table of the
-     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the 
+     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the
      ORM entity's mapped table will be generated.
     :param name: A name which will be applied both to the :class:`.Alias`
      if one is generated, as well as the name present in the "named tuple"
      returned by the :class:`.Query` object when results are returned.
     :param adapt_on_names: if True, more liberal "matching" will be used when
-     mapping the mapped columns of the ORM entity to those of the given selectable - 
-     a name-based match will be performed if the given selectable doesn't 
-     otherwise have a column that corresponds to one on the entity.  The 
-     use case for this is when associating an entity with some derived
-     selectable such as one that uses aggregate functions::
+     mapping the mapped columns of the ORM entity to those of the
+     given selectable - a name-based match will be performed if the
+     given selectable doesn't otherwise have a column that corresponds
+     to one on the entity.  The use case for this is when associating
+     an entity with some derived selectable such as one that uses
+     aggregate functions::
 
         class UnitPrice(Base):
             __tablename__ = 'unit_price'
@@ -421,43 +422,52 @@ class AliasedClass(object):
                                     func.sum(UnitPrice.price).label('price')
                                 ).group_by(UnitPrice.unit_id).subquery()
 
-        aggregated_unit_price = aliased(UnitPrice, alias=aggregated_unit_price, adapt_on_names=True)
+        aggregated_unit_price = aliased(UnitPrice,
+                    alias=aggregated_unit_price, adapt_on_names=True)
 
-     Above, functions on ``aggregated_unit_price`` which
-     refer to ``.price`` will return the
-     ``fund.sum(UnitPrice.price).label('price')`` column,
-     as it is matched on the name "price".  Ordinarily, the "price" function wouldn't
-     have any "column correspondence" to the actual ``UnitPrice.price`` column
-     as it is not a proxy of the original.
+     Above, functions on ``aggregated_unit_price`` which refer to
+     ``.price`` will return the
+     ``fund.sum(UnitPrice.price).label('price')`` column, as it is
+     matched on the name "price".  Ordinarily, the "price" function
+     wouldn't have any "column correspondence" to the actual
+     ``UnitPrice.price`` column as it is not a proxy of the original.
 
      .. versionadded:: 0.7.3
 
     """
-    def __init__(self, cls, alias=None, 
-                            name=None, 
+    def __init__(self, cls, alias=None,
+                            name=None,
                             adapt_on_names=False,
                             with_polymorphic_mappers=(),
                             with_polymorphic_discriminator=None):
-        self.__mapper = _class_to_mapper(cls)
-        self.__target = self.__mapper.class_
-        self.__adapt_on_names = adapt_on_names
+        mapper = _class_to_mapper(cls)
         if alias is None:
-            alias = self.__mapper._with_polymorphic_selectable.alias(
-                                    name=name)
+            alias = mapper._with_polymorphic_selectable.alias(name=name)
+        self._aliased_insp = AliasedInsp(
+            mapper,
+            alias,
+            name,
+            with_polymorphic_mappers,
+            with_polymorphic_discriminator
+        )
+        self._setup(self._aliased_insp, adapt_on_names)
+
+    def _setup(self, aliased_insp, adapt_on_names):
+        self.__adapt_on_names = adapt_on_names
+        mapper = aliased_insp.mapper
+        alias = aliased_insp.selectable
+        self.__target = mapper.class_
+        self.__adapt_on_names = adapt_on_names
         self.__adapter = sql_util.ClauseAdapter(alias,
-                            equivalents=self.__mapper._equivalent_columns,
+                            equivalents=mapper._equivalent_columns,
                             adapt_on_names=self.__adapt_on_names)
-        self.__alias = alias
-        self.__with_polymorphic_mappers = with_polymorphic_mappers
-        self.__with_polymorphic_discriminator = \
-                        with_polymorphic_discriminator
-        for poly in with_polymorphic_mappers:
-            setattr(self, poly.class_.__name__, 
+        for poly in aliased_insp.with_polymorphic_mappers:
+            setattr(self, poly.class_.__name__,
                     AliasedClass(poly.class_, alias))
 
         # used to assign a name to the RowTuple object
         # returned by Query.
-        self._sa_label_name = name
+        self._sa_label_name = aliased_insp.name
         self.__name__ = 'AliasedClass_' + str(self.__target)
 
     @util.memoized_property
@@ -466,45 +476,41 @@ class AliasedClass(object):
 
     def __getstate__(self):
         return {
-            'mapper':self.__mapper, 
-            'alias':self.__alias, 
-            'name':self._sa_label_name,
-            'adapt_on_names':self.__adapt_on_names,
+            'mapper': self._aliased_insp.mapper,
+            'alias': self._aliased_insp.selectable,
+            'name': self._aliased_insp.name,
+            'adapt_on_names': self.__adapt_on_names,
             'with_polymorphic_mappers':
-                self.__with_polymorphic_mappers,
+                self._aliased_insp.with_polymorphic_mappers,
             'with_polymorphic_discriminator':
-                self.__with_polymorphic_discriminator
+                self._aliased_insp.polymorphic_on
         }
 
     def __setstate__(self, state):
-        self.__mapper = state['mapper']
-        self.__target = self.__mapper.class_
-        self.__adapt_on_names = state['adapt_on_names']
-        alias = state['alias']
-        self.__adapter = sql_util.ClauseAdapter(alias,
-                            equivalents=self.__mapper._equivalent_columns,
-                            adapt_on_names=self.__adapt_on_names)
-        self.__alias = alias
-        self.__with_polymorphic_mappers = \
-                        state.get('with_polymorphic_mappers')
-        self.__with_polymorphic_discriminator = \
-                        state.get('with_polymorphic_discriminator')
-        name = state['name']
-        self._sa_label_name = name
-        self.__name__ = 'AliasedClass_' + str(self.__target)
+        self._aliased_insp = AliasedInsp(
+            state['mapper'],
+            state['alias'],
+            state['name'],
+            state.get('with_polymorphic_mappers'),
+            state.get('with_polymorphic_discriminator')
+        )
+        self._setup(self._aliased_insp, state['adapt_on_names'])
 
     def __adapt_element(self, elem):
         return self.__adapter.traverse(elem).\
                     _annotate({
-                        'parententity': self, 
-                        'parentmapper':self.__mapper}
+                        'parententity': self,
+                        'parentmapper': self._aliased_insp.mapper}
                     )
 
     def __adapt_prop(self, existing, key):
         comparator = existing.comparator.adapted(self.__adapt_element)
 
-        queryattr = attributes.QueryableAttribute(self, key,
-            impl=existing.impl, parententity=self, comparator=comparator)
+        queryattr = attributes.QueryableAttribute(
+                                self, key,
+                                impl=existing.impl,
+                                parententity=self,
+                                comparator=comparator)
         setattr(self, key, queryattr)
         return queryattr
 
@@ -539,6 +545,19 @@ class AliasedClass(object):
         return '<AliasedClass at 0x%x; %s>' % (
             id(self), self.__target.__name__)
 
+AliasedInsp = util.namedtuple("AliasedInsp", [
+        "mapper",
+        "selectable",
+        "name",
+        "with_polymorphic_mappers",
+        "polymorphic_on"
+    ])
+
+class AliasedInsp(_InspectionAttr, AliasedInsp):
+    is_aliased_class = True
+
+inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
+
 def aliased(element, alias=None, name=None, adapt_on_names=False):
     if isinstance(element, expression.FromClause):
         if adapt_on_names:
@@ -547,10 +566,10 @@ def aliased(element, alias=None, name=None, adapt_on_names=False):
             )
         return element.alias(name)
     else:
-        return AliasedClass(element, alias=alias, 
+        return AliasedClass(element, alias=alias,
                     name=name, adapt_on_names=adapt_on_names)
 
-def with_polymorphic(base, classes, selectable=False, 
+def with_polymorphic(base, classes, selectable=False,
                         polymorphic_on=None, aliased=False,
                         innerjoin=False):
     """Produce an :class:`.AliasedClass` construct which specifies
@@ -595,8 +614,8 @@ def with_polymorphic(base, classes, selectable=False,
 
     :param polymorphic_on: a column to be used as the "discriminator"
         column for the given selectable. If not given, the polymorphic_on
-        attribute of the base classes' mapper will be used, if any. This 
-        is useful for mappings that don't have polymorphic loading 
+        attribute of the base classes' mapper will be used, if any. This
+        is useful for mappings that don't have polymorphic loading
         behavior by default.
 
     :param innerjoin: if True, an INNER JOIN will be used.  This should
@@ -604,12 +623,13 @@ def with_polymorphic(base, classes, selectable=False,
     """
     primary_mapper = _class_to_mapper(base)
     mappers, selectable = primary_mapper.\
-                    _with_polymorphic_args(classes, selectable, innerjoin=innerjoin)
+                    _with_polymorphic_args(classes, selectable,
+                                innerjoin=innerjoin)
     if aliased:
         selectable = selectable.alias()
-    return AliasedClass(base, 
-                selectable, 
-                with_polymorphic_mappers=mappers, 
+    return AliasedClass(base,
+                selectable,
+                with_polymorphic_mappers=mappers,
                 with_polymorphic_discriminator=polymorphic_on)
 
 
@@ -620,7 +640,7 @@ def _orm_annotate(element, exclude=None):
     Elements within the exclude collection will be cloned but not annotated.
 
     """
-    return sql_util._deep_annotate(element, {'_orm_adapt':True}, exclude)
+    return sql_util._deep_annotate(element, {'_orm_adapt': True}, exclude)
 
 def _orm_deannotate(element):
     """Remove annotations that link a column to a particular mapping.
@@ -631,7 +651,7 @@ def _orm_deannotate(element):
 
     """
 
-    return sql_util._deep_deannotate(element, 
+    return sql_util._deep_deannotate(element,
                 values=("_orm_adapt", "parententity")
             )
 
@@ -643,7 +663,7 @@ class _ORMJoin(expression.Join):
 
     __visit_name__ = expression.Join.__visit_name__
 
-    def __init__(self, left, right, onclause=None, 
+    def __init__(self, left, right, onclause=None,
                             isouter=False, join_to_left=True):
         adapt_from = None
 
@@ -720,8 +740,8 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
     as its functionality is encapsulated within that of the
     :meth:`.Query.join` method, which features a
     significant amount of automation beyond :func:`.orm.join`
-    by itself.  Explicit usage of :func:`.orm.join` 
-    with :class:`.Query` involves usage of the 
+    by itself.  Explicit usage of :func:`.orm.join`
+    with :class:`.Query` involves usage of the
     :meth:`.Query.select_from` method, as in::
 
         from sqlalchemy.orm import join
@@ -729,7 +749,7 @@ def join(left, right, onclause=None, isouter=False, join_to_left=True):
             select_from(join(User, Address, User.addresses)).\\
             filter(Address.email_address=='foo@bar.com')
 
-    In modern SQLAlchemy the above join can be written more 
+    In modern SQLAlchemy the above join can be written more
     succinctly as::
 
         session.query(User).\\
@@ -759,12 +779,12 @@ def with_parent(instance, prop):
 
     The SQL rendered is the same as that rendered when a lazy loader
     would fire off from the given parent on that attribute, meaning
-    that the appropriate state is taken from the parent object in 
+    that the appropriate state is taken from the parent object in
     Python without the need to render joins to the parent table
     in the rendered statement.
 
     .. versionchanged:: 0.6.4
-        This method accepts parent instances in all 
+        This method accepts parent instances in all
         persistence states, including transient, persistent, and detached.
         Only the requisite primary key/foreign key attributes need to
         be populated.  Previous versions didn't work with transient
@@ -775,8 +795,8 @@ def with_parent(instance, prop):
 
     :param property:
       String property name, or class-bound attribute, which indicates
-      what relationship from the instance should be used to reconcile the 
-      parent/child relationship. 
+      what relationship from the instance should be used to reconcile the
+      parent/child relationship.
 
     """
     if isinstance(prop, basestring):
@@ -785,100 +805,10 @@ def with_parent(instance, prop):
     elif isinstance(prop, attributes.QueryableAttribute):
         prop = prop.property
 
-    return prop.compare(operators.eq, 
-                        instance, 
+    return prop.compare(operators.eq,
+                        instance,
                         value_is_parent=True)
 
-
-extended_entity_info = util.namedtuple("extended_entity_info", [
-    "entity",
-    "mapper",
-    "selectable",
-    "is_aliased_class",
-    "with_polymorphic_mappers",
-    "with_polymorphic_discriminator"
-])
-def _extended_entity_info(entity, compile=True):
-    if isinstance(entity, AliasedClass):
-        return extended_entity_info(
-            entity,
-            entity._AliasedClass__mapper, \
-                    entity._AliasedClass__alias, \
-                    True, \
-                    entity._AliasedClass__with_polymorphic_mappers, \
-                    entity._AliasedClass__with_polymorphic_discriminator
-        )
-
-    if isinstance(entity, mapperlib.Mapper):
-        mapper = entity
-
-    elif isinstance(entity, type):
-        class_manager = attributes.manager_of_class(entity)
-
-        if class_manager is None:
-            return extended_entity_info(entity, None, entity, False, [], None)
-
-        mapper = class_manager.mapper
-    else:
-        return extended_entity_info(entity, None, entity, False, [], None)
-
-    if compile and mapperlib.module._new_mappers:
-        mapperlib.configure_mappers()
-    return extended_entity_info(
-        entity, 
-        mapper, \
-            mapper._with_polymorphic_selectable, \
-            False, \
-            mapper._with_polymorphic_mappers, \
-            mapper.polymorphic_on
-        )
-
-def _entity_info(entity, compile=True):
-    """Return mapping information given a class, mapper, or AliasedClass.
-
-    Returns 3-tuple of: mapper, mapped selectable, boolean indicating if this
-    is an aliased() construct.
-
-    If the given entity is not a mapper, mapped class, or aliased construct,
-    returns None, the entity, False.  This is typically used to allow
-    unmapped selectables through.
-
-    """
-    return _extended_entity_info(entity, compile)[1:4]
-
-def _entity_descriptor(entity, key):
-    """Return a class attribute given an entity and string name.
-
-    May return :class:`.InstrumentedAttribute` or user-defined
-    attribute.
-
-    """
-    if isinstance(entity, expression.FromClause):
-        description = entity
-        entity = entity.c
-    elif not isinstance(entity, (AliasedClass, type)):
-        description = entity = entity.class_
-    else:
-        description = entity
-
-    try:
-        return getattr(entity, key)
-    except AttributeError:
-        raise sa_exc.InvalidRequestError(
-                    "Entity '%s' has no property '%s'" % 
-                    (description, key)
-                )
-
-def _orm_columns(entity):
-    mapper, selectable, is_aliased_class = _entity_info(entity)
-    if isinstance(selectable, expression.Selectable):
-        return [c for c in selectable.c]
-    else:
-        return [selectable]
-
-def _orm_selectable(entity):
-    mapper, selectable, is_aliased_class = _entity_info(entity)
-    return selectable
 
 def _attr_as_key(attr):
     if hasattr(attr, 'key'):
@@ -886,10 +816,32 @@ def _attr_as_key(attr):
     else:
         return expression._column_as_key(attr)
 
-def _is_aliased_class(entity):
-    return isinstance(entity, AliasedClass)
 
 _state_mapper = util.dottedgetter('manager.mapper')
+
+@inspection._inspects(object)
+def _inspect_mapped_object(instance):
+    try:
+        return attributes.instance_state(instance)
+        # TODO: whats the py-2/3 syntax to catch two
+        # different kinds of exceptions at once ?
+    except exc.UnmappedClassError:
+        return None
+    except exc.NO_STATE:
+        return None
+
+@inspection._inspects(type)
+def _inspect_mapped_class(class_, configure=False):
+    try:
+        class_manager = attributes.manager_of_class(class_)
+        mapper = class_manager.mapper
+        if configure and mapperlib.module._new_mappers:
+            mapperlib.configure_mappers()
+        return mapper
+
+    except exc.NO_STATE:
+        return None
+
 
 def object_mapper(instance):
     """Given an object, return the primary Mapper associated with the object
@@ -904,101 +856,167 @@ def object_mapper(instance):
     """
     return object_state(instance).mapper
 
-@inspection._inspects(object)
 def object_state(instance):
     """Given an object, return the primary Mapper associated with the object
     instance.
 
     Raises UnmappedInstanceError if no mapping is configured.
 
-    This function is available via the inspection system as::
+    Equivalent functionality is available via the inspection system as::
 
         inspect(instance)
 
+    Using the inspection system will raise plain
+    :class:`.InvalidRequestError` if the instance is not part of
+    a mapping.
+
     """
-    try:
-        return attributes.instance_state(instance)
-        # TODO: whats the py-2/3 syntax to catch two
-        # different kinds of exceptions at once ?
-    except exc.UnmappedClassError:
+    state = _inspect_mapped_object(instance)
+    if state is None:
         raise exc.UnmappedInstanceError(instance)
-    except exc.NO_STATE:
-        raise exc.UnmappedInstanceError(instance)
+    else:
+        return state
 
-
-@inspection._inspects(type)
-def class_mapper(class_, compile=True):
-    """Given a class, return the primary :class:`.Mapper` associated 
+def class_mapper(class_, configure=True):
+    """Given a class, return the primary :class:`.Mapper` associated
     with the key.
 
     Raises :class:`.UnmappedClassError` if no mapping is configured
     on the given class, or :class:`.ArgumentError` if a non-class
     object is passed.
 
-    This function is available via the inspection system as::
+    Equivalent functionality is available via the inspection system as::
 
         inspect(some_mapped_class)
 
+    Using the inspection system will raise plain
+    :class:`.InvalidRequestError` if the class is not mapped.
+
     """
-
-    try:
-        class_manager = attributes.manager_of_class(class_)
-        mapper = class_manager.mapper
-
-    except exc.NO_STATE:
-        if not isinstance(class_, type): 
-            raise sa_exc.ArgumentError("Class object expected, got '%r'." % class_) 
+    mapper = _inspect_mapped_class(class_, configure=configure)
+    if mapper is None:
+        if not isinstance(class_, type):
+            raise sa_exc.ArgumentError(
+                    "Class object expected, got '%r'." % class_)
         raise exc.UnmappedClassError(class_)
+    else:
+        return mapper
 
-    if compile and mapperlib.module._new_mappers:
-        mapperlib.configure_mappers()
-    return mapper
-
-def _class_to_mapper(class_or_mapper, compile=True):
-    if _is_aliased_class(class_or_mapper):
-        return class_or_mapper._AliasedClass__mapper
-
-    elif isinstance(class_or_mapper, type):
-        try:
-            class_manager = attributes.manager_of_class(class_or_mapper)
-            mapper = class_manager.mapper
-        except exc.NO_STATE:
-            raise exc.UnmappedClassError(class_or_mapper)
-    elif isinstance(class_or_mapper, mapperlib.Mapper):
-        mapper = class_or_mapper
+def _class_to_mapper(class_or_mapper):
+    insp = inspection.inspect(class_or_mapper, False)
+    if insp is not None:
+        return insp.mapper
     else:
         raise exc.UnmappedClassError(class_or_mapper)
 
-    if compile and mapperlib.module._new_mappers:
-        mapperlib.configure_mappers()
-    return mapper
+def _mapper_or_none(entity):
+    """Return the :class:`.Mapper` for the given class or None if the
+    class is not mapped."""
+
+    insp = inspection.inspect(entity, False)
+    if insp is not None:
+        return insp.mapper
+    else:
+        return None
+
+def _is_mapped_class(entity):
+    """Return True if the given object is a mapped class,
+    :class:`.Mapper`, or :class:`.AliasedClass`."""
+
+    insp = inspection.inspect(entity, False)
+    return insp is not None and \
+        hasattr(insp, "mapper") and \
+        (
+            insp.is_mapper
+            or insp.is_aliased_class
+        )
+
+
+def _is_aliased_class(entity):
+    insp = inspection.inspect(entity, False)
+    return insp is not None and \
+        getattr(insp, "is_aliased_class", False)
+
+extended_entity_info = util.namedtuple("extended_entity_info", [
+    "entity",
+    "mapper",
+    "selectable",
+    "is_aliased_class",
+    "with_polymorphic_mappers",
+    "with_polymorphic_discriminator"
+])
+def _extended_entity_info(entity):
+    insp = inspection.inspect(entity)
+    return extended_entity_info(
+        entity,
+        insp.mapper if not insp.is_selectable else None,
+        insp.selectable,
+        insp.is_aliased_class if not insp.is_selectable else False,
+        insp.with_polymorphic_mappers if not insp.is_selectable else None,
+        insp.polymorphic_on if not insp.is_selectable else None
+    )
+
+def _entity_info(entity, compile=True):
+    """Return mapping information given a class, mapper, or AliasedClass.
+
+    Returns 3-tuple of: mapper, mapped selectable, boolean indicating if this
+    is an aliased() construct.
+
+    If the given entity is not a mapper, mapped class, or aliased construct,
+    returns None, the entity, False.  This is typically used to allow
+    unmapped selectables through.
+
+    """
+    insp = inspection.inspect(entity)
+    return \
+        insp.mapper if not insp.is_selectable else None,\
+        insp.selectable,\
+        insp.is_aliased_class if not insp.is_selectable else False,
+
+
+def _entity_descriptor(entity, key):
+    """Return a class attribute given an entity and string name.
+
+    May return :class:`.InstrumentedAttribute` or user-defined
+    attribute.
+
+    """
+    insp = inspection.inspect(entity)
+    if insp.is_selectable:
+        description = entity
+        entity = insp.c
+    elif insp.is_aliased_class:
+        description = entity
+    elif hasattr(insp, "mapper"):
+        description = entity = insp.mapper.class_
+    else:
+        description = entity
+
+    try:
+        return getattr(entity, key)
+    except AttributeError:
+        raise sa_exc.InvalidRequestError(
+                    "Entity '%s' has no property '%s'" %
+                    (description, key)
+                )
+
+def _orm_columns(entity):
+    insp = inspection.inspect(entity, False)
+    if hasattr(insp, 'selectable'):
+        return [c for c in insp.selectable.c]
+    else:
+        return [entity]
+
+def _orm_selectable(entity):
+    insp = inspection.inspect(entity, False)
+    if hasattr(insp, 'selectable'):
+        return insp.selectable
+    else:
+        return entity
 
 def has_identity(object):
     state = attributes.instance_state(object)
     return state.has_identity
-
-def _is_mapped_class(cls):
-    """Return True if the given object is a mapped class, 
-    :class:`.Mapper`, or :class:`.AliasedClass`."""
-
-    if isinstance(cls, (AliasedClass, mapperlib.Mapper)):
-        return True
-    if isinstance(cls, expression.ClauseElement):
-        return False
-    if isinstance(cls, type):
-        manager = attributes.manager_of_class(cls)
-        return manager and _INSTRUMENTOR in manager.info
-    return False
-
-def _mapper_or_none(cls):
-    """Return the :class:`.Mapper` for the given class or None if the 
-    class is not mapped."""
-
-    manager = attributes.manager_of_class(cls)
-    if manager is not None and _INSTRUMENTOR in manager.info:
-        return manager.info[_INSTRUMENTOR]
-    else:
-        return None
 
 def instance_str(instance):
     """Return a string describing an instance."""

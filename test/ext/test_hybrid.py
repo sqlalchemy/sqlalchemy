@@ -62,7 +62,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT a.value AS a_value FROM a"
         )
 
-    def test_alised_query(self):
+    def test_aliased_query(self):
         A = self._fixture()
         sess = Session()
         self.assert_compile(
@@ -214,7 +214,7 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
         A = self._fixture(False)
         a1 = A(_value=5)
         assert_raises_message(
-            AttributeError, 
+            AttributeError,
             "can't set attribute",
             setattr, a1, 'value', 10
         )
@@ -223,7 +223,7 @@ class PropertyValueTest(fixtures.TestBase, AssertsCompiledSQL):
         A = self._fixture(False)
         a1 = A(_value=5)
         assert_raises_message(
-            AttributeError, 
+            AttributeError,
             "can't delete attribute",
             delattr, a1, 'value'
         )

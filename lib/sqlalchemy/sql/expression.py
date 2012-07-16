@@ -29,7 +29,7 @@ to stay the same in future releases.
 import itertools, re
 from operator import attrgetter
 
-from .. import util, exc
+from .. import util, exc, inspection
 from . import operators
 from .operators import ColumnOperators
 from .visitors import Visitable, cloned_traverse
@@ -1525,6 +1525,7 @@ class ClauseElement(Visitable):
     _from_objects = []
     bind = None
     _is_clone_of = None
+    is_selectable = False
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -1840,6 +1841,8 @@ class ClauseElement(Visitable):
         else:
             return '<%s.%s at 0x%x; %s>' % (
                 self.__module__, self.__class__.__name__, id(self), friendly)
+
+inspection._self_inspects(ClauseElement)
 
 
 class _Immutable(object):
@@ -2393,6 +2396,12 @@ class ColumnSet(util.ordered_column_set):
 class Selectable(ClauseElement):
     """mark a class as being selectable"""
     __visit_name__ = 'selectable'
+
+    is_selectable = True
+
+    @property
+    def selectable(self):
+        return self
 
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``

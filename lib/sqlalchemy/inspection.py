@@ -7,7 +7,7 @@
 """Base inspect API.
 
 :func:`.inspect` provides access to a contextual object
-regarding a subject.   
+regarding a subject.
 
 Various subsections of SQLAlchemy,
 such as the :class:`.Inspector`, :class:`.Mapper`, and
@@ -16,21 +16,28 @@ so that they may return a context object given a certain kind
 of argument.
 """
 
-from . import util
+from . import util, exc
 _registrars = util.defaultdict(list)
 
-def inspect(subject):
+def inspect(subject, raiseerr=True):
     type_ = type(subject)
     for cls in type_.__mro__:
         if cls in _registrars:
             reg = _registrars[cls]
-            break
+            ret = reg(subject)
+            if ret is not None:
+                break
     else:
-        raise exc.InvalidRequestError(
-                "No inspection system is "
-                "available for object of type %s" % 
-                type_)
-    return reg(subject)
+        reg = ret = None
+
+    if raiseerr and (
+            reg is None or ret is None
+        ):
+        raise exc.NoInspectionAvailable(
+            "No inspection system is "
+            "available for object of type %s" %
+            type_)
+    return ret
 
 def _inspects(*types):
     def decorate(fn_or_cls):
@@ -42,3 +49,6 @@ def _inspects(*types):
             _registrars[type_] = fn_or_cls
         return fn_or_cls
     return decorate
+
+def _self_inspects(*types):
+    _inspects(*types)(lambda subject:subject)

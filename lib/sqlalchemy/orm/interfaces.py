@@ -55,8 +55,17 @@ MANYTOMANY = util.symbol('MANYTOMANY')
 from .deprecated_interfaces import AttributeExtension, SessionExtension, \
     MapperExtension
 
+class _InspectionAttr(object):
+    """Define a series of attributes that all ORM inspection
+    targets need to have."""
 
-class MapperProperty(object):
+    is_selectable = False
+    is_aliased_class = False
+    is_instance = False
+    is_mapper = False
+    is_property = False
+
+class MapperProperty(_InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
     instances of the class, including attribute instrumentation,
@@ -76,6 +85,8 @@ class MapperProperty(object):
     This collection is checked before the 'cascade_iterator' method is called.
 
     """
+
+    is_property = True
 
     def setup(self, context, entity, path, adapter, **kwargs):
         """Called by Query for the purposes of constructing a SQL statement.
@@ -115,8 +126,8 @@ class MapperProperty(object):
     def instrument_class(self, mapper):  # pragma: no-coverage
         raise NotImplementedError()
 
-    _compile_started = False
-    _compile_finished = False
+    _configure_started = False
+    _configure_finished = False
 
     def init(self):
         """Called after all mappers are created to assemble
@@ -124,9 +135,9 @@ class MapperProperty(object):
         initialization steps.
 
         """
-        self._compile_started = True
+        self._configure_started = True
         self.do_init()
-        self._compile_finished = True
+        self._configure_finished = True
 
     @property
     def class_attribute(self):

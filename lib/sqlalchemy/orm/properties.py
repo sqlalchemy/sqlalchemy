@@ -886,7 +886,7 @@ class RelationshipProperty(StrategizedProperty):
 
 
     def _add_reverse_property(self, key):
-        other = self.mapper.get_property(key, _compile_mappers=False)
+        other = self.mapper.get_property(key, _configure_mappers=False)
         self._reverse_property.add(other)
         other._reverse_property.add(self)
 
@@ -912,7 +912,7 @@ class RelationshipProperty(StrategizedProperty):
         """
         if isinstance(self.argument, type):
             mapper_ = mapper.class_mapper(self.argument,
-                    compile=False)
+                    configure=False)
         elif isinstance(self.argument, mapper.Mapper):
             mapper_ = self.argument
         elif util.callable(self.argument):
@@ -921,7 +921,7 @@ class RelationshipProperty(StrategizedProperty):
             # configurational schemes
 
             mapper_ = mapper.class_mapper(self.argument(),
-                    compile=False)
+                    configure=False)
         else:
             raise sa_exc.ArgumentError("relationship '%s' expects "
                     "a class or a mapper argument (received: %s)"
@@ -1037,7 +1037,7 @@ class RelationshipProperty(StrategizedProperty):
         if not self.is_primary() \
             and not mapper.class_mapper(
                                 self.parent.class_,
-                                compile=False).has_property(self.key):
+                                configure=False).has_property(self.key):
             raise sa_exc.ArgumentError("Attempting to assign a new "
                     "relationship '%s' to a non-primary mapper on "
                     "class '%s'.  New relationships can only be added "

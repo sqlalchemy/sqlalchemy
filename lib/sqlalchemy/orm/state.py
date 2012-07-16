@@ -13,7 +13,7 @@ defines a large part of the ORM's interactivity.
 
 import weakref
 from .. import util
-from . import exc as orm_exc, attributes, util as orm_util
+from . import exc as orm_exc, attributes, util as orm_util, interfaces
 from .attributes import (
     PASSIVE_NO_RESULT,
     SQL_OK, NEVER_SET, ATTR_WAS_SET, NO_VALUE,\
@@ -24,7 +24,7 @@ instrumentation = util.importlater("sqlalchemy.orm", "instrumentation")
 mapperlib = util.importlater("sqlalchemy.orm", "mapperlib")
 
 
-class InstanceState(object):
+class InstanceState(interfaces._InspectionAttr):
     """tracks state information at the instance level."""
 
     session_id = None
@@ -38,6 +38,8 @@ class InstanceState(object):
     expired = False
     deleted = False
     _load_pending = False
+
+    is_instance = True
 
     def __init__(self, obj, manager):
         self.class_ = obj.__class__

@@ -19,11 +19,11 @@ import weakref
 from itertools import chain
 from collections import deque
 
-from .. import sql, util, log, exc as sa_exc, event, schema
+from .. import sql, util, log, exc as sa_exc, event, schema, inspection
 from ..sql import expression, visitors, operators, util as sql_util
 from . import instrumentation, attributes, \
                         exc as orm_exc, events, loading
-from .interfaces import MapperProperty
+from .interfaces import MapperProperty, _InspectionAttr
 
 from .util import _INSTRUMENTOR, _class_to_mapper, \
      _state_mapper, class_mapper, \
@@ -51,10 +51,10 @@ _memoized_configured_property = util.group_expirable_memoized_property()
 # column
 NO_ATTRIBUTE = util.symbol('NO_ATTRIBUTE')
 
-# lock used to synchronize the "mapper compile" step
-_COMPILE_MUTEX = util.threading.RLock()
+# lock used to synchronize the "mapper configure" step
+_CONFIGURE_MUTEX = util.threading.RLock()
 
-class Mapper(object):
+class Mapper(_InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
 
@@ -182,7 +182,7 @@ class Mapper(object):
         # prevent this mapper from being constructed
         # while a configure_mappers() is occurring (and defer a
         # configure_mappers() until construction succeeds)
-        _COMPILE_MUTEX.acquire()
+        _CONFIGURE_MUTEX.acquire()
         try:
             self._configure_inheritance()
             self._configure_legacy_instrument_class()
@@ -196,10 +196,22 @@ class Mapper(object):
             self._log("constructed")
             self._expire_memoizations()
         finally:
-            _COMPILE_MUTEX.release()
+            _CONFIGURE_MUTEX.release()
 
     # major attributes initialized at the classlevel so that
     # they can be Sphinx-documented.
+
+    is_mapper = True
+    """Part of the inspection API."""
+
+    @property
+    def mapper(self):
+        """Part of the inspection API.
+
+        Returns self.
+
+        """
+        return self
 
     local_table = None
     """The :class:`.Selectable` which this :class:`.Mapper` manages.
@@ -435,7 +447,7 @@ class Mapper(object):
 
         if self.inherits:
             if isinstance(self.inherits, type):
-                self.inherits = class_mapper(self.inherits, compile=False)
+                self.inherits = class_mapper(self.inherits, configure=False)
             if not issubclass(self.class_, self.inherits.class_):
                 raise sa_exc.ArgumentError(
                         "Class '%s' does not inherit from '%s'" %
@@ -1185,10 +1197,10 @@ class Mapper(object):
         for key, prop in l:
             self._log("initialize prop %s", key)
 
-            if prop.parent is self and not prop._compile_started:
+            if prop.parent is self and not prop._configure_started:
                 prop.init()
 
-            if prop._compile_finished:
+            if prop._configure_finished:
                 prop.post_instrument_class(self)
 
         self._log("_post_configure_properties() complete")
@@ -1263,11 +1275,11 @@ class Mapper(object):
     def has_property(self, key):
         return key in self._props
 
-    def get_property(self, key, _compile_mappers=True):
+    def get_property(self, key, _configure_mappers=True):
         """return a MapperProperty associated with the given key.
         """
 
-        if _compile_mappers and _new_mappers:
+        if _configure_mappers and _new_mappers:
             configure_mappers()
 
         try:
@@ -1352,9 +1364,12 @@ class Mapper(object):
 
     @_memoized_configured_property
     def _with_polymorphic_mappers(self):
+        if _new_mappers:
+            configure_mappers()
         if not self.with_polymorphic:
             return [self]
         return self._mappers_from_spec(*self.with_polymorphic)
+
 
     @_memoized_configured_property
     def _with_polymorphic_selectable(self):
@@ -1368,6 +1383,22 @@ class Mapper(object):
             return self._selectable_from_mappers(
                             self._mappers_from_spec(spec, selectable),
                             False)
+
+    with_polymorphic_mappers = _with_polymorphic_mappers
+    """The list of :class:`.Mapper` objects included in the
+    default "polymorphic" query.
+
+    """
+
+    selectable = _with_polymorphic_selectable
+    """The :func:`.select` construct this :class:`.Mapper` selects from
+    by default.
+
+    Normally, this is equivalent to :attr:`.mapped_table`, unless
+    the ``with_polymorphic`` feature is in use, in which case the
+    full "polymoprhic" selectable is returned.
+
+    """
 
     def _with_polymorphic_args(self, spec=None, selectable=False,
                                 innerjoin=False):
@@ -1886,6 +1917,7 @@ class Mapper(object):
 
         return result
 
+inspection._self_inspects(Mapper)
 log.class_logger(Mapper)
 
 def configure_mappers():
@@ -1902,7 +1934,7 @@ def configure_mappers():
         return
 
     _call_configured = None
-    _COMPILE_MUTEX.acquire()
+    _CONFIGURE_MUTEX.acquire()
     try:
         global _already_compiling
         if _already_compiling:
@@ -1944,7 +1976,7 @@ def configure_mappers():
         finally:
             _already_compiling = False
     finally:
-        _COMPILE_MUTEX.release()
+        _CONFIGURE_MUTEX.release()
     if _call_configured is not None:
         _call_configured.dispatch.after_configured()
 

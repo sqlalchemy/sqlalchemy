@@ -1,10 +1,10 @@
 """test the inspection registry system."""
 
-from test.lib.testing import eq_, assert_raises, is_
+from test.lib.testing import eq_, assert_raises_message, is_
 from sqlalchemy import exc, util
 from sqlalchemy import inspect
 from test.orm import _fixtures
-from sqlalchemy.orm import class_mapper, synonym, Session
+from sqlalchemy.orm import class_mapper, synonym, Session, aliased
 from sqlalchemy.orm.attributes import instance_state, NO_VALUE
 from test.lib import testing
 
@@ -21,11 +21,6 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         assert inspect(User) is class_mapper(User)
 
-    def test_instance_state(self):
-        User = self.classes.User
-        u1 = User()
-
-        assert inspect(u1) is instance_state(u1)
 
     def test_column_collection_iterate(self):
         User = self.classes.User
@@ -43,7 +38,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         user_table = self.tables.users
         insp = inspect(User)
-        eq_(insp.primary_key, 
+        eq_(insp.primary_key,
             (user_table.c.id,)
         )
 
@@ -53,11 +48,58 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(User)
         is_(insp.local_table, user_table)
 
-    def test_property(self):
+    def test_mapped_table(self):
         User = self.classes.User
         user_table = self.tables.users
         insp = inspect(User)
+        is_(insp.mapped_table, user_table)
+
+    def test_mapper_selectable(self):
+        User = self.classes.User
+        user_table = self.tables.users
+        insp = inspect(User)
+        is_(insp.selectable, user_table)
+        assert not insp.is_selectable
+        assert not insp.is_aliased_class
+
+    def test_aliased_class(self):
+        Address = self.classes.Address
+        ualias = aliased(Address)
+        insp = inspect(ualias)
+        is_(insp.mapper, inspect(Address))
+        is_(insp.selectable, ualias._AliasedClass__alias)
+        assert not insp.is_selectable
+        assert insp.is_aliased_class
+
+    def test_not_mapped_class(self):
+        class Foo(object):
+            pass
+
+        assert_raises_message(
+            exc.NoInspectionAvailable,
+            "No inspection system is available for object of type",
+            inspect, Foo
+        )
+
+    def test_not_mapped_instance(self):
+        class Foo(object):
+            pass
+
+        assert_raises_message(
+            exc.NoInspectionAvailable,
+            "No inspection system is available for object of type",
+            inspect, Foo()
+        )
+
+    def test_property(self):
+        User = self.classes.User
+        insp = inspect(User)
         is_(insp.attr.id, class_mapper(User).get_property('id'))
+
+    def test_with_polymorphic(self):
+        User = self.classes.User
+        insp = inspect(User)
+        eq_(insp.with_polymorphic_mappers, [insp])
 
     def test_col_property(self):
         User = self.classes.User
@@ -74,7 +116,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         User = self.classes.User
         insp = inspect(User)
         eq_(
-            set(insp.attr.keys()), 
+            set(insp.attr.keys()),
             set(['addresses', 'orders', 'id', 'name', 'name_syn'])
         )
 
@@ -115,7 +157,7 @@ class TestORMInspection(_fixtures.FixtureTest):
             User.addresses.property
         )
         eq_(
-            set(rel.keys()), 
+            set(rel.keys()),
             set(['orders', 'addresses'])
         )
 
@@ -133,6 +175,7 @@ class TestORMInspection(_fixtures.FixtureTest):
 
         assert not hasattr(prop, 'columns')
         assert not hasattr(prop, 'expression')
+
 
     def test_instance_state(self):
         User = self.classes.User
@@ -227,6 +270,18 @@ class TestORMInspection(_fixtures.FixtureTest):
         insp = inspect(u1)
         eq_(insp.identity, (u1.id,))
         is_(s.query(User).get(insp.identity), u1)
+
+    def test_is_instance(self):
+        User = self.classes.User
+        u1 = User(name='ed')
+        insp = inspect(u1)
+        assert insp.is_instance
+
+        insp = inspect(User)
+        assert not insp.is_instance
+
+        insp = inspect(aliased(User))
+        assert not insp.is_instance
 
     def test_identity_key(self):
         User = self.classes.User
