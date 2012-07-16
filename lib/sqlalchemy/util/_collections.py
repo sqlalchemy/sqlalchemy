@@ -16,10 +16,19 @@ from compat import time_func, threading
 EMPTY_SET = frozenset()
 
 
-class NamedTuple(tuple):
+class KeyedTuple(tuple):
     """tuple() subclass that adds labeled names.
 
-    Is also pickleable.
+    Unlike collections.namedtuple, this is
+    an ad-hoc data structure, not a factory
+    for new types.
+
+    It's pickleable in-place without the need for stack
+    frame manipulation, new KeyedTuple types can be created
+    very quickly and simply (look at the source
+    to collections.namedtuple for contrast).
+
+    Is used by :class:`.Query` to return result rows.
 
     """
 

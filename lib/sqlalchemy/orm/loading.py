@@ -70,7 +70,7 @@ def instances(query, cursor, context):
         elif single_entity:
             rows = [process[0](row, None) for row in fetch]
         else:
-            rows = [util.NamedTuple([proc(row, None) for proc in process],
+            rows = [util.KeyedTuple([proc(row, None) for proc in process],
                                     labels) for row in fetch]
 
         if filtered:

@@ -9,7 +9,7 @@ from compat import callable, cmp, reduce, defaultdict, py25_dict, \
     update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
     parse_qsl, any, contextmanager, namedtuple, next, WeakSet
 
-from _collections import NamedTuple, ImmutableContainer, immutabledict, \
+from _collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
     OrderedSet, IdentitySet, OrderedIdentitySet, column_set, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
