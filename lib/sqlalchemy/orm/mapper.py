@@ -213,6 +213,15 @@ class Mapper(_InspectionAttr):
         """
         return self
 
+    @property
+    def entity(self):
+        """Part of the inspection API.
+
+        Returns self.class_.
+
+        """
+        return self.class_
+
     local_table = None
     """The :class:`.Selectable` which this :class:`.Mapper` manages.
 
@@ -1390,15 +1399,17 @@ class Mapper(_InspectionAttr):
 
     """
 
-    selectable = _with_polymorphic_selectable
-    """The :func:`.select` construct this :class:`.Mapper` selects from
-    by default.
+    @property
+    def selectable(self):
+        """The :func:`.select` construct this :class:`.Mapper` selects from
+        by default.
 
-    Normally, this is equivalent to :attr:`.mapped_table`, unless
-    the ``with_polymorphic`` feature is in use, in which case the
-    full "polymoprhic" selectable is returned.
+        Normally, this is equivalent to :attr:`.mapped_table`, unless
+        the ``with_polymorphic`` feature is in use, in which case the
+        full "polymoprhic" selectable is returned.
 
-    """
+        """
+        return self._with_polymorphic_selectable
 
     def _with_polymorphic_args(self, spec=None, selectable=False,
                                 innerjoin=False):

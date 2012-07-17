@@ -25,12 +25,11 @@ from . import (
     exc as orm_exc, loading
     )
 from .util import (
-    AliasedClass, ORMAdapter, _entity_descriptor, _entity_info,
-    _extended_entity_info, PathRegistry,
+    AliasedClass, ORMAdapter, _entity_descriptor, PathRegistry,
     _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
     join as orm_join,with_parent, aliased
     )
-from .. import sql, util, log, exc as sa_exc
+from .. import sql, util, log, exc as sa_exc, inspect
 from ..sql import (
         util as sql_util,
         expression, visitors
@@ -127,7 +126,7 @@ class Query(object):
         for ent in entities:
             for entity in ent.entities:
                 if entity not in d:
-                    ext_info = _extended_entity_info(entity)
+                    ext_info = inspect(entity)
                     if not ext_info.is_aliased_class and \
                         ext_info.mapper.with_polymorphic:
                         if ext_info.mapper.mapped_table not in \
@@ -1077,7 +1076,7 @@ class Query(object):
         :class:`.Table`, :class:`.Alias`, or ORM entity / mapped class
         /etc.
         """
-        mapper, selectable, is_aliased_class = _entity_info(selectable)
+        selectable = inspect(selectable).selectable
 
         self._with_hints += ((selectable, text, dialect_name),)
 
@@ -1719,8 +1718,12 @@ class Query(object):
                         isinstance(onclause, interfaces.PropComparator):
                 left_entity = onclause.parententity
 
+                info = inspect(self._joinpoint_zero())
                 left_mapper, left_selectable, left_is_aliased = \
-                                    _entity_info(self._joinpoint_zero())
+                    getattr(info, 'mapper', None), \
+                    info.selectable, \
+                    getattr(info, 'is_aliased_class', None)
+
                 if left_mapper is left_entity:
                     left_entity = self._joinpoint_zero()
                     descriptor = _entity_descriptor(left_entity,
@@ -1810,10 +1813,15 @@ class Query(object):
 
     def _prepare_right_side(self, right, onclause, outerjoin,
                                 create_aliases, prop):
-        right_mapper, right_selectable, right_is_aliased = _entity_info(right)
+        info = inspect(right)
+
+        right_mapper, right_selectable, right_is_aliased = \
+            getattr(info, 'mapper', None), \
+            info.selectable, \
+            getattr(info, 'is_aliased_class', False)
 
         if right_mapper:
-            self._join_entities += (right, )
+            self._join_entities += (info, )
 
         if right_mapper and prop and \
                 not right_mapper.common_parent(prop.mapper):
@@ -1883,8 +1891,13 @@ class Query(object):
 
         return right, right_is_aliased, onclause
 
-    def _join_to_left(self, left, right, right_is_aliased, onclause, outerjoin):
-        left_mapper, left_selectable, left_is_aliased = _entity_info(left)
+    def _join_to_left(self, left, right, right_is_aliased,
+                                    onclause, outerjoin):
+        info = inspect(left)
+        left_mapper, left_selectable, left_is_aliased = \
+            getattr(info, 'mapper', None),\
+            info.selectable,\
+            getattr(info, 'is_aliased_class', False)
 
         # this is an overly broad assumption here, but there's a
         # very wide variety of situations where we rely upon orm.join's
@@ -1990,11 +2003,12 @@ class Query(object):
         """
         obj = []
         for fo in from_obj:
-            if _is_mapped_class(fo):
-                mapper, selectable, is_aliased_class = _entity_info(fo)
+            info = inspect(fo)
+            if hasattr(info, 'mapper') and \
+                (info.is_mapper or info.is_aliased_class):
                 self._select_from_entity = fo
-                obj.append(selectable)
-            elif not isinstance(fo, expression.FromClause):
+                obj.append(info.selectable)
+            elif not info.is_selectable:
                 raise sa_exc.ArgumentError(
                             "select_from() accepts FromClause objects only.")
             else:
@@ -2669,7 +2683,7 @@ class Query(object):
 
         """
         for (ext_info, adapter) in self._mapper_adapter_map.values():
-            if ext_info.entity in self._join_entities:
+            if ext_info in self._join_entities:
                 continue
             single_crit = ext_info.mapper._single_table_criterion
             if single_crit is not None:
@@ -2718,7 +2732,7 @@ class _MapperEntity(_QueryEntity):
         self.is_aliased_class = ext_info.is_aliased_class
         self._with_polymorphic = ext_info.with_polymorphic_mappers
         self._polymorphic_discriminator = \
-                ext_info.with_polymorphic_discriminator
+                ext_info.polymorphic_on
         if ext_info.is_aliased_class:
             self.entity_zero = ext_info.entity
             self._label_name = self.entity_zero._sa_label_name
@@ -2760,7 +2774,7 @@ class _MapperEntity(_QueryEntity):
         return self.entity_zero
 
     def corresponds_to(self, entity):
-        entity_info = _extended_entity_info(entity)
+        entity_info = inspect(entity)
         if entity_info.is_aliased_class or self.is_aliased_class:
             return entity is self.entity_zero \
                 or \

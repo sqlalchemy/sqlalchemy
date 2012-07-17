@@ -11,7 +11,7 @@ mapped attributes.
 
 """
 
-from .. import sql, util, log, exc as sa_exc
+from .. import sql, util, log, exc as sa_exc, inspect
 from ..sql import operators, expression
 from . import (
     attributes, mapper,
@@ -19,7 +19,7 @@ from . import (
     dependency
     )
 from .util import CascadeOptions, \
-        _orm_annotate, _orm_deannotate, _orm_full_deannotate, _entity_info
+        _orm_annotate, _orm_deannotate, _orm_full_deannotate
 
 from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY,\
         PropComparator, StrategizedProperty
@@ -409,7 +409,9 @@ class RelationshipProperty(StrategizedProperty):
 
         def _criterion_exists(self, criterion=None, **kwargs):
             if getattr(self, '_of_type', None):
-                target_mapper, to_selectable, is_aliased_class = _entity_info(self._of_type)
+                info = inspect(self._of_type)
+                target_mapper, to_selectable, is_aliased_class = \
+                    info.mapper, info.selectable, info.is_aliased_class
                 if self.property._is_self_referential and not is_aliased_class:
                     to_selectable = to_selectable.alias()
 

@@ -18,7 +18,7 @@ classes within should be considered mostly private.
 from __future__ import absolute_import
 from itertools import chain
 
-from .. import exc as sa_exc, util
+from .. import exc as sa_exc, util, inspect
 from ..sql import operators
 from collections import deque
 #from . import _instrumentation_ext
@@ -575,13 +575,13 @@ class PropertyOption(MapperOption):
 
             if getattr(token, '_of_type', None):
                 ac = token._of_type
-                ext_info = orm_util._extended_entity_info(ac)
+                ext_info = inspect(ac)
                 path_element = mapper = ext_info.mapper
                 if not ext_info.is_aliased_class:
                     ac = orm_util.with_polymorphic(
                                 ext_info.mapper.base_mapper,
                                 ext_info.mapper, aliased=True)
-                    ext_info = orm_util._extended_entity_info(ac)
+                    ext_info = inspect(ac)
                 path.set(query, "path_with_polymorphic", ext_info)
             else:
                 path_element = mapper = getattr(prop, 'mapper', None)

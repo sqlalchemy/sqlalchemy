@@ -62,6 +62,20 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert not insp.is_selectable
         assert not insp.is_aliased_class
 
+    def test_mapper_selectable_fixed(self):
+        from sqlalchemy.orm import mapper
+        class Foo(object):
+            pass
+        class Bar(Foo):
+            pass
+        user_table = self.tables.users
+        addresses_table = self.tables.addresses
+        mapper(Foo, user_table, with_polymorphic=(Bar,))
+        mapper(Bar, addresses_table, inherits=Foo)
+        i1 = inspect(Foo)
+        i2 = inspect(Foo)
+        assert i1.selectable is i2.selectable
+
     def test_aliased_class(self):
         Address = self.classes.Address
         ualias = aliased(Address)

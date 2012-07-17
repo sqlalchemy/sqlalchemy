@@ -220,7 +220,11 @@ class ORMAdapter(sql_util.ColumnAdapter):
     """
     def __init__(self, entity, equivalents=None,
                             chain_to=None, adapt_required=False):
-        self.mapper, selectable, is_aliased_class = _entity_info(entity)
+        info = inspection.inspect(entity)
+
+        self.mapper = info.mapper
+        selectable = info.selectable
+        is_aliased_class = info.is_aliased_class
         if is_aliased_class:
             self.aliased_class = entity
         else:
@@ -446,6 +450,7 @@ class AliasedClass(object):
         if alias is None:
             alias = mapper._with_polymorphic_selectable.alias(name=name)
         self._aliased_insp = AliasedInsp(
+            self,
             mapper,
             alias,
             name,
@@ -490,6 +495,7 @@ class AliasedClass(object):
 
     def __setstate__(self, state):
         self._aliased_insp = AliasedInsp(
+            self,
             state['mapper'],
             state['alias'],
             state['name'],
@@ -548,6 +554,7 @@ class AliasedClass(object):
             id(self), self.__target.__name__)
 
 AliasedInsp = util.namedtuple("AliasedInsp", [
+        "entity",
         "mapper",
         "selectable",
         "name",
@@ -674,11 +681,19 @@ class _ORMJoin(expression.Join):
             if join_to_left:
                 adapt_from = left.right
         else:
-            left_mapper, left, left_is_aliased = _entity_info(left)
+            info = inspection.inspect(left)
+            left_mapper = getattr(info, 'mapper', None)
+            left = info.selectable
+            left_is_aliased = getattr(info, 'is_aliased_class', False)
+
             if join_to_left and (left_is_aliased or not left_mapper):
                 adapt_from = left
 
-        right_mapper, right, right_is_aliased = _entity_info(right)
+        info = inspection.inspect(right)
+        right_mapper = getattr(info, 'mapper', None)
+        right = info.selectable
+        right_is_aliased = getattr(info, 'is_aliased_class', False)
+
         if right_is_aliased:
             adapt_to = right
         else:
@@ -938,42 +953,6 @@ def _is_aliased_class(entity):
     insp = inspection.inspect(entity, False)
     return insp is not None and \
         getattr(insp, "is_aliased_class", False)
-
-extended_entity_info = util.namedtuple("extended_entity_info", [
-    "entity",
-    "mapper",
-    "selectable",
-    "is_aliased_class",
-    "with_polymorphic_mappers",
-    "with_polymorphic_discriminator"
-])
-def _extended_entity_info(entity):
-    insp = inspection.inspect(entity)
-    return extended_entity_info(
-        entity,
-        insp.mapper if not insp.is_selectable else None,
-        insp.selectable,
-        insp.is_aliased_class if not insp.is_selectable else False,
-        insp.with_polymorphic_mappers if not insp.is_selectable else None,
-        insp.polymorphic_on if not insp.is_selectable else None
-    )
-
-def _entity_info(entity, compile=True):
-    """Return mapping information given a class, mapper, or AliasedClass.
-
-    Returns 3-tuple of: mapper, mapped selectable, boolean indicating if this
-    is an aliased() construct.
-
-    If the given entity is not a mapper, mapped class, or aliased construct,
-    returns None, the entity, False.  This is typically used to allow
-    unmapped selectables through.
-
-    """
-    insp = inspection.inspect(entity)
-    return \
-        insp.mapper if not insp.is_selectable else None,\
-        insp.selectable,\
-        insp.is_aliased_class if not insp.is_selectable else False,
 
 
 def _entity_descriptor(entity, key):
