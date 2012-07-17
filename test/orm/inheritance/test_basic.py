@@ -1697,8 +1697,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
 class TransientInheritingGCTest(fixtures.TestBase):
+    __requires__ = ('cpython',)
+
     def _fixture(self):
         Base = declarative_base()
+
         class A(Base):
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True, test_needs_pk=True)
