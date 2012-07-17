@@ -331,7 +331,7 @@ class ZooMarkTest(fixtures.TestBase):
         session = sessionmaker(engine)()
         engine.connect()
 
-    @profiling.function_call_count(5600, {"3.2":5928})
+    @profiling.function_call_count(5600, {"3.2":5928}, variance=0.25)
     def test_profile_1_create_tables(self):
         self.test_baseline_1_create_tables()
 
@@ -340,7 +340,7 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_1a_populate(self):
         self.test_baseline_1a_populate()
 
-    @profiling.function_call_count(388, {'3.2':378})
+    @profiling.function_call_count(388, {'3.2':388})
     def test_profile_2_insert(self):
         self.test_baseline_2_insert()
 
