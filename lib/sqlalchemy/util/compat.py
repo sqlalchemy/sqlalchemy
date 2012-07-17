@@ -55,7 +55,7 @@ else:
 
 # a controversial feature, required by MySQLdb currently
 def buffer(x):
-    return x 
+    return x
 
 # Py2K
 buffer = buffer
@@ -121,7 +121,7 @@ try:
 except ImportError:
     def namedtuple(typename, fieldnames):
         def __new__(cls, *values):
-            tup = tuple.__new__(tuptype, values)
+            tup = tuple.__new__(cls, values)
             for i, fname in enumerate(fieldnames):
                 setattr(tup, fname, tup[i])
             return tup
@@ -231,7 +231,7 @@ import time
 if win32 or jython:
     time_func = time.clock
 else:
-    time_func = time.time 
+    time_func = time.time
 
 if sys.version_info >= (2, 5):
     any = any
