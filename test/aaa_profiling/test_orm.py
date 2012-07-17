@@ -61,7 +61,7 @@ class MergeTest(fixtures.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(variance=0.05,
+        @profiling.function_call_count(variance=0.10,
                 versions={'2.7':96, '2.6':96, '2.5':96, '3': 100})
         def go():
             return sess2.merge(p1, load=False)
@@ -69,7 +69,7 @@ class MergeTest(fixtures.MappedTest):
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(variance=0.05,
+        @profiling.function_call_count(variance=0.10,
                 versions={'2.7':16, '2.6':16, '2.5':16, '3': 16})
         def go():
             return sess2.merge(p2, load=False)
