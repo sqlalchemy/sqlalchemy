@@ -1026,16 +1026,16 @@ Mapped instances then make usage of
 
 """
 
-from sqlalchemy.schema import Table, Column, MetaData, _get_table_key
-from sqlalchemy.orm import synonym as _orm_synonym, mapper,\
+from ..schema import Table, Column, MetaData, _get_table_key
+from ..orm import synonym as _orm_synonym, mapper,\
                                 comparable_property, class_mapper
-from sqlalchemy.orm.interfaces import MapperProperty
-from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty, CompositeProperty
-from sqlalchemy.orm.util import _is_mapped_class
-from sqlalchemy import util, exc
-from sqlalchemy.sql import util as sql_util, expression
-from sqlalchemy import event
-from sqlalchemy.orm.util import polymorphic_union, _mapper_or_none
+from ..orm.interfaces import MapperProperty
+from ..orm.properties import RelationshipProperty, ColumnProperty, CompositeProperty
+from ..orm.util import _is_mapped_class
+from .. import util, exc
+from ..sql import util as sql_util, expression
+from .. import event
+from ..orm.util import polymorphic_union, _mapper_or_none
 import weakref
 
 __all__ = 'declarative_base', 'synonym_for', \

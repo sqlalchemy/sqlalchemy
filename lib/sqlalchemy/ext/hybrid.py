@@ -540,8 +540,8 @@ While it's only recommended for advanced and/or patient developers,
 there's probably a whole lot of amazing things it can be used for.
 
 """
-from sqlalchemy import util
-from sqlalchemy.orm import attributes, interfaces
+from .. import util
+from ..orm import attributes, interfaces
 
 class hybrid_method(object):
     """A decorator which allows definition of a Python object method with both

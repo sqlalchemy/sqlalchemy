@@ -21,9 +21,6 @@ from itertools import chain
 from .. import exc as sa_exc, util, inspect
 from ..sql import operators
 from collections import deque
-#from . import _instrumentation_ext
-#InstrumentationManager = _instrumentation_ext.InstrumentationManager
-#from ..ext.instrumentation import InstrumentationManager
 
 orm_util = util.importlater('sqlalchemy.orm', 'util')
 collections = util.importlater('sqlalchemy.orm', 'collections')
@@ -52,7 +49,8 @@ ONETOMANY = util.symbol('ONETOMANY')
 MANYTOONE = util.symbol('MANYTOONE')
 MANYTOMANY = util.symbol('MANYTOMANY')
 
-from .deprecated_interfaces import AttributeExtension, SessionExtension, \
+from .deprecated_interfaces import AttributeExtension, \
+    SessionExtension, \
     MapperExtension
 
 class _InspectionAttr(object):
