@@ -18,7 +18,10 @@ Following is a listing of all inspection targets.
   meaning any of these objects passed to :func:`.inspect` return themselves.
 * ``object`` - an object given will be checked by the ORM for a mapping -
   if so, an :class:`.InstanceState` is returned representing the mapped
-  state of the object.
+  state of the object.  The :class:`.InstanceState` also provides access
+  to per attribute state via the :class:`.AttributeState` interface as well
+  as the per-flush "history" of any attribute via the :class:`.History`
+  object.
 * ``type`` (i.e. a class) - a class given will be checked by the ORM for a
   mapping - if so, a :class:`.Mapper` for that class is returned.
 * mapped attribute - passing a mapped attribute to :func:`.inspect`, such

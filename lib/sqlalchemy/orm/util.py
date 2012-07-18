@@ -386,7 +386,10 @@ class AliasedClass(object):
     __getattr__ scheme and maintains a reference to a
     real :class:`~sqlalchemy.sql.expression.Alias` object.
 
-    Usage is via the :class:`~sqlalchemy.orm.aliased()` synonym::
+    Usage is via the :func:`.orm.aliased` function, or alternatively
+    via the :func:`.orm.with_polymorphic` function.
+
+    Usage example::
 
         # find all pairs of users with the same name
         user_alias = aliased(User)
@@ -394,51 +397,25 @@ class AliasedClass(object):
                         join((user_alias, User.id > user_alias.id)).\\
                         filter(User.name==user_alias.name)
 
-    The resulting object is an instance of :class:`.AliasedClass`, however
-    it implements a ``__getattribute__()`` scheme which will proxy attribute
-    access to that of the ORM class being aliased.  All classmethods
-    on the mapped entity should also be available here, including
-    hybrids created with the :ref:`hybrids_toplevel` extension,
-    which will receive the :class:`.AliasedClass` as the "class" argument
-    when classmethods are called.
+    The resulting object is an instance of :class:`.AliasedClass`.
+    This object implements an attribute scheme which produces the
+    same attribute and method interface as the original mapped
+    class, allowing :class:`.AliasedClass` to be compatible
+    with any attribute technique which works on the original class,
+    including hybrid attributes (see :ref:`hybrids_toplevel`).
 
-    :param cls: ORM mapped entity which will be "wrapped" around an alias.
-    :param alias: a selectable, such as an :func:`.alias` or :func:`.select`
-     construct, which will be rendered in place of the mapped table of the
-     ORM entity.  If left as ``None``, an ordinary :class:`.Alias` of the
-     ORM entity's mapped table will be generated.
-    :param name: A name which will be applied both to the :class:`.Alias`
-     if one is generated, as well as the name present in the "named tuple"
-     returned by the :class:`.Query` object when results are returned.
-    :param adapt_on_names: if True, more liberal "matching" will be used when
-     mapping the mapped columns of the ORM entity to those of the
-     given selectable - a name-based match will be performed if the
-     given selectable doesn't otherwise have a column that corresponds
-     to one on the entity.  The use case for this is when associating
-     an entity with some derived selectable such as one that uses
-     aggregate functions::
+    The :class:`.AliasedClass` can be inspected for its underlying
+    :class:`.Mapper`, aliased selectable, and other information
+    using :func:`.inspect`::
 
-        class UnitPrice(Base):
-            __tablename__ = 'unit_price'
-            ...
-            unit_id = Column(Integer)
-            price = Column(Numeric)
+        from sqlalchemy import inspect
+        my_alias = aliased(MyClass)
+        insp = inspect(my_alias)
 
-        aggregated_unit_price = Session.query(
-                                    func.sum(UnitPrice.price).label('price')
-                                ).group_by(UnitPrice.unit_id).subquery()
+    The resulting inspection object is an instance of :class:`.AliasedInsp`.
 
-        aggregated_unit_price = aliased(UnitPrice,
-                    alias=aggregated_unit_price, adapt_on_names=True)
-
-     Above, functions on ``aggregated_unit_price`` which refer to
-     ``.price`` will return the
-     ``fund.sum(UnitPrice.price).label('price')`` column, as it is
-     matched on the name "price".  Ordinarily, the "price" function
-     wouldn't have any "column correspondence" to the actual
-     ``UnitPrice.price`` column as it is not a proxy of the original.
-
-     .. versionadded:: 0.7.3
+    See :func:`.aliased` and :func:`.with_polymorphic` for construction
+    argument descriptions.
 
     """
     def __init__(self, cls, alias=None,
@@ -601,6 +578,74 @@ class AliasedInsp(_InspectionAttr, AliasedInsp):
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 
 def aliased(element, alias=None, name=None, adapt_on_names=False):
+    """Produce an alias of the given element, usually an :class:`.AliasedClass`
+    instance.
+
+    E.g.::
+
+        my_alias = aliased(MyClass)
+
+        session.query(MyClass, my_alias).filter(MyClass.id > my_alias.id)
+
+    The :func:`.aliased` function is used to create an ad-hoc mapping
+    of a mapped class to a new selectable.  By default, a selectable
+    is generated from the normally mapped selectable (typically a
+    :class:`.Table`) using the :meth:`.FromClause.alias` method.
+    However, :func:`.aliased` can also be used to link the class to
+    a new :func:`.select` statement.   Also, the :func:`.with_polymorphic`
+    function is a variant of :func:`.aliased` that is intended to specify
+    a so-called "polymorphic selectable", that corresponds to the union
+    of several joined-inheritance subclasses at once.
+
+    For convenience, the :func:`.aliased` function also accepts plain
+    :class:`.FromClause` constructs, such as a :class:`.Table` or
+    :func:`.select` construct.   In those cases, the :meth:`.FromClause.alias`
+    method is called on the object and the new :class:`.Alias` object
+    returned.  The returned :class:`.Alias` is not ORM-mapped in this case.
+
+    :param element: element to be aliased.  Is normally a mapped class,
+     but for convenience can also be a :class:`.FromClause` element.
+    :param alias: Optional selectable unit to map the element to.  This should
+     normally be a :class:`.Alias` object corresponding to the :class:`.Table`
+     to which the class is mapped, or to a :func:`.select` construct that
+     is compatible with the mapping.   By default, a simple anonymous
+     alias of the mapped table is generated.
+    :param name: optional string name to use for the alias, if not specified
+     by the ``alias`` parameter.  The name, among other things, forms the
+     attribute name that will be accessible via tuples returned by a
+     :class:`.Query` object.
+    :param adapt_on_names: if True, more liberal "matching" will be used when
+     mapping the mapped columns of the ORM entity to those of the
+     given selectable - a name-based match will be performed if the
+     given selectable doesn't otherwise have a column that corresponds
+     to one on the entity.  The use case for this is when associating
+     an entity with some derived selectable such as one that uses
+     aggregate functions::
+
+        class UnitPrice(Base):
+            __tablename__ = 'unit_price'
+            ...
+            unit_id = Column(Integer)
+            price = Column(Numeric)
+
+        aggregated_unit_price = Session.query(
+                                    func.sum(UnitPrice.price).label('price')
+                                ).group_by(UnitPrice.unit_id).subquery()
+
+        aggregated_unit_price = aliased(UnitPrice,
+                    alias=aggregated_unit_price, adapt_on_names=True)
+
+     Above, functions on ``aggregated_unit_price`` which refer to
+     ``.price`` will return the
+     ``fund.sum(UnitPrice.price).label('price')`` column, as it is
+     matched on the name "price".  Ordinarily, the "price" function
+     wouldn't have any "column correspondence" to the actual
+     ``UnitPrice.price`` column as it is not a proxy of the original.
+
+     .. versionadded:: 0.7.3
+
+
+    """
     if isinstance(element, expression.FromClause):
         if adapt_on_names:
             raise sa_exc.ArgumentError(
@@ -904,7 +949,7 @@ def object_mapper(instance):
 
         inspect(instance).mapper
 
-    Using the inspection system will raise plain
+    Using the inspection system will raise
     :class:`sqlalchemy.exc.NoInspectionAvailable` if the instance is
     not part of a mapping.
 
@@ -947,8 +992,8 @@ def class_mapper(class_, configure=True):
 
         inspect(some_mapped_class)
 
-    Using the inspection system will raise plain
-    :class:`.InvalidRequestError` if the class is not mapped.
+    Using the inspection system will raise
+    :class:`sqlalchemy.exc.NoInspectionAvailable` if the class is not mapped.
 
     """
     mapper = _inspect_mapped_class(class_, configure=configure)

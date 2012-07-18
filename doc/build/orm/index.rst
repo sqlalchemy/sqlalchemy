@@ -22,6 +22,5 @@ tutorial.
     events
     extensions/index
     examples
-    interfaces
     exceptions
     internals

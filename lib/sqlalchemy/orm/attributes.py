@@ -786,9 +786,12 @@ class CollectionAttributeImpl(AttributeImpl):
                 original_set = dict(original_states)
 
                 return \
-                    [(s, o) for s, o in current_states if s not in original_set] + \
-                    [(s, o) for s, o in current_states if s in original_set] + \
-                    [(s, o) for s, o in original_states if s not in current_set]
+                    [(s, o) for s, o in current_states
+                        if s not in original_set] + \
+                    [(s, o) for s, o in current_states
+                        if s in original_set] + \
+                    [(s, o) for s, o in original_states
+                        if s not in current_set]
 
         return [(instance_state(o), o) for o in current]
 
@@ -1036,32 +1039,35 @@ _NO_STATE_SYMBOLS = frozenset([
                         id(PASSIVE_NO_RESULT),
                         id(NO_VALUE),
                         id(NEVER_SET)])
-class History(tuple):
+
+History = util.namedtuple("History", [
+        "added", "unchanged", "deleted"
+    ])
+
+class History(History):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occurred on an instrumented
     attribute.
 
-    Each tuple member is an iterable sequence.
+    The easiest way to get a :class:`.History` object for a particular
+    attribute on an object is to use the :func:`.inspect` function::
+
+        from sqlalchemy import inspect
+
+        hist = inspect(myobject).attr.myattribute.history
+
+    Each tuple member is an iterable sequence:
+
+    * ``added`` - the collection of items added to the attribute (the first
+      tuple element).
+
+    * ``unchanged`` - the collection of items that have not changed on the
+      attribute (the second tuple element).
+
+    * ``deleted`` - the collection of items that have been removed from the
+      attribute (the third tuple element).
 
     """
-
-    __slots__ = ()
-
-    added = property(itemgetter(0))
-    """Return the collection of items added to the attribute (the first tuple
-    element)."""
-
-    unchanged = property(itemgetter(1))
-    """Return the collection of items that have not changed on the attribute
-    (the second tuple element)."""
-
-
-    deleted = property(itemgetter(2))
-    """Return the collection of items that have been removed from the
-    attribute (the third tuple element)."""
-
-    def __new__(cls, added, unchanged, deleted):
-        return tuple.__new__(cls, (added, unchanged, deleted))
 
     def __nonzero__(self):
         return self != HISTORY_BLANK
@@ -1178,10 +1184,12 @@ class History(tuple):
             return cls((), list(current), ())
         else:
 
-            current_states = [((c is not None) and instance_state(c) or None, c)
+            current_states = [((c is not None) and instance_state(c)
+                                or None, c)
                                 for c in current
                                 ]
-            original_states = [((c is not None) and instance_state(c) or None, c)
+            original_states = [((c is not None) and instance_state(c)
+                                or None, c)
                                 for c in original
                                 ]
 

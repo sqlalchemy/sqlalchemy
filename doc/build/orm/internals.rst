@@ -3,9 +3,14 @@
 ORM Internals
 =============
 
-Some key internal constructs are listed here.
+Key ORM constructs, not otherwise covered in other
+sections, are listed here.
 
 .. currentmodule: sqlalchemy.orm
+
+.. autoclass:: sqlalchemy.orm.state.AttributeState
+    :members:
+    :show-inheritance:
 
 .. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
     :members:
@@ -23,10 +28,6 @@ Some key internal constructs are listed here.
     :members:
     :show-inheritance:
 
-.. autoclass:: sqlalchemy.orm.state.InspectAttr
-    :members:
-    :show-inheritance:
-
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
     :show-inheritance:
@@ -38,7 +39,6 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.orm.properties.RelationshipProperty
     :members:
     :show-inheritance:
-
 
 .. autoclass:: sqlalchemy.orm.descriptor_props.SynonymProperty
     :members:

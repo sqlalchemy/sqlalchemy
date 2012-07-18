@@ -106,6 +106,10 @@ Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: BinaryExpression
+   :members:
+   :show-inheritance:
+
 .. autoclass:: BindParameter
    :members:
    :show-inheritance:
@@ -195,7 +199,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: sqlalchemy.sql.expression.Operators
+.. autoclass:: sqlalchemy.sql.operators.Operators
    :members:
    :undoc-members:
 

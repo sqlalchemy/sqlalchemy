@@ -1872,8 +1872,11 @@ class Immutable(object):
 
 
 class CompareMixin(ColumnOperators):
-    """Defines comparison and math operations for :class:`.ClauseElement`
-    instances.
+    """Defines comparison and math operations.
+
+    The :class:`.CompareMixin` is part of the interface provided
+    by the :class:`.ColumnElement` class, which provides the base class
+    for all SQL expression units.
 
     See :class:`.ColumnOperators` and :class:`.Operators` for descriptions
     of all operations.
@@ -2132,21 +2135,40 @@ class ColumnElement(ClauseElement, CompareMixin):
     """Represent an element that is usable within the "column clause" portion
     of a ``SELECT`` statement.
 
-    This includes columns associated with tables, aliases, and
+    While the most familiar kind of :class:`.ColumnElement` is the
+    :class:`.Column` object, :class:`.ColumnElement` serves as the basis
+    for any unit that may be present in a SQL expression, including
+    the columns associated with tables, aliases, and
     subqueries, expressions, function calls, SQL keywords such as
     ``NULL``, literals, etc.  :class:`.ColumnElement` is the ultimate base
     class for all such elements.
+
+    A :class:`.ColumnElement`, by subclassing the :class:`.CompareMixin` mixin
+    class, provides the ability to generate new :class:`.ClauseElement`
+    objects using Python expressions.  This means that Python operators
+    such as ``==``, ``!=`` and ``<`` are overloaded to mimic SQL operations,
+    and allow the construction of :class:`.ColumnElement` constructs which
+    are composed from other, more fundamental :class:`.ColumnElement`
+    objects.  For example, two :class:`.ColumnClause` objects can be added
+    together with the addition operator ``+`` to produce
+    a :class:`.BinaryExpression`.
+    Both :class:`.ColumnClause` and :class:`.BinaryExpression` are subclasses
+    of :class:`.ColumnElement`::
+
+        >>> from sqlalchemy.sql import column
+        >>> column('a') + column('b')
+        <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
+        >>> print column('a') + column('b')
+        a + b
 
     :class:`.ColumnElement` supports the ability to be a *proxy* element,
     which indicates that the :class:`.ColumnElement` may be associated with
     a :class:`.Selectable` which was derived from another :class:`.Selectable`.
     An example of a "derived" :class:`.Selectable` is an :class:`.Alias` of a
-    :class:`~sqlalchemy.schema.Table`.
+    :class:`~sqlalchemy.schema.Table`.  For the ambitious, an in-depth
+    discussion of this concept can be found at
+    `Expression Transformations <http://techspot.zzzeek.org/2008/01/23/expression-transformations/>`_.
 
-    A :class:`.ColumnElement`, by subclassing the :class:`CompareMixin` mixin
-    class, provides the ability to generate new :class:`.ClauseElement`
-    objects using Python expressions.  See the :class:`CompareMixin`
-    docstring for more details.
 
     """
 
@@ -2420,6 +2442,19 @@ class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
+    The most common forms of :class:`.FromClause` are the
+    :class:`.Table` and the :func:`.select` constructs.  Key
+    features common to all :class:`.FromClause` objects include:
+
+    * a :attr:`.c` collection, which provides per-name access to a collection
+      of :class:`.ColumnElement` objects.
+    * a :attr:`.primary_key` attribute, which is a collection of all those
+      :class:`.ColumnElement` objects that indicate the ``primary_key`` flag.
+    * Methods to generate various derivations of a "from" clause, including
+      :meth:`.FromClause.alias`, :meth:`.FromClause.join`,
+      :meth:`.FromClause.select`.
+
+
     """
     __visit_name__ = 'fromclause'
     named_with_column = False
@@ -2603,8 +2638,16 @@ class FromClause(Selectable):
 
     @_memoized_property
     def columns(self):
-        """Return the collection of Column objects contained by this
-        FromClause."""
+        """A named-based collection of :class:`.ColumnElement` objects
+        maintained by this :class:`.FromClause`.
+
+        The :attr:`.columns`, or :attr:`.c` collection, is the gateway
+        to the construction of SQL expressions using table-bound or
+        other selectable-bound columns::
+
+            select([mytable]).where(mytable.c.somecolumn == 5)
+
+        """
 
         if '_columns' not in self.__dict__:
             self._init_collections()
@@ -2629,7 +2672,8 @@ class FromClause(Selectable):
         self._populate_column_collection()
         return self.foreign_keys
 
-    c = property(attrgetter('columns'))
+    c = property(attrgetter('columns'),
+            doc="An alias for the :attr:`.columns` attribute.")
     _select_iterable = property(attrgetter('columns'))
 
     def _init_collections(self):
@@ -3447,7 +3491,19 @@ class UnaryExpression(ColumnElement):
 
 
 class BinaryExpression(ColumnElement):
-    """Represent an expression that is ``LEFT <operator> RIGHT``."""
+    """Represent an expression that is ``LEFT <operator> RIGHT``.
+
+    A :class:`.BinaryExpression` is generated automatically
+    whenever two objects that subclass the :class:`.CompareMixin`
+    mixin are used in a Python binary expresion::
+
+        >>> from sqlalchemy.sql import column
+        >>> column('a') + column('b')
+        <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
+        >>> print column('a') + column('b')
+        a + b
+
+    """
 
     __visit_name__ = 'binary'
 

@@ -54,12 +54,12 @@ class InstanceState(interfaces._InspectionAttr):
         the mapped object, including its current value
         and history.
 
-        The returned object is an instance of :class:`.InspectAttr`.
+        The returned object is an instance of :class:`.AttributeState`.
 
         """
         return util.ImmutableProperties(
             dict(
-                (key, InspectAttr(self, key))
+                (key, AttributeState(self, key))
                 for key in self.manager
             )
         )
@@ -508,13 +508,18 @@ class InstanceState(interfaces._InspectionAttr):
             state.modified = state.expired = False
             state._strong_obj = None
 
-class InspectAttr(object):
+class AttributeState(object):
     """Provide an inspection interface corresponding
     to a particular attribute on a particular mapped object.
 
-    The :class:`.InspectAttr` object is created by
-    accessing the :attr:`.InstanceState.attr`
-    collection.
+    The :class:`.AttributeState` object is accessed
+    via the :attr:`.InstanceState.attr` collection
+    of a particular :class:`.InstanceState`::
+
+        from sqlalchemy import inspect
+
+        insp = inspect(some_mapped_object)
+        attr_state = insp.attr.some_attribute
 
     """
 

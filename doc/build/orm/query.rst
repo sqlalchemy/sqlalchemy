@@ -26,9 +26,7 @@ Following is the full interface for the :class:`.Query` object.
 ORM-Specific Query Constructs
 -----------------------------
 
-.. class:: aliased
-
-The public name of the :class:`.AliasedClass` class.
+.. autofunction:: sqlalchemy.orm.aliased
 
 .. autoclass:: sqlalchemy.orm.util.AliasedClass
 
