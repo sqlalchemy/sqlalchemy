@@ -360,11 +360,13 @@ class Mapper(_InspectionAttr):
     """
 
     polymorphic_on = None
-    """The :class:`.Column` specified as the ``polymorphic_on`` column
+    """The :class:`.Column` or SQL expression specified as the
+    ``polymorphic_on`` argument
     for this :class:`.Mapper`, within an inheritance scenario.
 
-    This attribute may also be of other types besides :class:`.Column`
-    in a future SQLAlchemy release.
+    This attribute is normally a :class:`.Column` instance but
+    may also be an expression, such as one derived from
+    :func:`.cast`.
 
     This is a *read only* attribute determined during mapper construction.
     Behavior is undefined if directly modified.
