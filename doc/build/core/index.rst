@@ -21,6 +21,7 @@ Language provides a schema-centric usage paradigm.
     event
     events
     compiler
+    inspection
     serializer
     interfaces
     exceptions

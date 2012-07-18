@@ -15,7 +15,8 @@ import re
 import sys
 import types
 import warnings
-from compat import update_wrapper, set_types, threading, callable, inspect_getfullargspec, py3k_warning
+from compat import update_wrapper, set_types, threading, \
+    callable, inspect_getfullargspec, py3k_warning
 from sqlalchemy import exc
 
 def _unique_symbols(used, *bases):
@@ -80,7 +81,7 @@ class PluginLoader(object):
 
         from sqlalchemy import exc
         raise exc.ArgumentError(
-                "Can't load plugin: %s:%s" % 
+                "Can't load plugin: %s:%s" %
                 (self.group, name))
 
     def register(self, name, modulepath, objname):
@@ -202,7 +203,8 @@ def format_argspec_plus(fn, grouped=True):
         self_arg = None
 
     # Py3K
-    #apply_pos = inspect.formatargspec(spec[0], spec[1], spec[2], None, spec[4])
+    #apply_pos = inspect.formatargspec(spec[0], spec[1],
+    #    spec[2], None, spec[4])
     #num_defaults = 0
     #if spec[3]:
     #    num_defaults += len(spec[3])
@@ -218,11 +220,12 @@ def format_argspec_plus(fn, grouped=True):
     # end Py2K
 
     if num_defaults:
-        defaulted_vals = name_args[0-num_defaults:]
+        defaulted_vals = name_args[0 - num_defaults:]
     else:
         defaulted_vals = ()
 
-    apply_kw = inspect.formatargspec(name_args, spec[1], spec[2], defaulted_vals,
+    apply_kw = inspect.formatargspec(name_args, spec[1], spec[2],
+                                        defaulted_vals,
                                      formatvalue=lambda x: '=' + x)
     if grouped:
         return dict(args=args, self_arg=self_arg,
@@ -281,7 +284,7 @@ def unbound_method_to_callable(func_or_cls):
 def generic_repr(obj):
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
-    
+
     """
     def genargs():
         try:
@@ -590,10 +593,10 @@ class importlater(object):
         from mypackage.somemodule import somesubmod
 
     except evaluted upon attribute access to "somesubmod".
-    
+
     importlater() currently requires that resolve_all() be
     called, typically at the bottom of a package's __init__.py.
-    This is so that __import__ still called only at 
+    This is so that __import__ still called only at
     module import time, and not potentially within
     a non-main thread later on.
 
@@ -623,7 +626,7 @@ class importlater(object):
         if self in importlater._unresolved:
             raise ImportError(
                     "importlater.resolve_all() hasn't "
-                    "been called (this is %s %s)" 
+                    "been called (this is %s %s)"
                     % (self._il_path, self._il_addtl))
 
         m = self._initial_import
@@ -638,14 +641,14 @@ class importlater(object):
         importlater._unresolved.discard(self)
         if self._il_addtl:
             self._initial_import = __import__(
-                                self._il_path, globals(), locals(), 
+                                self._il_path, globals(), locals(),
                                 [self._il_addtl])
         else:
             self._initial_import = __import__(self._il_path)
 
     def __getattr__(self, key):
         if key == 'module':
-            raise ImportError("Could not resolve module %s" 
+            raise ImportError("Could not resolve module %s"
                                 % self._full_path)
         try:
             attr = getattr(self.module, key)
@@ -918,8 +921,8 @@ def warn(msg, stacklevel=3):
     If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
-    .. note:: 
-     
+    .. note::
+
        This function is swapped out when the test suite
        runs, with a compatible version that uses
        warnings.warn_explicit, so that the warnings registry can

@@ -563,7 +563,40 @@ AliasedInsp = util.namedtuple("AliasedInsp", [
     ])
 
 class AliasedInsp(_InspectionAttr, AliasedInsp):
+    """Provide an inspection interface for an
+    :class:`.AliasedClass` object.
+
+    The :class:`.AliasedInsp` object is returned
+    given an :class:`.AliasedClass` using the
+    :func:`.inspect` function::
+
+        from sqlalchemy import inspect
+        from sqlalchemy.orm import aliased
+
+        my_alias = aliased(MyMappedClass)
+        insp = inspect(my_alias)
+
+    Attributes on :class:`.AliasedInsp`
+    include:
+
+    * ``entity`` - the :class:`.AliasedClass` represented.
+    * ``mapper`` - the :class:`.Mapper` mapping the underlying class.
+    * ``selectable`` - the :class:`.Alias` construct which ultimately
+      represents an aliased :class:`.Table` or :class:`.Select`
+      construct.
+    * ``name`` - the name of the alias.  Also is used as the attribute
+      name when returned in a result tuple from :class:`.Query`.
+    * ``with_polymorphic_mappers`` - collection of :class:`.Mapper` objects
+      indicating all those mappers expressed in the select construct
+      for the :class:`.AliasedClass`.
+    * ``polymorphic_on`` - an alternate column or SQL expression which
+      will be used as the "discriminator" for a polymorphic load.
+
+    """
+
     is_aliased_class = True
+    "always returns True"
+
 
 inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 
@@ -864,28 +897,35 @@ def object_mapper(instance):
     """Given an object, return the primary Mapper associated with the object
     instance.
 
-    Raises UnmappedInstanceError if no mapping is configured.
+    Raises :class:`sqlalchemy.orm.exc.UnmappedInstanceError`
+    if no mapping is configured.
 
     This function is available via the inspection system as::
 
         inspect(instance).mapper
 
+    Using the inspection system will raise plain
+    :class:`sqlalchemy.exc.NoInspectionAvailable` if the instance is
+    not part of a mapping.
+
     """
     return object_state(instance).mapper
 
 def object_state(instance):
-    """Given an object, return the primary Mapper associated with the object
-    instance.
+    """Given an object, return the :class:`.InstanceState`
+    associated with the object.
 
-    Raises UnmappedInstanceError if no mapping is configured.
+    Raises :class:`sqlalchemy.orm.exc.UnmappedInstanceError`
+    if no mapping is configured.
 
-    Equivalent functionality is available via the inspection system as::
+    Equivalent functionality is available via the :func:`.inspect`
+    function as::
 
         inspect(instance)
 
-    Using the inspection system will raise plain
-    :class:`.InvalidRequestError` if the instance is not part of
-    a mapping.
+    Using the inspection system will raise
+    :class:`sqlalchemy.exc.NoInspectionAvailable` if the instance is
+    not part of a mapping.
 
     """
     state = _inspect_mapped_object(instance)
@@ -902,7 +942,8 @@ def class_mapper(class_, configure=True):
     on the given class, or :class:`.ArgumentError` if a non-class
     object is passed.
 
-    Equivalent functionality is available via the inspection system as::
+    Equivalent functionality is available via the :func:`.inspect`
+    function as::
 
         inspect(some_mapped_class)
 

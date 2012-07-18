@@ -23,6 +23,10 @@ Some key internal constructs are listed here.
     :members:
     :show-inheritance:
 
+.. autoclass:: sqlalchemy.orm.state.InspectAttr
+    :members:
+    :show-inheritance:
+
 .. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
     :members:
     :show-inheritance:

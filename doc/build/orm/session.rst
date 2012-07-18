@@ -1720,6 +1720,10 @@ with instances, attribute values, and history.  Some of them
 are useful when constructing event listener functions, such as
 those described in :ref:`events_orm_toplevel`.
 
+.. currentmodule:: sqlalchemy.orm.util
+
+.. autofunction:: object_state
+
 .. currentmodule:: sqlalchemy.orm.attributes
 
 .. autofunction:: del_attribute
@@ -1734,13 +1738,17 @@ those described in :ref:`events_orm_toplevel`.
 
 .. function:: instance_state
 
-    Return the :class:`.InstanceState` for a given object.
+    Return the :class:`.InstanceState` for a given
+    mapped object.
+
+    This function is the internal version
+    of :func:`.object_state`.   The
+    :func:`.object_state` and/or the
+    :func:`.inspect` function is preferred here
+    as they each emit an informative exception
+    if the given object is not mapped.
 
 .. autofunction:: is_instrumented
-
-.. function:: manager_of_class
-
-    Return the :class:`.ClassManager` for a given class.
 
 .. autofunction:: set_attribute
 
@@ -1748,15 +1756,4 @@ those described in :ref:`events_orm_toplevel`.
 
 .. autoclass:: History
     :members:
-
-.. autodata:: PASSIVE_NO_INITIALIZE
-
-.. autodata:: PASSIVE_NO_FETCH
-
-.. autodata:: PASSIVE_NO_FETCH_RELATED
-
-.. autodata:: PASSIVE_ONLY_PERSISTENT
-
-.. autodata:: PASSIVE_OFF
-
 

@@ -96,7 +96,7 @@ class InvalidRequestError(SQLAlchemyError):
     """
 
 class NoInspectionAvailable(InvalidRequestError):
-    """A class to :func:`sqlalchemy.inspection.inspect` produced
+    """A subject passed to :func:`sqlalchemy.inspection.inspect` produced
     no context for inspection."""
 
 class ResourceClosedError(InvalidRequestError):

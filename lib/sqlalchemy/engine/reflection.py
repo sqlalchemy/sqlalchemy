@@ -40,8 +40,8 @@ def cache(fn, self, con, *args, **kw):
     if info_cache is None:
         return fn(self, con, *args, **kw)
     key = (
-            fn.__name__, 
-            tuple(a for a in args if isinstance(a, basestring)), 
+            fn.__name__,
+            tuple(a for a in args if isinstance(a, basestring)),
             tuple((k, v) for k, v in kw.iteritems() if isinstance(v, (basestring, int, float)))
         )
     ret = info_cache.get(key)
@@ -59,8 +59,15 @@ class Inspector(object):
     consistent interface as well as caching support for previously
     fetched metadata.
 
-    The preferred method to construct an :class:`.Inspector` is via the
-    :meth:`Inspector.from_engine` method.   I.e.::
+    A :class:`.Inspector` object is usually created via the
+    :func:`.inspect` function::
+
+        from sqlalchemy import inspect, create_engine
+        engine = create_engine('...')
+        insp = inspect(engine)
+
+    The inspection method above is equivalent to using the
+    :meth:`.Inspector.from_engine` method, i.e.::
 
         engine = create_engine('...')
         insp = Inspector.from_engine(engine)
@@ -74,9 +81,9 @@ class Inspector(object):
     def __init__(self, bind):
         """Initialize a new :class:`.Inspector`.
 
-        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`, 
-          which is typically an instance of 
-          :class:`~sqlalchemy.engine.base.Engine` or 
+        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
+          which is typically an instance of
+          :class:`~sqlalchemy.engine.base.Engine` or
           :class:`~sqlalchemy.engine.base.Connection`.
 
         For a dialect-specific instance of :class:`.Inspector`, see
@@ -103,9 +110,9 @@ class Inspector(object):
     def from_engine(cls, bind):
         """Construct a new dialect-specific Inspector object from the given engine or connection.
 
-        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`, 
-          which is typically an instance of 
-          :class:`~sqlalchemy.engine.base.Engine` or 
+        :param bind: a :class:`~sqlalchemy.engine.base.Connectable`,
+          which is typically an instance of
+          :class:`~sqlalchemy.engine.base.Engine` or
           :class:`~sqlalchemy.engine.base.Connection`.
 
         This method differs from direct a direct constructor call of :class:`.Inspector`
@@ -322,7 +329,7 @@ class Inspector(object):
     def reflecttable(self, table, include_columns, exclude_columns=()):
         """Given a Table object, load its internal constructs based on introspection.
 
-        This is the underlying method used by most dialects to produce 
+        This is the underlying method used by most dialects to produce
         table reflection.  Direct usage is like::
 
             from sqlalchemy import create_engine, MetaData, Table
@@ -416,11 +423,11 @@ class Inspector(object):
         # Primary keys
         pk_cons = self.get_pk_constraint(table_name, schema, **tblkw)
         if pk_cons:
-            pk_cols = [table.c[pk] 
-                        for pk in pk_cons['constrained_columns'] 
+            pk_cols = [table.c[pk]
+                        for pk in pk_cons['constrained_columns']
                         if pk in table.c and pk not in exclude_columns
                     ] + [pk for pk in table.primary_key if pk.key in exclude_columns]
-            primary_key_constraint = sa_schema.PrimaryKeyConstraint(name=pk_cons.get('name'), 
+            primary_key_constraint = sa_schema.PrimaryKeyConstraint(name=pk_cons.get('name'),
                 *pk_cols
             )
 
@@ -457,7 +464,7 @@ class Inspector(object):
             table.append_constraint(
                 sa_schema.ForeignKeyConstraint(constrained_columns, refspec,
                                                conname, link_to_name=True))
-        # Indexes 
+        # Indexes
         indexes = self.get_indexes(table_name, schema)
         for index_d in indexes:
             name = index_d['name']
@@ -470,5 +477,5 @@ class Inspector(object):
                     "Omitting %s KEY for (%s), key covers omitted columns." %
                     (flavor, ', '.join(columns)))
                 continue
-            sa_schema.Index(name, *[table.columns[c] for c in columns], 
+            sa_schema.Index(name, *[table.columns[c] for c in columns],
                          **dict(unique=unique))

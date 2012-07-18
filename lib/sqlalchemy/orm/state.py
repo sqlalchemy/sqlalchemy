@@ -50,6 +50,13 @@ class InstanceState(interfaces._InspectionAttr):
 
     @util.memoized_property
     def attr(self):
+        """Return a namespace representing each attribute on
+        the mapped object, including its current value
+        and history.
+
+        The returned object is an instance of :class:`.InspectAttr`.
+
+        """
         return util.ImmutableProperties(
             dict(
                 (key, InspectAttr(self, key))
@@ -59,21 +66,25 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def transient(self):
+        """Return true if the object is transient."""
         return self.key is None and \
             not self._attached
 
     @property
     def pending(self):
+        """Return true if the object is pending."""
         return self.key is None and \
             self._attached
 
     @property
     def persistent(self):
+        """Return true if the object is persistent."""
         return self.key is not None and \
             self._attached
 
     @property
     def detached(self):
+        """Return true if the object is detached."""
         return self.key is not None and \
             not self._attached
 
@@ -84,14 +95,32 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def session(self):
+        """Return the owning :class:`.Session` for this instance,
+        or ``None`` if none available."""
+
         return sessionlib._state_session(self)
 
     @property
     def object(self):
+        """Return the mapped object represented by this
+        :class:`.InstanceState`."""
         return self.obj()
 
     @property
     def identity(self):
+        """Return the mapped identity of the mapped object.
+        This is the primary key identity as persisted by the ORM
+        which can always be passed directly to
+        :meth:`.Query.get`.
+
+        Returns ``None`` if the object has no primary key identity.
+
+        .. note::
+            An object which is transient or pending
+            does **not** have a mapped identity until it is flushed,
+            even if its attributes include primary key values.
+
+        """
         if self.key is None:
             return None
         else:
@@ -99,6 +128,14 @@ class InstanceState(interfaces._InspectionAttr):
 
     @property
     def identity_key(self):
+        """Return the identity key for the mapped object.
+
+        This is the key used to locate the object within
+        the :attr:`.Session.identity_map` mapping.   It contains
+        the identity as returned by :attr:`.identity` within it.
+
+
+        """
         # TODO: just change .key to .identity_key across
         # the board ?  probably
         return self.key
@@ -113,10 +150,17 @@ class InstanceState(interfaces._InspectionAttr):
 
     @util.memoized_property
     def mapper(self):
+        """Return the :class:`.Mapper` used for this mapepd object."""
         return self.manager.mapper
 
     @property
     def has_identity(self):
+        """Return ``True`` if this object has an identity key.
+
+        This should always have the same value as the
+        expression ``state.persistent or state.detached``.
+
+        """
         return bool(self.key)
 
     def _detach(self):
@@ -465,7 +509,14 @@ class InstanceState(interfaces._InspectionAttr):
             state._strong_obj = None
 
 class InspectAttr(object):
-    """Provide inspection interface to an object's state."""
+    """Provide an inspection interface corresponding
+    to a particular attribute on a particular mapped object.
+
+    The :class:`.InspectAttr` object is created by
+    accessing the :attr:`.InstanceState.attr`
+    collection.
+
+    """
 
     def __init__(self, state, key):
         self.state = state
@@ -473,15 +524,32 @@ class InspectAttr(object):
 
     @property
     def loaded_value(self):
+        """The current value of this attribute as loaded from the database.
+
+        If the value has not been loaded, or is otherwise not present
+        in the object's dictionary, returns NO_VALUE.
+
+        """
         return self.state.dict.get(self.key, NO_VALUE)
 
     @property
     def value(self):
+        """Return the value of this attribute.
+
+        This operation is equivalent to accessing the object's
+        attribute directly or via ``getattr()``, and will fire
+        off any pending loader callables if needed.
+
+        """
         return self.state.manager[self.key].__get__(
                         self.state.obj(), self.state.class_)
 
     @property
     def history(self):
+        """Return the current pre-flush change history for
+        this attribute, via the :class:`.History` interface.
+
+        """
         return self.state.get_history(self.key,
                     PASSIVE_NO_INITIALIZE)
 

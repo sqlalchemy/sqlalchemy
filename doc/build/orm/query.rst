@@ -32,6 +32,8 @@ The public name of the :class:`.AliasedClass` class.
 
 .. autoclass:: sqlalchemy.orm.util.AliasedClass
 
+.. autoclass:: sqlalchemy.orm.util.AliasedInsp
+
 .. autofunction:: join
 
 .. autofunction:: outerjoin
