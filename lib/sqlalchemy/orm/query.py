@@ -163,7 +163,7 @@ class Query(object):
 
         fa = []
         for from_obj in obj:
-            if isinstance(from_obj, expression._SelectBase):
+            if isinstance(from_obj, expression.SelectBase):
                 from_obj = from_obj.alias()
             fa.append(from_obj)
 
@@ -460,7 +460,7 @@ class Query(object):
         .. versionadded:: 0.7.6
 
         Parameters and usage are the same as those of the
-        :meth:`._SelectBase.cte` method; see that method for
+        :meth:`.SelectBase.cte` method; see that method for
         further details.
 
         Here is the `Postgresql WITH
@@ -507,7 +507,7 @@ class Query(object):
 
         See also:
 
-        :meth:`._SelectBase.cte`
+        :meth:`.SelectBase.cte`
 
         """
         return self.enable_eagerloads(False).\
@@ -518,7 +518,7 @@ class Query(object):
         :class:`.Query`, converted
         to a scalar subquery with a label of the given name.
 
-        Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.label`.
+        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.label`.
 
         .. versionadded:: 0.6.5
 
@@ -531,7 +531,7 @@ class Query(object):
         """Return the full SELECT statement represented by this :class:`.Query`, converted
         to a scalar subquery.
 
-        Analogous to :meth:`sqlalchemy.sql._SelectBaseMixin.as_scalar`.
+        Analogous to :meth:`sqlalchemy.sql.SelectBaseMixin.as_scalar`.
 
         .. versionadded:: 0.6.5
 
@@ -2145,8 +2145,8 @@ class Query(object):
             statement = sql.text(statement)
 
         if not isinstance(statement,
-                            (expression._TextClause,
-                            expression._SelectBase)):
+                            (expression.TextClause,
+                            expression.SelectBase)):
             raise sa_exc.ArgumentError(
                             "from_statement accepts text(), select(), "
                             "and union() objects only.")
@@ -3033,7 +3033,7 @@ class QueryContext(object):
     def __init__(self, query):
 
         if query._statement is not None:
-            if isinstance(query._statement, expression._SelectBase) and \
+            if isinstance(query._statement, expression.SelectBase) and \
                                 not query._statement.use_labels:
                 self.statement = query._statement.apply_labels()
             else:

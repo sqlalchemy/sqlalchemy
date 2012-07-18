@@ -643,7 +643,7 @@ class:
     <User('fred','Fred Flinstone', 'blah')> fred
 
 You can control the names of individual column expressions using the
-:meth:`~._CompareMixin.label` construct, which is available from
+:meth:`~.CompareMixin.label` construct, which is available from
 any :class:`.ColumnElement`-derived object, as well as any class attribute which
 is mapped to one (such as ``User.name``):
 

@@ -1805,7 +1805,7 @@ class DefaultClause(FetchedValue):
     def __init__(self, arg, for_update=False, _reflected=False):
         util.assert_arg_type(arg, (basestring,
                                    expression.ClauseElement,
-                                   expression._TextClause), 'arg')
+                                   expression.TextClause), 'arg')
         super(DefaultClause, self).__init__(for_update)
         self.arg = arg
         self.reflected = _reflected

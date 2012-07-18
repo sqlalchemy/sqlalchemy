@@ -607,7 +607,7 @@ class MaxDBCompiler(compiler.SQLCompiler):
             snagger = self.ColumnSnagger()
             snagger.traverse(column)
             if snagger.count == 1:
-                if isinstance(column, sql_expr._Label):
+                if isinstance(column, sql_expr.Label):
                     labels[unicode(snagger.column)] = column.name
                 elif use_labels:
                     labels[unicode(snagger.column)] = column._label

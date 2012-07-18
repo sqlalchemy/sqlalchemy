@@ -876,12 +876,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         """
         if (
-            isinstance(binary.left, expression._BindParamClause) 
+            isinstance(binary.left, expression.BindParameter) 
             and binary.operator == operator.eq
-            and not isinstance(binary.right, expression._BindParamClause)
+            and not isinstance(binary.right, expression.BindParameter)
             ):
             return self.process(
-                                expression._BinaryExpression(binary.right, 
+                                expression.BinaryExpression(binary.right, 
                                                              binary.left, 
                                                              binary.operator), 
                                 **kwargs)
@@ -897,7 +897,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         adapter = sql_util.ClauseAdapter(target)
         def col_label(col):
             adapted = adapter.traverse(col)
-            if isinstance(col, expression._Label):
+            if isinstance(col, expression.Label):
                 return adapted.label(c.key)
             else:
                 return self.label_select_column(None, adapted, asfrom=False)

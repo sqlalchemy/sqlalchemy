@@ -89,7 +89,7 @@ class DefaultDialect(base.Dialect):
 
     server_version_info = None
 
-    # indicates symbol names are 
+    # indicates symbol names are
     # UPPERCASEd if they are case insensitive
     # within the database.
     # if this is True, the methods normalize_name()
@@ -106,7 +106,7 @@ class DefaultDialect(base.Dialect):
 
         if not getattr(self, 'ported_sqla_06', True):
             util.warn(
-                "The %s dialect is not yet ported to SQLAlchemy 0.6/0.7" %
+                "The %s dialect is not yet ported to the 0.6 format" %
                 self.name)
 
         self.convert_unicode = convert_unicode
@@ -189,7 +189,7 @@ class DefaultDialect(base.Dialect):
         self.returns_unicode_strings = self._check_unicode_returns(connection)
 
         self.do_rollback(connection.connection)
- 
+
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
@@ -219,7 +219,7 @@ class DefaultDialect(base.Dialect):
                 try:
                     cursor.execute(
                         cast_to(
-                            expression.select( 
+                            expression.select(
                             [expression.cast(
                                 expression.literal_column(
                                         "'test %s returns'" % formatstr), type_)
@@ -269,14 +269,14 @@ class DefaultDialect(base.Dialect):
         """
         return {
             'constrained_columns':
-                        self.get_primary_keys(conn, table_name, 
+                        self.get_primary_keys(conn, table_name,
                                                 schema=schema, **kw)
         }
 
     def validate_identifier(self, ident):
         if len(ident) > self.max_identifier_length:
             raise exc.IdentifierError(
-                "Identifier '%s' exceeds maximum length of %d characters" % 
+                "Identifier '%s' exceeds maximum length of %d characters" %
                 (ident, self.max_identifier_length)
             )
 
@@ -340,8 +340,8 @@ class DefaultDialect(base.Dialect):
         return False
 
     def reset_isolation_level(self, dbapi_conn):
-        # default_isolation_level is read from the first connection 
-        # after the initial set of 'isolation_level', if any, so is 
+        # default_isolation_level is read from the first connection
+        # after the initial set of 'isolation_level', if any, so is
         # the configured default of this dialect.
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
@@ -359,7 +359,7 @@ class DefaultExecutionContext(base.ExecutionContext):
     _is_implicit_returning = False
     _is_explicit_returning = False
 
-    # a hook for SQLite's translation of 
+    # a hook for SQLite's translation of
     # result column names
     _translate_colname = None
 
@@ -454,8 +454,8 @@ class DefaultExecutionContext(base.ExecutionContext):
 
         processors = compiled._bind_processors
 
-        # Convert the dictionary of bind parameter values 
-        # into a dict or list to be sent to the DBAPI's 
+        # Convert the dictionary of bind parameter values
+        # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
         parameters = []
         if dialect.positional:
@@ -518,7 +518,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                             for d in parameters
                         ] or [{}]
         else:
-            self.parameters = [dialect.execute_sequence_format(p) 
+            self.parameters = [dialect.execute_sequence_format(p)
                                     for p in parameters]
 
         self.executemany = len(parameters) > 1
@@ -555,10 +555,10 @@ class DefaultExecutionContext(base.ExecutionContext):
 
     @util.memoized_property
     def should_autocommit(self):
-        autocommit = self.execution_options.get('autocommit', 
-                                                not self.compiled and 
+        autocommit = self.execution_options.get('autocommit',
+                                                not self.compiled and
                                                 self.statement and
-                                                expression.PARSE_AUTOCOMMIT 
+                                                expression.PARSE_AUTOCOMMIT
                                                 or False)
 
         if autocommit is expression.PARSE_AUTOCOMMIT:
@@ -591,7 +591,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         if type_ is not None:
             # apply type post processors to the result
             proc = type_._cached_result_processor(
-                        self.dialect, 
+                        self.dialect,
                         self.cursor.description[0][1]
                     )
             if proc:
@@ -628,7 +628,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         and when no explicit id value was bound to the
         statement.
 
-        The function is called once, directly after 
+        The function is called once, directly after
         post_exec() and before the transaction is committed
         or ResultProxy is generated.   If the post_exec()
         method assigns a value to `self._lastrowid`, the
@@ -677,7 +677,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.inserted_primary_key = [
                 c is autoinc_col and lastrowid or v
                 for c, v in zip(
-                                    table.primary_key, 
+                                    table.primary_key,
                                     self.inserted_primary_key)
             ]
 
@@ -703,7 +703,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
 
-        This method only called by those dialects which require it, 
+        This method only called by those dialects which require it,
         currently cx_oracle.
 
         """
@@ -748,7 +748,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         elif default.is_callable:
             return default.arg(self)
         elif default.is_clause_element:
-            # TODO: expensive branching here should be 
+            # TODO: expensive branching here should be
             # pulled into _exec_scalar()
             conn = self.connection
             c = expression.select([default.arg]).compile(bind=conn)
@@ -814,7 +814,7 @@ class DefaultExecutionContext(base.ExecutionContext):
 
             if self.isinsert:
                 self.inserted_primary_key = [
-                                self.compiled_parameters[0].get(c.key, None) 
+                                self.compiled_parameters[0].get(c.key, None)
                                         for c in self.compiled.\
                                                 statement.table.primary_key
                                 ]

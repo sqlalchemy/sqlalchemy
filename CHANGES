@@ -231,6 +231,14 @@ underneath "0.7.xx".
     replaced by inserted_primary_key.
 
 - sql
+  - [changed] Most classes in expression.sql
+    are no longer preceded with an underscore,
+    i.e. Label, SelectBase, Generative, CompareMixin.
+    _BindParamClause is also renamed to
+    BindParameter.   The old underscore names for
+    these classes will remain available as synonyms
+    for the foreseeable future.
+
   - [feature] The Inspector object can now be
     acquired using the new inspect() service,
     part of [ticket:2208]

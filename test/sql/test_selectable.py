@@ -668,7 +668,7 @@ class JoinConditionTest(fixtures.TestBase, AssertsExecutionResults):
 
 
         # TODO: this raises due to right side being "grouped", and no
-        # longer has FKs.  Did we want to make _FromGrouping friendlier
+        # longer has FKs.  Did we want to make FromGrouping friendlier
         # ?
 
         assert_raises_message(exc.ArgumentError,

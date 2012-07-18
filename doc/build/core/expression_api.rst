@@ -106,7 +106,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: _BindParamClause
+.. autoclass:: BindParameter
    :members:
    :show-inheritance:
 
@@ -130,7 +130,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: _CompareMixin
+.. autoclass:: CompareMixin
   :members:
   :show-inheritance:
 
@@ -211,7 +211,7 @@ Classes
    :members:
    :show-inheritance:
 
-.. autoclass:: _SelectBase
+.. autoclass:: SelectBase
    :members:
    :show-inheritance:
 

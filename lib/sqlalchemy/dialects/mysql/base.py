@@ -216,10 +216,10 @@ add all datatype support until 4.1.1.   If your application falls into this
 narrow area, the behavior of CAST can be controlled using the :ref:`sqlalchemy.ext.compiler_toplevel`
 system, as per the recipe below::
 
-    from sqlalchemy.sql.expression import _Cast
+    from sqlalchemy.sql.expression import Cast
     from sqlalchemy.ext.compiler import compiles
 
-    @compiles(_Cast, 'mysql')
+    @compiles(Cast, 'mysql')
     def _check_mysql_version(element, compiler, **kw):
         if compiler.dialect.server_version_info < (4, 1, 0):
             return compiler.process(element.clause, **kw)

@@ -150,7 +150,7 @@ COMPOUND_KEYWORDS = {
 }
 
 class _CompileLabel(visitors.Visitable):
-    """lightweight label object which acts as an expression._Label."""
+    """lightweight label object which acts as an expression.Label."""
 
     __visit_name__ = 'label'
     __slots__ = 'element', 'name'
@@ -236,11 +236,11 @@ class SQLCompiler(engine.Compiled):
         # execute)
         self.inline = inline or getattr(statement, 'inline', False)
 
-        # a dictionary of bind parameter keys to _BindParamClause
+        # a dictionary of bind parameter keys to BindParameter
         # instances.
         self.binds = {}
 
-        # a dictionary of _BindParamClause instances to "compiled" names
+        # a dictionary of BindParameter instances to "compiled" names
         # that are actually present in the generated SQL
         self.bind_names = util.column_dict()
 
@@ -614,8 +614,8 @@ class SQLCompiler(engine.Compiled):
     def visit_binary(self, binary, **kw):
         # don't allow "? = ?" to render
         if self.ansi_bind_rules and \
-            isinstance(binary.left, sql._BindParamClause) and \
-            isinstance(binary.right, sql._BindParamClause):
+            isinstance(binary.left, sql.BindParameter) and \
+            isinstance(binary.right, sql.BindParameter):
             kw['literal_binds'] = True
 
         return self._operator_dispatch(binary.operator,
@@ -885,7 +885,7 @@ class SQLCompiler(engine.Compiled):
     def label_select_column(self, select, column, asfrom):
         """label columns present in a select()."""
 
-        if isinstance(column, sql._Label):
+        if isinstance(column, sql.Label):
             return column
 
         elif select is not None and \
@@ -906,7 +906,7 @@ class SQLCompiler(engine.Compiled):
             return _CompileLabel(column, sql._as_truncated(column.name),
                                         alt_names=(column.key,))
         elif not isinstance(column,
-                    (sql._UnaryExpression, sql._TextClause)) \
+                    (sql.UnaryExpression, sql.TextClause)) \
                 and (not hasattr(column, 'name') or \
                         isinstance(column, sql.Function)):
             return _CompileLabel(column, column.anon_label)

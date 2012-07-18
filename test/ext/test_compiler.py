@@ -2,7 +2,7 @@ from sqlalchemy import *
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.sql.expression import ClauseElement, ColumnClause,\
                                     FunctionElement, Select, \
-                                    _BindParamClause
+                                    BindParameter
 
 from sqlalchemy.schema import DDLElement
 from sqlalchemy.ext.compiler import compiles
@@ -321,7 +321,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = 'default'
 
     def teardown(self):
-        for cls in (Select, _BindParamClause):
+        for cls in (Select, BindParameter):
             if hasattr(cls, '_compiler_dispatcher'):
                 visitors._generate_dispatch(cls)
                 del cls._compiler_dispatcher
@@ -351,7 +351,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
             column('c')
         )
 
-        @compiles(_BindParamClause)
+        @compiles(BindParameter)
         def gen_bind(element, compiler, **kw):
             return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
 
@@ -368,7 +368,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
             column('c')
         )
 
-        @compiles(_BindParamClause)
+        @compiles(BindParameter)
         def gen_bind(element, compiler, **kw):
             return "BIND(%s)" % compiler.visit_bindparam(element, **kw)
 

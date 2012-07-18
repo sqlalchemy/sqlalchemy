@@ -102,7 +102,7 @@ def visit_binary_product(fn, expr):
     """
     stack = []
     def visit(element):
-        if isinstance(element, (expression._ScalarSelect)):
+        if isinstance(element, (expression.ScalarSelect)):
             # we dont want to dig into correlated subqueries,
             # those are just column elements by themselves
             yield element
@@ -171,7 +171,7 @@ def unwrap_order_by(clause):
         t = stack.popleft()
         if isinstance(t, expression.ColumnElement) and \
             (
-                not isinstance(t, expression._UnaryExpression) or \
+                not isinstance(t, expression.UnaryExpression) or \
                 not operators.is_ordering_modifier(t.modifier)
             ):
             cols.add(t)
@@ -257,7 +257,7 @@ def expression_as_ddl(clause):
 
     """
     def repl(element):
-        if isinstance(element, expression._BindParamClause):
+        if isinstance(element, expression.BindParameter):
             return expression.literal_column(_quote_ddl_expr(element.value))
         elif isinstance(element, expression.ColumnClause) and \
                 element.table is not None:
@@ -271,14 +271,14 @@ def adapt_criterion_to_null(crit, nulls):
     """given criterion containing bind params, convert selected elements to IS NULL."""
 
     def visit_binary(binary):
-        if isinstance(binary.left, expression._BindParamClause) \
+        if isinstance(binary.left, expression.BindParameter) \
             and binary.left._identifying_key in nulls:
             # reverse order if the NULL is on the left side
             binary.left = binary.right
             binary.right = expression.null()
             binary.operator = operators.is_
             binary.negate = operators.isnot
-        elif isinstance(binary.right, expression._BindParamClause) \
+        elif isinstance(binary.right, expression.BindParameter) \
             and binary.right._identifying_key in nulls:
             binary.right = expression.null()
             binary.operator = operators.is_
@@ -363,7 +363,7 @@ def join_condition(a, b, ignore_nonexistent_tables=False,
             break
 
     if len(crit) == 0:
-        if isinstance(b, expression._FromGrouping):
+        if isinstance(b, expression.FromGrouping):
             hint = " Perhaps you meant to convert the right side to a "\
                                 "subquery using alias()?"
         else:
@@ -864,7 +864,7 @@ class ColumnAdapter(ClauseAdapter):
             c = self.adapt_clause(col)
 
             # anonymize labels in case they have a hardcoded name
-            if isinstance(c, expression._Label):
+            if isinstance(c, expression.Label):
                 c = c.label(None)
 
         # adapt_required indicates that if we got the same column

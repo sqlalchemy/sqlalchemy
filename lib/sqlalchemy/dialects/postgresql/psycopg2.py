@@ -221,7 +221,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
                     or \
                     (
                         (not self.compiled or 
-                        isinstance(self.compiled.statement, expression._TextClause)) 
+                        isinstance(self.compiled.statement, expression.TextClause)) 
                         and self.statement and SERVER_SIDE_CURSOR_RE.match(self.statement))
                     )
                 )

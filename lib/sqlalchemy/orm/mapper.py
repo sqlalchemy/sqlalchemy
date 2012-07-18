@@ -141,7 +141,7 @@ class Mapper(_InspectionAttr):
 
         self._set_with_polymorphic(with_polymorphic)
 
-        if isinstance(self.local_table, expression._SelectBase):
+        if isinstance(self.local_table, expression.SelectBase):
             raise sa_exc.InvalidRequestError(
                 "When mapping against a select() construct, map against "
                 "an alias() of the construct instead."
@@ -151,7 +151,7 @@ class Mapper(_InspectionAttr):
 
         if self.with_polymorphic and \
                     isinstance(self.with_polymorphic[1],
-                                expression._SelectBase):
+                                expression.SelectBase):
             self.with_polymorphic = (self.with_polymorphic[0],
                                 self.with_polymorphic[1].alias())
 
@@ -560,7 +560,7 @@ class Mapper(_InspectionAttr):
         else:
             self.with_polymorphic = None
 
-        if isinstance(self.local_table, expression._SelectBase):
+        if isinstance(self.local_table, expression.SelectBase):
             raise sa_exc.InvalidRequestError(
                 "When mapping against a select() construct, map against "
                 "an alias() of the construct instead."
@@ -570,7 +570,7 @@ class Mapper(_InspectionAttr):
 
         if self.with_polymorphic and \
                     isinstance(self.with_polymorphic[1],
-                                expression._SelectBase):
+                                expression.SelectBase):
             self.with_polymorphic = (self.with_polymorphic[0],
                                 self.with_polymorphic[1].alias())
         if self.configured:

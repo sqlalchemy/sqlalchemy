@@ -393,7 +393,7 @@ class RelationshipProperty(StrategizedProperty):
               or many-to-many context produce a NOT EXISTS clause.
 
             """
-            if isinstance(other, (NoneType, expression._Null)):
+            if isinstance(other, (NoneType, expression.Null)):
                 if self.property.direction in [ONETOMANY, MANYTOMANY]:
                     return ~self._criterion_exists()
                 else:
@@ -691,7 +691,7 @@ class RelationshipProperty(StrategizedProperty):
               or many-to-many context produce an EXISTS clause.
 
             """
-            if isinstance(other, (NoneType, expression._Null)):
+            if isinstance(other, (NoneType, expression.Null)):
                 if self.property.direction == MANYTOONE:
                     return sql.or_(*[x != None for x in
                                    self.property._calculated_foreign_keys])
