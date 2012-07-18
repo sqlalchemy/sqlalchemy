@@ -1639,7 +1639,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
                                 ['counter2']) is None
 
         s1.id = 1
-        attributes.instance_state(s1).commit_all(s1.__dict__, None)
+        attributes.instance_state(s1)._commit_all(s1.__dict__, None)
         assert m._optimized_get_statement(attributes.instance_state(s1),
                                 ['counter2']) is not None
 

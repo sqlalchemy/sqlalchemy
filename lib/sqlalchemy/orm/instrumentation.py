@@ -55,7 +55,7 @@ class ClassManager(dict):
         self.originals = {}
 
         self._bases = [mgr for mgr in [
-                        manager_of_class(base) 
+                        manager_of_class(base)
                         for base in self.class_.__bases__
                         if isinstance(base, type)
                  ] if mgr is not None]
@@ -103,7 +103,7 @@ class ClassManager(dict):
 
     def _instrument_init(self):
         # TODO: self.class_.__init__ is often the already-instrumented
-        # __init__ from an instrumented superclass.  We still need to make 
+        # __init__ from an instrumented superclass.  We still need to make
         # our own wrapper, but it would
         # be nice to wrap the original __init__ and not our existing wrapper
         # of such, since this adds method overhead.
@@ -189,7 +189,7 @@ class ClassManager(dict):
             self.uninstall_descriptor(key)
         del self[key]
         for cls in self.class_.__subclasses__():
-            manager = manager_of_class(cls) 
+            manager = manager_of_class(cls)
             if manager:
                 manager.uninstrument_attribute(key, True)
 
@@ -254,12 +254,12 @@ class ClassManager(dict):
 
     def new_instance(self, state=None):
         instance = self.class_.__new__(self.class_)
-        setattr(instance, self.STATE_ATTR, 
+        setattr(instance, self.STATE_ATTR,
                     state or self._state_constructor(instance, self))
         return instance
 
     def setup_instance(self, instance, state=None):
-        setattr(instance, self.STATE_ATTR, 
+        setattr(instance, self.STATE_ATTR,
                     state or self._state_constructor(instance, self))
 
     def teardown_instance(self, instance):
@@ -387,7 +387,7 @@ manager_of_class = _default_manager_getter = ClassManager.manager_getter()
 def _generate_init(class_, class_manager):
     """Build an __init__ decorator that triggers ClassManager events."""
 
-    # TODO: we should use the ClassManager's notion of the 
+    # TODO: we should use the ClassManager's notion of the
     # original '__init__' method, once ClassManager is fixed
     # to always reference that.
     original__init__ = class_.__init__
@@ -402,7 +402,7 @@ def _generate_init(class_, class_manager):
 def __init__(%(apply_pos)s):
     new_state = class_manager._new_state_if_none(%(self_arg)s)
     if new_state:
-        return new_state.initialize_instance(%(apply_kw)s)
+        return new_state._initialize_instance(%(apply_kw)s)
     else:
         return original__init__(%(apply_kw)s)
 """

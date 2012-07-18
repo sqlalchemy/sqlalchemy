@@ -78,17 +78,17 @@ def instances(query, cursor, context):
 
         if context.refresh_state and query._only_load_props \
                     and context.refresh_state in context.progress:
-            context.refresh_state.commit(
+            context.refresh_state._commit(
                     context.refresh_state.dict, query._only_load_props)
             context.progress.pop(context.refresh_state)
 
-        statelib.InstanceState.commit_all_states(
+        statelib.InstanceState._commit_all_states(
             context.progress.items(),
             session.identity_map
         )
 
-        for ii, (dict_, attrs) in context.partials.iteritems():
-            ii.commit(dict_, attrs)
+        for state, (dict_, attrs) in context.partials.iteritems():
+            state._commit(dict_, attrs)
 
         for row in rows:
             yield row

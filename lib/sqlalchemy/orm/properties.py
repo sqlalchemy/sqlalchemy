@@ -157,7 +157,7 @@ class ColumnProperty(StrategizedProperty):
                 impl = dest_state.get_impl(self.key)
                 impl.set(dest_state, dest_dict, value, None)
         elif dest_state.has_identity and self.key not in dest_dict:
-            dest_state.expire_attributes(dest_dict, [self.key])
+            dest_state._expire_attributes(dest_dict, [self.key])
 
     class Comparator(PropComparator):
         @util.memoized_instancemethod

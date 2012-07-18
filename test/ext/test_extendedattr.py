@@ -157,7 +157,7 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             u.email_address = 'lala@123.com'
 
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
-            attributes.instance_state(u).commit_all(attributes.instance_dict(u))
+            attributes.instance_state(u)._commit_all(attributes.instance_dict(u))
             self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
             u.user_name = 'heythere'
@@ -186,21 +186,21 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
                 assert Foo in instrumentation._instrumentation_factory._state_finders
 
             f = Foo()
-            attributes.instance_state(f).expire(attributes.instance_dict(f), set())
+            attributes.instance_state(f)._expire(attributes.instance_dict(f), set())
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
             f.a = "this is some new a"
-            attributes.instance_state(f).expire(attributes.instance_dict(f), set())
+            attributes.instance_state(f)._expire(attributes.instance_dict(f), set())
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire(attributes.instance_dict(f), set())
+            attributes.instance_state(f)._expire(attributes.instance_dict(f), set())
             f.a = "this is another new a"
             eq_(f.a, "this is another new a")
             eq_(f.b, 12)
 
-            attributes.instance_state(f).expire(attributes.instance_dict(f), set())
+            attributes.instance_state(f)._expire(attributes.instance_dict(f), set())
             eq_(f.a, "this is a")
             eq_(f.b, 12)
 
@@ -208,7 +208,7 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             eq_(f.a, None)
             eq_(f.b, 12)
 
-            attributes.instance_state(f).commit_all(attributes.instance_dict(f))
+            attributes.instance_state(f)._commit_all(attributes.instance_dict(f))
             eq_(f.a, None)
             eq_(f.b, 12)
 
@@ -303,8 +303,8 @@ class UserDefinedExtensionTest(fixtures.ORMTest):
             f1.bars.append(b1)
             eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ([b1], [], []))
 
-            attributes.instance_state(f1).commit_all(attributes.instance_dict(f1))
-            attributes.instance_state(b1).commit_all(attributes.instance_dict(b1))
+            attributes.instance_state(f1)._commit_all(attributes.instance_dict(f1))
+            attributes.instance_state(b1)._commit_all(attributes.instance_dict(b1))
 
             eq_(attributes.get_state_history(attributes.instance_state(f1), 'name'), ((), ['f1'], ()))
             eq_(attributes.get_state_history(attributes.instance_state(f1), 'bars'), ((), [b1], ()))

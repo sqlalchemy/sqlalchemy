@@ -190,7 +190,7 @@ class InstanceState(interfaces._InspectionAttr):
         else:
             return {}
 
-    def initialize_instance(*mixed, **kwargs):
+    def _initialize_instance(*mixed, **kwargs):
         self, instance, args = mixed[0], mixed[1], mixed[2:]
         manager = self.manager
 
@@ -278,20 +278,20 @@ class InstanceState(interfaces._InspectionAttr):
         manager.setup_instance(inst, self)
         manager.dispatch.unpickle(self, state)
 
-    def initialize(self, key):
+    def _initialize(self, key):
         """Set this attribute to an empty value or collection,
            based on the AttributeImpl in use."""
 
         self.manager.get_impl(key).initialize(self, self.dict)
 
-    def reset(self, dict_, key):
+    def _reset(self, dict_, key):
         """Remove the given attribute and any
            callables associated with it."""
 
         dict_.pop(key, None)
         self.callables.pop(key, None)
 
-    def expire_attribute_pre_commit(self, dict_, key):
+    def _expire_attribute_pre_commit(self, dict_, key):
         """a fast expire that can be called by column loaders during a load.
 
         The additional bookkeeping is finished up in commit_all().
@@ -303,14 +303,14 @@ class InstanceState(interfaces._InspectionAttr):
         dict_.pop(key, None)
         self.callables[key] = self
 
-    def set_callable(self, dict_, key, callable_):
+    def _set_callable(self, dict_, key, callable_):
         """Remove the given attribute and set the given callable
            as a loader."""
 
         dict_.pop(key, None)
         self.callables[key] = callable_
 
-    def expire(self, dict_, modified_set):
+    def _expire(self, dict_, modified_set):
         self.expired = True
         if self.modified:
             modified_set.discard(self)
@@ -335,7 +335,7 @@ class InstanceState(interfaces._InspectionAttr):
 
         self.manager.dispatch.expire(self, None)
 
-    def expire_attributes(self, dict_, attribute_names):
+    def _expire_attributes(self, dict_, attribute_names):
         pending = self.__dict__.get('_pending_mutations', None)
 
         for key in attribute_names:
@@ -451,7 +451,7 @@ class InstanceState(interfaces._InspectionAttr):
                         ))
             self.modified = True
 
-    def commit(self, dict_, keys):
+    def _commit(self, dict_, keys):
         """Commit attributes.
 
         This is used by a partial-attribute load operation to mark committed
@@ -472,7 +472,7 @@ class InstanceState(interfaces._InspectionAttr):
                             intersection(dict_):
             del self.callables[key]
 
-    def commit_all(self, dict_, instance_dict=None):
+    def _commit_all(self, dict_, instance_dict=None):
         """commit all attributes unconditionally.
 
         This is used after a flush() or a full load/refresh
@@ -487,10 +487,10 @@ class InstanceState(interfaces._InspectionAttr):
         "expired" after this step if a value was not populated in state.dict.
 
         """
-        self.commit_all_states([(self, dict_)], instance_dict)
+        self._commit_all_states([(self, dict_)], instance_dict)
 
     @classmethod
-    def commit_all_states(self, iter, instance_dict=None):
+    def _commit_all_states(self, iter, instance_dict=None):
         """Mass version of commit_all()."""
 
         for state, dict_ in iter:

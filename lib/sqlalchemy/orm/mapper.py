@@ -58,8 +58,32 @@ class Mapper(_InspectionAttr):
     """Define the correlation of class attributes to database table
     columns.
 
-    Instances of this class should be constructed via the
-    :func:`~sqlalchemy.orm.mapper` function.
+    The :class:`.Mapper` object is instantiated using the
+    :func:`~sqlalchemy.orm.mapper` function.    For information
+    about instantiating new :class:`.Mapper` objects, see
+    that function's documentation.
+
+
+    When :func:`.mapper` is used
+    explicitly to link a user defined class with table
+    metadata, this is referred to as *classical mapping*.
+    Modern SQLAlchemy usage tends to favor the
+    :mod:`sqlalchemy.ext.declarative` extension for class
+    configuration, which
+    makes usage of :func:`.mapper` behind the scenes.
+
+    Given a particular class known to be mapped by the ORM,
+    the :class:`.Mapper` which maintains it can be acquired
+    using the :func:`.inspect` function::
+
+        from sqlalchemy import inspect
+
+        mapper = inspect(MyClass)
+
+    A class which was mapped by the :mod:`sqlalchemy.ext.declarative`
+    extension will also have its mapper available via the ``__mapper__``
+    attribute.
+
 
     """
     def __init__(self,
@@ -1462,24 +1486,78 @@ class Mapper(_InspectionAttr):
 
     @util.memoized_property
     def attr(self):
+        """A namespace of all :class:`.MapperProperty` objects
+        associated this mapper.
+
+        This is an object that provides each property based on
+        its key name.  For instance, the mapper for a
+        ``User`` class which has ``User.name`` attribute would
+        provide ``mapper.attr.name``, which would be the
+        :class:`.ColumnProperty` representing the ``name``
+        column.   The namespace object can also be iterated,
+        which would yield each :class:`.MapperProperty`.
+
+        :class:`.Mapper` has several pre-filtered views
+        of this attribute which limit the types of properties
+        returned, inclding :attr:`.synonyms`, :attr:`.column_attrs`,
+        :attr:`.relationships`, and :attr:`.composites`.
+
+
+        """
         if _new_mappers:
             configure_mappers()
         return util.ImmutableProperties(self._props)
 
     @_memoized_configured_property
     def synonyms(self):
+        """Return a namespace of all :class:`.SynonymProperty`
+        properties maintained by this :class:`.Mapper`.
+
+        See also:
+
+        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        objects.
+
+        """
         return self._filter_properties(descriptor_props.SynonymProperty)
 
     @_memoized_configured_property
     def column_attrs(self):
+        """Return a namespace of all :class:`.ColumnProperty`
+        properties maintained by this :class:`.Mapper`.
+
+        See also:
+
+        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        objects.
+
+        """
         return self._filter_properties(properties.ColumnProperty)
 
     @_memoized_configured_property
     def relationships(self):
+        """Return a namespace of all :class:`.RelationshipProperty`
+        properties maintained by this :class:`.Mapper`.
+
+        See also:
+
+        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        objects.
+
+        """
         return self._filter_properties(properties.RelationshipProperty)
 
     @_memoized_configured_property
     def composites(self):
+        """Return a namespace of all :class:`.CompositeProperty`
+        properties maintained by this :class:`.Mapper`.
+
+        See also:
+
+        :attr:`.Mapper.attr` - namespace of all :class:`.MapperProperty`
+        objects.
+
+        """
         return self._filter_properties(descriptor_props.CompositeProperty)
 
     def _filter_properties(self, type_):

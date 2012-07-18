@@ -557,7 +557,7 @@ class AttributeImpl(object):
         """set an attribute value on the given instance and 'commit' it."""
 
         dict_[self.key] = value
-        state.commit(dict_, [self.key])
+        state._commit(dict_, [self.key])
         return value
 
 class ScalarAttributeImpl(AttributeImpl):
@@ -934,7 +934,7 @@ class CollectionAttributeImpl(AttributeImpl):
 
         state.dict[self.key] = user_data
 
-        state.commit(dict_, [self.key])
+        state._commit(dict_, [self.key])
 
         if self.key in state._pending_mutations:
             # pending items exist.  issue a modified event,

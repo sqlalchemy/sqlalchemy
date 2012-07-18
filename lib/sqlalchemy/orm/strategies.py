@@ -148,7 +148,7 @@ class ColumnLoader(LoaderStrategy):
                 return fetch_col, None, None
         else:
             def expire_for_non_present_col(state, dict_, row):
-                state.expire_attribute_pre_commit(dict_, key)
+                state._expire_attribute_pre_commit(dict_, key)
             return expire_for_non_present_col, None, None
 
 log.class_logger(ColumnLoader)
@@ -177,13 +177,13 @@ class DeferredColumnLoader(LoaderStrategy):
 
         elif not self.is_class_level:
             def set_deferred_for_local_state(state, dict_, row):
-                state.set_callable(dict_, key, LoadDeferredColumns(state, key))
+                state._set_callable(dict_, key, LoadDeferredColumns(state, key))
             return set_deferred_for_local_state, None, None
         else:
             def reset_col_for_deferred(state, dict_, row):
                 # reset state on the key so that deferred callables
                 # fire off on next access.
-                state.reset(dict_, key)
+                state._reset(dict_, key)
             return reset_col_for_deferred, None, None
 
     def init_class_attribute(self, mapper):
@@ -308,7 +308,7 @@ class NoLoader(AbstractRelationshipLoader):
 
     def create_row_processor(self, context, path, mapper, row, adapter):
         def invoke_no_load(state, dict_, row):
-            state.initialize(self.key)
+            state._initialize(self.key)
         return invoke_no_load, None, None
 
 log.class_logger(NoLoader)
@@ -596,7 +596,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 # "lazyload" option on a "no load"
                 # attribute - "eager" attributes always have a
                 # class-level lazyloader installed.
-                state.set_callable(dict_, key, LoadLazyAttribute(state, key))
+                state._set_callable(dict_, key, LoadLazyAttribute(state, key))
             return set_lazy_callable, None, None
         else:
             def reset_for_lazy_callable(state, dict_, row):
@@ -608,7 +608,7 @@ class LazyLoader(AbstractRelationshipLoader):
                 # this is needed in
                 # populate_existing() types of scenarios to reset
                 # any existing state.
-                state.reset(dict_, key)
+                state._reset(dict_, key)
 
             return reset_for_lazy_callable, None, None
 
