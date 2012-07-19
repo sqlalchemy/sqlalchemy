@@ -188,6 +188,11 @@ underneath "0.7.xx".
       (use sqlalchemy.ext.horizontal_shard)
 
 - engine
+  - [feature] Connection event listeners can
+    now be associated with individual
+    Connection objects, not just Engine
+    objects.  [ticket:2511]
+
   - [bug] Fixed bug whereby if a database restart
     affected multiple connections, each
     connection would individually invoke a new

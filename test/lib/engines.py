@@ -214,7 +214,7 @@ def utf8_engine(url=None, options=None):
 
     if config.db.dialect.name == 'mysql' and \
         config.db.driver in ['mysqldb', 'pymysql']:
-        # note 1.2.1.gamma.6 or greater of MySQLdb 
+        # note 1.2.1.gamma.6 or greater of MySQLdb
         # needed here
         url = url or config.db_url
         url = engine_url.make_url(url)
@@ -231,7 +231,7 @@ def mock_engine(dialect_name=None):
     by an Engine.
 
     It should not be used in other cases, as assert_compile() and
-    assert_sql_execution() are much better choices with fewer 
+    assert_sql_execution() are much better choices with fewer
     moving parts.
 
     """
@@ -250,7 +250,7 @@ def mock_engine(dialect_name=None):
     def print_sql():
         d = engine.dialect
         return "\n".join(
-            str(s.compile(dialect=d)) 
+            str(s.compile(dialect=d))
             for s in engine.mock
         )
     engine = create_engine(dialect_name + '://',
@@ -263,10 +263,10 @@ def mock_engine(dialect_name=None):
 
 class DBAPIProxyCursor(object):
     """Proxy a DBAPI cursor.
-    
+
     Tests can provide subclasses of this to intercept
     DBAPI-level cursor operations.
-    
+
     """
     def __init__(self, engine, conn):
         self.engine = engine
@@ -287,10 +287,10 @@ class DBAPIProxyCursor(object):
 
 class DBAPIProxyConnection(object):
     """Proxy a DBAPI connection.
-    
+
     Tests can provide subclasses of this to intercept
     DBAPI-level connection operations.
-    
+
     """
     def __init__(self, engine, cursor_cls):
         self.conn = self._sqla_unwrap = engine.pool._creator()
@@ -307,9 +307,9 @@ class DBAPIProxyConnection(object):
         return getattr(self.conn, key)
 
 def proxying_engine(conn_cls=DBAPIProxyConnection, cursor_cls=DBAPIProxyCursor):
-    """Produce an engine that provides proxy hooks for 
+    """Produce an engine that provides proxy hooks for
     common methods.
-    
+
     """
     def mock_conn():
         return conn_cls(config.db, cursor_cls)
@@ -330,7 +330,7 @@ class ReplayableSession(object):
     # Py3K
     #Natives = set([getattr(types, t)
     #               for t in dir(types) if not t.startswith('_')]). \
-    #               union([type(t) if not isinstance(t, type) 
+    #               union([type(t) if not isinstance(t, type)
     #                        else t for t in __builtins__.values()]).\
     #               difference([getattr(types, t)
     #                        for t in ('FunctionType', 'BuiltinFunctionType',

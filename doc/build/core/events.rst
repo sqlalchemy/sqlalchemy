@@ -18,8 +18,8 @@ Connection Pool Events
 .. autoclass:: sqlalchemy.events.PoolEvents
    :members:
 
-Connection Events
------------------------
+SQL Execution and Connection Events
+------------------------------------
 
 .. autoclass:: sqlalchemy.events.ConnectionEvents
     :members:

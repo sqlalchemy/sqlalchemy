@@ -944,13 +944,13 @@ class DefaultTest(fixtures.MappedTest):
 class ColumnPropertyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('data', metadata, 
+        Table('data', metadata,
             Column('id', Integer, primary_key=True, test_needs_autoincrement=True),
             Column('a', String(50)),
             Column('b', String(50))
             )
 
-        Table('subdata', metadata, 
+        Table('subdata', metadata,
             Column('id', Integer, ForeignKey('data.id'), primary_key=True),
             Column('c', String(50)),
             )
@@ -972,7 +972,7 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data, data = self.classes.Data, self.tables.data
 
         mapper(Data, data, properties={
-            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b, 
+            'aplusb':column_property(data.c.a + literal_column("' '") + data.c.b,
                         expire_on_flush=False)
         })
         self._test(False)
@@ -1626,7 +1626,6 @@ class ManyToOneTest(_fixtures.FixtureTest):
             session.add(a)
 
         session.flush()
-
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.name = 'imnewlyadded'
@@ -1852,8 +1851,8 @@ class ManyToManyTest(_fixtures.FixtureTest):
         k.name = 'yellow'
         objects[5].keywords.append(k)
         self.assert_sql_execution(
-            testing.db, 
-            session.flush, 
+            testing.db,
+            session.flush,
             AllOf(
                 CompiledSQL("UPDATE items SET description=:description "
                  "WHERE items.id = :items_id",
@@ -1875,8 +1874,8 @@ class ManyToManyTest(_fixtures.FixtureTest):
         dkid = objects[5].keywords[1].id
         del objects[5].keywords[1]
         self.assert_sql_execution(
-            testing.db, 
-            session.flush, 
+            testing.db,
+            session.flush,
             CompiledSQL("DELETE FROM item_keywords "
                      "WHERE item_keywords.item_id = :item_id AND "
                      "item_keywords.keyword_id = :keyword_id",
@@ -2062,8 +2061,8 @@ class SaveTest2(_fixtures.FixtureTest):
         session.add_all(fixture())
 
         self.assert_sql_execution(
-            testing.db, 
-            session.flush, 
+            testing.db,
+            session.flush,
             CompiledSQL("INSERT INTO users (name) VALUES (:name)",
              {'name': 'u1'}),
             CompiledSQL("INSERT INTO users (name) VALUES (:name)",
