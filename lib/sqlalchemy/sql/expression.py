@@ -1931,34 +1931,32 @@ class CompareMixin(ColumnOperators):
                     right.type)
         return BinaryExpression(left, right, op, type_=result_type)
 
-
     # a mapping of operators with the method they use, along with their negated
     # operator for comparison operators
     operators = {
-        operators.add : (__operate,),
-        operators.mul : (__operate,),
-        operators.sub : (__operate,),
-        # Py2K
-        operators.div : (__operate,),
-        # end Py2K
-        operators.mod : (__operate,),
-        operators.truediv : (__operate,),
-        operators.lt : (__compare, operators.ge),
-        operators.le : (__compare, operators.gt),
-        operators.ne : (__compare, operators.eq),
-        operators.gt : (__compare, operators.le),
-        operators.ge : (__compare, operators.lt),
-        operators.eq : (__compare, operators.ne),
-        operators.like_op : (__compare, operators.notlike_op),
-        operators.ilike_op : (__compare, operators.notilike_op),
+        "add": (__operate,),
+        "mul": (__operate,),
+        "sub": (__operate,),
+        "div": (__operate,),
+        "mod": (__operate,),
+        "truediv": (__operate,),
+        "custom_op": (__operate,),
+        "lt": (__compare, operators.ge),
+        "le": (__compare, operators.gt),
+        "ne": (__compare, operators.eq),
+        "gt": (__compare, operators.le),
+        "ge": (__compare, operators.lt),
+        "eq": (__compare, operators.ne),
+        "like_op": (__compare, operators.notlike_op),
+        "ilike_op": (__compare, operators.notilike_op),
     }
 
     def operate(self, op, *other, **kwargs):
-        o = CompareMixin.operators[op]
+        o = CompareMixin.operators[op.__name__]
         return o[0](self, op, other[0], *o[1:], **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
-        o = CompareMixin.operators[op]
+        o = CompareMixin.operators[op.__name__]
         return o[0](self, op, other, reverse=True, *o[1:], **kwargs)
 
     def in_(self, other):
@@ -2099,11 +2097,6 @@ class CompareMixin(ColumnOperators):
         """See :meth:`.ColumnOperators.collate`."""
 
         return collate(self, collation)
-
-    def op(self, operator):
-        """See :meth:`.ColumnOperators.op`."""
-
-        return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, operator, obj):
         return BindParameter(None, obj,

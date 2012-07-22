@@ -236,6 +236,17 @@ underneath "0.7.xx".
     replaced by inserted_primary_key.
 
 - sql
+  - [feature] Revised the rules used to determine
+    the operator precedence for the user-defined
+    operator, i.e. that granted using the ``op()``
+    method.   Previously, the smallest precedence
+    was applied in all cases, now the default
+    precedence is zero, lower than all operators
+    except "comma" (such as, used in the argument
+    list of a ``func`` call) and "AS", and is
+    also customizable via the "precedence" argument
+    on the ``op()`` method.  [ticket:2537]
+
   - [changed] Most classes in expression.sql
     are no longer preceded with an underscore,
     i.e. Label, SelectBase, Generative, CompareMixin.

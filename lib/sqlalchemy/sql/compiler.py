@@ -663,15 +663,16 @@ class SQLCompiler(engine.Compiled):
                     (' ESCAPE ' + self.render_literal_value(escape, None))
                     or '')
 
+    def visit_custom_op(self, element, dispatch_operator, dispatch_fn, **kw):
+        return dispatch_fn(" " + dispatch_operator.opstring + " ")
+
     def _operator_dispatch(self, operator, element, fn, **kw):
-        if util.callable(operator):
-            disp = getattr(self, "visit_%s" % operator.__name__, None)
-            if disp:
-                return disp(element, **kw)
-            else:
-                return fn(OPERATORS[operator])
+        disp = getattr(self, "visit_%s" % operator.__name__, None)
+        if disp:
+            kw.update(dispatch_operator=operator, dispatch_fn=fn)
+            return disp(element, **kw)
         else:
-            return fn(" " + operator + " ")
+            return fn(OPERATORS[operator])
 
     def visit_bindparam(self, bindparam, within_columns_clause=False,
                                             literal_binds=False, **kwargs):
