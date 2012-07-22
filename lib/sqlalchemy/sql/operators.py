@@ -114,7 +114,7 @@ class Operators(object):
         is a bitwise AND of the value in ``somecolumn``.
 
         :param operator: a string which will be output as the infix operator
-          between this :class:`.ClauseElement` and the expression passed to the
+          between this element and the expression passed to the
           generated function.
 
         :param precedence: precedence to apply to the operator, when
@@ -183,8 +183,8 @@ class custom_op(object):
 class ColumnOperators(Operators):
     """Defines comparison and math operations.
 
-    By default all methods call down to
-    :meth:`Operators.operate` or :meth:`Operators.reverse_operate`
+    By default, all methods call down to
+    :meth:`.operate` or :meth:`.reverse_operate`,
     passing in the appropriate operator function from the
     Python builtin ``operator`` module or
     a SQLAlchemy-specific operator function from
@@ -199,15 +199,16 @@ class ColumnOperators(Operators):
         def eq(a, b):
             return a == b
 
-    A SQLAlchemy construct like :class:`.ColumnElement` ultimately
+    The core column expression unit :class:`.ColumnElement`
     overrides :meth:`.Operators.operate` and others
-    to return further :class:`.ClauseElement` constructs,
+    to return further :class:`.ColumnElement` constructs,
     so that the ``==`` operation above is replaced by a clause
     construct.
 
     The docstrings here will describe column-oriented
     behavior of each operator.  For ORM-based operators
-    on related objects and collections, see :class:`.RelationshipProperty.Comparator`.
+    on related objects and collections, see
+    :class:`.RelationshipProperty.Comparator`.
 
     """
 
