@@ -1426,6 +1426,19 @@ def _literal_as_text(element):
             "SQL expression object or string expected."
         )
 
+def _interpret_as_from(element):
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is None:
+        if isinstance(element, (util.NoneType, bool)):
+            return _const_expr(element)
+        elif isinstance(element, basestring):
+            return TextClause(unicode(element))
+    elif hasattr(insp, "selectable"):
+        return insp.selectable
+    else:
+        raise exc.ArgumentError("FROM expression expected")
+
+
 def _const_expr(element):
     if element is None:
         return null()
@@ -1445,12 +1458,15 @@ def _clause_element_as_expr(element):
         return element
 
 def _literal_as_column(element):
-    if isinstance(element, Visitable):
-        return element
-    elif hasattr(element, '__clause_element__'):
-        return element.__clause_element__()
-    else:
-        return literal_column(str(element))
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is not None:
+        if hasattr(insp, "expression"):
+            return insp.expression
+        elif hasattr(insp, "selectable"):
+            return insp.selectable
+        elif insp.is_clause_element:
+            return insp
+    return literal_column(str(element))
 
 def _literal_as_binds(element, name=None, type_=None):
     if hasattr(element, '__clause_element__'):
@@ -1539,6 +1555,7 @@ class ClauseElement(Visitable):
     bind = None
     _is_clone_of = None
     is_selectable = False
+    is_clause_element = True
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -2172,6 +2189,15 @@ class ColumnElement(ClauseElement, CompareMixin):
     _label = None
     _key_label = None
     _alt_names = ()
+
+    @property
+    def expression(self):
+        """Return a column expression.
+
+        Part of the inspection interface; returns self.
+
+        """
+        return self
 
     @property
     def _select_iterable(self):
@@ -2972,6 +2998,10 @@ class TextClause(Executable, ClauseElement):
     @property
     def _select_iterable(self):
         return (self,)
+
+    @property
+    def selectable(self):
+        return self
 
     _hide_froms = []
 
@@ -5315,7 +5345,8 @@ class Select(SelectBase):
         if fromclauses and fromclauses[0] is None:
             self._correlate = ()
         else:
-            self._correlate = set(self._correlate).union(fromclauses)
+            self._correlate = set(self._correlate).union(
+                    _interpret_as_from(f) for f in fromclauses)
 
     @_generative
     def correlate_except(self, *fromclauses):
@@ -5323,15 +5354,16 @@ class Select(SelectBase):
         if fromclauses and fromclauses[0] is None:
             self._correlate_except = ()
         else:
-            self._correlate_except = set(self._correlate_except
-                                            ).union(fromclauses)
+            self._correlate_except = set(self._correlate_except).union(
+                    _interpret_as_from(f) for f in fromclauses)
 
     def append_correlation(self, fromclause):
         """append the given correlation expression to this select()
         construct."""
 
         self._should_correlate = False
-        self._correlate = set(self._correlate).union([fromclause])
+        self._correlate = set(self._correlate).union(
+                _interpret_as_from(f) for f in fromclause)
 
     def append_column(self, column):
         """append the given column expression to the columns clause of this
@@ -5387,7 +5419,7 @@ class Select(SelectBase):
 
         """
         self._reset_exported()
-        fromclause = _literal_as_text(fromclause)
+        fromclause = _interpret_as_from(fromclause)
         self._from_obj = self._from_obj.union([fromclause])
 
     def _populate_column_collection(self):

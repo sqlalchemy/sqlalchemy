@@ -102,6 +102,7 @@ class ColumnProperty(StrategizedProperty):
         else:
             self.strategy_class = strategies.ColumnLoader
 
+
     @property
     def expression(self):
         """Return the primary column or expression for this ColumnProperty.

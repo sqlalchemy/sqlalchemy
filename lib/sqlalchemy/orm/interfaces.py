@@ -62,6 +62,8 @@ class _InspectionAttr(object):
     is_instance = False
     is_mapper = False
     is_property = False
+    is_attribute = False
+    is_clause_element = False
 
 class MapperProperty(_InspectionAttr):
     """Manage the relationship of a ``Mapper`` to a single class

@@ -112,8 +112,10 @@ PASSIVE_ONLY_PERSISTENT = util.symbol("PASSIVE_ONLY_PERSISTENT",
 )
 
 
-class QueryableAttribute(interfaces.PropComparator):
+class QueryableAttribute(interfaces._InspectionAttr, interfaces.PropComparator):
     """Base class for class-bound attributes. """
+
+    is_attribute = True
 
     def __init__(self, class_, key, impl=None,
                         comparator=None, parententity=None,
@@ -148,6 +150,10 @@ class QueryableAttribute(interfaces.PropComparator):
     def __selectable__(self):
         # TODO: conditionally attach this method based on clause_element ?
         return self
+
+    @property
+    def expression(self):
+        return self.comparator.__clause_element__()
 
     def __clause_element__(self):
         return self.comparator.__clause_element__()
@@ -191,10 +197,7 @@ class QueryableAttribute(interfaces.PropComparator):
     def property(self):
         return self.comparator.property
 
-
-@inspection._inspects(QueryableAttribute)
-def _get_prop(source):
-    return source.property
+inspection._self_inspects(QueryableAttribute)
 
 class InstrumentedAttribute(QueryableAttribute):
     """Class bound instrumented attribute which adds descriptor methods."""

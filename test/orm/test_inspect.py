@@ -178,17 +178,23 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_insp_prop(self):
         User = self.classes.User
         prop = inspect(User.addresses)
-        is_(prop, User.addresses.property)
+        is_(prop, User.addresses)
+
+    def test_insp_aliased_prop(self):
+        User = self.classes.User
+        ua = aliased(User)
+        prop = inspect(ua.addresses)
+        is_(prop, ua.addresses)
 
     def test_rel_accessors(self):
         User = self.classes.User
         Address = self.classes.Address
         prop = inspect(User.addresses)
-        is_(prop.parent, class_mapper(User))
-        is_(prop.mapper, class_mapper(Address))
+        is_(prop.property.parent, class_mapper(User))
+        is_(prop.property.mapper, class_mapper(Address))
 
         assert not hasattr(prop, 'columns')
-        assert not hasattr(prop, 'expression')
+        assert hasattr(prop, 'expression')
 
 
     def test_instance_state(self):

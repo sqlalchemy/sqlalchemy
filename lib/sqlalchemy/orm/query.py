@@ -26,10 +26,11 @@ from . import (
     )
 from .util import (
     AliasedClass, ORMAdapter, _entity_descriptor, PathRegistry,
-    _is_aliased_class, _is_mapped_class, _orm_columns, _orm_selectable,
+    _is_aliased_class, _is_mapped_class, _orm_columns,
     join as orm_join,with_parent, aliased
     )
-from .. import sql, util, log, exc as sa_exc, inspect
+from .. import sql, util, log, exc as sa_exc, inspect, inspection
+from ..sql.expression import _interpret_as_from
 from ..sql import (
         util as sql_util,
         expression, visitors
@@ -539,6 +540,9 @@ class Query(object):
 
         return self.enable_eagerloads(False).statement.as_scalar()
 
+    @property
+    def selectable(self):
+        return self.__clause_element__()
 
     def __clause_element__(self):
         return self.enable_eagerloads(False).with_labels().statement
@@ -798,7 +802,8 @@ class Query(object):
          """
 
         self._correlate = self._correlate.union(
-                                        _orm_selectable(s)
+                                        _interpret_as_from(s)
+                                        if s is not None else None
                                         for s in args)
 
     @_generative()
@@ -2672,7 +2677,6 @@ class Query(object):
             statement.append_order_by(*context.eager_order_by)
         return statement
 
-
     def _adjust_for_single_inheritance(self, context):
         """Apply single-table-inheritance filtering.
 
@@ -2696,6 +2700,7 @@ class Query(object):
     def __str__(self):
         return str(self._compile_context().statement)
 
+inspection._self_inspects(Query)
 
 class _QueryEntity(object):
     """represent an entity column returned within a Query result."""

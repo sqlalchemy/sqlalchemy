@@ -151,6 +151,12 @@ underneath "0.7.xx".
     need autoflush w pre-attached object.
     [ticket:2464]
 
+  - [feature] ORM entities can be passed
+    to select() as well as the select_from(),
+    correlate(), and correlate_except()
+    methods, where they will be unwrapped
+    into selectables. [ticket:2245]
+
   - [feature] The registry of classes
     in declarative_base() is now a
     WeakValueDictionary.  So subclasses of

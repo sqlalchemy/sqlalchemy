@@ -119,6 +119,80 @@ class RowTupleTest(QueryTest):
                 asserted
             )
 
+class RawSelectTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    def test_select_from_entity(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            select(['*']).select_from(User),
+            "SELECT * FROM users"
+        )
+
+    def test_select_from_aliased_entity(self):
+        User = self.classes.User
+        ua = aliased(User, name="ua")
+        self.assert_compile(
+            select(['*']).select_from(ua),
+            "SELECT * FROM users AS ua"
+        )
+
+    def test_correlate_entity(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        self.assert_compile(
+            select([User]).where(User.id == Address.user_id).
+                correlate(Address),
+            "SELECT users.id, users.name FROM users "
+            "WHERE users.id = addresses.user_id"
+        )
+
+    def test_correlate_aliased_entity(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        aa = aliased(Address, name="aa")
+
+        self.assert_compile(
+            select([User]).where(User.id == aa.user_id).
+                correlate(aa),
+            "SELECT users.id, users.name FROM users "
+            "WHERE users.id = aa.user_id"
+        )
+
+    def test_columns_clause_entity(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            select([User]),
+            "SELECT users.id, users.name FROM users"
+        )
+
+    def test_columns_clause_columns(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            select([User.id, User.name]),
+            "SELECT users.id, users.name FROM users"
+        )
+
+    def test_columns_clause_aliased_columns(self):
+        User = self.classes.User
+        ua = aliased(User, name='ua')
+        self.assert_compile(
+            select([ua.id, ua.name]),
+            "SELECT ua.id, ua.name FROM users AS ua"
+        )
+
+    def test_columns_clause_aliased_entity(self):
+        User = self.classes.User
+        ua = aliased(User, name='ua')
+        self.assert_compile(
+            select([ua]),
+            "SELECT ua.id, ua.name FROM users AS ua"
+        )
+
 class GetTest(QueryTest):
     def test_get(self):
         User = self.classes.User

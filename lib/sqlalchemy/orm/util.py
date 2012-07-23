@@ -1074,13 +1074,6 @@ def _orm_columns(entity):
     else:
         return [entity]
 
-def _orm_selectable(entity):
-    insp = inspection.inspect(entity, False)
-    if hasattr(insp, 'selectable'):
-        return insp.selectable
-    else:
-        return entity
-
 def has_identity(object):
     state = attributes.instance_state(object)
     return state.has_identity

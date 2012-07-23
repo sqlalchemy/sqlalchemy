@@ -65,7 +65,6 @@ class QueryTest(_fixtures.FixtureTest):
 
         configure_mappers()
 
-
 class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
 
     query_correlated = "SELECT users.name AS users_name, " \
