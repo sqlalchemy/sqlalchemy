@@ -458,8 +458,29 @@ objects available for a particular ``User``::
         id = Column(Integer, primary_key=True)
         address_count = column_property(
             select([func.count(Address.id)]).\
-                where(Address.user_id==id)
+                where(Address.user_id==id).\
+                correlate_except(Address)
         )
+
+In the above example, we define a :func:`.select` construct like the following::
+
+    select([func.count(Address.id)]).\
+        where(Address.user_id==id).\
+        correlate_except(Address)
+
+The meaning of the above statement is, select the count of ``Address.id`` rows
+where the ``Address.user_id`` column is equated to ``id``, which in the context
+of the ``User`` class is the :class:`.Column` named ``id`` (note that ``id`` is
+also the name of a Python built in function, which is not what we want to use
+here - if we were outside of the ``User`` class definition, we'd use ``User.id``).
+
+The :meth:`.select.correlate_except` directive indicates that each element in the
+FROM clause of this :func:`.select` may be omitted from the FROM list (that is, correlated
+to the enclosing SELECT statement against ``User``) except for the one corresponding
+to ``Address``.  This isn't strictly necessary, but prevents ``Address`` from
+being inadvertently omitted from the FROM list in the case of a long string
+of joins between ``User`` and ``Address`` tables where SELECT statements against
+``Address`` are nested.
 
 If import issues prevent the :func:`.column_property` from being defined
 inline with the class, it can be assigned to the class after both
