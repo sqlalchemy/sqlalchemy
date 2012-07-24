@@ -130,6 +130,14 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             "SELECT * FROM users"
         )
 
+    def test_inline_select_from_entity(self):
+        User = self.classes.User
+
+        self.assert_compile(
+            select(['*'], from_obj=User),
+            "SELECT * FROM users"
+        )
+
     def test_select_from_aliased_entity(self):
         User = self.classes.User
         ua = aliased(User, name="ua")
@@ -191,6 +199,16 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             select([ua]),
             "SELECT ua.id, ua.name FROM users AS ua"
+        )
+
+    def test_core_join(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        from sqlalchemy.sql import join
+        self.assert_compile(
+            select([User]).select_from(join(User, Address)),
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id"
         )
 
 class GetTest(QueryTest):

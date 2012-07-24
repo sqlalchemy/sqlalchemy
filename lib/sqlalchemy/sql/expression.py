@@ -3665,8 +3665,8 @@ class Join(FromClause):
         :class:`.FromClause` object.
 
         """
-        self.left = _literal_as_text(left)
-        self.right = _literal_as_text(right).self_group()
+        self.left = _interpret_as_from(left)
+        self.right = _interpret_as_from(right).self_group()
 
         if onclause is None:
             self.onclause = self._match_primaries(self.left, self.right)
@@ -4886,7 +4886,7 @@ class Select(SelectBase):
 
         if from_obj is not None:
             self._from_obj = util.OrderedSet(
-                                _literal_as_text(f)
+                                _interpret_as_from(f)
                                 for f in util.to_list(from_obj))
         else:
             self._from_obj = util.OrderedSet()
