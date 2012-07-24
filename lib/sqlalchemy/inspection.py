@@ -56,6 +56,8 @@ def inspect(subject, raiseerr=True):
     for cls in type_.__mro__:
         if cls in _registrars:
             reg = _registrars[cls]
+            if reg is True:
+                return subject
             ret = reg(subject)
             if ret is not None:
                 break
@@ -83,4 +85,4 @@ def _inspects(*types):
     return decorate
 
 def _self_inspects(*types):
-    _inspects(*types)(lambda subject:subject)
+    _inspects(*types)(True)
