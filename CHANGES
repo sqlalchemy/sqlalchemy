@@ -72,6 +72,10 @@ CHANGES
     instance-level listeners are established
     for that event.  [ticket:2516]
 
+  - [bug] Added gaerdbms import to mysql/__init__.py,
+    the absense of which was preventing the new
+    GAE dialect from being loaded.  [ticket:2529]
+
 0.7.8
 =====
 - orm
