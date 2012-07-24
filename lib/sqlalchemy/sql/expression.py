@@ -1391,11 +1391,6 @@ def _cloned_intersection(a, b):
     return set(elem for elem in a
                if all_overlap.intersection(elem._cloned_set))
 
-
-def _is_literal(element):
-    return not isinstance(element, Visitable) and \
-            not hasattr(element, '__clause_element__')
-
 def _from_objects(*elements):
     return itertools.chain(*[element._from_objects for element in elements])
 
@@ -1405,12 +1400,24 @@ def _labeled(element):
     else:
         return element
 
+# there is some inconsistency here between the usage of
+# inspect() vs. checking for Visitable and __clause_element__.
+# Ideally all functions here would derive from inspect(),
+# this is a work in progress.   In some cases performance is a concern
+# also.
+
 def _column_as_key(element):
     if isinstance(element, basestring):
         return element
     if hasattr(element, '__clause_element__'):
         element = element.__clause_element__()
     return element.key
+
+def _clause_element_as_expr(element):
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    else:
+        return element
 
 def _literal_as_text(element):
     if isinstance(element, Visitable):
@@ -1426,6 +1433,51 @@ def _literal_as_text(element):
             "SQL expression object or string expected."
         )
 
+def _no_literals(element):
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    elif not isinstance(element, Visitable):
+        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' "
+                                "function to indicate a SQL expression "
+                                "literal, or 'literal()' to indicate a "
+                                "bound value." % element)
+    else:
+        return element
+
+def _is_literal(element):
+    insp = inspection.inspect(element, raiseerr=False)
+
+    return insp is None and not isinstance(element, Visitable)
+
+def _only_column_elements_or_none(element, name):
+    if element is None:
+        return None
+    else:
+        return _only_column_elements(element, name)
+
+def _only_column_elements(element, name):
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is None or \
+        not hasattr(insp, "expression") or \
+        not isinstance(insp.expression, ColumnElement):
+        raise exc.ArgumentError(
+                "Column-based expression object expected for argument "
+                "'%s'; got: '%s', type %s" % (name, element, type(element)))
+    return insp.expression
+
+def _literal_as_binds(element, name=None, type_=None):
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is None:
+        if element is None:
+            return _const_expr(element)
+        else:
+            return BindParameter(name, element, type_=type_, unique=True)
+    elif insp.is_clause_element:
+        return insp
+    else:
+        return insp.expression
+
+
 def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
     if insp is None:
@@ -1437,6 +1489,17 @@ def _interpret_as_from(element):
         return insp.selectable
     else:
         raise exc.ArgumentError("FROM expression expected")
+
+def _literal_as_column(element):
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is not None:
+        if hasattr(insp, "expression"):
+            return insp.expression
+        elif hasattr(insp, "selectable"):
+            return insp.selectable
+        elif insp.is_clause_element:
+            return insp
+    return literal_column(str(element))
 
 
 def _const_expr(element):
@@ -1451,33 +1514,6 @@ def _const_expr(element):
             "Expected None, False, or True"
         )
 
-def _clause_element_as_expr(element):
-    if hasattr(element, '__clause_element__'):
-        return element.__clause_element__()
-    else:
-        return element
-
-def _literal_as_column(element):
-    insp = inspection.inspect(element, raiseerr=False)
-    if insp is not None:
-        if hasattr(insp, "expression"):
-            return insp.expression
-        elif hasattr(insp, "selectable"):
-            return insp.selectable
-        elif insp.is_clause_element:
-            return insp
-    return literal_column(str(element))
-
-def _literal_as_binds(element, name=None, type_=None):
-    if hasattr(element, '__clause_element__'):
-        return element.__clause_element__()
-    elif not isinstance(element, Visitable):
-        if element is None:
-            return null()
-        else:
-            return BindParameter(name, element, type_=type_, unique=True)
-    else:
-        return element
 
 def _type_from_args(args):
     for a in args:
@@ -1486,31 +1522,6 @@ def _type_from_args(args):
     else:
         return sqltypes.NullType
 
-def _no_literals(element):
-    if hasattr(element, '__clause_element__'):
-        return element.__clause_element__()
-    elif not isinstance(element, Visitable):
-        raise exc.ArgumentError("Ambiguous literal: %r.  Use the 'text()' "
-                                "function to indicate a SQL expression "
-                                "literal, or 'literal()' to indicate a "
-                                "bound value." % element)
-    else:
-        return element
-
-def _only_column_elements_or_none(element, name):
-    if element is None:
-        return None
-    else:
-        return _only_column_elements(element, name)
-
-def _only_column_elements(element, name):
-    if hasattr(element, '__clause_element__'):
-        element = element.__clause_element__()
-    if not isinstance(element, ColumnElement):
-        raise exc.ArgumentError(
-                "Column-based expression object expected for argument "
-                "'%s'; got: '%s', type %s" % (name, element, type(element)))
-    return element
 
 def _corresponding_column_or_error(fromclause, column,
                                         require_embedded=False):
