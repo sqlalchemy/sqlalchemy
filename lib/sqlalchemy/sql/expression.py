@@ -26,7 +26,8 @@ to stay the same in future releases.
 
 """
 
-import itertools, re
+import itertools
+import re
 from operator import attrgetter
 
 from .. import util, exc, inspection
@@ -1403,8 +1404,12 @@ def _labeled(element):
 # there is some inconsistency here between the usage of
 # inspect() vs. checking for Visitable and __clause_element__.
 # Ideally all functions here would derive from inspect(),
-# this is a work in progress.   In some cases performance is a concern
-# also.
+# however the inspect() versions add significant callcount
+# overhead for critical functions like _interpret_as_column_or_from().
+# Generally, the column-based functions are more performance critical
+# and are fine just checking for __clause_element__().  it's only
+# _interpret_as_from() where we'd like to be able to receive ORM entities
+# that have no defined namespace, hence inspect() is needed there.
 
 def _column_as_key(element):
     if isinstance(element, basestring):
@@ -1445,9 +1450,8 @@ def _no_literals(element):
         return element
 
 def _is_literal(element):
-    insp = inspection.inspect(element, raiseerr=False)
-
-    return insp is None and not isinstance(element, Visitable)
+    return not isinstance(element, Visitable) and \
+            not hasattr(element, '__clause_element__')
 
 def _only_column_elements_or_none(element, name):
     if element is None:
@@ -1456,51 +1460,49 @@ def _only_column_elements_or_none(element, name):
         return _only_column_elements(element, name)
 
 def _only_column_elements(element, name):
-    insp = inspection.inspect(element, raiseerr=False)
-    if insp is None or \
-        not hasattr(insp, "expression") or \
-        not isinstance(insp.expression, ColumnElement):
+    if hasattr(element, '__clause_element__'):
+        element = element.__clause_element__()
+    if not isinstance(element, ColumnElement):
         raise exc.ArgumentError(
                 "Column-based expression object expected for argument "
                 "'%s'; got: '%s', type %s" % (name, element, type(element)))
-    return insp.expression
+    return element
+
 
 def _literal_as_binds(element, name=None, type_=None):
-    insp = inspection.inspect(element, raiseerr=False)
-    if insp is None:
+    if hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
+    elif not isinstance(element, Visitable):
         if element is None:
-            return _const_expr(element)
+            return null()
         else:
-            return BindParameter(name, element, type_=type_, unique=True)
-    elif insp.is_clause_element:
-        return insp
+            return _BindParamClause(name, element, type_=type_, unique=True)
     else:
-        return insp.expression
+        return element
 
+def _interpret_as_column_or_from(element):
+    if isinstance(element, Visitable):
+        return element
+    elif hasattr(element, '__clause_element__'):
+        return element.__clause_element__()
 
-def _interpret_as_from(element):
     insp = inspection.inspect(element, raiseerr=False)
     if insp is None:
         if isinstance(element, (util.NoneType, bool)):
             return _const_expr(element)
-        elif isinstance(element, basestring):
+    elif hasattr(insp, "selectable"):
+        return insp.selectable
+
+    return literal_column(str(element))
+
+def _interpret_as_from(element):
+    insp = inspection.inspect(element, raiseerr=False)
+    if insp is None:
+        if isinstance(element, basestring):
             return TextClause(unicode(element))
     elif hasattr(insp, "selectable"):
         return insp.selectable
-    else:
-        raise exc.ArgumentError("FROM expression expected")
-
-def _literal_as_column(element):
-    insp = inspection.inspect(element, raiseerr=False)
-    if insp is not None:
-        if hasattr(insp, "expression"):
-            return insp.expression
-        elif hasattr(insp, "selectable"):
-            return insp.selectable
-        elif insp.is_clause_element:
-            return insp
-    return literal_column(str(element))
-
+    raise exc.ArgumentError("FROM expression expected")
 
 def _const_expr(element):
     if element is None:
@@ -4911,7 +4913,7 @@ class Select(SelectBase):
         if cols_present:
             self._raw_columns = []
             for c in columns:
-                c = _literal_as_column(c)
+                c = _interpret_as_column_or_from(c)
                 if isinstance(c, ScalarSelect):
                     c = c.self_group(against=operators.comma_op)
                 self._raw_columns.append(c)
@@ -5238,7 +5240,7 @@ class Select(SelectBase):
         self._reset_exported()
         rc = []
         for c in columns:
-            c = _literal_as_column(c)
+            c = _interpret_as_column_or_from(c)
             if isinstance(c, ScalarSelect):
                 c = c.self_group(against=operators.comma_op)
             rc.append(c)
@@ -5382,7 +5384,7 @@ class Select(SelectBase):
 
         """
         self._reset_exported()
-        column = _literal_as_column(column)
+        column = _interpret_as_column_or_from(column)
 
         if isinstance(column, ScalarSelect):
             column = column.self_group(against=operators.comma_op)
