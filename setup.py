@@ -45,11 +45,11 @@ ext_modules = [
            sources=['lib/sqlalchemy/cextension/resultproxy.c'])
     ]
 
-ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError) 
+ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 if sys.platform == 'win32' and sys.version_info > (2, 6):
    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
    # find the compiler
-   ext_errors += (IOError,) 
+   ext_errors += (IOError,)
 
 class BuildFailed(Exception):
 
@@ -95,7 +95,7 @@ def find_packages(dir_):
                 packages.append(fragment.replace(os.sep, '.'))
     return packages
 
-v_file = open(os.path.join(os.path.dirname(__file__), 
+v_file = open(os.path.join(os.path.dirname(__file__),
                         'lib', 'sqlalchemy', '__init__.py'))
 VERSION = re.compile(r".*__version__ = '(.*?)'",
                      re.S).match(v_file.read()).group(1)

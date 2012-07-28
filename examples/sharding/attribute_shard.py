@@ -9,7 +9,7 @@ from sqlalchemy.sql import operators, visitors
 import datetime
 
 # step 2. databases.
-# db1 is used for id generation. The "pool_threadlocal" 
+# db1 is used for id generation. The "pool_threadlocal"
 # causes the id_generator() to use the same connection as that
 # of an ongoing transaction within db1.
 echo = True
@@ -36,7 +36,7 @@ meta = MetaData()
 
 # we need a way to create identifiers which are unique across all
 # databases.  one easy way would be to just use a composite primary key, where one
-# value is the shard id.  but here, we'll show something more "generic", an 
+# value is the shard id.  but here, we'll show something more "generic", an
 # id generation function.  we'll use a simplistic "id table" stored in database
 # #1.  Any other method will do just as well; UUID, hilo, application-specific, etc.
 
@@ -53,7 +53,7 @@ def id_generator(ctx):
 # table setup.  we'll store a lead table of continents/cities,
 # and a secondary table storing locations.
 # a particular row will be placed in the database whose shard id corresponds to the
-# 'continent'.  in this setup, secondary rows in 'weather_reports' will 
+# 'continent'.  in this setup, secondary rows in 'weather_reports' will
 # be placed in the same DB as that of the parent, but this can be changed
 # if you're willing to write more complex sharding functions.
 
@@ -81,7 +81,7 @@ db1.execute(ids.insert(), nextid=1)
 
 # step 5. define sharding functions.
 
-# we'll use a straight mapping of a particular set of "country" 
+# we'll use a straight mapping of a particular set of "country"
 # attributes to shard id.
 shard_lookup = {
     'North America':'north_america',
@@ -94,7 +94,7 @@ def shard_chooser(mapper, instance, clause=None):
     """shard chooser.
 
     looks at the given instance and returns a shard id
-    note that we need to define conditions for 
+    note that we need to define conditions for
     the WeatherLocation class, as well as our secondary Report class which will
     point back to its WeatherLocation via its 'location' attribute.
 
@@ -109,8 +109,8 @@ def id_chooser(query, ident):
 
     given a primary key, returns a list of shards
     to search.  here, we don't have any particular information from a
-    pk so we just return all shard ids. often, youd want to do some 
-    kind of round-robin strategy here so that requests are evenly 
+    pk so we just return all shard ids. often, youd want to do some
+    kind of round-robin strategy here so that requests are evenly
     distributed among DBs.
 
     """
@@ -132,8 +132,8 @@ def query_chooser(query):
         # "shares_lineage()" returns True if both columns refer to the same
         # statement column, adjusting for any annotations present.
         # (an annotation is an internal clone of a Column object
-        # and occur when using ORM-mapped attributes like 
-        # "WeatherLocation.continent"). A simpler comparison, though less accurate, 
+        # and occur when using ORM-mapped attributes like
+        # "WeatherLocation.continent"). A simpler comparison, though less accurate,
         # would be "column.key == 'continent'".
         if column.shares_lineage(weather_locations.c.continent):
             if operator == operators.eq:
@@ -150,7 +150,7 @@ def _get_query_comparisons(query):
     """Search an orm.Query object for binary expressions.
 
     Returns expressions which match a Column against one or more
-    literal values as a list of tuples of the form 
+    literal values as a list of tuples of the form
     (column, operator, values).   "values" is a single value
     or tuple of values depending on the operator.
 
@@ -160,15 +160,15 @@ def _get_query_comparisons(query):
     comparisons = []
 
     def visit_bindparam(bind):
-        # visit a bind parameter.   
+        # visit a bind parameter.
 
         # check in _params for it first
         if bind.key in query._params:
             value = query._params[bind.key]
         elif bind.callable:
-            # some ORM functions (lazy loading) 
-            # place the bind's value as a 
-            # callable for deferred evaulation. 
+            # some ORM functions (lazy loading)
+            # place the bind's value as a
+            # callable for deferred evaulation.
             value = bind.callable()
         else:
             # just use .value
@@ -185,7 +185,7 @@ def _get_query_comparisons(query):
                 binary.operator == operators.in_op and \
                 hasattr(binary.right, 'clauses'):
             comparisons.append(
-                (binary.left, binary.operator, 
+                (binary.left, binary.operator,
                     tuple(binds[bind] for bind in binary.right.clauses)
                 )
             )
@@ -213,8 +213,8 @@ def _get_query_comparisons(query):
 
 # further configure create_session to use these functions
 create_session.configure(
-                    shard_chooser=shard_chooser, 
-                    id_chooser=id_chooser, 
+                    shard_chooser=shard_chooser,
+                    id_chooser=id_chooser,
                     query_chooser=query_chooser
                     )
 

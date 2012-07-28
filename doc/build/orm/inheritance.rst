@@ -24,7 +24,7 @@ Joined Table Inheritance
 In joined table inheritance, each class along a particular classes' list of
 parents is represented by a unique table. The total set of attributes for a
 particular instance is represented as a join along all tables in its
-inheritance path. Here, we first define the ``Employee`` class. 
+inheritance path. Here, we first define the ``Employee`` class.
 This table will contain a primary key column (or columns), and a column
 for each attribute that's represented by ``Employee``. In this case it's just
 ``name``::
@@ -43,16 +43,16 @@ for each attribute that's represented by ``Employee``. In this case it's just
 The mapped table also has a column called ``type``.   The purpose of
 this column is to act as the **discriminator**, and stores a value
 which indicates the type of object represented within the row. The column may
-be of any datatype, though string and integer are the most common. 
+be of any datatype, though string and integer are the most common.
 
 The discriminator column is only needed if polymorphic loading is
 desired, as is usually the case.   It is not strictly necessary that
-it be present directly on the base mapped table, and can instead be defined on a 
-derived select statement that's used when the class is queried; 
+it be present directly on the base mapped table, and can instead be defined on a
+derived select statement that's used when the class is queried;
 however, this is a much more sophisticated configuration scenario.
 
 The mapping receives additional arguments via the ``__mapper_args__``
-dictionary.   Here the ``type`` column is explicitly stated as the 
+dictionary.   Here the ``type`` column is explicitly stated as the
 discriminator column, and the **polymorphic identity** of ``employee``
 is also given; this is the value that will be
 stored in the polymorphic discriminator column for instances of this
@@ -82,7 +82,7 @@ columns), and in most cases a foreign key reference to the parent table::
         }
 
 It is standard practice that the same column is used for both the role
-of primary key as well as foreign key to the parent table, 
+of primary key as well as foreign key to the parent table,
 and that the column is also named the same as that of the parent table.
 However, both of these practices are optional.  Separate columns may be used for
 primary key and parent-relationship, the column may be named differently than
@@ -94,7 +94,7 @@ parent and child tables instead of using a foreign key.
     One natural effect of the joined table inheritance configuration is that the
     identity of any mapped object can be determined entirely from the base table.
     This has obvious advantages, so SQLAlchemy always considers the primary key
-    columns of a joined inheritance class to be those of the base table only. 
+    columns of a joined inheritance class to be those of the base table only.
     In other words, the ``id``
     columns of both the ``engineer`` and ``manager`` tables are not used to locate
     ``Engineer`` or ``Manager`` objects - only the value in
@@ -128,7 +128,7 @@ SQL such as this:
 .. sourcecode:: python+sql
 
     {opensql}
-    SELECT employee.id AS employee_id, 
+    SELECT employee.id AS employee_id,
         employee.name AS employee_name, employee.type AS employee_type
     FROM employee
     []
@@ -142,12 +142,12 @@ issued along the lines of:
 .. sourcecode:: python+sql
 
     {opensql}
-    SELECT manager.id AS manager_id, 
+    SELECT manager.id AS manager_id,
         manager.manager_data AS manager_manager_data
     FROM manager
     WHERE ? = manager.id
     [5]
-    SELECT engineer.id AS engineer_id, 
+    SELECT engineer.id AS engineer_id,
         engineer.engineer_info AS engineer_engineer_info
     FROM engineer
     WHERE ? = engineer.id
@@ -171,40 +171,40 @@ table combined with outer joins to each of the inheriting tables::
 
     query = session.query(eng_plus_manager)
 
-The above produces a query which joins the ``employee`` table to both the 
+The above produces a query which joins the ``employee`` table to both the
 ``engineer`` and ``manager`` tables like the following:
 
 .. sourcecode:: python+sql
 
     query.all()
     {opensql}
-    SELECT employee.id AS employee_id, 
-        engineer.id AS engineer_id, 
-        manager.id AS manager_id, 
-        employee.name AS employee_name, 
-        employee.type AS employee_type, 
-        engineer.engineer_info AS engineer_engineer_info, 
+    SELECT employee.id AS employee_id,
+        engineer.id AS engineer_id,
+        manager.id AS manager_id,
+        employee.name AS employee_name,
+        employee.type AS employee_type,
+        engineer.engineer_info AS engineer_engineer_info,
         manager.manager_data AS manager_manager_data
-    FROM employee 
-        LEFT OUTER JOIN engineer 
-        ON employee.id = engineer.id 
-        LEFT OUTER JOIN manager 
+    FROM employee
+        LEFT OUTER JOIN engineer
+        ON employee.id = engineer.id
+        LEFT OUTER JOIN manager
         ON employee.id = manager.id
     []
 
 The entity returned by :func:`.orm.with_polymorphic` is an :class:`.AliasedClass`
 object, which can be used in a :class:`.Query` like any other alias, including
-named attributes for those attributes on the ``Employee`` class.   In our 
+named attributes for those attributes on the ``Employee`` class.   In our
 example, ``eng_plus_manager`` becomes the entity that we use to refer to the
-three-way outer join above.  It also includes namespaces for each class named 
-in the list of classes, so that attributes specific to those subclasses can be 
+three-way outer join above.  It also includes namespaces for each class named
+in the list of classes, so that attributes specific to those subclasses can be
 called upon as well.   The following example illustrates calling upon attributes
 specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``::
 
     eng_plus_manager = with_polymorphic(Employee, [Engineer, Manager])
     query = session.query(eng_plus_manager).filter(
                     or_(
-                        eng_plus_manager.Engineer.engineer_info=='x', 
+                        eng_plus_manager.Engineer.engineer_info=='x',
                         eng_plus_manager.Manager.manager_data=='y'
                     )
                 )
@@ -239,7 +239,7 @@ should be used to load polymorphically::
     engineer = Engineer.__table__
     entity = with_polymorphic(
                 Employee,
-                [Engineer, Manager], 
+                [Engineer, Manager],
                 employee.outerjoin(manager).outerjoin(engineer)
             )
 
@@ -302,12 +302,12 @@ Advanced Control of Which Tables are Queried
 +++++++++++++++++++++++++++++++++++++++++++++
 
 The ``with_polymorphic`` functions work fine for
-simplistic scenarios.   However, direct control of table rendering 
+simplistic scenarios.   However, direct control of table rendering
 is called for, such as the case when one wants to
 render to only the subclass table and not the parent table.
 
-This use case can be achieved by using the mapped :class:`.Table` 
-objects directly.   For example, to 
+This use case can be achieved by using the mapped :class:`.Table`
+objects directly.   For example, to
 query the name of employees with particular criterion::
 
     engineer = Engineer.__table__
@@ -348,7 +348,7 @@ of employees which are associated with a ``Company`` object. We'll add a
         id = Column(Integer, primary_key=True)
         name = Column(String(50))
 
-        employees = relationship("Employee", 
+        employees = relationship("Employee",
                         backref='company',
                         cascade='all, delete-orphan')
 
@@ -402,13 +402,13 @@ joining to an explicit join as above, or by using the :func:`.orm.with_polymorph
 function to create a polymorphic selectable::
 
     manager_and_engineer = with_polymorphic(
-                                Employee, [Manager, Engineer], 
+                                Employee, [Manager, Engineer],
                                 aliased=True)
 
     session.query(Company).\
         join(manager_and_engineer, Company.employees).\
         filter(
-            or_(manager_and_engineer.Engineer.engineer_info=='someinfo', 
+            or_(manager_and_engineer.Engineer.engineer_info=='someinfo',
                 manager_and_engineer.Manager.manager_data=='somedata')
         )
 
@@ -427,13 +427,13 @@ The above join can also be expressed more succinctly by combining ``of_type()``
 with the polymorphic construct::
 
     manager_and_engineer = with_polymorphic(
-                                Employee, [Manager, Engineer], 
+                                Employee, [Manager, Engineer],
                                 aliased=True)
 
     session.query(Company).\
         join(Company.employees.of_type(manager_and_engineer)).\
         filter(
-            or_(manager_and_engineer.Engineer.engineer_info=='someinfo', 
+            or_(manager_and_engineer.Engineer.engineer_info=='someinfo',
                 manager_and_engineer.Manager.manager_data=='somedata')
         )
 
@@ -452,7 +452,7 @@ EXISTS query. To build one by hand looks like::
 
     session.query(Company).filter(
         exists([1],
-            and_(Engineer.engineer_info=='someinfo', 
+            and_(Engineer.engineer_info=='someinfo',
                 employees.c.company_id==companies.c.company_id),
             from_obj=employees.join(engineers)
         )
@@ -472,16 +472,16 @@ Eager Loading of Specific Subtypes
 
 The :func:`.joinedload` and :func:`.subqueryload` options also support
 paths which make use of :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
-Below we load ``Company`` rows while eagerly loading related ``Engineer`` 
+Below we load ``Company`` rows while eagerly loading related ``Engineer``
 objects, querying the ``employee`` and ``engineer`` tables simultaneously::
 
     session.query(Company).\
-        options(subqueryload_all(Company.employees.of_type(Engineer), 
+        options(subqueryload_all(Company.employees.of_type(Engineer),
                         Engineer.machines))
 
 .. versionadded:: 0.8
     :func:`.joinedload` and :func:`.subqueryload` support
-    paths that are qualified with 
+    paths that are qualified with
     :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type`.
 
 Single Table Inheritance
@@ -522,7 +522,7 @@ for the inheriting classes, leave their ``table`` parameter blank:
         }
 
 Note that the mappers for the derived classes Manager and Engineer omit the
-``__tablename__``, indicating they do not have a mapped table of 
+``__tablename__``, indicating they do not have a mapped table of
 their own.
 
 .. _concrete_inheritance:
@@ -533,7 +533,7 @@ Concrete Table Inheritance
 .. note::
 
     this section is currently using classical mappings.  The
-    Declarative system fully supports concrete inheritance 
+    Declarative system fully supports concrete inheritance
     however.   See the links below for more information on using
     declarative with concrete table inheritance.
 
@@ -584,17 +584,17 @@ each subselect:
         'engineer': engineers_table
     }, 'type', 'pjoin')
 
-    employee_mapper = mapper(Employee, employees_table, 
-                                        with_polymorphic=('*', pjoin), 
-                                        polymorphic_on=pjoin.c.type, 
+    employee_mapper = mapper(Employee, employees_table,
+                                        with_polymorphic=('*', pjoin),
+                                        polymorphic_on=pjoin.c.type,
                                         polymorphic_identity='employee')
-    manager_mapper = mapper(Manager, managers_table, 
-                                        inherits=employee_mapper, 
-                                        concrete=True, 
+    manager_mapper = mapper(Manager, managers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
                                         polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table, 
-                                        inherits=employee_mapper, 
-                                        concrete=True, 
+    engineer_mapper = mapper(Engineer, engineers_table,
+                                        inherits=employee_mapper,
+                                        concrete=True,
                                         polymorphic_identity='engineer')
 
 Upon select, the polymorphic union produces a query like this:
@@ -603,22 +603,22 @@ Upon select, the polymorphic union produces a query like this:
 
     session.query(Employee).all()
     {opensql}
-    SELECT pjoin.type AS pjoin_type, 
-            pjoin.manager_data AS pjoin_manager_data, 
+    SELECT pjoin.type AS pjoin_type,
+            pjoin.manager_data AS pjoin_manager_data,
             pjoin.employee_id AS pjoin_employee_id,
     pjoin.name AS pjoin_name, pjoin.engineer_info AS pjoin_engineer_info
     FROM (
-        SELECT employees.employee_id AS employee_id, 
+        SELECT employees.employee_id AS employee_id,
             CAST(NULL AS VARCHAR(50)) AS manager_data, employees.name AS name,
             CAST(NULL AS VARCHAR(50)) AS engineer_info, 'employee' AS type
         FROM employees
     UNION ALL
-        SELECT managers.employee_id AS employee_id, 
+        SELECT managers.employee_id AS employee_id,
             managers.manager_data AS manager_data, managers.name AS name,
             CAST(NULL AS VARCHAR(50)) AS engineer_info, 'manager' AS type
         FROM managers
     UNION ALL
-        SELECT engineers.employee_id AS employee_id, 
+        SELECT engineers.employee_id AS employee_id,
             CAST(NULL AS VARCHAR(50)) AS manager_data, engineers.name AS name,
         engineers.engineer_info AS engineer_info, 'engineer' AS type
         FROM engineers
@@ -699,19 +699,19 @@ to the parent:
         Column('company_id', Integer, ForeignKey('companies.id'))
     )
 
-    mapper(Employee, employees_table, 
-                    with_polymorphic=('*', pjoin), 
-                    polymorphic_on=pjoin.c.type, 
+    mapper(Employee, employees_table,
+                    with_polymorphic=('*', pjoin),
+                    polymorphic_on=pjoin.c.type,
                     polymorphic_identity='employee')
 
-    mapper(Manager, managers_table, 
-                    inherits=employee_mapper, 
-                    concrete=True, 
+    mapper(Manager, managers_table,
+                    inherits=employee_mapper,
+                    concrete=True,
                     polymorphic_identity='manager')
 
-    mapper(Engineer, engineers_table, 
-                    inherits=employee_mapper, 
-                    concrete=True, 
+    mapper(Engineer, engineers_table,
+                    inherits=employee_mapper,
+                    concrete=True,
                     polymorphic_identity='engineer')
 
     mapper(Company, companies, properties={
@@ -743,7 +743,7 @@ bidirectionally reference ``C``::
             'some_c':relationship(C, back_populates='many_a')
     })
     mapper(C, c_table, properties={
-        'many_a':relationship(A, collection_class=set, 
+        'many_a':relationship(A, collection_class=set,
                                     back_populates='some_c'),
     })
 

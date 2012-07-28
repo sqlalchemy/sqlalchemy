@@ -3,7 +3,7 @@
 Core Internals
 ==============
 
-Some key internal constructs are listed here.   
+Some key internal constructs are listed here.
 
 .. currentmodule: sqlalchemy
 

@@ -17,20 +17,20 @@ Kinterbasedb backend specific keyword arguments are:
   SQLAlchemy uses 200 with Unicode, datetime and decimal support (see
   details__).
 
-* concurrency_level - set the backend policy with regards to threading 
+* concurrency_level - set the backend policy with regards to threading
   issues: by default SQLAlchemy uses policy 1 (see details__).
 
-* enable_rowcount - True by default, setting this to False disables 
-  the usage of "cursor.rowcount" with the 
+* enable_rowcount - True by default, setting this to False disables
+  the usage of "cursor.rowcount" with the
   Kinterbasdb dialect, which SQLAlchemy ordinarily calls upon automatically
-  after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's 
-  ResultProxy will return -1 for result.rowcount.   The rationale here is 
-  that Kinterbasdb requires a second round trip to the database when 
-  .rowcount is called -  since SQLA's resultproxy automatically closes 
-  the cursor after a non-result-returning statement, rowcount must be 
+  after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's
+  ResultProxy will return -1 for result.rowcount.   The rationale here is
+  that Kinterbasdb requires a second round trip to the database when
+  .rowcount is called -  since SQLA's resultproxy automatically closes
+  the cursor after a non-result-returning statement, rowcount must be
   called, if at all, before the result object is returned.   Additionally,
   cursor.rowcount may not return correct results with older versions
-  of Firebird, and setting this flag to False will also cause the 
+  of Firebird, and setting this flag to False will also cause the
   SQLAlchemy ORM to ignore its usage. The behavior can also be controlled on a
   per-execution basis using the `enable_rowcount` option with
   :meth:`execution_options()`::
@@ -64,7 +64,7 @@ class _FBNumeric_kinterbasdb(sqltypes.Numeric):
 class FBExecutionContext_kinterbasdb(FBExecutionContext):
     @property
     def rowcount(self):
-        if self.execution_options.get('enable_rowcount', 
+        if self.execution_options.get('enable_rowcount',
                                         self.dialect.enable_rowcount):
             return self.cursor.rowcount
         else:
@@ -135,7 +135,7 @@ class FBDialect_kinterbasdb(FBDialect):
         # that for backward compatibility reasons returns a string like
         #   LI-V6.3.3.12981 Firebird 2.0
         # where the first version is a fake one resembling the old
-        # Interbase signature. 
+        # Interbase signature.
 
         fbconn = connection.connection
         version = fbconn.server_version
@@ -159,7 +159,7 @@ class FBDialect_kinterbasdb(FBDialect):
             msg = str(e)
             return ('Unable to complete network request to host' in msg or
                     'Invalid connection state' in msg or
-                    'Invalid cursor state' in msg or 
+                    'Invalid cursor state' in msg or
                     'connection shutdown' in msg)
         else:
             return False

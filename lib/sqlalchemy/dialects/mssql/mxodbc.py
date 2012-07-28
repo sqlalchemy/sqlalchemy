@@ -41,7 +41,7 @@ simplistic statements.
 
 For this reason, the mxODBC dialect uses the "native" mode by default only for
 INSERT, UPDATE, and DELETE statements, and uses the escaped string mode for
-all other statements. 
+all other statements.
 
 This behavior can be controlled via
 :meth:`~sqlalchemy.sql.expression.Executable.execution_options` using the
@@ -55,7 +55,7 @@ of ``False`` will unconditionally use string-escaped parameters.
 from sqlalchemy import types as sqltypes
 from sqlalchemy.connectors.mxodbc import MxODBCConnector
 from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
-from sqlalchemy.dialects.mssql.base import (MSDialect, 
+from sqlalchemy.dialects.mssql.base import (MSDialect,
                                             MSSQLStrictCompiler,
                                             _MSDateTime, _MSDate, TIME)
 

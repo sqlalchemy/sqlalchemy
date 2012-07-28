@@ -88,18 +88,18 @@ SQLAlchemy supports installation using standard Python "distutils" or
 * **Plain Python Distutils** - SQLAlchemy can be installed with a clean
   Python install using the services provided via `Python Distutils <http://docs.python.org/distutils/>`_,
   using the ``setup.py`` script. The C extensions as well as Python 3 builds are supported.
-* **Standard Setuptools** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_, 
+* **Standard Setuptools** - When using `setuptools <http://pypi.python.org/pypi/setuptools/>`_,
   SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
   extensions are supported.  setuptools is not supported on Python 3 at the time
   of of this writing.
-* **Distribute** - With `distribute <http://pypi.python.org/pypi/distribute/>`_, 
+* **Distribute** - With `distribute <http://pypi.python.org/pypi/distribute/>`_,
   SQLAlchemy can be installed via ``setup.py`` or ``easy_install``, and the C
   extensions as well as Python 3 builds are supported.
 * **pip** - `pip <http://pypi.python.org/pypi/pip/>`_ is an installer that
   rides on top of ``setuptools`` or ``distribute``, replacing the usage
   of ``easy_install``.  It is often preferred for its simpler mode of usage.
 
-.. note:: 
+.. note::
 
    It is strongly recommended that either ``setuptools`` or ``distribute`` be installed.
    Python's built-in ``distutils`` lacks many widely used installation features.
@@ -107,7 +107,7 @@ SQLAlchemy supports installation using standard Python "distutils" or
 Install via easy_install or pip
 -------------------------------
 
-When ``easy_install`` or ``pip`` is available, the distribution can be 
+When ``easy_install`` or ``pip`` is available, the distribution can be
 downloaded from Pypi and installed in one step::
 
     easy_install SQLAlchemy
@@ -143,7 +143,7 @@ pass the flag ``--without-cextensions`` to the ``setup.py`` script::
 
     python setup.py --without-cextensions install
 
-.. note:: 
+.. note::
 
    The ``--without-cextensions`` flag is available **only** if ``setuptools``
    or ``distribute`` is installed.  It is not available on a plain Python ``distutils``

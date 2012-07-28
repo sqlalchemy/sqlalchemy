@@ -27,7 +27,7 @@ Pooling
 
 Google App Engine connections appear to be randomly recycled,
 so the dialect does not pool connections.  The :class:`.NullPool`
-implementation is installed within the :class:`.Engine` by 
+implementation is installed within the :class:`.Engine` by
 default.
 
 """
@@ -37,10 +37,10 @@ from sqlalchemy.pool import NullPool
 import re
 
 
-class MySQLDialect_gaerdbms(MySQLDialect_mysqldb): 
+class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
 
-    @classmethod 
-    def dbapi(cls): 
+    @classmethod
+    def dbapi(cls):
         from google.appengine.api import rdbms
         return rdbms
 

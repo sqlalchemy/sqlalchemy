@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Heuristics related to join conditions as used in 
+"""Heuristics related to join conditions as used in
 :func:`.relationship`.
 
 Provides the :class:`.JoinCondition` object, which encapsulates
@@ -15,7 +15,7 @@ and `secondaryjoin` aspects of :func:`.relationship`.
 
 from .. import sql, util, exc as sa_exc, schema
 from ..sql.util import (
-    ClauseAdapter, 
+    ClauseAdapter,
     join_condition, _shallow_annotate, visit_binary_product,
     _deep_deannotate, find_tables
     )
@@ -23,24 +23,24 @@ from ..sql import operators, expression, visitors
 from .interfaces import MANYTOMANY, MANYTOONE, ONETOMANY
 
 def remote(expr):
-    """Annotate a portion of a primaryjoin expression 
+    """Annotate a portion of a primaryjoin expression
     with a 'remote' annotation.
-    
+
     :func:`.remote`, :func:`.foreign`, and :func:`.remote_foreign`
-    are intended to be used with 
-    :func:`.relationship` in conjunction with a 
+    are intended to be used with
+    :func:`.relationship` in conjunction with a
     ``primaryjoin`` expression which contains
     indirect equality conditions, meaning the comparison
     of mapped columns involves extraneous SQL functions
-    such as :func:`.cast`.  They can also be used in 
+    such as :func:`.cast`.  They can also be used in
     lieu of the ``foreign_keys`` and ``remote_side``
-    parameters to :func:`.relationship`, if a 
+    parameters to :func:`.relationship`, if a
     primaryjoin expression is also being sent explicitly.
-    
+
     Below, a mapped class ``DNSRecord`` relates to the
     ``DHCPHost`` class using a primaryjoin that casts
     the ``content`` column to a string.  The :func:`.foreign`
-    and :func:`.remote` annotation functions are used 
+    and :func:`.remote` annotation functions are used
     to mark with full accuracy those mapped columns that
     are significant to the :func:`.relationship`, in terms
     of how they are joined::
@@ -48,30 +48,30 @@ def remote(expr):
         from sqlalchemy import cast, String
         from sqlalchemy.orm import remote, foreign
         from sqlalchemy.dialects.postgresql import INET
-        
+
         class DNSRecord(Base):
             __tablename__ = 'dns'
-        
+
             id = Column(Integer, primary_key=True)
             content = Column(INET)
             dhcphost = relationship(DHCPHost,
-                primaryjoin=cast(foreign(content), String) == 
+                primaryjoin=cast(foreign(content), String) ==
                                 remote(DHCPHost.ip_address)
             )
 
     .. versionadded:: 0.8
 
     See also:
-    
+
     * :func:`.foreign`
-    
+
     * :func:`.remote_foreign`
-    
+
     """
     return _annotate_columns(expression._clause_element_as_expr(expr), {"remote":True})
 
 def foreign(expr):
-    """Annotate a portion of a primaryjoin expression 
+    """Annotate a portion of a primaryjoin expression
     with a 'foreign' annotation.
 
     See the example at :func:`.remote`.
@@ -83,16 +83,16 @@ def foreign(expr):
     return _annotate_columns(expression._clause_element_as_expr(expr), {"foreign":True})
 
 def remote_foreign(expr):
-    """Annotate a portion of a primaryjoin expression 
+    """Annotate a portion of a primaryjoin expression
     with a 'remote' and 'foreign' annotation.
-    
+
     See the example at :func:`.remote`.
 
     .. versionadded:: 0.8
 
     """
 
-    return _annotate_columns(expr, {"foreign":True, 
+    return _annotate_columns(expr, {"foreign":True,
                                 "remote":True})
 
 def _annotate_columns(element, annotations):
@@ -107,8 +107,8 @@ def _annotate_columns(element, annotations):
     return element
 
 class JoinCondition(object):
-    def __init__(self, 
-                    parent_selectable, 
+    def __init__(self,
+                    parent_selectable,
                     child_selectable,
                     parent_local_selectable,
                     child_local_selectable,
@@ -197,7 +197,7 @@ class JoinCondition(object):
                 if self.secondaryjoin is None:
                     self.secondaryjoin = \
                         join_condition(
-                                self.child_selectable, 
+                                self.child_selectable,
                                 self.secondary,
                                 a_subset=self.child_local_selectable,
                                 consider_as_foreign_keys=\
@@ -206,8 +206,8 @@ class JoinCondition(object):
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
-                                self.parent_selectable, 
-                                self.secondary, 
+                                self.parent_selectable,
+                                self.secondary,
                                 a_subset=self.parent_local_selectable,
                                 consider_as_foreign_keys=\
                                     self.consider_as_foreign_keys or None
@@ -216,8 +216,8 @@ class JoinCondition(object):
                 if self.primaryjoin is None:
                     self.primaryjoin = \
                         join_condition(
-                                self.parent_selectable, 
-                                self.child_selectable, 
+                                self.parent_selectable,
+                                self.child_selectable,
                                 a_subset=self.parent_local_selectable,
                                 consider_as_foreign_keys=\
                                     self.consider_as_foreign_keys or None
@@ -268,14 +268,14 @@ class JoinCondition(object):
 
     @util.memoized_property
     def primaryjoin_reverse_remote(self):
-        """Return the primaryjoin condition suitable for the 
-        "reverse" direction.  
-        
+        """Return the primaryjoin condition suitable for the
+        "reverse" direction.
+
         If the primaryjoin was delivered here with pre-existing
         "remote" annotations, the local/remote annotations
         are reversed.  Otherwise, the local/remote annotations
         are removed.
-        
+
         """
         if self._has_remote_annotations:
             def replace(element):
@@ -294,7 +294,7 @@ class JoinCondition(object):
         else:
             if self._has_foreign_annotations:
                 # TODO: coverage
-                return _deep_deannotate(self.primaryjoin, 
+                return _deep_deannotate(self.primaryjoin,
                                 values=("local", "remote"))
             else:
                 return _deep_deannotate(self.primaryjoin)
@@ -318,7 +318,7 @@ class JoinCondition(object):
         """Annotate the primaryjoin and secondaryjoin
         structures with 'foreign' annotations marking columns
         considered as foreign.
-        
+
         """
         if self._has_foreign_annotations:
             return
@@ -394,7 +394,7 @@ class JoinCondition(object):
     def _refers_to_parent_table(self):
         """Return True if the join condition contains column
         comparisons where both columns are in both tables.
-        
+
         """
         pt = self.parent_selectable
         mt = self.child_selectable
@@ -430,7 +430,7 @@ class JoinCondition(object):
         """Annotate the primaryjoin and secondaryjoin
         structures with 'remote' annotations marking columns
         considered as part of the 'remote' side.
-        
+
         """
         if self._has_remote_annotations:
             return
@@ -449,7 +449,7 @@ class JoinCondition(object):
     def _annotate_remote_secondary(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
         when 'secondary' is present.
-        
+
         """
         def repl(element):
             if self.secondary.c.contains_column(element):
@@ -462,7 +462,7 @@ class JoinCondition(object):
     def _annotate_selfref(self, fn):
         """annotate 'remote' in primaryjoin, secondaryjoin
         when the relationship is detected as self-referential.
-        
+
         """
         def visit_binary(binary):
             equated = binary.left.compare(binary.right)
@@ -479,14 +479,14 @@ class JoinCondition(object):
                 self._warn_non_column_elements()
 
         self.primaryjoin = visitors.cloned_traverse(
-                                self.primaryjoin, {}, 
+                                self.primaryjoin, {},
                                 {"binary":visit_binary})
 
     def _annotate_remote_from_args(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
         when the 'remote_side' or '_local_remote_pairs'
         arguments are used.
-        
+
         """
         if self._local_remote_pairs:
             if self._remote_side:
@@ -510,15 +510,15 @@ class JoinCondition(object):
 
     def _annotate_remote_with_overlap(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
-        when the parent/child tables have some set of 
+        when the parent/child tables have some set of
         tables in common, though is not a fully self-referential
         relationship.
-        
+
         """
         def visit_binary(binary):
-            binary.left, binary.right = proc_left_right(binary.left, 
+            binary.left, binary.right = proc_left_right(binary.left,
                                             binary.right)
-            binary.right, binary.left = proc_left_right(binary.right, 
+            binary.right, binary.left = proc_left_right(binary.right,
                                             binary.left)
         def proc_left_right(left, right):
             if isinstance(left, expression.ColumnClause) and \
@@ -532,14 +532,14 @@ class JoinCondition(object):
             return left, right
 
         self.primaryjoin = visitors.cloned_traverse(
-                                    self.primaryjoin, {}, 
+                                    self.primaryjoin, {},
                                     {"binary":visit_binary})
 
     def _annotate_remote_distinct_selectables(self):
         """annotate 'remote' in primaryjoin, secondaryjoin
-        when the parent/child tables are entirely 
+        when the parent/child tables are entirely
         separate.
-        
+
         """
         def repl(element):
             if self.child_selectable.c.contains_column(element) and \
@@ -562,21 +562,21 @@ class JoinCondition(object):
         )
 
     def _annotate_local(self):
-        """Annotate the primaryjoin and secondaryjoin 
+        """Annotate the primaryjoin and secondaryjoin
         structures with 'local' annotations.
-        
-        This annotates all column elements found 
-        simultaneously in the parent table 
-        and the join condition that don't have a 
-        'remote' annotation set up from 
+
+        This annotates all column elements found
+        simultaneously in the parent table
+        and the join condition that don't have a
+        'remote' annotation set up from
         _annotate_remote() or user-defined.
-        
+
         """
         if self._has_annotation(self.primaryjoin, "local"):
             return
 
         if self._local_remote_pairs:
-            local_side = util.column_set([l for (l, r) 
+            local_side = util.column_set([l for (l, r)
                                 in self._local_remote_pairs])
         else:
             local_side = util.column_set(self.parent_selectable.c)
@@ -602,7 +602,7 @@ class JoinCondition(object):
                     % (self.prop, ))
 
     def _check_foreign_cols(self, join_condition, primary):
-        """Check the foreign key columns collected and emit error 
+        """Check the foreign key columns collected and emit error
         messages."""
 
         can_sync = False
@@ -622,15 +622,15 @@ class JoinCondition(object):
             return
 
         # from here below is just determining the best error message
-        # to report.  Check for a join condition using any operator 
+        # to report.  Check for a join condition using any operator
         # (not just ==), perhaps they need to turn on "viewonly=True".
         if self.support_sync and has_foreign and not can_sync:
             err = "Could not locate any simple equality expressions "\
                     "involving locally mapped foreign key columns for "\
                     "%s join condition "\
                     "'%s' on relationship %s." % (
-                        primary and 'primary' or 'secondary', 
-                        join_condition, 
+                        primary and 'primary' or 'secondary',
+                        join_condition,
                         self.prop
                     )
             err += \
@@ -644,8 +644,8 @@ class JoinCondition(object):
         else:
             err = "Could not locate any relevant foreign key columns "\
                     "for %s join condition '%s' on relationship %s." % (
-                        primary and 'primary' or 'secondary', 
-                        join_condition, 
+                        primary and 'primary' or 'secondary',
+                        join_condition,
                         self.prop
                     )
             err += \
@@ -656,7 +656,7 @@ class JoinCondition(object):
             raise sa_exc.ArgumentError(err)
 
     def _determine_direction(self):
-        """Determine if this relationship is one to many, many to one, 
+        """Determine if this relationship is one to many, many to one,
         many to many.
 
         """
@@ -713,13 +713,13 @@ class JoinCondition(object):
                         "nor the child's mapped tables" % self.prop)
 
     def _deannotate_pairs(self, collection):
-        """provide deannotation for the various lists of 
+        """provide deannotation for the various lists of
         pairs, so that using them in hashes doesn't incur
         high-overhead __eq__() comparisons against
         original columns mapped.
-        
+
         """
-        return [(x._deannotate(), y._deannotate()) 
+        return [(x._deannotate(), y._deannotate())
             for x, y in collection]
 
     def _setup_pairs(self):
@@ -800,7 +800,7 @@ class JoinCondition(object):
         ])
 
 
-    def join_targets(self, source_selectable, 
+    def join_targets(self, source_selectable,
                             dest_selectable,
                             aliased,
                             single_crit=None):
@@ -816,10 +816,10 @@ class JoinCondition(object):
 
         # place a barrier on the destination such that
         # replacement traversals won't ever dig into it.
-        # its internal structure remains fixed 
+        # its internal structure remains fixed
         # regardless of context.
         dest_selectable = _shallow_annotate(
-                                dest_selectable, 
+                                dest_selectable,
                                 {'no_replacement_traverse':True})
 
         primaryjoin, secondaryjoin, secondary = self.primaryjoin, \
@@ -827,7 +827,7 @@ class JoinCondition(object):
 
         # adjust the join condition for single table inheritance,
         # in the case that the join is to a subclass
-        # this is analogous to the 
+        # this is analogous to the
         # "_adjust_for_single_table_inheritance()" method in Query.
 
         if single_crit is not None:
@@ -901,7 +901,7 @@ class JoinCondition(object):
 
         if self.deannotated_secondaryjoin is None or not reverse_direction:
             lazywhere = visitors.replacement_traverse(
-                                            lazywhere, {}, col_to_bind) 
+                                            lazywhere, {}, col_to_bind)
 
         if self.deannotated_secondaryjoin is not None:
             secondaryjoin = self.deannotated_secondaryjoin
