@@ -871,11 +871,11 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
 
     def test_reduce_selectable(self):
         metadata = MetaData()
-        engineers = Table('engineers', metadata, Column('engineer_id',
-                          Integer, primary_key=True),
+        engineers = Table('engineers', metadata,
+                        Column('engineer_id', Integer, primary_key=True),
                           Column('engineer_name', String(50)))
-        managers = Table('managers', metadata, Column('manager_id',
-                         Integer, primary_key=True),
+        managers = Table('managers', metadata,
+                        Column('manager_id', Integer, primary_key=True),
                          Column('manager_name', String(50)))
         s = select([engineers,
                    managers]).where(engineers.c.engineer_name
@@ -884,6 +884,61 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
             util.column_set([s.c.engineer_id, s.c.engineer_name,
             s.c.manager_id]))
 
+    def test_reduce_generation(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, primary_key=True),
+                                        Column('y', Integer))
+        t2 = Table('t2', m, Column('z', Integer, ForeignKey('t1.x')),
+                                        Column('q', Integer))
+        s1 = select([t1, t2])
+        s2 = s1.reduce_columns(only_synonyms=False)
+        eq_(
+            set(s2.inner_columns),
+            set([t1.c.x, t1.c.y, t2.c.q])
+        )
+
+        s2 = s1.reduce_columns()
+        eq_(
+            set(s2.inner_columns),
+            set([t1.c.x, t1.c.y, t2.c.z, t2.c.q])
+        )
+
+
+    def test_reduce_only_synonym_fk(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, primary_key=True),
+                                        Column('y', Integer))
+        t2 = Table('t2', m, Column('x', Integer, ForeignKey('t1.x')),
+                                        Column('q', Integer, ForeignKey('t1.y')))
+        s1 = select([t1, t2])
+        s1 = s1.reduce_columns(only_synonyms=True)
+        eq_(
+            set(s1.c),
+            set([s1.c.x, s1.c.y, s1.c.q])
+        )
+
+    def test_reduce_only_synonym_lineage(self):
+        m = MetaData()
+        t1 = Table('t1', m, Column('x', Integer, primary_key=True),
+                                        Column('y', Integer),
+                                        Column('z', Integer)
+                            )
+        # test that the first appearance in the columns clause
+        # wins - t1 is first, t1.c.x wins
+        s1 = select([t1])
+        s2 = select([t1, s1]).where(t1.c.x == s1.c.x).where(s1.c.y == t1.c.z)
+        eq_(
+                set(s2.reduce_columns().inner_columns),
+                set([t1.c.x, t1.c.y, t1.c.z, s1.c.y, s1.c.z])
+        )
+
+        # reverse order, s1.c.x wins
+        s1 = select([t1])
+        s2 = select([s1, t1]).where(t1.c.x == s1.c.x).where(s1.c.y == t1.c.z)
+        eq_(
+                set(s2.reduce_columns().inner_columns),
+                set([s1.c.x, t1.c.y, t1.c.z, s1.c.y, s1.c.z])
+        )
 
     def test_reduce_aliased_join(self):
         metadata = MetaData()
@@ -936,7 +991,6 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
             item_join.c.dummy, item_join.c.child_name])),
             util.column_set([item_join.c.id, item_join.c.dummy,
             item_join.c.child_name]))
-
 
     def test_reduce_aliased_union_2(self):
         metadata = MetaData()

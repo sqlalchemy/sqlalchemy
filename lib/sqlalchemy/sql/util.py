@@ -585,6 +585,7 @@ def reduce_columns(columns, *clauses, **kw):
 
     """
     ignore_nonexistent_tables = kw.pop('ignore_nonexistent_tables', False)
+    only_synonyms = kw.pop('only_synonyms', False)
 
     columns = util.ordered_column_set(columns)
 
@@ -610,21 +611,27 @@ def reduce_columns(columns, *clauses, **kw):
                         continue
                     else:
                         raise
-                if fk_col.shares_lineage(c):
+                if fk_col.shares_lineage(c) and \
+                    (not only_synonyms or \
+                    c.name == col.name):
                     omit.add(col)
                     break
 
     if clauses:
         def visit_binary(binary):
             if binary.operator == operators.eq:
-                cols = util.column_set(chain(*[c.proxy_set for c in columns.difference(omit)]))
+                cols = util.column_set(chain(*[c.proxy_set
+                            for c in columns.difference(omit)]))
                 if binary.left in cols and binary.right in cols:
-                    for c in columns:
-                        if c.shares_lineage(binary.right):
+                    for c in reversed(columns):
+                        if c.shares_lineage(binary.right) and \
+                            (not only_synonyms or \
+                            c.name == binary.left.name):
                             omit.add(c)
                             break
         for clause in clauses:
-            visitors.traverse(clause, {}, {'binary':visit_binary})
+            if clause is not None:
+                visitors.traverse(clause, {}, {'binary': visit_binary})
 
     return expression.ColumnSet(columns.difference(omit))
 
@@ -677,48 +684,6 @@ def criterion_as_pairs(expression, consider_as_foreign_keys=None,
     visitors.traverse(expression, {}, {'binary':visit_binary})
     return pairs
 
-def folded_equivalents(join, equivs=None):
-    """Return a list of uniquely named columns.
-
-    The column list of the given Join will be narrowed
-    down to a list of all equivalently-named,
-    equated columns folded into one column, where 'equated' means they are
-    equated to each other in the ON clause of this join.
-
-    This function is used by Join.select(fold_equivalents=True).
-
-    Deprecated.   This function is used for a certain kind of
-    "polymorphic_union" which is designed to achieve joined
-    table inheritance where the base table has no "discriminator"
-    column; [ticket:1131] will provide a better way to
-    achieve this.
-
-    """
-    if equivs is None:
-        equivs = set()
-    def visit_binary(binary):
-        if binary.operator == operators.eq and binary.left.name == binary.right.name:
-            equivs.add(binary.right)
-            equivs.add(binary.left)
-    visitors.traverse(join.onclause, {}, {'binary':visit_binary})
-    collist = []
-    if isinstance(join.left, expression.Join):
-        left = folded_equivalents(join.left, equivs)
-    else:
-        left = list(join.left.columns)
-    if isinstance(join.right, expression.Join):
-        right = folded_equivalents(join.right, equivs)
-    else:
-        right = list(join.right.columns)
-    used = set()
-    for c in left + right:
-        if c in equivs:
-            if c.name not in used:
-                collist.append(c)
-                used.add(c.name)
-        else:
-            collist.append(c)
-    return collist
 
 class AliasedRow(object):
     """Wrap a RowProxy with a translation map.

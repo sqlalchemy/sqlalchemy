@@ -639,7 +639,6 @@ class RelationshipTest7(fixtures.MappedTest):
                                     primary_key=True),
                 Column('category', String(70)))
 
-    @testing.uses_deprecated("fold_equivalents is deprecated.")
     def test_manytoone_lazyload(self):
         """test that lazy load clause to a polymorphic child mapper generates
         correctly [ticket:493]"""
@@ -686,8 +685,7 @@ class RelationshipTest7(fixtures.MappedTest):
         car_join = polymorphic_union(
             {
                 'car' : cars.outerjoin(offroad_cars).\
-                        select(offroad_cars.c.car_id == None,
-                                fold_equivalents=True),
+                        select(offroad_cars.c.car_id == None).reduce_columns(),
                 'offroad' : cars.join(offroad_cars)
             }, "type", 'car_join')
 

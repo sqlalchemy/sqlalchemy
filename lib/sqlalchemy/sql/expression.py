@@ -3687,7 +3687,6 @@ class Join(FromClause):
             self.onclause = onclause
 
         self.isouter = isouter
-        self.__folded_equivalents = None
 
     @property
     def description(self):
@@ -3720,7 +3719,6 @@ class Join(FromClause):
         self.left = clone(self.left, **kw)
         self.right = clone(self.right, **kw)
         self.onclause = clone(self.onclause, **kw)
-        self.__folded_equivalents = None
 
     def get_children(self, **kwargs):
         return self.left, self.right, self.onclause
@@ -3732,7 +3730,7 @@ class Join(FromClause):
             left_right = None
         return sqlutil.join_condition(left, right, a_subset=left_right)
 
-    def select(self, whereclause=None, fold_equivalents=False, **kwargs):
+    def select(self, whereclause=None, **kwargs):
         """Create a :class:`.Select` from this :class:`.Join`.
 
         The equivalent long-hand form, given a :class:`.Join` object
@@ -3746,22 +3744,11 @@ class Join(FromClause):
         :param whereclause: the WHERE criterion that will be sent to
           the :func:`select()` function
 
-        :param fold_equivalents: based on the join criterion of this
-          :class:`.Join`, do not include
-          repeat column names in the column list of the resulting
-          select, for columns that are calculated to be "equivalent"
-          based on the join criterion of this :class:`.Join`. This will
-          recursively apply to any joins directly nested by this one
-          as well.
-
         :param \**kwargs: all other kwargs are sent to the
           underlying :func:`select()` function.
 
         """
-        if fold_equivalents:
-            collist = sqlutil.folded_equivalents(self)
-        else:
-            collist = [self.left, self.right]
+        collist = [self.left, self.right]
 
         return select(collist, whereclause, from_obj=[self], **kwargs)
 
@@ -5148,6 +5135,37 @@ class Select(SelectBase):
 
         """
         self.append_column(column)
+
+    def reduce_columns(self, only_synonyms=True):
+        """Return a new :func`.select` construct with redundantly
+        named, equivalently-valued columns removed from the columns clause.
+
+        "Redundant" here means two columns where one refers to the
+        other either based on foreign key, or via a simple equality
+        comparison in the WHERE clause of the statement.   The primary purpose
+        of this method is to automatically construct a select statement
+        with all uniquely-named columns, without the need to use table-qualified
+        labels as :meth:`.apply_labels` does.
+
+        When columns are omitted based on foreign key, the referred-to
+        column is the one that's kept.  When columns are omitted based on
+        WHERE eqivalence, the first column in the columns clause is the
+        one that's kept.
+
+        :param only_synonyms: when True, limit the removal of columns
+         to those which have the same name as the equivalent.   Otherwise,
+         all columns that are equivalent to another are removed.
+
+        .. versionadded:: 0.8
+
+        """
+        return self.with_only_columns(
+                sqlutil.reduce_columns(
+                        self.inner_columns,
+                        *(self._whereclause, ) + tuple(self._from_obj),
+                        only_synonyms=only_synonyms
+                )
+            )
 
     @_generative
     def with_only_columns(self, columns):

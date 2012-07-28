@@ -179,6 +179,12 @@ underneath "0.7.xx".
     when dereferenced by a unit test.
     [ticket:2526]
 
+  - [feature] Added with_labels and
+    reduce_columns keyword arguments to
+    Query.subquery(), to provide two alternate
+    strategies for producing queries with uniquely-
+    named columns.  [ticket:1729].
+
   - [removed] Deprecated identifiers removed:
 
     * allow_null_pks mapper() argument
@@ -303,6 +309,15 @@ underneath "0.7.xx".
   - [feature] select() features a correlate_except()
     method, auto correlates all selectables except those
     passed.
+
+  - [feature] Added reduce_columns() method
+    to select() construct, replaces columns inline
+    using the util.reduce_columns utility function
+    to remove equivalent columns.  reduce_columns()
+    also adds "with_only_synonyms" to limit the
+    reduction just to those columns which have the same
+    name.  The deprecated fold_equivalents() feature is
+    removed [ticket:1729].
 
   - [bug] All of UniqueConstraint, ForeignKeyConstraint,
     CheckConstraint, and PrimaryKeyConstraint will

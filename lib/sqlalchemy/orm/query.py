@@ -434,25 +434,37 @@ class Query(object):
         # the annotation not being there
         return stmt._annotate({'no_replacement_traverse': True})
 
-    def subquery(self, name=None):
+    def subquery(self, name=None, with_labels=False, reduce_columns=False):
         """return the full SELECT statement represented by
         this :class:`.Query`, embedded within an :class:`.Alias`.
 
         Eager JOIN generation within the query is disabled.
-
-        The statement will not have disambiguating labels
-        applied to the list of selected columns unless the
-        :meth:`.Query.with_labels` method is used to generate a new
-        :class:`.Query` with the option enabled.
 
         :param name: string name to be assigned as the alias;
             this is passed through to :meth:`.FromClause.alias`.
             If ``None``, a name will be deterministically generated
             at compile time.
 
+        :param with_labels: if True, :meth:`.with_labels` will be called
+         on the :class:`.Query` first to apply table-qualified labels
+         to all columns.
+
+        :param reduce_columns: if True, :meth:`.Select.reduce_columns` will
+         be called on the resulting :func:`.select` construct,
+         to remove same-named columns where one also refers to the other
+         via foreign key or WHERE clause equivalence.
+
+         .. versionchanged:: 0.8 the ``with_labels`` and ``reduce_columns``
+            keyword arguments were added.
 
         """
-        return self.enable_eagerloads(False).statement.alias(name=name)
+        q = self.enable_eagerloads(False)
+        if with_labels:
+            q = q.with_labels()
+        q = q.statement
+        if reduce_columns:
+            q = q.reduce_columns()
+        return q.alias(name=name)
 
     def cte(self, name=None, recursive=False):
         """Return the full SELECT statement represented by this

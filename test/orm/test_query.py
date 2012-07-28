@@ -900,6 +900,23 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         eq_(a2.name, 'foo2')
         eq_(a3.name, '%%(%d anon)s' % id(a3))
 
+    def test_labeled_subquery(self):
+        User = self.classes.User
+
+        session = create_session()
+        a1 = session.query(User.id).filter(User.id == 7).subquery(with_labels=True)
+        assert a1.c.users_id is not None
+
+    def test_reduced_subquery(self):
+        User = self.classes.User
+        ua = aliased(User)
+
+        session = create_session()
+        a1 = session.query(User.id, ua.id, ua.name).\
+                filter(User.id == ua.id).subquery(reduce_columns=True)
+        self.assert_compile(a1,
+                "SELECT users.id, users_1.name FROM "
+                "users, users AS users_1 WHERE users.id = users_1.id")
 
     def test_label(self):
         User = self.classes.User
