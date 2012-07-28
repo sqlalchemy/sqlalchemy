@@ -5162,8 +5162,8 @@ class Select(SelectBase):
         return self.with_only_columns(
                 sqlutil.reduce_columns(
                         self.inner_columns,
-                        *(self._whereclause, ) + tuple(self._from_obj),
-                        only_synonyms=only_synonyms
+                        only_synonyms=only_synonyms,
+                        *(self._whereclause, ) + tuple(self._from_obj)
                 )
             )
 
