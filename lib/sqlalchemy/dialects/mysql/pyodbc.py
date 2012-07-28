@@ -20,7 +20,7 @@ Connect string::
 Limitations
 -----------
 
-The mysql-pyodbc dialect is subject to unresolved character encoding issues 
+The mysql-pyodbc dialect is subject to unresolved character encoding issues
 which exist within the current ODBC drivers available.
 (see http://code.google.com/p/pyodbc/issues/detail?id=25).   Consider usage
 of OurSQL, MySQLdb, or MySQL-connector/Python.

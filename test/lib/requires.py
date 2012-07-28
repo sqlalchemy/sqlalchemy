@@ -77,9 +77,9 @@ def identity(fn):
 def reflectable_autoincrement(fn):
     """Target database must support tables that can automatically generate
     PKs assuming they were reflected.
-    
+
     this is essentially all the DBs in "identity" plus Postgresql, which
-    has SERIAL support.  FB and Oracle (and sybase?) require the Sequence to 
+    has SERIAL support.  FB and Oracle (and sybase?) require the Sequence to
     be explicitly added, including if the table was reflected.
     """
     return _chain_decorators_on(
@@ -151,7 +151,7 @@ def update_from(fn):
     """Target must support UPDATE..FROM syntax"""
     return _chain_decorators_on(
         fn,
-        only_on(('postgresql', 'mssql', 'mysql'), 
+        only_on(('postgresql', 'mssql', 'mysql'),
             "Backend does not support UPDATE..FROM")
     )
 
@@ -388,7 +388,7 @@ def python25(fn):
 def cpython(fn):
     return _chain_decorators_on(
          fn,
-         skip_if(lambda: util.jython or util.pypy, 
+         skip_if(lambda: util.jython or util.pypy,
            "cPython interpreter needed"
          )
     )
@@ -424,11 +424,11 @@ def sqlite(fn):
 
 def ad_hoc_engines(fn):
     """Test environment must allow ad-hoc engine/connection creation.
-    
+
     DBs that scale poorly for many connections, even when closed, i.e.
     Oracle, may use the "--low-connections" option which flags this requirement
     as not present.
-    
+
     """
     return _chain_decorators_on(
         fn,
@@ -456,6 +456,6 @@ def selectone(fn):
     """target driver must support the literal statement 'select 1'"""
     return _chain_decorators_on(
         fn,
-        skip_if(lambda: testing.against('oracle'), 
+        skip_if(lambda: testing.against('oracle'),
             "non-standard SELECT scalar syntax")
     )

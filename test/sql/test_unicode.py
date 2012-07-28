@@ -130,7 +130,7 @@ class EscapesDefaultsTest(fixtures.TestBase):
             select([column(u'special_col')]).select_from(t1).execute().close()
             assert isinstance(engine.dialect.identifier_preparer.format_sequence(Sequence('special_col')), unicode)
 
-            # now execute, run the sequence.  it should run in u"Special_col.nextid" or similar as 
+            # now execute, run the sequence.  it should run in u"Special_col.nextid" or similar as
             # a unicode object; cx_oracle asserts that this is None or a String (postgresql lets it pass thru).
             # ensure that executioncontext._exec_default() is encoding.
             t1.insert().execute(data='foo')

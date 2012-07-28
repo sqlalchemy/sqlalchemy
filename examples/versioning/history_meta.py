@@ -71,9 +71,9 @@ def _history_mapper(local_mapper):
     versioned_cls = type.__new__(type, "%sHistory" % cls.__name__, bases, {})
 
     m = mapper(
-            versioned_cls, 
-            table, 
-            inherits=super_history_mapper, 
+            versioned_cls,
+            table,
+            inherits=super_history_mapper,
             polymorphic_on=polymorphic_on,
             polymorphic_identity=local_mapper.polymorphic_identity
             )
@@ -129,9 +129,9 @@ def create_version(obj, session, deleted = False):
             try:
                 prop = obj_mapper.get_property_by_column(obj_col)
             except UnmappedColumnError:
-                # in the case of single table inheritance, there may be 
+                # in the case of single table inheritance, there may be
                 # columns on the mapped table intended for the subclass only.
-                # the "unmapped" status of the subclass column on the 
+                # the "unmapped" status of the subclass column on the
                 # base class is a feature of the declarative module as of sqla 0.5.2.
                 continue
 

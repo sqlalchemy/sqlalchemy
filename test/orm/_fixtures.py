@@ -82,7 +82,7 @@ class FixtureTest(fixtures.MappedTest):
         mapper(Keyword, keywords)
 
         mapper(Node, nodes, properties={
-            'children':relationship(Node, 
+            'children':relationship(Node,
                 backref=backref('parent', remote_side=[nodes.c.id])
             )
         })

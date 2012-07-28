@@ -2,7 +2,7 @@
 
 Derived from mailing list-reported problems and trac tickets.
 
-These are generally very old 0.1-era tests and at some point should 
+These are generally very old 0.1-era tests and at some point should
 be cleaned up and modernized.
 
 """

@@ -107,7 +107,7 @@ class M2MTest(fixtures.MappedTest):
         mapper(Place, place, properties={
             'places': relationship(
                         Place,
-                        secondary=place_place, 
+                        secondary=place_place,
                         primaryjoin=place.c.place_id==place_place.c.pl1_id,
                         secondaryjoin=place.c.place_id==place_place.c.pl2_id,
                         order_by=place_place.c.pl2_id
@@ -162,7 +162,7 @@ class M2MTest(fixtures.MappedTest):
         mapper(Place, place, properties={
             'child_places': relationship(
                         Place,
-                        secondary=place_place, 
+                        secondary=place_place,
                         primaryjoin=place.c.place_id==place_place.c.pl1_id,
                         secondaryjoin=place.c.place_id==place_place.c.pl2_id,
                         order_by=place_place.c.pl2_id,
@@ -268,7 +268,7 @@ class M2MTest(fixtures.MappedTest):
                                 self.tables.transition)
 
         mapper(Place, place, properties={
-            'transitions':relationship(Transition, secondary=place_input, 
+            'transitions':relationship(Transition, secondary=place_input,
                                             passive_updates=False)
         })
         mapper(Transition, transition)

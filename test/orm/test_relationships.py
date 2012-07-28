@@ -16,10 +16,10 @@ from test.orm import _fixtures
 from sqlalchemy import exc
 
 class _RelationshipErrors(object):
-    def _assert_raises_no_relevant_fks(self, fn, expr, relname, 
+    def _assert_raises_no_relevant_fks(self, fn, expr, relname,
         primary, *arg, **kw):
         assert_raises_message(
-            sa.exc.ArgumentError, 
+            sa.exc.ArgumentError,
             "Could not locate any relevant foreign key columns "
             "for %s join condition '%s' on relationship %s.  "
             "Ensure that referencing columns are associated with "
@@ -31,10 +31,10 @@ class _RelationshipErrors(object):
             fn, *arg, **kw
         )
 
-    def _assert_raises_no_equality(self, fn, expr, relname, 
+    def _assert_raises_no_equality(self, fn, expr, relname,
         primary, *arg, **kw):
         assert_raises_message(
-            sa.exc.ArgumentError, 
+            sa.exc.ArgumentError,
             "Could not locate any simple equality expressions "
             "involving locally mapped foreign key columns for %s join "
             "condition '%s' on relationship %s.  "
@@ -139,23 +139,23 @@ class DependencyTwoParentTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("tbl_a", metadata,
-            Column("id", Integer, primary_key=True, 
+            Column("id", Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column("name", String(128)))
         Table("tbl_b", metadata,
-            Column("id", Integer, primary_key=True, 
+            Column("id", Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column("name", String(128)))
         Table("tbl_c", metadata,
-            Column("id", Integer, primary_key=True, 
+            Column("id", Integer, primary_key=True,
                                 test_needs_autoincrement=True),
-            Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"), 
+            Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"),
                                 nullable=False),
             Column("name", String(128)))
         Table("tbl_d", metadata,
-            Column("id", Integer, primary_key=True, 
+            Column("id", Integer, primary_key=True,
                                 test_needs_autoincrement=True),
-            Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"), 
+            Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"),
                                 nullable=False),
             Column("tbl_b_id", Integer, ForeignKey("tbl_b.id")),
             Column("name", String(128)))
@@ -183,11 +183,11 @@ class DependencyTwoParentTest(fixtures.MappedTest):
                                 cls.tables.tbl_d)
 
         mapper(A, tbl_a, properties=dict(
-            c_rows=relationship(C, cascade="all, delete-orphan", 
+            c_rows=relationship(C, cascade="all, delete-orphan",
                                     backref="a_row")))
         mapper(B, tbl_b)
         mapper(C, tbl_c, properties=dict(
-            d_rows=relationship(D, cascade="all, delete-orphan", 
+            d_rows=relationship(D, cascade="all, delete-orphan",
                                     backref="c_row")))
         mapper(D, tbl_d, properties=dict(
             b_row=relationship(B)))
@@ -232,7 +232,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
 
 class CompositeSelfRefFKTest(fixtures.MappedTest):
     """Tests a composite FK where, in
-    the relationship(), one col points 
+    the relationship(), one col points
     to itself in the same table.
 
     this is a very unusual case::
@@ -255,7 +255,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('company_t', metadata,
-              Column('company_id', Integer, primary_key=True, 
+              Column('company_id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column('name', String(30)))
 
@@ -292,9 +292,9 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
 
         mapper(Company, company_t)
         mapper(Employee, employee_t, properties= {
-            'company':relationship(Company, 
+            'company':relationship(Company,
                             primaryjoin=employee_t.c.company_id==
-                                                company_t.c.company_id, 
+                                                company_t.c.company_id,
                                                 backref='employees'),
             'reports_to':relationship(Employee, primaryjoin=
                 sa.and_(
@@ -303,8 +303,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
                 ),
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
                 foreign_keys=[employee_t.c.reports_to_id, employee_t.c.company_id],
-                backref=backref('employees', 
-                    foreign_keys=[employee_t.c.reports_to_id, 
+                backref=backref('employees',
+                    foreign_keys=[employee_t.c.reports_to_id,
                                 employee_t.c.company_id]))
         })
 
@@ -321,7 +321,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
             'company':relationship(Company, backref='employees'),
             'reports_to':relationship(Employee,
                 remote_side=[employee_t.c.emp_id, employee_t.c.company_id],
-                foreign_keys=[employee_t.c.reports_to_id, 
+                foreign_keys=[employee_t.c.reports_to_id,
                                     employee_t.c.company_id],
                 backref=backref('employees', foreign_keys=
                     [employee_t.c.reports_to_id, employee_t.c.company_id])
@@ -361,7 +361,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest):
                         (employee_t.c.reports_to_id, employee_t.c.emp_id),
                         (employee_t.c.company_id, employee_t.c.company_id)
                 ],
-                foreign_keys=[employee_t.c.reports_to_id, 
+                foreign_keys=[employee_t.c.reports_to_id,
                                     employee_t.c.company_id],
                 backref=backref('employees', foreign_keys=
                     [employee_t.c.reports_to_id, employee_t.c.company_id])
@@ -477,7 +477,7 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
             Column('z', Integer),
         )
         Table("child", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                         test_needs_autoincrement=True),
             Column('x', Integer),
             Column('y', Integer),
@@ -520,7 +520,7 @@ class FKsAsPksTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("tableA", metadata,
-              Column("id",Integer,primary_key=True, 
+              Column("id",Integer,primary_key=True,
                             test_needs_autoincrement=True),
               Column("foo",Integer,),
               test_needs_fk=True)
@@ -538,7 +538,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             pass
 
     def test_onetoone_switch(self):
-        """test that active history is enabled on a 
+        """test that active history is enabled on a
         one-to-many/one that has use_get==True"""
 
         tableB, A, B, tableA = (self.tables.tableB,
@@ -643,7 +643,7 @@ class FKsAsPksTest(fixtures.MappedTest):
         sess.flush()
 
     def test_delete_cascade_BtoA(self):
-        """No 'blank the PK' error when the child is to 
+        """No 'blank the PK' error when the child is to
         be deleted as part of a cascade"""
 
         tableB, A, B, tableA = (self.tables.tableB,
@@ -674,7 +674,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             sa.orm.clear_mappers()
 
     def test_delete_cascade_AtoB(self):
-        """No 'blank the PK' error when the child is to 
+        """No 'blank the PK' error when the child is to
         be deleted as part of a cascade"""
 
         tableB, A, B, tableA = (self.tables.tableB,
@@ -754,23 +754,23 @@ class FKsAsPksTest(fixtures.MappedTest):
         assert b1 not in sess
 
 class UniqueColReferenceSwitchTest(fixtures.MappedTest):
-    """test a relationship based on a primary 
+    """test a relationship based on a primary
     join against a unique non-pk column"""
 
     @classmethod
     def define_tables(cls, metadata):
         Table("table_a", metadata,
-                        Column("id", Integer, primary_key=True, 
+                        Column("id", Integer, primary_key=True,
                                         test_needs_autoincrement=True),
-                        Column("ident", String(10), nullable=False, 
+                        Column("ident", String(10), nullable=False,
                                         unique=True),
                         )
 
         Table("table_b", metadata,
-                        Column("id", Integer, primary_key=True, 
+                        Column("id", Integer, primary_key=True,
                                         test_needs_autoincrement=True),
-                        Column("a_ident", String(10), 
-                                        ForeignKey('table_a.ident'), 
+                        Column("a_ident", String(10),
+                                        ForeignKey('table_a.ident'),
                                         nullable=False),
                         )
 
@@ -873,21 +873,21 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
             eq_(old.id, new.id)
 
 class FKEquatedToConstantTest(fixtures.MappedTest):
-    """test a relationship with a non-column entity in the primary join, 
-    is not viewonly, and also has the non-column's clause mentioned in the 
+    """test a relationship with a non-column entity in the primary join,
+    is not viewonly, and also has the non-column's clause mentioned in the
     foreign keys list.
 
     """
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('tags', metadata, Column("id", Integer, primary_key=True, 
+        Table('tags', metadata, Column("id", Integer, primary_key=True,
                                             test_needs_autoincrement=True),
             Column("data", String(50)),
         )
 
-        Table('tag_foo', metadata, 
-            Column("id", Integer, primary_key=True, 
+        Table('tag_foo', metadata,
+            Column("id", Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('tagid', Integer),
             Column("data", String(50)),
@@ -902,7 +902,7 @@ class FKEquatedToConstantTest(fixtures.MappedTest):
             pass
 
         mapper(Tag, tags, properties={
-            'foo':relationship(TagInstance, 
+            'foo':relationship(TagInstance,
                primaryjoin=sa.and_(tag_foo.c.data=='iplc_case',
                                 tag_foo.c.tagid==tags.c.id),
                foreign_keys=[tag_foo.c.tagid, tag_foo.c.data],
@@ -921,13 +921,13 @@ class FKEquatedToConstantTest(fixtures.MappedTest):
 
         # relationship works
         eq_(
-            sess.query(Tag).all(), 
+            sess.query(Tag).all(),
             [Tag(data='some tag', foo=[TagInstance(data='iplc_case')])]
         )
 
         # both TagInstances were persisted
         eq_(
-            sess.query(TagInstance).order_by(TagInstance.data).all(), 
+            sess.query(TagInstance).order_by(TagInstance.data).all(),
             [TagInstance(data='iplc_case'), TagInstance(data='not_iplc_case')]
         )
 
@@ -935,13 +935,13 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('users', metadata, 
-            Column('id', Integer, primary_key=True, 
+        Table('users', metadata,
+            Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('name', String(50))
         )
-        Table('addresses', metadata, 
-            Column('id', Integer, primary_key=True, 
+        Table('addresses', metadata,
+            Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('user_id', Integer),
             Column('email', String(50))
@@ -962,8 +962,8 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
 
 
         mapper(User, users, properties={
-            'addresses':relationship(Address, 
-                        primaryjoin=addresses.c.user_id==users.c.id, 
+            'addresses':relationship(Address,
+                        primaryjoin=addresses.c.user_id==users.c.id,
                         foreign_keys=addresses.c.user_id,
                         backref='user')
         })
@@ -991,13 +991,13 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         subscriber_table = Table('subscriber', metadata,
-           Column('id', Integer, primary_key=True, 
+           Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
           )
 
         address_table = Table('address',
                  metadata,
-                 Column('subscriber_id', Integer, 
+                 Column('subscriber_id', Integer,
                             ForeignKey('subscriber.id'), primary_key=True),
                  Column('type', String(1), primary_key=True),
                  )
@@ -1006,8 +1006,8 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
     def setup_mappers(cls):
         subscriber, address = cls.tables.subscriber, cls.tables.address
 
-        subscriber_and_address = subscriber.join(address, 
-            and_(address.c.subscriber_id==subscriber.c.id, 
+        subscriber_and_address = subscriber.join(address,
+            and_(address.c.subscriber_id==subscriber.c.id,
                 address.c.type.in_(['A', 'B', 'C'])))
 
         class Address(cls.Comparable):
@@ -1020,7 +1020,7 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
 
         mapper(Subscriber, subscriber_and_address, properties={
            'id':[subscriber.c.id, address.c.subscriber_id],
-           'addresses' : relationship(Address, 
+           'addresses' : relationship(Address,
                 backref=backref("customer"))
            })
 
@@ -1050,8 +1050,8 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
         eq_(
             sess.query(Subscriber).order_by(Subscriber.type).all(),
             [
-                Subscriber(id=1, type=u'A'), 
-                Subscriber(id=2, type=u'B'), 
+                Subscriber(id=1, type=u'A'),
+                Subscriber(id=2, type=u'B'),
                 Subscriber(id=2, type=u'C')
             ]
         )
@@ -1123,11 +1123,11 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             'dingaling':relationship(Dingaling)
         })
 
-        assert_raises_message(sa.exc.ArgumentError, 
+        assert_raises_message(sa.exc.ArgumentError,
             r"reverse_property 'dingaling' on relationship "
             "User.addresses references "
             "relationship Address.dingaling, which does not "
-            "reference mapper Mapper\|User\|users", 
+            "reference mapper Mapper\|User\|users",
             configure_mappers)
 
 class JoinConditionErrorTest(fixtures.TestBase):
@@ -1162,7 +1162,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
     def test_only_column_elements(self):
         m = MetaData()
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('id', Integer, primary_key=True),
             Column('foo_id', Integer, ForeignKey('t2.id')),
         )
@@ -1204,16 +1204,16 @@ class JoinConditionErrorTest(fixtures.TestBase):
                 c2 = relationship(C1, **kw)
 
             assert_raises_message(
-                sa.exc.ArgumentError, 
+                sa.exc.ArgumentError,
                 "Column-based expression object expected "
-                "for argument '%s'; got: '%s', type %r" % 
+                "for argument '%s'; got: '%s', type %r" %
                 (argname, arg[0], type(arg[0])),
                 configure_mappers)
 
 
     def test_fk_error_not_raised_unrelated(self):
         m = MetaData()
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('id', Integer, primary_key=True),
             Column('foo_id', Integer, ForeignKey('t2.nonexistent_id')),
         )
@@ -1237,7 +1237,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
     def test_join_error_raised(self):
         m = MetaData()
-        t1 = Table('t1', m, 
+        t1 = Table('t1', m,
             Column('id', Integer, primary_key=True),
         )
         t2 = Table('t2', m,
@@ -1263,27 +1263,27 @@ class JoinConditionErrorTest(fixtures.TestBase):
         clear_mappers()
 
 class TypeMatchTest(fixtures.MappedTest):
-    """test errors raised when trying to add items 
+    """test errors raised when trying to add items
         whose type is not handled by a relationship"""
 
     @classmethod
     def define_tables(cls, metadata):
         Table("a", metadata,
-              Column('aid', Integer, primary_key=True, 
+              Column('aid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column('data', String(30)))
         Table("b", metadata,
-               Column('bid', Integer, primary_key=True, 
+               Column('bid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
                Column("a_id", Integer, ForeignKey("a.aid")),
                Column('data', String(30)))
         Table("c", metadata,
-              Column('cid', Integer, primary_key=True, 
+              Column('cid', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column("b_id", Integer, ForeignKey("b.bid")),
               Column('data', String(30)))
         Table("d", metadata,
-              Column('did', Integer, primary_key=True, 
+              Column('did', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
               Column("a_id", Integer, ForeignKey("a.aid")),
               Column('data', String(30)))
@@ -1336,7 +1336,7 @@ class TypeMatchTest(fixtures.MappedTest):
         sess.add(b1)
         sess.add(c1)
         assert_raises_message(sa.orm.exc.FlushError,
-                                 "Attempting to flush an item", 
+                                 "Attempting to flush an item",
                                  sess.flush)
 
     def test_o2m_nopoly_onflush(self):
@@ -1361,7 +1361,7 @@ class TypeMatchTest(fixtures.MappedTest):
         sess.add(b1)
         sess.add(c1)
         assert_raises_message(sa.orm.exc.FlushError,
-                                 "Attempting to flush an item", 
+                                 "Attempting to flush an item",
                                  sess.flush)
 
     def test_m2o_nopoly_onflush(self):
@@ -1382,7 +1382,7 @@ class TypeMatchTest(fixtures.MappedTest):
         sess.add(b1)
         sess.add(d1)
         assert_raises_message(sa.orm.exc.FlushError,
-                                 "Attempting to flush an item", 
+                                 "Attempting to flush an item",
                                  sess.flush)
 
     def test_m2o_oncascade(self):
@@ -1401,7 +1401,7 @@ class TypeMatchTest(fixtures.MappedTest):
         d1.a = b1
         sess = create_session()
         assert_raises_message(AssertionError,
-                             "doesn't handle objects of type", 
+                             "doesn't handle objects of type",
                              sess.add, d1)
 
 class TypedAssociationTable(fixtures.MappedTest):
@@ -1462,11 +1462,11 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("t1", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('data', String(40)))
         Table("t2", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                 test_needs_autoincrement=True),
             Column('data', String(40)),
         )
@@ -1484,7 +1484,7 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):pass
 
         mapper(A, t1, properties={
-            'bs':relationship(B, secondary=t1t2, 
+            'bs':relationship(B, secondary=t1t2,
                                 backref=backref('as_', viewonly=True))
         })
         mapper(B, t2)
@@ -1508,16 +1508,16 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("t1", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(40)))
         Table("t2", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t1id', Integer, ForeignKey('t1.id')))
         Table("t3", metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t2id', Integer, ForeignKey('t2.id')))
@@ -1575,16 +1575,16 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table("t1", metadata,
-            Column('t1id', Integer, primary_key=True, 
+            Column('t1id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('data', String(40)))
         Table("t2", metadata,
-            Column('t2id', Integer, primary_key=True, 
+            Column('t2id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t1id_ref', Integer, ForeignKey('t1.t1id')))
         Table("t3", metadata,
-            Column('t3id', Integer, primary_key=True, 
+            Column('t3id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('data', String(40)),
             Column('t2id_ref', Integer, ForeignKey('t2.t2id')))
@@ -1765,11 +1765,11 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('foos', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
               Column('data', String(50)))
 
-        Table('bars', metadata, Column('id', Integer, primary_key=True, 
+        Table('bars', metadata, Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
               Column('fid1', Integer, ForeignKey('foos.id')),
               Column('fid2', Integer, ForeignKey('foos.id')),
@@ -1816,16 +1816,16 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('t1id', Integer, ForeignKey('t1.id')))
         Table('t3', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                     test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2tot3', metadata,
@@ -1902,11 +1902,11 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table('t1', metadata,
-            Column('id', String(50), primary_key=True, 
+            Column('id', String(50), primary_key=True,
                                         test_needs_autoincrement=True),
             Column('data', String(50)))
         Table('t2', metadata,
-            Column('id', Integer, primary_key=True, 
+            Column('id', Integer, primary_key=True,
                                         test_needs_autoincrement=True),
             Column('data', String(50)),
             Column('t1id', String(50)))
@@ -2104,25 +2104,25 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
             't1s':relationship(T1, backref='parent')
         })
 
-        assert_raises_message(sa.exc.ArgumentError, 
+        assert_raises_message(sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
             "both of the same direction <symbol 'ONETOMANY>.  Did you "
-            "mean to set remote_side on the many-to-one side ?", 
+            "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
     def test_m2o_backref(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
         mapper(T1, t1, properties={
-            't1s':relationship(T1, 
-                        backref=backref('parent', remote_side=t1.c.id), 
+            't1s':relationship(T1,
+                        backref=backref('parent', remote_side=t1.c.id),
                         remote_side=t1.c.id)
         })
 
-        assert_raises_message(sa.exc.ArgumentError, 
+        assert_raises_message(sa.exc.ArgumentError,
             "T1.t1s and back-reference T1.parent are "
             "both of the same direction <symbol 'MANYTOONE>.  Did you "
-            "mean to set remote_side on the many-to-one side ?", 
+            "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
     def test_o2m_explicit(self):
@@ -2134,25 +2134,25 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
         })
 
         # can't be sure of ordering here
-        assert_raises_message(sa.exc.ArgumentError, 
+        assert_raises_message(sa.exc.ArgumentError,
             "both of the same direction <symbol 'ONETOMANY>.  Did you "
-            "mean to set remote_side on the many-to-one side ?", 
+            "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
     def test_m2o_explicit(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
         mapper(T1, t1, properties={
-            't1s':relationship(T1, back_populates='parent', 
+            't1s':relationship(T1, back_populates='parent',
                                 remote_side=t1.c.id),
-            'parent':relationship(T1, back_populates='t1s', 
+            'parent':relationship(T1, back_populates='t1s',
                                 remote_side=t1.c.id)
         })
 
         # can't be sure of ordering here
-        assert_raises_message(sa.exc.ArgumentError, 
+        assert_raises_message(sa.exc.ArgumentError,
             "both of the same direction <symbol 'MANYTOONE>.  Did you "
-            "mean to set remote_side on the many-to-one side ?", 
+            "mean to set remote_side on the many-to-one side ?",
             configure_mappers)
 
 class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
@@ -2166,11 +2166,11 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
             Column('aid_1', Integer, ForeignKey('a.id')),
             Column('aid_2', Integer, ForeignKey('a.id')),
         )
-        Table("atob", metadata, 
+        Table("atob", metadata,
             Column('aid', Integer),
             Column('bid', Integer),
         )
-        Table("atob_ambiguous", metadata, 
+        Table("atob_ambiguous", metadata,
             Column('aid1', Integer, ForeignKey('a.id')),
             Column('bid1', Integer, ForeignKey('b.id')),
             Column('aid2', Integer, ForeignKey('a.id')),
@@ -2276,7 +2276,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         A, B = self.classes.A, self.classes.B
         a, b, a_to_b = self.tables.a, self.tables.b, self.tables.atob_ambiguous
         mapper(A, a, properties={
-            'bs':relationship(B, secondary=a_to_b, 
+            'bs':relationship(B, secondary=a_to_b,
                         foreign_keys=[a_to_b.c.aid1, a_to_b.c.bid1])
         })
         mapper(B, b)
@@ -2378,7 +2378,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
                                 self.tables.bars_with_fks,
                                 self.tables.foos)
 
-        # very unique - the join between parent/child 
+        # very unique - the join between parent/child
         # has no fks, but there is an fk join between two other
         # tables in the join condition, for those users that try creating
         # these big-long-string-of-joining-many-tables primaryjoins.
@@ -2396,7 +2396,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
         self._assert_raises_no_equality(
             sa.orm.configure_mappers,
             "bars_with_fks.fid = foos_with_fks.id "
-            "AND foos_with_fks.id = foos.id", 
+            "AND foos_with_fks.id = foos.id",
             "Foo.bars", "primary"
         )
 
@@ -2470,7 +2470,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
                             primaryjoin=foos.c.id>foos.c.fid)})
         mapper(Bar, bars)
 
-        self._assert_raises_no_relevant_fks(configure_mappers, 
+        self._assert_raises_no_relevant_fks(configure_mappers,
                 "foos.id > foos.fid", "Foo.foos", "primary"
             )
 
@@ -2487,7 +2487,7 @@ class InvalidRelationshipEscalationTest(_RelationshipErrors, fixtures.MappedTest
                             foreign_keys=[foos.c.fid])})
         mapper(Bar, bars)
 
-        self._assert_raises_no_equality(configure_mappers, 
+        self._assert_raises_no_equality(configure_mappers,
                 "foos.id > foos.fid", "Foo.foos", "primary"
             )
 
@@ -2623,16 +2623,16 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
               Column('id', Integer, primary_key=True))
 
         Table('foobars_with_fks', metadata,
-            Column('fid', Integer, ForeignKey('foos.id')), 
+            Column('fid', Integer, ForeignKey('foos.id')),
             Column('bid', Integer, ForeignKey('bars.id'))
         )
 
         Table('foobars_with_many_columns', metadata,
-              Column('fid', Integer), 
+              Column('fid', Integer),
               Column('bid', Integer),
-              Column('fid1', Integer), 
+              Column('fid1', Integer),
               Column('bid1', Integer),
-              Column('fid2', Integer), 
+              Column('fid2', Integer),
               Column('bid2', Integer),
               )
 
@@ -2656,7 +2656,7 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
 
         self._assert_raises_no_join(
             configure_mappers,
-            "Foo.bars", 
+            "Foo.bars",
             "foobars"
         )
 
@@ -2675,7 +2675,7 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
 
         self._assert_raises_no_join(
             configure_mappers,
-            "Foo.bars", 
+            "Foo.bars",
             "foobars"
         )
 
@@ -2688,7 +2688,7 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
                                 self.tables.foos)
 
         mapper(Foo, foos, properties={
-            'bars': relationship(Bar, secondary=foobars, 
+            'bars': relationship(Bar, secondary=foobars,
                                 primaryjoin=foos.c.id==foobars.c.fid,
                                 secondaryjoin=foobars.c.bid==bars.c.id)})
         mapper(Bar, bars)
@@ -2704,8 +2704,8 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
 
         sa.orm.clear_mappers()
         mapper(Foo, foos, properties={
-                        'bars': relationship(Bar, 
-                                secondary=foobars_with_many_columns, 
+                        'bars': relationship(Bar,
+                                secondary=foobars_with_many_columns,
                               primaryjoin=foos.c.id==
                                         foobars_with_many_columns.c.fid,
                               secondaryjoin=foobars_with_many_columns.c.bid==
@@ -2738,7 +2738,7 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
         mapper(Bar, bars)
 
         self._assert_raises_no_equality(
-                configure_mappers, 
+                configure_mappers,
                 'foos.id > foobars.fid',
                 "Foo.bars",
                 "primary")
@@ -2751,7 +2751,7 @@ class InvalidRelationshipEscalationTestM2M(_RelationshipErrors, fixtures.MappedT
                              secondaryjoin=foobars_with_fks.c.bid<=bars.c.id)})
         mapper(Bar, bars)
         self._assert_raises_no_equality(
-                configure_mappers, 
+                configure_mappers,
                 'foos.id > foobars_with_fks.fid',
                 "Foo.bars",
                 "primary")
@@ -2832,7 +2832,7 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users, properties={
-            'name':column_property(users.c.name, 
+            'name':column_property(users.c.name,
                                 active_history=True)
         })
         u1 = User(name='jack')
@@ -2867,8 +2867,8 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
                     other.description == self.description
         mapper(Order, orders, properties={
             'composite':composite(
-                                MyComposite, 
-                                orders.c.description, 
+                                MyComposite,
+                                orders.c.description,
                                 orders.c.isopen,
                                 active_history=True)
         })

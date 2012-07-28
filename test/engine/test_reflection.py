@@ -135,11 +135,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t2 = Table('t', m2, old_z, old_q)
         eq_(t2.primary_key.columns, (t2.c.z, ))
         t2 = Table('t', m2, old_y,
-                        extend_existing=True, 
-                        autoload=True, 
+                        extend_existing=True,
+                        autoload=True,
                         autoload_with=testing.db)
         eq_(
-            set(t2.columns.keys()), 
+            set(t2.columns.keys()),
             set(['x', 'y', 'z', 'q', 'id'])
         )
         eq_(t2.primary_key.columns, (t2.c.id, ))
@@ -150,11 +150,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         m3 = MetaData()
         t3 = Table('t', m3, Column('z', Integer))
-        t3 = Table('t', m3, extend_existing=False, 
-                        autoload=True, 
+        t3 = Table('t', m3, extend_existing=False,
+                        autoload=True,
                         autoload_with=testing.db)
         eq_(
-            set(t3.columns.keys()), 
+            set(t3.columns.keys()),
             set(['z'])
         )
 
@@ -165,12 +165,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t4 = Table('t', m4, old_z, old_q)
         eq_(t4.primary_key.columns, (t4.c.z, ))
         t4 = Table('t', m4, old_y,
-                        extend_existing=True, 
-                        autoload=True, 
+                        extend_existing=True,
+                        autoload=True,
                         autoload_replace=False,
                         autoload_with=testing.db)
         eq_(
-            set(t4.columns.keys()), 
+            set(t4.columns.keys()),
             set(['x', 'y', 'z', 'q', 'id'])
         )
         eq_(t4.primary_key.columns, (t4.c.id, ))
@@ -202,9 +202,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_autoload_replace_foreign_key_nonpresent(self):
-        """test autoload_replace=False with col plus FK 
+        """test autoload_replace=False with col plus FK
         establishes the FK not present in the DB.
-        
+
         """
         a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
         b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
@@ -214,8 +214,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         b2 = Table('b', m2, Column('a_id', Integer, sa.ForeignKey('a.id')))
         a2 = Table('a', m2, autoload=True, autoload_with=testing.db)
-        b2 = Table('b', m2, extend_existing=True, autoload=True, 
-                                autoload_with=testing.db, 
+        b2 = Table('b', m2, extend_existing=True, autoload=True,
+                                autoload_with=testing.db,
                                 autoload_replace=False)
 
         assert b2.c.id is not None
@@ -225,9 +225,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_autoload_replace_foreign_key_ispresent(self):
         """test autoload_replace=False with col plus FK mirroring
-        DB-reflected FK skips the reflected FK and installs 
+        DB-reflected FK skips the reflected FK and installs
         the in-python one only.
-        
+
         """
         a = Table('a', self.metadata, Column('id', Integer, primary_key=True))
         b = Table('b', self.metadata, Column('id', Integer, primary_key=True),
@@ -237,8 +237,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         b2 = Table('b', m2, Column('a_id', Integer, sa.ForeignKey('a.id')))
         a2 = Table('a', m2, autoload=True, autoload_with=testing.db)
-        b2 = Table('b', m2, extend_existing=True, autoload=True, 
-                                autoload_with=testing.db, 
+        b2 = Table('b', m2, extend_existing=True, autoload=True,
+                                autoload_with=testing.db,
                                 autoload_replace=False)
 
         assert b2.c.id is not None
@@ -259,8 +259,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         b2 = Table('b', m2, Column('a_id', Integer))
         a2 = Table('a', m2, autoload=True, autoload_with=testing.db)
-        b2 = Table('b', m2, extend_existing=True, autoload=True, 
-                                autoload_with=testing.db, 
+        b2 = Table('b', m2, extend_existing=True, autoload=True,
+                                autoload_with=testing.db,
                                 autoload_replace=False)
 
         assert b2.c.id is not None
@@ -434,7 +434,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         meta4 = MetaData(testing.db)
 
-        u4 = Table('users', meta4, 
+        u4 = Table('users', meta4,
                 Column('id', sa.Integer, key='u_id', primary_key=True),
                 autoload=True)
 
@@ -496,7 +496,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
     @testing.provide_metadata
     def test_override_keys(self):
-        """test that columns can be overridden with a 'key', 
+        """test that columns can be overridden with a 'key',
         and that ForeignKey targeting during reflection still works."""
 
         meta = self.metadata
@@ -511,7 +511,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         )
         meta.create_all()
         m2 = MetaData(testing.db)
-        a2 = Table('a', m2, 
+        a2 = Table('a', m2,
                 Column('x', sa.Integer, primary_key=True, key='x1'),
                 autoload=True)
         b2 = Table('b', m2, autoload=True)
@@ -562,7 +562,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
         meta.create_all()
         meta2 = MetaData(testing.db)
-        a2 = Table('addresses', meta2, 
+        a2 = Table('addresses', meta2,
                 Column('user_id',sa.Integer, sa.ForeignKey('users.id')),
                 autoload=True)
         u2 = Table('users', meta2, autoload=True)
@@ -701,7 +701,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
 
     @testing.crashes('oracle', 'FIXME: unknown, confirm not fails_on')
-    @testing.fails_on('+informixdb', 
+    @testing.fails_on('+informixdb',
                         "FIXME: should be supported via the "
                         "DELIMITED env var but that breaks "
                         "everything else for now")
@@ -727,15 +727,15 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             check_col = 'true'
         quoter = meta.bind.dialect.identifier_preparer.quote_identifier
 
-        table_b = Table('false', meta, 
-                    Column('create', sa.Integer, primary_key=True), 
+        table_b = Table('false', meta,
+                    Column('create', sa.Integer, primary_key=True),
                     Column('true', sa.Integer,sa.ForeignKey('select.not')),
                     sa.CheckConstraint('%s <> 1'
                         % quoter(check_col), name='limit')
                     )
 
-        table_c = Table('is', meta, 
-                Column('or', sa.Integer, nullable=False, primary_key=True), 
+        table_c = Table('is', meta,
+                Column('or', sa.Integer, nullable=False, primary_key=True),
                 Column('join', sa.Integer, nullable=False, primary_key=True),
                 sa.PrimaryKeyConstraint('or', 'join', name='to')
                 )
@@ -885,15 +885,15 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
 
             m2.reflect(views=False)
             eq_(
-                set(m2.tables), 
+                set(m2.tables),
                 set(['users', 'email_addresses', 'dingalings'])
             )
 
             m2 = MetaData(testing.db)
             m2.reflect(views=True)
             eq_(
-                set(m2.tables), 
-                set(['email_addresses_v', 'users_v', 
+                set(m2.tables),
+                set(['email_addresses_v', 'users_v',
                             'users', 'dingalings', 'email_addresses'])
             )
         finally:
@@ -905,16 +905,16 @@ class CreateDropTest(fixtures.TestBase):
     def setup_class(cls):
         global metadata, users
         metadata = MetaData()
-        users = Table('users', metadata, 
+        users = Table('users', metadata,
                     Column('user_id', sa.Integer,
                       sa.Sequence('user_id_seq', optional=True),
-                      primary_key=True), 
+                      primary_key=True),
                     Column('user_name',sa.String(40)))
 
         addresses = Table('email_addresses', metadata,
                       Column('address_id', sa.Integer,
                           sa.Sequence('address_id_seq', optional=True),
-                          primary_key=True), 
+                          primary_key=True),
                       Column('user_id',
                           sa.Integer, sa.ForeignKey(users.c.user_id)),
                       Column('email_address', sa.String(40)))
@@ -989,8 +989,8 @@ class SchemaManipulationTest(fixtures.TestBase):
         meta = MetaData()
 
         users = Table('users', meta, Column('id', sa.Integer))
-        addresses = Table('addresses', meta, 
-                        Column('id', sa.Integer), 
+        addresses = Table('addresses', meta,
+                        Column('id', sa.Integer),
                         Column('user_id', sa.Integer))
 
         fk = sa.ForeignKeyConstraint(['user_id'],[users.c.id])
@@ -1027,7 +1027,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
             (u'\u6e2c\u8a66', u'col_\u6e2c\u8a66', u'ix_\u6e2c\u8a66'),
         ]
 
-        # as you can see, our options for this kind of thing 
+        # as you can see, our options for this kind of thing
         # are really limited unless you're on PG or SQLite
 
         # forget about it on these backends
@@ -1037,7 +1037,7 @@ class UnicodeReflectionTest(fixtures.TestBase):
         elif testing.against("mysql") and \
             not testing.requires._has_mysql_fully_case_sensitive():
             names = no_multibyte_period.union(no_case_sensitivity)
-        # mssql + pyodbc + freetds can't compare multibyte names to 
+        # mssql + pyodbc + freetds can't compare multibyte names to
         # information_schema.tables.table_name
         elif testing.against("mssql"):
             names = no_multibyte_period.union(no_has_table)
@@ -1208,8 +1208,8 @@ class SchemaTest(fixtures.TestBase):
         m2 = MetaData(schema="test_schema", bind=testing.db)
         m2.reflect()
         eq_(
-            set(m2.tables), 
-            set(['test_schema.dingalings', 'test_schema.users', 
+            set(m2.tables),
+            set(['test_schema.dingalings', 'test_schema.users',
                 'test_schema.email_addresses'])
         )
 
@@ -1286,7 +1286,7 @@ def createTables(meta, schema=None):
     )
     dingalings = Table("dingalings", meta,
               Column('dingaling_id', sa.Integer, primary_key=True),
-              Column('address_id', sa.Integer, 
+              Column('address_id', sa.Integer,
                     sa.ForeignKey('%semail_addresses.address_id' % schema_prefix)),
               Column('data', sa.String(30)),
               schema=schema,
@@ -1364,11 +1364,11 @@ class CaseSensitiveTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('SomeTable', metadata, 
+        Table('SomeTable', metadata,
             Column('x', Integer, primary_key=True),
             test_needs_fk=True
         )
-        Table('SomeOtherTable', metadata, 
+        Table('SomeOtherTable', metadata,
             Column('x', Integer, primary_key=True),
             Column('y', Integer, sa.ForeignKey("SomeTable.x")),
             test_needs_fk=True
@@ -1387,8 +1387,8 @@ class CaseSensitiveTest(fixtures.TablesTest):
         eq_(t1.name, "SomeTable")
         assert t1.c.x is not None
 
-    @testing.fails_if(lambda: 
-            testing.against(('mysql', '<', (5, 5))) and 
+    @testing.fails_if(lambda:
+            testing.against(('mysql', '<', (5, 5))) and
             not testing.requires._has_mysql_fully_case_sensitive()
             )
     def test_reflect_via_fk(self):

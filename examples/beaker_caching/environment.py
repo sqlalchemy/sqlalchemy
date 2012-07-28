@@ -1,6 +1,6 @@
 """environment.py
 
-Establish data / cache file paths, and configurations, 
+Establish data / cache file paths, and configurations,
 bootstrap fixture data if necessary.
 
 """

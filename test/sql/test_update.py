@@ -11,13 +11,13 @@ class _UpdateFromTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
               Column('name', String(30), nullable=False),
         )
 
         Table('addresses', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('name', String(30), nullable=False),
@@ -25,7 +25,7 @@ class _UpdateFromTestBase(object):
         )
 
         Table("dingalings", metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
               Column('address_id', None, ForeignKey('addresses.id')),
               Column('data', String(30)),
@@ -93,7 +93,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCom
             "AND addresses.email_address = :email_address_1 "
             "AND addresses.id = dingalings.address_id AND "
             "dingalings.id = :id_1",
-            checkparams={u'email_address_1': 'e1', u'id_1': 2, 
+            checkparams={u'email_address_1': 'e1', u'id_1': 2,
                                 'name': 'newname'}
         )
 
@@ -113,8 +113,8 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCom
 
     def test_render_subquery(self):
         users, addresses = self.tables.users, self.tables.addresses
-        subq = select([addresses.c.id, 
-                        addresses.c.user_id, 
+        subq = select([addresses.c.id,
+                        addresses.c.user_id,
                         addresses.c.email_address]).\
                             where(addresses.c.id==7).alias()
         self.assert_compile(
@@ -128,7 +128,7 @@ class UpdateFromCompileTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCom
             "email_address FROM addresses WHERE addresses.id = "
             ":id_1) AS anon_1 WHERE users.id = anon_1.user_id "
             "AND anon_1.email_address = :email_address_1",
-            checkparams={u'email_address_1': 'e1', 
+            checkparams={u'email_address_1': 'e1',
                             u'id_1': 7, 'name': 'newname'}
         )
 
@@ -214,7 +214,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         testing.db.execute(
             addresses.update().\
                 values({
-                        addresses.c.email_address:users.c.name, 
+                        addresses.c.email_address:users.c.name,
                         users.c.name:'ed2'
                 }).\
                 where(users.c.id==addresses.c.user_id).\
@@ -246,14 +246,14 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase, fixtures.Table
     @classmethod
     def define_tables(cls, metadata):
         Table('users', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
               Column('name', String(30), nullable=False),
               Column('some_update', String(30), onupdate="im the update")
         )
 
         Table('addresses', metadata,
-              Column('id', Integer, primary_key=True, 
+              Column('id', Integer, primary_key=True,
                             test_needs_autoincrement=True),
               Column('user_id', None, ForeignKey('users.id')),
               Column('email_address', String(50), nullable=False),
@@ -282,7 +282,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase, fixtures.Table
         ret = testing.db.execute(
             addresses.update().\
                 values({
-                        addresses.c.email_address:users.c.name, 
+                        addresses.c.email_address:users.c.name,
                         users.c.name:'ed2'
                 }).\
                 where(users.c.id==addresses.c.user_id).\
@@ -316,7 +316,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase, fixtures.Table
         ret = testing.db.execute(
             addresses.update().\
                 values({
-                        'email_address':users.c.name, 
+                        'email_address':users.c.name,
                 }).\
                 where(users.c.id==addresses.c.user_id).\
                 where(users.c.name=='ed')
@@ -333,7 +333,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(_UpdateFromTestBase, fixtures.Table
                 (4, 9, "fred@fred.com")
             ]
         )
-        # users table not actually updated, 
+        # users table not actually updated,
         # so no onupdate
         eq_(
             testing.db.execute(

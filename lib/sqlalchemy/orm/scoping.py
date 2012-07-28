@@ -15,10 +15,10 @@ __all__ = ['ScopedSession']
 
 class ScopedSession(object):
     """Provides thread-local management of Sessions.
-    
+
     Typical invocation is via the :func:`.scoped_session`
     function::
-    
+
       Session = scoped_session(sessionmaker())
 
     The internal registry is accessible,
@@ -70,7 +70,7 @@ class ScopedSession(object):
         self.session_factory.configure(**kwargs)
 
     def query_property(self, query_cls=None):
-        """return a class property which produces a `Query` object 
+        """return a class property which produces a `Query` object
         against the class when called.
 
         e.g.::
@@ -121,7 +121,7 @@ def makeprop(name):
     def get(self):
         return getattr(self.registry(), name)
     return property(get, set)
-for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map', 
+for prop in ('bind', 'dirty', 'deleted', 'new', 'identity_map',
                 'is_active', 'autoflush', 'no_autoflush'):
     setattr(ScopedSession, prop, makeprop(prop))
 

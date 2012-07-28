@@ -32,12 +32,12 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
 
         eq_(
             sess.query(pa.name, pa.Engineer.primary_language, pa.Manager.manager_name).\
-                filter(or_(pa.Engineer.primary_language=='java', 
+                filter(or_(pa.Engineer.primary_language=='java',
                                 pa.Manager.manager_name=='dogbert')).\
                 order_by(pa.Engineer.type).all(),
             [
                 (u'dilbert', u'java', None),
-                (u'dogbert', None, u'dogbert'), 
+                (u'dogbert', None, u'dogbert'),
             ]
         )
 
@@ -50,7 +50,7 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
         eq_(
             [(p1.name, type(p1), p2.name, type(p2)) for (p1, p2) in sess.query(
                 pa, pa_alias
-            ).join(pa_alias, 
+            ).join(pa_alias,
                     or_(
                         pa.Engineer.primary_language==\
                         pa_alias.Engineer.primary_language,
@@ -62,9 +62,9 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                     )
                 ).order_by(pa.name, pa_alias.name)],
             [
-                (u'dilbert', Engineer, u'dilbert', Engineer), 
-                (u'dogbert', Manager, u'pointy haired boss', Boss), 
-                (u'vlad', Engineer, u'vlad', Engineer), 
+                (u'dilbert', Engineer, u'dilbert', Engineer),
+                (u'dogbert', Manager, u'pointy haired boss', Boss),
+                (u'vlad', Engineer, u'vlad', Engineer),
                 (u'wally', Engineer, u'wally', Engineer)
             ]
         )
@@ -76,9 +76,9 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
 
         eq_(
             [row for row in sess.query(
-                pa.name, pa.Engineer.primary_language, 
+                pa.name, pa.Engineer.primary_language,
                 pa_alias.name, pa_alias.Engineer.primary_language
-            ).join(pa_alias, 
+            ).join(pa_alias,
                     or_(
                         pa.Engineer.primary_language==\
                         pa_alias.Engineer.primary_language,
@@ -90,9 +90,9 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                     )
                 ).order_by(pa.name, pa_alias.name)],
             [
-                (u'dilbert', u'java', u'dilbert', u'java'), 
-                (u'dogbert', None, u'pointy haired boss', None), 
-                (u'vlad', u'cobol', u'vlad', u'cobol'), 
+                (u'dilbert', u'java', u'dilbert', u'java'),
+                (u'dogbert', None, u'pointy haired boss', None),
+                (u'vlad', u'cobol', u'vlad', u'cobol'),
                 (u'wally', u'c++', u'wally', u'c++')
             ]
         )

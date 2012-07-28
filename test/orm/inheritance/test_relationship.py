@@ -562,7 +562,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.add(c1)
         sess.flush()
 
-        # test that the splicing of the join works here, doesn't break in 
+        # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
         q = sess.query(Child1).options(joinedload('left_child2'))
         self.assert_compile(q.limit(1).with_labels().statement,

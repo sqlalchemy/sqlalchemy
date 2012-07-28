@@ -29,19 +29,19 @@ class Node(Base):
 class Edge(Base):
     __tablename__ = 'edge'
 
-    lower_id = Column(Integer, 
-                        ForeignKey('node.node_id'), 
+    lower_id = Column(Integer,
+                        ForeignKey('node.node_id'),
                         primary_key=True)
 
-    higher_id = Column(Integer, 
-                        ForeignKey('node.node_id'), 
+    higher_id = Column(Integer,
+                        ForeignKey('node.node_id'),
                         primary_key=True)
 
     lower_node = relationship(Node,
-                                primaryjoin=lower_id==Node.node_id, 
+                                primaryjoin=lower_id==Node.node_id,
                                 backref='lower_edges')
     higher_node = relationship(Node,
-                                primaryjoin=higher_id==Node.node_id, 
+                                primaryjoin=higher_id==Node.node_id,
                                 backref='higher_edges')
 
     # here we have lower.node_id <= higher.node_id

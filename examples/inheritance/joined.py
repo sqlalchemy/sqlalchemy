@@ -12,7 +12,7 @@ class Company(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
 
-    employees = relationship("Person", 
+    employees = relationship("Person",
                     backref='company',
                     cascade='all, delete-orphan')
 
@@ -46,7 +46,7 @@ class Engineer(Person):
     def __repr__(self):
         return "Engineer %s, status %s, engineer_name %s, "\
                 "primary_language %s" % \
-                    (self.name, self.status, 
+                    (self.name, self.status,
                         self.engineer_name, self.primary_language)
 
 class Manager(Person):
@@ -70,19 +70,19 @@ session = Session(engine)
 
 c = Company(name='company1', employees=[
     Manager(
-        name='pointy haired boss', 
+        name='pointy haired boss',
         status='AAB',
         manager_name='manager1'),
-    Engineer(name='dilbert', 
+    Engineer(name='dilbert',
         status='BBA',
-        engineer_name='engineer1', 
+        engineer_name='engineer1',
         primary_language='java'),
     Person(name='joesmith'),
-    Engineer(name='wally', 
+    Engineer(name='wally',
             status='CGG',
-            engineer_name='engineer2', 
+            engineer_name='engineer2',
             primary_language='python'),
-    Manager(name='jsmith', 
+    Manager(name='jsmith',
                 status='ABA',
                 manager_name='manager2')
 ])
@@ -109,7 +109,7 @@ c = session.query(Company).get(1)
 for e in c.employees:
     print e
 
-# query using with_polymorphic. 
+# query using with_polymorphic.
 eng_manager = with_polymorphic(Person, [Engineer, Manager], aliased=True)
 print session.query(eng_manager).\
             filter(
@@ -127,7 +127,7 @@ print session.query(Company).\
         eng_manager,
         Company.employees
     ).filter(
-        or_(eng_manager.Engineer.engineer_name=='engineer1', 
+        or_(eng_manager.Engineer.engineer_name=='engineer1',
             eng_manager.Manager.manager_name=='manager2')
     ).all()
 

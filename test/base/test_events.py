@@ -347,7 +347,7 @@ class TestCustomTargets(fixtures.TestBase):
         )
 
         assert_raises(
-            exc.InvalidRequestError, 
+            exc.InvalidRequestError,
             event.listen,
             listen, "event_one", self.Target
         )

@@ -94,7 +94,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
 
 class BuggyDomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
-    """Test Firebird domains (and some other reflection bumps), 
+    """Test Firebird domains (and some other reflection bumps),
     see [ticket:1663] and http://tracker.firebirdsql.org/browse/CORE-356"""
 
     __only_on__ = 'firebird'
@@ -325,7 +325,7 @@ class TypesTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_infinite_float(self):
         metadata = self.metadata
-        t = Table('t', metadata, 
+        t = Table('t', metadata,
             Column('data', Float)
         )
         metadata.create_all()

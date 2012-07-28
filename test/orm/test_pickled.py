@@ -185,7 +185,7 @@ class PickleTest(fixtures.MappedTest):
         sess = Session()
         u1 = User(name='ed', addresses=[
                         Address(
-                            email_address='ed@bar.com', 
+                            email_address='ed@bar.com',
                         )
                 ])
 
@@ -219,7 +219,7 @@ class PickleTest(fixtures.MappedTest):
         sess.expunge_all()
 
         u1 = sess.query(User).\
-                options(sa.orm.defer('name'), 
+                options(sa.orm.defer('name'),
                         sa.orm.defer('addresses.email_address')).\
                         get(u1.id)
         assert 'name' not in u1.__dict__
@@ -305,16 +305,16 @@ class PickleTest(fixtures.MappedTest):
         u2 = pickle.loads(pickle.dumps(u1))
 
     def test_collection_setstate(self):
-        """test a particular cycle that requires CollectionAdapter 
+        """test a particular cycle that requires CollectionAdapter
         to not rely upon InstanceState to deserialize."""
 
         m = MetaData()
-        c1 = Table('c1', m, 
-            Column('parent_id', String, 
+        c1 = Table('c1', m,
+            Column('parent_id', String,
                         ForeignKey('p.id'), primary_key=True)
         )
         c2 = Table('c2', m,
-            Column('parent_id', String, 
+            Column('parent_id', String,
                         ForeignKey('p.id'), primary_key=True)
         )
         p = Table('p', m,
@@ -354,7 +354,7 @@ class PickleTest(fixtures.MappedTest):
 
         mapper(User, users, properties={
             'addresses':relationship(
-                            Address, 
+                            Address,
                             collection_class=
                             attribute_mapped_collection('email_address')
                         )
@@ -365,7 +365,7 @@ class PickleTest(fixtures.MappedTest):
         for loads, dumps in picklers():
             repickled = loads(dumps(u1))
             eq_(u1.addresses, repickled.addresses)
-            eq_(repickled.addresses['email1'], 
+            eq_(repickled.addresses['email1'],
                     Address(email_address="email1"))
 
     def test_column_mapped_collection(self):
@@ -373,7 +373,7 @@ class PickleTest(fixtures.MappedTest):
 
         mapper(User, users, properties={
             'addresses':relationship(
-                            Address, 
+                            Address,
                             collection_class=
                             column_mapped_collection(
                                 addresses.c.email_address)
@@ -388,7 +388,7 @@ class PickleTest(fixtures.MappedTest):
         for loads, dumps in picklers():
             repickled = loads(dumps(u1))
             eq_(u1.addresses, repickled.addresses)
-            eq_(repickled.addresses['email1'], 
+            eq_(repickled.addresses['email1'],
                     Address(email_address="email1"))
 
     def test_composite_column_mapped_collection(self):
@@ -396,7 +396,7 @@ class PickleTest(fixtures.MappedTest):
 
         mapper(User, users, properties={
             'addresses':relationship(
-                            Address, 
+                            Address,
                             collection_class=
                             column_mapped_collection([
                                 addresses.c.id,
@@ -412,7 +412,7 @@ class PickleTest(fixtures.MappedTest):
         for loads, dumps in picklers():
             repickled = loads(dumps(u1))
             eq_(u1.addresses, repickled.addresses)
-            eq_(repickled.addresses[(1, 'email1')], 
+            eq_(repickled.addresses[(1, 'email1')],
                     Address(id=1, email_address="email1"))
 
 class PolymorphicDeferredTest(fixtures.MappedTest):
@@ -536,7 +536,7 @@ class CustomSetupTeardownTest(fixtures.MappedTest):
               test_needs_fk=True
         )
     def test_rebuild_state(self):
-        """not much of a 'test', but illustrate how to 
+        """not much of a 'test', but illustrate how to
         remove instance-level state before pickling.
 
         """

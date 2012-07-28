@@ -10,7 +10,7 @@ from test.lib import *
 
 
 # TODO
-# - add "Database" test, a quick check for join behavior on different 
+# - add "Database" test, a quick check for join behavior on different
 # max versions
 # - full max-specific reflection suite
 # - datetime tests

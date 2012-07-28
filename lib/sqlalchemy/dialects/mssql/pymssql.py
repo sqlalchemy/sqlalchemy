@@ -21,8 +21,8 @@ Sample connect string::
     mssql+pymssql://<username>:<password>@<freetds_name>
 
 Adding "?charset=utf8" or similar will cause pymssql to return
-strings as Python unicode objects.   This can potentially improve 
-performance in some scenarios as decoding of strings is 
+strings as Python unicode objects.   This can potentially improve
+performance in some scenarios as decoding of strings is
 handled natively.
 
 Limitations

@@ -129,11 +129,11 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.flush()
         eq_(canary,
             ['init', 'before_insert',
-             'after_insert', 'expire', 'translate_row', 
+             'after_insert', 'expire', 'translate_row',
              'populate_instance', 'refresh',
              'append_result', 'translate_row', 'create_instance',
              'populate_instance', 'load', 'append_result',
-             'before_update', 'after_update', 'before_delete', 
+             'before_update', 'after_update', 'before_delete',
              'after_delete'])
 
     def test_merge(self):
@@ -226,10 +226,10 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.add(k1)
         sess.flush()
         eq_(canary1,
-            ['init', 
+            ['init',
             'before_insert', 'after_insert'])
         eq_(canary2,
-            ['init', 
+            ['init',
             'before_insert', 'after_insert'])
 
         canary1[:]= []
@@ -468,7 +468,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert my_listener in s.dispatch.before_flush
 
     def test_sessionmaker_listen(self):
-        """test that listen can be applied to individual 
+        """test that listen can be applied to individual
         scoped_session() classes."""
 
         def my_listener_one(*arg, **kw):
@@ -568,16 +568,16 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess, canary = self._listener_fixture(autoflush=False, 
+        sess, canary = self._listener_fixture(autoflush=False,
                             autocommit=True, expire_on_commit=False)
 
         u = User(name='u1')
         sess.add(u)
         sess.flush()
         eq_(
-            canary, 
+            canary,
             [ 'before_attach', 'after_attach', 'before_flush', 'after_begin',
-            'after_flush', 'after_flush_postexec', 
+            'after_flush', 'after_flush_postexec',
             'before_commit', 'after_commit',]
         )
 
@@ -597,10 +597,10 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             sess.commit
         )
         sess.rollback()
-        eq_(canary, ['before_attach', 'after_attach', 'before_commit', 'before_flush', 
-        'after_begin', 'after_flush', 'after_flush_postexec', 
-        'after_commit', 'before_attach', 'after_attach', 'before_commit', 
-        'before_flush', 'after_begin', 'after_rollback', 
+        eq_(canary, ['before_attach', 'after_attach', 'before_commit', 'before_flush',
+        'after_begin', 'after_flush', 'after_flush_postexec',
+        'after_commit', 'before_attach', 'after_attach', 'before_commit',
+        'before_flush', 'after_begin', 'after_rollback',
         'after_soft_rollback', 'after_soft_rollback'])
 
     def test_can_use_session_in_outer_rollback_hook(self):
@@ -760,7 +760,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [
                 User(name='another u1'),
                 User(name='u1')
@@ -768,7 +768,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         )
 
         sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [
                 User(name='another u1'),
                 User(name='u1')
@@ -777,7 +777,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u.name='u2'
         sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [
                 User(name='another u1'),
                 User(name='another u2'),
@@ -787,7 +787,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         sess.delete(u)
         sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [
                 User(name='another u1'),
             ]
@@ -808,14 +808,14 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         u = User(name='u1')
         sess.add(u)
         sess.flush()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [User(name='u1')]
         )
 
         sess.add(User(name='u2'))
         sess.flush()
         sess.expunge_all()
-        eq_(sess.query(User).order_by(User.name).all(), 
+        eq_(sess.query(User).order_by(User.name).all(),
             [
                 User(name='u1 modified'),
                 User(name='u2')
@@ -825,7 +825,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
 
 class MapperExtensionTest(_fixtures.FixtureTest):
-    """Superseded by MapperEventsTest - test backwards 
+    """Superseded by MapperEventsTest - test backwards
     compatibility of MapperExtension."""
 
     run_inserts = None
@@ -977,10 +977,10 @@ class MapperExtensionTest(_fixtures.FixtureTest):
         sess.add(k1)
         sess.flush()
         eq_(methods1,
-            ['instrument_class', 'init_instance', 
+            ['instrument_class', 'init_instance',
             'before_insert', 'after_insert'])
         eq_(methods2,
-            ['instrument_class', 'init_instance', 
+            ['instrument_class', 'init_instance',
             'before_insert', 'after_insert'])
 
         del methods1[:]
@@ -1060,7 +1060,7 @@ class MapperExtensionTest(_fixtures.FixtureTest):
 class AttributeExtensionTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        Table('t1', 
+        Table('t1',
             metadata,
             Column('id', Integer, primary_key=True),
             Column('type', String(40)),
@@ -1113,7 +1113,7 @@ class AttributeExtensionTest(fixtures.MappedTest):
         eq_(b1.data, 'ex1b2')
         eq_(c1.data, 'ex2c2')
 
-        eq_(ext_msg, ["Ex1 'a1'", "Ex1 'b1'", "Ex2 'c1'", 
+        eq_(ext_msg, ["Ex1 'a1'", "Ex1 'b1'", "Ex2 'c1'",
                     "Ex1 'a2'", "Ex1 'b2'", "Ex2 'c2'"])
 
 

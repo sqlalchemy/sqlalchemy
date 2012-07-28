@@ -68,7 +68,7 @@ class MSDialect_zxjdbc(ZxJDBCConnector, MSDialect):
 
     def _get_server_version_info(self, connection):
         return tuple(
-                    int(x) 
+                    int(x)
                     for x in connection.connection.dbversion.split('.')
                 )
 

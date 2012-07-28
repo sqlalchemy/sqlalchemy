@@ -45,7 +45,7 @@ class NestedSetExtension(MapperExtension):
 class Employee(Base):
     __tablename__ = 'personnel'
     __mapper_args__ = {
-        'extension':NestedSetExtension(), 
+        'extension':NestedSetExtension(),
         'batch':False  # allows extension to fire for each instance before going to the next.
     }
 

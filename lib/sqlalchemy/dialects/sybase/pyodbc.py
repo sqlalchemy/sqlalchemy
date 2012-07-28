@@ -17,7 +17,7 @@ Connect strings are of the form::
 Unicode Support
 ---------------
 
-The pyodbc driver currently supports usage of these Sybase types with 
+The pyodbc driver currently supports usage of these Sybase types with
 Unicode or multibyte strings::
 
     CHAR
@@ -43,7 +43,7 @@ from sqlalchemy.util.compat import decimal
 class _SybNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < -6 into floats.
 
-    It's not yet known how to get decimals with many 
+    It's not yet known how to get decimals with many
     significant digits or very large adjusted() into Sybase
     via pyodbc.
 

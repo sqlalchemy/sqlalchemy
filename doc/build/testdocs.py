@@ -20,8 +20,8 @@ handler.setFormatter(logging.Formatter('%(message)s'))
 rootlogger.addHandler(handler)
 
 
-def teststring(s, name, globs=None, verbose=None, report=True, 
-               optionflags=0, extraglobs=None, raise_on_error=False, 
+def teststring(s, name, globs=None, verbose=None, report=True,
+               optionflags=0, extraglobs=None, raise_on_error=False,
                parser=doctest.DocTestParser()):
 
     from doctest import DebugRunner, DocTestRunner, master

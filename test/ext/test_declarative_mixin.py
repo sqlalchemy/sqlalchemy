@@ -540,7 +540,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             pass
 
         eq_(
-            MyModel.__mapper__.polymorphic_on.name, 
+            MyModel.__mapper__.polymorphic_on.name,
             'type_'
         )
         assert MyModel.__mapper__.polymorphic_on.table is not None
@@ -804,8 +804,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
             class Model(Base, ColumnMixin):
 
-                __table__ = Table('foo', Base.metadata, 
-                                Column('data',Integer), 
+                __table__ = Table('foo', Base.metadata,
+                                Column('data',Integer),
                                 Column('id', Integer,primary_key=True))
                 foo = relationship("Dest")
 
@@ -826,8 +826,8 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
             class Model(Base, ColumnMixin):
 
-                __table__ = Table('foo', Base.metadata, 
-                                Column('data',Integer), 
+                __table__ = Table('foo', Base.metadata,
+                                Column('data',Integer),
                                 Column('tada', Integer),
                                 Column('id', Integer,primary_key=True))
                 foo = relationship("Dest")

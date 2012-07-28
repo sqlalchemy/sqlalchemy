@@ -39,7 +39,7 @@ class _PolymorphicTestBase(object):
 
     def test_loads_at_once(self):
         """
-        Test that all objects load from the full query, when 
+        Test that all objects load from the full query, when
         with_polymorphic is used.
         """
 
@@ -50,7 +50,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, count)
 
     def test_primary_eager_aliasing_one(self):
-        # For both joinedload() and subqueryload(), if the original q is 
+        # For both joinedload() and subqueryload(), if the original q is
         # not loading the subclass table, the joinedload doesn't happen.
 
         sess = create_session()
@@ -89,7 +89,7 @@ class _PolymorphicTestBase(object):
 
     def test_get_one(self):
         """
-        For all mappers, ensure the primary key has been calculated as 
+        For all mappers, ensure the primary key has been calculated as
         just the "person_id" column.
         """
         sess = create_session()
@@ -405,7 +405,7 @@ class _PolymorphicTestBase(object):
     def test_join_from_columns_or_subclass_six(self):
         sess = create_session()
         if self.select_type == '':
-            # this now raises, due to [ticket:1892].  Manager.person_id 
+            # this now raises, due to [ticket:1892].  Manager.person_id
             # is now the "person_id" column on Manager. SQL is incorrect.
             assert_raises(
                 sa_exc.DBAPIError,
@@ -414,8 +414,8 @@ class _PolymorphicTestBase(object):
                           Manager.person_id == paperwork.c.person_id)
                     .order_by(Person.name).all)
         elif self.select_type == 'Unions':
-            # with the union, not something anyone would really be using 
-            # here, it joins to the full result set.  This is 0.6's 
+            # with the union, not something anyone would really be using
+            # here, it joins to the full result set.  This is 0.6's
             # behavior and is more or less wrong.
             expected = [
                 (u'dilbert',),
@@ -432,7 +432,7 @@ class _PolymorphicTestBase(object):
                     .order_by(Person.name).all(),
                 expected)
         else:
-            # when a join is present and managers.person_id is available, 
+            # when a join is present and managers.person_id is available,
             # you get the managers.
             expected = [
                 (u'dogbert',),
@@ -501,7 +501,7 @@ class _PolymorphicTestBase(object):
     # need it anymore.
     def test_polymorphic_option(self):
         """
-        Test that polymorphic loading sets state.load_path with its 
+        Test that polymorphic loading sets state.load_path with its
         actual mapper on a subclass, and not the superclass mapper.
 
         This only works for non-aliased mappers.
@@ -540,7 +540,7 @@ class _PolymorphicTestBase(object):
 
     def test_expire(self):
         """
-        Test that individual column refresh doesn't get tripped up by 
+        Test that individual column refresh doesn't get tripped up by
         the select_table mapper.
         """
 
@@ -596,7 +596,7 @@ class _PolymorphicTestBase(object):
     def test_with_polymorphic_five(self):
         sess = create_session()
         def go():
-            # limit the polymorphic join down to just "Person", 
+            # limit the polymorphic join down to just "Person",
             # overriding select_table
             eq_(sess.query(Person)
                     .with_polymorphic(Person).all(),
@@ -615,7 +615,7 @@ class _PolymorphicTestBase(object):
 
     def test_with_polymorphic_seven(self):
         sess = create_session()
-        # compare to entities without related collections to prevent 
+        # compare to entities without related collections to prevent
         # additional lazy SQL from firing on loaded entities
         eq_(sess.query(Person).with_polymorphic('*').all(),
             self._emps_wo_relationships_fixture())
@@ -673,8 +673,8 @@ class _PolymorphicTestBase(object):
 
         # query one is company->Person/Engineer->Machines
         # query two is Person/Engineer subq
-        # query three is Machines subq 
-        # (however this test can't tell if the Q was a 
+        # query three is Machines subq
+        # (however this test can't tell if the Q was a
         # lazyload or subqload ...)
         # query four is managers + boss for row #3
         # query five is managers for row #4
@@ -940,8 +940,8 @@ class _PolymorphicTestBase(object):
                 .filter(Engineer.engineer_name == 'vlad').one(),
             c2)
 
-        # same, using explicit join condition.  Query.join() must 
-        # adapt the on clause here to match the subquery wrapped around 
+        # same, using explicit join condition.  Query.join() must
+        # adapt the on clause here to match the subquery wrapped around
         # "people join engineers".
         eq_(sess.query(Company)
                 .join(Engineer, Company.company_id == Engineer.company_id)
@@ -984,10 +984,10 @@ class _PolymorphicTestBase(object):
             expected)
 
     def test_nesting_queries(self):
-        # query.statement places a flag "no_adapt" on the returned 
-        # statement.  This prevents the polymorphic adaptation in the 
-        # second "filter" from hitting it, which would pollute the 
-        # subquery and usually results in recursion overflow errors 
+        # query.statement places a flag "no_adapt" on the returned
+        # statement.  This prevents the polymorphic adaptation in the
+        # second "filter" from hitting it, which would pollute the
+        # subquery and usually results in recursion overflow errors
         # within the adaption.
         sess = create_session()
         subq = (sess.query(engineers.c.person_id)
@@ -1159,8 +1159,8 @@ class _PolymorphicTestBase(object):
 
     #def test_mixed_entities(self):
     #    sess = create_session()
-        # TODO: I think raise error on these for now.  different 
-        # inheritance/loading schemes have different results here, 
+        # TODO: I think raise error on these for now.  different
+        # inheritance/loading schemes have different results here,
         # all incorrect
         #
         # eq_(
@@ -1170,8 +1170,8 @@ class _PolymorphicTestBase(object):
     #def test_mixed_entities(self):
     #    sess = create_session()
         # eq_(sess.query(
-        #             Person.name, 
-        #             Engineer.primary_language, 
+        #             Person.name,
+        #             Engineer.primary_language,
         #             Manager.manager_name)
         #          .all(),
         #     [])

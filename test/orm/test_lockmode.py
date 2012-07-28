@@ -43,8 +43,8 @@ class LockModeTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User = self.classes.User
         sess = Session()
         assert_raises_message(
-            Exception, "Unknown lockmode 'unknown_mode'", 
-            self.assert_compile, 
+            Exception, "Unknown lockmode 'unknown_mode'",
+            self.assert_compile,
             sess.query(User.id).with_lockmode('unknown_mode'), None,
             dialect=default.DefaultDialect()
         )

@@ -70,7 +70,7 @@ class PyODBCConnector(Connector):
                 if 'port' in keys and not 'port' in query:
                     port = ',%d' % int(keys.pop('port'))
 
-                connectors = ["DRIVER={%s}" % 
+                connectors = ["DRIVER={%s}" %
                                 keys.pop('driver', self.pyodbc_driver_name),
                               'Server=%s%s' % (keys.pop('host', ''), port),
                               'Database=%s' % keys.pop('database', '') ]
@@ -83,9 +83,9 @@ class PyODBCConnector(Connector):
                 connectors.append("Trusted_Connection=Yes")
 
             # if set to 'Yes', the ODBC layer will try to automagically
-            # convert textual data from your database encoding to your 
-            # client encoding.  This should obviously be set to 'No' if 
-            # you query a cp1253 encoded database from a latin1 client... 
+            # convert textual data from your database encoding to your
+            # client encoding.  This should obviously be set to 'No' if
+            # you query a cp1253 encoded database from a latin1 client...
             if 'odbc_autotranslate' in keys:
                 connectors.append("AutoTranslate=%s" %
                                     keys.pop("odbc_autotranslate"))
@@ -126,7 +126,7 @@ class PyODBCConnector(Connector):
         if self._user_supports_unicode_binds is not None:
             self.supports_unicode_binds = self._user_supports_unicode_binds
         else:
-            self.supports_unicode_binds = (not self.freetds or 
+            self.supports_unicode_binds = (not self.freetds or
                                             self.freetds_driver_version >= '0.91'
                                             ) and not self.easysoft
         # end Py2K

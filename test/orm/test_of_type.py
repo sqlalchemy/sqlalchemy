@@ -271,7 +271,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
             cls.classes.SubJob
         return [
             ParentThing(
-                container=DataContainer(name="d1", 
+                container=DataContainer(name="d1",
                     jobs=[
                         SubJob(attr="s1"),
                         SubJob(attr="s2")
@@ -385,7 +385,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         q = s.query(ParentThing).\
                         options(
                             subqueryload_all(
-                                ParentThing.container, 
+                                ParentThing.container,
                                 DataContainer.jobs.of_type(SubJob)
                         ))
         def go():
@@ -405,7 +405,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
         q = s.query(ParentThing).\
                         options(
                             joinedload_all(
-                                ParentThing.container, 
+                                ParentThing.container,
                                 DataContainer.jobs.of_type(SubJob)
                         ))
         def go():
@@ -430,7 +430,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                             DataContainer.jobs.of_type(Job_P).\
                                 any(Job_P.id < Job.id)
                         )
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT job.id AS job_id, job.type AS job_type, "
             "job.container_id "
             "AS job_container_id "
@@ -459,7 +459,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
                             DataContainer.jobs.of_type(Job_A).\
                                 any(and_(Job_A.id < Job.id, Job_A.type=='fred'))
                         )
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT job.id AS job_id, job.type AS job_type, "
             "job.container_id AS job_container_id "
             "FROM data_container JOIN job ON data_container.id = job.container_id "
@@ -480,7 +480,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         s = Session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
             "FROM data_container JOIN (SELECT job.id AS job_id, "
@@ -498,12 +498,12 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         s = Session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(SubJob))
-        # note the of_type() here renders JOIN for the Job->SubJob. 
+        # note the of_type() here renders JOIN for the Job->SubJob.
         # this is because it's using the SubJob mapper directly within
         # query.join().  When we do joinedload() etc., we're instead
         # doing a with_polymorphic(), and there we need the join to be
         # outer by default.
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
             "FROM data_container JOIN (SELECT job.id AS job_id, "
@@ -524,7 +524,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         s = Session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
             "FROM data_container JOIN (SELECT job.id AS job_id, "
@@ -544,7 +544,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         s = Session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_A))
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
             "FROM data_container JOIN job AS job_1 "
@@ -561,7 +561,7 @@ class SubclassRelationshipTest(testing.AssertsCompiledSQL, fixtures.DeclarativeM
 
         s = Session()
         q = s.query(DataContainer).join(Job_P, DataContainer.jobs)
-        self.assert_compile(q, 
+        self.assert_compile(q,
             "SELECT data_container.id AS data_container_id, "
             "data_container.name AS data_container_name "
             "FROM data_container JOIN (SELECT job.id AS job_id, "

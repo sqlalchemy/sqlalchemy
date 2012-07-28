@@ -1,6 +1,6 @@
 """Testing environment and utilities.
 
-This package contains base classes and routines used by 
+This package contains base classes and routines used by
 the unit tests.   Tests are based on Nose and bootstrapped
 by noseplugin.NoseSQLAlchemy.
 

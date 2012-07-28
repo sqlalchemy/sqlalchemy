@@ -1567,7 +1567,7 @@ class DictHelpersTest(fixtures.MappedTest):
             ((Foo.id, Foo.bar_id), Foo(id=3, bar_id=12), (3, 12))
         ):
             eq_(
-                collections.column_mapped_collection(spec)().keyfunc(obj), 
+                collections.column_mapped_collection(spec)().keyfunc(obj),
                 expected
             )
 
@@ -1622,11 +1622,11 @@ class ColumnMappedWSerialize(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table('foo', metadata, 
+        Table('foo', metadata,
             Column('id', Integer(), primary_key=True),
             Column('b', String(128))
         )
-        Table('bar', metadata, 
+        Table('bar', metadata,
             Column('id', Integer(), primary_key=True),
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bat_id', Integer),
@@ -1673,7 +1673,7 @@ class ColumnMappedWSerialize(fixtures.MappedTest):
         for spec, obj, expected in specs:
             coll = collections.column_mapped_collection(spec)()
             eq_(
-                coll.keyfunc(obj), 
+                coll.keyfunc(obj),
                 expected
             )
             # ensure we do the right thing with __reduce__

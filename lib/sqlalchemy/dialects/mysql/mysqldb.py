@@ -26,20 +26,20 @@ MySQLdb will accommodate Python ``unicode`` objects if the
 ``use_unicode=1`` parameter, or the ``charset`` parameter,
 is passed as a connection argument.
 
-Without this setting, many MySQL server installations default to 
+Without this setting, many MySQL server installations default to
 a ``latin1`` encoding for client connections, which has the effect
-of all data being converted into ``latin1``, even if you have ``utf8`` 
+of all data being converted into ``latin1``, even if you have ``utf8``
 or another character set configured on your tables
 and columns.  With versions 4.1 and higher, you can change the connection
 character set either through server configuration or by including the
 ``charset`` parameter.  The ``charset``
-parameter as received by MySQL-Python also has the side-effect of 
+parameter as received by MySQL-Python also has the side-effect of
 enabling ``use_unicode=1``::
 
     # set client encoding to utf8; all strings come back as unicode
     create_engine('mysql+mysqldb:///mydb?charset=utf8')
 
-Manually configuring ``use_unicode=0`` will cause MySQL-python to 
+Manually configuring ``use_unicode=0`` will cause MySQL-python to
 return encoded strings::
 
     # set client encoding to utf8; all strings come back as utf8 str
@@ -57,9 +57,9 @@ It is strongly advised to use the latest version of MySQL-Python.
 from sqlalchemy.dialects.mysql.base import (MySQLDialect, MySQLExecutionContext,
                                             MySQLCompiler, MySQLIdentifierPreparer)
 from sqlalchemy.connectors.mysqldb import (
-                        MySQLDBExecutionContext, 
-                        MySQLDBCompiler, 
-                        MySQLDBIdentifierPreparer, 
+                        MySQLDBExecutionContext,
+                        MySQLDBCompiler,
+                        MySQLDBIdentifierPreparer,
                         MySQLDBConnector
                     )
 

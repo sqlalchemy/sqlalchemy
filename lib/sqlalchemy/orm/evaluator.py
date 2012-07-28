@@ -11,10 +11,10 @@ class UnevaluatableError(Exception):
     pass
 
 _straight_ops = set(getattr(operators, op)
-                    for op in ('add', 'mul', 'sub', 
+                    for op in ('add', 'mul', 'sub',
                                 # Py2K
                                 'div',
-                                # end Py2K 
+                                # end Py2K
                                 'mod', 'truediv',
                                'lt', 'le', 'ne', 'gt', 'ge', 'eq'))
 
@@ -71,13 +71,13 @@ class EvaluatorCompiler(object):
                 return True
         else:
             raise UnevaluatableError(
-                "Cannot evaluate clauselist with operator %s" % 
+                "Cannot evaluate clauselist with operator %s" %
                 clause.operator)
 
         return evaluate
 
     def visit_binary(self, clause):
-        eval_left,eval_right = map(self.process, 
+        eval_left,eval_right = map(self.process,
                                 [clause.left, clause.right])
         operator = clause.operator
         if operator is operators.is_:
@@ -95,7 +95,7 @@ class EvaluatorCompiler(object):
                 return operator(eval_left(obj), eval_right(obj))
         else:
             raise UnevaluatableError(
-                    "Cannot evaluate %s with operator %s" % 
+                    "Cannot evaluate %s with operator %s" %
                     (type(clause).__name__, clause.operator))
         return evaluate
 
@@ -109,7 +109,7 @@ class EvaluatorCompiler(object):
                 return not value
             return evaluate
         raise UnevaluatableError(
-                    "Cannot evaluate %s with operator %s" % 
+                    "Cannot evaluate %s with operator %s" %
                     (type(clause).__name__, clause.operator))
 
     def visit_bindparam(self, clause):

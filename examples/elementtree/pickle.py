@@ -1,6 +1,6 @@
 """illustrates a quick and dirty way to persist an XML document expressed using ElementTree and pickle.
 
-This is a trivial example using PickleType to marshal/unmarshal the ElementTree 
+This is a trivial example using PickleType to marshal/unmarshal the ElementTree
 document into a binary column.  Compare to explicit.py which stores the individual components of the ElementTree
 structure in distinct rows using two additional mapped entities.  Note that the usage of both
 styles of persistence are identical, as is the structure of the main Document class.

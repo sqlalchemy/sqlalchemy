@@ -13,8 +13,8 @@ class FoundRowsTest(fixtures.TestBase, AssertsExecutionResults):
         metadata = MetaData(testing.db)
 
         employees_table = Table('employees', metadata,
-            Column('employee_id', Integer, 
-                        Sequence('employee_id_seq', optional=True), 
+            Column('employee_id', Integer,
+                        Sequence('employee_id_seq', optional=True),
                         primary_key=True),
             Column('name', String(50)),
             Column('department', String(1)),

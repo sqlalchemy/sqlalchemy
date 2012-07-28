@@ -268,7 +268,7 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
         """Run a setup method, framing the operation with a Base class
         that will catch new subclasses to be established within
         the "classes" registry.
-        
+
         """
         cls_registry = cls.classes
         class FindFixture(type):
@@ -289,7 +289,7 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
 
     def _teardown_each_mappers(self):
         # some tests create mappers in the test bodies
-        # and will define setup_mappers as None - 
+        # and will define setup_mappers as None -
         # clear mappers in any case
         if self.run_setup_mappers != 'once':
             sa.orm.clear_mappers()
@@ -328,7 +328,7 @@ class DeclarativeMappedTest(MappedTest):
                         cls, classname, bases, dict_)
         class DeclarativeBasic(object):
             __table_cls__ = schema.Table
-        _DeclBase = declarative_base(metadata=cls.declarative_meta, 
+        _DeclBase = declarative_base(metadata=cls.declarative_meta,
                             metaclass=FindFixtureDeclarative,
                             cls=DeclarativeBasic)
         cls.DeclarativeBasic = _DeclBase

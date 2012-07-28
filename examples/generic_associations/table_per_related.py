@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, relationship
 class Base(object):
     """Base class which provides automated table name
     and surrogate primary key column.
-    
+
     """
     @declared_attr
     def __tablename__(cls):
@@ -26,13 +26,13 @@ class Base(object):
 Base = declarative_base(cls=Base)
 
 class Address(object):
-    """Define columns that will be present in each 
+    """Define columns that will be present in each
     'Address' table.
-    
+
     This is a declarative mixin, so additional mapped
     attributes beyond simple columns specified here
     should be set up using @declared_attr.
-    
+
     """
     street = Column(String)
     city = Column(String)
@@ -40,13 +40,13 @@ class Address(object):
 
     def __repr__(self):
         return "%s(street=%r, city=%r, zip=%r)" % \
-            (self.__class__.__name__, self.street, 
+            (self.__class__.__name__, self.street,
             self.city, self.zip)
 
 class HasAddresses(object):
     """HasAddresses mixin, creates a new Address class
     for each parent.
-    
+
     """
     @declared_attr
     def addresses(cls):
@@ -54,9 +54,9 @@ class HasAddresses(object):
             "%sAddress" % cls.__name__,
             (Address, Base,),
             dict(
-                __tablename__ = "%s_address" % 
+                __tablename__ = "%s_address" %
                             cls.__tablename__,
-                parent_id = Column(Integer, 
+                parent_id = Column(Integer,
                     ForeignKey("%s.id" % cls.__tablename__)),
                 parent = relationship(cls)
             )
@@ -76,7 +76,7 @@ session = Session(engine)
 
 session.add_all([
     Customer(
-        name='customer 1', 
+        name='customer 1',
         addresses=[
             Customer.Address(
                     street='123 anywhere street',

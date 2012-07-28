@@ -9,7 +9,7 @@ from test.lib import fixtures
 from test.lib.testing import eq_
 
 class TestDescriptor(descriptor_props.DescriptorProperty):
-    def __init__(self, cls, key, descriptor=None, doc=None, 
+    def __init__(self, cls, key, descriptor=None, doc=None,
             comparator_factory = None):
         self.parent = cls.__mapper__
         self.key = key

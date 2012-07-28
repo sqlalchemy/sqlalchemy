@@ -3,7 +3,7 @@
 The association object pattern is a form of many-to-many which
 associates additional data with each association between parent/child.
 
-The example illustrates an "order", referencing a collection 
+The example illustrates an "order", referencing a collection
 of "items", with a particular price paid associated with each "item".
 
 """
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     # query the order, print items
     order = session.query(Order).filter_by(customer_name='john smith').one()
-    print [(order_item.item.description, order_item.price) 
+    print [(order_item.item.description, order_item.price)
            for order_item in order.order_items]
 
     # print customers who bought 'MySQL Crowbar' on sale

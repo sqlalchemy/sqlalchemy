@@ -12,7 +12,7 @@ from beaker import cache, container
 import collections
 
 class ScopedSessionNamespace(container.MemoryNamespaceManager):
-    """A Beaker cache type which will cache objects locally on 
+    """A Beaker cache type which will cache objects locally on
     the current session.
 
     When used with the query_cache system, the effect is that the objects
@@ -86,10 +86,10 @@ if __name__ == '__main__':
 
     # identity is preserved - person10 is the *same* object that's
     # ultimately inside the cache.   So it is safe to manipulate
-    # the not-queried-for attributes of objects when using such a 
-    # cache without the need to invalidate - however, any change 
-    # that would change the results of a cached query, such as 
-    # inserts, deletes, or modification to attributes that are 
+    # the not-queried-for attributes of objects when using such a
+    # cache without the need to invalidate - however, any change
+    # that would change the results of a cached query, such as
+    # inserts, deletes, or modification to attributes that are
     # part of query criterion, still require careful invalidation.
     from caching_query import _get_cache_parameters
     cache, key = _get_cache_parameters(q)

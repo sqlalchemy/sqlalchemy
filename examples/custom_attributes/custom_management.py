@@ -1,10 +1,10 @@
 """Illustrates customized class instrumentation, using
 the :mod:`sqlalchemy.ext.instrumentation` extension package.
 
-In this example, mapped classes are modified to 
+In this example, mapped classes are modified to
 store their state in a dictionary attached to an attribute
 named "_goofy_dict", instead of using __dict__.
-this example illustrates how to replace SQLAlchemy's class 
+this example illustrates how to replace SQLAlchemy's class
 descriptors with a user-defined system.
 
 
@@ -66,12 +66,12 @@ class MyClass(object):
 if __name__ == '__main__':
     meta = MetaData(create_engine('sqlite://'))
 
-    table1 = Table('table1', meta, 
-                    Column('id', Integer, primary_key=True), 
+    table1 = Table('table1', meta,
+                    Column('id', Integer, primary_key=True),
                     Column('name', Text))
-    table2 = Table('table2', meta, 
-                    Column('id', Integer, primary_key=True), 
-                    Column('name', Text), 
+    table2 = Table('table2', meta,
+                    Column('id', Integer, primary_key=True),
+                    Column('name', Text),
                     Column('t1id', Integer, ForeignKey('table1.id')))
     meta.create_all()
 

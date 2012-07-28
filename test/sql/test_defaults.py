@@ -305,7 +305,7 @@ class DefaultTest(fixtures.TestBase):
 
     def test_no_embed_in_sql(self):
         """Using a DefaultGenerator, Sequence, DefaultClause
-        in the columns, where clause of a select, or in the values 
+        in the columns, where clause of a select, or in the values
         clause of insert, update, raises an informative error"""
 
         for const in (
@@ -330,7 +330,7 @@ class DefaultTest(fixtures.TestBase):
             )
 
     def test_missing_many_param(self):
-        assert_raises_message(exc.StatementError, 
+        assert_raises_message(exc.StatementError,
             "A value is required for bind parameter 'col7', in parameter group 1",
             t.insert().execute,
             {'col4':7, 'col7':12, 'col8':19},
@@ -558,8 +558,8 @@ class AutoIncrementTest(fixtures.TablesTest):
             Column('id', Integer(), primary_key=True)
         )
         x = Table('x', m,
-            Column('id', Integer(), 
-                ForeignKey('y.id'), 
+            Column('id', Integer(),
+                ForeignKey('y.id'),
                 autoincrement="ignore_fk", primary_key=True)
         )
         assert x._autoincrement_column is x.c.id
@@ -570,8 +570,8 @@ class AutoIncrementTest(fixtures.TablesTest):
             Column('id', Integer(), primary_key=True)
         )
         x = Table('x', m,
-            Column('id', Integer(), 
-                ForeignKey('y.id'), 
+            Column('id', Integer(),
+                ForeignKey('y.id'),
                 primary_key=True)
         )
         assert x._autoincrement_column is None
@@ -652,7 +652,7 @@ class SequenceExecTest(fixtures.TestBase):
         self._assert_seq_result(s.execute(testing.db))
 
     def test_explicit_optional(self):
-        """test dialect executes a Sequence, returns nextval, whether 
+        """test dialect executes a Sequence, returns nextval, whether
         or not "optional" is set """
 
         s = Sequence("my_sequence", optional=True)
@@ -721,7 +721,7 @@ class SequenceExecTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_inserted_pk_no_returning(self):
-        """test inserted_primary_key contains [None] when 
+        """test inserted_primary_key contains [None] when
         pk_col=next_value(), implicit returning is not used."""
 
         metadata = self.metadata
@@ -740,7 +740,7 @@ class SequenceExecTest(fixtures.TestBase):
     @testing.requires.returning
     @testing.provide_metadata
     def test_inserted_pk_implicit_returning(self):
-        """test inserted_primary_key contains the result when 
+        """test inserted_primary_key contains the result when
         pk_col=next_value(), when implicit returning is used."""
 
         metadata = self.metadata
@@ -762,8 +762,8 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.fails_on('firebird', 'no FB support for start/increment')
     def test_start_increment(self):
         for seq in (
-                Sequence('foo_seq'), 
-                Sequence('foo_seq', start=8), 
+                Sequence('foo_seq'),
+                Sequence('foo_seq', start=8),
                 Sequence('foo_seq', increment=5)):
             seq.create(testing.db)
             try:
@@ -782,11 +782,11 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         return testing.db.dialect.has_sequence(testing.db, name)
 
     def test_nextval_render(self):
-        """test dialect renders the "nextval" construct, 
+        """test dialect renders the "nextval" construct,
         whether or not "optional" is set """
 
         for s in (
-                Sequence("my_seq"), 
+                Sequence("my_seq"),
                 Sequence("my_seq", optional=True)):
             assert str(s.next_value().
                     compile(dialect=testing.db.dialect)) in (
@@ -796,7 +796,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             )
 
     def test_nextval_unsupported(self):
-        """test next_value() used on non-sequence platform 
+        """test next_value() used on non-sequence platform
         raises NotImplementedError."""
 
         s = Sequence("my_seq")
@@ -844,7 +844,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         s1 = Sequence("s1", metadata=metadata)
         s2 = Sequence("s2", metadata=metadata)
         s3 = Sequence("s3")
-        t = Table('t', metadata, 
+        t = Table('t', metadata,
                     Column('c', Integer, s3, primary_key=True))
         assert s3.metadata is metadata
 
@@ -1017,7 +1017,7 @@ class SpecialTypePKTest(fixtures.TestBase):
 class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_string_default_none_on_insert(self):
-        """Test that without implicit returning, we return None for 
+        """Test that without implicit returning, we return None for
         a string server default.
 
         That is, we don't want to attempt to pre-execute "server_default"
@@ -1027,7 +1027,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         """
 
         metadata = self.metadata
-        t = Table('x', metadata, 
+        t = Table('x', metadata,
                 Column('y', String(10), server_default='key_one', primary_key=True),
                 Column('data', String(10)),
                 implicit_returning=False
@@ -1046,7 +1046,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         """With implicit_returning, we get a string PK default back no problem."""
 
         metadata = self.metadata
-        t = Table('x', metadata, 
+        t = Table('x', metadata,
                 Column('y', String(10), server_default='key_one', primary_key=True),
                 Column('data', String(10))
                 )
@@ -1061,8 +1061,8 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_int_default_none_on_insert(self):
         metadata = self.metadata
-        t = Table('x', metadata, 
-                Column('y', Integer, 
+        t = Table('x', metadata,
+                Column('y', Integer,
                         server_default='5', primary_key=True),
                 Column('data', String(10)),
                 implicit_returning=False
@@ -1084,8 +1084,8 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_autoincrement_reflected_from_server_default(self):
         metadata = self.metadata
-        t = Table('x', metadata, 
-                Column('y', Integer, 
+        t = Table('x', metadata,
+                Column('y', Integer,
                         server_default='5', primary_key=True),
                 Column('data', String(10)),
                 implicit_returning=False
@@ -1100,8 +1100,8 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_int_default_none_on_insert_reflected(self):
         metadata = self.metadata
-        t = Table('x', metadata, 
-                Column('y', Integer, 
+        t = Table('x', metadata,
+                Column('y', Integer,
                         server_default='5', primary_key=True),
                 Column('data', String(10)),
                 implicit_returning=False
@@ -1128,8 +1128,8 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_int_default_on_insert_with_returning(self):
         metadata = self.metadata
-        t = Table('x', metadata, 
-                Column('y', Integer, 
+        t = Table('x', metadata,
+                Column('y', Integer,
                         server_default='5', primary_key=True),
                 Column('data', String(10))
                 )

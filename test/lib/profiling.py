@@ -69,12 +69,12 @@ def profiled(target=None, **target_opts):
                 else:
                     stats.print_stats()
 
-                print_callers = target_opts.get('print_callers', 
+                print_callers = target_opts.get('print_callers',
                                                 profile_config['print_callers'])
                 if print_callers:
                     stats.print_callers()
 
-                print_callees = target_opts.get('print_callees', 
+                print_callees = target_opts.get('print_callees',
                                                 profile_config['print_callees'])
                 if print_callees:
                     stats.print_callees()

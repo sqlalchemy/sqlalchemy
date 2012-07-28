@@ -95,7 +95,7 @@ def db_spec(*dbs):
 
 
 def fails_on(dbs, reason):
-    """Mark a test as expected to fail on the specified database 
+    """Mark a test as expected to fail on the specified database
     implementation.
 
     Unlike ``crashes``, tests marked as ``fails_on`` will be run
@@ -425,7 +425,7 @@ def resetwarnings():
     util.warn = util.langhelpers.warn = testing_warn
 
     warnings.filterwarnings('ignore',
-                            category=sa_exc.SAPendingDeprecationWarning) 
+                            category=sa_exc.SAPendingDeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings('error', category=sa_exc.SAWarning)
 
@@ -479,9 +479,9 @@ def _chain_decorators_on(fn, *decorators):
 
 def run_as_contextmanager(ctx, fn, *arg, **kw):
     """Run the given function under the given contextmanager,
-    simulating the behavior of 'with' to support older 
+    simulating the behavior of 'with' to support older
     Python versions.
-    
+
     """
 
     obj = ctx.__enter__()
@@ -576,8 +576,8 @@ class adict(dict):
 
 
 class AssertsCompiledSQL(object):
-    def assert_compile(self, clause, result, params=None, 
-                        checkparams=None, dialect=None, 
+    def assert_compile(self, clause, result, params=None,
+                        checkparams=None, dialect=None,
                         checkpositional=None,
                         use_default_dialect=False,
                         allow_dialect_select=False):

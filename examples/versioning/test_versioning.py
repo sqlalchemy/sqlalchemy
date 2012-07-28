@@ -185,8 +185,8 @@ class TestVersioning(TestCase):
         eq_(
             sess.query(BaseClassHistory).order_by(BaseClassHistory.id).all(),
             [
-                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1), 
-                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
+                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1),
+                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1),
                 SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1)
             ]
         )
@@ -196,9 +196,9 @@ class TestVersioning(TestCase):
         eq_(
             sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
             [
-                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1), 
-                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
-                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1), 
+                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1),
+                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1),
+                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1),
                 SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)
             ]
         )
@@ -207,10 +207,10 @@ class TestVersioning(TestCase):
         eq_(
             sess.query(BaseClassHistory).order_by(BaseClassHistory.id, BaseClassHistory.version).all(),
             [
-                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1), 
-                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1), 
-                BaseClassHistory(id=2, name=u'base1mod', type=u'base', version=2), 
-                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1), 
+                SubClassSeparatePkHistory(id=1, name=u'sep1', type=u'sep', version=1),
+                BaseClassHistory(id=2, name=u'base1', type=u'base', version=1),
+                BaseClassHistory(id=2, name=u'base1mod', type=u'base', version=2),
+                SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=1),
                 SubClassSamePkHistory(id=3, name=u'same1', type=u'same', version=2)
             ]
         )

@@ -186,7 +186,7 @@ class Queue:
     def abort(self, context):
         """Issue an 'abort', will force any thread waiting on get()
         to stop waiting and raise SAAbort.
-        
+
         """
         self._sqla_abort_context = context
         if not self.not_full.acquire(False):

@@ -38,7 +38,7 @@ class SybaseExecutionContext_pysybase(SybaseExecutionContext):
     def set_ddl_autocommit(self, dbapi_connection, value):
         if value:
             # call commit() on the Sybase connection directly,
-            # to avoid any side effects of calling a Connection 
+            # to avoid any side effects of calling a Connection
             # transactional method inside of pre_exec()
             dbapi_connection.commit()
 
@@ -83,7 +83,7 @@ class SybaseDialect_pysybase(SybaseDialect):
 
     def _get_server_version_info(self, connection):
         vers = connection.scalar("select @@version_number")
-        # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0), 
+        # i.e. 15500, 15000, 12500 == (15, 5, 0, 0), (15, 0, 0, 0),
         # (12, 5, 0, 0)
         return (vers / 1000, vers % 1000 / 100, vers % 100 / 10, vers % 10)
 

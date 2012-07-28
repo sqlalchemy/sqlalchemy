@@ -1204,7 +1204,7 @@ class IsolationLevelTest(fixtures.TestBase):
         eng = testing_engine(options=dict())
         conn = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(conn.connection), 
+            eng.dialect.get_isolation_level(conn.connection),
             self._default_isolation_level()
         )
 
@@ -1212,13 +1212,13 @@ class IsolationLevelTest(fixtures.TestBase):
                 conn.connection, self._non_default_isolation_level()
             )
         eq_(
-            eng.dialect.get_isolation_level(conn.connection), 
+            eng.dialect.get_isolation_level(conn.connection),
             self._non_default_isolation_level()
         )
 
         eng.dialect.reset_isolation_level(conn.connection)
         eq_(
-            eng.dialect.get_isolation_level(conn.connection), 
+            eng.dialect.get_isolation_level(conn.connection),
             self._default_isolation_level()
         )
 
@@ -1243,17 +1243,17 @@ class IsolationLevelTest(fixtures.TestBase):
     def test_invalid_level(self):
         eng = testing_engine(options=dict(isolation_level='FOO'))
         assert_raises_message(
-            exc.ArgumentError, 
+            exc.ArgumentError,
                 "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s" % 
-                ("FOO", eng.dialect.name, 
+                "Valid isolation levels for %s are %s" %
+                ("FOO", eng.dialect.name,
                 ", ".join(eng.dialect._isolation_lookup)),
             eng.connect)
 
     def test_per_connection(self):
         from sqlalchemy.pool import QueuePool
         eng = testing_engine(options=dict(
-                                poolclass=QueuePool, 
+                                poolclass=QueuePool,
                                 pool_size=2, max_overflow=0))
 
         c1 = eng.connect()
@@ -1292,7 +1292,7 @@ class IsolationLevelTest(fixtures.TestBase):
             r"on Connection.execution_options\(\), or "
             r"per-engine using the isolation_level "
             r"argument to create_engine\(\).",
-            select([1]).execution_options, 
+            select([1]).execution_options,
                     isolation_level=self._non_default_isolation_level()
         )
 
@@ -1305,7 +1305,7 @@ class IsolationLevelTest(fixtures.TestBase):
             r"To set engine-wide isolation level, "
             r"use the isolation_level argument to create_engine\(\).",
             create_engine,
-            testing.db.url, 
+            testing.db.url,
                 execution_options={'isolation_level':
                             self._non_default_isolation_level}
         )

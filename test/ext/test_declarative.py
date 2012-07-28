@@ -279,8 +279,8 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True,
                         test_needs_autoincrement=True)
             email = Column(String(50))
-            user_id = Column(Integer) 
-            user = relationship("User", 
+            user_id = Column(Integer)
+            user = relationship("User",
                 primaryjoin="remote(User.id)==foreign(Address.user_id)"
             )
 
@@ -371,7 +371,7 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column(String(50))
             props = relationship('Prop', secondary='fooschema.user_to_prop',
                          primaryjoin='User.id==fooschema.user_to_prop.c.user_id',
-                         secondaryjoin='fooschema.user_to_prop.c.prop_id==Prop.id', 
+                         secondaryjoin='fooschema.user_to_prop.c.prop_id==Prop.id',
                          backref='users')
 
         class Prop(Base):
@@ -383,7 +383,7 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column(String(50))
 
         user_to_prop = Table('user_to_prop', Base.metadata,
-                     Column('user_id', Integer, ForeignKey('fooschema.users.id')), 
+                     Column('user_id', Integer, ForeignKey('fooschema.users.id')),
                      Column('prop_id',Integer, ForeignKey('fooschema.props.id')),
                      schema='fooschema')
         configure_mappers()
@@ -503,7 +503,7 @@ class DeclarativeTest(DeclarativeTestBase):
         except exc.InvalidRequestError:
             assert sa.util.compat.py32
 
-        # the exception is preserved.  Remains the 
+        # the exception is preserved.  Remains the
         # same through repeated calls.
         for i in range(3):
             assert_raises_message(sa.exc.InvalidRequestError,
@@ -1006,9 +1006,9 @@ class DeclarativeTest(DeclarativeTestBase):
 
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'user'
-            id = Column(Integer, primary_key=True, 
+            id = Column(Integer, primary_key=True,
                             test_needs_autoincrement=True)
-            address = composite(AddressComposite, 
+            address = composite(AddressComposite,
                 Column('street', String(50)),
                 Column('state', String(2)),
             )
@@ -1016,13 +1016,13 @@ class DeclarativeTest(DeclarativeTestBase):
         Base.metadata.create_all()
         sess = Session()
         sess.add(User(
-                address=AddressComposite('123 anywhere street', 
+                address=AddressComposite('123 anywhere street',
                                 'MD')
                 ))
         sess.commit()
         eq_(
-            sess.query(User).all(), 
-            [User(address=AddressComposite('123 anywhere street', 
+            sess.query(User).all(),
+            [User(address=AddressComposite('123 anywhere street',
                                 'MD'))]
         )
 
@@ -1036,23 +1036,23 @@ class DeclarativeTest(DeclarativeTestBase):
 
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = 'user'
-            id = Column(Integer, primary_key=True, 
+            id = Column(Integer, primary_key=True,
                             test_needs_autoincrement=True)
             street = Column(String(50))
             state = Column(String(2))
-            address = composite(AddressComposite, 
+            address = composite(AddressComposite,
                 street, state)
 
         Base.metadata.create_all()
         sess = Session()
         sess.add(User(
-                address=AddressComposite('123 anywhere street', 
+                address=AddressComposite('123 anywhere street',
                                 'MD')
                 ))
         sess.commit()
         eq_(
-            sess.query(User).all(), 
-            [User(address=AddressComposite('123 anywhere street', 
+            sess.query(User).all(),
+            [User(address=AddressComposite('123 anywhere street',
                                 'MD'))]
         )
 

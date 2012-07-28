@@ -37,7 +37,7 @@ def install():
         person = Person(
                     "person %.2d" % i,
                     Address(
-                        street="street %.2d" % i, 
+                        street="street %.2d" % i,
                         postal_code=all_post_codes[random.randint(0, len(all_post_codes) - 1)]
                     )
                 )

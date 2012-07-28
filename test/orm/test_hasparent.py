@@ -19,7 +19,7 @@ class ParentRemovalTest(fixtures.MappedTest):
     """Test that the 'hasparent' flag gets flipped to False
     only if we're sure this object is the real parent.
 
-    In ambiguous cases a stale data exception is 
+    In ambiguous cases a stale data exception is
     raised.
 
     """
@@ -120,8 +120,8 @@ class ParentRemovalTest(fixtures.MappedTest):
 
         u1 = s.query(User).first()
 
-        # primary key change.  now we 
-        # can't rely on state.key as the 
+        # primary key change.  now we
+        # can't rely on state.key as the
         # identifier.
         u1.id = 5
         a1.user_id = 5
@@ -146,7 +146,7 @@ class ParentRemovalTest(fixtures.MappedTest):
     def test_stale_state_negative_child_expired(self):
         """illustrate the current behavior of
         expiration on the child.
-        
+
         there's some uncertainty here in how
         this use case should work.
 

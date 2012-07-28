@@ -4,13 +4,13 @@ from sqlalchemy.orm import mapper, sessionmaker, polymorphic_union
 
 metadata = MetaData()
 
-managers_table = Table('managers', metadata, 
+managers_table = Table('managers', metadata,
     Column('employee_id', Integer, primary_key=True),
     Column('name', String(50)),
     Column('manager_data', String(40))
 )
 
-engineers_table = Table('engineers', metadata, 
+engineers_table = Table('engineers', metadata,
     Column('employee_id', Integer, primary_key=True),
     Column('name', String(50)),
     Column('engineer_info', String(40))

@@ -16,7 +16,7 @@ import sys
 class MSDateTime_adodbapi(MSDateTime):
     def result_processor(self, dialect, coltype):
         def process(value):
-            # adodbapi will return datetimes with empty time 
+            # adodbapi will return datetimes with empty time
             # values as datetime.date() objects.
             # Promote them back to full datetime.datetime()
             if type(value) is datetime.date:
@@ -49,7 +49,7 @@ class MSDialect_adodbapi(MSDialect):
 
         connectors = ["Provider=SQLOLEDB"]
         if 'port' in keys:
-            connectors.append ("Data Source=%s, %s" % 
+            connectors.append ("Data Source=%s, %s" %
                                 (keys.get("host"), keys.get("port")))
         else:
             connectors.append ("Data Source=%s" % keys.get("host"))

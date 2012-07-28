@@ -93,7 +93,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         ealias = aliased(Engineer)
         eq_(
-            session.query(Manager, ealias).all(), 
+            session.query(Manager, ealias).all(),
             [(m1, e1), (m1, e2)]
         )
 
@@ -124,7 +124,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         # TODO: I think raise error on this for now
         # self.assertEquals(
-        #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(), 
+        #    session.query(Employee.name, Manager.manager_data, Engineer.engineer_info).all(),
         #    []
         # )
 
@@ -169,7 +169,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         sess.flush()
 
         eq_(
-            sess.query(Manager).select_from(employees.select().limit(10)).all(), 
+            sess.query(Manager).select_from(employees.select().limit(10)).all(),
             [m1, m2]
         )
 
@@ -389,7 +389,7 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name, employees.name AS employees_name "
             "FROM companies LEFT OUTER JOIN employees ON companies.company_id "
-            "= employees.company_id AND employees.type IN (:type_1)" 
+            "= employees.company_id AND employees.type IN (:type_1)"
         )
 
     def test_outer_join_alias(self):
@@ -450,7 +450,7 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         eq_(c2.engineers, [e1])
 
         sess.expunge_all()
-        eq_(sess.query(Company).order_by(Company.name).all(), 
+        eq_(sess.query(Company).order_by(Company.name).all(),
             [
                 Company(name='c1', engineers=[JuniorEngineer(name='Ed')]),
                 Company(name='c2', engineers=[Engineer(name='Kurt')])
@@ -459,7 +459,7 @@ class RelationshipToSingleTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         # eager load join should limit to only "Engineer"
         sess.expunge_all()
-        eq_(sess.query(Company).options(joinedload('engineers')).order_by(Company.name).all(), 
+        eq_(sess.query(Company).options(joinedload('engineers')).order_by(Company.name).all(),
             [
                 Company(name='c1', engineers=[JuniorEngineer(name='Ed')]),
                 Company(name='c2', engineers=[Engineer(name='Kurt')])

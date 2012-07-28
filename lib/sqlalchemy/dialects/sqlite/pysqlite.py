@@ -12,15 +12,15 @@ module included with the Python distribution.
 Driver
 ------
 
-When using Python 2.5 and above, the built in ``sqlite3`` driver is 
+When using Python 2.5 and above, the built in ``sqlite3`` driver is
 already installed and no additional installation is needed.  Otherwise,
 the ``pysqlite2`` driver needs to be present.  This is the same driver as
 ``sqlite3``, just with a different name.
 
 The ``pysqlite2`` driver will be loaded first, and if not found, ``sqlite3``
 is loaded.  This allows an explicitly installed pysqlite driver to take
-precedence over the built in one.   As with all dialects, a specific 
-DBAPI module may be provided to :func:`~sqlalchemy.create_engine()` to control 
+precedence over the built in one.   As with all dialects, a specific
+DBAPI module may be provided to :func:`~sqlalchemy.create_engine()` to control
 this explicitly::
 
     from sqlite3 import dbapi2 as sqlite
@@ -64,25 +64,25 @@ The sqlite ``:memory:`` identifier is the default if no filepath is present.  Sp
 Compatibility with sqlite3 "native" date and datetime types
 -----------------------------------------------------------
 
-The pysqlite driver includes the sqlite3.PARSE_DECLTYPES and 
+The pysqlite driver includes the sqlite3.PARSE_DECLTYPES and
 sqlite3.PARSE_COLNAMES options, which have the effect of any column
 or expression explicitly cast as "date" or "timestamp" will be converted
-to a Python date or datetime object.  The date and datetime types provided 
-with the pysqlite dialect are not currently compatible with these options, 
-since they render the ISO date/datetime including microseconds, which 
+to a Python date or datetime object.  The date and datetime types provided
+with the pysqlite dialect are not currently compatible with these options,
+since they render the ISO date/datetime including microseconds, which
 pysqlite's driver does not.   Additionally, SQLAlchemy does not at
-this time automatically render the "cast" syntax required for the 
+this time automatically render the "cast" syntax required for the
 freestanding functions "current_timestamp" and "current_date" to return
-datetime/date types natively.   Unfortunately, pysqlite 
+datetime/date types natively.   Unfortunately, pysqlite
 does not provide the standard DBAPI types in ``cursor.description``,
-leaving SQLAlchemy with no way to detect these types on the fly 
+leaving SQLAlchemy with no way to detect these types on the fly
 without expensive per-row type checks.
 
 Keeping in mind that pysqlite's parsing option is not recommended,
-nor should be necessary, for use with SQLAlchemy, usage of PARSE_DECLTYPES 
+nor should be necessary, for use with SQLAlchemy, usage of PARSE_DECLTYPES
 can be forced if one configures "native_datetime=True" on create_engine()::
 
-    engine = create_engine('sqlite://', 
+    engine = create_engine('sqlite://',
                     connect_args={'detect_types': sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES},
                     native_datetime=True
                     )
@@ -99,7 +99,7 @@ Threading/Pooling Behavior
 Pysqlite's default behavior is to prohibit the usage of a single connection
 in more than one thread.   This is controlled by the ``check_same_thread``
 Pysqlite flag.   This default is intended to work with older versions
-of SQLite that did not support multithreaded operation under 
+of SQLite that did not support multithreaded operation under
 various circumstances.  In particular, older SQLite versions
 did not allow a ``:memory:`` database to be used in multiple threads
 under any circumstances.
@@ -109,9 +109,9 @@ SQLAlchemy sets up pooling to work with Pysqlite's default behavior:
 * When a ``:memory:`` SQLite database is specified, the dialect by default will use
   :class:`.SingletonThreadPool`. This pool maintains a single connection per
   thread, so that all access to the engine within the current thread use the
-  same ``:memory:`` database - other threads would access a different 
+  same ``:memory:`` database - other threads would access a different
   ``:memory:`` database.
-* When a file-based database is specified, the dialect will use :class:`.NullPool` 
+* When a file-based database is specified, the dialect will use :class:`.NullPool`
   as the source of connections. This pool closes and discards connections
   which are returned to the pool immediately. SQLite file-based connections
   have extremely low overhead, so pooling is not necessary. The scheme also
@@ -141,7 +141,7 @@ can be passed to Pysqlite as ``False``::
                         connect_args={'check_same_thread':False},
                         poolclass=StaticPool)
 
-Note that using a ``:memory:`` database in multiple threads requires a recent 
+Note that using a ``:memory:`` database in multiple threads requires a recent
 version of SQLite.
 
 Using Temporary Tables with SQLite
@@ -175,8 +175,8 @@ Unicode
 
 The pysqlite driver only returns Python ``unicode`` objects in result sets, never
 plain strings, and accommodates ``unicode`` objects within bound parameter
-values in all cases.   Regardless of the SQLAlchemy string type in use, 
-string-based result values will by Python ``unicode`` in Python 2.  
+values in all cases.   Regardless of the SQLAlchemy string type in use,
+string-based result values will by Python ``unicode`` in Python 2.
 The :class:`.Unicode` type should still be used to indicate those columns that
 require unicode, however, so that non-``unicode`` values passed inadvertently
 will emit a warning.  Pysqlite will emit an error if a non-``unicode`` string
@@ -191,7 +191,7 @@ The pysqlite DBAPI driver has a long-standing bug in which transactional
 state is not begun until the first DML statement, that is INSERT, UPDATE
 or DELETE, is emitted.  A SELECT statement will not cause transactional
 state to begin.   While this mode of usage is fine for typical situations
-and has the advantage that the SQLite database file is not prematurely 
+and has the advantage that the SQLite database file is not prematurely
 locked, it breaks serializable transaction isolation, which requires
 that the database file be locked upon any SQL being emitted.
 

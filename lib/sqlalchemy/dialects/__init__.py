@@ -22,10 +22,10 @@ from .. import util
 
 def _auto_fn(name):
     """default dialect importer.
-    
+
     plugs into the :class:`.PluginLoader`
     as a first-hit system.
-    
+
     """
     if "." in name:
         dialect, driver = name.split(".")

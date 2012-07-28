@@ -12,7 +12,7 @@ module.  The regular dotted module namespace is used, starting at
 'sqlalchemy'.  For class-level logging, the class name is appended.
 
 The "echo" keyword parameter, available on SQLA :class:`.Engine`
-and :class:`.Pool` objects, corresponds to a logger specific to that 
+and :class:`.Pool` objects, corresponds to a logger specific to that
 instance only.
 
 """
@@ -60,7 +60,7 @@ class InstanceLogger(object):
     """A logger adapter (wrapper) for :class:`.Identified` subclasses.
 
     This allows multiple instances (e.g. Engine or Pool instances)
-    to share a logger, but have its verbosity controlled on a 
+    to share a logger, but have its verbosity controlled on a
     per-instance basis.
 
     The basic functionality is to return a logging level
@@ -185,7 +185,7 @@ def instance_logger(instance, echoflag=None):
         logger = logging.getLogger(name)
     else:
         # if a specified echo flag, return an EchoLogger,
-        # which checks the flag, overrides normal log 
+        # which checks the flag, overrides normal log
         # levels by calling logger._log()
         logger = InstanceLogger(echoflag, name)
 

@@ -1,7 +1,7 @@
 """relationship_caching.py
 
-Load a set of Person and Address objects, specifying that 
-related PostalCode, City, Country objects should be pulled from long 
+Load a set of Person and Address objects, specifying that
+related PostalCode, City, Country objects should be pulled from long
 term cache.
 
 """

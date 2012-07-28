@@ -25,8 +25,8 @@ def listen(target, identifier, fn, *args, **kw):
                 list(const.columns)[0].name
             )
         event.listen(
-                UniqueConstraint, 
-                "after_parent_attach", 
+                UniqueConstraint,
+                "after_parent_attach",
                 unique_constraint_name)
 
     """
@@ -90,12 +90,12 @@ class _UnpickleDispatch(object):
             raise AttributeError("No class with a 'dispatch' member present.")
 
 class _Dispatch(object):
-    """Mirror the event listening definitions of an Events class with 
+    """Mirror the event listening definitions of an Events class with
     listener collections.
 
-    Classes which define a "dispatch" member will return a 
-    non-instantiated :class:`._Dispatch` subclass when the member 
-    is accessed at the class level.  When the "dispatch" member is 
+    Classes which define a "dispatch" member will return a
+    non-instantiated :class:`._Dispatch` subclass when the member
+    is accessed at the class level.  When the "dispatch" member is
     accessed at the instance level of its owner, an instance
     of the :class:`._Dispatch` class is returned.
 
@@ -103,7 +103,7 @@ class _Dispatch(object):
     class defined, by the :func:`._create_dispatcher_class` function.
     The original :class:`.Events` classes remain untouched.
     This decouples the construction of :class:`.Events` subclasses from
-    the implementation used by the event internals, and allows 
+    the implementation used by the event internals, and allows
     inspecting tools like Sphinx to work in an unsurprising
     way against the public API.
 
@@ -127,7 +127,7 @@ def _event_descriptors(target):
     return [getattr(target, k) for k in dir(target) if _is_event_name(k)]
 
 class _EventMeta(type):
-    """Intercept new Event subclasses and create 
+    """Intercept new Event subclasses and create
     associated _Dispatch classes."""
 
     def __init__(cls, classname, bases, dict_):
@@ -135,14 +135,14 @@ class _EventMeta(type):
         return type.__init__(cls, classname, bases, dict_)
 
 def _create_dispatcher_class(cls, classname, bases, dict_):
-    """Create a :class:`._Dispatch` class corresponding to an 
+    """Create a :class:`._Dispatch` class corresponding to an
     :class:`.Events` class."""
 
     # there's all kinds of ways to do this,
     # i.e. make a Dispatch class that shares the '_listen' method
     # of the Event class, this is the straight monkeypatch.
     dispatch_base = getattr(cls, 'dispatch', _Dispatch)
-    cls.dispatch = dispatch_cls = type("%sDispatch" % classname, 
+    cls.dispatch = dispatch_cls = type("%sDispatch" % classname,
                                         (dispatch_base, ), {})
     dispatch_cls._listen = cls._listen
     dispatch_cls._clear = cls._clear
@@ -236,8 +236,8 @@ class _DispatchDescriptor(object):
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
                 clslevel.extend([
-                    fn for fn 
-                    in self._clslevel[cls] 
+                    fn for fn
+                    in self._clslevel[cls]
                     if fn not in clslevel
                 ])
 
@@ -278,7 +278,7 @@ class _DispatchDescriptor(object):
 
 class _EmptyListener(object):
     """Serves as a class-level interface to the events
-    served by a _DispatchDescriptor, when there are no 
+    served by a _DispatchDescriptor, when there are no
     instance-level events present.
 
     Is replaced by _ListenerCollection when instance-level
@@ -298,7 +298,7 @@ class _EmptyListener(object):
         """Return an event collection which can be modified.
 
         For _EmptyListener at the instance level of
-        a dispatcher, this generates a new 
+        a dispatcher, this generates a new
         _ListenerCollection, applies it to the instance,
         and returns it.
 
@@ -379,7 +379,7 @@ class _ListenerCollection(object):
     # I'm not entirely thrilled about the overhead here,
     # but this allows class-level listeners to be added
     # at any point.
-    # 
+    #
     # In the absense of instance-level listeners,
     # we stay with the _EmptyListener object when called
     # at the instance level.
@@ -403,8 +403,8 @@ class _ListenerCollection(object):
         existing_listeners = self.listeners
         existing_listener_set = set(existing_listeners)
         self.propagate.update(other.propagate)
-        existing_listeners.extend([l for l 
-                                in other.listeners 
+        existing_listeners.extend([l for l
+                                in other.listeners
                                 if l not in existing_listener_set
                                 and not only_propagate or l in self.propagate
                                 ])
@@ -431,7 +431,7 @@ class _ListenerCollection(object):
         self.propagate.clear()
 
 class dispatcher(object):
-    """Descriptor used by target classes to 
+    """Descriptor used by target classes to
     deliver the _Dispatch class at the class level
     and produce new _Dispatch instances for target
     instances.

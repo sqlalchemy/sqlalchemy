@@ -5,8 +5,8 @@ from sqlalchemy import exc as sa_exceptions
 from test.lib import fixtures
 from test.lib.testing import eq_
 
-# Py3K 
-#StandardError = BaseException 
+# Py3K
+#StandardError = BaseException
 # Py2K
 from exceptions import StandardError, KeyboardInterrupt, SystemExit
 # end Py2K
@@ -54,7 +54,7 @@ class WrapTest(fixtures.TestBase):
     def test_tostring_large_dict(self):
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message'
-                    , 
+                    ,
                 {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h':
                 8, 'i': 9, 'j': 10, 'k': 11,
                 }, OperationalError(), DatabaseError)
@@ -64,8 +64,8 @@ class WrapTest(fixtures.TestBase):
 
     def test_tostring_large_list(self):
         try:
-            raise sa_exceptions.DBAPIError.instance('this is a message', 
-                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,], 
+            raise sa_exceptions.DBAPIError.instance('this is a message',
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,],
                 OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             assert str(exc).startswith("(OperationalError)  'this is a "
@@ -73,9 +73,9 @@ class WrapTest(fixtures.TestBase):
 
     def test_tostring_large_executemany(self):
         try:
-            raise sa_exceptions.DBAPIError.instance('this is a message', 
-                [{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, 
-                {1: 1}, {1:1}, {1: 1}, {1: 1},], 
+            raise sa_exceptions.DBAPIError.instance('this is a message',
+                [{1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1},
+                {1: 1}, {1:1}, {1: 1}, {1: 1},],
                 OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
             eq_(str(exc) ,
@@ -84,7 +84,7 @@ class WrapTest(fixtures.TestBase):
                 "1}, {1: 1}, {1: 1}]")
         try:
             raise sa_exceptions.DBAPIError.instance('this is a message', [
-                {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, 
+                {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1}, {1: 1},
                 {1:1}, {1: 1}, {1: 1}, {1: 1},
                 ], OperationalError(), DatabaseError)
         except sa_exceptions.DBAPIError, exc:
@@ -95,7 +95,7 @@ class WrapTest(fixtures.TestBase):
                 "bound parameter sets ...  {1: 1}, {1: 1}]"
             )
         try:
-            raise sa_exceptions.DBAPIError.instance('this is a message', 
+            raise sa_exceptions.DBAPIError.instance('this is a message',
                 [
                 (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ), (1, ),
                 (1, ),
@@ -127,7 +127,7 @@ class WrapTest(fixtures.TestBase):
 
     def test_db_error_noncompliant_dbapi(self):
         try:
-            raise sa_exceptions.DBAPIError.instance('', [], OutOfSpec(), 
+            raise sa_exceptions.DBAPIError.instance('', [], OutOfSpec(),
                         DatabaseError)
         except sa_exceptions.DBAPIError, e:
             self.assert_(e.__class__ is sa_exceptions.DBAPIError)
