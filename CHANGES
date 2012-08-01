@@ -81,6 +81,12 @@ underneath "0.7.xx".
     contains_eager()
     [ticket:2438] [ticket:1106]
 
+  - [bug] with_polymorphic() produces JOINs
+    in the correct order and with correct inheriting
+    tables in the case of sending multi-level
+    subclasses in an arbitrary order or with
+    intermediary classes missing.  [ticket:1900]
+
   - [feature] The "deferred declarative
     reflection" system has been moved into the
     declarative extension itself, using the

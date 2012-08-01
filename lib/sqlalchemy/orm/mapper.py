@@ -1347,12 +1347,19 @@ class Mapper(_InspectionAttr):
         if spec == '*':
             mappers = list(self.self_and_descendants)
         elif spec:
-            mappers = [_class_to_mapper(m) for m in util.to_list(spec)]
-            for m in mappers:
+            mappers = set()
+            for m in util.to_list(spec):
+                m = _class_to_mapper(m)
                 if not m.isa(self):
                     raise sa_exc.InvalidRequestError(
                                 "%r does not inherit from %r" %
                                 (m, self))
+
+                if selectable is None:
+                    mappers.update(m.iterate_to_root())
+                else:
+                    mappers.add(m)
+            mappers = [m for m in self.self_and_descendants if m in mappers]
         else:
             mappers = []
 

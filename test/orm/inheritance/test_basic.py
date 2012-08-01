@@ -10,6 +10,7 @@ from test.lib import testing, engines
 from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.schema import Table, Column
+from sqlalchemy import inspect
 from sqlalchemy.ext.declarative import declarative_base
 from test.lib.util import gc_collect
 
@@ -73,6 +74,104 @@ class O2MTest(fixtures.MappedTest):
         eq_(compare, result)
         eq_(l[0].parent_foo.data, 'foo #1')
         eq_(l[1].parent_foo.data, 'foo #1')
+
+class PolymorphicResolutionMultiLevel(fixtures.DeclarativeMappedTest,
+                                        testing.AssertsCompiledSQL):
+    run_setup_mappers = 'once'
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+        class A(Base):
+            __tablename__ = 'a'
+            id = Column(Integer, primary_key=True)
+        class B(A):
+            __tablename__ = 'b'
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+        class C(A):
+            __tablename__ = 'c'
+            id = Column(Integer, ForeignKey('a.id'), primary_key=True)
+        class D(B):
+            __tablename__ = 'd'
+            id = Column(Integer, ForeignKey('b.id'), primary_key=True)
+
+    def test_ordered_b_d(self):
+        a_mapper = inspect(self.classes.A)
+        eq_(
+            a_mapper._mappers_from_spec(
+                    [self.classes.B, self.classes.D], None),
+            [a_mapper, inspect(self.classes.B), inspect(self.classes.D)]
+        )
+
+    def test_a(self):
+        a_mapper = inspect(self.classes.A)
+        eq_(
+            a_mapper._mappers_from_spec(
+                    [self.classes.A], None),
+            [a_mapper]
+        )
+
+    def test_b_d_selectable(self):
+        a_mapper = inspect(self.classes.A)
+        spec = [self.classes.D, self.classes.B]
+        eq_(
+            a_mapper._mappers_from_spec(
+                    spec,
+                    self.classes.B.__table__.join(self.classes.D.__table__)
+            ),
+            [inspect(self.classes.B), inspect(self.classes.D)]
+        )
+
+    def test_d_selectable(self):
+        a_mapper = inspect(self.classes.A)
+        spec = [self.classes.D]
+        eq_(
+            a_mapper._mappers_from_spec(
+                    spec,
+                    self.classes.B.__table__.join(self.classes.D.__table__)
+            ),
+            [inspect(self.classes.D)]
+        )
+
+    def test_reverse_d_b(self):
+        a_mapper = inspect(self.classes.A)
+        spec = [self.classes.D, self.classes.B]
+        eq_(
+            a_mapper._mappers_from_spec(
+                    spec, None),
+            [a_mapper, inspect(self.classes.B), inspect(self.classes.D)]
+        )
+        mappers, selectable = a_mapper._with_polymorphic_args(spec=spec)
+        self.assert_compile(selectable,
+            "a LEFT OUTER JOIN b ON a.id = b.id "
+            "LEFT OUTER JOIN d ON b.id = d.id")
+
+    def test_d_b_missing(self):
+        a_mapper = inspect(self.classes.A)
+        spec = [self.classes.D]
+        eq_(
+            a_mapper._mappers_from_spec(
+                    spec, None),
+            [a_mapper, inspect(self.classes.B), inspect(self.classes.D)]
+        )
+        mappers, selectable = a_mapper._with_polymorphic_args(spec=spec)
+        self.assert_compile(selectable,
+            "a LEFT OUTER JOIN b ON a.id = b.id "
+            "LEFT OUTER JOIN d ON b.id = d.id")
+
+    def test_d_c_b(self):
+        a_mapper = inspect(self.classes.A)
+        spec = [self.classes.D, self.classes.C, self.classes.B]
+        ms = a_mapper._mappers_from_spec(spec, None)
+
+        eq_(
+            ms[-1], inspect(self.classes.D)
+        )
+        eq_(ms[0], a_mapper)
+        eq_(
+            set(ms[1:3]), set(a_mapper._inheriting_mappers)
+        )
 
 class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     @classmethod
