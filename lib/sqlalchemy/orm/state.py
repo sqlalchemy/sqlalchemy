@@ -288,13 +288,17 @@ class InstanceState(interfaces._InspectionAttr):
         """Remove the given attribute and any
            callables associated with it."""
 
-        dict_.pop(key, None)
+        old = dict_.pop(key, None)
+        if old is not None and self.manager[key].impl.collection:
+            self.manager[key].impl._invalidate_collection(old)
         self.callables.pop(key, None)
 
     def _expire_attribute_pre_commit(self, dict_, key):
         """a fast expire that can be called by column loaders during a load.
 
         The additional bookkeeping is finished up in commit_all().
+
+        Should only be called for scalar attributes.
 
         This method is actually called a lot with joined-table
         loading, when the second table isn't present in the result.
@@ -307,7 +311,9 @@ class InstanceState(interfaces._InspectionAttr):
         """Remove the given attribute and set the given callable
            as a loader."""
 
-        dict_.pop(key, None)
+        old = dict_.pop(key, None)
+        if old is not None and self.manager[key].impl.collection:
+            self.manager[key].impl._invalidate_collection(old)
         self.callables[key] = callable_
 
     def _expire(self, dict_, modified_set):
@@ -331,7 +337,9 @@ class InstanceState(interfaces._InspectionAttr):
             if impl.accepts_scalar_loader and \
                 (impl.expire_missing or key in dict_):
                 self.callables[key] = self
-            dict_.pop(key, None)
+            old = dict_.pop(key, None)
+            if impl.collection and old is not None:
+                impl._invalidate_collection(old)
 
         self.manager.dispatch.expire(self, None)
 
@@ -342,7 +350,9 @@ class InstanceState(interfaces._InspectionAttr):
             impl = self.manager[key].impl
             if impl.accepts_scalar_loader:
                 self.callables[key] = self
-            dict_.pop(key, None)
+            old = dict_.pop(key, None)
+            if impl.collection and old is not None:
+                impl._invalidate_collection(old)
 
             self.committed_state.pop(key, None)
             if pending:

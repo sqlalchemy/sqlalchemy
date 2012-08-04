@@ -29,6 +29,7 @@ class DescriptorProperty(MapperProperty):
         class _ProxyImpl(object):
             accepts_scalar_loader = False
             expire_missing = True
+            collection = False
 
             def __init__(self, key):
                 self.key = key

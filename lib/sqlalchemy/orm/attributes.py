@@ -569,6 +569,7 @@ class ScalarAttributeImpl(AttributeImpl):
     accepts_scalar_loader = True
     uses_objects = False
     supports_population = True
+    collection = False
 
     def delete(self, state, dict_):
 
@@ -630,6 +631,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
     supports_population = True
+    collection = False
 
     def delete(self, state, dict_):
         old = self.get(state, dict_)
@@ -740,6 +742,7 @@ class CollectionAttributeImpl(AttributeImpl):
     accepts_scalar_loader = False
     uses_objects = True
     supports_population = True
+    collection = True
 
     def __init__(self, class_, key, callable_, dispatch,
                     typecallable=None, trackparent=False, extension=None,
@@ -929,6 +932,10 @@ class CollectionAttributeImpl(AttributeImpl):
 
         collections.bulk_replace(new_values, old_collection, new_collection)
         old_collection.unlink(old)
+
+    def _invalidate_collection(self, collection):
+        adapter = getattr(collection, '_sa_adapter')
+        adapter.invalidated = True
 
     def set_committed_value(self, state, dict_, value):
         """Set an attribute value on the given instance and 'commit' it."""

@@ -196,6 +196,14 @@ underneath "0.7.xx".
     strategies for producing queries with uniquely-
     named columns.  [ticket:1729].
 
+  - [feature] A warning is emitted when a reference
+    to an instrumented collection is no longer
+    associated with the parent class due to
+    expiration/attribute refresh/collection
+    replacement, but an append
+    or remove operation is received on the
+    now-detached collection.  [ticket:2476]
+
   - [removed] Deprecated identifiers removed:
 
     * allow_null_pks mapper() argument

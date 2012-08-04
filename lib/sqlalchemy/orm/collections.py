@@ -580,11 +580,16 @@ class CollectionAdapter(object):
     of custom methods, such as to unwrap Zope security proxies.
 
     """
+    invalidated = False
+
     def __init__(self, attr, owner_state, data):
         self._key = attr.key
         self._data = weakref.ref(data)
         self.owner_state = owner_state
         self.link_to_self(data)
+
+    def _warn_invalidated(self):
+        util.warn("This collection has been invalidated.")
 
     @property
     def data(self):
@@ -712,6 +717,8 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
+            if self.invalidated:
+                self._warn_invalidated()
             return self.attr.fire_append_event(
                                     self.owner_state,
                                     self.owner_state.dict,
@@ -728,6 +735,8 @@ class CollectionAdapter(object):
 
         """
         if initiator is not False and item is not None:
+            if self.invalidated:
+                self._warn_invalidated()
             self.attr.fire_remove_event(
                                     self.owner_state,
                                     self.owner_state.dict,
@@ -740,6 +749,8 @@ class CollectionAdapter(object):
         fire_remove_event().
 
         """
+        if self.invalidated:
+            self._warn_invalidated()
         self.attr.fire_pre_remove_event(
                                     self.owner_state,
                                     self.owner_state.dict,

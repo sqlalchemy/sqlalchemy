@@ -8,7 +8,7 @@ from test.lib.testing import eq_, ne_, assert_raises, \
     assert_raises_message
 from test.lib import fixtures
 from test.lib.util import gc_collect, all_partial_orderings
-from sqlalchemy.util import cmp, jython, topological
+from sqlalchemy.util import jython
 from sqlalchemy import event
 
 # global for pickling tests
@@ -2326,3 +2326,63 @@ class ListenerTest(fixtures.ORMTest):
 
             teardown()
 
+
+class TestUnlink(fixtures.TestBase):
+    def setUp(self):
+        class A(object):
+            pass
+        class B(object):
+            pass
+        self.A = A
+        self.B = B
+        instrumentation.register_class(A)
+        instrumentation.register_class(B)
+        attributes.register_attribute(A, 'bs', uselist=True,
+                useobject=True)
+
+    def test_expired(self):
+        A, B = self.A, self.B
+        a1 = A()
+        coll = a1.bs
+        a1.bs.append(B())
+        state = attributes.instance_state(a1)
+        state._expire(state.dict, set())
+        assert_raises(
+            Warning,
+            coll.append, B()
+        )
+
+    def test_replaced(self):
+        A, B = self.A, self.B
+        a1 = A()
+        coll = a1.bs
+        a1.bs.append(B())
+        a1.bs = []
+        # a bulk replace empties the old collection
+        assert len(coll) == 0
+        coll.append(B())
+        assert len(coll) == 1
+
+    def test_pop_existing(self):
+        A, B = self.A, self.B
+        a1 = A()
+        coll = a1.bs
+        a1.bs.append(B())
+        state = attributes.instance_state(a1)
+        state._reset(state.dict, "bs")
+        assert_raises(
+            Warning,
+            coll.append, B()
+        )
+
+    def test_ad_hoc_lazy(self):
+        A, B = self.A, self.B
+        a1 = A()
+        coll = a1.bs
+        a1.bs.append(B())
+        state = attributes.instance_state(a1)
+        state._set_callable(state.dict, "bs", lambda: B())
+        assert_raises(
+            Warning,
+            coll.append, B()
+        )

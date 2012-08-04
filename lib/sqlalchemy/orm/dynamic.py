@@ -38,6 +38,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     uses_objects = True
     accepts_scalar_loader = False
     supports_population = False
+    collection = False
 
     def __init__(self, class_, key, typecallable,
                      dispatch,
