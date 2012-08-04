@@ -185,6 +185,11 @@ underneath "0.7.xx".
     when dereferenced by a unit test.
     [ticket:2526]
 
+  - [feature] Can now provide class-bound attributes
+    that override columns which are of any
+    non-ORM type, not just descriptors.
+    [ticket:2535]
+
   - [feature] Added with_labels and
     reduce_columns keyword arguments to
     Query.subquery(), to provide two alternate

@@ -1630,18 +1630,12 @@ class Mapper(_InspectionAttr):
 
     def _is_userland_descriptor(self, obj):
         if isinstance(obj, (MapperProperty,
-                            attributes.QueryableAttribute)):
-            return False
-        elif not hasattr(obj, '__get__'):
+                            attributes.QueryableAttribute,
+                            instrumentation.ClassManager,
+                            expression.ColumnElement)):
             return False
         else:
-            obj = util.unbound_method_to_callable(obj)
-            if isinstance(
-                        obj.__get__(None, obj),
-                        attributes.QueryableAttribute
-                    ):
-                return False
-        return True
+            return True
 
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
@@ -1652,8 +1646,8 @@ class Mapper(_InspectionAttr):
 
         """
 
-        # check for descriptors, either local or from
-        # an inherited class
+        # check for class-bound attributes and/or descriptors,
+        # either local or from an inherited class
         if local:
             if self.class_.__dict__.get(assigned_name, None) is not None \
                 and self._is_userland_descriptor(

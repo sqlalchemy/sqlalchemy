@@ -12,7 +12,7 @@ from sqlalchemy.orm import mapper, relationship, backref, \
     column_property, composite, dynamic_loader, \
     comparable_property, Session
 from sqlalchemy.orm.persistence import _sort_states
-from test.lib.testing import eq_, AssertsCompiledSQL
+from test.lib.testing import eq_, AssertsCompiledSQL, is_
 from test.lib import fixtures
 from test.orm import _fixtures
 from test.lib.assertsql import CompiledSQL
@@ -3098,6 +3098,61 @@ class RequirementsTest(fixtures.MappedTest):
         h2.value = "Asdf"
         h2.value = "asdf asdf" # ding
 
+class IsUserlandTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('foo', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('someprop', Integer)
+        )
+
+    def _test(self, value, instancelevel=None):
+        class Foo(object):
+            someprop = value
+
+        m = mapper(Foo, self.tables.foo)
+        eq_(Foo.someprop, value)
+        f1 = Foo()
+        if instancelevel is not None:
+            eq_(f1.someprop, instancelevel)
+        else:
+            eq_(f1.someprop, value)
+        assert self.tables.foo.c.someprop not in m._columntoproperty
+
+    def _test_not(self, value):
+        class Foo(object):
+            someprop = value
+
+        m = mapper(Foo, self.tables.foo)
+        is_(Foo.someprop.property.columns[0], self.tables.foo.c.someprop)
+        assert self.tables.foo.c.someprop in m._columntoproperty
+
+    def test_string(self):
+        self._test("someprop")
+
+    def test_unicode(self):
+        self._test(u"someprop")
+
+    def test_int(self):
+        self._test(5)
+
+    def test_dict(self):
+        self._test({"bar": "bat"})
+
+    def test_set(self):
+        self._test(set([6]))
+
+    def test_column(self):
+        self._test_not(self.tables.foo.c.someprop)
+
+    def test_relationship(self):
+        self._test_not(relationship("bar"))
+
+    def test_descriptor(self):
+        def somefunc(self):
+            return "hi"
+        self._test(property(somefunc), "hi")
+
 class MagicNamesTest(fixtures.MappedTest):
 
     @classmethod
@@ -3157,7 +3212,6 @@ class MagicNamesTest(fixtures.MappedTest):
                       Column(reserved, Integer))
             class T(object):
                 pass
-
             assert_raises_message(
                 KeyError,
                 ('%r: requested attribute name conflicts with '
