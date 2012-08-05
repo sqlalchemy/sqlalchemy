@@ -1033,7 +1033,7 @@ from ..orm.interfaces import MapperProperty
 from ..orm.properties import RelationshipProperty, ColumnProperty, CompositeProperty
 from ..orm.util import _is_mapped_class
 from .. import util, exc
-from ..sql import util as sql_util, expression
+from ..sql import expression
 from .. import event
 from ..orm.util import polymorphic_union, _mapper_or_none
 import weakref
@@ -1070,7 +1070,7 @@ def has_inherited_table(cls):
     mapped table, otherwise return False.
     """
     for class_ in cls.__mro__:
-        if getattr(class_,'__table__',None) is not None:
+        if getattr(class_, '__table__', None) is not None:
             return True
     return False
 
@@ -1106,7 +1106,7 @@ def _as_declarative(cls, classname, dict_):
         if class_mapped:
             parent_columns = base.__table__.c.keys()
 
-        for name,obj in vars(base).items():
+        for name, obj in vars(base).items():
             if name == '__mapper_args__':
                 if not mapper_args_fn and (
                                         not class_mapped or
@@ -1238,7 +1238,7 @@ def _as_declarative(cls, classname, dict_):
             # in multi-column ColumnProperties.
             if key == c.key:
                 del our_stuff[key]
-    declared_columns = sorted(declared_columns, key=lambda c:c._creation_order)
+    declared_columns = sorted(declared_columns, key=lambda c: c._creation_order)
     table = None
 
     if hasattr(cls, '__table_cls__'):
@@ -1353,8 +1353,6 @@ class _MapperConfig(object):
         self.configs[cls] = self
 
     def _prepare_mapper_arguments(self):
-        cls = self.cls
-        table = self.local_table
         properties = self.properties
         if self.mapper_args_fn:
             mapper_args = self.mapper_args_fn()
@@ -1366,7 +1364,7 @@ class _MapperConfig(object):
         for k in ('version_id_col', 'polymorphic_on',):
             if k in mapper_args:
                 v = mapper_args[k]
-                mapper_args[k] = self.column_copies.get(v,v)
+                mapper_args[k] = self.column_copies.get(v, v)
 
         assert 'inherits' not in mapper_args, \
             "Can't specify 'inherits' explicitly with declarative mappings"
@@ -1485,7 +1483,7 @@ def _deferred_relationship(cls, prop):
         from sqlalchemy.orm import foreign, remote
 
         fallback = sqlalchemy.__dict__.copy()
-        fallback.update({'foreign':foreign, 'remote':remote})
+        fallback.update({'foreign': foreign, 'remote': remote})
 
         def access_cls(key):
             if key in cls._decl_class_registry:
@@ -1527,8 +1525,8 @@ def _deferred_relationship(cls, prop):
             key, kwargs = prop.backref
             for attr in ('primaryjoin', 'secondaryjoin', 'secondary',
                          'foreign_keys', 'remote_side', 'order_by'):
-               if attr in kwargs and isinstance(kwargs[attr], basestring):
-                   kwargs[attr] = resolve_arg(kwargs[attr])
+                if attr in kwargs and isinstance(kwargs[attr], basestring):
+                    kwargs[attr] = resolve_arg(kwargs[attr])
 
 
     return prop
@@ -1788,7 +1786,7 @@ class ConcreteBase(object):
 
         mappers = list(m.self_and_descendants)
         pjoin = cls._create_polymorphic_union(mappers)
-        m._set_with_polymorphic(("*",pjoin))
+        m._set_with_polymorphic(("*", pjoin))
         m._set_polymorphic_on(pjoin.c.type)
 
 class AbstractConcreteBase(ConcreteBase):
