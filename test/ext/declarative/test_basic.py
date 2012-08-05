@@ -10,12 +10,15 @@ from sqlalchemy import MetaData, Integer, String, ForeignKey, \
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import relationship, create_session, class_mapper, \
     joinedload, configure_mappers, backref, clear_mappers, \
-    polymorphic_union, deferred, column_property, composite,\
+    deferred, column_property, composite,\
     Session
 from test.lib.testing import eq_
 from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
 from test.lib import fixtures
+from test.lib.util import gc_collect
+
+Base = None
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup(self):
@@ -171,7 +174,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(str(foo), '(no name)')
         eq_(foo.key, None)
         eq_(foo.name, None)
-        decl._undefer_column_name('foo', foo)
+        decl.base._undefer_column_name('foo', foo)
         eq_(str(foo), 'foo')
         eq_(foo.key, 'foo')
         eq_(foo.name, 'foo')
@@ -299,6 +302,25 @@ class DeclarativeTest(DeclarativeTestBase):
             addresses = relationship('Address',
                     primaryjoin='User.id==Address.user_id.prop.columns['
                     '0]')
+
+        class Address(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'addresses'
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey('users.id'))
+
+        configure_mappers()
+        eq_(str(User.addresses.prop.primaryjoin),
+            'users.id = addresses.user_id')
+
+    def test_string_dependency_resolution_module_qualified(self):
+        class User(Base, fixtures.ComparableEntity):
+
+            __tablename__ = 'users'
+            id = Column(Integer, primary_key=True)
+            addresses = relationship('%s.Address' % __name__,
+                    primaryjoin='%s.User.id==%s.Address.user_id.prop.columns['
+                    '0]' % (__name__, __name__))
 
         class Address(Base, fixtures.ComparableEntity):
 
@@ -890,9 +912,9 @@ class DeclarativeTest(DeclarativeTestBase):
             sa.exc.SAWarning,
             r"Regular \(i.e. not __special__\) attribute 'MyBase.somecol' "
             "uses @declared_attr, but owning class "
-            "<class 'test.ext.test_declarative.MyBase'> is "
+            "<class 'test.ext.declarative.test_basic.MyBase'> is "
             "mapped - not applying to subclass <class "
-            "'test.ext.test_declarative.MyClass'>.",
+            "'test.ext.declarative.test_basic.MyClass'>.",
             go
         )
 
@@ -1337,20 +1359,20 @@ class DeclarativeTest(DeclarativeTestBase):
                 )).one()
         eq_(rt, u1)
 
-    @testing.emits_warning(
-        "The classname 'Test' is already in the registry "
-        "of this declarative base, mapped to "
-        "<class 'test.ext.test_declarative.Test'>"
-        )
     def test_duplicate_classes_in_base(self):
 
         class Test(Base):
             __tablename__ = 'a'
             id = Column(Integer, primary_key=True)
 
-        class Test(Base):
-            __tablename__ = 'b'
-            id = Column(Integer, primary_key=True)
+        assert_raises_message(
+            sa.exc.SAWarning,
+            "This declarative base already contains a class with ",
+            lambda: type(Base)("Test", (Base,), dict(
+                __tablename__='b',
+                id=Column(Integer, primary_key=True)
+            ))
+        )
 
 
 

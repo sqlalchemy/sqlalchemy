@@ -185,6 +185,15 @@ underneath "0.7.xx".
     when dereferenced by a unit test.
     [ticket:2526]
 
+  - [feature] Declarative now maintains a registry
+    of classes by string name as well as by full
+    module-qualified name.   Multiple classes with the
+    same name can now be looked up based on a module-qualified
+    string within relationship().   Simple class name
+    lookups where more than one class shares the same
+    name now raises an informative error message.
+    [ticket:2338]
+
   - [feature] Can now provide class-bound attributes
     that override columns which are of any
     non-ORM type, not just descriptors.

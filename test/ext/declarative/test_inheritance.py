@@ -17,6 +17,8 @@ from sqlalchemy.util import classproperty
 from sqlalchemy.ext.declarative import declared_attr, AbstractConcreteBase, ConcreteBase
 from test.lib import fixtures
 
+Base = None
+
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup(self):
         global Base
@@ -792,7 +794,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert_raises_message(sa.exc.ArgumentError,
                               'place __table_args__', go)
 
-    @testing.emits_warning("The classname")
+    @testing.emits_warning("This declarative")
     def test_dupe_name_in_hierarchy(self):
         class A(Base):
            __tablename__ = "a"

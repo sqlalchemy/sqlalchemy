@@ -152,8 +152,10 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 class DeferredReflectBase(DeclarativeReflectionBase):
     def teardown(self):
         super(DeferredReflectBase,self).teardown()
-        from sqlalchemy.ext.declarative import _MapperConfig
+        from sqlalchemy.ext.declarative.base import _MapperConfig
         _MapperConfig.configs.clear()
+
+Base = None
 
 class DeferredReflectPKFKTest(DeferredReflectBase):
     @classmethod
