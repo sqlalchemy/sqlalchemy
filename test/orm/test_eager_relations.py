@@ -2608,19 +2608,20 @@ class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
         Base = cls.DeclarativeBasic
         class PersistentObject(Base):
             __tablename__ = 'persistent'
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True,
+                    test_needs_autoincrement=True)
 
         class Movie(PersistentObject):
             __tablename__ = 'movie'
             id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
             director_id = Column(Integer, ForeignKey('director.id'))
-            title = Column(String)
+            title = Column(String(50))
 
         class Director(PersistentObject):
             __tablename__ = 'director'
             id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
             movies = relationship("Movie", foreign_keys=Movie.director_id)
-            name = Column(String)
+            name = Column(String(50))
 
 
     def test_from_subclass(self):
