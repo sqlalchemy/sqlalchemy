@@ -11,7 +11,7 @@ basic add/delete mutation.
 
 """
 
-from .. import log, util
+from .. import log, util, exc
 from ..sql import operators
 from . import (
     attributes, object_session, util as orm_util, strategies,
@@ -22,7 +22,11 @@ from .query import Query
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
-
+        if not self.uselist:
+            raise exc.InvalidRequestError(
+                    "On relationship %s, 'dynamic' loaders cannot be used with "
+                    "many-to-one/one-to-one relationships and/or "
+                    "uselist=False." % self.parent_property)
         strategies._register_attribute(self,
             mapper,
             useobject=True,

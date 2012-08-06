@@ -213,6 +213,10 @@ underneath "0.7.xx".
     or remove operation is received on the
     now-detached collection.  [ticket:2476]
 
+  - [bug] An error is emitted when uselist=False
+    is combined with a "dynamic" loader.
+    This is a warning in 0.7.9.
+
   - [removed] Deprecated identifiers removed:
 
     * allow_null_pks mapper() argument
@@ -440,6 +444,10 @@ are also present in 0.8.
     column from the polymorphic base would be explicitly
     disabled on subclasses, unless overridden
     explicitly.
+
+  - [bug] A warning is emitted when lazy='dynamic'
+    is combined with uselist=False.  This is an
+    exception raise in 0.8.
 
 - sql
   - [bug] Fixed CTE bug whereby positional
