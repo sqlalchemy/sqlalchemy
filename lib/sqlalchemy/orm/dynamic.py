@@ -12,7 +12,6 @@ basic add/delete mutation.
 """
 
 from sqlalchemy import log, util
-from sqlalchemy import exc as sa_exc
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.sql import operators
 from sqlalchemy.orm import (
@@ -20,12 +19,16 @@ from sqlalchemy.orm import (
     )
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import has_identity
-from sqlalchemy.orm import attributes, collections
+from sqlalchemy.orm import collections
 
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
-
+        if not self.uselist:
+            util.warn(
+                    "On relationship %s, 'dynamic' loaders cannot be used with "
+                    "many-to-one/one-to-one relationships and/or "
+                    "uselist=False." % self.parent_property)
         strategies._register_attribute(self,
             mapper,
             useobject=True,
@@ -63,7 +66,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             return self.query_class(self, state)
 
-    def get_collection(self, state, dict_, user_data=None, 
+    def get_collection(self, state, dict_, user_data=None,
                             passive=attributes.PASSIVE_NO_INITIALIZE):
         if passive is not attributes.PASSIVE_OFF:
             return self._get_collection_history(state,
@@ -97,7 +100,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         if self.key not in state.committed_state:
             state.committed_state[self.key] = CollectionHistory(self, state)
 
-        state.modified_event(dict_, 
+        state.modified_event(dict_,
                                 self,
                                 attributes.NEVER_SET)
 
@@ -107,7 +110,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         return state.committed_state[self.key]
 
     def set(self, state, dict_, value, initiator,
-                        passive=attributes.PASSIVE_OFF, 
+                        passive=attributes.PASSIVE_OFF,
                         check_old=None, pop=False):
         if initiator and initiator.parent_token is self.parent_token:
             return
@@ -144,8 +147,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     def get_all_pending(self, state, dict_):
         c = self._get_collection_history(state, True)
         return [
-                (attributes.instance_state(x), x) 
-                for x in 
+                (attributes.instance_state(x), x)
+                for x in
                 c.added_items + c.unchanged_items + c.deleted_items
             ]
 
@@ -160,12 +163,12 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         else:
             return c
 
-    def append(self, state, dict_, value, initiator, 
+    def append(self, state, dict_, value, initiator,
                             passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_append_event(state, dict_, value, initiator)
 
-    def remove(self, state, dict_, value, initiator, 
+    def remove(self, state, dict_, value, initiator,
                             passive=attributes.PASSIVE_OFF):
         if initiator is not self:
             self.fire_remove_event(state, dict_, value, initiator)
@@ -204,9 +207,9 @@ class AppenderMixin(object):
         mapper = object_mapper(instance)
         prop = mapper._props[self.attr.key]
         self._criterion = prop.compare(
-                            operators.eq, 
-                            instance, 
-                            value_is_parent=True, 
+                            operators.eq,
+                            instance,
+                            value_is_parent=True,
                             alias_secondary=False)
 
         if self.attr.order_by:
@@ -280,12 +283,12 @@ class AppenderMixin(object):
 
     def append(self, item):
         self.attr.append(
-            attributes.instance_state(self.instance), 
+            attributes.instance_state(self.instance),
             attributes.instance_dict(self.instance), item, None)
 
     def remove(self, item):
         self.attr.remove(
-            attributes.instance_state(self.instance), 
+            attributes.instance_state(self.instance),
             attributes.instance_dict(self.instance), item, None)
 
 

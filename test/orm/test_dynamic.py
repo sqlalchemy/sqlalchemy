@@ -1,8 +1,8 @@
 from test.lib.testing import eq_, ne_
 import operator
-from sqlalchemy.orm import dynamic_loader, backref
+from sqlalchemy.orm import dynamic_loader, backref, configure_mappers
 from test.lib import testing
-from sqlalchemy import Integer, String, ForeignKey, desc, select, func
+from sqlalchemy import Integer, String, ForeignKey, desc, select, func, exc
 from test.lib.schema import Table, Column
 from sqlalchemy.orm import mapper, relationship, create_session, Query, attributes
 from sqlalchemy.orm.dynamic import AppenderMixin
@@ -49,10 +49,44 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         u = q.filter(User.id==7).first()
         self.assert_compile(
-            u.addresses.statement, 
+            u.addresses.statement,
             "SELECT addresses.id, addresses.user_id, addresses.email_address FROM "
             "addresses WHERE :param_1 = addresses.user_id",
             use_default_dialect=True
+        )
+
+    def test_no_uselist_false(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+                "addresses": relationship(Address, lazy='dynamic', uselist=False)
+            })
+        assert_raises_message(
+            exc.SAWarning,
+            "On relationship User.addresses, 'dynamic' loaders cannot be "
+            "used with many-to-one/one-to-one relationships and/or "
+            "uselist=False.",
+            configure_mappers
+        )
+
+    def test_no_m2o(self):
+        users, Address, addresses, User = (self.tables.users,
+                                self.classes.Address,
+                                self.tables.addresses,
+                                self.classes.User)
+        mapper(Address, addresses, properties={
+                'user': relationship(User, lazy='dynamic')
+            })
+        mapper(User, users)
+        assert_raises_message(
+            exc.SAWarning,
+            "On relationship Address.user, 'dynamic' loaders cannot be "
+            "used with many-to-one/one-to-one relationships and/or "
+            "uselist=False.",
+            configure_mappers
         )
 
     def test_order_by(self):
@@ -62,13 +96,13 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                                 self.classes.User)
 
         mapper(User, users, properties={
-            'addresses':dynamic_loader(mapper(Address, addresses))
+            'addresses': dynamic_loader(mapper(Address, addresses))
         })
         sess = create_session()
         u = sess.query(User).get(8)
         eq_(
             list(u.addresses.order_by(desc(Address.email_address))),
-             [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'), 
+             [Address(email_address=u'ed@wood.com'), Address(email_address=u'ed@lala.com'),
               Address(email_address=u'ed@bettyboop.com')]
             )
 
@@ -191,7 +225,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert o1 in i1.orders.all()
         assert i1 in o1.items.all()
 
-    @testing.exclude('mysql', 'between', 
+    @testing.exclude('mysql', 'between',
             ((5, 1,49), (5, 1, 52)),
             'https://bugs.launchpad.net/ubuntu/+source/mysql-5.1/+bug/706988')
     def test_association_nonaliased(self):
@@ -202,8 +236,8 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                                 self.classes.Item)
 
         mapper(Order, orders, properties={
-            'items':relationship(Item, secondary=order_items, 
-                                lazy="dynamic", 
+            'items':relationship(Item, secondary=order_items,
+                                lazy="dynamic",
                                 order_by=order_items.c.item_id)
         })
         mapper(Item, items)
@@ -221,7 +255,7 @@ class DynamicTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True
         )
 
-        # filter criterion against the secondary table 
+        # filter criterion against the secondary table
         # works
         eq_(
             o.items.filter(order_items.c.item_id==2).all(),
@@ -488,7 +522,7 @@ class SessionTest(_fixtures.FixtureTest):
         sess.flush()
         sess.commit()
         u1.addresses.append(Address(email_address='foo@bar.com'))
-        eq_(u1.addresses.order_by(Address.id).all(), 
+        eq_(u1.addresses.order_by(Address.id).all(),
                  [Address(email_address='lala@hoho.com'), Address(email_address='foo@bar.com')])
         sess.rollback()
         eq_(u1.addresses.all(), [Address(email_address='lala@hoho.com')])

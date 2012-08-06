@@ -18,6 +18,10 @@ CHANGES
     disabled on subclasses, unless overridden
     explicitly.
 
+  - [bug] A warning is emitted when lazy='dynamic'
+    is combined with uselist=False.  This is an
+    exception raise in 0.8.
+
 - sql
   - [bug] Fixed CTE bug whereby positional
     bound parameters present in the CTEs themselves

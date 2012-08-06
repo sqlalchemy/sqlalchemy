@@ -84,6 +84,12 @@ Note that eager/lazy loading options cannot be used in conjunction dynamic relat
    The :func:`~.orm.dynamic_loader` function is essentially the same
    as :func:`~.orm.relationship` with the ``lazy='dynamic'`` argument specified.
 
+.. warning::
+
+   The "dynamic" loader applies to **collections only**.   It is not valid
+   to use "dynamic" loaders with many-to-one, one-to-one, or uselist=False
+   relationships.   Newer versions of SQLAlchemy emit warnings or exceptions
+   in these cases.
 
 Setting Noload
 ---------------
