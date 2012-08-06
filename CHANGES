@@ -123,6 +123,14 @@ underneath "0.7.xx".
     Both features should be avoided, however.
     [ticket:2372]
 
+  - [bug] Improvements to joined/subquery eager
+    loading dealing with chains of subclass entities
+    sharing a common base, with no specific "join depth"
+    provided.  Will chain out to
+    each subclass mapper individually before detecting
+    a "cycle", rather than considering the base class
+    to be the source of the "cycle".  [ticket:2481]
+
   - [bug] The "passive" flag on Session.is_modified()
     no longer has any effect. is_modified() in
     all cases looks only at local in-memory

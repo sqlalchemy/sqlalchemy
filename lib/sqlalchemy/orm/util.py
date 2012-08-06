@@ -288,7 +288,7 @@ class PathRegistry(object):
         return len(self.path)
 
     def contains_mapper(self, mapper):
-        return mapper.base_mapper in self.reduced_path
+        return mapper in self.path
 
     def contains(self, reg, key):
         return (key, self.reduced_path) in reg._attributes

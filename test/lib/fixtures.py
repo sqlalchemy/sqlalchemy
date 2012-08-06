@@ -305,6 +305,9 @@ class MappedTest(_ORMTest, TablesTest, testing.AssertsExecutionResults):
 class DeclarativeMappedTest(MappedTest):
     declarative_meta = None
 
+    run_setup_classes = 'once'
+    run_setup_mappers = 'once'
+
     @classmethod
     def setup_class(cls):
         if cls.declarative_meta is None:

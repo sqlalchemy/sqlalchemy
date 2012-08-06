@@ -1,7 +1,7 @@
 from test.lib.testing import eq_, is_, is_not_
 from test.lib import testing
 from test.lib.schema import Table, Column
-from sqlalchemy import Integer, String, ForeignKey, bindparam
+from sqlalchemy import Integer, String, ForeignKey, bindparam, inspect
 from sqlalchemy.orm import backref, subqueryload, subqueryload_all, \
     mapper, relationship, clear_mappers, create_session, lazyload, \
     aliased, joinedload, deferred, undefer, eagerload_all,\
@@ -1275,3 +1275,111 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
                 ]
             )
         self.assert_sql_count(testing.db, go, 2)
+
+class CyclicalInheritingEagerTestOne(fixtures.MappedTest):
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table('t1', metadata,
+            Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('c2', String(30)),
+            Column('type', String(30))
+            )
+
+        Table('t2', metadata,
+            Column('c1', Integer, primary_key=True, test_needs_autoincrement=True),
+            Column('c2', String(30)),
+            Column('type', String(30)),
+            Column('t1.id', Integer, ForeignKey('t1.c1')))
+
+    def test_basic(self):
+        t2, t1 = self.tables.t2, self.tables.t1
+
+        class T(object):
+            pass
+
+        class SubT(T):
+            pass
+
+        class T2(object):
+            pass
+
+        class SubT2(T2):
+            pass
+
+        mapper(T, t1, polymorphic_on=t1.c.type, polymorphic_identity='t1')
+        mapper(SubT, None, inherits=T, polymorphic_identity='subt1', properties={
+            't2s': relationship(SubT2, lazy='subquery',
+                    backref=sa.orm.backref('subt', lazy='subquery'))
+        })
+        mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity='t2')
+        mapper(SubT2, None, inherits=T2, polymorphic_identity='subt2')
+
+        # testing a particular endless loop condition in eager load setup
+        create_session().query(SubT).all()
+
+class CyclicalInheritingEagerTestTwo(fixtures.DeclarativeMappedTest,
+                        testing.AssertsCompiledSQL):
+    __dialect__ = 'default'
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+        class PersistentObject(Base):
+            __tablename__ = 'persistent'
+            id = Column(Integer, primary_key=True)
+
+        class Movie(PersistentObject):
+            __tablename__ = 'movie'
+            id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
+            director_id = Column(Integer, ForeignKey('director.id'))
+            title = Column(String)
+
+        class Director(PersistentObject):
+            __tablename__ = 'director'
+            id = Column(Integer, ForeignKey('persistent.id'), primary_key=True)
+            movies = relationship("Movie", foreign_keys=Movie.director_id)
+            name = Column(String)
+
+
+    def test_from_subclass(self):
+        Director = self.classes.Director
+        PersistentObject = self.classes.PersistentObject
+
+
+        s = create_session()
+
+        ctx = s.query(Director).options(subqueryload('*'))._compile_context()
+
+        q = ctx.attributes[('subquery', (inspect(PersistentObject), 'movies'))]
+        self.assert_compile(q,
+            "SELECT anon_1.movie_id AS anon_1_movie_id, "
+            "anon_1.persistent_id AS anon_1_persistent_id, "
+            "anon_1.movie_director_id AS anon_1_movie_director_id, "
+            "anon_1.movie_title AS anon_1_movie_title, "
+            "anon_2.director_id AS anon_2_director_id FROM "
+            "(SELECT director.id AS director_id FROM persistent JOIN director "
+            "ON persistent.id = director.id) AS anon_2 "
+            "JOIN (SELECT persistent.id AS persistent_id, movie.id AS movie_id, "
+            "movie.director_id AS movie_director_id, "
+            "movie.title AS movie_title FROM persistent JOIN movie "
+            "ON persistent.id = movie.id) AS anon_1 "
+            "ON anon_2.director_id = anon_1.movie_director_id "
+            "ORDER BY anon_2.director_id")
+
+    def test_integrate(self):
+        Director = self.classes.Director
+        Movie = self.classes.Movie
+
+        session = Session(testing.db)
+        rscott = Director(name=u"Ridley Scott")
+        alien = Movie(title=u"Alien")
+        brunner = Movie(title=u"Blade Runner")
+        rscott.movies.append(brunner)
+        rscott.movies.append(alien)
+        session.add_all([rscott, alien, brunner])
+        session.commit()
+
+        session.close_all()
+        d = session.query(Director).options(subqueryload('*')).first()
+        assert len(list(session)) == 3
