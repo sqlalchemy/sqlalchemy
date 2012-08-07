@@ -11,8 +11,8 @@ with :func:`~sqlalchemy.engine.create_engine`.  This module is semi-private and 
 invoked automatically when the threadlocal engine strategy is used.
 """
 
-from sqlalchemy import util, event
-from sqlalchemy.engine import base
+from .. import util, event
+from . import base
 import weakref
 
 class TLConnection(base.Connection):

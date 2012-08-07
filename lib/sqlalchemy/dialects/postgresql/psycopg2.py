@@ -147,7 +147,7 @@ import logging
 from ... import util, exc
 from ...util.compat import decimal
 from ... import processors
-from ...engine import base
+from ...engine import result as _result
 from ...sql import expression
 from ... import types as sqltypes
 from .base import PGDialect, PGCompiler, \
@@ -243,9 +243,9 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
             self._log_notices(self.cursor)
 
         if self.__is_server_side:
-            return base.BufferedRowResultProxy(self)
+            return _result.BufferedRowResultProxy(self)
         else:
-            return base.ResultProxy(self)
+            return _result.ResultProxy(self)
 
     def _log_notices(self, cursor):
         for notice in cursor.connection.notices:

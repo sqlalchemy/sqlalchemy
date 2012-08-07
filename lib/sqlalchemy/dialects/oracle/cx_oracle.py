@@ -141,10 +141,10 @@ a period "." as the decimal character.
 
 """
 
-from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, \
+from .base import OracleCompiler, OracleDialect, \
                                         RESERVED_WORDS, OracleExecutionContext
-from sqlalchemy.dialects.oracle import base as oracle
-from sqlalchemy.engine import base
+from . import base as oracle
+from ...engine import result as _result
 from sqlalchemy import types as sqltypes, util, exc, processors
 from datetime import datetime
 import random
@@ -380,10 +380,10 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             for column in self.cursor.description:
                 type_code = column[1]
                 if type_code in self.dialect._cx_oracle_binary_types:
-                    result = base.BufferedColumnResultProxy(self)
+                    result = _result.BufferedColumnResultProxy(self)
 
         if result is None:
-            result = base.ResultProxy(self)
+            result = _result.ResultProxy(self)
 
         if hasattr(self, 'out_parameters'):
             if self.compiled_parameters is not None and \
@@ -432,7 +432,7 @@ class OracleExecutionContext_cx_oracle_with_unicode(OracleExecutionContext_cx_or
         return super(OracleExecutionContext_cx_oracle_with_unicode, self).\
                             _execute_scalar(unicode(stmt))
 
-class ReturningResultProxy(base.FullyBufferedResultProxy):
+class ReturningResultProxy(_result.FullyBufferedResultProxy):
     """Result proxy which stuffs the _returning clause + outparams into the fetch."""
 
     def __init__(self, context, returning_params):

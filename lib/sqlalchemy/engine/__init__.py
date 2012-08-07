@@ -53,51 +53,39 @@ url.py
 # not sure what this was used for
 #import sqlalchemy.databases
 
+from .interfaces import (
+    Compiled,
+    Connectable,
+    Dialect,
+    ExecutionContext,
+    TypeCompiler
+)
+
 from .base import (
+    Connection,
+    Engine,
+    NestedTransaction,
+    RootTransaction,
+    Transaction,
+    TwoPhaseTransaction,
+    )
+
+from .result import (
     BufferedColumnResultProxy,
     BufferedColumnRow,
     BufferedRowResultProxy,
-    Compiled,
-    Connectable,
-    Connection,
-    Dialect,
-    Engine,
-    ExecutionContext,
-    NestedTransaction,
     ResultProxy,
-    RootTransaction,
     RowProxy,
-    Transaction,
-    TwoPhaseTransaction,
-    TypeCompiler
-    )
-from . import strategies
-from .. import util
-
-
-__all__ = (
-    'BufferedColumnResultProxy',
-    'BufferedColumnRow',
-    'BufferedRowResultProxy',
-    'Compiled',
-    'Connectable',
-    'Connection',
-    'Dialect',
-    'Engine',
-    'ExecutionContext',
-    'NestedTransaction',
-    'ResultProxy',
-    'RootTransaction',
-    'RowProxy',
-    'Transaction',
-    'TwoPhaseTransaction',
-    'TypeCompiler',
-    'create_engine',
-    'engine_from_config',
     )
 
+from .util import (
+    connection_memoize
+    )
+
+from . import util, strategies
 
 default_strategy = 'plain'
+
 def create_engine(*args, **kwargs):
     """Create a new :class:`.Engine` instance.
 
@@ -117,11 +105,11 @@ def create_engine(*args, **kwargs):
     the URL can be an instance of :class:`~sqlalchemy.engine.url.URL`.
 
     ``**kwargs`` takes a wide variety of options which are routed
-    towards their appropriate components.  Arguments may be
-    specific to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as the
-    :class:`.Pool`.  Specific dialects also accept keyword arguments that
-    are unique to that dialect.   Here, we describe the parameters
-    that are common to most :func:`.create_engine()` usage.
+    towards their appropriate components.  Arguments may be     specific
+    to the :class:`.Engine`, the underlying :class:`.Dialect`, as well as
+    the     :class:`.Pool`.  Specific dialects also accept keyword
+    arguments that     are unique to that dialect.   Here, we describe the
+    parameters     that are common to most :func:`.create_engine()` usage.
 
     Once established, the newly resulting :class:`.Engine` will
     request a connection from the underlying :class:`.Pool` once
@@ -299,7 +287,8 @@ def create_engine(*args, **kwargs):
        id.
 
     :param pool_size=5: the number of connections to keep open
-        inside the connection pool. This used with :class:`~sqlalchemy.pool.QueuePool` as
+        inside the connection pool. This used with
+        :class:`~sqlalchemy.pool.QueuePool` as
         well as :class:`~sqlalchemy.pool.SingletonThreadPool`.  With
         :class:`~sqlalchemy.pool.QueuePool`, a ``pool_size`` setting
         of 0 indicates no limit; to disable pooling, set ``poolclass`` to
@@ -345,6 +334,7 @@ def create_engine(*args, **kwargs):
     strategy = strategies.strategies[strategy]
     return strategy.create(*args, **kwargs)
 
+
 def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     """Create a new Engine instance using a configuration dictionary.
 
@@ -358,27 +348,15 @@ def engine_from_config(configuration, prefix='sqlalchemy.', **kwargs):
     arguments.
     """
 
-    opts = _coerce_config(configuration, prefix)
+    opts = util._coerce_config(configuration, prefix)
     opts.update(kwargs)
     url = opts.pop('url')
     return create_engine(url, **opts)
 
-def _coerce_config(configuration, prefix):
-    """Convert configuration values to expected types."""
 
-    options = dict((key[len(prefix):], configuration[key])
-                   for key in configuration
-                   if key.startswith(prefix))
-    for option, type_ in (
-        ('convert_unicode', util.bool_or_str('force')),
-        ('pool_timeout', int),
-        ('echo', util.bool_or_str('debug')),
-        ('echo_pool', util.bool_or_str('debug')),
-        ('pool_recycle', int),
-        ('pool_size', int),
-        ('max_overflow', int),
-        ('pool_threadlocal', bool),
-        ('use_native_unicode', bool),
-    ):
-        util.coerce_kw_type(options, option, type_)
-    return options
+__all__ = (
+    'create_engine',
+    'engine_from_config',
+    )
+
+

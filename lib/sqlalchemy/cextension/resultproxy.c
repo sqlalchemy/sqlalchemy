@@ -13,8 +13,8 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
 #define PY_SSIZE_T_MIN INT_MIN
 typedef Py_ssize_t (*lenfunc)(PyObject *);
-#define PyInt_FromSsize_t(x) PyInt_FromLong(x) 
-typedef intargfunc ssizeargfunc; 
+#define PyInt_FromSsize_t(x) PyInt_FromLong(x)
+typedef intargfunc ssizeargfunc;
 #endif
 
 
@@ -121,7 +121,7 @@ BaseRowProxy_reduce(PyObject *self)
     if (state == NULL)
         return NULL;
 
-    module = PyImport_ImportModule("sqlalchemy.engine.base");
+    module = PyImport_ImportModule("sqlalchemy.engine.result");
     if (module == NULL)
         return NULL;
 
@@ -248,7 +248,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
     long index;
     int key_fallback = 0;
     int tuple_check = 0;
-    
+
     if (PyInt_CheckExact(key)) {
         index = PyInt_AS_LONG(key);
     } else if (PyLong_CheckExact(key)) {
@@ -328,7 +328,7 @@ BaseRowProxy_subscript(BaseRowProxy *self, PyObject *key)
         value = PySequence_GetItem(row, index);
         tuple_check = 0;
     }
-        
+
     if (value == NULL)
         return NULL;
 
@@ -368,7 +368,7 @@ BaseRowProxy_getattro(BaseRowProxy *self, PyObject *name)
     tmp = BaseRowProxy_subscript(self, name);
     if (tmp == NULL && PyErr_ExceptionMatches(PyExc_KeyError)) {
         PyErr_Format(
-                PyExc_AttributeError, 
+                PyExc_AttributeError,
                 "Could not locate column in row for column '%.200s'",
                 PyString_AsString(name)
             );
@@ -399,7 +399,7 @@ BaseRowProxy_setparent(BaseRowProxy *self, PyObject *value, void *closure)
         return -1;
     }
 
-    module = PyImport_ImportModule("sqlalchemy.engine.base");
+    module = PyImport_ImportModule("sqlalchemy.engine.result");
     if (module == NULL)
         return -1;
 

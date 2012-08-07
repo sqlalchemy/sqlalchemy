@@ -2,7 +2,7 @@ from test.lib.testing import eq_, assert_raises_message, assert_raises
 import datetime
 from sqlalchemy import *
 from sqlalchemy import exc, sql, util
-from sqlalchemy.engine import default, base
+from sqlalchemy.engine import default, result as _result
 from test.lib import *
 from test.lib.schema import Table, Column
 
@@ -863,9 +863,9 @@ class QueryTest(fixtures.TestBase):
 
         # these proxies don't work with no cursor.description present.
         # so they don't apply to this test at the moment.
-        # base.FullyBufferedResultProxy,
-        # base.BufferedRowResultProxy,
-        # base.BufferedColumnResultProxy
+        # result.FullyBufferedResultProxy,
+        # result.BufferedRowResultProxy,
+        # result.BufferedColumnResultProxy
 
         conn = testing.db.connect()
         for meth in ('fetchone', 'fetchall', 'first', 'scalar', 'fetchmany'):
@@ -969,9 +969,9 @@ class QueryTest(fixtures.TestBase):
         )
 
         result = users.outerjoin(addresses).select().execute()
-        result = base.BufferedColumnResultProxy(result.context)
+        result = _result.BufferedColumnResultProxy(result.context)
         r = result.first()
-        assert isinstance(r, base.BufferedColumnRow)
+        assert isinstance(r, _result.BufferedColumnRow)
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",

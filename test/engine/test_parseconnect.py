@@ -3,7 +3,7 @@ import ConfigParser
 import StringIO
 import sqlalchemy.engine.url as url
 from sqlalchemy import create_engine, engine_from_config, exc, pool
-from sqlalchemy.engine import _coerce_config
+from sqlalchemy.engine.util import _coerce_config
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy as tsa
 from test.lib import fixtures, testing
@@ -118,11 +118,11 @@ pool_timeout=10
             }
 
         prefixed = dict(ini.items('prefixed'))
-        self.assert_(tsa.engine._coerce_config(prefixed, 'sqlalchemy.')
+        self.assert_(_coerce_config(prefixed, 'sqlalchemy.')
                      == expected)
 
         plain = dict(ini.items('plain'))
-        self.assert_(tsa.engine._coerce_config(plain, '') == expected)
+        self.assert_(_coerce_config(plain, '') == expected)
 
     def test_engine_from_config(self):
         dbapi = mock_dbapi

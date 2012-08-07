@@ -19,7 +19,7 @@ import re
 from sqlalchemy import sql, types as sqltypes, util
 from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
 from sqlalchemy.dialects.oracle.base import OracleCompiler, OracleDialect, OracleExecutionContext
-from sqlalchemy.engine import base, default
+from sqlalchemy.engine import result as _result
 from sqlalchemy.sql import expression
 import collections
 
@@ -113,7 +113,7 @@ class OracleExecutionContext_zxjdbc(OracleExecutionContext):
                         pass
                 self.statement.close()
 
-        return base.ResultProxy(self)
+        return _result.ResultProxy(self)
 
     def create_cursor(self):
         cursor = self._dbapi_connection.cursor()
@@ -121,7 +121,7 @@ class OracleExecutionContext_zxjdbc(OracleExecutionContext):
         return cursor
 
 
-class ReturningResultProxy(base.FullyBufferedResultProxy):
+class ReturningResultProxy(_result.FullyBufferedResultProxy):
 
     """ResultProxy backed by the RETURNING ResultSet results."""
 

@@ -114,13 +114,15 @@ sapdb.dbapi
 
 
 """
-import datetime, itertools, re
+import datetime
+import itertools
+import re
 
-from sqlalchemy import exc, schema, sql, util, processors
-from sqlalchemy.sql import operators as sql_operators, expression as sql_expr
-from sqlalchemy.sql import compiler, visitors
-from sqlalchemy.engine import base as engine_base, default, reflection
-from sqlalchemy import types as sqltypes
+from ... import exc, schema, sql, util, processors
+from ...sql import expression as sql_expr
+from ...sql import compiler, visitors
+from ...engine import result as _result, default, reflection
+from ... import types as sqltypes
 
 
 class _StringType(sqltypes.String):
@@ -460,7 +462,7 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
             for column in self.cursor.description:
                 if column[1] in ('Long Binary', 'Long', 'Long Unicode'):
                     return MaxDBResultProxy(self)
-        return engine_base.ResultProxy(self)
+        return _result.ResultProxy(self)
 
     @property
     def rowcount(self):
@@ -475,7 +477,7 @@ class MaxDBExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar("SELECT %s.NEXTVAL FROM DUAL" % (
             self.dialect.identifier_preparer.format_sequence(seq)))
 
-class MaxDBCachedColumnRow(engine_base.RowProxy):
+class MaxDBCachedColumnRow(_result.RowProxy):
     """A RowProxy that only runs result_processors once per column."""
 
     def __init__(self, parent, row):
@@ -514,7 +516,7 @@ class MaxDBCachedColumnRow(engine_base.RowProxy):
             raise AttributeError(name)
 
 
-class MaxDBResultProxy(engine_base.ResultProxy):
+class MaxDBResultProxy(_result.ResultProxy):
     _process_row = MaxDBCachedColumnRow
 
 class MaxDBCompiler(compiler.SQLCompiler):

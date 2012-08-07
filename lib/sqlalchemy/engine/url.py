@@ -15,7 +15,7 @@ be used directly and is also accepted directly by ``create_engine()``.
 import re
 import urllib
 from .. import exc, util
-from . import base
+from . import Dialect
 
 
 class URL(object):
@@ -109,7 +109,7 @@ class URL(object):
         # actual class
         if hasattr(cls, 'dialect') and \
             isinstance(cls.dialect, type) and \
-            issubclass(cls.dialect, base.Dialect):
+            issubclass(cls.dialect, Dialect):
             return cls.dialect
         else:
             return cls

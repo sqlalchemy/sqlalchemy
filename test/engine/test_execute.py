@@ -11,7 +11,7 @@ from test.lib import testing, engines
 from test.lib.engines import testing_engine
 import logging
 from sqlalchemy.dialects.oracle.zxjdbc import ReturningParam
-from sqlalchemy.engine import base, default
+from sqlalchemy.engine import result as _result, default
 from sqlalchemy.engine.base import Connection, Engine
 from test.lib import fixtures
 import StringIO
@@ -1000,16 +1000,16 @@ class AlternateResultProxyTest(fixtures.TestBase):
         eq_(rows, [(i, "t_%d" % i) for i in xrange(1, 6)])
 
     def test_plain(self):
-        self._test_proxy(base.ResultProxy)
+        self._test_proxy(_result.ResultProxy)
 
     def test_buffered_row_result_proxy(self):
-        self._test_proxy(base.BufferedRowResultProxy)
+        self._test_proxy(_result.BufferedRowResultProxy)
 
     def test_fully_buffered_result_proxy(self):
-        self._test_proxy(base.FullyBufferedResultProxy)
+        self._test_proxy(_result.FullyBufferedResultProxy)
 
     def test_buffered_column_result_proxy(self):
-        self._test_proxy(base.BufferedColumnResultProxy)
+        self._test_proxy(_result.BufferedColumnResultProxy)
 
 class EngineEventsTest(fixtures.TestBase):
     __requires__ = 'ad_hoc_engines',

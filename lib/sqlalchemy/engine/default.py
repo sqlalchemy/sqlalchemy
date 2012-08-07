@@ -14,7 +14,7 @@ as the base class for their own corresponding classes.
 
 import re
 import random
-from . import base, reflection
+from . import reflection, interfaces, result
 from ..sql import compiler, expression
 from .. import exc, types as sqltypes, util, pool, processors
 import codecs
@@ -25,7 +25,7 @@ AUTOCOMMIT_REGEXP = re.compile(
             re.I | re.UNICODE)
 
 
-class DefaultDialect(base.Dialect):
+class DefaultDialect(interfaces.Dialect):
     """Default implementation of Dialect"""
 
     statement_compiler = compiler.SQLCompiler
@@ -351,7 +351,7 @@ class DefaultDialect(base.Dialect):
         # the configured default of this dialect.
         self.set_isolation_level(dbapi_conn, self.default_isolation_level)
 
-class DefaultExecutionContext(base.ExecutionContext):
+class DefaultExecutionContext(interfaces.ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
@@ -657,7 +657,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         pass
 
     def get_result_proxy(self):
-        return base.ResultProxy(self)
+        return result.ResultProxy(self)
 
     @property
     def rowcount(self):
