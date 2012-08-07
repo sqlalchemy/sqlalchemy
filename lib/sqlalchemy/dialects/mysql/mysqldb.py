@@ -54,9 +54,9 @@ It is strongly advised to use the latest version of MySQL-Python.
 
 """
 
-from sqlalchemy.dialects.mysql.base import (MySQLDialect, MySQLExecutionContext,
+from .base import (MySQLDialect, MySQLExecutionContext,
                                             MySQLCompiler, MySQLIdentifierPreparer)
-from sqlalchemy.connectors.mysqldb import (
+from ...connectors.mysqldb import (
                         MySQLDBExecutionContext,
                         MySQLDBCompiler,
                         MySQLDBIdentifierPreparer,

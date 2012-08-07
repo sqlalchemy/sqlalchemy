@@ -6,9 +6,8 @@
 
 """Topological sorting algorithms."""
 
-from sqlalchemy.exc import CircularDependencyError
-from sqlalchemy import util
-
+from ..exc import CircularDependencyError
+from .. import util
 
 __all__ = ['sort', 'sort_as_subsets', 'find_cycles']
 

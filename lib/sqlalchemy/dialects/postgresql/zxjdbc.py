@@ -12,8 +12,8 @@ JDBC Driver
 The official Postgresql JDBC driver is at http://jdbc.postgresql.org/.
 
 """
-from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext
+from ...connectors.zxJDBC import ZxJDBCConnector
+from .base import PGDialect, PGExecutionContext
 
 class PGExecutionContext_zxjdbc(PGExecutionContext):
 

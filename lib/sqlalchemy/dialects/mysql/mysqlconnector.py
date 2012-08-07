@@ -19,16 +19,11 @@ Connect string format::
 
 """
 
-import re
-
-from sqlalchemy.dialects.mysql.base import (MySQLDialect,
+from .base import (MySQLDialect,
     MySQLExecutionContext, MySQLCompiler, MySQLIdentifierPreparer,
     BIT)
 
-from sqlalchemy.engine import base as engine_base, default
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
-from sqlalchemy import processors
+from ... import util
 
 class MySQLExecutionContext_mysqlconnector(MySQLExecutionContext):
 

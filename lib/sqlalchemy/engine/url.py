@@ -12,9 +12,10 @@ with a string argument; alternatively, the URL is a public-facing construct whic
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
-import re, urllib
-from sqlalchemy import exc, util
-from sqlalchemy.engine import base
+import re
+import urllib
+from .. import exc, util
+from . import base
 
 
 class URL(object):

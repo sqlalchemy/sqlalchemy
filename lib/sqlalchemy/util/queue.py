@@ -24,7 +24,7 @@ within QueuePool.
 
 from collections import deque
 from time import time as _time
-from sqlalchemy.util import threading
+from .compat import threading
 import sys
 
 if sys.version_info < (2, 6):

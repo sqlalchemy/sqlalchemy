@@ -40,12 +40,8 @@ defaults to, there is a separate parameter::
 
 import re
 
-from sqlalchemy.dialects.mysql.base import (BIT, MySQLDialect, MySQLExecutionContext,
-                                            MySQLCompiler, MySQLIdentifierPreparer)
-from sqlalchemy.engine import base as engine_base, default
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy import exc, log, schema, sql, types as sqltypes, util
-from sqlalchemy import processors
+from .base import (BIT, MySQLDialect, MySQLExecutionContext)
+from ... import types as sqltypes, util
 
 
 

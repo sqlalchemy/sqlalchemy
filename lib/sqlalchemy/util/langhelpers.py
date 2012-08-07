@@ -15,9 +15,9 @@ import re
 import sys
 import types
 import warnings
-from compat import update_wrapper, set_types, threading, \
-    callable, inspect_getfullargspec, py3k_warning
-from sqlalchemy import exc
+from .compat import update_wrapper, set_types, threading, \
+    callable, inspect_getfullargspec
+from .. import exc
 
 def _unique_symbols(used, *bases):
     used = set(used)

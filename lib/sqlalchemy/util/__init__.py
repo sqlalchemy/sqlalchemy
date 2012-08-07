@@ -4,12 +4,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from compat import callable, cmp, reduce, defaultdict, py25_dict, \
+from .compat import callable, cmp, reduce, defaultdict, py25_dict, \
     threading, py3k_warning, jython, pypy, win32, set_types, buffer, pickle, \
     update_wrapper, partial, md5_hex, decode_slice, dottedgetter,\
     parse_qsl, any, contextmanager, namedtuple, next, WeakSet
 
-from _collections import KeyedTuple, ImmutableContainer, immutabledict, \
+from ._collections import KeyedTuple, ImmutableContainer, immutabledict, \
     Properties, OrderedProperties, ImmutableProperties, OrderedDict, \
     OrderedSet, IdentitySet, OrderedIdentitySet, column_set, \
     column_dict, ordered_column_set, populate_column_dict, unique_list, \
@@ -17,7 +17,7 @@ from _collections import KeyedTuple, ImmutableContainer, immutabledict, \
     to_column_set, update_copy, flatten_iterator, \
     LRUCache, ScopedRegistry, ThreadLocalRegistry, WeakSequence
 
-from langhelpers import iterate_attributes, class_hierarchy, \
+from .langhelpers import iterate_attributes, class_hierarchy, \
     portable_instancemethod, unbound_method_to_callable, \
     getargspec_init, format_argspec_init, format_argspec_plus, \
     get_func_kwargs, get_cls_kwargs, decorator, as_interface, \
@@ -29,6 +29,6 @@ from langhelpers import iterate_attributes, class_hierarchy, \
     constructor_copy, methods_equivalent, chop_traceback, asint,\
     generic_repr, counter, PluginLoader, hybridmethod
 
-from deprecations import warn_deprecated, warn_pending_deprecation, \
+from .deprecations import warn_deprecated, warn_pending_deprecation, \
     deprecated, pending_deprecation
 

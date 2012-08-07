@@ -10,8 +10,7 @@ import sys
 import itertools
 import weakref
 import operator
-from langhelpers import symbol
-from compat import time_func, threading
+from .compat import threading
 
 EMPTY_SET = frozenset()
 

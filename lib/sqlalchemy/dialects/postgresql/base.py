@@ -190,10 +190,10 @@ version of PostgreSQL.
 
 import re
 
-from sqlalchemy import sql, schema, exc, util
-from sqlalchemy.engine import default, reflection
-from sqlalchemy.sql import compiler, expression, util as sql_util
-from sqlalchemy import types as sqltypes
+from ... import sql, schema, exc, util
+from ...engine import default, reflection
+from ...sql import compiler, expression, util as sql_util
+from ... import types as sqltypes
 
 try:
     from uuid import UUID as _python_UUID

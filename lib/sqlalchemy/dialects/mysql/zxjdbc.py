@@ -31,9 +31,9 @@ overriden via a ``create_engine`` URL parameter.
 """
 import re
 
-from sqlalchemy import types as sqltypes, util
-from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy.dialects.mysql.base import BIT, MySQLDialect, MySQLExecutionContext
+from ... import types as sqltypes, util
+from ...connectors.zxJDBC import ZxJDBCConnector
+from .base import BIT, MySQLDialect, MySQLExecutionContext
 
 class _ZxJDBCBit(BIT):
     def result_processor(self, dialect, coltype):

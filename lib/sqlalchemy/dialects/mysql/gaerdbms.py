@@ -32,8 +32,8 @@ default.
 
 """
 
-from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect_mysqldb
-from sqlalchemy.pool import NullPool
+from .mysqldb import MySQLDialect_mysqldb
+from ...pool import NullPool
 import re
 
 
@@ -50,7 +50,7 @@ class MySQLDialect_gaerdbms(MySQLDialect_mysqldb):
         return NullPool
 
     def create_connect_args(self, url):
-        return [[],{'database':url.database}]
+        return [[], {'database': url.database}]
 
     def _extract_error_code(self, exception):
         match = re.compile(r"^(\d+):").match(str(exception))

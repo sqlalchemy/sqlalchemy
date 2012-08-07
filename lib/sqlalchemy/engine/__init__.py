@@ -53,7 +53,7 @@ url.py
 # not sure what this was used for
 #import sqlalchemy.databases
 
-from sqlalchemy.engine.base import (
+from .base import (
     BufferedColumnResultProxy,
     BufferedColumnRow,
     BufferedRowResultProxy,
@@ -71,8 +71,8 @@ from sqlalchemy.engine.base import (
     TwoPhaseTransaction,
     TypeCompiler
     )
-from sqlalchemy.engine import strategies
-from sqlalchemy import util
+from . import strategies
+from .. import util
 
 
 __all__ = (

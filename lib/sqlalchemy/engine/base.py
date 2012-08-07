@@ -14,18 +14,18 @@ and result contexts.
 
 __all__ = [
     'BufferedColumnResultProxy', 'BufferedColumnRow',
-    'BufferedRowResultProxy','Compiled', 'Connectable', 'Connection',
-    'Dialect', 'Engine','ExecutionContext', 'NestedTransaction',
-    'ResultProxy', 'RootTransaction','RowProxy', 'SchemaIterator',
+    'BufferedRowResultProxy', 'Compiled', 'Connectable', 'Connection',
+    'Dialect', 'Engine', 'ExecutionContext', 'NestedTransaction',
+    'ResultProxy', 'RootTransaction', 'RowProxy',
     'StringIO', 'Transaction', 'TwoPhaseTransaction',
     'connection_memoize']
 
-import inspect, StringIO, sys, operator
+import StringIO
+import sys
 from itertools import izip, chain
-from sqlalchemy import exc, schema, util, types, log, interfaces, \
+from .. import exc, schema, util, types, log, interfaces, \
     event, events
-from sqlalchemy.sql import expression, util as sql_util
-from sqlalchemy import processors
+from ..sql import expression, util as sql_util
 import collections
 
 class Dialect(object):

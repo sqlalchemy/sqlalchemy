@@ -27,10 +27,9 @@ of OurSQL, MySQLdb, or MySQL-connector/Python.
 
 """
 
-from sqlalchemy.dialects.mysql.base import MySQLDialect, MySQLExecutionContext
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy.engine import base as engine_base
-from sqlalchemy import util
+from .base import MySQLDialect, MySQLExecutionContext
+from ...connectors.pyodbc import PyODBCConnector
+from ... import util
 import re
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):

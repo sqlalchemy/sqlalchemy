@@ -8,7 +8,6 @@
 
 import sys
 
-
 try:
     import threading
 except ImportError:

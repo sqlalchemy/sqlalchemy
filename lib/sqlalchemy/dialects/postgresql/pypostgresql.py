@@ -13,10 +13,10 @@ URLs are of the form ``postgresql+pypostgresql://user:password@host:port/dbname[
 
 
 """
-from sqlalchemy import util
-from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGExecutionContext
-from sqlalchemy import processors
+from ... import util
+from ... import types as sqltypes
+from .base import PGDialect, PGExecutionContext
+from ... import processors
 
 class PGNumeric(sqltypes.Numeric):
     def bind_processor(self, dialect):

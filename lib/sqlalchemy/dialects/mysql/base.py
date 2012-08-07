@@ -281,24 +281,25 @@ http://dev.mysql.com/doc/refman/5.0/en/create-table.html
 
 """
 
-import datetime, inspect, re, sys
+import datetime
+import inspect
+import re
+import sys
 
-from sqlalchemy import schema as sa_schema
-from sqlalchemy import exc, log, sql, util
-from sqlalchemy.sql import operators as sql_operators
-from sqlalchemy.sql import functions as sql_functions
-from sqlalchemy.sql import compiler
+from ... import schema as sa_schema
+from ... import exc, log, sql, util
+from ...sql import compiler
 from array import array as _array
 
-from sqlalchemy.engine import reflection
-from sqlalchemy.engine import base as engine_base, default
-from sqlalchemy import types as sqltypes
-from sqlalchemy.util import topological
-from sqlalchemy.types import DATE, DATETIME, BOOLEAN, TIME, \
+from ...engine import reflection
+from ...engine import default
+from ... import types as sqltypes
+from ...util import topological
+from ...types import DATE, DATETIME, BOOLEAN, TIME, \
                                 BLOB, BINARY, VARBINARY
 
 RESERVED_WORDS = set(
-    ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
+    ['accessible', 'add', 'all', 'alter', 'analyze', 'and', 'as', 'asc',
      'asensitive', 'before', 'between', 'bigint', 'binary', 'blob', 'both',
      'by', 'call', 'cascade', 'case', 'change', 'char', 'character', 'check',
      'collate', 'column', 'condition', 'constraint', 'continue', 'convert',

@@ -27,11 +27,11 @@ Passing data from/to the Interval type is not supported as of
 yet.
 
 """
-from sqlalchemy import util, exc
-from sqlalchemy.util.compat import decimal
-from sqlalchemy import processors
-from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, \
+from ... import util, exc
+from ...util.compat import decimal
+from ... import processors
+from ... import types as sqltypes
+from .base import PGDialect, \
                 PGCompiler, PGIdentifierPreparer, PGExecutionContext,\
                 _DECIMAL_TYPES, _FLOAT_TYPES, _INT_TYPES
 

@@ -6,8 +6,8 @@
 
 """Routines to handle CREATE/DROP workflow."""
 
-from sqlalchemy import engine, schema
-from sqlalchemy.sql import util as sql_util
+from .. import schema
+from ..sql import util as sql_util
 
 
 class DDLBase(schema.SchemaVisitor):

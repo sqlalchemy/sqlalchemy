@@ -144,13 +144,13 @@ The psycopg2 dialect will log Postgresql NOTICE messages via the
 import re
 import logging
 
-from sqlalchemy import util, exc
-from sqlalchemy.util.compat import decimal
-from sqlalchemy import processors
-from sqlalchemy.engine import base
-from sqlalchemy.sql import expression
-from sqlalchemy import types as sqltypes
-from sqlalchemy.dialects.postgresql.base import PGDialect, PGCompiler, \
+from ... import util, exc
+from ...util.compat import decimal
+from ... import processors
+from ...engine import base
+from ...sql import expression
+from ... import types as sqltypes
+from .base import PGDialect, PGCompiler, \
                                 PGIdentifierPreparer, PGExecutionContext, \
                                 ENUM, ARRAY, _DECIMAL_TYPES, _FLOAT_TYPES,\
                                 _INT_TYPES

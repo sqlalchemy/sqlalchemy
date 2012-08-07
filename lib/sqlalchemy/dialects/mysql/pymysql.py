@@ -26,7 +26,7 @@ the pymysql driver as well.
 
 """
 
-from sqlalchemy.dialects.mysql.mysqldb import MySQLDialect_mysqldb
+from .mysqldb import MySQLDialect_mysqldb
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = 'pymysql'

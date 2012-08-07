@@ -7,7 +7,7 @@
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
 
-from sqlalchemy import exc
+from .. import exc
 import warnings
 import re
 from langhelpers import decorator

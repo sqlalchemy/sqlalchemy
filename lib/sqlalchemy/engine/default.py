@@ -12,10 +12,11 @@ as the base class for their own corresponding classes.
 
 """
 
-import re, random
-from sqlalchemy.engine import base, reflection
-from sqlalchemy.sql import compiler, expression
-from sqlalchemy import exc, types as sqltypes, util, pool, processors
+import re
+import random
+from . import base, reflection
+from ..sql import compiler, expression
+from .. import exc, types as sqltypes, util, pool, processors
 import codecs
 import weakref
 
