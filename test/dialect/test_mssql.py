@@ -673,6 +673,41 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert isinstance(t1.c.id.type, Integer)
         assert isinstance(t1.c.data.type, types.NullType)
 
+
+    @testing.provide_metadata
+    def test_db_qualified_items(self):
+        metadata = self.metadata
+        Table('foo', metadata, Column('id', Integer, primary_key=True))
+        Table('bar', metadata,
+                Column('id', Integer, primary_key=True),
+                Column('foo_id', Integer, ForeignKey('foo.id', name="fkfoo"))
+            )
+        metadata.create_all()
+
+        dbname = testing.db.scalar("select db_name()")
+        owner = testing.db.scalar("SELECT user_name()")
+
+        inspector = inspect(testing.db)
+        bar_via_db = inspector.get_foreign_keys(
+                            "bar", schema="%s.%s" % (dbname, owner))
+        eq_(
+            bar_via_db,
+            [{
+                'referred_table': 'foo',
+                'referred_columns': ['id'],
+                'referred_schema': 'test.dbo',
+                'name': 'fkfoo',
+                'constrained_columns': ['foo_id']}]
+        )
+
+        assert testing.db.has_table("bar", schema="test.dbo")
+
+        m2 = MetaData()
+        Table('bar', m2, schema="test.dbo", autoload=True,
+                                autoload_with=testing.db)
+        eq_(m2.tables["test.dbo.foo"].schema, "test.dbo")
+
+
     @testing.provide_metadata
     def test_indexes_cols(self):
         metadata = self.metadata

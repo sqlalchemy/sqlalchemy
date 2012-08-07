@@ -390,6 +390,16 @@ underneath "0.7.xx".
     this.  [ticket:2363]
 
 - mssql
+  - [feature] SQL Server dialect can be given
+    database-qualified schema names,
+    i.e. "schema='mydatabase.dbo'"; reflection
+    operations will detect this, split the schema
+    among the "." to get the owner separately,
+    and emit a "USE mydatabase" statement before
+    reflecting targets within the "dbo" owner;
+    the existing database returned from
+    DB_NAME() is then restored.
+
   - [bug] removed legacy behavior whereby
     a column comparison to a scalar SELECT via
     == would coerce to an IN with the SQL server
