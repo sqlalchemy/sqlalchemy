@@ -172,7 +172,8 @@ from sqlalchemy import sql, schema as sa_schema, exc, util
 from sqlalchemy.sql import select, compiler, expression, \
                             operators as sql_operators, \
                             util as sql_util, cast
-from sqlalchemy.engine import default, base, reflection
+from sqlalchemy import engine
+from sqlalchemy.engine import reflection, default
 from sqlalchemy import types as sqltypes
 from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
                                 FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
@@ -367,11 +368,11 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
           database into ``unicode``.
 
           Bytestrings are encoded using the dialect's
-          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
+          :attr:`~sqlalchemy.engine.Dialect.encoding`, which
           defaults to `utf-8`.
 
           If False, may be overridden by
-          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+          :attr:`sqlalchemy.engine.Dialect.convert_unicode`.
 
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.
@@ -412,11 +413,11 @@ class CHAR(_StringType, sqltypes.CHAR):
           database into ``unicode``.
 
           Bytestrings are encoded using the dialect's
-          :attr:`~sqlalchemy.engine.base.Dialect.encoding`, which
+          :attr:`~sqlalchemy.engine.Dialect.encoding`, which
           defaults to `utf-8`.
 
           If False, may be overridden by
-          :attr:`sqlalchemy.engine.base.Dialect.convert_unicode`.
+          :attr:`sqlalchemy.engine.Dialect.convert_unicode`.
 
         :param collation: Optional, a column-level collation for this string
           value. Accepts a Windows Collation Name or a SQL Collation Name.
@@ -716,7 +717,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         if self._result_proxy:
             return self._result_proxy
         else:
-            return base.ResultProxy(self)
+            return engine.ResultProxy(self)
 
 class MSSQLCompiler(compiler.SQLCompiler):
     returning_precedes_values = True

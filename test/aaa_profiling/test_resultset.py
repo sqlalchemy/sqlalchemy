@@ -97,7 +97,7 @@ class ExecutionTest(fixtures.TestBase):
 
 class RowProxyTest(fixtures.TestBase):
     def _rowproxy_fixture(self, keys, processors, row):
-        from sqlalchemy.engine.base import RowProxy
+        from sqlalchemy.engine.result import RowProxy
         class MockMeta(object):
             def __init__(self):
                 pass
