@@ -284,6 +284,10 @@ underneath "0.7.xx".
     statement as is appropriate, else
     raise InvalidRequestError.  [ticket:2498]
 
+  - [feature] New C extension module "utils" has
+    been added for additional function speedups
+    as we have time to implement.
+
   - ResultProxy.last_inserted_ids is removed,
     replaced by inserted_primary_key.
 

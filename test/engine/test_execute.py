@@ -1107,7 +1107,7 @@ class EngineEventsTest(fixtures.TestBase):
         e1.execute(select([1]))
         e1.execute(select([1]).compile(dialect=e1.dialect).statement)
         e1.execute(select([1]).compile(dialect=e1.dialect))
-        e1._execute_compiled(select([1]).compile(dialect=e1.dialect), [], {})
+        e1._execute_compiled(select([1]).compile(dialect=e1.dialect), (), {})
 
     def test_exception_event(self):
         engine = engines.testing_engine()

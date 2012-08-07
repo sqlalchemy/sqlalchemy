@@ -29,10 +29,11 @@ def str_to_datetime_processor_factory(regexp, type_):
                 m = rmatch(value)
             except TypeError:
                 raise ValueError("Couldn't parse %s string '%r' "
-                                "- value is not a string." % (type_.__name__ , value))
+                                "- value is not a string." %
+                                (type_.__name__, value))
             if m is None:
                 raise ValueError("Couldn't parse %s string: "
-                                "'%s'" % (type_.__name__ , value))
+                                "'%s'" % (type_.__name__, value))
             if has_named_groups:
                 groups = m.groupdict(0)
                 return type_(**dict(zip(groups.iterkeys(),
