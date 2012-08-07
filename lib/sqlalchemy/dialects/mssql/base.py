@@ -166,21 +166,21 @@ Known Issues
   SQL Server 2005
 
 """
-import datetime, operator, re
+import datetime
+import operator
+import re
 
-from sqlalchemy import sql, schema as sa_schema, exc, util
-from sqlalchemy.sql import select, compiler, expression, \
-                            operators as sql_operators, \
+from ... import sql, schema as sa_schema, exc, util
+from ...sql import compiler, expression, \
                             util as sql_util, cast
-from sqlalchemy import engine
-from sqlalchemy.engine import reflection, default
-from sqlalchemy import types as sqltypes
-from sqlalchemy.types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
+from ... import engine
+from ...engine import reflection, default
+from ... import types as sqltypes
+from ...types import INTEGER, BIGINT, SMALLINT, DECIMAL, NUMERIC, \
                                 FLOAT, TIMESTAMP, DATETIME, DATE, BINARY,\
-                                VARBINARY, BLOB
+                                VARBINARY
 
-
-from sqlalchemy.dialects.mssql import information_schema as ischema
+from . import information_schema as ischema
 
 MS_2008_VERSION = (10,)
 MS_2005_VERSION = (9,)

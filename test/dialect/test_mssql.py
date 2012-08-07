@@ -513,7 +513,8 @@ class SchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         t1, t2 = self.t1, self.t2
         self.assert_compile(
             t1.join(t2, t1.c.a==t2.c.a).select(),
-            "SELECT t1.a, t1.b, t1.c, t2_1.a, t2_1.b, t2_1.c FROM t1 JOIN [schema].t2 AS t2_1 ON t2_1.a = t1.a"
+            "SELECT t1.a, t1.b, t1.c, t2_1.a, t2_1.b, t2_1.c FROM t1 "
+            "JOIN [schema].t2 AS t2_1 ON t2_1.a = t1.a"
         )
 
     def test_union_schema_to_non(self):

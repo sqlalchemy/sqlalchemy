@@ -38,8 +38,8 @@ pymssql inherits a lot of limitations from FreeTDS, including:
 Please consult the pymssql documentation for further information.
 
 """
-from sqlalchemy.dialects.mssql.base import MSDialect
-from sqlalchemy import types as sqltypes, util, processors
+from .base import MSDialect
+from ... import types as sqltypes, util, processors
 import re
 
 class _MSNumeric_pymssql(sqltypes.Numeric):

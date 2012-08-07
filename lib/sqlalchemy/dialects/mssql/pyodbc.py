@@ -111,10 +111,10 @@ for unix + PyODBC.
 
 """
 
-from sqlalchemy.dialects.mssql.base import MSExecutionContext, MSDialect
-from sqlalchemy.connectors.pyodbc import PyODBCConnector
-from sqlalchemy import types as sqltypes, util
-import decimal
+from .base import MSExecutionContext, MSDialect
+from ...connectors.pyodbc import PyODBCConnector
+from ... import types as sqltypes, util
+from ...util.compat import decimal
 
 class _MSNumeric_pyodbc(sqltypes.Numeric):
     """Turns Decimals with adjusted() < 0 or > 7 into strings.

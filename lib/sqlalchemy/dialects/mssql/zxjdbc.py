@@ -24,9 +24,9 @@ arguments on the URL, or as keyword arguments to
 properties to the underlying JDBC driver.
 
 """
-from sqlalchemy.connectors.zxJDBC import ZxJDBCConnector
-from sqlalchemy.dialects.mssql.base import MSDialect, MSExecutionContext
-from sqlalchemy.engine import base
+from ...connectors.zxJDBC import ZxJDBCConnector
+from .base import MSDialect, MSExecutionContext
+from ... import engine
 
 class MSExecutionContext_zxjdbc(MSExecutionContext):
 
@@ -46,13 +46,13 @@ class MSExecutionContext_zxjdbc(MSExecutionContext):
                 try:
                     row = self.cursor.fetchall()[0]
                     break
-                except self.dialect.dbapi.Error, e:
+                except self.dialect.dbapi.Error:
                     self.cursor.nextset()
             self._lastrowid = int(row[0])
 
         if (self.isinsert or self.isupdate or self.isdelete) and \
             self.compiled.returning:
-            self._result_proxy = base.FullyBufferedResultProxy(self)
+            self._result_proxy = engine.FullyBufferedResultProxy(self)
 
         if self._enable_identity_insert:
             table = self.dialect.identifier_preparer.format_table(

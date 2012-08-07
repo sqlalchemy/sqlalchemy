@@ -52,10 +52,10 @@ of ``False`` will unconditionally use string-escaped parameters.
 """
 
 
-from sqlalchemy import types as sqltypes
-from sqlalchemy.connectors.mxodbc import MxODBCConnector
-from sqlalchemy.dialects.mssql.pyodbc import MSExecutionContext_pyodbc
-from sqlalchemy.dialects.mssql.base import (MSDialect,
+from ... import types as sqltypes
+from ...connectors.mxodbc import MxODBCConnector
+from .pyodbc import MSExecutionContext_pyodbc
+from .base import (MSDialect,
                                             MSSQLStrictCompiler,
                                             _MSDateTime, _MSDate, TIME)
 
