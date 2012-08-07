@@ -74,6 +74,7 @@ from .result import (
     BufferedColumnResultProxy,
     BufferedColumnRow,
     BufferedRowResultProxy,
+    FullyBufferedResultProxy,
     ResultProxy,
     RowProxy,
     )

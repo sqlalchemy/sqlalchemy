@@ -689,7 +689,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         if (self.isinsert or self.isupdate or self.isdelete) and \
                 self.compiled.returning:
-            self._result_proxy = base.FullyBufferedResultProxy(self)
+            self._result_proxy = engine.FullyBufferedResultProxy(self)
 
         if self._enable_identity_insert:
             conn._cursor_execute(self.cursor,
