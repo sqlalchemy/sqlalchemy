@@ -1715,7 +1715,6 @@ class Connection(Connectable):
         # create a resultproxy, get rowcount/implicit RETURNING
         # rows, close cursor if no further results pending
         result = context.get_result_proxy()
-
         if context.isinsert:
             if context._is_implicit_returning:
                 context._fetch_implicit_returning(result)

@@ -103,29 +103,71 @@ def sessionmaker(bind=None, class_=None, autoflush=True, autocommit=False,
 
 
 class SessionTransaction(object):
-    """A Session-level transaction.
+    """A :class:`.Session`-level transaction.
 
-    This corresponds to one or more Core :class:`~.engine.base.Transaction`
-    instances behind the scenes, with one :class:`~.engine.base.Transaction`
-    per :class:`~.engine.base.Engine` in use.
+    :class:`.SessionTransaction` is a mostly behind-the-scenes object
+    not normally referenced directly by application code.   It coordinates
+    among multiple :class:`.Connection` objects, maintaining a database
+    transaction for each one individually, committing or rolling them
+    back all at once.   It also provides optional two-phase commit behavior
+    which can augment this coordination operation.
 
-    .. versionchanged:: 0.4
-        Direct usage of :class:`.SessionTransaction` is not typically
-        necessary; use the :meth:`.Session.rollback` and
-        :meth:`.Session.commit` methods on :class:`.Session` itself to
-        control the transaction.
+    The :attr:`.Session.transaction` attribute of :class:`.Session` refers to the
+    current :class:`.SessionTransaction` object in use, if any.
 
-    The current instance of :class:`.SessionTransaction` for a given
-    :class:`.Session` is available via the :attr:`.Session.transaction`
-    attribute.
 
-    The :class:`.SessionTransaction` object is **not** thread-safe.
+    A :class:`.SessionTransaction` is associated with a :class:`.Session`
+    in its default mode of ``autocommit=False`` immediately, associated
+    with no database connections.  As the :class:`.Session` is called upon
+    to emit SQL on behalf of various :class:`.Engine` or :class:`.Connection`
+    objects, a corresponding :class:`.Connection` and associated :class:`.Transaction`
+    is added to a collection within the :class:`.SessionTransaction` object,
+    becoming one of the connection/transaction pairs maintained by the
+    :class:`.SessionTransaction`.
+
+    The lifespan of the :class:`.SessionTransaction` ends when the
+    :meth:`.Session.commit`, :meth:`.Session.rollback` or :meth:`.Session.close`
+    methods are called.  At this point, the :class:`.SessionTransaction` removes
+    its association with its parent :class:`.Session`.   A :class:`.Session`
+    that is in ``autocommit=False`` mode will create a new
+    :class:`.SessionTransaction` to replace it immediately, whereas a
+    :class:`.Session` that's in ``autocommit=True``
+    mode will remain without a :class:`.SessionTransaction` until the
+    :meth:`.Session.begin` method is called.
+
+    Another detail of :class:`.SessionTransaction` behavior is that it is
+    capable of "nesting".  This means that the :meth:`.begin` method can
+    be called while an existing :class:`.SessionTransaction` is already present,
+    producing a new :class:`.SessionTransaction` that temporarily replaces
+    the parent :class:`.SessionTransaction`.   When a :class:`.SessionTransaction`
+    is produced as nested, it assigns itself to the :attr:`.Session.transaction`
+    attribute.  When it is ended via :meth:`.Session.commit` or :meth:`.Session.rollback`,
+    it restores its parent :class:`.SessionTransaction` back onto the
+    :attr:`.Session.transaction` attribute.  The
+    behavior is effectively a stack, where :attr:`.Session.transaction` refers
+    to the current head of the stack.
+
+    The purpose of this stack is to allow nesting of :meth:`.rollback` or
+    :meth:`.commit` calls in context with various flavors of :meth:`.begin`.
+    This nesting behavior applies to when :meth:`.Session.begin_nested`
+    is used to emit a SAVEPOINT transaction, and is also used to produce
+    a so-called "subtransaction" which allows a block of code to use a
+    begin/rollback/commit sequence regardless of whether or not its enclosing
+    code block has begun a transaction.  The :meth:`.flush` method, whether called
+    explicitly or via autoflush, is the primary consumer of the "subtransaction"
+    feature, in that it wishes to guarantee that it works within in a transaction block
+    regardless of whether or not the :class:`.Session` is in transactional mode
+    when the method is called.
 
     See also:
 
     :meth:`.Session.rollback`
 
     :meth:`.Session.commit`
+
+    :meth:`.Session.begin`
+
+    :meth:`.Session.begin_nested`
 
     :attr:`.Session.is_active`
 
@@ -134,9 +176,6 @@ class SessionTransaction(object):
     :meth:`.SessionEvents.after_rollback`
 
     :meth:`.SessionEvents.after_soft_rollback`
-
-    .. index::
-      single: thread safety; SessionTransaction
 
     """
 
@@ -1807,20 +1846,58 @@ class Session(object):
 
     @property
     def is_active(self):
-        """True if this :class:`.Session` has an active transaction.
+        """True if this :class:`.Session` is in "transaction mode" and
+        is not in "partial rollback" state.
 
-        This indicates if the :class:`.Session` is capable of emitting
-        SQL, as from the :meth:`.Session.execute`, :meth:`.Session.query`,
-        or :meth:`.Session.flush` methods.   If False, it indicates
-        that the innermost transaction has been rolled back, but enclosing
-        :class:`.SessionTransaction` objects remain in the transactional
-        stack, which also must be rolled back.
+        The :class:`.Session` in its default mode of ``autocommit=False``
+        is essentially always in "transaction mode", in that a
+        :class:`.SessionTransaction` is associated with it as soon as
+        it is instantiated.  This :class:`.SessionTransaction` is immediately
+        replaced with a new one as soon as it is ended, due to a rollback,
+        commit, or close operation.
 
-        This flag is generally only useful with a :class:`.Session`
-        configured in its default mode of ``autocommit=False``.
+        "Transaction mode" does *not* indicate whether
+        or not actual database connection resources are in use;  the
+        :class:`.SessionTransaction` object coordinates among zero or more
+        actual database transactions, and starts out with none, accumulating
+        individual DBAPI connections as different data sources are used
+        within its scope.   The best way to track when a particular
+        :class:`.Session` has actually begun to use DBAPI resources is to
+        implement a listener using the :meth:`.SessionEvents.after_begin`
+        method, which will deliver both the :class:`.Session` as well as the
+        target :class:`.Connection` to a user-defined event listener.
+
+        The "partial rollback" state refers to when an "inner" transaction,
+        typically used during a flush, encounters an error and emits
+        a rollback of the DBAPI connection.  At this point, the :class:`.Session`
+        is in "partial rollback" and awaits for the user to call :meth:`.rollback`,
+        in order to close out the transaction stack.  It is in this "partial
+        rollback" period that the :attr:`.is_active` flag returns False.  After
+        the call to :meth:`.rollback`, the :class:`.SessionTransaction` is replaced
+        with a new one and :attr:`.is_active` returns ``True`` again.
+
+        When a :class:`.Session` is used in ``autocommit=True`` mode, the
+        :class:`.SessionTransaction` is only instantiated within the scope
+        of a flush call, or when :meth:`.Session.begin` is called.  So
+        :attr:`.is_active` will always be ``False`` outside of a flush or
+        :meth:`.begin` block in this mode, and will be ``True`` within the
+        :meth:`.begin` block as long as it doesn't enter "partial rollback"
+        state.
+
+        From all the above, it follows that the only purpose to this flag is
+        for application frameworks that wish to detect is a "rollback" is
+        necessary within a generic error handling routine, for :class:`.Session`
+        objects that would otherwise be in "partial rollback" mode.  In
+        a typical integration case, this is also not necessary as it is standard
+        practice to emit :meth:`.Session.rollback` unconditionally within the
+        outermost exception catch.
+
+        To track the transactional state of a :class:`.Session` fully,
+        use event listeners, primarily the :meth:`.SessionEvents.after_begin`,
+        :meth:`.SessionEvents.after_commit`, :meth:`.SessionEvents.after_rollback`
+        and related events.
 
         """
-
         return self.transaction and self.transaction.is_active
 
     identity_map = None
