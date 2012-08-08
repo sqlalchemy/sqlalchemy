@@ -392,40 +392,61 @@ the ``save-update`` cascade. For more details see the section
 Merging
 -------
 
-:func:`~sqlalchemy.orm.session.Session.merge` reconciles the current state of
-an instance and its associated children with existing data in the database,
-and returns a copy of the instance associated with the session. Usage is as
-follows::
+:func:`~sqlalchemy.orm.session.Session.merge` transfers state from an
+outside object into a new or already existing instance within a session.   It
+also reconciles the incoming data against the state of the
+database, producing a history stream which will be applied towards the next
+flush, or alternatively can be made to produce a simple "transfer" of
+state without producing change history or accessing the database.  Usage is as follows::
 
     merged_object = session.merge(existing_object)
 
 When given an instance, it follows these steps:
 
 * It examines the primary key of the instance. If it's present, it attempts
-  to load an instance with that primary key (or pulls from the local
-  identity map).
-* If there's no primary key on the given instance, or the given primary key
-  does not exist in the database, a new instance is created.
+  to locate that instance in the local identity map.   If the ``load=True``
+  flag is left at its default, it also checks the database for this primary
+  key if not located locally.
+* If the given instance has no primary key, or if no instance can be found
+  with the primary key given, a new instance is created.
 * The state of the given instance is then copied onto the located/newly
-  created instance.
-* The operation is cascaded to associated child items along the ``merge``
-  cascade. Note that all changes present on the given instance, including
-  changes to collections, are merged.
+  created instance.    For attributes which are present on the source
+  instance, the value is transferred to the target instance.  For mapped
+  attributes which aren't present on the source, the attribute is
+  expired on the target instance, discarding its existing value.
+
+  If the ``load=True`` flag is left at its default,
+  this copy process emits events and will load the target object's
+  unloaded collections for each attribute present on the source object,
+  so that the incoming state can be reconciled against what's
+  present in the database.  If ``load``
+  is passed as ``False``, the incoming data is "stamped" directly without
+  producing any history.
+* The operation is cascaded to related objects and collections, as
+  indicated by the ``merge`` cascade (see :ref:`unitofwork_cascades`).
 * The new instance is returned.
 
-With :func:`~sqlalchemy.orm.session.Session.merge`, the given instance is not
-placed within the session, and can be associated with a different session or
-detached. :func:`~sqlalchemy.orm.session.Session.merge` is very useful for
+With :meth:`~.Session.merge`, the given "source"
+instance is not modifed nor is it associated with the target :class:`.Session`,
+and remains available to be merged with any number of other :class:`.Session`
+objects.  :meth:`~.Session.merge` is useful for
 taking the state of any kind of object structure without regard for its
-origins or current session associations and placing that state within a
-session. Here's two examples:
+origins or current session associations and copying its state into a
+new session. Here's some examples:
 
-* An application wants to transfer the state of a series of objects
-  into a :class:`.Session` maintained by a worker thread or other
-  concurrent system.  :meth:`~.Session.merge` makes a copy of each object
-  to be placed into this new :class:`.Session`.  At the end of the operation,
-  the parent thread/process maintains the objects it started with,
-  and the thread/worker can proceed with local copies of those objects.
+* An application which reads an object structure from a file and wishes to
+  save it to the database might parse the file, build up the
+  structure, and then use
+  :meth:`~.Session.merge` to save it
+  to the database, ensuring that the data within the file is
+  used to formulate the primary key of each element of the
+  structure. Later, when the file has changed, the same
+  process can be re-run, producing a slightly different
+  object structure, which can then be ``merged`` in again,
+  and the :class:`~sqlalchemy.orm.session.Session` will
+  automatically update the database to reflect those
+  changes, loading each object from the database by primary key and
+  then updating its state with the new state given.
 
 * An application is storing objects in an in-memory cache, shared by
   many :class:`.Session` objects simultaneously.   :meth:`~.Session.merge`
@@ -442,19 +463,16 @@ session. Here's two examples:
   that was designed to work with cache-extended :class:`.Query`
   objects - see the section :ref:`examples_caching`.
 
-* An application which reads an object structure from a file and wishes to
-  save it to the database might parse the file, build up the
-  structure, and then use
-  :meth:`~.Session.merge` to save it
-  to the database, ensuring that the data within the file is
-  used to formulate the primary key of each element of the
-  structure. Later, when the file has changed, the same
-  process can be re-run, producing a slightly different
-  object structure, which can then be ``merged`` in again,
-  and the :class:`~sqlalchemy.orm.session.Session` will
-  automatically update the database to reflect those
-  changes.
+* An application wants to transfer the state of a series of objects
+  into a :class:`.Session` maintained by a worker thread or other
+  concurrent system.  :meth:`~.Session.merge` makes a copy of each object
+  to be placed into this new :class:`.Session`.  At the end of the operation,
+  the parent thread/process maintains the objects it started with,
+  and the thread/worker can proceed with local copies of those objects.
 
+  In the "transfer between threads/processes" use case, the application
+  may want to use the ``load=False`` flag as well to avoid overhead and
+  redundant SQL queries as the data is transferred.
 
 Merge Tips
 ~~~~~~~~~~
