@@ -239,7 +239,7 @@ def unbound_method_to_callable(func_or_cls):
     else:
         return func_or_cls
 
-def generic_repr(obj):
+def generic_repr(obj, additional_kw=()):
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
     
@@ -267,6 +267,15 @@ def generic_repr(obj):
                         yield '%s=%r' % (arg, val)
                 except:
                     pass
+        if additional_kw:
+            for arg, defval in additional_kw:
+                try:
+                    val = getattr(obj, arg, None)
+                    if val != defval:
+                        yield '%s=%r' % (arg, val)
+                except:
+                    pass
+
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(genargs()))
 
 class portable_instancemethod(object):

@@ -13,7 +13,7 @@ For more information see the SQLAlchemy documentation on types.
 """
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'AbstractType', 'UserDefinedType',
             'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'NVARCHAR','TEXT', 'Text',
-            'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME', 
+            'FLOAT', 'NUMERIC', 'REAL', 'DECIMAL', 'TIMESTAMP', 'DATETIME',
             'CLOB', 'BLOB', 'BINARY', 'VARBINARY', 'BOOLEAN', 'BIGINT', 'SMALLINT',
             'INTEGER', 'DATE', 'TIME', 'String', 'Integer', 'SmallInteger',
             'BigInteger', 'Numeric', 'Float', 'DateTime', 'Date', 'Time',
@@ -39,7 +39,7 @@ if util.jython:
     import array
 
 class AbstractType(Visitable):
-    """Base for all types - not needed except for backwards 
+    """Base for all types - not needed except for backwards
     compatibility."""
 
 class TypeEngine(AbstractType):
@@ -89,13 +89,13 @@ class TypeEngine(AbstractType):
         This allows systems like the ORM to know if a column value can
         be considered 'not changed' by comparing the identity of
         objects alone.  Values such as dicts, lists which
-        are serialized into strings are examples of "mutable" 
+        are serialized into strings are examples of "mutable"
         column structures.
 
-        .. note:: 
-        
+        .. note::
+
            This functionality is now superseded by the
-           ``sqlalchemy.ext.mutable`` extension described in 
+           ``sqlalchemy.ext.mutable`` extension described in
            :ref:`mutable_toplevel`.
 
         When this method is overridden, :meth:`copy_value` should
@@ -117,15 +117,15 @@ class TypeEngine(AbstractType):
     @property
     def python_type(self):
         """Return the Python type object expected to be returned
-        by instances of this type, if known.   
-        
+        by instances of this type, if known.
+
         Basically, for those types which enforce a return type,
-        or are known across the board to do such for all common 
+        or are known across the board to do such for all common
         DBAPIs (like ``int`` for example), will return that type.
-        
+
         If a return type is not defined, raises
         ``NotImplementedError``.
-        
+
         Note that any type also accommodates NULL in SQL which
         means you can also get back ``None`` from any type
         in practice.
@@ -134,7 +134,7 @@ class TypeEngine(AbstractType):
         raise NotImplementedError()
 
     def with_variant(self, type_, dialect_name):
-        """Produce a new type object that will utilize the given 
+        """Produce a new type object that will utilize the given
         type when applied to the dialect of the given name.
 
         e.g.::
@@ -149,13 +149,13 @@ class TypeEngine(AbstractType):
         The construction of :meth:`.TypeEngine.with_variant` is always
         from the "fallback" type to that which is dialect specific.
         The returned type is an instance of :class:`.Variant`, which
-        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant` that can 
+        itself provides a :meth:`~sqlalchemy.types.Variant.with_variant` that can
         be called repeatedly.
 
         :param type_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
          of the given name is in use.
-        :param dialect_name: base name of the dialect which uses 
+        :param dialect_name: base name of the dialect which uses
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
         .. versionadded:: 0.7.2
@@ -216,7 +216,7 @@ class TypeEngine(AbstractType):
             return rp
 
     def _dialect_info(self, dialect):
-        """Return a dialect-specific registry which 
+        """Return a dialect-specific registry which
         caches a dialect-specific implementation, bind processing
         function, and one or more result processing functions."""
 
@@ -235,10 +235,10 @@ class TypeEngine(AbstractType):
         return dialect.type_descriptor(self)
 
     def adapt(self, cls, **kw):
-        """Produce an "adapted" form of this type, given an "impl" class 
-        to work with. 
+        """Produce an "adapted" form of this type, given an "impl" class
+        to work with.
 
-        This method is used internally to associate generic 
+        This method is used internally to associate generic
         types with "implementation" types that are specific to a particular
         dialect.
         """
@@ -251,7 +251,7 @@ class TypeEngine(AbstractType):
         to return a type which the value should be coerced into.
 
         The default behavior here is conservative; if the right-hand
-        side is already coerced into a SQL type based on its 
+        side is already coerced into a SQL type based on its
         Python type, it is usually left alone.
 
         End-user functionality extension here should generally be via
@@ -361,7 +361,7 @@ class UserDefinedType(TypeEngine):
 
     def adapt_operator(self, op):
         """A hook which allows the given operator to be adapted
-        to something new. 
+        to something new.
 
         See also UserDefinedType._adapt_expression(), an as-yet-
         semi-public method with greater capability in this regard.
@@ -374,7 +374,7 @@ class TypeDecorator(TypeEngine):
     to an existing type.
 
     This method is preferred to direct subclassing of SQLAlchemy's
-    built-in types as it ensures that all required functionality of 
+    built-in types as it ensures that all required functionality of
     the underlying type is kept in place.
 
     Typical usage::
@@ -411,9 +411,9 @@ class TypeDecorator(TypeEngine):
 
         mytable.c.somecol + datetime.date(2009, 5, 15)
 
-    Above, if "somecol" is an ``Integer`` variant, it makes sense that 
+    Above, if "somecol" is an ``Integer`` variant, it makes sense that
     we're doing date arithmetic, where above is usually interpreted
-    by databases as adding a number of days to the given date. 
+    by databases as adding a number of days to the given date.
     The expression system does the right thing by not attempting to
     coerce the "date()" value into an integer-oriented bind parameter.
 
@@ -455,14 +455,14 @@ class TypeDecorator(TypeEngine):
     def __init__(self, *args, **kwargs):
         """Construct a :class:`.TypeDecorator`.
 
-        Arguments sent here are passed to the constructor 
+        Arguments sent here are passed to the constructor
         of the class assigned to the ``impl`` class level attribute,
         assuming the ``impl`` is a callable, and the resulting
         object is assigned to the ``self.impl`` instance attribute
         (thus overriding the class attribute of the same name).
-        
+
         If the class level ``impl`` is not a callable (the unusual case),
-        it will be assigned to the same instance attribute 'as-is', 
+        it will be assigned to the same instance attribute 'as-is',
         ignoring those arguments passed to the constructor.
 
         Subclasses can override this to customize the generation
@@ -529,7 +529,7 @@ class TypeDecorator(TypeEngine):
 
         This is an end-user override hook that can be used to provide
         differing types depending on the given dialect.  It is used
-        by the :class:`.TypeDecorator` implementation of :meth:`type_engine` 
+        by the :class:`.TypeDecorator` implementation of :meth:`type_engine`
         to help determine what type should ultimately be returned
         for a given :class:`.TypeDecorator`.
 
@@ -548,11 +548,11 @@ class TypeDecorator(TypeEngine):
 
         Subclasses override this method to return the
         value that should be passed along to the underlying
-        :class:`.TypeEngine` object, and from there to the 
+        :class:`.TypeEngine` object, and from there to the
         DBAPI ``execute()`` method.
 
         The operation could be anything desired to perform custom
-        behavior, such as transforming or serializing data. 
+        behavior, such as transforming or serializing data.
         This could also be used as a hook for validating logic.
 
         This operation should be designed with the reverse operation
@@ -580,7 +580,7 @@ class TypeDecorator(TypeEngine):
         from the DBAPI cursor method ``fetchone()`` or similar.
 
         The operation could be anything desired to perform custom
-        behavior, such as transforming or serializing data. 
+        behavior, such as transforming or serializing data.
         This could also be used as a hook for validating logic.
 
         :param value: Data to operate upon, of any type expected by
@@ -595,12 +595,12 @@ class TypeDecorator(TypeEngine):
         raise NotImplementedError()
 
     def bind_processor(self, dialect):
-        """Provide a bound value processing function for the 
+        """Provide a bound value processing function for the
         given :class:`.Dialect`.
 
-        This is the method that fulfills the :class:`.TypeEngine` 
+        This is the method that fulfills the :class:`.TypeEngine`
         contract for bound value conversion.   :class:`.TypeDecorator`
-        will wrap a user-defined implementation of 
+        will wrap a user-defined implementation of
         :meth:`process_bind_param` here.
 
         User-defined code can override this method directly,
@@ -632,9 +632,9 @@ class TypeDecorator(TypeEngine):
     def result_processor(self, dialect, coltype):
         """Provide a result value processing function for the given :class:`.Dialect`.
 
-        This is the method that fulfills the :class:`.TypeEngine` 
+        This is the method that fulfills the :class:`.TypeEngine`
         contract for result value conversion.   :class:`.TypeDecorator`
-        will wrap a user-defined implementation of 
+        will wrap a user-defined implementation of
         :meth:`process_result_value` here.
 
         User-defined code can override this method directly,
@@ -669,7 +669,7 @@ class TypeDecorator(TypeEngine):
         """Suggest a type for a 'coerced' Python value in an expression.
 
         By default, returns self.   This method is called by
-        the expression system when an object using this type is 
+        the expression system when an object using this type is
         on the left or right side of an expression against a plain Python
         object which does not yet have a SQLAlchemy type assigned::
 
@@ -691,7 +691,7 @@ class TypeDecorator(TypeEngine):
     def copy(self):
         """Produce a copy of this :class:`.TypeDecorator` instance.
 
-        This is a shallow copy and is provided to fulfill part of 
+        This is a shallow copy and is provided to fulfill part of
         the :class:`.TypeEngine` contract.  It usually does not
         need to be overridden unless the user-defined :class:`.TypeDecorator`
         has local state that should be deep-copied.
@@ -705,7 +705,7 @@ class TypeDecorator(TypeEngine):
     def get_dbapi_type(self, dbapi):
         """Return the DBAPI type object represented by this :class:`.TypeDecorator`.
 
-        By default this calls upon :meth:`.TypeEngine.get_dbapi_type` of the 
+        By default this calls upon :meth:`.TypeEngine.get_dbapi_type` of the
         underlying "impl".
         """
         return self.impl.get_dbapi_type(dbapi)
@@ -713,12 +713,12 @@ class TypeDecorator(TypeEngine):
     def copy_value(self, value):
         """Given a value, produce a copy of it.
 
-        By default this calls upon :meth:`.TypeEngine.copy_value` 
+        By default this calls upon :meth:`.TypeEngine.copy_value`
         of the underlying "impl".
 
         :meth:`.copy_value` will return the object
         itself, assuming "mutability" is not enabled.
-        Only the :class:`.MutableType` mixin provides a copy 
+        Only the :class:`.MutableType` mixin provides a copy
         function that actually produces a new object.
         The copying function is used by the ORM when
         "mutable" types are used, to memoize the original
@@ -726,7 +726,7 @@ class TypeDecorator(TypeEngine):
         which is then compared to the possibly mutated
         version to check for changes.
 
-        Modern implementations should use the 
+        Modern implementations should use the
         ``sqlalchemy.ext.mutable`` extension described in
         :ref:`mutable_toplevel` for intercepting in-place
         changes to values.
@@ -737,7 +737,7 @@ class TypeDecorator(TypeEngine):
     def compare_values(self, x, y):
         """Given two values, compare them for equality.
 
-        By default this calls upon :meth:`.TypeEngine.compare_values` 
+        By default this calls upon :meth:`.TypeEngine.compare_values`
         of the underlying "impl", which in turn usually
         uses the Python equals operator ``==``.
 
@@ -755,13 +755,13 @@ class TypeDecorator(TypeEngine):
         This allows systems like the ORM to know if a column value can
         be considered 'not changed' by comparing the identity of
         objects alone.  Values such as dicts, lists which
-        are serialized into strings are examples of "mutable" 
+        are serialized into strings are examples of "mutable"
         column structures.
 
-        .. note:: 
-        
+        .. note::
+
            This functionality is now superseded by the
-           ``sqlalchemy.ext.mutable`` extension described in 
+           ``sqlalchemy.ext.mutable`` extension described in
            :ref:`mutable_toplevel`.
 
         """
@@ -780,21 +780,21 @@ class TypeDecorator(TypeEngine):
 class Variant(TypeDecorator):
     """A wrapping type that selects among a variety of
     implementations based on dialect in use.
-    
+
     The :class:`.Variant` type is typically constructed
     using the :meth:`.TypeEngine.with_variant` method.
-    
+
     .. versionadded:: 0.7.2
-    
+
     """
 
     def __init__(self, base, mapping):
         """Construct a new :class:`.Variant`.
-        
+
         :param base: the base 'fallback' type
-        :param mapping: dictionary of string dialect names to :class:`.TypeEngine` 
+        :param mapping: dictionary of string dialect names to :class:`.TypeEngine`
          instances.
-         
+
         """
         self.impl = base
         self.mapping = mapping
@@ -807,13 +807,13 @@ class Variant(TypeDecorator):
 
     def with_variant(self, type_, dialect_name):
         """Return a new :class:`.Variant` which adds the given
-        type + dialect name to the mapping, in addition to the 
+        type + dialect name to the mapping, in addition to the
         mapping present in this :class:`.Variant`.
-        
+
         :param type_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
          of the given name is in use.
-        :param dialect_name: base name of the dialect which uses 
+        :param dialect_name: base name of the dialect which uses
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
         """
@@ -839,18 +839,18 @@ class MutableType(object):
        incur the severe performance penalty of the :class:`.MutableType`
        approach.
 
-    "mutable" means that changes can occur in place to a value 
+    "mutable" means that changes can occur in place to a value
     of this type.   Examples includes Python lists, dictionaries,
     and sets, as well as user-defined objects.  The primary
-    need for identification of "mutable" types is by the ORM, 
-    which applies special rules to such values in order to guarantee 
-    that changes are detected.  These rules may have a significant 
+    need for identification of "mutable" types is by the ORM,
+    which applies special rules to such values in order to guarantee
+    that changes are detected.  These rules may have a significant
     performance impact, described below.
 
     A :class:`.MutableType` usually allows a flag called
     ``mutable=False`` to enable/disable the "mutability" flag,
-    represented on this class by :meth:`is_mutable`.  Examples 
-    include :class:`.PickleType` and 
+    represented on this class by :meth:`is_mutable`.  Examples
+    include :class:`.PickleType` and
     :class:`~sqlalchemy.dialects.postgresql.base.ARRAY`.  Setting
     this flag to ``True`` enables mutability-specific behavior
     by the ORM.
@@ -860,8 +860,8 @@ class MutableType(object):
     type - implementing subclasses should override these
     appropriately.
 
-    .. warning:: 
-    
+    .. warning::
+
         The usage of mutable types has significant performance
         implications when using the ORM. In order to detect changes, the
         ORM must create a copy of the value when it is first
@@ -889,7 +889,7 @@ class MutableType(object):
     def is_mutable(self):
         """Return True if the target Python type is 'mutable'.
 
-        For :class:`.MutableType`, this method is set to 
+        For :class:`.MutableType`, this method is set to
         return ``True``.
 
         """
@@ -1005,7 +1005,7 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = 'string'
 
-    def __init__(self, length=None, convert_unicode=False, 
+    def __init__(self, length=None, convert_unicode=False,
                         assert_unicode=None, unicode_error=None,
                         _warn_on_bytestring=False
                         ):
@@ -1020,23 +1020,23 @@ class String(Concatenable, TypeEngine):
           with no length is included.  Whether the value is
           interpreted as bytes or characters is database specific.
 
-        :param convert_unicode: When set to ``True``, the 
+        :param convert_unicode: When set to ``True``, the
           :class:`.String` type will assume that
           input is to be passed as Python ``unicode`` objects,
           and results returned as Python ``unicode`` objects.
           If the DBAPI in use does not support Python unicode
           (which is fewer and fewer these days), SQLAlchemy
-          will encode/decode the value, using the 
-          value of the ``encoding`` parameter passed to 
+          will encode/decode the value, using the
+          value of the ``encoding`` parameter passed to
           :func:`.create_engine` as the encoding.
-          
+
           When using a DBAPI that natively supports Python
-          unicode objects, this flag generally does not 
+          unicode objects, this flag generally does not
           need to be set.  For columns that are explicitly
           intended to store non-ASCII data, the :class:`.Unicode`
-          or :class:`UnicodeText` 
+          or :class:`UnicodeText`
           types should be used regardless, which feature
-          the same behavior of ``convert_unicode`` but 
+          the same behavior of ``convert_unicode`` but
           also indicate an underlying column type that
           directly supports unicode, such as ``NVARCHAR``.
 
@@ -1047,11 +1047,11 @@ class String(Concatenable, TypeEngine):
           cause SQLAlchemy's encode/decode services to be
           used unconditionally.
 
-        :param assert_unicode: Deprecated.  A warning is emitted 
-          when a non-``unicode`` object is passed to the 
-          :class:`.Unicode` subtype of :class:`.String`, 
-          or the :class:`.UnicodeText` subtype of :class:`.Text`.   
-          See :class:`.Unicode` for information on how to 
+        :param assert_unicode: Deprecated.  A warning is emitted
+          when a non-``unicode`` object is passed to the
+          :class:`.Unicode` subtype of :class:`.String`,
+          or the :class:`.UnicodeText` subtype of :class:`.Text`.
+          See :class:`.Unicode` for information on how to
           control this warning.
 
         :param unicode_error: Optional, a method to use to handle Unicode
@@ -1118,7 +1118,7 @@ class String(Concatenable, TypeEngine):
     def result_processor(self, dialect, coltype):
         wants_unicode = self.convert_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and \
-                        (dialect.returns_unicode_strings is not True or 
+                        (dialect.returns_unicode_strings is not True or
                         self.convert_unicode == 'force')
 
         if needs_convert:
@@ -1170,36 +1170,36 @@ class Unicode(String):
     that assumes input and output as Python ``unicode`` data,
     and in that regard is equivalent to the usage of the
     ``convert_unicode`` flag with the :class:`.String` type.
-    However, unlike plain :class:`.String`, it also implies an 
+    However, unlike plain :class:`.String`, it also implies an
     underlying column type that is explicitly supporting of non-ASCII
     data, such as ``NVARCHAR`` on Oracle and SQL Server.
-    This can impact the output of ``CREATE TABLE`` statements 
-    and ``CAST`` functions at the dialect level, and can 
+    This can impact the output of ``CREATE TABLE`` statements
+    and ``CAST`` functions at the dialect level, and can
     also affect the handling of bound parameters in some
     specific DBAPI scenarios.
-    
+
     The encoding used by the :class:`.Unicode` type is usually
-    determined by the DBAPI itself; most modern DBAPIs 
+    determined by the DBAPI itself; most modern DBAPIs
     feature support for Python ``unicode`` objects as bound
     values and result set values, and the encoding should
     be configured as detailed in the notes for the target
     DBAPI in the :ref:`dialect_toplevel` section.
-    
+
     For those DBAPIs which do not support, or are not configured
     to accommodate Python ``unicode`` objects
     directly, SQLAlchemy does the encoding and decoding
-    outside of the DBAPI.   The encoding in this scenario 
-    is determined by the ``encoding`` flag passed to 
+    outside of the DBAPI.   The encoding in this scenario
+    is determined by the ``encoding`` flag passed to
     :func:`.create_engine`.
 
-    When using the :class:`.Unicode` type, it is only appropriate 
+    When using the :class:`.Unicode` type, it is only appropriate
     to pass Python ``unicode`` objects, and not plain ``str``.
     If a plain ``str`` is passed under Python 2, a warning
-    is emitted.  If you notice your application emitting these warnings but 
-    you're not sure of the source of them, the Python 
-    ``warnings`` filter, documented at 
-    http://docs.python.org/library/warnings.html, 
-    can be used to turn these warnings into exceptions 
+    is emitted.  If you notice your application emitting these warnings but
+    you're not sure of the source of them, the Python
+    ``warnings`` filter, documented at
+    http://docs.python.org/library/warnings.html,
+    can be used to turn these warnings into exceptions
     which will illustrate a stack trace::
 
       import warnings
@@ -1207,7 +1207,7 @@ class Unicode(String):
 
     For an application that wishes to pass plain bytestrings
     and Python ``unicode`` objects to the ``Unicode`` type
-    equally, the bytestrings must first be decoded into 
+    equally, the bytestrings must first be decoded into
     unicode.  The recipe at :ref:`coerce_to_unicode` illustrates
     how this is done.
 
@@ -1223,7 +1223,7 @@ class Unicode(String):
     def __init__(self, length=None, **kwargs):
         """
         Create a :class:`.Unicode` object.
-        
+
         Parameters are the same as that of :class:`.String`,
         with the exception that ``convert_unicode``
         defaults to ``True``.
@@ -1239,8 +1239,8 @@ class UnicodeText(Text):
     See :class:`.Unicode` for details on the unicode
     behavior of this object.
 
-    Like :class:`.Unicode`, usage the :class:`.UnicodeText` type implies a 
-    unicode-capable type being used on the backend, such as 
+    Like :class:`.Unicode`, usage the :class:`.UnicodeText` type implies a
+    unicode-capable type being used on the backend, such as
     ``NCLOB``, ``NTEXT``.
 
     """
@@ -1333,8 +1333,8 @@ class Numeric(_DateAffinity, TypeEngine):
     ``decimal.Decimal`` objects by default, applying
     conversion as needed.
 
-    .. note:: 
-    
+    .. note::
+
        The `cdecimal <http://pypi.python.org/pypi/cdecimal/>`_ library
        is a high performing alternative to Python's built-in
        ``decimal.Decimal`` type, which performs very poorly in high volume
@@ -1353,9 +1353,9 @@ class Numeric(_DateAffinity, TypeEngine):
            import cdecimal
            sys.modules["decimal"] = cdecimal
 
-       While the global patch is a little ugly, it's particularly 
-       important to use just one decimal library at a time since 
-       Python Decimal and cdecimal Decimal objects 
+       While the global patch is a little ugly, it's particularly
+       important to use just one decimal library at a time since
+       Python Decimal and cdecimal Decimal objects
        are not currently compatible *with each other*::
 
            >>> import cdecimal
@@ -1363,7 +1363,7 @@ class Numeric(_DateAffinity, TypeEngine):
            >>> decimal.Decimal("10") == cdecimal.Decimal("10")
            False
 
-       SQLAlchemy will provide more natural support of 
+       SQLAlchemy will provide more natural support of
        cdecimal if and when it becomes a standard part of Python
        installations and is supported by all DBAPIs.
 
@@ -1390,15 +1390,15 @@ class Numeric(_DateAffinity, TypeEngine):
         that the asdecimal setting is apppropriate for the DBAPI in use -
         when Numeric applies a conversion from Decimal->float or float->
         Decimal, this conversion incurs an additional performance overhead
-        for all result columns received. 
+        for all result columns received.
 
-        DBAPIs that return Decimal natively (e.g. psycopg2) will have 
+        DBAPIs that return Decimal natively (e.g. psycopg2) will have
         better accuracy and higher performance with a setting of ``True``,
         as the native translation to Decimal reduces the amount of floating-
         point issues at play, and the Numeric type itself doesn't need
-        to apply any further conversions.  However, another DBAPI which 
-        returns floats natively *will* incur an additional conversion 
-        overhead, and is still subject to floating point data loss - in 
+        to apply any further conversions.  However, another DBAPI which
+        returns floats natively *will* incur an additional conversion
+        overhead, and is still subject to floating point data loss - in
         which case ``asdecimal=False`` will at least remove the extra
         conversion overhead.
 
@@ -1502,10 +1502,10 @@ class Float(Numeric):
           results in floating point conversion.
 
         :param \**kwargs: deprecated.  Additional arguments here are ignored
-         by the default :class:`.Float` type.  For database specific 
-         floats that support additional arguments, see that dialect's 
+         by the default :class:`.Float` type.  For database specific
+         floats that support additional arguments, see that dialect's
          documentation for details, such as :class:`sqlalchemy.dialects.mysql.FLOAT`.
-         
+
         """
         self.precision = precision
         self.asdecimal = asdecimal
@@ -1558,12 +1558,12 @@ class DateTime(_DateAffinity, TypeEngine):
 
     def __init__(self, timezone=False):
         """Construct a new :class:`.DateTime`.
-        
+
         :param timezone: boolean.  If True, and supported by the
         backend, will produce 'TIMESTAMP WITH TIMEZONE'. For backends
         that don't support timezone aware timestamps, has no
         effect.
-        
+
         """
         self.timezone = timezone
 
@@ -1617,7 +1617,7 @@ class Date(_DateAffinity,TypeEngine):
                 Interval:DateTime,
 
                 # date - datetime = interval,
-                # this one is not in the PG docs 
+                # this one is not in the PG docs
                 # but works
                 DateTime:Interval,
             },
@@ -1679,7 +1679,7 @@ class _Binary(TypeEngine):
                 return None
         return process
 
-    # Python 3 has native bytes() type 
+    # Python 3 has native bytes() type
     # both sqlite3 and pg8000 seem to return it
     # (i.e. and not 'memoryview')
     # Py2K
@@ -1750,7 +1750,7 @@ class SchemaType(events.SchemaEventTarget):
     as well as types that are complimented by table or schema level
     constraints, triggers, and other rules.
 
-    :class:`.SchemaType` classes can also be targets for the 
+    :class:`.SchemaType` classes can also be targets for the
     :meth:`.DDLEvents.before_parent_attach` and :meth:`.DDLEvents.after_parent_attach`
     events, where the events fire off surrounding the association of
     the type object with a parent :class:`.Column`.
@@ -1848,17 +1848,17 @@ class SchemaType(events.SchemaEventTarget):
 class Enum(String, SchemaType):
     """Generic Enum Type.
 
-    The Enum type provides a set of possible string values which the 
+    The Enum type provides a set of possible string values which the
     column is constrained towards.
 
-    By default, uses the backend's native ENUM type if available, 
+    By default, uses the backend's native ENUM type if available,
     else uses VARCHAR + a CHECK constraint.
-    
+
     See also:
-    
+
         :class:`~.postgresql.ENUM` - PostgreSQL-specific type,
         which has additional functionality.
-        
+
     """
 
     __visit_name__ = 'enum'
@@ -1909,7 +1909,7 @@ class Enum(String, SchemaType):
         """
         self.enums = enums
         self.native_enum = kw.pop('native_enum', True)
-        convert_unicode= kw.pop('convert_unicode', None)
+        convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
             for e in enums:
                 if isinstance(e, unicode):
@@ -1919,14 +1919,20 @@ class Enum(String, SchemaType):
                 convert_unicode = False
 
         if self.enums:
-            length =max(len(x) for x in self.enums)
+            length = max(len(x) for x in self.enums)
         else:
             length = 0
-        String.__init__(self, 
-                        length =length,
-                        convert_unicode=convert_unicode, 
+        String.__init__(self,
+                        length=length,
+                        convert_unicode=convert_unicode,
                         )
         SchemaType.__init__(self, **kw)
+
+    def __repr__(self):
+        return util.generic_repr(self, [
+                        ("native_enum", True),
+                        ("name", None)
+                    ])
 
     def _should_create_constraint(self, compiler):
         return not self.native_enum or \
@@ -1947,9 +1953,9 @@ class Enum(String, SchemaType):
 
     def adapt(self, impltype, **kw):
         if issubclass(impltype, Enum):
-            return impltype(name=self.name, 
-                        quote=self.quote, 
-                        schema=self.schema, 
+            return impltype(name=self.name,
+                        quote=self.quote,
+                        schema=self.schema,
                         metadata=self.metadata,
                         convert_unicode=self.convert_unicode,
                         native_enum=self.native_enum,
@@ -1971,7 +1977,7 @@ class PickleType(MutableType, TypeDecorator):
 
     impl = LargeBinary
 
-    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, 
+    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL,
                     pickler=None, mutable=False, comparator=None):
         """
         Construct a PickleType.
@@ -1984,8 +1990,8 @@ class PickleType(MutableType, TypeDecorator):
 
         :param mutable: defaults to False; implements
           :meth:`AbstractType.is_mutable`.   When ``True``, incoming
-          objects will be compared against copies of themselves 
-          using the Python "equals" operator, unless the 
+          objects will be compared against copies of themselves
+          using the Python "equals" operator, unless the
           ``comparator`` argument is present.   See
           :class:`.MutableType` for details on "mutable" type
           behavior.
@@ -1993,14 +1999,14 @@ class PickleType(MutableType, TypeDecorator):
           .. versionchanged:: 0.7.0
               Default changed from ``True``.
 
-          .. note:: 
-          
+          .. note::
+
              This functionality is now superseded by the
-             ``sqlalchemy.ext.mutable`` extension described in 
+             ``sqlalchemy.ext.mutable`` extension described in
              :ref:`mutable_toplevel`.
 
         :param comparator: a 2-arg callable predicate used
-          to compare values of this type.  If left as ``None``, 
+          to compare values of this type.  If left as ``None``,
           the Python "equals" operator is used to compare values.
 
         """
@@ -2011,9 +2017,9 @@ class PickleType(MutableType, TypeDecorator):
         super(PickleType, self).__init__()
 
     def __reduce__(self):
-        return PickleType, (self.protocol, 
-                            None, 
-                            self.mutable, 
+        return PickleType, (self.protocol,
+                            None,
+                            self.mutable,
                             self.comparator)
 
     def bind_processor(self, dialect):
@@ -2085,7 +2091,7 @@ class Boolean(TypeEngine, SchemaType):
     def __init__(self, create_constraint=True, name=None):
         """Construct a Boolean.
 
-        :param create_constraint: defaults to True.  If the boolean 
+        :param create_constraint: defaults to True.  If the boolean
           is generated as an int/smallint, also create a CHECK constraint
           on the table that ensures 1 or 0 as a value.
 
@@ -2147,22 +2153,22 @@ class Interval(_DateAffinity, TypeDecorator):
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
 
-    def __init__(self, native=True, 
-                        second_precision=None, 
+    def __init__(self, native=True,
+                        second_precision=None,
                         day_precision=None):
         """Construct an Interval object.
 
         :param native: when True, use the actual
           INTERVAL type provided by the database, if
           supported (currently Postgresql, Oracle).
-          Otherwise, represent the interval data as 
+          Otherwise, represent the interval data as
           an epoch value regardless.
 
         :param second_precision: For native interval types
           which support a "fractional seconds precision" parameter,
           i.e. Oracle and Postgresql
 
-        :param day_precision: for native interval types which 
+        :param day_precision: for native interval types which
           support a "day precision" parameter, i.e. Oracle.
 
         """
@@ -2176,8 +2182,8 @@ class Interval(_DateAffinity, TypeDecorator):
             return cls._adapt_from_generic_interval(self, **kw)
         else:
             return self.__class__(
-                        native=self.native, 
-                        second_precision=self.second_precision, 
+                        native=self.native,
+                        second_precision=self.second_precision,
                         day_precision=self.day_precision,
                         **kw)
 
