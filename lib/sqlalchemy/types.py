@@ -1765,7 +1765,7 @@ class Enum(String, SchemaType):
         """
         self.enums = enums
         self.native_enum = kw.pop('native_enum', True)
-        convert_unicode= kw.pop('convert_unicode', None)
+        convert_unicode = kw.pop('convert_unicode', None)
         if convert_unicode is None:
             for e in enums:
                 if isinstance(e, unicode):
@@ -1775,14 +1775,20 @@ class Enum(String, SchemaType):
                 convert_unicode = False
 
         if self.enums:
-            length =max(len(x) for x in self.enums)
+            length = max(len(x) for x in self.enums)
         else:
             length = 0
         String.__init__(self,
-                        length =length,
+                        length=length,
                         convert_unicode=convert_unicode,
                         )
         SchemaType.__init__(self, **kw)
+
+    def __repr__(self):
+        return util.generic_repr(self, [
+                        ("native_enum", True),
+                        ("name", None)
+                    ])
 
     def _should_create_constraint(self, compiler):
         return not self.native_enum or \
