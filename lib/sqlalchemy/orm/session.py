@@ -1315,14 +1315,18 @@ class Session(object):
             self._delete_impl(st_)
 
     def merge(self, instance, load=True):
-        """Copy the state an instance onto the persistent instance with the
-        same identifier.
+        """Copy the state of a given instance into a corresponding instance
+        within this :class:`.Session`.
 
-        If there is no persistent instance currently associated with the
-        session, it will be loaded.  Return the persistent instance. If the
-        given instance is unsaved, save a copy of and return it as a newly
-        persistent instance. The given instance does not become associated
-        with the session.
+        :meth:`.Session.merge` examines the primary key attributes of the
+        source instance, and attempts to reconcile it with an instance of the
+        same primary key in the session.   If not found locally, it attempts
+        to load the object from the database based on primary key, and if
+        none can be located, creates a new instance.  The state of each attribute
+        on the source instance is then copied to the target instance.
+        The resulting target instance is then returned by the method; the
+        original source instance is left unmodified, and un-associated with the
+        :class:`.Session` if not already.
 
         This operation cascades to associated instances if the association is
         mapped with ``cascade="merge"``.
@@ -1331,26 +1335,26 @@ class Session(object):
 
         :param instance: Instance to be merged.
         :param load: Boolean, when False, :meth:`.merge` switches into
-         a "high performance" mode which causes it to skip all database
-         access.  The state of the given object is transferred directly
-         into the :class:`.Session` without checking the database
-         for existing data or discrepancies.  This flag is used for
+         a "high performance" mode which causes it to forego emitting history
+         events as well as all database access.  This flag is used for
          cases such as transferring graphs of objects into a :class:`.Session`
          from a second level cache, or to transfer just-loaded objects
          into the :class:`.Session` owned by a worker thread or process
          without re-querying the database.
 
          The ``load=False`` use case adds the caveat that the given
-         object has to be in a "clean" state.   This is so that when
-         the merge operation cascades onto related objects and
-         collections, the related values can be "stamped" onto the
-         target object as is, without concern for reconciling their
-         contents with any existing database value.  While there's no technical
-         reason the state of the object can't be taken as is whether or
-         not it's dirty, it suggests a mis-use of the method, as state which
-         wasn't pulled from the database originally can't reliably be passed back to
-         the database without knowing the database's current state.
-
+         object has to be in a "clean" state, that is, has no pending changes
+         to be flushed - even if the incoming object is detached from any
+         :class:`.Session`.   This is so that when
+         the merge operation populates local attributes and
+         cascades to related objects and
+         collections, the values can be "stamped" onto the
+         target object as is, without generating any history or attribute
+         events, and without the need to reconcile the incoming data with
+         any existing related objects or collections that might not
+         be loaded.  The resulting objects from ``load=False`` are always
+         produced as "clean", so it is only appropriate that the given objects
+         should be "clean" as well, else this suggests a mis-use of the method.
 
         """
 
