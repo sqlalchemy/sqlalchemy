@@ -765,7 +765,7 @@ def _connections_for_states(base_mapper, uowtransaction, states):
 def _cached_connection_dict(base_mapper):
     # dictionary of connection->connection_with_cache_options.
     return util.PopulateDict(
-        lambda conn:conn.execution_options(
+        lambda conn: conn.execution_options(
         compiled_cache=base_mapper._compiled_cache
     ))
 
@@ -774,7 +774,7 @@ def _sort_states(states):
     persistent = set(s for s in pending if s.key is not None)
     pending.difference_update(persistent)
     return sorted(pending, key=operator.attrgetter("insert_order")) + \
-                sorted(persistent, key=lambda q:q.key[1])
+                sorted(persistent, key=lambda q: q.key[1])
 
 class BulkUD(object):
     """Handle bulk update and deletes via a :class:`.Query`."""
@@ -850,7 +850,7 @@ class BulkEvaluate(BulkUD):
 
         #TODO: detect when the where clause is a trivial primary key match
         self.matched_objects = [
-                            obj for (cls, pk),obj in
+                            obj for (cls, pk), obj in
                             query.session.identity_map.iteritems()
                             if issubclass(cls, target_cls) and
                             eval_condition(obj)]
@@ -878,9 +878,9 @@ class BulkUpdate(BulkUD):
     @classmethod
     def factory(cls, query, synchronize_session, values):
         return BulkUD._factory({
-            "evaluate":BulkUpdateEvaluate,
-            "fetch":BulkUpdateFetch,
-            False:BulkUpdate
+            "evaluate": BulkUpdateEvaluate,
+            "fetch": BulkUpdateFetch,
+            False: BulkUpdate
         }, synchronize_session, query, values)
 
     def _do_exec(self):
@@ -906,9 +906,9 @@ class BulkDelete(BulkUD):
     @classmethod
     def factory(cls, query, synchronize_session):
         return BulkUD._factory({
-            "evaluate":BulkDeleteEvaluate,
-            "fetch":BulkDeleteFetch,
-            False:BulkDelete
+            "evaluate": BulkDeleteEvaluate,
+            "fetch": BulkDeleteFetch,
+            False: BulkDelete
         }, synchronize_session, query)
 
     def _do_exec(self):
@@ -928,9 +928,9 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
     """BulkUD which handles UPDATEs using the "evaluate"
     method of session resolution."""
 
-    def _additional_evaluators(self,evaluator_compiler):
+    def _additional_evaluators(self, evaluator_compiler):
         self.value_evaluators = {}
-        for key,value in self.values.iteritems():
+        for key, value in self.values.iteritems():
             key = _attr_as_key(key)
             self.value_evaluators[key] = evaluator_compiler.process(
                                 expression._literal_as_binds(value))

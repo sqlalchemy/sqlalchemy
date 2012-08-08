@@ -72,8 +72,6 @@ class WeakInstanceDict(IdentityMap):
         state = dict.__getitem__(self, key)
         o = state.obj()
         if o is None:
-            o = state._is_really_none()
-        if o is None:
             raise KeyError, key
         return o
 
@@ -82,8 +80,6 @@ class WeakInstanceDict(IdentityMap):
             if dict.__contains__(self, key):
                 state = dict.__getitem__(self, key)
                 o = state.obj()
-                if o is None:
-                    o = state._is_really_none()
             else:
                 return False
         except KeyError:
@@ -113,8 +109,6 @@ class WeakInstanceDict(IdentityMap):
                 existing_state = dict.__getitem__(self, key)
                 if existing_state is not state:
                     o = existing_state.obj()
-                    if o is None:
-                        o = existing_state._is_really_none()
                     if o is not None:
                         raise AssertionError("A conflicting state is already "
                                         "present in the identity map for key %r"
@@ -132,9 +126,7 @@ class WeakInstanceDict(IdentityMap):
             return default
         o = state.obj()
         if o is None:
-            o = state._is_really_none()
-            if o is None:
-                return default
+            return default
         return o
 
     def _items(self):

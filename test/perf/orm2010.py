@@ -161,7 +161,7 @@ print 'Total executemany calls: %d' \
 
 #stats.sort_stats('time', 'calls')
 #stats.print_stats()
-#os.system("runsnake %s" % filename)
+os.system("runsnake %s" % filename)
 
 # SQLA Version: 0.7b1
 # Total calls 4956750

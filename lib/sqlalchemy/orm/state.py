@@ -424,9 +424,6 @@ class InstanceState(interfaces._InspectionAttr):
     def _instance_dict(self):
         return None
 
-    def _is_really_none(self):
-        return self.obj()
-
     def _modified_event(self, dict_, attr, previous, collection=False):
         if attr.key not in self.committed_state:
             if collection:
