@@ -1318,6 +1318,29 @@ class Session(object):
 
         See :ref:`unitofwork_merging` for a detailed discussion of merging.
 
+        :param instance: Instance to be merged.
+        :param load: Boolean, when False, :meth:`.merge` switches into
+         a "high performance" mode which causes it to skip all database
+         access.  The state of the given object is transferred directly
+         into the :class:`.Session` without checking the database
+         for existing data or discrepancies.  This flag is used for
+         cases such as transferring graphs of objects into a :class:`.Session`
+         from a second level cache, or to transfer just-loaded objects
+         into the :class:`.Session` owned by a worker thread or process
+         without re-querying the database.
+
+         The ``load=False`` use case adds the caveat that the given
+         object has to be in a "clean" state.   This is so that when
+         the merge operation cascades onto related objects and
+         collections, the related values can be "stamped" onto the
+         target object as is, without concern for reconciling their
+         contents with any existing database value.  While there's no technical
+         reason the state of the object can't be taken as is whether or
+         not it's dirty, it suggests a mis-use of the method, as state which
+         wasn't pulled from the database originally can't reliably be passed back to
+         the database without knowing the database's current state.
+
+
         """
         if 'dont_load' in kw:
             load = not kw['dont_load']
