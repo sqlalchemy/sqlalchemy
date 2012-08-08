@@ -420,10 +420,32 @@ taking the state of any kind of object structure without regard for its
 origins or current session associations and placing that state within a
 session. Here's two examples:
 
+* An application wants to transfer the state of a series of objects
+  into a :class:`.Session` maintained by a worker thread or other
+  concurrent system.  :meth:`~.Session.merge` makes a copy of each object
+  to be placed into this new :class:`.Session`.  At the end of the operation,
+  the parent thread/process maintains the objects it started with,
+  and the thread/worker can proceed with local copies of those objects.
+
+* An application is storing objects in an in-memory cache, shared by
+  many :class:`.Session` objects simultaneously.   :meth:`~.Session.merge`
+  is used each time an object is retrieved from the cache to create
+  a local copy of it in each :class:`.Session` which requests it.
+  The cached object remains detached; only its state is moved into
+  copies of itself that are local to individual :class:`~.Session`
+  objects.
+
+  In the caching use case, it's common that the ``load=False`` flag
+  is used to remove the overhead of reconciling the object's state
+  with the database.   There's also a "bulk" version of
+  :meth:`~.Session.merge` called :meth:`~.Query.merge_result`
+  that was designed to work with cache-extended :class:`.Query`
+  objects - see the section :ref:`examples_caching`.
+
 * An application which reads an object structure from a file and wishes to
   save it to the database might parse the file, build up the
   structure, and then use
-  :func:`~sqlalchemy.orm.session.Session.merge` to save it
+  :meth:`~.Session.merge` to save it
   to the database, ensuring that the data within the file is
   used to formulate the primary key of each element of the
   structure. Later, when the file has changed, the same
@@ -432,25 +454,7 @@ session. Here's two examples:
   and the :class:`~sqlalchemy.orm.session.Session` will
   automatically update the database to reflect those
   changes.
-* A web application stores mapped entities within an HTTP session object.
-  When each request starts up, the serialized data can be
-  merged into the session, so that the original entity may
-  be safely shared among requests and threads.
 
-:func:`~sqlalchemy.orm.session.Session.merge` is frequently used by
-applications which implement their own second level caches. This refers to an
-application which uses an in memory dictionary, or an tool like Memcached to
-store objects over long running spans of time. When such an object needs to
-exist within a :class:`~sqlalchemy.orm.session.Session`,
-:func:`~sqlalchemy.orm.session.Session.merge` is a good choice since it leaves
-the original cached object untouched. For this use case, merge provides a
-keyword option called ``load=False``. When this boolean flag is set to
-``False``, :func:`~sqlalchemy.orm.session.Session.merge` will not issue any
-SQL to reconcile the given object against the current state of the database,
-thereby reducing query overhead. The limitation is that the given object and
-all of its children may not contain any pending changes, and it's also of
-course possible that newer information in the database will not be present on
-the merged object, since no load is issued.
 
 Merge Tips
 ~~~~~~~~~~
