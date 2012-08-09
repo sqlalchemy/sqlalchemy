@@ -72,7 +72,7 @@ class ExecutionTest(fixtures.TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(65, variance=.05)
+        @profiling.function_call_count(62, variance=.5)
         def go():
             e.execute("select 1")
         go()
