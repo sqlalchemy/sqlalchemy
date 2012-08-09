@@ -1105,17 +1105,3 @@ def attribute_str(instance, attribute):
 def state_attribute_str(state, attribute):
     return state_str(state) + "." + attribute
 
-def identity_equal(a, b):
-    if a is b:
-        return True
-    if a is None or b is None:
-        return False
-    try:
-        state_a = attributes.instance_state(a)
-        state_b = attributes.instance_state(b)
-    except exc.NO_STATE:
-        return False
-    if state_a.key is None or state_b.key is None:
-        return False
-    return state_a.key == state_b.key
-
