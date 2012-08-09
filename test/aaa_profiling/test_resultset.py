@@ -6,7 +6,7 @@ NUM_RECORDS = 1000
 
 
 class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
-    __requires__ = 'cpython',
+    __requires__ = 'cpython', 'cextensions',
     __only_on__ = 'sqlite'
 
     @classmethod
@@ -34,22 +34,11 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
 
-    @profiling.function_call_count(versions={
-                                    '2.4': 13214,
-                                    '2.6':14416,
-                                    '2.7':14416,
-                                   '2.6+cextension': 354,
-                                   '2.7+cextension':354})
+    @profiling.function_call_count(354)
     def test_string(self):
         [tuple(row) for row in t.select().execute().fetchall()]
 
-    # sqlite3 returns native unicode.  so shouldn't be an increase here.
-
-    @profiling.function_call_count(versions={
-                                    '2.7':14396,
-                                    '2.6':14396,
-                                   '2.6+cextension': 354,
-                                   '2.7+cextension':354})
+    @profiling.function_call_count(354)
     def test_unicode(self):
         [tuple(row) for row in t2.select().execute().fetchall()]
 
@@ -72,9 +61,7 @@ class ExecutionTest(fixtures.TestBase):
         # ensure initial connect activities complete
         c.execute("select 1")
 
-        @profiling.function_call_count(versions={'2.7':40, '2.6':40, '2.5':35,
-                                                    '2.4':21, '3':40},
-                                            variance=.10)
+        @profiling.function_call_count(40, variance=.10)
         def go():
             c.execute("select 1")
         go()
@@ -85,11 +72,7 @@ class ExecutionTest(fixtures.TestBase):
         # ensure initial connect activities complete
         e.execute("select 1")
 
-        @profiling.function_call_count(versions={'2.4':41, '2.5':65,
-                                                    '2.6':65, '3':61,
-                                                    '2.7':65,
-                                                    '2.6+cextension':65},
-                                            variance=.05)
+        @profiling.function_call_count(65, variance=.05)
         def go():
             e.execute("select 1")
         go()
@@ -119,7 +102,7 @@ class RowProxyTest(fixtures.TestBase):
             return value
         value1, value2 = "x", "y"
         row = self._rowproxy_fixture(
-            [(col1, "a"),(col2, "b")],
+            [(col1, "a"), (col2, "b")],
             [proc1, None],
             seq_factory([value1, value2])
         )

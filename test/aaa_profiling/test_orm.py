@@ -14,11 +14,11 @@ class MergeTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        parent = Table('parent', metadata, Column('id', Integer,
+        Table('parent', metadata, Column('id', Integer,
                        primary_key=True,
                        test_needs_autoincrement=True), Column('data',
                        String(20)))
-        child = Table('child', metadata, Column('id', Integer,
+        Table('child', metadata, Column('id', Integer,
                       primary_key=True, test_needs_autoincrement=True),
                       Column('data', String(20)), Column('parent_id',
                       Integer, ForeignKey('parent.id'), nullable=False))
@@ -38,8 +38,8 @@ class MergeTest(fixtures.MappedTest):
                                 cls.tables.parent,
                                 cls.tables.child)
 
-        mapper(Parent, parent, properties={'children'
-               : relationship(Child, backref='parent')})
+        mapper(Parent, parent, properties={'children':
+                        relationship(Child, backref='parent')})
         mapper(Child, child)
 
     @classmethod
@@ -47,8 +47,7 @@ class MergeTest(fixtures.MappedTest):
         parent, child = cls.tables.parent, cls.tables.child
 
         parent.insert().execute({'id': 1, 'data': 'p1'})
-        child.insert().execute({'id': 1, 'data': 'p1c1', 'parent_id'
-                               : 1})
+        child.insert().execute({'id': 1, 'data': 'p1c1', 'parent_id': 1})
 
     def test_merge_no_load(self):
         Parent = self.classes.Parent
@@ -61,19 +60,17 @@ class MergeTest(fixtures.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        @profiling.function_call_count(variance=0.10,
-                versions={'2.7':96, '2.6':96, '2.5':96, '3': 100})
-        def go():
+        @profiling.function_call_count(96, {}, variance=0.10)
+        def go1():
             return sess2.merge(p1, load=False)
-        p2 = go()
+        p2 = go1()
 
         # third call, merge object already present. almost no calls.
 
-        @profiling.function_call_count(variance=0.10,
-                versions={'2.7':16, '2.6':16, '2.5':16, '3': 16})
-        def go():
+        @profiling.function_call_count(16, {}, variance=0.10)
+        def go2():
             return sess2.merge(p2, load=False)
-        p3 = go()
+        go2()
 
     @testing.only_on('sqlite', 'Call counts tailored to pysqlite')
     def test_merge_load(self):
@@ -88,10 +85,7 @@ class MergeTest(fixtures.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        @profiling.function_call_count(variance=0.10,
-                                versions={'2.7': 1128,
-                                        '3': 1150}
-                            )
+        @profiling.function_call_count(1128, {}, variance=0.10)
         def go():
             p2 = sess2.merge(p1)
         go()
@@ -120,14 +114,14 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        parent = Table('parent', metadata,
+        Table('parent', metadata,
                         Column('id', Integer, primary_key=True),
                        Column('data', String(20)),
                        Column('child_id', Integer, ForeignKey('child.id'))
                        )
 
-        child = Table('child', metadata,
-                    Column('id', Integer,primary_key=True),
+        Table('child', metadata,
+                    Column('id', Integer, primary_key=True),
                   Column('data', String(20))
                  )
 
@@ -174,7 +168,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
 
 
-        @profiling.function_call_count(108019, variance=.2)
+        @profiling.function_call_count(110761, variance=.2)
         def go():
             for p in parents:
                 p.child
@@ -187,7 +181,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
 
-        @profiling.function_call_count(17987, {'3':18987})
+        @profiling.function_call_count(16988)
         def go():
             for p in parents:
                 p.child
@@ -229,12 +223,12 @@ class MergeBackrefsTest(fixtures.MappedTest):
     def setup_mappers(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, \
                     cls.classes.C, cls.classes.D
-        a, b, c, d= cls.tables.a, cls.tables.b, \
+        a, b, c, d = cls.tables.a, cls.tables.b, \
                     cls.tables.c, cls.tables.d
         mapper(A, a, properties={
-            'bs':relationship(B, backref='a'),
-            'c':relationship(C, backref='as'),
-            'ds':relationship(D, backref='a'),
+            'bs': relationship(B, backref='a'),
+            'c': relationship(C, backref='as'),
+            'ds': relationship(D, backref='a'),
         })
         mapper(B, b)
         mapper(C, c)
