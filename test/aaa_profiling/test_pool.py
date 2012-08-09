@@ -21,18 +21,22 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         pool_module._refs.clear()
 
     def setup(self):
+        # create a throwaway pool which
+        # has the effect of initializing
+        # class-level event listeners on Pool,
+        # if not present already.
+        p1 = QueuePool(creator=self.Connection,
+                         pool_size=3, max_overflow=-1,
+                         use_threadlocal=True)
+        p1.connect()
+
         global pool
         pool = QueuePool(creator=self.Connection,
                          pool_size=3, max_overflow=-1,
                          use_threadlocal=True)
 
 
-    # the callcount on this test seems to vary
-    # based on tests that ran before (particularly py3k),
-    # probably
-    # due to the event mechanics being established
-    # or not already...
-    @profiling.function_call_count(55, variance=.15)
+    @profiling.function_call_count(47, variance=.15)
     def test_first_connect(self):
         conn = pool.connect()
 
