@@ -128,11 +128,12 @@ def _paths(key, stats, cache, seen=None):
     else:
         seen[key] += 1
         try:
+            path_element = (fname, lineno, fn_name)
             paths_to_yield = []
             (cc, nc, tt, ct, callers) = stats[key]
             if not callers:
-                paths_to_yield.append(())
-                yield ()
+                paths_to_yield.append((path_element,))
+                yield (path_element,)
 
             for subkey in callers:
                 sub_cc, sub_nc, sub_tt, sub_ct = callers[subkey]
@@ -152,10 +153,25 @@ def _exclude(path):
             "processors" in pfname or \
             "cutils" in pfname:
             return True
+        if "threading.py" in pfname:
+            return True
+
+    if (
+            "result.py" in pfname or
+            "engine/base.py" in pfname
+        ) and pfuncname in ("__iter__", "__getitem__"):
+        return True
+
+    if "utf_8.py" in pfname and pfuncname == "decode":
+        return True
+
     if path[-1][2] in (
             "<built-in method exec>",
             "<listcomp>"
             ):
+        return True
+
+    if '_thread.RLock' in path[-1][2]:
         return True
 
     return False

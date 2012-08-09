@@ -351,8 +351,7 @@ class ZooMarkTest(fixtures.TestBase):
     def test_profile_4_expressions(self):
         self.test_baseline_4_expressions()
 
-    @profiling.function_call_count(1065,
-                                   variance=0.1)
+    @profiling.function_call_count(900)
     def test_profile_5_aggregates(self):
         self.test_baseline_5_aggregates()
 

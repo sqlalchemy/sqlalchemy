@@ -32,7 +32,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
     # probably
     # due to the event mechanics being established
     # or not already...
-    @profiling.function_call_count(72, variance=.15)
+    @profiling.function_call_count(55, variance=.15)
     def test_first_connect(self):
         conn = pool.connect()
 
@@ -40,7 +40,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         conn = pool.connect()
         conn.close()
 
-        @profiling.function_call_count(29, variance=.10)
+        @profiling.function_call_count(17, variance=.10)
         def go():
             conn2 = pool.connect()
             return conn2
